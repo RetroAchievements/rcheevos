@@ -25,5 +25,6 @@ rc_expression_t* rc_parse_expression(int* ret, void* buffer, const char** memadd
 unsigned rc_evaluate_expression(rc_expression_t* self, rc_peek_t peek, void* ud, lua_State* L);
 
 void rc_parse_value(rc_value_t* self, int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx);
+unsigned rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 
 #endif /* INTERNAL_H */

@@ -225,8 +225,6 @@ typedef struct {
 }
 rc_value_t;
 
-unsigned rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
-
 /*****************************************************************************\
 | Leaderboards                                                                |
 \*****************************************************************************/
