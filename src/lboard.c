@@ -133,12 +133,12 @@ rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_St
   }
 
   self->started = self->submitted = 0;
-  self->value_score = self->progress_score = 0;
   return self;
 }
 
-void rc_evaluate_lboard(rc_lboard_t* self, void* callback_ud, rc_peek_t peek, void* peek_ud, lua_State* L) {
+int rc_evaluate_lboard(rc_lboard_t* self, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L) {
   int unused1, unused2, start_ok, cancel_ok, submit_ok;
+  int action = -1;
 
   /* ASSERT: these are always tested once every frame, to ensure delta variables work properly */
   unused1 = unused2 = 0;
@@ -149,16 +149,6 @@ void rc_evaluate_lboard(rc_lboard_t* self, void* callback_ud, rc_peek_t peek, vo
 
   unused1 = unused2 = 0;
   submit_ok = rc_test_trigger(&self->submit, &unused1, &unused2, peek, peek_ud, L);
-
-  /* Update value and progress */
-  self->value_score = rc_evaluate_value(&self->value, peek, peek_ud, L);
-
-  if (self->progress == 0) {
-    self->progress_score = self->value_score;
-  }
-  else {
-    self->progress_score = rc_evaluate_value(self->progress, peek, peek_ud, L);
-  }
 
   if (self->submitted) {
     /* if we've already submitted or canceled the leaderboard, don't reactivate it until it becomes inactive. */
@@ -171,13 +161,13 @@ void rc_evaluate_lboard(rc_lboard_t* self, void* callback_ud, rc_peek_t peek, vo
     if (start_ok && !cancel_ok) {
       if (submit_ok) {
         /* start and submit both true in the same frame, just submit without announcing the leaderboard is available */
-        self->submit_cb(self, callback_ud);
+        action = RC_LBOARD_TRIGGERED;
         /* prevent multiple submissions/notifications */
         self->submitted = 1;
       }
       else if (self->start.requirement != 0 || self->start.alternative != 0) {
         self->started = 1;
-        self->start_cb(self, callback_ud);
+        action = RC_LBOARD_STARTED;
       }
     }
   }
@@ -186,15 +176,38 @@ void rc_evaluate_lboard(rc_lboard_t* self, void* callback_ud, rc_peek_t peek, vo
     if (cancel_ok) {
       /* cancel condition is true, deactivate the leaderboard */
       self->started = 0;
-      self->cancel_cb(self, callback_ud);
+      action = RC_LBOARD_CANCELED;
       /* prevent multiple cancel notifications */
       self->submitted = 1;
     }
     else if (submit_ok) {
       /* submit condition is true, submit the current value */
       self->started = 0;
-      self->submit_cb(self, callback_ud);
+      action = RC_LBOARD_TRIGGERED;
       self->submitted = 1;
     }
   }
+
+  if (action == -1) {
+    action = self->started ? RC_LBOARD_ACTIVE : RC_LBOARD_INACTIVE;
+  }
+
+  /* Calculate the value */
+  switch (action) {
+    case RC_LBOARD_ACTIVE: /* fall through */
+    case RC_LBOARD_STARTED:
+      *value = rc_evaluate_value(self->progress != 0 ? self->progress : &self->value, peek, peek_ud, L);
+      break;
+
+    case RC_LBOARD_TRIGGERED:
+      *value = rc_evaluate_value(&self->value, peek, peek_ud, L);
+      break;
+
+    case RC_LBOARD_INACTIVE:
+    case RC_LBOARD_CANCELED:
+      *value = 0;
+      break;
+  }
+
+  return action;
 }

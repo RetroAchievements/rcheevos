@@ -1707,11 +1707,31 @@ static void lboard_reset(rc_lboard_t* lboard, lboard_test_state_t* state) {
   int unused;
 
   lboard->started = lboard->submitted = 0;
-  lboard->value_score = lboard->progress_score = 0;
   rc_reset_trigger(&lboard->start, &unused);
   rc_reset_trigger(&lboard->submit, &unused);
   rc_reset_trigger(&lboard->cancel, &unused);
   state->active = state->submitted = 0;
+}
+
+static unsigned lboard_evaluate(rc_lboard_t* lboard, lboard_test_state_t* test, memory_t* memory) {
+  unsigned value;
+
+  switch (rc_evaluate_lboard(lboard, &value, peek, memory, NULL)) {
+    case RC_LBOARD_STARTED:
+      test->active = 1;
+      break;
+
+    case RC_LBOARD_CANCELED:
+      test->active = 0;
+      break;
+
+    case RC_LBOARD_TRIGGERED:
+      test->active = 0;
+      test->submitted = 1;
+      break;
+  }
+
+  return value;
 }
 
 static void test_lboard() {
@@ -1725,58 +1745,56 @@ static void test_lboard() {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     char buffer[2048];
+    unsigned value;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     lboard = parse_lboard("STA:0xH00=1::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02", buffer);
-    lboard->start_cb = lboard_start;
-    lboard->cancel_cb = lboard_cancel;
-    lboard->submit_cb = lboard_submit;
     state.active = state.submitted = 0;
 
     assert(!state.active);
     assert(!state.submitted);
 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(!state.submitted);
 
     ram[0] = 3; /* submit value, but not active */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(!state.submitted);
 
     ram[0] = 2; /* cancel value, but not active */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(!state.submitted);
 
     ram[0] = 1; /* start value */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
     assert(!state.submitted);
 
     ram[0] = 2; /* cancel value */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(!state.submitted);
 
     ram[0] = 3; /* submit value, but not active */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(!state.submitted);
 
     ram[0] = 1; /* start value */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
     assert(!state.submitted);
 
     ram[0] = 3; /* submit value */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(state.submitted);
-    assert(lboard->value_score == 0x34U);
+    assert(value == 0x34U);
   }
 
   {
@@ -1789,42 +1807,40 @@ static void test_lboard() {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     char buffer[2048];
+    unsigned value;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     lboard = parse_lboard("STA:0xH00=0::CAN:0xH01=18::SUB:0xH00=3::VAL:0xH02", buffer);
-    lboard->start_cb = lboard_start;
-    lboard->cancel_cb = lboard_cancel;
-    lboard->submit_cb = lboard_submit;
     state.active = state.submitted = 0;
 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(!state.submitted);
 
     ram[1] = 0x13; /* disables cancel */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
     assert(!state.submitted);
 
     ram[1] = 0x12; /* enables cancel */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(!state.submitted);
 
     ram[1] = 0x13; /* disables cancel, but start condition still true, so it shouldn't restart */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(!state.submitted);
 
     ram[0] = 0x01; /* disables start; no effect this frame, but next frame can restart */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(!state.submitted);
 
     ram[0] = 0x00; /* enables start */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
     assert(!state.submitted);
   }
@@ -1839,31 +1855,29 @@ static void test_lboard() {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     char buffer[2048];
+    unsigned value;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     lboard = parse_lboard("STA:0xH00=0::CAN:0xH01=10::SUB:0xH01=18::VAL:0xH02", buffer);
-    lboard->start_cb = lboard_start;
-    lboard->cancel_cb = lboard_cancel;
-    lboard->submit_cb = lboard_submit;
     state.active = state.submitted = 0;
 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(state.submitted);
-    assert(lboard->value_score == 0x34U);
+    assert(value == 0x34U);
 
     ram[1] = 0; /* disable submit, value should not be resubmitted, */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL); /* start is still true, but leaderboard should not reactivate */
+    value = lboard_evaluate(lboard, &state, &memory); /* start is still true, but leaderboard should not reactivate */
     assert(!state.active);
 
     ram[0] = 1; /* disable start */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
 
     ram[0] = 0; /* reenable start, leaderboard should reactivate */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
   }
 
@@ -1877,31 +1891,24 @@ static void test_lboard() {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     char buffer[2048];
+    unsigned value;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     lboard = parse_lboard("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02", buffer);
-    lboard->start_cb = lboard_start;
-    lboard->cancel_cb = lboard_cancel;
-    lboard->submit_cb = lboard_submit;
     state.active = state.submitted = 0;
 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
-    assert(lboard->value_score == 0x34U);
-    assert(lboard->progress_score == 0x56U);
+    assert(value == 0x56U);
 
     lboard = parse_lboard("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02", buffer);
-    lboard->start_cb = lboard_start;
-    lboard->cancel_cb = lboard_cancel;
-    lboard->submit_cb = lboard_submit;
     state.active = state.submitted = 0;
 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
-    assert(lboard->value_score == 0x34U);
-    assert(lboard->progress_score == 0x34U);
+    assert(value == 0x34U);
   }
 
   {
@@ -1914,21 +1921,19 @@ static void test_lboard() {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     char buffer[2048];
+    unsigned value;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     lboard = parse_lboard("STA:0xH00=0_0xH01=0::CAN:0xH01=10::SUB:0xH01=18::VAL:0xH02", buffer);
-    lboard->start_cb = lboard_start;
-    lboard->cancel_cb = lboard_cancel;
-    lboard->submit_cb = lboard_submit;
     state.active = state.submitted = 0;
 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
 
     ram[1] = 0; /* second part of start condition is true */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
   }
 
@@ -1942,30 +1947,28 @@ static void test_lboard() {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     char buffer[2048];
+    unsigned value;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     lboard = parse_lboard("STA:S0xH00=1S0xH01=1::CAN:0xH01=10::SUB:0xH01=18::VAL:0xH02", buffer);
-    lboard->start_cb = lboard_start;
-    lboard->cancel_cb = lboard_cancel;
-    lboard->submit_cb = lboard_submit;
     state.active = state.submitted = 0;
 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
 
     ram[1] = 1; /* second part of start condition is true */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
 
     ram[1] = 0;
     lboard_reset(lboard, &state);
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
 
     ram[0] = 1; /* first part of start condition is true */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
   }
 
@@ -1979,30 +1982,28 @@ static void test_lboard() {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     char buffer[2048];
+    unsigned value;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     lboard = parse_lboard("STA:0xH00=0::CAN:S0xH01=12S0xH02=12::SUB:0xH00=3::VAL:0xH02", buffer);
-    lboard->start_cb = lboard_start;
-    lboard->cancel_cb = lboard_cancel;
-    lboard->submit_cb = lboard_submit;
     state.active = state.submitted = 0;
 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
 
     ram[2] = 12; /* second part of cancel condition is true */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
 
     ram[2] = 0; /* second part of cancel condition is false */
     lboard_reset(lboard, &state);
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
 
     ram[1] = 12; /* first part of cancel condition is true */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
   }
 
@@ -2016,21 +2017,19 @@ static void test_lboard() {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     char buffer[2048];
+    unsigned value;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     lboard = parse_lboard("STA:0xH00=0::CAN:0xH01=10::SUB:0xH01=18_0xH03=18::VAL:0xH02", buffer);
-    lboard->start_cb = lboard_start;
-    lboard->cancel_cb = lboard_cancel;
-    lboard->submit_cb = lboard_submit;
     state.active = state.submitted = 0;
 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
 
     ram[3] = 18; 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(state.submitted);
   }
@@ -2045,31 +2044,29 @@ static void test_lboard() {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     char buffer[2048];
+    unsigned value;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     lboard = parse_lboard("STA:0xH00=0::CAN:0xH01=10::SUB:S0xH01=12S0xH03=12::VAL:0xH02", buffer);
-    lboard->start_cb = lboard_start;
-    lboard->cancel_cb = lboard_cancel;
-    lboard->submit_cb = lboard_submit;
     state.active = state.submitted = 0;
 
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
 
     ram[3] = 12; /* second part of submit condition is true */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(state.submitted);
 
     ram[3] = 0;
     lboard_reset(lboard, &state);
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
 
     ram[1] = 12; /* first part of submit condition is true */
-    rc_evaluate_lboard(lboard, &state, peek, &memory, NULL);
+    value = lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(state.submitted);
   }

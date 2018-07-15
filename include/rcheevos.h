@@ -49,13 +49,6 @@ enum {
  */
 typedef unsigned (*rc_peek_t)(unsigned address, unsigned num_bytes, void* ud);
 
-/**
- * Callbacks that notify the client application that a leaderboard has started,
- * submitted a score, or has been cancelled.
- */
-typedef struct rc_lboard_t rc_lboard_t;
-typedef void (*rc_lboard_callback_t)(rc_lboard_t* lboard, void* ud);
-
 /*****************************************************************************\
 | Operands                                                                    |
 \*****************************************************************************/
@@ -152,7 +145,11 @@ struct rc_condition_t {
   unsigned required_hits;
   /* Number of hits so far. */
   unsigned current_hits;
-  /* Has a pause condition in the set. */
+
+  /**
+   * Set if the condition needs to processed as part of the "check if paused"
+   * pass
+   */
   char pause;
 
   /* The type of the condition. */
@@ -234,28 +231,29 @@ unsigned rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_Stat
 | Leaderboards                                                                |
 \*****************************************************************************/
 
-struct rc_lboard_t {
-  /* User-defined callbacks. */
-  rc_lboard_callback_t start_cb;
-  rc_lboard_callback_t submit_cb;
-  rc_lboard_callback_t cancel_cb;
+/* Return values for rc_evaluate_lboard. */
+enum {
+  RC_LBOARD_INACTIVE,
+  RC_LBOARD_ACTIVE,
+  RC_LBOARD_STARTED,
+  RC_LBOARD_CANCELED,
+  RC_LBOARD_TRIGGERED
+};
 
-  /* Read-only values updated by rc_evaluate_lboard. */
-  int started;
-  int submitted;
-  unsigned value_score;
-  unsigned progress_score;
-
-  /* Private fields. */
+typedef struct {
   rc_trigger_t start;
   rc_trigger_t submit;
   rc_trigger_t cancel;
   rc_value_t value;
   rc_value_t* progress;
-};
+
+  char started;
+  char submitted;
+}
+rc_lboard_t;
 
 rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
-void rc_evaluate_lboard(rc_lboard_t* lboard, void* callback_ud, rc_peek_t peek, void* peek_ud, lua_State* L);
+int rc_evaluate_lboard(rc_lboard_t* lboard, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L);
 
 #ifdef __cplusplus
 }
