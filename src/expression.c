@@ -9,11 +9,12 @@ rc_expression_t* rc_parse_expression(int* ret, void* buffer, const char** memadd
 
   for (;;) {
     *next = rc_parse_term(ret, buffer, memaddr, L, funcs_ndx);
-    next = &(*next)->next;
 
     if (*ret < 0) {
       return 0;
     }
+
+    next = &(*next)->next;
 
     if (**memaddr != '_') {
       break;

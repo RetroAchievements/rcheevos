@@ -7,11 +7,12 @@ void rc_parse_value(rc_value_t* self, int* ret, void* buffer, const char** memad
 
   for (;;) {
     *next = rc_parse_expression(ret, buffer, memaddr, L, funcs_ndx);
-    next = &(*next)->next;
 
     if (*ret < 0) {
       return;
     }
+
+    next = &(*next)->next;
 
     if (**memaddr != '$') {
       break;

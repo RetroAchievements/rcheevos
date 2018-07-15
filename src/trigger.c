@@ -23,11 +23,12 @@ void rc_parse_trigger_internal(rc_trigger_t* self, int* ret, void* buffer, const
   while (*aux == 's' || *aux == 'S') {
     aux++;
     *next = rc_parse_condset(ret, buffer, &aux, L, funcs_ndx);
-    next = &(*next)->next;
 
     if (*ret < 0) {
       return;
     }
+
+    next = &(*next)->next;
   }
   
   *next = 0;
