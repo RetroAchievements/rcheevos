@@ -48,6 +48,7 @@ static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, lua_St
 static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr) {
   const char* aux = *memaddr;
   char* end;
+  unsigned long value;
 
   switch (*aux++) {
     case 'd': case 'D':
@@ -96,11 +97,17 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr) {
       break;
   }
 
-  self->value = (unsigned)strtoul(aux, &end, 16);
+  value = (unsigned)strtoul(aux, &end, 16);
 
   if (end == aux) {
     return RC_INVALID_MEMORY_OPERAND;
   }
+
+  if (value > 0xffffffffU) {
+    value = 0xffffffffU;
+  }
+
+  self->value = (unsigned)value;
 
   *memaddr = end;
   return RC_OK;
@@ -110,15 +117,22 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, lu
   const char* aux = *memaddr;
   char* end;
   int ret;
+  unsigned long value;
 
   switch (*aux) {
     case 'h': case 'H':
-      self->type = RC_OPERAND_CONST;
-      self->value = (unsigned)strtoul(++aux, &end, 16);
+      value = strtoul(++aux, &end, 16);
 
       if (end == aux) {
         return RC_INVALID_CONST_OPERAND;
       }
+
+      if (value > 0xffffffffU) {
+        value = 0xffffffffU;
+      }
+
+      self->type = RC_OPERAND_CONST;
+      self->value = (unsigned)value;
 
       aux = end;
       break;
@@ -137,14 +151,21 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, lu
       }
 
       /* fall through */
+    case '+': case '-':
     case '1': case '2': case '3': case '4': case '5':
     case '6': case '7': case '8': case '9':
-      self->type = RC_OPERAND_CONST;
-      self->value = (unsigned)strtoul(aux, &end, 10);
-
+      value = strtoul(aux, &end, 10);
+      
       if (end == aux) {
         return RC_INVALID_CONST_OPERAND;
       }
+
+      if (value > 0xffffffffU) {
+        value = 0xffffffffU;
+      }
+
+      self->type = RC_OPERAND_CONST;
+      self->value = (unsigned)value;
 
       aux = end;
       break;
@@ -167,26 +188,39 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, lua_S
   const char* aux = *memaddr;
   char* end;
   int ret;
+  unsigned long value;
 
   switch (*aux) {
     case 'h': case 'H':
-      self->type = RC_OPERAND_CONST;
-      self->value = (unsigned)strtoul(++aux, &end, 16);
+      value = (unsigned)strtoul(++aux, &end, 16);
 
       if (end == aux) {
         return RC_INVALID_CONST_OPERAND;
       }
+
+      if (value > 0xffffffffU) {
+        value = 0xffffffffU;
+      }
+
+      self->type = RC_OPERAND_CONST;
+      self->value = (unsigned)value;
 
       aux = end;
       break;
     
     case 'v': case 'V':
-      self->type = RC_OPERAND_CONST;
-      self->value = (unsigned)strtoul(++aux, &end, 10);
+      value = (unsigned)strtoul(++aux, &end, 10);
 
       if (end == aux) {
         return RC_INVALID_CONST_OPERAND;
       }
+
+      if (value > 0xffffffffU) {
+        value = 0xffffffffU;
+      }
+
+      self->type = RC_OPERAND_CONST;
+      self->value = (unsigned)value;
 
       aux = end;
       break;

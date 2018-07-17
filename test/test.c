@@ -159,18 +159,26 @@ static void test_operand(void) {
     parse_comp_operand("123456", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 123456U);
     parse_comp_operand("0", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0U);
     parse_comp_operand("0000000000", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0U);
+    parse_comp_operand("4294967295", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 4294967295U);
 
     /* hex - 'H' prefix, not '0x'! */
     parse_comp_operand("H123", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0x123U);
     parse_comp_operand("HABCD", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0xABCDU);
     parse_comp_operand("h123", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0x123U);
     parse_comp_operand("habcd", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0xABCDU);
+    parse_comp_operand("HFFFFFFFF", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 4294967295U);
 
     /* '0x' is an address */
     parse_comp_operand("0x123", RC_OPERAND_ADDRESS, RC_OPERAND_16_BITS, 0x123U);
 
     /* hex without prefix */
     parse_error_operand("ABCD", 0);
+
+    /* more than 32-bits (error), will be constrained to 32-bits */
+    parse_comp_operand("4294967296", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 4294967295U);
+
+    /* negative value (error), will be "wrapped around": -1 = 0x100000000 - 1 = 0xFFFFFFFF = 4294967295 */
+    parse_comp_operand("-1", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 4294967295U);
   }
 
   {
