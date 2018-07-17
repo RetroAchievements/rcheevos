@@ -1,3 +1,7 @@
+# v3.0.1
+
+* Fixed wrong 32-bit value on 64-bit platforms
+
 # v3.0.0
 
 * Removed function rc_evaluate_value from the API
