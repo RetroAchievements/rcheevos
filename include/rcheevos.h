@@ -253,6 +253,22 @@ rc_lboard_t;
 rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 int rc_evaluate_lboard(rc_lboard_t* lboard, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L);
 
+/*****************************************************************************\
+| Value formatting                                                            |
+\*****************************************************************************/
+
+/* Supported formats. */
+enum {
+  RC_FORMAT_FRAMES,
+  RC_FORMAT_SECONDS,
+  RC_FORMAT_CENTISECS,
+  RC_FORMAT_SCORE,
+  RC_FORMAT_VALUE,
+  RC_FORMAT_OTHER,
+};
+
+void rc_format_value(char* buffer, int size, unsigned value, int format);
+
 #ifdef __cplusplus
 }
 #endif

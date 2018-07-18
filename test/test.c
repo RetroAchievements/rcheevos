@@ -1,6 +1,7 @@
 #include "internal.h"
 
 #include <stddef.h>
+#include <string.h>
 #include <assert.h>
 
 typedef struct {
@@ -1680,6 +1681,41 @@ static void test_value(void) {
     parse_comp_value("0xH0001*100_0xH0002*0.5_0xL0003", &memory, 0x12U * 100 + 0x34U / 2 + 0x0B);/* TestAdditionComplex */
     parse_comp_value("0xH0001$0xH0002", &memory, 0x34U);/* TestMaximumSimple */
     parse_comp_value("0xH0001_0xH0004*3$0xH0002*0xL0003", &memory, 0x34U * 0xBU);/* TestMaximumComplex */
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAdditionSimple
+    ------------------------------------------------------------------------*/
+
+    char buffer[64];
+
+    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_VALUE);
+    assert(!strcmp("12345", buffer));
+
+    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_OTHER);
+    assert(!strcmp("012345", buffer));
+
+    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_SCORE);
+    assert(!strcmp("012345 Points", buffer));
+
+    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_SECONDS);
+    assert(!strcmp("205:45", buffer));
+
+    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_CENTISECS);
+    assert(!strcmp("02:03.45", buffer));
+
+    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_FRAMES);
+    assert(!strcmp("03:25.75", buffer));
+
+    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_SECONDS);
+    assert(!strcmp("05:45", buffer));
+
+    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_CENTISECS);
+    assert(!strcmp("00:03.45", buffer));
+
+    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_FRAMES);
+    assert(!strcmp("00:05.75", buffer));
   }
 }
 
