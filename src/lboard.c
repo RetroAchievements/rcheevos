@@ -211,3 +211,11 @@ int rc_evaluate_lboard(rc_lboard_t* self, unsigned* value, rc_peek_t peek, void*
 
   return action;
 }
+
+void rc_reset_lboard(rc_lboard_t* self) {
+  self->started = self->submitted = 0;
+
+  rc_reset_trigger(&self->start);
+  rc_reset_trigger(&self->submit);
+  rc_reset_trigger(&self->cancel);
+}

@@ -1685,7 +1685,7 @@ static void test_value(void) {
 
   {
     /*------------------------------------------------------------------------
-    TestAdditionSimple
+    TestFormatValue
     ------------------------------------------------------------------------*/
 
     char buffer[64];
@@ -1716,6 +1716,23 @@ static void test_value(void) {
 
     rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_FRAMES);
     assert(!strcmp("00:05.75", buffer));
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestParseMemValueFormat
+    ------------------------------------------------------------------------*/
+
+    assert(rc_parse_format("VALUE") == RC_FORMAT_VALUE);
+    assert(rc_parse_format("SECS") == RC_FORMAT_SECONDS);
+    assert(rc_parse_format("TIMESECS") == RC_FORMAT_SECONDS);
+    assert(rc_parse_format("TIME") == RC_FORMAT_FRAMES);
+    assert(rc_parse_format("FRAMES") == RC_FORMAT_FRAMES);
+    assert(rc_parse_format("SCORE") == RC_FORMAT_SCORE);
+    assert(rc_parse_format("POINTS") == RC_FORMAT_SCORE);
+    assert(rc_parse_format("MILLISECS") == RC_FORMAT_CENTISECS);
+    assert(rc_parse_format("OTHER") == RC_FORMAT_OTHER);
+    assert(rc_parse_format("INVALID") == RC_FORMAT_VALUE);
   }
 }
 
@@ -1748,12 +1765,7 @@ static void lboard_submit(rc_lboard_t* lboard, void* ud) {
 }
 
 static void lboard_reset(rc_lboard_t* lboard, lboard_test_state_t* state) {
-  int unused;
-
-  lboard->started = lboard->submitted = 0;
-  rc_reset_trigger(&lboard->start, &unused);
-  rc_reset_trigger(&lboard->submit, &unused);
-  rc_reset_trigger(&lboard->cancel, &unused);
+  rc_reset_lboard(lboard);
   state->active = state->submitted = 0;
 }
 

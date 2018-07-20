@@ -66,13 +66,13 @@ int rc_test_trigger(rc_trigger_t* self, int* dirty, int* reset, rc_peek_t peek, 
   }
 
   if (*reset) {
-    rc_reset_trigger(self, dirty);
+    rc_reset_trigger_internal(self, dirty);
   }
 
   return ret;
 }
 
-void rc_reset_trigger(rc_trigger_t* self, int* dirty) {
+void rc_reset_trigger_internal(rc_trigger_t* self, int* dirty) {
   rc_condset_t* condset;
 
   if (self->requirement != 0) {
@@ -85,4 +85,9 @@ void rc_reset_trigger(rc_trigger_t* self, int* dirty) {
     *dirty |= rc_reset_condset(condset);
     condset = condset->next;
   }
+}
+
+void rc_reset_trigger(rc_trigger_t* self) {
+  int unused;
+  rc_reset_trigger_internal(self, &unused);
 }
