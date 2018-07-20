@@ -1,3 +1,8 @@
+# v3.1.0
+
+* Added the ability to reset triggers and leaderboards
+* Add a function to parse a format string and return the format enum, and some unit tests for it
+
 # v3.0.1
 
 * Fixed wrong 32-bit value on 64-bit platforms
