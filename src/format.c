@@ -1,6 +1,68 @@
 #include "internal.h"
 
+#include <string.h>
 #include <stdio.h>
+
+int rc_parse_format(const char* format_str) {
+  switch (*format_str++) {
+    case 'F':
+      if (!strcmp(format_str, "RAMES")) {
+        return RC_FORMAT_FRAMES;
+      }
+
+      break;
+    
+    case 'T':
+      if (!strcmp(format_str, "IME")) {
+        return RC_FORMAT_FRAMES;
+      }
+      else if (!strcmp(format_str, "IMESECS")) {
+        return RC_FORMAT_SECONDS;
+      }
+
+      break;
+    
+    case 'S':
+      if (!strcmp(format_str, "ECS")) {
+        return RC_FORMAT_SECONDS;
+      }
+      if (!strcmp(format_str, "CORE")) {
+        return RC_FORMAT_SCORE;
+      }
+
+      break;
+    
+    case 'M':
+      if (!strcmp(format_str, "ILLISECS")) {
+        return RC_FORMAT_CENTISECS;
+      }
+
+      break;
+
+    case 'P':
+      if (!strcmp(format_str, "OINTS")) {
+        return RC_FORMAT_SCORE;
+      }
+
+      break;
+
+    case 'V':
+      if (!strcmp(format_str, "ALUE")) {
+        return RC_FORMAT_VALUE;
+      }
+
+      break;
+
+    case 'O':
+      if (!strcmp(format_str, "THER")) {
+        return RC_FORMAT_OTHER;
+      }
+
+      break;
+  }
+
+  return RC_FORMAT_VALUE;
+}
 
 void rc_format_value(char* buffer, int size, unsigned value, int format) {
   unsigned a, b, c;

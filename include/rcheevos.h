@@ -189,6 +189,7 @@ rc_trigger_t;
 
 rc_trigger_t* rc_parse_trigger(int* ret, void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 int rc_test_trigger(rc_trigger_t* trigger, int* dirty, int* reset, rc_peek_t peek, void* ud, lua_State* L);
+void rc_reset_trigger(rc_trigger_t* self);
 
 /*****************************************************************************\
 | Expressions and values                                                      |
@@ -252,6 +253,7 @@ rc_lboard_t;
 
 rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 int rc_evaluate_lboard(rc_lboard_t* lboard, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L);
+void rc_reset_lboard(rc_lboard_t* lboard);
 
 /*****************************************************************************\
 | Value formatting                                                            |
@@ -267,6 +269,7 @@ enum {
   RC_FORMAT_OTHER,
 };
 
+int rc_parse_format(const char* format_str);
 void rc_format_value(char* buffer, int size, unsigned value, int format);
 
 #ifdef __cplusplus

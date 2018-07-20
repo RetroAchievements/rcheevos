@@ -6,7 +6,7 @@
 void* rc_alloc(void* pointer, int* offset, int size, void* dummy);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx);
-void rc_reset_trigger(rc_trigger_t* self, int* dirty);
+void rc_reset_trigger_internal(rc_trigger_t* self, int* dirty);
 
 rc_condset_t* rc_parse_condset(int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx);
 int rc_test_condset(rc_condset_t* self, int* dirty, int* reset, rc_peek_t peek, void* ud, lua_State* L);
