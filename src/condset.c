@@ -1,12 +1,34 @@
 #include "internal.h"
 
+static void rc_update_condition_pause(rc_condition_t* condition, int* in_pause) {
+  if (condition->next != 0) {
+    rc_update_condition_pause(condition->next, in_pause);
+  }
+
+  switch (condition->type) {
+    case RC_CONDITION_PAUSE_IF:
+      *in_pause = condition->pause = 1;
+      break;
+    
+    case RC_CONDITION_ADD_SOURCE:
+    case RC_CONDITION_SUB_SOURCE:
+    case RC_CONDITION_ADD_HITS:
+      condition->pause = *in_pause;
+      break;
+    
+    default:
+      *in_pause = condition->pause = 0;
+      break;
+  }
+}
+
 rc_condset_t* rc_parse_condset(int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx) {
   rc_condset_t* self, dummy;
-  rc_condition_t* previous;
   rc_condition_t** next;
+  int in_pause;
 
   self = (rc_condset_t*)rc_alloc(buffer, ret, sizeof(rc_condset_t), &dummy);
-  previous = 0;
+  self->has_pause = 0;
   next = &self->conditions;
 
   for (;;) {
@@ -16,8 +38,7 @@ rc_condset_t* rc_parse_condset(int* ret, void* buffer, const char** memaddr, lua
       return 0;
     }
 
-    (*next)->previous = previous;
-    previous = *next;
+    self->has_pause |= (*next)->type == RC_CONDITION_PAUSE_IF;
     next = &(*next)->next;
 
     if (**memaddr != '_') {
@@ -28,7 +49,10 @@ rc_condset_t* rc_parse_condset(int* ret, void* buffer, const char** memaddr, lua
   }
 
   *next = 0;
-  self->last = previous;
+
+  in_pause = 0;
+  rc_update_condition_pause(self->conditions, &in_pause);
+
   return self;
 }
 
@@ -125,36 +149,12 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, in
 }
 
 int rc_test_condset(rc_condset_t* self, int* reset, rc_peek_t peek, void* ud, lua_State* L) {
-  int in_pause, has_pause;
-  rc_condition_t* condition;
-
   if (self->conditions == 0) {
     /* important: empty group must evaluate true */
     return 1;
   }
 
-  /* identify any Pause conditions and their dependent AddSource/AddHits */
-  in_pause = has_pause = 0;
-
-  for (condition = self->last; condition != 0; condition = condition->previous) {
-    switch (condition->type) {
-      case RC_CONDITION_PAUSE_IF:
-        in_pause = has_pause = condition->pause = 1;
-        break;
-      
-      case RC_CONDITION_ADD_SOURCE:
-      case RC_CONDITION_SUB_SOURCE:
-      case RC_CONDITION_ADD_HITS:
-        condition->pause = in_pause;
-        break;
-      
-      default:
-        in_pause = condition->pause = 0;
-        break;
-    }
-  }
-
-  if (has_pause && rc_test_condset_internal(self, 1, reset, peek, ud, L)) {
+  if (self->has_pause && rc_test_condset_internal(self, 1, reset, peek, ud, L)) {
     /* one or more Pause conditions exists, if any of them are true, stop processing this group */
     return 0;
   }

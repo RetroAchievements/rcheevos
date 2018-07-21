@@ -133,8 +133,7 @@ enum {
 typedef struct rc_condition_t rc_condition_t;
 
 struct rc_condition_t {
-  /* The previous and next conditions in the chain. */
-  rc_condition_t* previous;
+  /* The next condition in the chain. */
   rc_condition_t* next;
 
   /* The condition's operands. */
@@ -170,8 +169,9 @@ struct rc_condset_t {
 
   /* The list of conditions in this condition set. */
   rc_condition_t* conditions;
-  /* The last condition in this condition set. */
-  rc_condition_t* last;
+
+  /* True if any condition in the set is a pause condition. */
+  char has_pause;
 };
 
 /*****************************************************************************\
