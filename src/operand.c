@@ -3,8 +3,16 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <lua.h>
 #include <lauxlib.h>
+
+#ifdef __cplusplus
+}
+#endif
 
 static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, lua_State* L, int funcs_ndx) {
   const char* aux = *memaddr;
@@ -280,7 +288,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, l
 }
 
 unsigned rc_evaluate_operand(rc_operand_t* self, rc_peek_t peek, void* ud, lua_State* L) {
-  unsigned value;
+  unsigned value = 0;
 
   switch (self->type) {
     case RC_OPERAND_CONST:

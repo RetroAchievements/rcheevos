@@ -39,55 +39,51 @@ rc_trigger_t* rc_parse_trigger(int* ret, void* buffer, const char* memaddr, lua_
   rc_trigger_t dummy;
   rc_trigger_t* self;
   
+  *ret = 0;
   self = (rc_trigger_t*)rc_alloc(buffer, ret, sizeof(rc_trigger_t), &dummy);
   rc_parse_trigger_internal(self, ret, buffer, &memaddr, L, funcs_ndx);
 
   return self;
 }
 
-int rc_test_trigger(rc_trigger_t* self, int* dirty, int* reset, rc_peek_t peek, void* ud, lua_State* L) {
-  int ret;
+int rc_test_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+  int ret, reset;
   rc_condset_t* condset;
 
-  *dirty = *reset = 0;
-  ret = self->requirement != 0 ? rc_test_condset(self->requirement, dirty, reset, peek, ud, L) : 1;
+  reset = 0;
+  ret = self->requirement != 0 ? rc_test_condset(self->requirement, &reset, peek, ud, L) : 1;
   condset = self->alternative;
 
   if (condset) {
     int sub = 0;
 
     do {
-      sub |= rc_test_condset(condset, dirty, reset, peek, ud, L);
+      sub |= rc_test_condset(condset, &reset, peek, ud, L);
       condset = condset->next;
     }
     while (condset != 0);
 
-    ret &= sub && !*reset;
+    ret &= sub && !reset;
   }
 
-  if (*reset) {
-    rc_reset_trigger_internal(self, dirty);
+  if (reset) {
+    rc_reset_trigger(self);
   }
 
   return ret;
 }
 
-void rc_reset_trigger_internal(rc_trigger_t* self, int* dirty) {
+void rc_reset_trigger(rc_trigger_t* self) {
   rc_condset_t* condset;
 
   if (self->requirement != 0) {
-    *dirty |= rc_reset_condset(self->requirement);
+    rc_reset_condset(self->requirement);
   }
 
   condset = self->alternative;
 
   while (condset != 0) {
-    *dirty |= rc_reset_condset(condset);
+    rc_reset_condset(condset);
     condset = condset->next;
   }
-}
-
-void rc_reset_trigger(rc_trigger_t* self) {
-  int unused;
-  rc_reset_trigger_internal(self, &unused);
 }

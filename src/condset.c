@@ -32,7 +32,7 @@ rc_condset_t* rc_parse_condset(int* ret, void* buffer, const char** memaddr, lua
   return self;
 }
 
-static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, int* dirty, int* reset, rc_peek_t peek, void* ud, lua_State* L) {
+static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, int* reset, rc_peek_t peek, void* ud, lua_State* L) {
   rc_condition_t* condition;
   int set_valid, cond_valid;
   unsigned add_buffer, add_hits;
@@ -58,7 +58,6 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, in
         if (rc_test_condition(condition, add_buffer, peek, ud, L)) {
           if (condition->required_hits == 0 || condition->current_hits < condition->required_hits) {
             condition->current_hits++;
-            *dirty = 1;
           }
         }
 
@@ -75,7 +74,6 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, in
     }
     else if (cond_valid) {
       condition->current_hits++;
-      *dirty = 1;
 
       if (condition->required_hits == 0) {
         /* not a hit-based requirement: ignore any additional logic! */
@@ -101,7 +99,6 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, in
 
         if (condition->required_hits == 0) {
           /* PauseIf didn't evaluate true, and doesn't have a HitCount, reset the HitCount to indicate the condition didn't match */
-          *dirty |= condition->current_hits != 0;
           condition->current_hits = 0;
         }
         else {
@@ -127,7 +124,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, in
   return set_valid;
 }
 
-int rc_test_condset(rc_condset_t* self, int* dirty, int* reset, rc_peek_t peek, void* ud, lua_State* L) {
+int rc_test_condset(rc_condset_t* self, int* reset, rc_peek_t peek, void* ud, lua_State* L) {
   int in_pause, has_pause;
   rc_condition_t* condition;
 
@@ -157,22 +154,18 @@ int rc_test_condset(rc_condset_t* self, int* dirty, int* reset, rc_peek_t peek, 
     }
   }
 
-  if (has_pause && rc_test_condset_internal(self, 1, dirty, reset, peek, ud, L)) {
+  if (has_pause && rc_test_condset_internal(self, 1, reset, peek, ud, L)) {
     /* one or more Pause conditions exists, if any of them are true, stop processing this group */
     return 0;
   }
 
-  return rc_test_condset_internal(self, 0, dirty, reset, peek, ud, L);
+  return rc_test_condset_internal(self, 0, reset, peek, ud, L);
 }
 
-int rc_reset_condset(rc_condset_t* self) {
+void rc_reset_condset(rc_condset_t* self) {
   rc_condition_t* condition;
-  int reset = 0;
 
   for (condition = self->conditions; condition != 0; condition = condition->next) {
-    reset |= condition->current_hits != 0;
     condition->current_hits = 0;
   }
-
-  return reset;
 }
