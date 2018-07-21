@@ -1,3 +1,7 @@
+# v6.0.2
+
+* Only define RC_ALIGNMENT if it has not been already defined
+
 # v6.0.1
 
 * Use `sizeof(void*)` as a better default for `RC_ALIGNMENT`
