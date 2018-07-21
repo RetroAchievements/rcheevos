@@ -6,7 +6,7 @@ OBJ=test.o $(SRC)/trigger.o $(SRC)/condset.o $(SRC)/condition.o $(SRC)/operand.o
 all: test
 
 %.o: %.c
-	gcc -O0 -g -I../include -I$(SRC) -Ilua/src -c $< -o $@
+	gcc -Wall -O3 -I../include -I$(SRC) -Ilua/src -c $< -o $@
 
 test: $(OBJ)
 	gcc -o $@ $+

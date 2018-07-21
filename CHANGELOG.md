@@ -1,3 +1,11 @@
+# v4.0.0
+
+* Fixed `ret` not being properly initialized in `rc_parse_trigger`
+* Build the unit tests with optimizations and `-Wall` to help catch more issues
+* Added `extern "C"` around the inclusion of the Lua headers so that **rcheevos** can be compiled cleanly as C++
+* Exposed `rc_parse_value` and `rc_evaluate_value` to be used with rich presence
+* Removed the `reset` and `dirty` flags from the external API
+
 # v3.2.0
 
 * Added the ability to reset triggers and leaderboards

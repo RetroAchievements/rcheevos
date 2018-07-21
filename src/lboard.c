@@ -137,18 +137,13 @@ rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_St
 }
 
 int rc_evaluate_lboard(rc_lboard_t* self, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L) {
-  int unused1, unused2, start_ok, cancel_ok, submit_ok;
+  int start_ok, cancel_ok, submit_ok;
   int action = -1;
 
   /* ASSERT: these are always tested once every frame, to ensure delta variables work properly */
-  unused1 = unused2 = 0;
-  start_ok = rc_test_trigger(&self->start, &unused1, &unused2, peek, peek_ud, L);
-
-  unused1 = unused2 = 0;
-  cancel_ok = rc_test_trigger(&self->cancel, &unused1, &unused2, peek, peek_ud, L);
-
-  unused1 = unused2 = 0;
-  submit_ok = rc_test_trigger(&self->submit, &unused1, &unused2, peek, peek_ud, L);
+  start_ok = rc_test_trigger(&self->start, peek, peek_ud, L);
+  cancel_ok = rc_test_trigger(&self->cancel, peek, peek_ud, L);
+  submit_ok = rc_test_trigger(&self->submit, peek, peek_ud, L);
 
   if (self->submitted) {
     /* if we've already submitted or canceled the leaderboard, don't reactivate it until it becomes inactive. */

@@ -188,7 +188,7 @@ typedef struct {
 rc_trigger_t;
 
 rc_trigger_t* rc_parse_trigger(int* ret, void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
-int rc_test_trigger(rc_trigger_t* trigger, int* dirty, int* reset, rc_peek_t peek, void* ud, lua_State* L);
+int rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* L);
 void rc_reset_trigger(rc_trigger_t* self);
 
 /*****************************************************************************\
@@ -225,6 +225,9 @@ typedef struct {
   rc_expression_t* expressions;
 }
 rc_value_t;
+
+void rc_parse_value(rc_value_t* self, int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx);
+unsigned rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 
 /*****************************************************************************\
 | Leaderboards                                                                |
