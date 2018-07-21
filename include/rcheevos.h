@@ -11,7 +11,9 @@ typedef struct lua_State lua_State;
 | User configuration                                                          |
 \*****************************************************************************/
 
+#ifndef RC_ALIGNMENT
 #define RC_ALIGNMENT sizeof(void*)
+#endif
 
 /*****************************************************************************\
 | Return values                                                               |
