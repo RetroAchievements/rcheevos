@@ -1,14 +1,14 @@
 #include "internal.h"
 
-rc_expression_t* rc_parse_expression(int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx) {
-  rc_expression_t* self, dummy;
+rc_expression_t* rc_parse_expression(int* ret, void* buffer, rc_scratch_t* scratch, const char** memaddr, lua_State* L, int funcs_ndx) {
+  rc_expression_t* self;
   rc_term_t** next;
 
-  self = (rc_expression_t*)rc_alloc(buffer, ret, sizeof(rc_expression_t), &dummy);
+  self = (rc_expression_t*)rc_alloc(buffer, ret, sizeof(rc_expression_t), scratch);
   next = &self->terms;
 
   for (;;) {
-    *next = rc_parse_term(ret, buffer, memaddr, L, funcs_ndx);
+    *next = rc_parse_term(ret, buffer, scratch, memaddr, L, funcs_ndx);
 
     if (*ret < 0) {
       return 0;

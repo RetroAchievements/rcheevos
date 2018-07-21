@@ -22,17 +22,17 @@ static void rc_update_condition_pause(rc_condition_t* condition, int* in_pause) 
   }
 }
 
-rc_condset_t* rc_parse_condset(int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx) {
-  rc_condset_t* self, dummy;
+rc_condset_t* rc_parse_condset(int* ret, void* buffer, rc_scratch_t* scratch, const char** memaddr, lua_State* L, int funcs_ndx) {
+  rc_condset_t* self;
   rc_condition_t** next;
   int in_pause;
 
-  self = (rc_condset_t*)rc_alloc(buffer, ret, sizeof(rc_condset_t), &dummy);
+  self = (rc_condset_t*)rc_alloc(buffer, ret, sizeof(rc_condset_t), scratch);
   self->has_pause = 0;
   next = &self->conditions;
 
   for (;;) {
-    *next = rc_parse_condition(ret, buffer, memaddr, L, funcs_ndx);
+    *next = rc_parse_condition(ret, buffer, scratch, memaddr, L, funcs_ndx);
 
     if (*ret < 0) {
       return 0;
@@ -50,8 +50,11 @@ rc_condset_t* rc_parse_condset(int* ret, void* buffer, const char** memaddr, lua
 
   *next = 0;
 
-  in_pause = 0;
-  rc_update_condition_pause(self->conditions, &in_pause);
+
+  if (buffer != 0) {
+    in_pause = 0;
+    rc_update_condition_pause(self->conditions, &in_pause);
+  }
 
   return self;
 }

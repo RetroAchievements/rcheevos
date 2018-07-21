@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-void rc_parse_trigger_internal(rc_trigger_t* self, int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx) {
+void rc_parse_trigger_internal(rc_trigger_t* self, int* ret, void* buffer, rc_scratch_t* scratch, const char** memaddr, lua_State* L, int funcs_ndx) {
   rc_condset_t** next;
   const char* aux;
 
@@ -13,7 +13,7 @@ void rc_parse_trigger_internal(rc_trigger_t* self, int* ret, void* buffer, const
     self->requirement = 0;
   }
   else {
-    self->requirement = rc_parse_condset(ret, buffer, &aux, L, funcs_ndx);
+    self->requirement = rc_parse_condset(ret, buffer, scratch, &aux, L, funcs_ndx);
 
     if (*ret < 0) {
       return;
@@ -22,7 +22,7 @@ void rc_parse_trigger_internal(rc_trigger_t* self, int* ret, void* buffer, const
 
   while (*aux == 's' || *aux == 'S') {
     aux++;
-    *next = rc_parse_condset(ret, buffer, &aux, L, funcs_ndx);
+    *next = rc_parse_condset(ret, buffer, scratch, &aux, L, funcs_ndx);
 
     if (*ret < 0) {
       return;
@@ -35,15 +35,26 @@ void rc_parse_trigger_internal(rc_trigger_t* self, int* ret, void* buffer, const
   *memaddr = aux;
 }
 
-rc_trigger_t* rc_parse_trigger(int* ret, void* buffer, const char* memaddr, lua_State* L, int funcs_ndx) {
-  rc_trigger_t dummy;
+int rc_trigger_size(const char* memaddr) {
+  int ret;
   rc_trigger_t* self;
-  
-  *ret = 0;
-  self = (rc_trigger_t*)rc_alloc(buffer, ret, sizeof(rc_trigger_t), &dummy);
-  rc_parse_trigger_internal(self, ret, buffer, &memaddr, L, funcs_ndx);
+  rc_scratch_t scratch;
 
-  return self;
+  ret = 0;
+  self = (rc_trigger_t*)rc_alloc(0, &ret, sizeof(rc_trigger_t), &scratch);
+  rc_parse_trigger_internal(self, &ret, 0, &scratch, &memaddr, 0, 0);
+  return ret;
+}
+
+rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx) {
+  int ret;
+  rc_trigger_t* self;
+  rc_scratch_t scratch;
+  
+  ret = 0;
+  self = (rc_trigger_t*)rc_alloc(buffer, &ret, sizeof(rc_trigger_t), &scratch);
+  rc_parse_trigger_internal(self, &ret, buffer, 0, &memaddr, L, funcs_ndx);
+  return ret >= 0 ? self : 0;
 }
 
 int rc_test_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State* L) {

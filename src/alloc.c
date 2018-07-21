@@ -1,6 +1,6 @@
-#include "rcheevos.h"
+#include "internal.h"
 
-void* rc_alloc(void* pointer, int* offset, int size, void* dummy) {
+void* rc_alloc(void* pointer, int* offset, int size, rc_scratch_t* scratch) {
   void* ptr;
 
   *offset = (*offset + RC_ALIGNMENT - 1) & -RC_ALIGNMENT;
@@ -9,7 +9,7 @@ void* rc_alloc(void* pointer, int* offset, int size, void* dummy) {
     ptr = (void*)((char*)pointer + *offset);
   }
   else {
-    ptr = dummy;
+    ptr = scratch;
   }
 
   *offset += size;

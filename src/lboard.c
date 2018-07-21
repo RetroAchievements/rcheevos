@@ -9,13 +9,9 @@ enum {
   RC_LBOARD_COMPLETE = RC_LBOARD_START | RC_LBOARD_CANCEL | RC_LBOARD_SUBMIT | RC_LBOARD_VALUE
 };
 
-rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_State* L, int funcs_ndx) {
-  rc_lboard_t* self, dummy;
-  rc_value_t dummy_value;
+void rc_parse_lboard_internal(rc_lboard_t* self, int* ret, void* buffer, void* scratch, const char* memaddr, lua_State* L, int funcs_ndx) {
   int found;
 
-  *ret = 0;
-  self = (rc_lboard_t*)rc_alloc(buffer, ret, sizeof(rc_lboard_t), &dummy);
   self->progress = 0;
   found = 0;
 
@@ -26,15 +22,15 @@ rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_St
         (memaddr[2] == 'a' || memaddr[2] == 'A') && memaddr[3] == ':') {
       if ((found & RC_LBOARD_START) != 0) {
         *ret = RC_DUPLICATED_START;
-        return 0;
+        return;
       }
 
       found |= RC_LBOARD_START;
       memaddr += 4;
-      rc_parse_trigger_internal(&self->start, ret, buffer, &memaddr, L, funcs_ndx);
+      rc_parse_trigger_internal(&self->start, ret, buffer, scratch, &memaddr, L, funcs_ndx);
 
       if (*ret < 0) {
-        return 0;
+        return;
       }
     }
     else if ((memaddr[0] == 'c' || memaddr[0] == 'C') &&
@@ -42,15 +38,15 @@ rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_St
              (memaddr[2] == 'n' || memaddr[2] == 'N') && memaddr[3] == ':') {
       if ((found & RC_LBOARD_CANCEL) != 0) {
         *ret = RC_DUPLICATED_CANCEL;
-        return 0;
+        return;
       }
 
       found |= RC_LBOARD_CANCEL;
       memaddr += 4;
-      rc_parse_trigger_internal(&self->cancel, ret, buffer, &memaddr, L, funcs_ndx);
+      rc_parse_trigger_internal(&self->cancel, ret, buffer, scratch, &memaddr, L, funcs_ndx);
 
       if (*ret < 0) {
-        return 0;
+        return;
       }
     }
     else if ((memaddr[0] == 's' || memaddr[0] == 'S') &&
@@ -58,15 +54,15 @@ rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_St
              (memaddr[2] == 'b' || memaddr[2] == 'B') && memaddr[3] == ':') {
       if ((found & RC_LBOARD_SUBMIT) != 0) {
         *ret = RC_DUPLICATED_SUBMIT;
-        return 0;
+        return;
       }
 
       found |= RC_LBOARD_SUBMIT;
       memaddr += 4;
-      rc_parse_trigger_internal(&self->submit, ret, buffer, &memaddr, L, funcs_ndx);
+      rc_parse_trigger_internal(&self->submit, ret, buffer, scratch, &memaddr, L, funcs_ndx);
 
       if (*ret < 0) {
-        return 0;
+        return;
       }
     }
     else if ((memaddr[0] == 'v' || memaddr[0] == 'V') &&
@@ -74,15 +70,15 @@ rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_St
              (memaddr[2] == 'l' || memaddr[2] == 'L') && memaddr[3] == ':') {
       if ((found & RC_LBOARD_VALUE) != 0) {
         *ret = RC_DUPLICATED_VALUE;
-        return 0;
+        return;
       }
 
       found |= RC_LBOARD_VALUE;
       memaddr += 4;
-      rc_parse_value(&self->value, ret, buffer, &memaddr, L, funcs_ndx);
+      rc_parse_value_internal(&self->value, ret, buffer, scratch, &memaddr, L, funcs_ndx);
 
       if (*ret < 0) {
-        return 0;
+        return;
       }
     }
     else if ((memaddr[0] == 'p' || memaddr[0] == 'P') &&
@@ -90,22 +86,22 @@ rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_St
              (memaddr[2] == 'o' || memaddr[2] == 'O') && memaddr[3] == ':') {
       if ((found & RC_LBOARD_PROGRESS) != 0) {
         *ret = RC_DUPLICATED_PROGRESS;
-        return 0;
+        return;
       }
 
       found |= RC_LBOARD_PROGRESS;
       memaddr += 4;
 
-      self->progress = (rc_value_t*)rc_alloc(buffer, ret, sizeof(rc_value_t), &dummy_value);
-      rc_parse_value(self->progress, ret, buffer, &memaddr, L, funcs_ndx);
+      self->progress = (rc_value_t*)rc_alloc(buffer, ret, sizeof(rc_value_t), scratch);
+      rc_parse_value_internal(self->progress, ret, buffer, scratch, &memaddr, L, funcs_ndx);
 
       if (*ret < 0) {
-        return 0;
+        return;
       }
     }
     else {
       *ret = RC_INVALID_LBOARD_FIELD;
-      return 0;
+      return;
     }
 
     if (memaddr[0] != ':' || memaddr[1] != ':') {
@@ -129,11 +125,32 @@ rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_St
       *ret = RC_MISSING_VALUE;
     }
 
-    return 0;
+    return;
   }
 
   self->started = self->submitted = 0;
-  return self;
+}
+
+int rc_lboard_size(const char* memaddr) {
+  int ret;
+  rc_lboard_t* self;
+  rc_scratch_t scratch;
+
+  ret = 0;
+  self = (rc_lboard_t*)rc_alloc(0, &ret, sizeof(rc_lboard_t), &scratch);
+  rc_parse_lboard_internal(self, &ret, 0, &scratch, memaddr, 0, 0);
+  return ret;
+}
+
+rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx) {
+  int ret;
+  rc_lboard_t* self;
+  rc_scratch_t scratch;
+  
+  ret = 0;
+  self = (rc_lboard_t*)rc_alloc(buffer, &ret, sizeof(rc_lboard_t), &scratch);
+  rc_parse_lboard_internal(self, &ret, buffer, 0, memaddr, L, funcs_ndx);
+  return ret >= 0 ? self : 0;
 }
 
 int rc_evaluate_lboard(rc_lboard_t* self, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L) {
