@@ -1,3 +1,9 @@
+# v6.0.0
+
+* Simplified API: separate functions to get the buffer size and to parse `memaddr` into the provided buffer
+* Fixed crash trying to call `rc_update_condition_pause` during a dry-run
+* The callers are now responsible to pass down a scratch buffer to avoid accesses to out-of-scope memory
+
 # v5.0.0
 
 * Pre-compute if a condition has a pause condition in its group

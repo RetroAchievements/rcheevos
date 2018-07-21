@@ -1,12 +1,12 @@
 #include "internal.h"
 
-rc_term_t* rc_parse_term(int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx) {
-  rc_term_t* self, dummy;
+rc_term_t* rc_parse_term(int* ret, void* buffer, rc_scratch_t* scratch, const char** memaddr, lua_State* L, int funcs_ndx) {
+  rc_term_t* self;
   const char* aux;
   int ret2;
 
   aux = *memaddr;
-  self = (rc_term_t*)rc_alloc(buffer, ret, sizeof(rc_term_t), &dummy);
+  self = (rc_term_t*)rc_alloc(buffer, ret, sizeof(rc_term_t), scratch);
   self->invert = 0;
 
   ret2 = rc_parse_operand(&self->operand1, &aux, 0, L, funcs_ndx);

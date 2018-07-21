@@ -2,13 +2,13 @@
 
 #include <stdlib.h>
 
-rc_condition_t* rc_parse_condition(int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx) {
-  rc_condition_t* self, dummy;
+rc_condition_t* rc_parse_condition(int* ret, void* buffer, rc_scratch_t* scratch, const char** memaddr, lua_State* L, int funcs_ndx) {
+  rc_condition_t* self;
   const char* aux;
   int ret2;
 
   aux = *memaddr;
-  self = (rc_condition_t*)rc_alloc(buffer, ret, sizeof(rc_condition_t), &dummy);
+  self = (rc_condition_t*)rc_alloc(buffer, ret, sizeof(rc_condition_t), scratch);
   self->current_hits = 0;
 
   if (*aux != 0 && aux[1] == ':') {

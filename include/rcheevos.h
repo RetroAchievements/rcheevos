@@ -187,7 +187,8 @@ typedef struct {
 }
 rc_trigger_t;
 
-rc_trigger_t* rc_parse_trigger(int* ret, void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
+int rc_trigger_size(const char* memaddr);
+rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 int rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* L);
 void rc_reset_trigger(rc_trigger_t* self);
 
@@ -226,7 +227,8 @@ typedef struct {
 }
 rc_value_t;
 
-void rc_parse_value(rc_value_t* self, int* ret, void* buffer, const char** memaddr, lua_State* L, int funcs_ndx);
+int rc_value_size(const char* memaddr);
+rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 unsigned rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 
 /*****************************************************************************\
@@ -254,7 +256,8 @@ typedef struct {
 }
 rc_lboard_t;
 
-rc_lboard_t* rc_parse_lboard(int* ret, void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
+int rc_lboard_size(const char* memaddr);
+rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 int rc_evaluate_lboard(rc_lboard_t* lboard, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L);
 void rc_reset_lboard(rc_lboard_t* lboard);
 
