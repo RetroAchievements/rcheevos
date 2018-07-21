@@ -1,3 +1,7 @@
+# v6.0.1
+
+* Use `sizeof(void*)` as a better default for `RC_ALIGNMENT`
+
 # v6.0.0
 
 * Simplified API: separate functions to get the buffer size and to parse `memaddr` into the provided buffer
