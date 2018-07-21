@@ -1,3 +1,9 @@
+# v5.0.0
+
+* Pre-compute if a condition has a pause condition in its group
+* Added a pre-computed flag that tells if the condition set has at least one pause condition
+* Removed the link to the previous condition in a condition set chain
+
 # v4.0.0
 
 * Fixed `ret` not being properly initialized in `rc_parse_trigger`
