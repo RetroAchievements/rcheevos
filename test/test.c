@@ -86,6 +86,7 @@ static void test_operand(void) {
     parse_comp_operand("0xH1234", RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U);
     parse_comp_operand("0x 1234", RC_OPERAND_ADDRESS, RC_OPERAND_16_BITS, 0x1234U);
     parse_comp_operand("0x1234", RC_OPERAND_ADDRESS, RC_OPERAND_16_BITS, 0x1234U);
+    parse_comp_operand("0xW1234", RC_OPERAND_ADDRESS, RC_OPERAND_24_BITS, 0x1234U);
     parse_comp_operand("0xX1234", RC_OPERAND_ADDRESS, RC_OPERAND_32_BITS, 0x1234U);
     parse_comp_operand("0xL1234", RC_OPERAND_ADDRESS, RC_OPERAND_LOW, 0x1234U);
     parse_comp_operand("0xU1234", RC_OPERAND_ADDRESS, RC_OPERAND_HIGH, 0x1234U);
@@ -128,6 +129,7 @@ static void test_operand(void) {
     parse_comp_operand("d0xH1234", RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0x1234U);
     parse_comp_operand("d0x 1234", RC_OPERAND_DELTA, RC_OPERAND_16_BITS, 0x1234U);
     parse_comp_operand("d0x1234", RC_OPERAND_DELTA, RC_OPERAND_16_BITS, 0x1234U);
+    parse_comp_operand("d0xW1234", RC_OPERAND_DELTA, RC_OPERAND_24_BITS, 0x1234U);
     parse_comp_operand("d0xX1234", RC_OPERAND_DELTA, RC_OPERAND_32_BITS, 0x1234U);
     parse_comp_operand("d0xL1234", RC_OPERAND_DELTA, RC_OPERAND_LOW, 0x1234U);
     parse_comp_operand("d0xU1234", RC_OPERAND_DELTA, RC_OPERAND_HIGH, 0x1234U);
@@ -1489,6 +1491,7 @@ static void test_term(void) {
     parse_comp_term("0xH1234", RC_OPERAND_8_BITS, 0x1234U, 0, 0);
     parse_comp_term("0x 1234", RC_OPERAND_16_BITS, 0x1234U, 0, 0);
     parse_comp_term("0x1234", RC_OPERAND_16_BITS, 0x1234U, 0, 0);
+    parse_comp_term("0xW1234", RC_OPERAND_24_BITS, 0x1234U, 0, 0);
     parse_comp_term("0xX1234", RC_OPERAND_32_BITS, 0x1234U, 0, 0);
     parse_comp_term("0xL1234", RC_OPERAND_LOW, 0x1234U, 0, 0);
     parse_comp_term("0xU1234", RC_OPERAND_HIGH, 0x1234U, 0, 0);

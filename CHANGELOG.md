@@ -1,3 +1,7 @@
+# v6.1.0
+
+* Added support for 24-bit operands with the `'W'` prefix (`RC_OPERAND_24_BITS`)
+
 # v6.0.2
 
 * Only define RC_ALIGNMENT if it has not been already defined

@@ -57,6 +57,10 @@ rc_term_t* rc_parse_term(int* ret, void* buffer, rc_scratch_t* scratch, const ch
           self->invert = 0xffffU;
           break;
 
+        case RC_OPERAND_24_BITS:
+          self->invert = 0xffffffU;
+          break;
+
         case RC_OPERAND_32_BITS:
           self->invert = 0xffffffffU;
           break;

@@ -96,12 +96,13 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr) {
     case 'l': case 'L': self->size = RC_OPERAND_LOW; break;
     case 'u': case 'U': self->size = RC_OPERAND_HIGH; break;
     case 'h': case 'H': self->size = RC_OPERAND_8_BITS; break;
-    case ' ':           self->size = RC_OPERAND_16_BITS; break;
+    case 'w': case 'W': self->size = RC_OPERAND_24_BITS; break;
     case 'x': case 'X': self->size = RC_OPERAND_32_BITS; break;
 
-    default:
-      self->size = RC_OPERAND_16_BITS;
+    default: /* fall through */
       aux--;
+    case ' ':
+      self->size = RC_OPERAND_16_BITS;
       break;
   }
 
@@ -377,6 +378,20 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_peek_t peek, void* ud, lua_S
                   + ((value >>  8) & 0x0f) *  100
                   + ((value >>  4) & 0x0f) *   10
                   + ((value >>  0) & 0x0f) *    1;
+          }
+
+          break;
+
+        case RC_OPERAND_24_BITS:
+          value = peek(self->value, 4, ud);
+
+          if (self->is_bcd) {
+            value = ((value >> 20) & 0x0f) * 100000
+                  + ((value >> 16) & 0x0f) *  10000
+                  + ((value >> 12) & 0x0f) *   1000
+                  + ((value >>  8) & 0x0f) *    100
+                  + ((value >>  4) & 0x0f) *     10
+                  + ((value >>  0) & 0x0f) *      1;
           }
 
           break;
