@@ -17,6 +17,8 @@ RetroAchievements has decided to support achievements written using the [Lua](ht
 
 ## API
 
+**Note**: an understanding about how achievements are developed may be useful. Here are the docs about it: http://docs.retroachievements.org/Developer-docs/
+
 ### User Configuration
 
 There's only one thing that can be configured by users of **rcheevos**: `RC_ALIGNMENT`. This macro holds the alignment of allocations made in the buffer provided to the parsing functions, and the default value is `sizeof(void*)`.
@@ -25,7 +27,7 @@ If your platform will benefit from a different value, define a new value for it 
 
 ### Return values
 
-The functions that compute the amount of memory that something will take will return a positive number, which is that amount, or a negative value from the following enumeration:
+The functions that compute the amount of memory that something will take return the number of bytes, or a negative value from the following enumeration:
 
 ```c
 enum {
@@ -49,9 +51,13 @@ enum {
   RC_INVALID_LBOARD_FIELD = -17
 };
 ```
-### rc_operand_t
 
-An operand is the leaf node of RetroAchievements expressions, and can hold constant integer or floating-point values, the address of a value in the memory of the system being emulated, or a reference to the Lua function that will be called to provide its value.
+### `rc_operand_t`
+
+An operand is the leaf node of RetroAchievements expressions, and can hold one of the following:
+* constant integer or floating-point values,
+* a memory address of the system being emulated,
+* or a reference to the Lua function that will be called to provide its value.
 
 ```c
 typedef struct {
@@ -82,7 +88,7 @@ typedef struct {
 rc_operand_t;
 ```
 
-The `size` field, when applicable, will hold one of these values:
+The `size` field, when applicable, holds one of these values:
 
 ```c
 enum {
@@ -114,9 +120,12 @@ enum {
 };
 ```
 
-The first three values will mean that the anonymous structure in the union is active. `RC_OPERAND_FP` means that `fp_value` is active, and `RC_OPERAND_LUA` means `function_ref` is active.
+* `RC_OPERAND_ADDRESS`, `RC_OPERAND_DELTA` and `RC_OPERAND_CONST` mean that the anonymous structure in the union is active;
+* `RC_OPERAND_FP` means that `fp_value` is active;
+* `RC_OPERAND_LUA` means `function_ref` is active.
 
-### rc_condition_t
+
+### `rc_condition_t`
 
 A condition compares its two operands according to the defined operator. It also keeps track of other things to make it possible to code more advanced achievements.
 
@@ -137,7 +146,7 @@ struct rc_condition_t {
   unsigned current_hits;
 
   /**
-   * Set if the condition needs to processed as part of the "check if paused"
+   * Set if the condition needs to be processed as part of the "check if paused"
    * pass
    */
   char pause;
@@ -175,9 +184,9 @@ enum {
 };
 ```
 
-### rc_condset_t
+### `rc_condset_t`
 
-Condition sets are an ordered collection of conditions, which are usually and'ed together to help build complex expressions for achievements.
+Condition sets are an ordered collection of conditions (`rc_condition_t`), which are usually and'ed together to help build complex expressions for achievements.
 
 ```c
 typedef struct rc_condset_t rc_condset_t;
@@ -194,9 +203,9 @@ struct rc_condset_t {
 };
 ```
 
-### rc_trigger_t
+### `rc_trigger_t`
 
-Triggers are the basic blocks of achievements and leaderboards. In fact, achievements are just triggers with some decorations like title, description, and badge, and some state, like whether is has already been awarded or not. All the logic to test if an achievement should be awarded is encapsulated in `rc_trigger_t`.
+Triggers are the basic blocks of achievements and leaderboards. In fact, achievements are just triggers with some decorations like title, description, a badge, and some state, like whether it has already been awarded or not. All the logic to test if an achievement should be awarded is encapsulated in `rc_trigger_t`.
 
 ```c
 typedef struct {
@@ -209,13 +218,17 @@ typedef struct {
 rc_trigger_t;
 ```
 
+#### `rc_trigger_size`
+
 The size in bytes of memory a trigger needs to be created is given by the `rc_trigger_size` function:
 
 ```c
 int rc_trigger_size(const char* memaddr);
 ```
 
-The return value will be a positive number with the size needed for the trigger described by the `memaddr` parameter, or a negative value with an error code.
+The return value is the size needed for the trigger described by the `memaddr` parameter, or a negative value with an [error code](#return-values).
+
+#### `rc_parse_trigger`
 
 Once the memory size is known, `rc_parse_trigger` can be called to actually construct a trigger in the caller-provided buffer:
 
@@ -223,7 +236,12 @@ Once the memory size is known, `rc_parse_trigger` can be called to actually cons
 rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 ```
 
-`buffer` is the caller-allocated buffer, which must have enough space for the trigger. `memaddr` describes the trigger, and must be the same one used to compute the trigger's size with `rc_trigger_size`. `L` must be a valid Lua state, and `funcs_ndx` must be an index to the current Lua stack which contains a table, that is a map of names to functions. This map will be used to look for operands which are Lua functions.
+* `buffer` is the caller-allocated buffer, which must have enough space for the trigger. 
+* `memaddr` describes the trigger, and must be the same one used to compute the trigger's size with `rc_trigger_size`.
+* `L` must be a valid Lua state,
+* `funcs_ndx` must be an index to the current Lua stack which contains a table, that is a map of names to functions. This map is used to look for operands which are Lua functions.
+
+#### `rc_test_trigger`
 
 Once the trigger is created, `rc_test_trigger` can be called to test whether the trigger fires or not.
 
@@ -231,7 +249,12 @@ Once the trigger is created, `rc_test_trigger` can be called to test whether the
 int rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* L);
 ```
 
-`trigger` is the trigger to test. `peek` is a callback used to read bytes from the emulated memory. `ud` is an user-provided opaque value that will be passed to `peek`. `L` is the Lua state in which context the Lua functions will be looked for and called, if necessary.
+* `trigger` is the trigger to test.
+* `peek` is a callback used to read bytes from the emulated memory.
+* `ud` is an user-provided opaque value to be passed to `peek`.
+* `L` is the Lua state in which context the Lua functions are looked for and called, if necessary.
+
+#### `rc_peek_t`
 
 `rc_peek_t`'s signature is:
 
@@ -239,9 +262,13 @@ int rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* 
 typedef unsigned (*rc_peek_t)(unsigned address, unsigned num_bytes, void* ud);
 ```
 
-where `address` is the starting address to read from, `num_bytes` the number of bytes to read (1, 2, or 4, little-endian), and `ud` is the same value passed to `rc_test_trigger`.
+* `address` is the starting address to read from,
+* `num_bytes` the number of bytes to read (1, 2, or 4, little-endian),
+* `ud` is the same value passed to `rc_test_trigger`.
 
 > Addresses passed to `peek` do *not* map 1:1 to the emulated memory. (**TODO**: document the mapping from `peek` addresses to emulated memory for each supported system.)
+
+#### `rc_reset_trigger`
 
 Finally, `rc_reset_trigger` can be used to reset the internal state of a trigger.
 
@@ -249,9 +276,9 @@ Finally, `rc_reset_trigger` can be used to reset the internal state of a trigger
 void rc_reset_trigger(rc_trigger_t* self);
 ```
 
-### rc_term_t
+### `rc_term_t`
 
-A term is the leaf node of expressions used to compute values from operands. A term is evaluated by multipling its two operands. `invert` is used to invert the bits of the second operand of the term, when the unary operator `~` is used.
+A term is the leaf node of expressions used to compute values from operands. A term is evaluated by multiplying its two operands. `invert` is used to invert the bits of the second operand of the term, when the unary operator `~` is used.
 
 ```c
 typedef struct rc_term_t rc_term_t;
@@ -270,7 +297,7 @@ struct rc_term_t {
 };
 ```
 
-### rc_expression_t
+### `rc_expression_t`
 
 An expression is a collection of terms. All terms in the collection are added together to give the value of the expression.
 
@@ -286,7 +313,7 @@ struct rc_expression_t {
 };
 ```
 
-### rc_value_t
+### `rc_value_t`
 
 A value is a collection of expressions. It's used to give the value for a leaderboard, and it evaluates to value of the expression with the greatest value in the collection.
 
@@ -298,11 +325,16 @@ typedef struct {
 rc_value_t;
 ```
 
+#### `rc_value_size`
+
 The size in bytes needed to create a value can be computed by `rc_value_size`:
 
 ```c
 int rc_value_size(const char* memaddr);
 ```
+
+
+#### `rc_parse_value`
 
 With the size at hand, the caller can allocate the necessary memory and pass it to `rc_parse_value` to create the value:
 
@@ -310,7 +342,7 @@ With the size at hand, the caller can allocate the necessary memory and pass it 
 rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 ```
 
-`buffer`, `memaddr`, `L`, and `funcs_ndx` are the same as in `rc_parse_trigger`.
+`buffer`, `memaddr`, `L`, and `funcs_ndx` are the same as in [`rc_parse_trigger`](#rc_parse_trigger).
 
 To compute the value, use `rc_evaluate_value`:
 
@@ -318,9 +350,9 @@ To compute the value, use `rc_evaluate_value`:
 unsigned rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 ```
 
-`value` is the value to compute the value of, and `peek`, `ud`, and `L`, are as in `rc_test_trigger`.
+`value` is the value to compute the value of, and `peek`, `ud`, and `L`, are as in [`rc_test_trigger`](rc_test_trigger).
 
-### rc_lboard_t
+### `rc_lboard_t`
 
 Leaderboards track a value over time, starting when a trigger is fired. The leaderboard can be canceled depending on the value of another trigger, and submitted to the RetroAchievements server depending on a third trigger.
 
@@ -347,13 +379,15 @@ int rc_lboard_size(const char* memaddr);
 rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 ```
 
+#### `rc_evaluate_lboard`
+
 A leaderboard can be evaluated with the `rc_evaluate_lboard` function:
 
 ```c
 int rc_evaluate_lboard(rc_lboard_t* lboard, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L);
 ```
 
-The function returns an action that must be performed by the caller, and `value` will contain the value to be used for that action. The action can be one of:
+The function returns an action that must be performed by the caller, and `value` contains the value to be used for that action. The action can be one of:
 
 ```c
 enum {
@@ -372,17 +406,22 @@ The caller must keep track of these values and do the necessary actions:
 * `RC_LBOARD_CANCELED`: the leaderboard has been canceled, and the caller can inform the user and stop showing its value.
 * `RC_LBOARD_TRIGGERED`: the leaderboard has been finished, and the value must be submitted to the RetroAchievements server; the caller can also notify the player and stop showing the value in the UI.
 
-`rc_reset_lboard` resets the leaderboard:
+#### `rc_reset_lboard`
+
+Resets the leaderboard:
 
 ```c
 void rc_reset_lboard(rc_lboard_t* lboard);
 ```
 
+
 ### Value Formatting
 
 **rcheevos** includes helper functions to parse formatting strings from RetroAchievements, and format values according to them.
 
-`rc_parse_format` returns the format for the given string:
+#### `rc_parse_format`
+
+Returns the format for the given string:
 
 ```c
 int rc_parse_format(const char* format_str);
@@ -403,10 +442,13 @@ enum {
 
 `RC_FORMAT_VALUE` is returned if `format_str` doesn't contain a valid format.
 
-`rc_format_value` can be used to format the given value into the provided buffer:
+
+#### `rc_format_value`
+
+Can be used to format the given value into the provided buffer:
 
 ```c
 void rc_format_value(char* buffer, int size, unsigned value, int format);
 ```
 
-`buffer` will receive `value` formatted according to `format`. No more than `size` characters will be written to buffer. 32 characters are enough to hold any valid value with any format.
+`buffer` receives `value` formatted according to `format`. No more than `size` characters will be written to `buffer`. 32 characters are enough to hold any valid value with any format.
