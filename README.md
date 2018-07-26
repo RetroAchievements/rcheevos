@@ -350,7 +350,7 @@ To compute the value, use `rc_evaluate_value`:
 unsigned rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 ```
 
-`value` is the value to compute the value of, and `peek`, `ud`, and `L`, are as in [`rc_test_trigger`](rc_test_trigger).
+`value` is the value to compute the value of, and `peek`, `ud`, and `L`, are as in [`rc_test_trigger`](#rc_test_trigger).
 
 ### `rc_lboard_t`
 
