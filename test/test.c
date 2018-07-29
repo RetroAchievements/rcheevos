@@ -9,6 +9,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include "lua.h"
+#include "lauxlib.h"
 
 typedef struct {
   unsigned char* ram;
@@ -2061,6 +2063,34 @@ static void test_lboard(void) {
   }
 }
 
+static void test_lua(void) {
+  {
+    /*------------------------------------------------------------------------
+    TestJson
+    ------------------------------------------------------------------------*/
+
+    lua_State* L;
+    const char* luacheevo = "return { test = function(peek, ud) return peek(0, 4, ud) end }";
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    L = luaL_newstate();
+    luaL_loadbufferx(L, luacheevo, strlen(luacheevo), "luacheevo.lua", "t");
+    lua_call(L, 0, 1);
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    trigger = rc_parse_trigger(buffer, "@test=0xX0", L, 1);
+    assert(rc_test_trigger(trigger, peek, &memory, L) != 0);
+  }
+}
+
 static void test_json(void) {
   {
     /*------------------------------------------------------------------------
@@ -2139,50 +2169,6 @@ static void test_json(void) {
   }
 }
 
-typedef void* lua_KContext;
-typedef int (*lua_KFunction) (lua_State *L, int status, lua_KContext ctx);
-typedef double lua_Number;
-typedef long long lua_Integer;
-
-const char *lua_pushlstring (lua_State *L, const char *s, size_t len) {
-  return NULL;
-}
-
-int lua_gettable (lua_State *L, int index) {
-  return 0;
-}
-
-int lua_type (lua_State *L, int index) {
-  return 0;
-}
-
-int luaL_ref (lua_State *L, int t) {
-  return 0;
-}
-
-void lua_settop (lua_State *L, int index) {}
-
-int lua_rawgeti (lua_State *L, int index, lua_Integer n) {
-  return 0;
-}
-
-int lua_pcallk (lua_State *L,
-                int nargs,
-                int nresults,
-                int msgh,
-                lua_KContext ctx,
-                lua_KFunction k) {
-  return 0;
-}
-
-int lua_toboolean (lua_State *L, int index) {
-  return 0;
-}
-
-lua_Number lua_tonumberx (lua_State *L, int index, int *isnum) {
-  return 0.0;
-}
-
 int main(void) {
   test_operand();
   test_condition();
@@ -2190,6 +2176,7 @@ int main(void) {
   test_term();
   test_value();
   test_lboard();
+  test_lua();
   test_json();
 
   return 0;
