@@ -1,3 +1,7 @@
+# v6.3.1
+
+* Pass the peek function and the user data to the Lua functions used in operands.
+
 # v6.3.0
 
 * Added **rurl**, an API to build URLs to access RetroAchievements web services.
