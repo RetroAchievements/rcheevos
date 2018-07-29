@@ -1,15 +1,27 @@
-SRC=../src/rcheevos
-OBJ=$(SRC)/trigger.o $(SRC)/condset.o $(SRC)/condition.o $(SRC)/operand.o \
-    $(SRC)/term.o $(SRC)/expression.o $(SRC)/value.o $(SRC)/lboard.o \
-    $(SRC)/alloc.o $(SRC)/format.o test.o
+RC_SRC=../src/rcheevos
+RC_JSON_SRC=../src/rjson
+
+OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/operand.o \
+    $(RC_SRC)/term.o $(RC_SRC)/expression.o $(RC_SRC)/value.o $(RC_SRC)/lboard.o \
+    $(RC_SRC)/alloc.o $(RC_SRC)/format.o \
+	$(RC_JSON_SRC)/dejson.o $(RC_JSON_SRC)/schema.o \
+	test.o
 
 all: test
 
 %.o: %.c
-	gcc -Wall -O3 -I../include -I$(SRC) -Ilua/src -c $< -o $@
+	gcc -Wall -O0 -g -I../include -I$(RC_SRC) -Ilua/src -c $< -o $@
 
 test: $(OBJ)
 	gcc -o $@ $+
 
+test.o: smw_snes.h galaga_nes.h
+
+smw_snes.h: smw_snes.json
+	xxd -i $< | sed "s@unsigned@const@" > $@
+
+galaga_nes.h: galaga_nes.json
+	xxd -i $< | sed "s@unsigned@const@" > $@
+
 clean:
-	rm -f test $(OBJ)
+	rm -f test $(OBJ) smw_snes.h galaga_nes.h
