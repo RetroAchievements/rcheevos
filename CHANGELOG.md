@@ -1,3 +1,11 @@
+# v6.3.0
+
+* Added **rurl**, an API to build URLs to access RetroAchievements web services.
+
+# v6.2.0
+
+* Added **rjson**, an API to easily decode RetroAchievements JSON files into C structures.
+
 # v6.1.0
 
 * Added support for 24-bit operands with the `'W'` prefix (`RC_OPERAND_24_BITS`)
