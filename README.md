@@ -8,7 +8,6 @@ Not all structures defined by **rcheevos** can be created via the public API, bu
 
 Finally, **rcheevos** does *not* allocate or manage memory by itself. All structures that can be returned by it have a function to determine the number of bytes needed to hold the structure, and another one that actually builds the structure using a caller-provided buffer to bake it. However, calls to **rcheevos** may allocate and/or free memory as part of the Lua runtime, which is a dependency.
 
-
 ## Lua
 
 RetroAchievements has decided to support achievements written using the [Lua](https://www.lua.org) language. The current expression-based implementation was too limiting already for the Nintendo 64, and was preventing the support of other systems.
@@ -16,6 +15,8 @@ RetroAchievements has decided to support achievements written using the [Lua](ht
 **rcheevos** does *not* create or maintain a Lua state, you have to create your own state and provide it to **rcheevos** to be used when Lua-coded achievements are found.
 
 ## API
+
+**Note**: an understanding about how achievements are developed may be useful, you can read more about it [here](http://docs.retroachievements.org/Developer-docs/).
 
 ### User Configuration
 
@@ -25,7 +26,7 @@ If your platform will benefit from a different value, define a new value for it 
 
 ### Return values
 
-The functions that compute the amount of memory that something will take will return a positive number, which is that amount, or a negative value from the following enumeration:
+The functions that compute the amount of memory that something will take return the number of bytes, or a negative value from the following enumeration:
 
 ```c
 enum {
@@ -49,9 +50,14 @@ enum {
   RC_INVALID_LBOARD_FIELD = -17
 };
 ```
-### rc_operand_t
 
-An operand is the leaf node of RetroAchievements expressions, and can hold constant integer or floating-point values, the address of a value in the memory of the system being emulated, or a reference to the Lua function that will be called to provide its value.
+### `rc_operand_t`
+
+An operand is the leaf node of RetroAchievements expressions, and can hold one of the following:
+
+* A constant integer or floating-point value
+* A memory address of the system being emulated
+* A reference to the Lua function that will be called to provide the value
 
 ```c
 typedef struct {
@@ -82,7 +88,7 @@ typedef struct {
 rc_operand_t;
 ```
 
-The `size` field, when applicable, will hold one of these values:
+The `size` field, when applicable, holds one of these values:
 
 ```c
 enum {
@@ -102,6 +108,7 @@ enum {
   RC_OPERAND_32_BITS,
 };
 ```
+
 The `type` field is always valid, and holds one of these values:
 
 ```c
@@ -114,9 +121,10 @@ enum {
 };
 ```
 
-The first three values will mean that the anonymous structure in the union is active. `RC_OPERAND_FP` means that `fp_value` is active, and `RC_OPERAND_LUA` means `function_ref` is active.
+`RC_OPERAND_ADDRESS`, `RC_OPERAND_DELTA` and `RC_OPERAND_CONST` mean that the anonymous structure in the union is active. `RC_OPERAND_FP` means that `fp_value` is active. `RC_OPERAND_LUA` means `function_ref` is active.
 
-### rc_condition_t
+
+### `rc_condition_t`
 
 A condition compares its two operands according to the defined operator. It also keeps track of other things to make it possible to code more advanced achievements.
 
@@ -175,9 +183,9 @@ enum {
 };
 ```
 
-### rc_condset_t
+### `rc_condset_t`
 
-Condition sets are an ordered collection of conditions, which are usually and'ed together to help build complex expressions for achievements.
+Condition sets are an ordered collection of conditions (`rc_condition_t`), which are usually and'ed together to help build complex expressions for achievements.
 
 ```c
 typedef struct rc_condset_t rc_condset_t;
@@ -194,9 +202,9 @@ struct rc_condset_t {
 };
 ```
 
-### rc_trigger_t
+### `rc_trigger_t`
 
-Triggers are the basic blocks of achievements and leaderboards. In fact, achievements are just triggers with some decorations like title, description, and badge, and some state, like whether is has already been awarded or not. All the logic to test if an achievement should be awarded is encapsulated in `rc_trigger_t`.
+Triggers are the basic blocks of achievements and leaderboards. In fact, achievements are just triggers with some additional information like title, description, a badge, and some state, like whether it has already been awarded or not. All the logic to test if an achievement should be awarded is encapsulated in `rc_trigger_t`.
 
 ```c
 typedef struct {
@@ -215,7 +223,7 @@ The size in bytes of memory a trigger needs to be created is given by the `rc_tr
 int rc_trigger_size(const char* memaddr);
 ```
 
-The return value will be a positive number with the size needed for the trigger described by the `memaddr` parameter, or a negative value with an error code.
+The return value is the size needed for the trigger described by the `memaddr` parameter, or a negative value with an [error code](#return-values).
 
 Once the memory size is known, `rc_parse_trigger` can be called to actually construct a trigger in the caller-provided buffer:
 
@@ -223,7 +231,7 @@ Once the memory size is known, `rc_parse_trigger` can be called to actually cons
 rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 ```
 
-`buffer` is the caller-allocated buffer, which must have enough space for the trigger. `memaddr` describes the trigger, and must be the same one used to compute the trigger's size with `rc_trigger_size`. `L` must be a valid Lua state, and `funcs_ndx` must be an index to the current Lua stack which contains a table, that is a map of names to functions. This map will be used to look for operands which are Lua functions.
+`buffer` is the caller-allocated buffer, which must have enough space for the trigger. `memaddr` describes the trigger, and must be the same one used to compute the trigger's size with `rc_trigger_size`. `L` must be a valid Lua state, and `funcs_ndx` must be an index to the current Lua stack which contains a table which is a map of names to functions. This map is used to look for operands which are Lua functions.
 
 Once the trigger is created, `rc_test_trigger` can be called to test whether the trigger fires or not.
 
@@ -231,7 +239,7 @@ Once the trigger is created, `rc_test_trigger` can be called to test whether the
 int rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* L);
 ```
 
-`trigger` is the trigger to test. `peek` is a callback used to read bytes from the emulated memory. `ud` is an user-provided opaque value that will be passed to `peek`. `L` is the Lua state in which context the Lua functions will be looked for and called, if necessary.
+`trigger` is the trigger to test. `peek` is a callback used to read bytes from the emulated memory. `ud` is an user-provided opaque value that is passed to `peek`. `L` is the Lua state in which context the Lua functions are looked for and called, if necessary.
 
 `rc_peek_t`'s signature is:
 
@@ -249,9 +257,9 @@ Finally, `rc_reset_trigger` can be used to reset the internal state of a trigger
 void rc_reset_trigger(rc_trigger_t* self);
 ```
 
-### rc_term_t
+### `rc_term_t`
 
-A term is the leaf node of expressions used to compute values from operands. A term is evaluated by multipling its two operands. `invert` is used to invert the bits of the second operand of the term, when the unary operator `~` is used.
+A term is the leaf node of expressions used to compute values from operands. A term is evaluated by multiplying its two operands. `invert` is used to invert the bits of the second operand of the term, when the unary operator `~` is used.
 
 ```c
 typedef struct rc_term_t rc_term_t;
@@ -270,7 +278,7 @@ struct rc_term_t {
 };
 ```
 
-### rc_expression_t
+### `rc_expression_t`
 
 An expression is a collection of terms. All terms in the collection are added together to give the value of the expression.
 
@@ -286,7 +294,7 @@ struct rc_expression_t {
 };
 ```
 
-### rc_value_t
+### `rc_value_t`
 
 A value is a collection of expressions. It's used to give the value for a leaderboard, and it evaluates to value of the expression with the greatest value in the collection.
 
@@ -310,7 +318,7 @@ With the size at hand, the caller can allocate the necessary memory and pass it 
 rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
 ```
 
-`buffer`, `memaddr`, `L`, and `funcs_ndx` are the same as in `rc_parse_trigger`.
+`buffer`, `memaddr`, `L`, and `funcs_ndx` are the same as in [`rc_parse_trigger`](#rc_parse_trigger).
 
 To compute the value, use `rc_evaluate_value`:
 
@@ -318,9 +326,9 @@ To compute the value, use `rc_evaluate_value`:
 unsigned rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 ```
 
-`value` is the value to compute the value of, and `peek`, `ud`, and `L`, are as in `rc_test_trigger`.
+`value` is the value to compute the value of, and `peek`, `ud`, and `L`, are as in [`rc_test_trigger`](#rc_test_trigger).
 
-### rc_lboard_t
+### `rc_lboard_t`
 
 Leaderboards track a value over time, starting when a trigger is fired. The leaderboard can be canceled depending on the value of another trigger, and submitted to the RetroAchievements server depending on a third trigger.
 
@@ -353,7 +361,7 @@ A leaderboard can be evaluated with the `rc_evaluate_lboard` function:
 int rc_evaluate_lboard(rc_lboard_t* lboard, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L);
 ```
 
-The function returns an action that must be performed by the caller, and `value` will contain the value to be used for that action. The action can be one of:
+The function returns an action that must be performed by the caller, and `value` contains the value to be used for that action when the function returns. The action can be one of:
 
 ```c
 enum {
@@ -409,4 +417,87 @@ enum {
 void rc_format_value(char* buffer, int size, unsigned value, int format);
 ```
 
-`buffer` will receive `value` formatted according to `format`. No more than `size` characters will be written to buffer. 32 characters are enough to hold any valid value with any format.
+`buffer` receives `value` formatted according to `format`. No more than `size` characters will be written to `buffer`. 32 characters are enough to hold any valid value with any format.
+
+# **rjson**
+
+**rjson** provides parsing of RetroAchievements JSON files, and provides the results in strongly typed C structures instead of returning a generic dictionary and forcing the caller to check for values and extracting them.
+
+Similarly to **rcheevos**, **rjson** does *not* allocate any memory. The caller must use the functions that compute the size needed to parse a given JSON, allocate the necessary memory, and call another function that does the parsing.
+
+## API
+
+### Return values
+
+The functions that compute the memory needed for a given JSON return a positive value, which is the number of bytes needed. Errors are negative values taken from the following enumeration:
+
+```c
+enum {
+  RC_JSON_OK = 0,
+  RC_JSON_OBJECT_EXPECTED = -1,
+  RC_JSON_UNKOWN_RECORD = -2,
+  RC_JSON_EOF_EXPECTED = -3,
+  RC_JSON_MISSING_KEY = -4,
+  RC_JSON_UNTERMINATED_KEY = -5,
+  RC_JSON_MISSING_VALUE = -6,
+  RC_JSON_UNTERMINATED_OBJECT = -7,
+  RC_JSON_INVALID_VALUE = -8,
+  RC_JSON_UNTERMINATED_STRING = -9,
+  RC_JSON_UNTERMINATED_ARRAY = -10,
+  RC_JSON_INVALID_ESCAPE = -11
+};
+```
+
+### Supported schemas
+
+**rjson** supports the following JSON schemas. Please see `rjson.h` for the definition of the C structures:
+
+* `rc_json_gameid_t`: The game identifier returned by the server, given its hash.
+* `rc_json_login_t`: The login token for the user, given their user name and password.
+* `rc_json_patch_t`: The information about a game, given its identifier. It includes arrays with the achievements and leaderboards for the game.
+* `rc_json_unlocks_t`: The list of achievements already awarded for the player, given the game identifier. Used to avoid the emulator awarding achievements more than once.
+
+For each schema there are two functions, for example:
+
+```c
+int rc_json_get_patch_size(const char* json);
+const rc_json_patch_t* rc_json_parse_patch(void* buffer, const char* json);
+```
+
+`rc_json_get_patch_size` returns the number of bytes needed to parse the given JSON as a `rc_json_patch_t`. `rc_json_parse_patch` parses the given JSON into the given `buffer`, returning a pointer that is used to access the decoded information.
+
+# **rurl**
+
+**rurl** builds URLs to access many RetroAchievements web services. Its purpose it to just to free the developer from having to URL-encode parameters and build correct URL that are valid for the server.
+
+**rurl** does *not* make HTTP requests.
+
+## API
+
+### Return values
+
+All functions return `0` if successful, or `-1` in case of errors. Errors are usually because the provided buffer is too small to hold the URL. If your buffer is large and you're still receiving errors, please open an issue.
+
+### Functions
+
+All functions take a `buffer`, where the URL will be written into, and `size` with the size of the buffer. The other parameters are particular to the desired URL.
+
+```c
+int rc_url_award_cheevo(char* buffer, size_t size, const char* user_name, const char* login_token, unsigned cheevo_id, int hardcore);
+
+int rc_url_submit_lboard(char* buffer, size_t size, const char* user_name, const char* login_token, unsigned lboard_id, unsigned value, unsigned char hash[16]);
+
+int rc_url_get_gameid(char* buffer, size_t size, unsigned char hash[16]);
+
+int rc_url_get_patch(char* buffer, size_t size, const char* user_name, const char* login_token, unsigned gameid);
+
+int rc_url_get_badge_image(char* buffer, size_t size, const char* badge_name);
+
+int rc_url_login_with_password(char* buffer, size_t size, const char* user_name, const char* password);
+
+int rc_url_login_with_token(char* buffer, size_t size, const char* user_name, const char* login_token);
+
+int rc_url_get_unlock_list(char* buffer, size_t size, const char* user_name, const char* login_token, unsigned gameid, int hardcore);
+
+int rc_url_post_playing(char* buffer, size_t size, const char* user_name, const char* login_token, unsigned gameid);
+```

@@ -1,5 +1,6 @@
 #include "internal.h"
 #include "rjson.h"
+#include "rurl.h"
 
 #include "smw_snes.h"
 #include "galaga_nes.h"
