@@ -288,7 +288,25 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, l
   }
 }
 
+typedef struct {
+  rc_peek_t peek;
+  void* ud;
+}
+rc_luapeek_t;
+
+static int rc_luapeek(lua_State* L) {
+  unsigned address = luaL_checkinteger(L, 1);
+  unsigned num_bytes = luaL_checkinteger(L, 2);
+  rc_luapeek_t* luapeek = (rc_luapeek_t*)lua_touserdata(L, 3);
+
+  unsigned value = luapeek->peek(address, num_bytes, luapeek->ud);
+
+  lua_pushinteger(L, value);
+  return 1;
+}
+
 unsigned rc_evaluate_operand(rc_operand_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+  rc_luapeek_t luapeek;
   unsigned value = 0;
 
   switch (self->type) {
@@ -302,8 +320,14 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_peek_t peek, void* ud, lua_S
     
     case RC_OPERAND_LUA:
       lua_rawgeti(L, LUA_REGISTRYINDEX, self->function_ref);
+      lua_pushcfunction(L, rc_luapeek);
+
+      luapeek.peek = peek;
+      luapeek.ud = ud;
+
+      lua_pushlightuserdata(L, &luapeek);
       
-      if (lua_pcall(L, 0, 1, 0) == LUA_OK) {
+      if (lua_pcall(L, 2, 1, 0) == LUA_OK) {
         if (lua_isboolean(L, -1)) {
           value = lua_toboolean(L, -1);
         }
