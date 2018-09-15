@@ -3,7 +3,7 @@
 void* rc_alloc(void* pointer, int* offset, int size, rc_scratch_t* scratch) {
   void* ptr;
 
-  *offset = (*offset + RC_ALIGNMENT - 1) & -RC_ALIGNMENT;
+  *offset = (*offset + RC_ALIGNMENT - 1) & ~(RC_ALIGNMENT - 1);
 
   if (pointer != 0) {
     ptr = (void*)((char*)pointer + *offset);
