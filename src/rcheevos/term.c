@@ -84,5 +84,5 @@ unsigned rc_evaluate_term(rc_term_t* self, rc_peek_t peek, void* ud, lua_State* 
     return value * (rc_evaluate_operand(&self->operand2, peek, ud, L) ^ self->invert);
   }
 
-  return value * self->operand2.fp_value;
+  return (unsigned)(value * self->operand2.fp_value);
 }
