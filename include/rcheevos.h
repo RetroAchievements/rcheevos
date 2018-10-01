@@ -300,7 +300,7 @@ void rc_reset_lboard(rc_lboard_t* lboard);
 
 /* Supported formats. */
 enum {
-  RC_FORMAT_FRAMES = 0,
+  RC_FORMAT_FRAMES,
   RC_FORMAT_SECONDS,
   RC_FORMAT_CENTISECS,
   RC_FORMAT_SCORE,
