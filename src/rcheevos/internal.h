@@ -4,7 +4,7 @@
 #include "rcheevos.h"
 
 #define RC_OFFSETOF(s, f) ((int)(long long)(&((s*)0)->f))
-#define RC_ALIGNOF(t) RC_OFFSETOF(struct{char c; t d;}, d)
+#define RC_ALIGNOF(t) RC_OFFSETOF(struct _unnamed{char c; t d;}, d)
 
 #define RC_ALLOC(t, p, o, s) ((t*)rc_alloc(p, o, sizeof(t), RC_ALIGNOF(t), s))
 
