@@ -13,7 +13,7 @@
 
 typedef struct {
   unsigned char* ram;
-  int size;
+  unsigned size;
 }
 memory_t;
 
@@ -2062,6 +2062,121 @@ static void test_lboard(void) {
   }
 }
 
+static rc_richpresence_t* parse_richpresence(const char* script, void* buffer)
+{
+    int ret;
+    rc_richpresence_t* self;
+
+    ret = rc_richpresence_size(script);
+    assert(ret >= 0);
+    self = rc_parse_richpresence(buffer, script, NULL, 0);
+    assert(self != NULL);
+    return self;
+}
+
+static void test_richpresence(void)
+{
+  {
+    /*------------------------------------------------------------------------
+    TestStaticDisplayString
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\nHello, world!", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Hello, world!") == 0);
+    assert(result == 13);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEscapedComment
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\nWhat \\// Where", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "What // Where") == 0);
+    assert(result == 13);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEscapedBackslash
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\nWhat \\\\ Where", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "What \\ Where") == 0);
+    assert(result == 12);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestPartiallyEscapedComment
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\nWhat \\/// Where", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "What /") == 0);
+    assert(result == 6);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestTrailingBackslash
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\nWhat \\", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "What ") == 0);
+    assert(result == 5);
+  }
+}
+
 static void test_lua(void) {
   {
     /*------------------------------------------------------------------------
@@ -2101,6 +2216,7 @@ int main(void) {
   test_term();
   test_value();
   test_lboard();
+  test_richpresence();
   test_lua();
 
   return 0;
