@@ -2217,6 +2217,221 @@ static void test_richpresence(void) {
     assert(strcmp(output, "Other") == 0);
     assert(result == 5);
   }
+
+  {
+    /*------------------------------------------------------------------------
+    TestConditionalDisplayOutOfOrder
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\nOther\n?0xH0000=0?Zero\n?0xH0000=1?One", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Other") == 0);
+    assert(result == 5);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestConditionalDisplayNoDefault
+    ------------------------------------------------------------------------*/
+    int result = rc_richpresence_size("Display:\n?0xH0000=0?Zero");
+    assert(result == RC_MISSING_DISPLAY_STRING);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestConditionalDisplayCommonPrefix
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\n?0xH0000=0_0xH0001=18?First\n?0xH0000=0?Second\nThird", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "First") == 0);
+
+    ram[1] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Second") == 0);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Third") == 0);
+
+    ram[0] = 0;
+    ram[1] = 18;
+    richpresence = parse_richpresence("Display:\n?0xH0000=0?First\n?0xH0000=0_0xH0001=18?Second\nThird", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "First") == 0);
+
+    ram[1] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "First") == 0);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Third") == 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestConditionalDisplayDuplicatedCondition
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\n?0xH0000=0?First\n?0xH0000=0?Second\nThird", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "First") == 0);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Third") == 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestConditionalDisplayInvalidCondition
+    ------------------------------------------------------------------------*/
+    int result = rc_richpresence_size("Display:\n?BANANA?First\nOther");
+    assert(result == RC_INVALID_MEMORY_OPERAND);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestValueMacro
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Points", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "13330 Points") == 0);
+    assert(result == 12);
+
+    ram[1] = 20;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "13332 Points") == 0);
+    assert(result == 12);
+  }
+
+  {
+      /*------------------------------------------------------------------------
+      TestFramesMacro
+      ------------------------------------------------------------------------*/
+      unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+      memory_t memory;
+      rc_richpresence_t* richpresence;
+      char buffer[2048];
+      char output[128];
+      int result;
+
+      memory.ram = ram;
+      memory.size = sizeof(ram);
+
+      richpresence = parse_richpresence("Format:Frames\nFormatType=FRAMES\n\nDisplay:\n@Frames(0x 0001)", buffer);
+      result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+      assert(strcmp(output, "03:42.16") == 0);
+      assert(result == 8);
+
+      ram[1] = 20;
+      result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+      assert(strcmp(output, "03:42.20") == 0);
+      assert(result == 8);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestValueMacroFormula
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0xH0001*100_0xH0002) Points", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "1852 Points") == 0);
+    assert(result == 11);
+
+    ram[1] = 0x20;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "3252 Points") == 0);
+    assert(result == 11);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestUndefinedMacro
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\n@Points(0x 0001) Points", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "[Unknown macro]Points(0x 0001) Points") == 0);
+    assert(result == 37);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEscapedMacro
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Format:Points\nFormatType=VALUE\n\nDisplay:\n\\@Points(0x 0001) \\@@Points(0x 0001) Points", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "@Points(0x 0001) @13330 Points") == 0);
+    assert(result == 30);
+  }
 }
 
 static void test_lua(void) {

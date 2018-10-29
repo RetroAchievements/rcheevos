@@ -29,7 +29,8 @@ enum {
   RC_MISSING_CANCEL = -14,
   RC_MISSING_SUBMIT = -15,
   RC_MISSING_VALUE = -16,
-  RC_INVALID_LBOARD_FIELD = -17
+  RC_INVALID_LBOARD_FIELD = -17,
+  RC_MISSING_DISPLAY_STRING = -18
 };
 
 /*****************************************************************************\
@@ -309,7 +310,7 @@ enum {
 };
 
 int rc_parse_format(const char* format_str);
-void rc_format_value(char* buffer, int size, unsigned value, int format);
+int rc_format_value(char* buffer, int size, unsigned value, int format);
 
 /*****************************************************************************\
 | Rich Presence                                                               |
@@ -323,12 +324,14 @@ struct rc_richpresence_lookup_item_t {
   const char* label;
 };
 
-typedef struct {
+typedef struct rc_richpresence_lookup_t rc_richpresence_lookup_t;
+
+struct rc_richpresence_lookup_t {
   rc_richpresence_lookup_item_t* first_item;
+  rc_richpresence_lookup_t* next;
   const char* name;
   unsigned short format;
-}
-rc_richpresence_lookup_t;
+};
 
 typedef struct rc_richpresence_display_part_t rc_richpresence_display_part_t;
 
