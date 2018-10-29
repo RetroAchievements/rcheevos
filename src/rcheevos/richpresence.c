@@ -192,8 +192,10 @@ const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup, const
       break;
 
     chars = 0;
-    while (chars < (sizeof(number) - 1) && line + chars < endline && line[chars] != '=')
-      number[chars] = line[chars++];
+    while (chars < (sizeof(number) - 1) && line + chars < endline && line[chars] != '=') {
+      number[chars] = line[chars];
+      ++chars;
+    }
     number[chars] = '\0';
 
     if (line[chars] == '=') {
