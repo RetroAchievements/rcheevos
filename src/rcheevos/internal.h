@@ -19,6 +19,8 @@ typedef union {
   rc_richpresence_t richpresence;
   rc_richpresence_display_t richpresence_display;
   rc_richpresence_display_part_t richpresence_part;
+  rc_richpresence_lookup_t richpresence_lookup;
+  rc_richpresence_lookup_item_t richpresence_lookup_item;
 }
 rc_scratch_t;
 

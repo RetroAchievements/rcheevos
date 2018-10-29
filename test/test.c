@@ -2344,28 +2344,28 @@ static void test_richpresence(void) {
   }
 
   {
-      /*------------------------------------------------------------------------
-      TestFramesMacro
-      ------------------------------------------------------------------------*/
-      unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
-      memory_t memory;
-      rc_richpresence_t* richpresence;
-      char buffer[2048];
-      char output[128];
-      int result;
+    /*------------------------------------------------------------------------
+    TestFramesMacro
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
 
-      memory.ram = ram;
-      memory.size = sizeof(ram);
+    memory.ram = ram;
+    memory.size = sizeof(ram);
 
-      richpresence = parse_richpresence("Format:Frames\nFormatType=FRAMES\n\nDisplay:\n@Frames(0x 0001)", buffer);
-      result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
-      assert(strcmp(output, "03:42.16") == 0);
-      assert(result == 8);
+    richpresence = parse_richpresence("Format:Frames\nFormatType=FRAMES\n\nDisplay:\n@Frames(0x 0001)", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "03:42.16") == 0);
+    assert(result == 8);
 
-      ram[1] = 20;
-      result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
-      assert(strcmp(output, "03:42.20") == 0);
-      assert(result == 8);
+    ram[1] = 20;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "03:42.20") == 0);
+    assert(result == 8);
   }
 
   {
@@ -2431,6 +2431,333 @@ static void test_richpresence(void) {
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "@Points(0x 0001) @13330 Points") == 0);
     assert(result == 30);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestLookup
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero") == 0);
+    assert(result == 7);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At One") == 0);
+    assert(result == 6);
+
+    ram[0] = 2; /* no entry */
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At ") == 0);
+    assert(result == 3);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestLookupFormula
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000*0.5)", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero") == 0);
+    assert(result == 7);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero") == 0);
+    assert(result == 7);
+
+    ram[0] = 2; /* no entry */
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At One") == 0);
+    assert(result == 6);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestLookupRepeated
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000), Near @Location(0xH0001)", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero, Near ") == 0);
+    assert(result == 14);
+
+    ram[1] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero, Near One") == 0);
+    assert(result == 17);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At One, Near One") == 0);
+    assert(result == 16);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestLookupHexKeys
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Lookup:Location\n0x00=Zero\n0x01=One\n\nDisplay:\nAt @Location(0xH0000)", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero") == 0);
+    assert(result == 7);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At One") == 0);
+    assert(result == 6);
+
+    ram[0] = 2; /* no entry */
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At ") == 0);
+    assert(result == 3);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestLookupDefault
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Lookup:Location\n0=Zero\n1=One\n*=Star\n\nDisplay:\nAt @Location(0xH0000)", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero") == 0);
+    assert(result == 7);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At One") == 0);
+    assert(result == 6);
+
+    ram[0] = 2; /* no entry */
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Star") == 0);
+    assert(result == 7);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestLookupCRLF
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Lookup:Location\r\n0=Zero\r\n1=One\r\n\r\nDisplay:\r\nAt @Location(0xH0000)\r\n", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero") == 0);
+    assert(result == 7);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At One") == 0);
+    assert(result == 6);
+
+    ram[0] = 2; /* no entry */
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At ") == 0);
+    assert(result == 3);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestLookupAfterDisplay
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\nAt @Location(0xH0000)\n\nLookup:Location\n0=Zero\n1=One", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero") == 0);
+    assert(result == 7);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At One") == 0);
+    assert(result == 6);
+
+    ram[0] = 2; /* no entry */
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At ") == 0);
+    assert(result == 3);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestLookupWhitespace
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Lookup:Location\n0= Zero \n1= One \n\nDisplay:\nAt '@Location(0xH0000)' ", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At ' Zero ' ") == 0);
+    assert(result == 12);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At ' One ' ") == 0);
+    assert(result == 11);
+
+    ram[0] = 2; /* no entry */
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At '' ") == 0);
+    assert(result == 6);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestRandomTextBetweenSections
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* Anything that doesn't begin with "Format:" "Lookup:" or "Display:" is ignored. People sometimes
+       use this logic to add comments to the Rich Presence script - particularly author comments */
+    richpresence = parse_richpresence("Locations are fun!\nLookup:Location\n0=Zero\n1=One\n\nDisplay goes here\nDisplay:\nAt @Location(0xH0000)\n\nWritten by User3", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero") == 0);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At One") == 0);
+
+    ram[0] = 2; /* no entry */
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At ") == 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestComments
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("// Locations are fun!\nLookup:Location // lookup\n0=Zero // 0\n1=One // 1\n\n//Display goes here\nDisplay: // display\nAt @Location(0xH0000) // text\n\n//Written by User3", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero") == 0);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At One") == 0);
+
+    ram[0] = 2; /* no entry */
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At ") == 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestConditionalDisplaySharedLookup
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Lookup:Location\n0x00=Zero\n0x01=One\n\nDisplay:\n?0xH0001=18?At @Location(0xH0000)\nNear @Location(0xH0000)", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At Zero") == 0);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "At One") == 0);
+
+    ram[1] = 17;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Near One") == 0);
+
+    ram[0] = 0;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Near Zero") == 0);
   }
 }
 
