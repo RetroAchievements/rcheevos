@@ -568,9 +568,13 @@ static void test_condition(void) {
 }
 
 static void parse_trigger(rc_trigger_t** self, void* buffer, const char* memaddr) {
-  assert(rc_trigger_size(memaddr) >= 0);
+  int ret = rc_trigger_size(memaddr);
+  assert(ret >= 0);
+  memset(buffer, 0xEE, ret + 128);
+
   *self = rc_parse_trigger(buffer, memaddr, NULL, 0);
   assert(*self != NULL);
+  assert(*((int*)((char*)buffer + ret)) == 0xEEEEEEEE);
 }
 
 static void comp_trigger(rc_trigger_t* self, memory_t* memory, int expected_result) {
@@ -1587,9 +1591,11 @@ static void parse_comp_value(const char* memaddr, memory_t* memory, unsigned exp
 
   ret = rc_value_size(memaddr);
   assert(ret >= 0);
+  memset(buffer, 0xEE, ret + 128);
 
   self = rc_parse_value(buffer, memaddr, NULL, 0);
   assert(self != NULL);
+  assert(*((int*)((char*)buffer + ret)) == 0xEEEEEEEE);
 
   assert(rc_evaluate_value(self, peek, memory, NULL) == expected_value);
 }
@@ -1671,8 +1677,12 @@ static rc_lboard_t* parse_lboard(const char* memaddr, void* buffer) {
 
   ret = rc_lboard_size(memaddr);
   assert(ret >= 0);
+  memset(buffer, 0xEE, ret + 128);
+
   self = rc_parse_lboard(buffer, memaddr, NULL, 0);
   assert(self != NULL);
+  assert(*((int*)((char*)buffer + ret)) == 0xEEEEEEEE);
+
   return self;
 }
 
@@ -2062,20 +2072,22 @@ static void test_lboard(void) {
   }
 }
 
-static rc_richpresence_t* parse_richpresence(const char* script, void* buffer)
-{
-    int ret;
-    rc_richpresence_t* self;
+static rc_richpresence_t* parse_richpresence(const char* script, void* buffer) {
+  int ret;
+  rc_richpresence_t* self;
 
-    ret = rc_richpresence_size(script);
-    assert(ret >= 0);
-    self = rc_parse_richpresence(buffer, script, NULL, 0);
-    assert(self != NULL);
-    return self;
+  ret = rc_richpresence_size(script);
+  assert(ret >= 0);
+  memset(buffer, 0xEE, ret + 128);
+
+  self = rc_parse_richpresence(buffer, script, NULL, 0);
+  assert(self != NULL);
+  assert(*((int*)((char*)buffer + ret)) == 0xEEEEEEEE);
+
+  return self;
 }
 
-static void test_richpresence(void)
-{
+static void test_richpresence(void) {
   {
     /*------------------------------------------------------------------------
     TestStaticDisplayString
@@ -2173,6 +2185,36 @@ static void test_richpresence(void)
     richpresence = parse_richpresence("Display:\nWhat \\", buffer);
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "What ") == 0);
+    assert(result == 5);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestConditionalDisplay
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    char buffer[2048];
+    char output[128];
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\n?0xH0000=0?Zero\n?0xH0000=1?One\nOther", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Zero") == 0);
+    assert(result == 4);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "One") == 0);
+    assert(result == 3);
+
+    ram[0] = 2;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Other") == 0);
     assert(result == 5);
   }
 }

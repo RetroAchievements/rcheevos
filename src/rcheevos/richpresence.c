@@ -17,8 +17,6 @@ const char* rc_parse_line(const char* line, const char** end) {
   nextline = line;
   while (*nextline && *nextline != '\n')
     ++nextline;
-  if (*nextline == '\n')
-    ++nextline;
 
   /* find a trailing comment marker (//) */
   endline = line;
@@ -36,6 +34,9 @@ const char* rc_parse_line(const char* line, const char** end) {
 
   /* end is pointing at the first character to ignore - makes subtraction for length easier */
   *end = endline;
+
+  if (*nextline == '\n')
+    ++nextline;
   return nextline;
 }
 
@@ -82,6 +83,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, int* ret, void* buf
   rc_richpresence_lookup_t** nextlookup;
   const char* nextline;
   const char* endline;
+  const char* ptr;
 
   nextdisplay = &self->first_display;
   *nextdisplay = 0;
@@ -100,8 +102,27 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, int* ret, void* buf
       line = nextline;
       nextline = rc_parse_line(line, &endline);
 
+      while (*line == '?') {
+        /* conditional display: ?trigger?string */
+        ptr = ++line;
+        while (ptr < endline && *ptr != '?')
+          ++ptr;
+
+        if (ptr < endline) {
+          *nextdisplay = rc_parse_richpresence_display_internal(buffer, ret, scratch, ptr + 1, endline);
+          rc_parse_trigger_internal(&((*nextdisplay)->trigger), ret, buffer, scratch, &line, L, funcs_ndx);
+          if (buffer)
+            nextdisplay = &((*nextdisplay)->next);
+        }
+
+        line = nextline;
+        nextline = rc_parse_line(line, &endline);
+      }
+
+      /* non-conditional display: string */
       *nextdisplay = rc_parse_richpresence_display_internal(buffer, ret, scratch, line, endline);
-      nextdisplay = &((*nextdisplay)->next);
+      if (buffer)
+        nextdisplay = &((*nextdisplay)->next);
     }
 
     line = nextline;
