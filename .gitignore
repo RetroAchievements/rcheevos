@@ -51,6 +51,12 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# Visual Studio files
+Debug/
+Release/
+*.user
+.vs/
+
 # Repository specific
 test/test
 test/galaga_nes.h
