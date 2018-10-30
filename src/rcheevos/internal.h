@@ -3,8 +3,10 @@
 
 #include "rcheevos.h"
 
+#define RC_TAG2(x,y) x ## y
+#define RC_TAG(x,y) RC_TAG2(x,y)
 #define RC_OFFSETOF(s, f) ((int)(long long)(&((s*)0)->f))
-#define RC_ALIGNOF(t) RC_OFFSETOF(struct{char c; t d;}, d)
+#define RC_ALIGNOF(t) RC_OFFSETOF(struct RC_TAG(_unnamed, __LINE__) {char c; t d;}, d)
 
 #define RC_ALLOC(t, p, o, s) ((t*)rc_alloc(p, o, sizeof(t), RC_ALIGNOF(t), s))
 
