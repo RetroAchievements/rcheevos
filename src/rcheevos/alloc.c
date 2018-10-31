@@ -21,7 +21,7 @@ void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t
 char* rc_alloc_str(void* pointer, int* offset, const char* text, int length) {
   char* ptr;
 
-  ptr = (char*)rc_alloc(pointer, offset, length + 1, RC_ALIGNOF(int), 0);
+  ptr = (char*)rc_alloc(pointer, offset, length + 1, RC_ALIGNOF(char), 0);
   if (ptr) {
     memcpy(ptr, text, length);
     ptr[length] = '\0';
