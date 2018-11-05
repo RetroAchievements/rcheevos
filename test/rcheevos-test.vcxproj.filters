@@ -139,6 +139,9 @@
       <Filter>lua</Filter>
     </ClCompile>
     <ClCompile Include="test.c" />
+    <ClCompile Include="..\src\rcheevos\richpresence.c">
+      <Filter>rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">

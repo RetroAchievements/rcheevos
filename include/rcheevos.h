@@ -29,7 +29,8 @@ enum {
   RC_MISSING_CANCEL = -14,
   RC_MISSING_SUBMIT = -15,
   RC_MISSING_VALUE = -16,
-  RC_INVALID_LBOARD_FIELD = -17
+  RC_INVALID_LBOARD_FIELD = -17,
+  RC_MISSING_DISPLAY_STRING = -18
 };
 
 /*****************************************************************************\
@@ -309,7 +310,56 @@ enum {
 };
 
 int rc_parse_format(const char* format_str);
-void rc_format_value(char* buffer, int size, unsigned value, int format);
+int rc_format_value(char* buffer, int size, unsigned value, int format);
+
+/*****************************************************************************\
+| Rich Presence                                                               |
+\*****************************************************************************/
+
+typedef struct rc_richpresence_lookup_item_t rc_richpresence_lookup_item_t;
+
+struct rc_richpresence_lookup_item_t {
+  unsigned value;
+  rc_richpresence_lookup_item_t* next_item;
+  const char* label;
+};
+
+typedef struct rc_richpresence_lookup_t rc_richpresence_lookup_t;
+
+struct rc_richpresence_lookup_t {
+  rc_richpresence_lookup_item_t* first_item;
+  rc_richpresence_lookup_t* next;
+  const char* name;
+  unsigned short format;
+};
+
+typedef struct rc_richpresence_display_part_t rc_richpresence_display_part_t;
+
+struct rc_richpresence_display_part_t {
+  rc_richpresence_display_part_t* next;
+  const char* text;
+  rc_richpresence_lookup_item_t* first_lookup_item;
+  rc_value_t value;
+  unsigned short display_type;
+};
+
+typedef struct rc_richpresence_display_t rc_richpresence_display_t;
+
+struct rc_richpresence_display_t {
+  rc_trigger_t trigger;
+  rc_richpresence_display_t* next;
+  rc_richpresence_display_part_t* display;
+};
+
+typedef struct {
+  rc_richpresence_display_t* first_display;
+  rc_richpresence_lookup_t* first_lookup;
+}
+rc_richpresence_t;
+
+int rc_richpresence_size(const char* script);
+rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_State* L, int funcs_ndx);
+int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
 
 #ifdef __cplusplus
 }

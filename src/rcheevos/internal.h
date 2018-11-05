@@ -18,10 +18,16 @@ typedef union {
   rc_term_t term;
   rc_expression_t expression;
   rc_lboard_t lboard;
+  rc_richpresence_t richpresence;
+  rc_richpresence_display_t richpresence_display;
+  rc_richpresence_display_part_t richpresence_part;
+  rc_richpresence_lookup_t richpresence_lookup;
+  rc_richpresence_lookup_item_t richpresence_lookup_item;
 }
 rc_scratch_t;
 
 void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch);
+char* rc_alloc_str(void* pointer, int* offset, const char* text, int length);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, int* ret, void* buffer, rc_scratch_t* scratch, const char** memaddr, lua_State* L, int funcs_ndx);
 
@@ -44,5 +50,8 @@ unsigned rc_evaluate_expression(rc_expression_t* self, rc_peek_t peek, void* ud,
 void rc_parse_value_internal(rc_value_t* self, int* ret, void* buffer, void* scratch, const char** memaddr, lua_State* L, int funcs_ndx);
 
 void rc_parse_lboard_internal(rc_lboard_t* self, int* ret, void* buffer, void* scratch, const char* memaddr, lua_State* L, int funcs_ndx);
+
+const char* rc_parse_line(const char* line, const char** end);
+void rc_parse_richpresence_internal(rc_richpresence_t* self, int* ret, void* buffer, void* scratch, const char* script, lua_State* L, int funcs_ndx);
 
 #endif /* INTERNAL_H */
