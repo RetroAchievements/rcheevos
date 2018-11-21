@@ -109,7 +109,8 @@ enum {
   RC_OPERAND_DELTA,   /* The value last known at this address. */
   RC_OPERAND_CONST,   /* A 32-bit unsigned integer. */
   RC_OPERAND_FP,      /* A floating point value. */
-  RC_OPERAND_LUA      /* A Lua function that provides the value. */
+  RC_OPERAND_LUA,     /* A Lua function that provides the value. */
+  RC_OPERAND_PRIOR    /* The last differing value at this address. */
 };
 
 typedef struct {
@@ -118,8 +119,10 @@ typedef struct {
     struct {
       /* The memory address or constant value of this variable. */
       unsigned value;
-      /* The previous memory contents if RC_OPERAND_DELTA. */
+      /* The previous memory contents if RC_OPERAND_DELTA or RC_OPERAND_PRIOR. */
       unsigned previous;
+      /* The last differing value if RC_OPERAND_PRIOR. */
+      unsigned prior;
 
       /* The size of the variable. */
       char size;
