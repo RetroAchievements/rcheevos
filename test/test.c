@@ -1632,6 +1632,8 @@ static void test_term(void) {
     parse_comp_term_value("V6", &memory, 6);
     parse_comp_term_value("V6*2", &memory, 12);
     parse_comp_term_value("V6*0.5", &memory, 3);
+    parse_comp_term_value("V-6", &memory, (unsigned)(-6));
+    parse_comp_term_value("V-6*2", &memory, (unsigned)(-12));
 
     /* memory */
     parse_comp_term_value("0xH01", &memory, 0x12);
