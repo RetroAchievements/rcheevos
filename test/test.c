@@ -44,6 +44,7 @@ static void parse_operand(rc_operand_t* self, const char** memaddr) {
   assert(ret >= 0);
   assert(**memaddr == 0);
   self->previous = 0;
+  self->prior = 0;
 }
 
 static void comp_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_value) {
@@ -157,6 +158,38 @@ static void test_operand(void) {
     parse_comp_operand("d0xH12345678", RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0x12345678U);
     parse_comp_operand("d0xHABCD", RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0xABCDU);
     parse_comp_operand("d0xhabcd", RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0xABCDU);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestParseVariablePriorMem
+    ------------------------------------------------------------------------*/
+
+    /* sizes */
+    parse_comp_operand("p0xH1234", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0x1234U);
+    parse_comp_operand("p0x 1234", RC_OPERAND_PRIOR, RC_OPERAND_16_BITS, 0x1234U);
+    parse_comp_operand("p0x1234", RC_OPERAND_PRIOR, RC_OPERAND_16_BITS, 0x1234U);
+    parse_comp_operand("p0xW1234", RC_OPERAND_PRIOR, RC_OPERAND_24_BITS, 0x1234U);
+    parse_comp_operand("p0xX1234", RC_OPERAND_PRIOR, RC_OPERAND_32_BITS, 0x1234U);
+    parse_comp_operand("p0xL1234", RC_OPERAND_PRIOR, RC_OPERAND_LOW, 0x1234U);
+    parse_comp_operand("p0xU1234", RC_OPERAND_PRIOR, RC_OPERAND_HIGH, 0x1234U);
+    parse_comp_operand("p0xM1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_0, 0x1234U);
+    parse_comp_operand("p0xN1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_1, 0x1234U);
+    parse_comp_operand("p0xO1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_2, 0x1234U);
+    parse_comp_operand("p0xP1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_3, 0x1234U);
+    parse_comp_operand("p0xQ1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_4, 0x1234U);
+    parse_comp_operand("p0xR1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_5, 0x1234U);
+    parse_comp_operand("p0xS1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_6, 0x1234U);
+    parse_comp_operand("p0xT1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_7, 0x1234U);
+
+    /* ignores case */
+    parse_comp_operand("P0Xh1234", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0x1234U);
+
+    /* addresses */
+    parse_comp_operand("p0xH0000", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0x0000U);
+    parse_comp_operand("p0xH12345678", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0x12345678U);
+    parse_comp_operand("p0xHABCD", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0xABCDU);
+    parse_comp_operand("p0xhabcd", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0xABCDU);
   }
 
   {
@@ -278,6 +311,44 @@ static void test_operand(void) {
 
     assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x16U);
     assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x16U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestVariableGetValueDelta
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_operand_t op;
+    const char* memaddr;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    memaddr = "p0xh1";
+    parse_operand(&op, &memaddr);
+
+    /* RC_OPERAND_PRIOR only updates when the memory value changes */
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x00); /* first call gets uninitialized value */
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x00); /* value only changes when memory changes */
+
+    ram[1] = 0x13;
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
+
+    ram[1] = 0x14;
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x13U);
+
+    ram[1] = 0x15;
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x14U);
+
+    ram[1] = 0x16;
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
+    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
   }
 }
 
@@ -1565,6 +1636,8 @@ static void test_term(void) {
     parse_comp_term_value("V6", &memory, 6);
     parse_comp_term_value("V6*2", &memory, 12);
     parse_comp_term_value("V6*0.5", &memory, 3);
+    parse_comp_term_value("V-6", &memory, (unsigned)(-6));
+    parse_comp_term_value("V-6*2", &memory, (unsigned)(-12));
 
     /* memory */
     parse_comp_term_value("0xH01", &memory, 0x12);
