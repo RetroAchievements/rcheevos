@@ -1342,6 +1342,352 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestAndNext
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* once(byte(0x0001) == 20 && byte(0x0002) == 20 && byte(0x0003) == 20) */
+    parse_trigger(&trigger, buffer, "N:0xH0001=20_N:0xH0002=20_0xH0003=20.3.");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+
+    ram[3] = 20; /* final condition is not enough to reset */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+
+    ram[2] = 20; /* two conditions is not enough to reset */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+
+    ram[1] = 20; /* all three conditions true, only count hit on final */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U);
+
+    ram[2] = 30; /* middle condition not true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U);
+
+    ram[2] = 20; /* all three conditions true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 2U);
+
+    ram[3] = 30; /* third condition not true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 2U);
+
+    ram[3] = 20; /* all three conditions true, HitCount reached */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 3U);
+
+    comp_trigger(trigger, &memory, 1); /* HitCount reached */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 3U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAndNextBoundaries
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* byte(0x0000) == 0 && once(byte(0x0001) == 20 && byte(0x0002) == 20 && byte(0x0003) == 20) && byte(0x0000) == 0 */
+    parse_trigger(&trigger, buffer, "0xH0000=0_N:0xH0001=20_N:0xH0002=20_0xH0003=20.1._0xH0000=0");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 4)->current_hits == 1U);
+
+    ram[3] = 20; /* final condition is not enough to reset */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 4)->current_hits == 2U);
+
+    ram[2] = 20; /* two conditions is not enough to reset */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 4)->current_hits == 3U);
+
+    ram[1] = 20; /* all three conditions true, whole trigger is true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 4U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 4)->current_hits == 4U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAndNextReset
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* byte(0x0000) == 0 && never(byte(0x0001) == 20 && byte(0x0002) == 20 && byte(0x0003) == 20) */
+    parse_trigger(&trigger, buffer, "0xH0000=0_N:0xH0001=20_N:0xH0002=20_R:0xH0003=20");
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    ram[3] = 20; /* final condition is not enough to reset */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    ram[2] = 20; /* two conditions is not enough to reset */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    ram[1] = 20; /* all three conditions true, reset */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    ram[2] = 30; /* middle condition not true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+
+    ram[2] = 20; /* all three conditions true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+
+    ram[3] = 30; /* third condition not true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+
+    ram[3] = 20; /* all three conditions true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAndNextPause
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* byte(0x0000) == 0 && never(byte(0x0001) == 20 && byte(0x0002) == 20 && byte(0x0003) == 20) */
+    parse_trigger(&trigger, buffer, "0xH0000=0_N:0xH0001=20_N:0xH0002=20_P:0xH0003=20");
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    ram[3] = 20; /* final condition is not enough to pause */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    ram[2] = 20; /* two conditions is not enough to pause */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    ram[1] = 20; /* all three conditions true, pause */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 1U);
+
+    ram[2] = 30; /* middle condition not true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 4U);
+
+    ram[2] = 20; /* all three conditions true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 4U);
+
+    ram[3] = 30; /* third condition not true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 5U);
+
+    ram[3] = 20; /* all three conditions true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 5U);
+  }
+
+  {
+      /*------------------------------------------------------------------------
+      TestAddHits
+      ------------------------------------------------------------------------*/
+
+      unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+      memory_t memory;
+      rc_trigger_t* trigger;
+      char buffer[2048];
+
+      rc_condset_t* condset;
+
+      memory.ram = ram;
+      memory.size = sizeof(ram);
+
+      parse_trigger(&trigger, buffer, "C:0xH0001=18(2)_0xL0004=6(4)"); /* repeated(4, byte(1) == 18 || low(4) == 6) */
+      comp_trigger(trigger, &memory, 0);
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+      comp_trigger(trigger, &memory, 1); /* total hits met (2 for each condition) */
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+
+      comp_trigger(trigger, &memory, 1);
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U); /* threshold met, stop incrementing */
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U); /* total met prevents incrementing even though individual tally has not reached total */
+
+      rc_reset_condset(trigger->requirement);
+
+      for (condset = trigger->alternative; condset != NULL; condset = condset->next)
+      {
+          rc_reset_condset(condset);
+      }
+
+      comp_trigger(trigger, &memory, 0);
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+      ram[1] = 16;
+      comp_trigger(trigger, &memory, 0); /* 1 + 2 < 4, not met */
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+
+      comp_trigger(trigger, &memory, 1); /* 1 + 3 = 4, met */
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 3U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAndNextAddSource
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* once(byte(0x0001) + byte(0x0002) == 20 && byte(0x0003) == 20) */
+    parse_trigger(&trigger, buffer, "A:0xH0001=0_N:0xH0002=20_0xH0003=20.1.");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+
+    ram[3] = 20; /* final condition is true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+
+    ram[2] = 20; /* AddSource condition would be true if AddSource ignored */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+
+    ram[2] = 10;
+    ram[1] = 10; /* AddSource condition true only via addition, whole trigger is true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAndNextChangesTo
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* byte(0x0001) ~> 18 */
+    parse_trigger(&trigger, buffer, "N:0xH0001=18_d0xH0001!=18");
+
+    /* value already 18, initial delta value is 0, so considered changed */
+    comp_trigger(trigger, &memory, 1);
+
+    /* value already 18 */
+    comp_trigger(trigger, &memory, 0);
+
+    /* value no longer 18 */
+    ram[1] = 20;
+    comp_trigger(trigger, &memory, 0);
+
+    /* value changes to 18 */
+    ram[1] = 18;
+    comp_trigger(trigger, &memory, 1);
+
+    /* value already 18 */
+    comp_trigger(trigger, &memory, 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestAltGroups
     ------------------------------------------------------------------------*/
 
