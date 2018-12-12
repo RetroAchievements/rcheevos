@@ -256,6 +256,7 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, lua_S
       }
 
       /* fall through */
+    case '.':
     case '+': case '-':
     case '1': case '2': case '3': case '4': case '5':
     case '6': case '7': case '8': case '9':
