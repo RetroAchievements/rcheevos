@@ -683,6 +683,8 @@ static rc_condset_t* trigger_get_set(rc_trigger_t* trigger, int ndx) {
 }
 
 static void test_trigger(void) {
+  char buffer[2048];
+    
   {
     /*------------------------------------------------------------------------
     TestSimpleSets
@@ -692,7 +694,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -756,7 +757,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -788,7 +788,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -812,7 +811,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -840,7 +838,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -889,7 +886,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -938,7 +934,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -971,7 +966,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1013,7 +1007,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1050,7 +1043,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1074,7 +1066,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1105,7 +1096,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1145,7 +1135,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1182,7 +1171,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1216,7 +1204,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1255,7 +1242,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1300,7 +1286,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     rc_condset_t* condset;
 
@@ -1348,7 +1333,6 @@ static void test_trigger(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1453,7 +1437,6 @@ static void test_trigger(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1512,7 +1495,6 @@ static void test_trigger(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1620,7 +1602,6 @@ static void test_trigger(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1953,6 +1934,7 @@ static void test_term(void) {
     parse_comp_term_fp("0xH1234*1", RC_OPERAND_8_BITS, 0x1234U, 1.0);
     parse_comp_term_fp("0xH1234*3", RC_OPERAND_8_BITS, 0x1234U, 3.0);
     parse_comp_term_fp("0xH1234*0.5", RC_OPERAND_8_BITS, 0x1234U, 0.5);
+    parse_comp_term_fp("0xH1234*.5", RC_OPERAND_8_BITS, 0x1234U, 0.5);
     parse_comp_term_fp("0xH1234*-1", RC_OPERAND_8_BITS, 0x1234U, -1.0);
   }
 
@@ -2142,6 +2124,8 @@ static unsigned lboard_evaluate(rc_lboard_t* lboard, lboard_test_state_t* test, 
 }
 
 static void test_lboard(void) {
+  char buffer[2048];
+
   {
     /*------------------------------------------------------------------------
     TestSimpleLeaderboard
@@ -2151,7 +2135,6 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    char buffer[2048];
     unsigned value;
     
     memory.ram = ram;
@@ -2213,7 +2196,6 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    char buffer[2048];
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -2260,7 +2242,6 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    char buffer[2048];
     unsigned value;
     
     memory.ram = ram;
@@ -2296,7 +2277,6 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    char buffer[2048];
     unsigned value;
     
     memory.ram = ram;
@@ -2326,7 +2306,6 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    char buffer[2048];
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -2351,7 +2330,6 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    char buffer[2048];
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -2385,7 +2363,6 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    char buffer[2048];
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -2419,7 +2396,6 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    char buffer[2048];
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -2445,7 +2421,6 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    char buffer[2048];
     
     memory.ram = ram;
     memory.size = sizeof(ram);
