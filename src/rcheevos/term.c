@@ -33,35 +33,35 @@ rc_term_t* rc_parse_term(int* ret, void* buffer, rc_scratch_t* scratch, const ch
 
     if (self->invert) {
       switch (self->operand2.size) {
-        case RC_OPERAND_BIT_0:
-        case RC_OPERAND_BIT_1:
-        case RC_OPERAND_BIT_2:
-        case RC_OPERAND_BIT_3:
-        case RC_OPERAND_BIT_4:
-        case RC_OPERAND_BIT_5:
-        case RC_OPERAND_BIT_6:
-        case RC_OPERAND_BIT_7:
+        case RC_MEMSIZE_BIT_0:
+        case RC_MEMSIZE_BIT_1:
+        case RC_MEMSIZE_BIT_2:
+        case RC_MEMSIZE_BIT_3:
+        case RC_MEMSIZE_BIT_4:
+        case RC_MEMSIZE_BIT_5:
+        case RC_MEMSIZE_BIT_6:
+        case RC_MEMSIZE_BIT_7:
           /* invert is already 1 */
           break;
 
-        case RC_OPERAND_LOW:
-        case RC_OPERAND_HIGH:
+        case RC_MEMSIZE_LOW:
+        case RC_MEMSIZE_HIGH:
           self->invert = 0xf;
           break;
         
-        case RC_OPERAND_8_BITS:
+        case RC_MEMSIZE_8_BITS:
           self->invert = 0xffU;
           break;
 
-        case RC_OPERAND_16_BITS:
+        case RC_MEMSIZE_16_BITS:
           self->invert = 0xffffU;
           break;
 
-        case RC_OPERAND_24_BITS:
+        case RC_MEMSIZE_24_BITS:
           self->invert = 0xffffffU;
           break;
 
-        case RC_OPERAND_32_BITS:
+        case RC_MEMSIZE_32_BITS:
           self->invert = 0xffffffffU;
           break;
       }
@@ -69,7 +69,7 @@ rc_term_t* rc_parse_term(int* ret, void* buffer, rc_scratch_t* scratch, const ch
   }
   else {
     self->operand2.type = RC_OPERAND_FP;
-    self->operand2.size = RC_OPERAND_8_BITS;
+    self->operand2.size = RC_MEMSIZE_8_BITS;
     self->operand2.fp_value = 1.0;
   }
 
