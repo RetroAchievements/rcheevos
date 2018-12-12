@@ -40,47 +40,53 @@ static unsigned peek(unsigned address, unsigned num_bytes, void* ud) {
 }
 
 static void parse_operand(rc_operand_t* self, const char** memaddr) {
-  int ret = rc_parse_operand(self, memaddr, 1, NULL, 0);
+  rc_parse_state_t parse;
+  int ret;
+
+  rc_init_parse_state(&parse, 0, 0, 0);   
+  ret = rc_parse_operand(self, memaddr, 1, &parse);
+  rc_destroy_parse_state(&parse);
+
   assert(ret >= 0);
   assert(**memaddr == 0);
-  self->previous = 0;
-  self->prior = 0;
 }
 
-static void comp_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_value) {
+static void comp_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
   assert(expected_type == self->type);
   assert(expected_size == self->size);
-  assert(expected_value == self->value);
+  assert(expected_address == self->value);
 }
 
 static void parse_comp_operand(const char* memaddr, char expected_type, char expected_size, unsigned expected_value) {
   rc_operand_t self;
-  int ret;
-
-  ret = rc_parse_operand(&self, &memaddr, 1, NULL, 0);
-  assert(ret >= 0);
-  assert(*memaddr == 0);
-
+  parse_operand(&self, &memaddr);
   comp_operand(&self, expected_type, expected_size, expected_value);
 }
 
 static void parse_error_operand(const char* memaddr, int valid_chars) {
   rc_operand_t self;
+  rc_parse_state_t parse;
   int ret;
   const char* begin = memaddr;
 
-  ret = rc_parse_operand(&self, &memaddr, 1, NULL, 0);
+  rc_init_parse_state(&parse, 0, 0, 0);
+  ret = rc_parse_operand(&self, &memaddr, 1, &parse);
+  rc_destroy_parse_state(&parse);
+
   assert(ret < 0);
   assert(memaddr - begin == valid_chars);
 }
 
 static void parse_comp_operand_value(const char* memaddr, memory_t* memory, unsigned expected_value) {
   rc_operand_t self;
+  rc_parse_state_t parse;
   unsigned value;
 
-  rc_parse_operand(&self, &memaddr, 1, NULL, 0);
-  value = rc_evaluate_operand(&self, peek, memory, NULL);
+  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_parse_operand(&self, &memaddr, 1, &parse);
+  rc_destroy_parse_state(&parse);
 
+  value = rc_evaluate_operand(&self, peek, memory, NULL);
   assert(value == expected_value);
 }
 
@@ -286,12 +292,15 @@ static void test_operand(void) {
     memory_t memory;
     rc_operand_t op;
     const char* memaddr;
+    rc_parse_state_t parse;
 
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     memaddr = "d0xh1";
-    parse_operand(&op, &memaddr);
+    rc_init_parse_state(&parse, 0, 0, 0);
+    rc_parse_operand(&op, &memaddr, 1, &parse);
+    rc_destroy_parse_state(&parse);
 
     assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x00); /* first call gets uninitialized value */
     assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12); /* second gets current value */
@@ -322,12 +331,15 @@ static void test_operand(void) {
     memory_t memory;
     rc_operand_t op;
     const char* memaddr;
+    rc_parse_state_t parse;
 
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     memaddr = "p0xh1";
-    parse_operand(&op, &memaddr);
+    rc_init_parse_state(&parse, 0, 0, 0);
+    rc_parse_operand(&op, &memaddr, 1, &parse);
+    rc_destroy_parse_state(&parse);
 
     /* RC_OPERAND_PRIOR only updates when the memory value changes */
     assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x00); /* first call gets uninitialized value */
@@ -353,12 +365,13 @@ static void test_operand(void) {
 }
 
 static void parse_condition(rc_condition_t* self, const char* memaddr) {
-  int ret;
-  rc_scratch_t scratch;
+  rc_parse_state_t parse;
 
-  ret = 0;
-  rc_parse_condition(&ret, self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_parse_condition(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 }
 
@@ -369,27 +382,33 @@ static void parse_comp_condition(
   char expected_right_type, char expected_right_size, unsigned expected_right_value,
   int expected_required_hits
 ) {
-  rc_condition_t self;
-  parse_condition(&self, memaddr);
+  rc_condition_t* self;
+  rc_parse_state_t parse;
 
-  assert(self.type == expected_type);
-  comp_operand(&self.operand1, expected_left_type, expected_left_size, expected_left_value);
-  assert(self.oper == expected_operator);
-  comp_operand(&self.operand2, expected_right_type, expected_right_size, expected_right_value);
-  assert(self.required_hits == expected_required_hits);
+  rc_init_parse_state(&parse, 0, 0, 0);
+  self = rc_parse_condition(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(self->type == expected_type);
+  comp_operand(&self->operand1, expected_left_type, expected_left_size, expected_left_value);
+  assert(self->oper == expected_operator);
+  comp_operand(&self->operand2, expected_right_type, expected_right_size, expected_right_value);
+  assert(self->required_hits == expected_required_hits);
 }
 
 static void parse_test_condition(const char* memaddr, memory_t* memory, int value) {
-  rc_condition_t self;
+  rc_condition_t* self;
+  rc_parse_state_t parse;
   int ret;
-  rc_scratch_t scratch;
 
-  ret = 0;
-  rc_parse_condition(&ret, &self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_init_parse_state(&parse, 0, 0, 0);
+  self = rc_parse_condition(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  ret = rc_test_condition(&self, 0, peek, memory, NULL);
+  ret = rc_test_condition(self, 0, peek, memory, NULL);
 
   assert((ret && value) || (!ret && !value));
 }
@@ -615,26 +634,32 @@ static void test_condition(void) {
 
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
-    rc_condition_t cond;
+    rc_condition_t* cond;
+    rc_parse_state_t parse;
 
+    const char* cond_str = "0xH0001>d0xH0001";
+    rc_init_parse_state(&parse, 0, 0, 0);
+    cond = rc_parse_condition(&cond_str, &parse);
+    rc_destroy_parse_state(&parse);
+
+    assert(parse.offset >= 0);
+    assert(*cond_str == 0);
     memory.ram = ram;
     memory.size = sizeof(ram);
 
-    parse_condition(&cond, "0xH0001>d0xH0001");
-
     /* initial delta value is 0, 0x12 > 0 */
-    assert(rc_test_condition(&cond, 0, peek, &memory, NULL) == 1);
+    assert(rc_test_condition(cond, 0, peek, &memory, NULL) == 1);
 
     /* delta value is now 0x12, 0x12 = 0x12 */
-    assert(rc_test_condition(&cond, 0, peek, &memory, NULL) == 0);
+    assert(rc_test_condition(cond, 0, peek, &memory, NULL) == 0);
 
     /* delta value is now 0x12, 0x11 < 0x12 */
     ram[1] = 0x11;
-    assert(rc_test_condition(&cond, 0, peek, &memory, NULL) == 0);
+    assert(rc_test_condition(cond, 0, peek, &memory, NULL) == 0);
 
     /* delta value is now 0x13, 0x12 > 0x11 */
     ram[1] = 0x12;
-    assert(rc_test_condition(&cond, 0, peek, &memory, NULL) == 1);
+    assert(rc_test_condition(cond, 0, peek, &memory, NULL) == 1);
   }
 }
 
@@ -1390,7 +1415,6 @@ static void test_trigger(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1553,7 +1577,6 @@ static void test_trigger(void) {
       unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
       memory_t memory;
       rc_trigger_t* trigger;
-      char buffer[2048];
 
       rc_condset_t* condset;
 
@@ -1641,7 +1664,6 @@ static void test_trigger(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1675,7 +1697,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1722,7 +1743,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1761,7 +1781,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1799,7 +1818,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1827,67 +1845,74 @@ static void test_trigger(void) {
 }
 
 static void parse_comp_term(const char* memaddr, char expected_var_size, unsigned expected_address, int is_bcd, int is_const) {
-  rc_term_t self;
-  rc_scratch_t scratch;
-  int ret;
+  rc_term_t* self;
+  rc_parse_state_t parse;
 
-  ret = 0;
-  rc_parse_term(&ret, &self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_init_parse_state(&parse, 0, 0, 0);
+  self = rc_parse_term(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(is_const || self.operand1.size == expected_var_size);
-  assert(self.operand1.value == expected_address);
-  assert(self.operand1.is_bcd == is_bcd);
-  assert(self.invert == 0);
-  assert(self.operand2.size == RC_MEMSIZE_8_BITS);
-  assert(self.operand2.value == 0U);
-  assert(!is_const || self.operand1.type == RC_OPERAND_CONST);
+  if (is_const) {
+    assert(self->operand1.type == RC_OPERAND_CONST);
+  }
+  else {
+    assert(self->operand1.size == expected_var_size);
+    assert(self->operand1.value == expected_address);
+    assert(self->operand1.is_bcd == is_bcd);
+  }
+  assert(self->invert == 0);
+  assert(self->operand2.value == 0U);
 }
 
 static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsigned expected_address, double fp) {
-  rc_term_t self;
-  rc_scratch_t scratch;
-  int ret;
-  
-  ret = 0;
-  rc_parse_term(&ret, &self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_term_t* self;
+  rc_parse_state_t parse;
+
+  rc_init_parse_state(&parse, 0, 0, 0);
+  self = rc_parse_term(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(self.operand1.size == expected_var_size);
-  assert(self.operand1.value == expected_address);
-  assert(self.operand2.type == RC_OPERAND_FP);
-  assert(self.operand2.fp_value == fp);
+  assert(self->operand1.size == expected_var_size);
+  assert(self->operand1.value == expected_address);
+  assert(self->operand2.type == RC_OPERAND_FP);
+  assert(self->operand2.fp_value == fp);
 }
 
 static void parse_comp_term_mem(const char* memaddr, char expected_size_1, unsigned expected_address_1, char expected_size_2, unsigned expected_address_2) {
-  rc_term_t self;
-  rc_scratch_t scratch;
-  int ret;
-  
-  ret = 0;
-  rc_parse_term(&ret, &self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_term_t* self;
+  rc_parse_state_t parse;
+
+  rc_init_parse_state(&parse, 0, 0, 0);
+  self = rc_parse_term(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(self.operand1.size == expected_size_1);
-  assert(self.operand1.value == expected_address_1);
-  assert(self.operand2.size == expected_size_2);
-  assert(self.operand2.value == expected_address_2);
+  assert(self->operand1.size == expected_size_1);
+  assert(self->operand1.value == expected_address_1);
+  assert(self->operand2.size == expected_size_2);
+  assert(self->operand2.value == expected_address_2);
 }
 
 static void parse_comp_term_value(const char* memaddr, memory_t* memory, unsigned value) {
-  rc_term_t self;
-  rc_scratch_t scratch;
-  int ret;
-  
-  ret = 0;
-  rc_parse_term(&ret, &self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_term_t* self;
+  rc_parse_state_t parse;
+
+  rc_init_parse_state(&parse, 0, 0, 0);
+  self = rc_parse_term(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(rc_evaluate_term(&self, peek, memory, NULL) == value);
+  assert(rc_evaluate_term(self, peek, memory, NULL) == value);
 }
 
 static void test_term(void) {
@@ -1943,7 +1968,6 @@ static void test_term(void) {
     TestClauseParseFromStringMultiplyAddress
     ------------------------------------------------------------------------*/
 
-    parse_comp_term_mem("0xH1234", RC_MEMSIZE_8_BITS, 0x1234U, RC_MEMSIZE_8_BITS, 0U);
     parse_comp_term_mem("0xH1234*0xH3456", RC_MEMSIZE_8_BITS, 0x1234U, RC_MEMSIZE_8_BITS, 0x3456U);
     parse_comp_term_mem("0xH1234*0xL2222", RC_MEMSIZE_8_BITS, 0x1234U, RC_MEMSIZE_LOW, 0x2222U);
     parse_comp_term_mem("0xH1234*0x1111", RC_MEMSIZE_8_BITS, 0x1234U, RC_MEMSIZE_16_BITS, 0x1111U);
@@ -2482,6 +2506,9 @@ static rc_richpresence_t* parse_richpresence(const char* script, void* buffer) {
 }
 
 static void test_richpresence(void) {
+  char buffer[2048];
+  char output[128];
+
   {
     /*------------------------------------------------------------------------
     TestStaticDisplayString
@@ -2489,8 +2516,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2509,8 +2534,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2529,8 +2552,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2549,8 +2570,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2569,8 +2588,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2589,8 +2606,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2619,8 +2634,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2647,8 +2660,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -2687,8 +2698,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -2717,8 +2726,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2742,8 +2749,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2767,8 +2772,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2792,8 +2795,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2812,8 +2813,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2832,8 +2831,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2862,8 +2859,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2892,8 +2887,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2922,8 +2915,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2952,8 +2943,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2982,8 +2971,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3012,8 +2999,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3042,8 +3027,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3072,8 +3055,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3102,8 +3083,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3132,8 +3111,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3160,8 +3137,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3186,8 +3161,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
 
     memory.ram = ram;
     memory.size = sizeof(ram);

@@ -1,18 +1,18 @@
 #include "internal.h"
 
-rc_term_t* rc_parse_term(int* ret, void* buffer, rc_scratch_t* scratch, const char** memaddr, lua_State* L, int funcs_ndx) {
+rc_term_t* rc_parse_term(const char** memaddr, rc_parse_state_t* parse) {
   rc_term_t* self;
   const char* aux;
   int ret2;
 
   aux = *memaddr;
-  self = RC_ALLOC(rc_term_t, buffer, ret, scratch);
+  self = RC_ALLOC(rc_term_t, parse);
   self->invert = 0;
 
-  ret2 = rc_parse_operand(&self->operand1, &aux, 0, L, funcs_ndx);
+  ret2 = rc_parse_operand(&self->operand1, &aux, 0, parse);
 
   if (ret2 < 0) {
-    *ret = ret2;
+    parse->offset = ret2;
     return 0;
   }
 
@@ -24,10 +24,10 @@ rc_term_t* rc_parse_term(int* ret, void* buffer, rc_scratch_t* scratch, const ch
       self->invert = 1;
     }
 
-    ret2 = rc_parse_operand(&self->operand2, &aux, 0, L, funcs_ndx);
+    ret2 = rc_parse_operand(&self->operand2, &aux, 0, parse);
 
     if (ret2 < 0) {
-      *ret = ret2;
+      parse->offset = ret2;
       return 0;
     }
 

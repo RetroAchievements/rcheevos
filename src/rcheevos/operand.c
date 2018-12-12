@@ -18,7 +18,7 @@ extern "C" {
 
 #endif /* RC_DISABLE_LUA */
 
-static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, lua_State* L, int funcs_ndx) {
+static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   const char* id;
 
@@ -38,20 +38,20 @@ static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, lua_St
 
 #ifndef RC_DISABLE_LUA
 
-  if (L != 0) {
-    if (!lua_istable(L, funcs_ndx)) {
+  if (parse->L != 0) {
+    if (!lua_istable(parse->L, parse->funcs_ndx)) {
       return RC_INVALID_LUA_OPERAND;
     }
 
-    lua_pushlstring(L, id, aux - id);
-    lua_gettable(L, funcs_ndx);
+    lua_pushlstring(parse->L, id, aux - id);
+    lua_gettable(parse->L, parse->funcs_ndx);
 
-    if (!lua_isfunction(L, -1)) {
-      lua_pop(L, 1);
+    if (!lua_isfunction(parse->L, -1)) {
+      lua_pop(parse->L, 1);
       return RC_INVALID_LUA_OPERAND;
     }
 
-    self->function_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    self->function_ref = luaL_ref(parse->L, LUA_REGISTRYINDEX);
   }
 
 #endif /* RC_DISABLE_LUA */
@@ -134,7 +134,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr) {
   return RC_OK;
 }
 
-static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, lua_State* L, int funcs_ndx) {
+static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   char* end;
   int ret;
@@ -192,7 +192,7 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, lu
       break;
     
     case '@':
-      ret = rc_parse_operand_lua(self, &aux, L, funcs_ndx);
+      ret = rc_parse_operand_lua(self, &aux, parse);
 
       if (ret < 0) {
         return ret;
@@ -205,7 +205,7 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, lu
   return RC_OK;
 }
 
-static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, lua_State* L, int funcs_ndx) {
+static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   char* end;
   int ret;
@@ -275,7 +275,7 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, lua_S
       break;
     
     case '@':
-      ret = rc_parse_operand_lua(self, &aux, L, funcs_ndx);
+      ret = rc_parse_operand_lua(self, &aux, parse);
 
       if (ret < 0) {
         return ret;
@@ -288,17 +288,17 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, lua_S
   return RC_OK;
 }
 
-int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, lua_State* L, int funcs_ndx) {
+int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, rc_parse_state_t* parse) {
   self->size = RC_MEMSIZE_8_BITS;
   self->is_bcd = 0;
   self->previous = 0;
   self->prior = 0;
 
   if (is_trigger) {
-    return rc_parse_operand_trigger(self, memaddr, L, funcs_ndx);
+    return rc_parse_operand_trigger(self, memaddr, parse);
   }
   else {
-    return rc_parse_operand_term(self, memaddr, L, funcs_ndx);
+    return rc_parse_operand_term(self, memaddr, parse);
   }
 }
 
