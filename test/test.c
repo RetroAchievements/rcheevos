@@ -2123,7 +2123,8 @@ static void parse_comp_term(const char* memaddr, char expected_var_size, unsigne
     assert(self->operand1.memref->memref.is_bcd == is_bcd);
   }
   assert(self->invert == 0);
-  assert(self->operand2.fp_value == 1.0);
+  assert(self->operand2.type == RC_OPERAND_CONST);
+  assert(self->operand2.value == 1);
 }
 
 static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsigned expected_address, double fp) {
@@ -2142,8 +2143,14 @@ static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsi
 
   assert(self->operand1.memref->memref.size == expected_var_size);
   assert(self->operand1.memref->memref.address == expected_address);
-  assert(self->operand2.type == RC_OPERAND_FP);
-  assert(self->operand2.fp_value == fp);
+  if (self->operand2.type == RC_OPERAND_CONST) {
+    assert(self->operand2.type == RC_OPERAND_CONST);
+    assert(self->operand2.value == (int)fp);
+  }
+  else {
+    assert(self->operand2.type == RC_OPERAND_FP);
+    assert(self->operand2.fp_value == fp);
+  }
 }
 
 static void parse_comp_term_mem(const char* memaddr, char expected_size_1, unsigned expected_address_1, char expected_size_2, unsigned expected_address_2) {

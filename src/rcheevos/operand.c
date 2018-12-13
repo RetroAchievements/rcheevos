@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <ctype.h>
+#include <math.h>
 
 #ifndef RC_DISABLE_LUA
 
@@ -268,13 +269,19 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, rc_pa
     case '+': case '-':
     case '1': case '2': case '3': case '4': case '5':
     case '6': case '7': case '8': case '9':
-      self->type = RC_OPERAND_FP;
       self->fp_value = strtod(aux, &end);
 
       if (end == aux) {
         return RC_INVALID_FP_OPERAND;
       }
 
+      if (floor(self->fp_value) == self->fp_value) {
+        self->type = RC_OPERAND_CONST;
+        self->value = (unsigned)floor(self->fp_value);
+      }
+      else {
+        self->type = RC_OPERAND_FP;
+      }
       aux = end;
       break;
     
