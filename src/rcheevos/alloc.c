@@ -1,6 +1,7 @@
 #include "internal.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch) {
   void* ptr;

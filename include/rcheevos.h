@@ -192,9 +192,6 @@ enum {
 typedef struct rc_condition_t rc_condition_t;
 
 struct rc_condition_t {
-  /* The next condition in the chain. */
-  rc_condition_t* next;
-
   /* The condition's operands. */
   rc_operand_t operand1;
   rc_operand_t operand2;
@@ -203,6 +200,9 @@ struct rc_condition_t {
   unsigned required_hits;
   /* Number of hits so far. */
   unsigned current_hits;
+
+  /* The next condition in the chain. */
+  rc_condition_t* next;
 
   /**
    * Set if the condition needs to processed as part of the "check if paused"

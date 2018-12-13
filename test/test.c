@@ -227,6 +227,9 @@ static void test_memref(void) {
     memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
     assert(memrefX == memref3);
 
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* match */
+    assert(memrefX == memref4);
+
     memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
     assert(memrefX == memref5);
 
@@ -577,17 +580,6 @@ static void test_operand(void) {
     assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
     assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
   }
-}
-
-static void parse_condition(rc_condition_t* self, const char* memaddr) {
-  rc_parse_state_t parse;
-
-  rc_init_parse_state(&parse, 0, 0, 0);
-  rc_parse_condition(&memaddr, &parse);
-  rc_destroy_parse_state(&parse);
-
-  assert(parse.offset >= 0);
-  assert(*memaddr == 0);
 }
 
 static void parse_comp_condition(
@@ -2074,6 +2066,38 @@ static void test_trigger(void) {
     ram[0] = 2; /* trigger win condition. alt group has no normal conditions, it should be considered false */
     comp_trigger(trigger, &memory, 0);
   }
+
+  {
+    /*------------------------------------------------------------------------
+    TestDeltaUpdatedInPauseIf
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "P:0xH0001=18_d0xH0002=52");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U); /* PauseIf true */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U); /* delta = 0, not true */
+
+    ram[2] = 52;
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U); /* PauseIf true */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U); /* delta = 0, but paused */
+
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U); /* PauseIf true */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U); /* delta = 52, but paused */
+
+    ram[1] = 0;
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U); /* PauseIf false */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* delta = 52, count it */
+  }
 }
 
 static void parse_comp_term(const char* memaddr, char expected_var_size, unsigned expected_address, int is_bcd, int is_const) {
@@ -2099,7 +2123,7 @@ static void parse_comp_term(const char* memaddr, char expected_var_size, unsigne
     assert(self->operand1.memref->memref.is_bcd == is_bcd);
   }
   assert(self->invert == 0);
-  assert(self->operand2.value == 0U);
+  assert(self->operand2.fp_value == 1.0);
 }
 
 static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsigned expected_address, double fp) {

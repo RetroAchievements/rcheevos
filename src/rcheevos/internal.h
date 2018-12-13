@@ -80,7 +80,6 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
 
 void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_state_t* parse);
 
-const char* rc_parse_line(const char* line, const char** end);
 void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script, rc_parse_state_t* parse);
 
 #endif /* INTERNAL_H */
