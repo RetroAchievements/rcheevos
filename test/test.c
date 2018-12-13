@@ -41,9 +41,12 @@ static unsigned peek(unsigned address, unsigned num_bytes, void* ud) {
 
 static void parse_operand(rc_operand_t* self, const char** memaddr) {
   rc_parse_state_t parse;
+  char buffer[256];
+  rc_memref_value_t* memrefs;
   int ret;
 
-  rc_init_parse_state(&parse, 0, 0, 0);   
+  rc_init_parse_state(&parse, buffer, 0, 0);   
+  rc_init_parse_state_memrefs(&parse, &memrefs);
   ret = rc_parse_operand(self, memaddr, 1, &parse);
   rc_destroy_parse_state(&parse);
 
@@ -53,8 +56,14 @@ static void parse_operand(rc_operand_t* self, const char** memaddr) {
 
 static void comp_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
   assert(expected_type == self->type);
-  assert(expected_size == self->size);
-  assert(expected_address == self->value);
+  switch (expected_type) {
+    case RC_OPERAND_ADDRESS:
+    case RC_OPERAND_DELTA:
+    case RC_OPERAND_PRIOR:
+      assert(expected_size == self->memref->memref.size);
+      assert(expected_address == self->memref->memref.address);
+      break;
+  }
 }
 
 static void parse_comp_operand(const char* memaddr, char expected_type, char expected_size, unsigned expected_value) {
@@ -68,8 +77,10 @@ static void parse_error_operand(const char* memaddr, int valid_chars) {
   rc_parse_state_t parse;
   int ret;
   const char* begin = memaddr;
+  rc_memref_value_t* memrefs;
 
   rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
   ret = rc_parse_operand(&self, &memaddr, 1, &parse);
   rc_destroy_parse_state(&parse);
 
@@ -80,14 +91,212 @@ static void parse_error_operand(const char* memaddr, int valid_chars) {
 static void parse_comp_operand_value(const char* memaddr, memory_t* memory, unsigned expected_value) {
   rc_operand_t self;
   rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
   unsigned value;
 
-  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&self, &memaddr, 1, &parse);
   rc_destroy_parse_state(&parse);
 
+  rc_update_memref_values(memrefs, peek, memory);
   value = rc_evaluate_operand(&self, peek, memory, NULL);
   assert(value == expected_value);
+}
+
+static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_value_t* memrefs)
+{
+  rc_update_memref_values(memrefs, peek, memory);
+  return rc_evaluate_operand(op, peek, memory, NULL);
+}
+
+static void test_memref(void) {
+  char buffer[512];
+  {
+    /*------------------------------------------------------------------------
+    TestAllocMemrefValueDuplicatesSizing
+    ------------------------------------------------------------------------*/
+    rc_parse_state_t parse;
+    rc_init_parse_state(&parse, buffer, 0, 0);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 1);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* BCD will not match */
+    assert(parse.scratch.memref_count == 2);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
+    assert(parse.scratch.memref_count == 3);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
+    assert(parse.scratch.memref_count == 4);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
+    assert(parse.scratch.memref_count == 5);
+
+    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_destroy_parse_state(&parse);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAllocMemrefValueGrowthSizing
+    ------------------------------------------------------------------------*/
+    int i;
+    rc_parse_state_t parse;
+    rc_init_parse_state(&parse, buffer, 0, 0);
+
+    for (i = 0; i < 100; i++) {
+      rc_alloc_memref_value(&parse, i, RC_MEMSIZE_8_BITS, 0);
+    }
+    assert(parse.scratch.memref_count == 100);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 100);
+
+    rc_alloc_memref_value(&parse, 25, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 100);
+
+    rc_alloc_memref_value(&parse, 50, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 100);
+
+    rc_alloc_memref_value(&parse, 75, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 100);
+
+    rc_alloc_memref_value(&parse, 99, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 100);
+
+    rc_destroy_parse_state(&parse);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAllocMemrefValueDuplicates
+    ------------------------------------------------------------------------*/
+    rc_parse_state_t parse;
+    rc_memref_value_t* memrefs;
+    rc_memref_value_t* memref1;
+    rc_memref_value_t* memref2;
+    rc_memref_value_t* memref3;
+    rc_memref_value_t* memref4;
+    rc_memref_value_t* memref5;
+    rc_memref_value_t* memref6;
+    rc_memref_value_t* memrefX;
+    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state_memrefs(&parse, &memrefs);
+
+    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    assert(memref1->memref.address == 1);
+    assert(memref1->memref.size == RC_MEMSIZE_8_BITS);
+    assert(memref1->memref.is_bcd == 0);
+    assert(memref1->value == 0);
+    assert(memref1->previous == 0);
+    assert(memref1->prior == 0);
+    assert(memref1->next == 0);
+
+    memref2 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* BCD will not match */
+    memref3 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
+    memref4 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
+    memref5 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
+    memref6 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
+
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
+    assert(memrefX == memref1);
+
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* match */
+    assert(memrefX == memref2);
+
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
+    assert(memrefX == memref3);
+
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
+    assert(memrefX == memref5);
+
+    memrefX = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
+    assert(memrefX == memref6);
+
+    rc_destroy_parse_state(&parse);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestUpdateMemrefValues
+    ------------------------------------------------------------------------*/
+    rc_parse_state_t parse;
+    rc_memref_value_t* memrefs;
+    rc_memref_value_t* memref1;
+    rc_memref_value_t* memref2;
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state_memrefs(&parse, &memrefs);
+
+    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    memref2 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0);
+
+    rc_update_memref_values(memrefs, peek, &memory);
+
+    assert(memref1->value == 0x12);
+    assert(memref1->previous == 0);
+    assert(memref1->prior == 0);
+    assert(memref2->value == 0x34);
+    assert(memref2->previous == 0);
+    assert(memref2->prior == 0);
+
+    ram[1] = 3;
+    rc_update_memref_values(memrefs, peek, &memory);
+
+    assert(memref1->value == 3);
+    assert(memref1->previous == 0x12);
+    assert(memref1->prior == 0x12);
+    assert(memref2->value == 0x34);
+    assert(memref2->previous == 0x34);
+    assert(memref2->prior == 0);
+
+    ram[1] = 5;
+    rc_update_memref_values(memrefs, peek, &memory);
+
+    assert(memref1->value == 5);
+    assert(memref1->previous == 3);
+    assert(memref1->prior == 3);
+    assert(memref2->value == 0x34);
+    assert(memref2->previous == 0x34);
+    assert(memref2->prior == 0);
+
+    ram[2] = 7;
+    rc_update_memref_values(memrefs, peek, &memory);
+
+    assert(memref1->value == 5);
+    assert(memref1->previous == 5);
+    assert(memref1->prior == 3);
+    assert(memref2->value == 7);
+    assert(memref2->previous == 0x34);
+    assert(memref2->prior == 0x34);
+
+    rc_destroy_parse_state(&parse);
+  }
 }
 
 static void test_operand(void) {
@@ -293,33 +502,36 @@ static void test_operand(void) {
     rc_operand_t op;
     const char* memaddr;
     rc_parse_state_t parse;
+    char buffer[256];
+    rc_memref_value_t* memrefs;
 
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     memaddr = "d0xh1";
-    rc_init_parse_state(&parse, 0, 0, 0);
+    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state_memrefs(&parse, &memrefs);
     rc_parse_operand(&op, &memaddr, 1, &parse);
     rc_destroy_parse_state(&parse);
 
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x00); /* first call gets uninitialized value */
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12); /* second gets current value */
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* first call gets uninitialized value */
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12); /* second gets current value */
 
     /* RC_OPERAND_DELTA is always one frame behind */
     ram[1] = 0x13;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
 
     ram[1] = 0x14;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x13U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x13U);
 
     ram[1] = 0x15;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x14U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x14U);
 
     ram[1] = 0x16;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
 
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x16U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x16U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x16U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x16U);
   }
 
   {
@@ -332,35 +544,38 @@ static void test_operand(void) {
     rc_operand_t op;
     const char* memaddr;
     rc_parse_state_t parse;
+    char buffer[256];
+    rc_memref_value_t* memrefs;
 
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     memaddr = "p0xh1";
-    rc_init_parse_state(&parse, 0, 0, 0);
+    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state_memrefs(&parse, &memrefs);
     rc_parse_operand(&op, &memaddr, 1, &parse);
     rc_destroy_parse_state(&parse);
 
     /* RC_OPERAND_PRIOR only updates when the memory value changes */
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x00); /* first call gets uninitialized value */
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x00); /* value only changes when memory changes */
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* first call gets uninitialized value */
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* value only changes when memory changes */
 
     ram[1] = 0x13;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
 
     ram[1] = 0x14;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x13U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x13U);
 
     ram[1] = 0x15;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x14U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x14U);
 
     ram[1] = 0x16;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
   }
 }
 
@@ -384,8 +599,11 @@ static void parse_comp_condition(
 ) {
   rc_condition_t* self;
   rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
 
-  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
   self = rc_parse_condition(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
@@ -399,18 +617,27 @@ static void parse_comp_condition(
 static void parse_test_condition(const char* memaddr, memory_t* memory, int value) {
   rc_condition_t* self;
   rc_parse_state_t parse;
+  char buffer[512];
+  rc_memref_value_t* memrefs;
   int ret;
 
-  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
   self = rc_parse_condition(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
+  rc_update_memref_values(memrefs, peek, memory);
   ret = rc_test_condition(self, 0, peek, memory, NULL);
 
   assert((ret && value) || (!ret && !value));
+}
+
+static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_value_t* memrefs) {
+  rc_update_memref_values(memrefs, peek, memory);
+  return rc_test_condition(cond, 0, peek, memory, NULL);
 }
 
 static void test_condition(void) {
@@ -636,9 +863,12 @@ static void test_condition(void) {
     memory_t memory;
     rc_condition_t* cond;
     rc_parse_state_t parse;
+    char buffer[512];
+    rc_memref_value_t* memrefs;
 
     const char* cond_str = "0xH0001>d0xH0001";
-    rc_init_parse_state(&parse, 0, 0, 0);
+    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state_memrefs(&parse, &memrefs);
     cond = rc_parse_condition(&cond_str, &parse);
     rc_destroy_parse_state(&parse);
 
@@ -648,18 +878,18 @@ static void test_condition(void) {
     memory.size = sizeof(ram);
 
     /* initial delta value is 0, 0x12 > 0 */
-    assert(rc_test_condition(cond, 0, peek, &memory, NULL) == 1);
+    assert(evaluate_condition(cond, &memory, memrefs) == 1);
 
     /* delta value is now 0x12, 0x12 = 0x12 */
-    assert(rc_test_condition(cond, 0, peek, &memory, NULL) == 0);
+    assert(evaluate_condition(cond, &memory, memrefs) == 0);
 
     /* delta value is now 0x12, 0x11 < 0x12 */
     ram[1] = 0x11;
-    assert(rc_test_condition(cond, 0, peek, &memory, NULL) == 0);
+    assert(evaluate_condition(cond, &memory, memrefs) == 0);
 
     /* delta value is now 0x13, 0x12 > 0x11 */
     ram[1] = 0x12;
-    assert(rc_test_condition(cond, 0, peek, &memory, NULL) == 1);
+    assert(evaluate_condition(cond, &memory, memrefs) == 1);
   }
 }
 
@@ -1415,6 +1645,7 @@ static void test_trigger(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_trigger_t* trigger;
+    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1577,6 +1808,7 @@ static void test_trigger(void) {
       unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
       memory_t memory;
       rc_trigger_t* trigger;
+      char buffer[2048];
 
       rc_condset_t* condset;
 
@@ -1847,8 +2079,11 @@ static void test_trigger(void) {
 static void parse_comp_term(const char* memaddr, char expected_var_size, unsigned expected_address, int is_bcd, int is_const) {
   rc_term_t* self;
   rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
 
-  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
   self = rc_parse_term(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
@@ -1859,9 +2094,9 @@ static void parse_comp_term(const char* memaddr, char expected_var_size, unsigne
     assert(self->operand1.type == RC_OPERAND_CONST);
   }
   else {
-    assert(self->operand1.size == expected_var_size);
-    assert(self->operand1.value == expected_address);
-    assert(self->operand1.is_bcd == is_bcd);
+    assert(self->operand1.memref->memref.size == expected_var_size);
+    assert(self->operand1.memref->memref.address == expected_address);
+    assert(self->operand1.memref->memref.is_bcd == is_bcd);
   }
   assert(self->invert == 0);
   assert(self->operand2.value == 0U);
@@ -1870,16 +2105,19 @@ static void parse_comp_term(const char* memaddr, char expected_var_size, unsigne
 static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsigned expected_address, double fp) {
   rc_term_t* self;
   rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
 
-  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
   self = rc_parse_term(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(self->operand1.size == expected_var_size);
-  assert(self->operand1.value == expected_address);
+  assert(self->operand1.memref->memref.size == expected_var_size);
+  assert(self->operand1.memref->memref.address == expected_address);
   assert(self->operand2.type == RC_OPERAND_FP);
   assert(self->operand2.fp_value == fp);
 }
@@ -1887,31 +2125,38 @@ static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsi
 static void parse_comp_term_mem(const char* memaddr, char expected_size_1, unsigned expected_address_1, char expected_size_2, unsigned expected_address_2) {
   rc_term_t* self;
   rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
 
-  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
   self = rc_parse_term(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(self->operand1.size == expected_size_1);
-  assert(self->operand1.value == expected_address_1);
-  assert(self->operand2.size == expected_size_2);
-  assert(self->operand2.value == expected_address_2);
+  assert(self->operand1.memref->memref.size == expected_size_1);
+  assert(self->operand1.memref->memref.address == expected_address_1);
+  assert(self->operand2.memref->memref.size == expected_size_2);
+  assert(self->operand2.memref->memref.address == expected_address_2);
 }
 
 static void parse_comp_term_value(const char* memaddr, memory_t* memory, unsigned value) {
   rc_term_t* self;
   rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
 
-  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
   self = rc_parse_term(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
+  rc_update_memref_values(memrefs, peek, memory);
   assert(rc_evaluate_term(self, peek, memory, NULL) == value);
 }
 
@@ -3216,6 +3461,7 @@ static void test_lua(void) {
 }
 
 int main(void) {
+  test_memref();
   test_operand();
   test_condition();
   test_trigger();

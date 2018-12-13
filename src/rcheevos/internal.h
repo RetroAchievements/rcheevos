@@ -10,19 +10,28 @@
 
 #define RC_ALLOC(t, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch))
 
-typedef union {
-  rc_operand_t operand;
-  rc_condition_t condition;
-  rc_condset_t condset;
-  rc_trigger_t trigger;
-  rc_term_t term;
-  rc_expression_t expression;
-  rc_lboard_t lboard;
-  rc_richpresence_t richpresence;
-  rc_richpresence_display_t richpresence_display;
-  rc_richpresence_display_part_t richpresence_part;
-  rc_richpresence_lookup_t richpresence_lookup;
-  rc_richpresence_lookup_item_t richpresence_lookup_item;
+typedef struct {
+  rc_memref_t memref_buffer[16];
+  rc_memref_t *memref;
+  int memref_count;
+  int memref_size;
+
+  union
+  {
+    rc_operand_t operand;
+    rc_condition_t condition;
+    rc_condset_t condset;
+    rc_trigger_t trigger;
+    rc_term_t term;
+    rc_expression_t expression;
+    rc_lboard_t lboard;
+    rc_memref_value_t memref_value;
+    rc_richpresence_t richpresence;
+    rc_richpresence_display_t richpresence_display;
+    rc_richpresence_display_part_t richpresence_part;
+    rc_richpresence_lookup_t richpresence_lookup;
+    rc_richpresence_lookup_item_t richpresence_lookup_item;
+  } obj;
 }
 rc_scratch_t;
 
@@ -34,14 +43,20 @@ typedef struct {
 
   void* buffer;
   rc_scratch_t scratch;
+
+  rc_memref_value_t** first_memref;
 }
 rc_parse_state_t;
 
 void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx);
+void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_value_t** memrefs);
 void rc_destroy_parse_state(rc_parse_state_t* parse);
 
 void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch);
 char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length);
+
+rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned address, char size, char is_bcd);
+void rc_update_memref_values(rc_memref_value_t* memref, rc_peek_t peek, void* ud);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 

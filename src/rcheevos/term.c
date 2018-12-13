@@ -3,6 +3,7 @@
 rc_term_t* rc_parse_term(const char** memaddr, rc_parse_state_t* parse) {
   rc_term_t* self;
   const char* aux;
+  char size;
   int ret2;
 
   aux = *memaddr;
@@ -32,7 +33,18 @@ rc_term_t* rc_parse_term(const char** memaddr, rc_parse_state_t* parse) {
     }
 
     if (self->invert) {
-      switch (self->operand2.size) {
+      switch (self->operand2.type) {
+        case RC_OPERAND_ADDRESS:
+        case RC_OPERAND_DELTA:
+        case RC_OPERAND_PRIOR:
+          size = self->operand2.memref->memref.size;
+          break;
+        default:
+          size = RC_MEMSIZE_32_BITS;
+          break;
+      }
+
+      switch (size) {
         case RC_MEMSIZE_BIT_0:
         case RC_MEMSIZE_BIT_1:
         case RC_MEMSIZE_BIT_2:
@@ -69,7 +81,6 @@ rc_term_t* rc_parse_term(const char** memaddr, rc_parse_state_t* parse) {
   }
   else {
     self->operand2.type = RC_OPERAND_FP;
-    self->operand2.size = RC_MEMSIZE_8_BITS;
     self->operand2.fp_value = 1.0;
   }
 

@@ -28,6 +28,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
       found |= RC_LBOARD_START;
       memaddr += 4;
       rc_parse_trigger_internal(&self->start, &memaddr, parse);
+      self->start.memrefs = 0;
 
       if (parse->offset < 0) {
         return;
@@ -44,6 +45,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
       found |= RC_LBOARD_CANCEL;
       memaddr += 4;
       rc_parse_trigger_internal(&self->cancel, &memaddr, parse);
+      self->cancel.memrefs = 0;
 
       if (parse->offset < 0) {
         return;
@@ -60,6 +62,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
       found |= RC_LBOARD_SUBMIT;
       memaddr += 4;
       rc_parse_trigger_internal(&self->submit, &memaddr, parse);
+      self->submit.memrefs = 0;
 
       if (parse->offset < 0) {
         return;
@@ -76,6 +79,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
       found |= RC_LBOARD_VALUE;
       memaddr += 4;
       rc_parse_value_internal(&self->value, &memaddr, parse);
+      self->value.memrefs = 0;
 
       if (parse->offset < 0) {
         return;
@@ -94,6 +98,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
 
       self->progress = RC_ALLOC(rc_value_t, parse);
       rc_parse_value_internal(self->progress, &memaddr, parse);
+      self->progress->memrefs = 0;
 
       if (parse->offset < 0) {
         return;
@@ -149,6 +154,8 @@ rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, in
   rc_init_parse_state(&parse, buffer, L, funcs_ndx);
   
   self = RC_ALLOC(rc_lboard_t, &parse);
+  rc_init_parse_state_memrefs(&parse, &self->memrefs);
+
   rc_parse_lboard_internal(self, memaddr, &parse);
 
   rc_destroy_parse_state(&parse);
@@ -158,6 +165,8 @@ rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, in
 int rc_evaluate_lboard(rc_lboard_t* self, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L) {
   int start_ok, cancel_ok, submit_ok;
   int action = -1;
+
+  rc_update_memref_values(self->memrefs, peek, peek_ud);
 
   /* ASSERT: these are always tested once every frame, to ensure delta variables work properly */
   start_ok = rc_test_trigger(&self->start, peek, peek_ud, L);

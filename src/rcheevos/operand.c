@@ -61,10 +61,12 @@ static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, rc_par
   return RC_OK;
 }
 
-static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr) {
+static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   char* end;
-  unsigned long value;
+  unsigned long address;
+  char is_bcd = 0;
+  char size;
 
   switch (*aux++) {
     case 'd': case 'D':
@@ -73,7 +75,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr) {
 
     case 'b': case 'B':
       self->type = RC_OPERAND_ADDRESS;
-      self->is_bcd = 1;
+      is_bcd = 1;
       break;
 
     case 'p': case 'P':
@@ -97,38 +99,40 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr) {
   aux++;
 
   switch (*aux++) {
-    case 'm': case 'M': self->size = RC_MEMSIZE_BIT_0; break;
-    case 'n': case 'N': self->size = RC_MEMSIZE_BIT_1; break;
-    case 'o': case 'O': self->size = RC_MEMSIZE_BIT_2; break;
-    case 'p': case 'P': self->size = RC_MEMSIZE_BIT_3; break;
-    case 'q': case 'Q': self->size = RC_MEMSIZE_BIT_4; break;
-    case 'r': case 'R': self->size = RC_MEMSIZE_BIT_5; break;
-    case 's': case 'S': self->size = RC_MEMSIZE_BIT_6; break;
-    case 't': case 'T': self->size = RC_MEMSIZE_BIT_7; break;
-    case 'l': case 'L': self->size = RC_MEMSIZE_LOW; break;
-    case 'u': case 'U': self->size = RC_MEMSIZE_HIGH; break;
-    case 'h': case 'H': self->size = RC_MEMSIZE_8_BITS; break;
-    case 'w': case 'W': self->size = RC_MEMSIZE_24_BITS; break;
-    case 'x': case 'X': self->size = RC_MEMSIZE_32_BITS; break;
+    case 'm': case 'M': size = RC_MEMSIZE_BIT_0; break;
+    case 'n': case 'N': size = RC_MEMSIZE_BIT_1; break;
+    case 'o': case 'O': size = RC_MEMSIZE_BIT_2; break;
+    case 'p': case 'P': size = RC_MEMSIZE_BIT_3; break;
+    case 'q': case 'Q': size = RC_MEMSIZE_BIT_4; break;
+    case 'r': case 'R': size = RC_MEMSIZE_BIT_5; break;
+    case 's': case 'S': size = RC_MEMSIZE_BIT_6; break;
+    case 't': case 'T': size = RC_MEMSIZE_BIT_7; break;
+    case 'l': case 'L': size = RC_MEMSIZE_LOW; break;
+    case 'u': case 'U': size = RC_MEMSIZE_HIGH; break;
+    case 'h': case 'H': size = RC_MEMSIZE_8_BITS; break;
+    case 'w': case 'W': size = RC_MEMSIZE_24_BITS; break;
+    case 'x': case 'X': size = RC_MEMSIZE_32_BITS; break;
 
     default: /* fall through */
       aux--;
     case ' ':
-      self->size = RC_MEMSIZE_16_BITS;
+      size = RC_MEMSIZE_16_BITS;
       break;
   }
 
-  value = (unsigned)strtoul(aux, &end, 16);
+  address = (unsigned)strtoul(aux, &end, 16);
 
   if (end == aux) {
     return RC_INVALID_MEMORY_OPERAND;
   }
 
-  if (value > 0xffffffffU) {
-    value = 0xffffffffU;
+  if (address > 0xffffffffU) {
+    address = 0xffffffffU;
   }
 
-  self->value = (unsigned)value;
+  self->memref = rc_alloc_memref_value(parse, address, size, is_bcd);
+  if (parse->offset < 0)
+    return parse->offset;
 
   *memaddr = end;
   return RC_OK;
@@ -162,7 +166,7 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, rc
       if (aux[1] == 'x' || aux[1] == 'X') {
         /* fall through */
     default:
-        ret = rc_parse_operand_memory(self, &aux);
+        ret = rc_parse_operand_memory(self, &aux, parse);
 
         if (ret < 0) {
           return ret;
@@ -250,7 +254,7 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, rc_pa
       if (aux[1] == 'x' || aux[1] == 'X') {
         /* fall through */
     default:
-        ret = rc_parse_operand_memory(self, &aux);
+        ret = rc_parse_operand_memory(self, &aux, parse);
 
         if (ret < 0) {
           return ret;
@@ -289,11 +293,6 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, rc_pa
 }
 
 int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, rc_parse_state_t* parse) {
-  self->size = RC_MEMSIZE_8_BITS;
-  self->is_bcd = 0;
-  self->previous = 0;
-  self->prior = 0;
-
   if (is_trigger) {
     return rc_parse_operand_trigger(self, memaddr, parse);
   }
@@ -368,113 +367,15 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_peek_t peek, void* ud, lua_S
       break;
 
     case RC_OPERAND_ADDRESS:
+      value = self->memref->value;
+      break;
+
     case RC_OPERAND_DELTA:
+      value = self->memref->previous;
+      break;
+
     case RC_OPERAND_PRIOR:
-      switch (self->size) {
-        case RC_MEMSIZE_BIT_0:
-          value = (peek(self->value, 1, ud) >> 0) & 1;
-          break;
-
-        case RC_MEMSIZE_BIT_1:
-          value = (peek(self->value, 1, ud) >> 1) & 1;
-          break;
-        
-        case RC_MEMSIZE_BIT_2:
-          value = (peek(self->value, 1, ud) >> 2) & 1;
-          break;
-        
-        case RC_MEMSIZE_BIT_3:
-          value = (peek(self->value, 1, ud) >> 3) & 1;
-          break;
-        
-        case RC_MEMSIZE_BIT_4:
-          value = (peek(self->value, 1, ud) >> 4) & 1;
-          break;
-        
-        case RC_MEMSIZE_BIT_5:
-          value = (peek(self->value, 1, ud) >> 5 ) & 1;
-          break;
-        
-        case RC_MEMSIZE_BIT_6:
-          value = (peek(self->value, 1, ud) >> 6) & 1;
-          break;
-        
-        case RC_MEMSIZE_BIT_7:
-          value = (peek(self->value, 1, ud) >> 7) & 1;
-          break;
-
-        case RC_MEMSIZE_LOW:
-          value = peek(self->value, 1, ud) & 0x0f;
-          break;
-                
-        case RC_MEMSIZE_HIGH:
-          value = (peek(self->value, 1, ud) >> 4) & 0x0f;
-          break;
-        
-        case RC_MEMSIZE_8_BITS:
-          value = peek(self->value, 1, ud);
-
-          if (self->is_bcd) {
-            value = ((value >> 4) & 0x0f) * 10 + (value & 0x0f);
-          }
-
-          break;
-
-        case RC_MEMSIZE_16_BITS:
-          value = peek(self->value, 2, ud);
-
-          if (self->is_bcd) {
-            value = ((value >> 12) & 0x0f) * 1000
-                  + ((value >>  8) & 0x0f) *  100
-                  + ((value >>  4) & 0x0f) *   10
-                  + ((value >>  0) & 0x0f) *    1;
-          }
-
-          break;
-
-        case RC_MEMSIZE_24_BITS:
-          value = peek(self->value, 4, ud);
-
-          if (self->is_bcd) {
-            value = ((value >> 20) & 0x0f) * 100000
-                  + ((value >> 16) & 0x0f) *  10000
-                  + ((value >> 12) & 0x0f) *   1000
-                  + ((value >>  8) & 0x0f) *    100
-                  + ((value >>  4) & 0x0f) *     10
-                  + ((value >>  0) & 0x0f) *      1;
-          }
-
-          break;
-
-        case RC_MEMSIZE_32_BITS:
-          value = peek(self->value, 4, ud);
-
-          if (self->is_bcd) {
-            value = ((value >> 28) & 0x0f) * 10000000
-                  + ((value >> 24) & 0x0f) *  1000000
-                  + ((value >> 20) & 0x0f) *   100000
-                  + ((value >> 16) & 0x0f) *    10000
-                  + ((value >> 12) & 0x0f) *     1000
-                  + ((value >>  8) & 0x0f) *      100
-                  + ((value >>  4) & 0x0f) *       10
-                  + ((value >>  0) & 0x0f) *        1;
-          }
-
-          break;
-      }
-
-      if (self->type == RC_OPERAND_DELTA) {
-        unsigned previous = self->previous;
-        self->previous = value;
-        value = previous;
-      } else if (self->type == RC_OPERAND_PRIOR) {
-        if (self->previous != value) {
-          self->prior = self->previous;
-          self->previous = value;
-        }
-        value = self->prior;
-      }
-
+      value = self->memref->prior;
       break;
   }
 

@@ -10,8 +10,11 @@ void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t
   if (pointer != 0) {
     ptr = (void*)((char*)pointer + *offset);
   }
+  else if (scratch != 0) {
+    ptr = &scratch->obj;
+  }
   else {
-    ptr = scratch;
+    ptr = 0;
   }
 
   *offset += size;
@@ -36,8 +39,14 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   parse->L = L;
   parse->funcs_ndx = funcs_ndx;
   parse->buffer = buffer;
+  parse->scratch.memref = parse->scratch.memref_buffer;
+  parse->scratch.memref_size = sizeof(parse->scratch.memref_buffer) / sizeof(parse->scratch.memref_buffer[0]);
+  parse->scratch.memref_count = 0;
+  parse->first_memref = 0;
 }
 
 void rc_destroy_parse_state(rc_parse_state_t* parse)
 {
+  if (parse->scratch.memref != parse->scratch.memref_buffer)
+    free(parse->scratch.memref);
 }

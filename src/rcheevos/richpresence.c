@@ -136,6 +136,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
                 ++ptr;
               if (*ptr == ')') {
                 rc_parse_value_internal(&part->value, &line, parse);
+                part->value.memrefs = 0;
                 if (parse->offset < 0)
                   return 0;
                 ++ptr;
@@ -317,6 +318,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
         *nextdisplay = rc_parse_richpresence_display_internal(ptr + 1, endline, parse, self);
         trigger = &((*nextdisplay)->trigger);
         rc_parse_trigger_internal(trigger, &line, parse);
+        trigger->memrefs = 0;
         if (parse->offset < 0)
           return;
         if (parse->buffer)
@@ -361,7 +363,11 @@ rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_S
   rc_init_parse_state(&parse, buffer, L, funcs_ndx);
 
   self = RC_ALLOC(rc_richpresence_t, &parse);
+  rc_init_parse_state_memrefs(&parse, &self->memrefs);
+
   rc_parse_richpresence_internal(self, script, &parse);
+  
+  rc_destroy_parse_state(&parse);
   return parse.offset >= 0 ? self : 0;
 }
 
@@ -372,6 +378,8 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsi
   char* ptr;
   int chars;
   unsigned value;
+
+  rc_update_memref_values(richpresence->memrefs, peek, peek_ud);
 
   ptr = buffer;
   display = richpresence->first_display;

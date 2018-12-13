@@ -55,6 +55,8 @@ rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, 
   rc_init_parse_state(&parse, buffer, L, funcs_ndx);
   
   self = RC_ALLOC(rc_trigger_t, &parse);
+  rc_init_parse_state_memrefs(&parse, &self->memrefs);
+
   rc_parse_trigger_internal(self, &memaddr, &parse);
 
   rc_destroy_parse_state(&parse);
@@ -64,6 +66,8 @@ rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, 
 int rc_test_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State* L) {
   int ret, reset;
   rc_condset_t* condset;
+
+  rc_update_memref_values(self->memrefs, peek, ud);
 
   reset = 0;
   ret = self->requirement != 0 ? rc_test_condset(self->requirement, &reset, peek, ud, L) : 1;
