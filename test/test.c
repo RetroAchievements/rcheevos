@@ -1327,6 +1327,24 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestAddSourceAddHits
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "A:0xH0001=0_C:0xH0002=70_0xH0000=0(2)"); /* repeated(2, (byte(1) + byte(2) == 70) || byte(0) == 0) */
+    comp_trigger(trigger, &memory, 1); // both conditions are true - addhits should match required 2 hits
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); // 0x12+0x34 = 0x46 - true!
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); // 0 = 0 - true!
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestAndNext
     ------------------------------------------------------------------------*/
 
@@ -1711,6 +1729,128 @@ static void test_trigger(void) {
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 4U);
     assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 3U);
     assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 3U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEmptyCore
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "S0xH0002=2S0xL0004=4");
+
+    /* core implicitly true, neither alt true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 0U);
+
+    ram[2] = 2; /* core and first alt true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 0U);
+
+    ram[4] = 4; /* core and both alts true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 1U);
+
+    ram[2] = 0; /* core and second alt true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEmptyAlt
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0002=2SS0xL0004=4");
+
+    /* core false, first alt implicitly true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 0U);
+
+    ram[2] = 2; /* core and first alt true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 0U);
+
+    ram[4] = 4; /* core and both alts true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEmptyLastAlt
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0002=2S0xL0004=4S");
+
+    /* core false, second alt implicitly true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 0U);
+
+    ram[2] = 2; /* core and second alt true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 0U);
+
+    ram[4] = 4; /* core and both alts true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEmptyAllAlts
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0002=2SS");
+
+    /* core false, all alts implicitly true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+
+    ram[2] = 2; /* core and all alts true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
   }
 
   {
