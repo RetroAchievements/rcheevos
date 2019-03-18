@@ -2807,6 +2807,36 @@ static void test_richpresence(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestMacroWithNoParameter
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points Points");
+    assert(result == RC_MISSING_VALUE);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestConditionalDisplayMacroWithNoParameter
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n?0x0h0001=1?@Points Points\nDefault");
+    assert(result == RC_MISSING_VALUE);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestEscapedMacro
     ------------------------------------------------------------------------*/
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };

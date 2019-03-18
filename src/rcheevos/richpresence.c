@@ -103,6 +103,11 @@ rc_richpresence_display_t* rc_parse_richpresence_display_internal(void* buffer, 
       while (ptr < endline && *ptr != '(')
         ++ptr;
 
+      if (ptr == endline) {
+        *ret = RC_MISSING_VALUE;
+        return 0;
+      }
+
       if (ptr > line) {
         if (!buffer) {
           /* just calculating size, can't confirm lookup exists */
@@ -314,6 +319,8 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, int* ret, void* buf
 
       if (ptr < endline) {
         *nextdisplay = rc_parse_richpresence_display_internal(buffer, ret, scratch, ptr + 1, endline, L, funcs_ndx, self);
+        if (*ret < 0)
+          return;
         rc_parse_trigger_internal(&((*nextdisplay)->trigger), ret, buffer, scratch, &line, L, funcs_ndx);
         if (*ret < 0)
           return;
@@ -335,7 +342,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, int* ret, void* buf
   /* finalize */
   *nextdisplay = 0;
 
-  if (!hasdisplay && ret > 0)
+  if (!hasdisplay && *ret > 0)
     *ret = RC_MISSING_DISPLAY_STRING;
 }
 
