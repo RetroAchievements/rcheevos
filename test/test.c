@@ -1128,6 +1128,32 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestAddHitsNoHitCount
+    Odd use case: AddHits a=1
+                          b=1
+    Since b=1 doesn't have a hitcount, it ignores the hits tallied by a=1
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "C:0xH0001=18_0xH0000=1");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[0] = 1;
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestHitCountPauseIfResetIf
     Verifies that PauseIf prevents ResetIf processing
     ------------------------------------------------------------------------*/
