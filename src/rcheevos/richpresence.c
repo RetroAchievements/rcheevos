@@ -183,6 +183,7 @@ const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup, const
   const char* line;
   const char* endline;
   const char* defaultlabel = 0;
+  char* endptr = 0;
   unsigned key;
   int chars;
 
@@ -212,9 +213,14 @@ const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup, const
       }
 
       if (number[0] == '0' && number[1] == 'x')
-        key = strtoul(&number[2], 0, 16);
+        key = strtoul(&number[2], &endptr, 16);
       else
-        key = strtoul(&number[0], 0, 10);
+        key = strtoul(&number[0], &endptr, 10);
+
+      if (*endptr && !isspace(*endptr)) {
+        *ret = RC_INVALID_CONST_OPERAND;
+        return nextline;
+      }
 
       item = RC_ALLOC(rc_richpresence_lookup_item_t, buffer, ret, scratch);
       item->value = key;
@@ -266,6 +272,8 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, int* ret, void* buf
       nextlookup = &lookup->next;
 
       nextline = rc_parse_richpresence_lookup(lookup, nextline, ret, buffer, scratch, L, funcs_ndx);
+      if (*ret < 0)
+        return;
 
     } else if (strncmp(line, "Format:", 7) == 0) {
       line += 7;

@@ -3183,6 +3183,31 @@ static void test_richpresence(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestLookupInvalid
+    ------------------------------------------------------------------------*/
+    int result;
+
+    result = rc_richpresence_size("Lookup:Location\nOx0=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
+    assert(result == RC_INVALID_CONST_OPERAND);
+
+    result = rc_richpresence_size("Lookup:Location\n0xO=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
+    assert(result == RC_INVALID_CONST_OPERAND);
+
+    result = rc_richpresence_size("Lookup:Location\nZero=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
+    assert(result == RC_INVALID_CONST_OPERAND);
+
+    result = rc_richpresence_size("Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location");
+    assert(result == RC_MISSING_VALUE);
+
+    result = rc_richpresence_size("Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location()");
+    assert(result == RC_INVALID_MEMORY_OPERAND);
+
+    result = rc_richpresence_size("Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location(Zero)");
+    assert(result == RC_INVALID_MEMORY_OPERAND);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestRandomTextBetweenSections
     ------------------------------------------------------------------------*/
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
