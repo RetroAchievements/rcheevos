@@ -32,6 +32,12 @@ rc_condset_t* rc_parse_condset(int* ret, void* buffer, rc_scratch_t* scratch, co
   self->has_pause = 0;
   next = &self->conditions;
 
+  if (**memaddr == 'S' || **memaddr == 's' || !**memaddr) {
+    // empty group - editor allows it, so we have to support it
+    *next = 0;
+    return self;
+  }
+
   for (;;) {
     *next = rc_parse_condition(ret, buffer, scratch, memaddr, L, funcs_ndx);
 
