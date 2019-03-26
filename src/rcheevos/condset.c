@@ -32,6 +32,12 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
   self->has_pause = 0;
   next = &self->conditions;
 
+  if (**memaddr == 'S' || **memaddr == 's' || !**memaddr) {
+    // empty group - editor allows it, so we have to support it
+    *next = 0;
+    return self;
+  }
+
   for (;;) {
     *next = rc_parse_condition(memaddr, parse);
 
