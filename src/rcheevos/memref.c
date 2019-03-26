@@ -1,7 +1,7 @@
 #include "internal.h"
 
-#include <stdlib.h> // malloc/realloc
-#include <string.h> // memcpy
+#include <stdlib.h> /* malloc/realloc */
+#include <string.h> /* memcpy */
 
 rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned address, char size, char is_bcd) {
   rc_memref_value_t** next_memref_value;

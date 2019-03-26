@@ -1585,9 +1585,9 @@ static void test_trigger(void) {
     memory.size = sizeof(ram);
 
     parse_trigger(&trigger, buffer, "A:0xH0001=0_C:0xH0002=70_0xH0000=0(2)"); /* repeated(2, (byte(1) + byte(2) == 70) || byte(0) == 0) */
-    comp_trigger(trigger, &memory, 1); // both conditions are true - addhits should match required 2 hits
-    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); // 0x12+0x34 = 0x46 - true!
-    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); // 0 = 0 - true!
+    comp_trigger(trigger, &memory, 1); /* both conditions are true - addhits should match required 2 hits */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* 0x12+0x34 = 0x46 - true! */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* 0 = 0 - true! */
   }
 
   {
