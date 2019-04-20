@@ -60,8 +60,8 @@ static void comp_operand(rc_operand_t* self, char expected_type, char expected_s
     case RC_OPERAND_ADDRESS:
     case RC_OPERAND_DELTA:
     case RC_OPERAND_PRIOR:
-      assert(expected_size == self->memref->memref.size);
-      assert(expected_address == self->memref->memref.address);
+      assert(expected_size == self->value.memref->memref.size);
+      assert(expected_address == self->value.memref->memref.address);
       break;
   }
 }
@@ -2258,13 +2258,13 @@ static void parse_comp_term(const char* memaddr, char expected_var_size, unsigne
     assert(self->operand1.type == RC_OPERAND_CONST);
   }
   else {
-    assert(self->operand1.memref->memref.size == expected_var_size);
-    assert(self->operand1.memref->memref.address == expected_address);
-    assert(self->operand1.memref->memref.is_bcd == is_bcd);
+    assert(self->operand1.value.memref->memref.size == expected_var_size);
+    assert(self->operand1.value.memref->memref.address == expected_address);
+    assert(self->operand1.value.memref->memref.is_bcd == is_bcd);
   }
   assert(self->invert == 0);
   assert(self->operand2.type == RC_OPERAND_CONST);
-  assert(self->operand2.value == 1);
+  assert(self->operand2.value.num == 1);
 }
 
 static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsigned expected_address, double fp) {
@@ -2281,15 +2281,15 @@ static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsi
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(self->operand1.memref->memref.size == expected_var_size);
-  assert(self->operand1.memref->memref.address == expected_address);
+  assert(self->operand1.value.memref->memref.size == expected_var_size);
+  assert(self->operand1.value.memref->memref.address == expected_address);
   if (self->operand2.type == RC_OPERAND_CONST) {
     assert(self->operand2.type == RC_OPERAND_CONST);
-    assert(self->operand2.value == (int)fp);
+    assert(self->operand2.value.num == (int)fp);
   }
   else {
     assert(self->operand2.type == RC_OPERAND_FP);
-    assert(self->operand2.fp_value == fp);
+    assert(self->operand2.value.dbl == fp);
   }
 }
 
@@ -2307,10 +2307,10 @@ static void parse_comp_term_mem(const char* memaddr, char expected_size_1, unsig
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(self->operand1.memref->memref.size == expected_size_1);
-  assert(self->operand1.memref->memref.address == expected_address_1);
-  assert(self->operand2.memref->memref.size == expected_size_2);
-  assert(self->operand2.memref->memref.address == expected_address_2);
+  assert(self->operand1.value.memref->memref.size == expected_size_1);
+  assert(self->operand1.value.memref->memref.address == expected_address_1);
+  assert(self->operand2.value.memref->memref.size == expected_size_2);
+  assert(self->operand2.value.memref->memref.address == expected_address_2);
 }
 
 static void parse_comp_term_value(const char* memaddr, memory_t* memory, unsigned value) {
