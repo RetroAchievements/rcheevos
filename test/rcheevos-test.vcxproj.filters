@@ -142,6 +142,9 @@
     <ClCompile Include="..\src\rcheevos\richpresence.c">
       <Filter>rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rcheevos\memref.c">
+      <Filter>rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">
