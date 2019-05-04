@@ -40,48 +40,266 @@ static unsigned peek(unsigned address, unsigned num_bytes, void* ud) {
 }
 
 static void parse_operand(rc_operand_t* self, const char** memaddr) {
-  int ret = rc_parse_operand(self, memaddr, 1, NULL, 0);
+  rc_parse_state_t parse;
+  char buffer[256];
+  rc_memref_value_t* memrefs;
+  int ret;
+
+  rc_init_parse_state(&parse, buffer, 0, 0);   
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  ret = rc_parse_operand(self, memaddr, 1, &parse);
+  rc_destroy_parse_state(&parse);
+
   assert(ret >= 0);
   assert(**memaddr == 0);
-  self->previous = 0;
-  self->prior = 0;
 }
 
-static void comp_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_value) {
+static void comp_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
   assert(expected_type == self->type);
-  assert(expected_size == self->size);
-  assert(expected_value == self->value);
+  switch (expected_type) {
+    case RC_OPERAND_ADDRESS:
+    case RC_OPERAND_DELTA:
+    case RC_OPERAND_PRIOR:
+      assert(expected_size == self->value.memref->memref.size);
+      assert(expected_address == self->value.memref->memref.address);
+      break;
+  }
 }
 
 static void parse_comp_operand(const char* memaddr, char expected_type, char expected_size, unsigned expected_value) {
   rc_operand_t self;
-  int ret;
-
-  ret = rc_parse_operand(&self, &memaddr, 1, NULL, 0);
-  assert(ret >= 0);
-  assert(*memaddr == 0);
-
+  parse_operand(&self, &memaddr);
   comp_operand(&self, expected_type, expected_size, expected_value);
 }
 
 static void parse_error_operand(const char* memaddr, int valid_chars) {
   rc_operand_t self;
+  rc_parse_state_t parse;
   int ret;
   const char* begin = memaddr;
+  rc_memref_value_t* memrefs;
 
-  ret = rc_parse_operand(&self, &memaddr, 1, NULL, 0);
+  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  ret = rc_parse_operand(&self, &memaddr, 1, &parse);
+  rc_destroy_parse_state(&parse);
+
   assert(ret < 0);
   assert(memaddr - begin == valid_chars);
 }
 
 static void parse_comp_operand_value(const char* memaddr, memory_t* memory, unsigned expected_value) {
   rc_operand_t self;
+  rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
   unsigned value;
 
-  rc_parse_operand(&self, &memaddr, 1, NULL, 0);
-  value = rc_evaluate_operand(&self, peek, memory, NULL);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  rc_parse_operand(&self, &memaddr, 1, &parse);
+  rc_destroy_parse_state(&parse);
 
+  rc_update_memref_values(memrefs, peek, memory);
+  value = rc_evaluate_operand(&self, peek, memory, NULL);
   assert(value == expected_value);
+}
+
+static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_value_t* memrefs)
+{
+  rc_update_memref_values(memrefs, peek, memory);
+  return rc_evaluate_operand(op, peek, memory, NULL);
+}
+
+static void test_memref(void) {
+  char buffer[512];
+  {
+    /*------------------------------------------------------------------------
+    TestAllocMemrefValueDuplicatesSizing
+    ------------------------------------------------------------------------*/
+    rc_parse_state_t parse;
+    rc_init_parse_state(&parse, buffer, 0, 0);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 1);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* BCD will not match */
+    assert(parse.scratch.memref_count == 2);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
+    assert(parse.scratch.memref_count == 3);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
+    assert(parse.scratch.memref_count == 4);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
+    assert(parse.scratch.memref_count == 5);
+
+    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
+    assert(parse.scratch.memref_count == 6);
+
+    rc_destroy_parse_state(&parse);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAllocMemrefValueGrowthSizing
+    ------------------------------------------------------------------------*/
+    int i;
+    rc_parse_state_t parse;
+    rc_init_parse_state(&parse, buffer, 0, 0);
+
+    for (i = 0; i < 100; i++) {
+      rc_alloc_memref_value(&parse, i, RC_MEMSIZE_8_BITS, 0);
+    }
+    assert(parse.scratch.memref_count == 100);
+
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 100);
+
+    rc_alloc_memref_value(&parse, 25, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 100);
+
+    rc_alloc_memref_value(&parse, 50, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 100);
+
+    rc_alloc_memref_value(&parse, 75, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 100);
+
+    rc_alloc_memref_value(&parse, 99, RC_MEMSIZE_8_BITS, 0);
+    assert(parse.scratch.memref_count == 100);
+
+    rc_destroy_parse_state(&parse);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAllocMemrefValueDuplicates
+    ------------------------------------------------------------------------*/
+    rc_parse_state_t parse;
+    rc_memref_value_t* memrefs;
+    rc_memref_value_t* memref1;
+    rc_memref_value_t* memref2;
+    rc_memref_value_t* memref3;
+    rc_memref_value_t* memref4;
+    rc_memref_value_t* memref5;
+    rc_memref_value_t* memref6;
+    rc_memref_value_t* memrefX;
+    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state_memrefs(&parse, &memrefs);
+
+    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    assert(memref1->memref.address == 1);
+    assert(memref1->memref.size == RC_MEMSIZE_8_BITS);
+    assert(memref1->memref.is_bcd == 0);
+    assert(memref1->value == 0);
+    assert(memref1->previous == 0);
+    assert(memref1->prior == 0);
+    assert(memref1->next == 0);
+
+    memref2 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* BCD will not match */
+    memref3 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
+    memref4 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
+    memref5 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
+    memref6 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
+
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
+    assert(memrefX == memref1);
+
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* match */
+    assert(memrefX == memref2);
+
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
+    assert(memrefX == memref3);
+
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* match */
+    assert(memrefX == memref4);
+
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
+    assert(memrefX == memref5);
+
+    memrefX = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
+    assert(memrefX == memref6);
+
+    rc_destroy_parse_state(&parse);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestUpdateMemrefValues
+    ------------------------------------------------------------------------*/
+    rc_parse_state_t parse;
+    rc_memref_value_t* memrefs;
+    rc_memref_value_t* memref1;
+    rc_memref_value_t* memref2;
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state_memrefs(&parse, &memrefs);
+
+    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    memref2 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0);
+
+    rc_update_memref_values(memrefs, peek, &memory);
+
+    assert(memref1->value == 0x12);
+    assert(memref1->previous == 0);
+    assert(memref1->prior == 0);
+    assert(memref2->value == 0x34);
+    assert(memref2->previous == 0);
+    assert(memref2->prior == 0);
+
+    ram[1] = 3;
+    rc_update_memref_values(memrefs, peek, &memory);
+
+    assert(memref1->value == 3);
+    assert(memref1->previous == 0x12);
+    assert(memref1->prior == 0x12);
+    assert(memref2->value == 0x34);
+    assert(memref2->previous == 0x34);
+    assert(memref2->prior == 0);
+
+    ram[1] = 5;
+    rc_update_memref_values(memrefs, peek, &memory);
+
+    assert(memref1->value == 5);
+    assert(memref1->previous == 3);
+    assert(memref1->prior == 3);
+    assert(memref2->value == 0x34);
+    assert(memref2->previous == 0x34);
+    assert(memref2->prior == 0);
+
+    ram[2] = 7;
+    rc_update_memref_values(memrefs, peek, &memory);
+
+    assert(memref1->value == 5);
+    assert(memref1->previous == 5);
+    assert(memref1->prior == 3);
+    assert(memref2->value == 7);
+    assert(memref2->previous == 0x34);
+    assert(memref2->prior == 0x34);
+
+    rc_destroy_parse_state(&parse);
+  }
 }
 
 static void test_operand(void) {
@@ -91,41 +309,41 @@ static void test_operand(void) {
     ------------------------------------------------------------------------*/
 
     /* sizes */
-    parse_comp_operand("0xH1234", RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U);
-    parse_comp_operand("0x 1234", RC_OPERAND_ADDRESS, RC_OPERAND_16_BITS, 0x1234U);
-    parse_comp_operand("0x1234", RC_OPERAND_ADDRESS, RC_OPERAND_16_BITS, 0x1234U);
-    parse_comp_operand("0xW1234", RC_OPERAND_ADDRESS, RC_OPERAND_24_BITS, 0x1234U);
-    parse_comp_operand("0xX1234", RC_OPERAND_ADDRESS, RC_OPERAND_32_BITS, 0x1234U);
-    parse_comp_operand("0xL1234", RC_OPERAND_ADDRESS, RC_OPERAND_LOW, 0x1234U);
-    parse_comp_operand("0xU1234", RC_OPERAND_ADDRESS, RC_OPERAND_HIGH, 0x1234U);
-    parse_comp_operand("0xM1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_0, 0x1234U);
-    parse_comp_operand("0xN1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_1, 0x1234U);
-    parse_comp_operand("0xO1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_2, 0x1234U);
-    parse_comp_operand("0xP1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_3, 0x1234U);
-    parse_comp_operand("0xQ1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_4, 0x1234U);
-    parse_comp_operand("0xR1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_5, 0x1234U);
-    parse_comp_operand("0xS1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_6, 0x1234U);
-    parse_comp_operand("0xT1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_7, 0x1234U);
+    parse_comp_operand("0xH1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U);
+    parse_comp_operand("0x 1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x1234U);
+    parse_comp_operand("0x1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x1234U);
+    parse_comp_operand("0xW1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_24_BITS, 0x1234U);
+    parse_comp_operand("0xX1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_32_BITS, 0x1234U);
+    parse_comp_operand("0xL1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_LOW, 0x1234U);
+    parse_comp_operand("0xU1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_HIGH, 0x1234U);
+    parse_comp_operand("0xM1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_0, 0x1234U);
+    parse_comp_operand("0xN1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_1, 0x1234U);
+    parse_comp_operand("0xO1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_2, 0x1234U);
+    parse_comp_operand("0xP1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_3, 0x1234U);
+    parse_comp_operand("0xQ1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_4, 0x1234U);
+    parse_comp_operand("0xR1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_5, 0x1234U);
+    parse_comp_operand("0xS1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_6, 0x1234U);
+    parse_comp_operand("0xT1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_7, 0x1234U);
 
     /* sizes (ignore case) */
-    parse_comp_operand("0Xh1234", RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U);
-    parse_comp_operand("0xx1234", RC_OPERAND_ADDRESS, RC_OPERAND_32_BITS, 0x1234U);
-    parse_comp_operand("0xl1234", RC_OPERAND_ADDRESS, RC_OPERAND_LOW, 0x1234U);
-    parse_comp_operand("0xu1234", RC_OPERAND_ADDRESS, RC_OPERAND_HIGH, 0x1234U);
-    parse_comp_operand("0xm1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_0, 0x1234U);
-    parse_comp_operand("0xn1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_1, 0x1234U);
-    parse_comp_operand("0xo1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_2, 0x1234U);
-    parse_comp_operand("0xp1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_3, 0x1234U);
-    parse_comp_operand("0xq1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_4, 0x1234U);
-    parse_comp_operand("0xr1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_5, 0x1234U);
-    parse_comp_operand("0xs1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_6, 0x1234U);
-    parse_comp_operand("0xt1234", RC_OPERAND_ADDRESS, RC_OPERAND_BIT_7, 0x1234U);
+    parse_comp_operand("0Xh1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U);
+    parse_comp_operand("0xx1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_32_BITS, 0x1234U);
+    parse_comp_operand("0xl1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_LOW, 0x1234U);
+    parse_comp_operand("0xu1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_HIGH, 0x1234U);
+    parse_comp_operand("0xm1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_0, 0x1234U);
+    parse_comp_operand("0xn1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_1, 0x1234U);
+    parse_comp_operand("0xo1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_2, 0x1234U);
+    parse_comp_operand("0xp1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_3, 0x1234U);
+    parse_comp_operand("0xq1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_4, 0x1234U);
+    parse_comp_operand("0xr1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_5, 0x1234U);
+    parse_comp_operand("0xs1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_6, 0x1234U);
+    parse_comp_operand("0xt1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_7, 0x1234U);
 
     /* addresses */
-    parse_comp_operand("0xH0000", RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x0000U);
-    parse_comp_operand("0xH12345678", RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x12345678U);
-    parse_comp_operand("0xHABCD", RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0xABCDU);
-    parse_comp_operand("0xhabcd", RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0xABCDU);
+    parse_comp_operand("0xH0000", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x0000U);
+    parse_comp_operand("0xH12345678", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x12345678U);
+    parse_comp_operand("0xHABCD", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0xABCDU);
+    parse_comp_operand("0xhabcd", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0xABCDU);
   }
 
   {
@@ -134,30 +352,30 @@ static void test_operand(void) {
     ------------------------------------------------------------------------*/
 
     /* sizes */
-    parse_comp_operand("d0xH1234", RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0x1234U);
-    parse_comp_operand("d0x 1234", RC_OPERAND_DELTA, RC_OPERAND_16_BITS, 0x1234U);
-    parse_comp_operand("d0x1234", RC_OPERAND_DELTA, RC_OPERAND_16_BITS, 0x1234U);
-    parse_comp_operand("d0xW1234", RC_OPERAND_DELTA, RC_OPERAND_24_BITS, 0x1234U);
-    parse_comp_operand("d0xX1234", RC_OPERAND_DELTA, RC_OPERAND_32_BITS, 0x1234U);
-    parse_comp_operand("d0xL1234", RC_OPERAND_DELTA, RC_OPERAND_LOW, 0x1234U);
-    parse_comp_operand("d0xU1234", RC_OPERAND_DELTA, RC_OPERAND_HIGH, 0x1234U);
-    parse_comp_operand("d0xM1234", RC_OPERAND_DELTA, RC_OPERAND_BIT_0, 0x1234U);
-    parse_comp_operand("d0xN1234", RC_OPERAND_DELTA, RC_OPERAND_BIT_1, 0x1234U);
-    parse_comp_operand("d0xO1234", RC_OPERAND_DELTA, RC_OPERAND_BIT_2, 0x1234U);
-    parse_comp_operand("d0xP1234", RC_OPERAND_DELTA, RC_OPERAND_BIT_3, 0x1234U);
-    parse_comp_operand("d0xQ1234", RC_OPERAND_DELTA, RC_OPERAND_BIT_4, 0x1234U);
-    parse_comp_operand("d0xR1234", RC_OPERAND_DELTA, RC_OPERAND_BIT_5, 0x1234U);
-    parse_comp_operand("d0xS1234", RC_OPERAND_DELTA, RC_OPERAND_BIT_6, 0x1234U);
-    parse_comp_operand("d0xT1234", RC_OPERAND_DELTA, RC_OPERAND_BIT_7, 0x1234U);
+    parse_comp_operand("d0xH1234", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x1234U);
+    parse_comp_operand("d0x 1234", RC_OPERAND_DELTA, RC_MEMSIZE_16_BITS, 0x1234U);
+    parse_comp_operand("d0x1234", RC_OPERAND_DELTA, RC_MEMSIZE_16_BITS, 0x1234U);
+    parse_comp_operand("d0xW1234", RC_OPERAND_DELTA, RC_MEMSIZE_24_BITS, 0x1234U);
+    parse_comp_operand("d0xX1234", RC_OPERAND_DELTA, RC_MEMSIZE_32_BITS, 0x1234U);
+    parse_comp_operand("d0xL1234", RC_OPERAND_DELTA, RC_MEMSIZE_LOW, 0x1234U);
+    parse_comp_operand("d0xU1234", RC_OPERAND_DELTA, RC_MEMSIZE_HIGH, 0x1234U);
+    parse_comp_operand("d0xM1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_0, 0x1234U);
+    parse_comp_operand("d0xN1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_1, 0x1234U);
+    parse_comp_operand("d0xO1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_2, 0x1234U);
+    parse_comp_operand("d0xP1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_3, 0x1234U);
+    parse_comp_operand("d0xQ1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_4, 0x1234U);
+    parse_comp_operand("d0xR1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_5, 0x1234U);
+    parse_comp_operand("d0xS1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_6, 0x1234U);
+    parse_comp_operand("d0xT1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_7, 0x1234U);
 
     /* ignores case */
-    parse_comp_operand("D0Xh1234", RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0x1234U);
+    parse_comp_operand("D0Xh1234", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x1234U);
 
     /* addresses */
-    parse_comp_operand("d0xH0000", RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0x0000U);
-    parse_comp_operand("d0xH12345678", RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0x12345678U);
-    parse_comp_operand("d0xHABCD", RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0xABCDU);
-    parse_comp_operand("d0xhabcd", RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0xABCDU);
+    parse_comp_operand("d0xH0000", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x0000U);
+    parse_comp_operand("d0xH12345678", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x12345678U);
+    parse_comp_operand("d0xHABCD", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0xABCDU);
+    parse_comp_operand("d0xhabcd", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0xABCDU);
   }
 
   {
@@ -166,30 +384,30 @@ static void test_operand(void) {
     ------------------------------------------------------------------------*/
 
     /* sizes */
-    parse_comp_operand("p0xH1234", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0x1234U);
-    parse_comp_operand("p0x 1234", RC_OPERAND_PRIOR, RC_OPERAND_16_BITS, 0x1234U);
-    parse_comp_operand("p0x1234", RC_OPERAND_PRIOR, RC_OPERAND_16_BITS, 0x1234U);
-    parse_comp_operand("p0xW1234", RC_OPERAND_PRIOR, RC_OPERAND_24_BITS, 0x1234U);
-    parse_comp_operand("p0xX1234", RC_OPERAND_PRIOR, RC_OPERAND_32_BITS, 0x1234U);
-    parse_comp_operand("p0xL1234", RC_OPERAND_PRIOR, RC_OPERAND_LOW, 0x1234U);
-    parse_comp_operand("p0xU1234", RC_OPERAND_PRIOR, RC_OPERAND_HIGH, 0x1234U);
-    parse_comp_operand("p0xM1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_0, 0x1234U);
-    parse_comp_operand("p0xN1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_1, 0x1234U);
-    parse_comp_operand("p0xO1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_2, 0x1234U);
-    parse_comp_operand("p0xP1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_3, 0x1234U);
-    parse_comp_operand("p0xQ1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_4, 0x1234U);
-    parse_comp_operand("p0xR1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_5, 0x1234U);
-    parse_comp_operand("p0xS1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_6, 0x1234U);
-    parse_comp_operand("p0xT1234", RC_OPERAND_PRIOR, RC_OPERAND_BIT_7, 0x1234U);
+    parse_comp_operand("p0xH1234", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0x1234U);
+    parse_comp_operand("p0x 1234", RC_OPERAND_PRIOR, RC_MEMSIZE_16_BITS, 0x1234U);
+    parse_comp_operand("p0x1234", RC_OPERAND_PRIOR, RC_MEMSIZE_16_BITS, 0x1234U);
+    parse_comp_operand("p0xW1234", RC_OPERAND_PRIOR, RC_MEMSIZE_24_BITS, 0x1234U);
+    parse_comp_operand("p0xX1234", RC_OPERAND_PRIOR, RC_MEMSIZE_32_BITS, 0x1234U);
+    parse_comp_operand("p0xL1234", RC_OPERAND_PRIOR, RC_MEMSIZE_LOW, 0x1234U);
+    parse_comp_operand("p0xU1234", RC_OPERAND_PRIOR, RC_MEMSIZE_HIGH, 0x1234U);
+    parse_comp_operand("p0xM1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_0, 0x1234U);
+    parse_comp_operand("p0xN1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_1, 0x1234U);
+    parse_comp_operand("p0xO1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_2, 0x1234U);
+    parse_comp_operand("p0xP1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_3, 0x1234U);
+    parse_comp_operand("p0xQ1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_4, 0x1234U);
+    parse_comp_operand("p0xR1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_5, 0x1234U);
+    parse_comp_operand("p0xS1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_6, 0x1234U);
+    parse_comp_operand("p0xT1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_7, 0x1234U);
 
     /* ignores case */
-    parse_comp_operand("P0Xh1234", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0x1234U);
+    parse_comp_operand("P0Xh1234", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0x1234U);
 
     /* addresses */
-    parse_comp_operand("p0xH0000", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0x0000U);
-    parse_comp_operand("p0xH12345678", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0x12345678U);
-    parse_comp_operand("p0xHABCD", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0xABCDU);
-    parse_comp_operand("p0xhabcd", RC_OPERAND_PRIOR, RC_OPERAND_8_BITS, 0xABCDU);
+    parse_comp_operand("p0xH0000", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0x0000U);
+    parse_comp_operand("p0xH12345678", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0x12345678U);
+    parse_comp_operand("p0xHABCD", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0xABCDU);
+    parse_comp_operand("p0xhabcd", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0xABCDU);
   }
 
   {
@@ -197,31 +415,31 @@ static void test_operand(void) {
     TestParseVariableValue
     ------------------------------------------------------------------------*/
 
-    /* decimal - values don't actually have size, default is RC_OPERAND_8_BITS */
-    parse_comp_operand("123", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 123U);
-    parse_comp_operand("123456", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 123456U);
-    parse_comp_operand("0", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0U);
-    parse_comp_operand("0000000000", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0U);
-    parse_comp_operand("4294967295", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 4294967295U);
+    /* decimal - values don't actually have size, default is RC_MEMSIZE_8_BITS */
+    parse_comp_operand("123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 123U);
+    parse_comp_operand("123456", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 123456U);
+    parse_comp_operand("0", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0U);
+    parse_comp_operand("0000000000", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0U);
+    parse_comp_operand("4294967295", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
 
     /* hex - 'H' prefix, not '0x'! */
-    parse_comp_operand("H123", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0x123U);
-    parse_comp_operand("HABCD", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0xABCDU);
-    parse_comp_operand("h123", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0x123U);
-    parse_comp_operand("habcd", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 0xABCDU);
-    parse_comp_operand("HFFFFFFFF", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 4294967295U);
+    parse_comp_operand("H123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x123U);
+    parse_comp_operand("HABCD", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xABCDU);
+    parse_comp_operand("h123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x123U);
+    parse_comp_operand("habcd", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xABCDU);
+    parse_comp_operand("HFFFFFFFF", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
 
     /* '0x' is an address */
-    parse_comp_operand("0x123", RC_OPERAND_ADDRESS, RC_OPERAND_16_BITS, 0x123U);
+    parse_comp_operand("0x123", RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x123U);
 
     /* hex without prefix */
     parse_error_operand("ABCD", 0);
 
     /* more than 32-bits (error), will be constrained to 32-bits */
-    parse_comp_operand("4294967296", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 4294967295U);
+    parse_comp_operand("4294967296", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
 
     /* negative value (error), will be "wrapped around": -1 = 0x100000000 - 1 = 0xFFFFFFFF = 4294967295 */
-    parse_comp_operand("-1", RC_OPERAND_CONST, RC_OPERAND_8_BITS, 4294967295U);
+    parse_comp_operand("-1", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
   }
 
   {
@@ -286,31 +504,37 @@ static void test_operand(void) {
     memory_t memory;
     rc_operand_t op;
     const char* memaddr;
+    rc_parse_state_t parse;
+    char buffer[256];
+    rc_memref_value_t* memrefs;
 
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     memaddr = "d0xh1";
-    parse_operand(&op, &memaddr);
+    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state_memrefs(&parse, &memrefs);
+    rc_parse_operand(&op, &memaddr, 1, &parse);
+    rc_destroy_parse_state(&parse);
 
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x00); /* first call gets uninitialized value */
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12); /* second gets current value */
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* first call gets uninitialized value */
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12); /* second gets current value */
 
     /* RC_OPERAND_DELTA is always one frame behind */
     ram[1] = 0x13;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
 
     ram[1] = 0x14;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x13U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x13U);
 
     ram[1] = 0x15;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x14U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x14U);
 
     ram[1] = 0x16;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
 
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x16U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x16U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x16U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x16U);
   }
 
   {
@@ -322,44 +546,40 @@ static void test_operand(void) {
     memory_t memory;
     rc_operand_t op;
     const char* memaddr;
+    rc_parse_state_t parse;
+    char buffer[256];
+    rc_memref_value_t* memrefs;
 
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     memaddr = "p0xh1";
-    parse_operand(&op, &memaddr);
+    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state_memrefs(&parse, &memrefs);
+    rc_parse_operand(&op, &memaddr, 1, &parse);
+    rc_destroy_parse_state(&parse);
 
     /* RC_OPERAND_PRIOR only updates when the memory value changes */
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x00); /* first call gets uninitialized value */
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x00); /* value only changes when memory changes */
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* first call gets uninitialized value */
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* value only changes when memory changes */
 
     ram[1] = 0x13;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x12U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
 
     ram[1] = 0x14;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x13U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x13U);
 
     ram[1] = 0x15;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x14U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x14U);
 
     ram[1] = 0x16;
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
-    assert(rc_evaluate_operand(&op, peek, &memory, NULL) == 0x15U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
+    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
   }
-}
-
-static void parse_condition(rc_condition_t* self, const char* memaddr) {
-  int ret;
-  rc_scratch_t scratch;
-
-  ret = 0;
-  rc_parse_condition(&ret, self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
-  assert(*memaddr == 0);
 }
 
 static void parse_comp_condition(
@@ -369,29 +589,47 @@ static void parse_comp_condition(
   char expected_right_type, char expected_right_size, unsigned expected_right_value,
   int expected_required_hits
 ) {
-  rc_condition_t self;
-  parse_condition(&self, memaddr);
+  rc_condition_t* self;
+  rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
 
-  assert(self.type == expected_type);
-  comp_operand(&self.operand1, expected_left_type, expected_left_size, expected_left_value);
-  assert(self.oper == expected_operator);
-  comp_operand(&self.operand2, expected_right_type, expected_right_size, expected_right_value);
-  assert(self.required_hits == expected_required_hits);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  self = rc_parse_condition(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(self->type == expected_type);
+  comp_operand(&self->operand1, expected_left_type, expected_left_size, expected_left_value);
+  assert(self->oper == expected_operator);
+  comp_operand(&self->operand2, expected_right_type, expected_right_size, expected_right_value);
+  assert(self->required_hits == expected_required_hits);
 }
 
 static void parse_test_condition(const char* memaddr, memory_t* memory, int value) {
-  rc_condition_t self;
+  rc_condition_t* self;
+  rc_parse_state_t parse;
+  char buffer[512];
+  rc_memref_value_t* memrefs;
   int ret;
-  rc_scratch_t scratch;
 
-  ret = 0;
-  rc_parse_condition(&ret, &self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  self = rc_parse_condition(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  ret = rc_test_condition(&self, 0, peek, memory, NULL);
+  rc_update_memref_values(memrefs, peek, memory);
+  ret = rc_test_condition(self, 0, peek, memory, NULL);
 
   assert((ret && value) || (!ret && !value));
+}
+
+static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_value_t* memrefs) {
+  rc_update_memref_values(memrefs, peek, memory);
+  return rc_test_condition(cond, 0, peek, memory, NULL);
 }
 
 static void test_condition(void) {
@@ -404,63 +642,63 @@ static void test_condition(void) {
     parse_comp_condition(
       "0xH1234=8",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
     parse_comp_condition(
       "0xH1234==8",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
     parse_comp_condition(
       "0xH1234!=8",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_NE,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
     parse_comp_condition(
       "0xH1234<8",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_LT,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
     parse_comp_condition(
       "0xH1234<=8",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_LE,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
     parse_comp_condition(
       "0xH1234>8",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_GT,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
     parse_comp_condition(
       "0xH1234>=8",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_GE,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
@@ -468,9 +706,9 @@ static void test_condition(void) {
     parse_comp_condition(
       "d0xH1234=8",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_DELTA, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
@@ -478,45 +716,45 @@ static void test_condition(void) {
     parse_comp_condition(
       "R:0xH1234=8",
       RC_CONDITION_RESET_IF,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
     parse_comp_condition(
       "P:0xH1234=8",
       RC_CONDITION_PAUSE_IF,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
     parse_comp_condition(
       "A:0xH1234=8",
       RC_CONDITION_ADD_SOURCE,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
     parse_comp_condition(
       "B:0xH1234=8",
       RC_CONDITION_SUB_SOURCE,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
     parse_comp_condition(
       "C:0xH1234=8",
       RC_CONDITION_ADD_HITS,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
 
@@ -524,27 +762,27 @@ static void test_condition(void) {
     parse_comp_condition(
       "0xH1234=8(1)",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       1
     );
 
     parse_comp_condition(
       "0xH1234=8.1.", /* legacy format */
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       1
     );
 
     parse_comp_condition(
       "0xH1234=8(100)",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_CONST, RC_OPERAND_8_BITS, 8U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       100
     );
   }
@@ -558,9 +796,9 @@ static void test_condition(void) {
     parse_comp_condition(
       "0xH1234=0x80",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_8_BITS, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
       RC_CONDITION_EQ,
-      RC_OPERAND_ADDRESS, RC_OPERAND_16_BITS, 0x80U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x80U,
       0
     );
   }
@@ -573,9 +811,9 @@ static void test_condition(void) {
     parse_comp_condition(
       "0xL1234!=0xU3456",
       RC_CONDITION_STANDARD,
-      RC_OPERAND_ADDRESS, RC_OPERAND_LOW, 0x1234U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_LOW, 0x1234U,
       RC_CONDITION_NE,
-      RC_OPERAND_ADDRESS, RC_OPERAND_HIGH, 0x3456U,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_HIGH, 0x3456U,
       0
     );
   }
@@ -615,26 +853,35 @@ static void test_condition(void) {
 
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
-    rc_condition_t cond;
+    rc_condition_t* cond;
+    rc_parse_state_t parse;
+    char buffer[512];
+    rc_memref_value_t* memrefs;
 
+    const char* cond_str = "0xH0001>d0xH0001";
+    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state_memrefs(&parse, &memrefs);
+    cond = rc_parse_condition(&cond_str, &parse);
+    rc_destroy_parse_state(&parse);
+
+    assert(parse.offset >= 0);
+    assert(*cond_str == 0);
     memory.ram = ram;
     memory.size = sizeof(ram);
 
-    parse_condition(&cond, "0xH0001>d0xH0001");
-
     /* initial delta value is 0, 0x12 > 0 */
-    assert(rc_test_condition(&cond, 0, peek, &memory, NULL) == 1);
+    assert(evaluate_condition(cond, &memory, memrefs) == 1);
 
     /* delta value is now 0x12, 0x12 = 0x12 */
-    assert(rc_test_condition(&cond, 0, peek, &memory, NULL) == 0);
+    assert(evaluate_condition(cond, &memory, memrefs) == 0);
 
     /* delta value is now 0x12, 0x11 < 0x12 */
     ram[1] = 0x11;
-    assert(rc_test_condition(&cond, 0, peek, &memory, NULL) == 0);
+    assert(evaluate_condition(cond, &memory, memrefs) == 0);
 
     /* delta value is now 0x13, 0x12 > 0x11 */
     ram[1] = 0x12;
-    assert(rc_test_condition(&cond, 0, peek, &memory, NULL) == 1);
+    assert(evaluate_condition(cond, &memory, memrefs) == 1);
   }
 }
 
@@ -1353,6 +1600,24 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestAddSourceAddHits
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "A:0xH0001=0_C:0xH0002=70_0xH0000=0(2)"); /* repeated(2, (byte(1) + byte(2) == 70) || byte(0) == 0) */
+    comp_trigger(trigger, &memory, 1); /* both conditions are true - addhits should match required 2 hits */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* 0x12+0x34 = 0x46 - true! */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* 0 = 0 - true! */
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestAndNext
     ------------------------------------------------------------------------*/
 
@@ -1667,7 +1932,6 @@ static void test_trigger(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1701,7 +1965,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1741,6 +2004,128 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestEmptyCore
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "S0xH0002=2S0xL0004=4");
+
+    /* core implicitly true, neither alt true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 0U);
+
+    ram[2] = 2; /* core and first alt true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 0U);
+
+    ram[4] = 4; /* core and both alts true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 1U);
+
+    ram[2] = 0; /* core and second alt true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEmptyAlt
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0002=2SS0xL0004=4");
+
+    /* core false, first alt implicitly true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 0U);
+
+    ram[2] = 2; /* core and first alt true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 0U);
+
+    ram[4] = 4; /* core and both alts true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEmptyLastAlt
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0002=2S0xL0004=4S");
+
+    /* core false, second alt implicitly true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 0U);
+
+    ram[2] = 2; /* core and second alt true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 0U);
+
+    ram[4] = 4; /* core and both alts true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEmptyAllAlts
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+    char buffer[2048];
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0002=2SS");
+
+    /* core false, all alts implicitly true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+
+    ram[2] = 2; /* core and all alts true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestResetIfInAltGroup
     Verifies that a ResetIf resets everything regardless of where it is
     ------------------------------------------------------------------------*/
@@ -1748,7 +2133,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1787,7 +2171,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1825,7 +2208,6 @@ static void test_trigger(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
-    char buffer[2048];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -1850,70 +2232,129 @@ static void test_trigger(void) {
     ram[0] = 2; /* trigger win condition. alt group has no normal conditions, it should be considered false */
     comp_trigger(trigger, &memory, 0);
   }
+
+  {
+    /*------------------------------------------------------------------------
+    TestDeltaUpdatedInPauseIf
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "P:0xH0001=18_d0xH0002=52");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U); /* PauseIf true */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U); /* delta = 0, not true */
+
+    ram[2] = 52;
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U); /* PauseIf true */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U); /* delta = 0, but paused */
+
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U); /* PauseIf true */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U); /* delta = 52, but paused */
+
+    ram[1] = 0;
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U); /* PauseIf false */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* delta = 52, count it */
+  }
 }
 
 static void parse_comp_term(const char* memaddr, char expected_var_size, unsigned expected_address, int is_bcd, int is_const) {
-  rc_term_t self;
-  rc_scratch_t scratch;
-  int ret;
+  rc_term_t* self;
+  rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
 
-  ret = 0;
-  rc_parse_term(&ret, &self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  self = rc_parse_term(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(is_const || self.operand1.size == expected_var_size);
-  assert(self.operand1.value == expected_address);
-  assert(self.operand1.is_bcd == is_bcd);
-  assert(self.invert == 0);
-  assert(self.operand2.size == RC_OPERAND_8_BITS);
-  assert(self.operand2.value == 0U);
-  assert(!is_const || self.operand1.type == RC_OPERAND_CONST);
+  if (is_const) {
+    assert(self->operand1.type == RC_OPERAND_CONST);
+  }
+  else {
+    assert(self->operand1.value.memref->memref.size == expected_var_size);
+    assert(self->operand1.value.memref->memref.address == expected_address);
+    assert(self->operand1.value.memref->memref.is_bcd == is_bcd);
+  }
+  assert(self->invert == 0);
+  assert(self->operand2.type == RC_OPERAND_CONST);
+  assert(self->operand2.value.num == 1);
 }
 
 static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsigned expected_address, double fp) {
-  rc_term_t self;
-  rc_scratch_t scratch;
-  int ret;
-  
-  ret = 0;
-  rc_parse_term(&ret, &self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_term_t* self;
+  rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
+
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  self = rc_parse_term(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(self.operand1.size == expected_var_size);
-  assert(self.operand1.value == expected_address);
-  assert(self.operand2.type == RC_OPERAND_FP);
-  assert(self.operand2.fp_value == fp);
+  assert(self->operand1.value.memref->memref.size == expected_var_size);
+  assert(self->operand1.value.memref->memref.address == expected_address);
+  if (self->operand2.type == RC_OPERAND_CONST) {
+    assert(self->operand2.type == RC_OPERAND_CONST);
+    assert(self->operand2.value.num == (int)fp);
+  }
+  else {
+    assert(self->operand2.type == RC_OPERAND_FP);
+    assert(self->operand2.value.dbl == fp);
+  }
 }
 
 static void parse_comp_term_mem(const char* memaddr, char expected_size_1, unsigned expected_address_1, char expected_size_2, unsigned expected_address_2) {
-  rc_term_t self;
-  rc_scratch_t scratch;
-  int ret;
-  
-  ret = 0;
-  rc_parse_term(&ret, &self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_term_t* self;
+  rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
+
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  self = rc_parse_term(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(self.operand1.size == expected_size_1);
-  assert(self.operand1.value == expected_address_1);
-  assert(self.operand2.size == expected_size_2);
-  assert(self.operand2.value == expected_address_2);
+  assert(self->operand1.value.memref->memref.size == expected_size_1);
+  assert(self->operand1.value.memref->memref.address == expected_address_1);
+  assert(self->operand2.value.memref->memref.size == expected_size_2);
+  assert(self->operand2.value.memref->memref.address == expected_address_2);
 }
 
 static void parse_comp_term_value(const char* memaddr, memory_t* memory, unsigned value) {
-  rc_term_t self;
-  rc_scratch_t scratch;
-  int ret;
-  
-  ret = 0;
-  rc_parse_term(&ret, &self, &scratch, &memaddr, NULL, 0);
-  assert(ret >= 0);
+  rc_term_t* self;
+  rc_parse_state_t parse;
+  rc_memref_value_t* memrefs;
+  char buffer[512];
+
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  self = rc_parse_term(&memaddr, &parse);
+  rc_destroy_parse_state(&parse);
+
+  assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(rc_evaluate_term(&self, peek, memory, NULL) == value);
+  rc_update_memref_values(memrefs, peek, memory);
+  assert(rc_evaluate_term(self, peek, memory, NULL) == value);
 }
 
 static void test_term(void) {
@@ -1923,26 +2364,26 @@ static void test_term(void) {
     ------------------------------------------------------------------------*/
 
     /* sizes */
-    parse_comp_term("0xH1234", RC_OPERAND_8_BITS, 0x1234U, 0, 0);
-    parse_comp_term("0x 1234", RC_OPERAND_16_BITS, 0x1234U, 0, 0);
-    parse_comp_term("0x1234", RC_OPERAND_16_BITS, 0x1234U, 0, 0);
-    parse_comp_term("0xW1234", RC_OPERAND_24_BITS, 0x1234U, 0, 0);
-    parse_comp_term("0xX1234", RC_OPERAND_32_BITS, 0x1234U, 0, 0);
-    parse_comp_term("0xL1234", RC_OPERAND_LOW, 0x1234U, 0, 0);
-    parse_comp_term("0xU1234", RC_OPERAND_HIGH, 0x1234U, 0, 0);
-    parse_comp_term("0xM1234", RC_OPERAND_BIT_0, 0x1234U, 0, 0);
-    parse_comp_term("0xN1234", RC_OPERAND_BIT_1, 0x1234U, 0, 0);
-    parse_comp_term("0xO1234", RC_OPERAND_BIT_2, 0x1234U, 0, 0);
-    parse_comp_term("0xP1234", RC_OPERAND_BIT_3, 0x1234U, 0, 0);
-    parse_comp_term("0xQ1234", RC_OPERAND_BIT_4, 0x1234U, 0, 0);
-    parse_comp_term("0xR1234", RC_OPERAND_BIT_5, 0x1234U, 0, 0);
-    parse_comp_term("0xS1234", RC_OPERAND_BIT_6, 0x1234U, 0, 0);
-    parse_comp_term("0xT1234", RC_OPERAND_BIT_7, 0x1234U, 0, 0);
+    parse_comp_term("0xH1234", RC_MEMSIZE_8_BITS, 0x1234U, 0, 0);
+    parse_comp_term("0x 1234", RC_MEMSIZE_16_BITS, 0x1234U, 0, 0);
+    parse_comp_term("0x1234", RC_MEMSIZE_16_BITS, 0x1234U, 0, 0);
+    parse_comp_term("0xW1234", RC_MEMSIZE_24_BITS, 0x1234U, 0, 0);
+    parse_comp_term("0xX1234", RC_MEMSIZE_32_BITS, 0x1234U, 0, 0);
+    parse_comp_term("0xL1234", RC_MEMSIZE_LOW, 0x1234U, 0, 0);
+    parse_comp_term("0xU1234", RC_MEMSIZE_HIGH, 0x1234U, 0, 0);
+    parse_comp_term("0xM1234", RC_MEMSIZE_BIT_0, 0x1234U, 0, 0);
+    parse_comp_term("0xN1234", RC_MEMSIZE_BIT_1, 0x1234U, 0, 0);
+    parse_comp_term("0xO1234", RC_MEMSIZE_BIT_2, 0x1234U, 0, 0);
+    parse_comp_term("0xP1234", RC_MEMSIZE_BIT_3, 0x1234U, 0, 0);
+    parse_comp_term("0xQ1234", RC_MEMSIZE_BIT_4, 0x1234U, 0, 0);
+    parse_comp_term("0xR1234", RC_MEMSIZE_BIT_5, 0x1234U, 0, 0);
+    parse_comp_term("0xS1234", RC_MEMSIZE_BIT_6, 0x1234U, 0, 0);
+    parse_comp_term("0xT1234", RC_MEMSIZE_BIT_7, 0x1234U, 0, 0);
 
     /* BCD */
-    parse_comp_term("B0xH1234", RC_OPERAND_8_BITS, 0x1234U, 1, 0);
-    parse_comp_term("B0xX1234", RC_OPERAND_32_BITS, 0x1234U, 1, 0);
-    parse_comp_term("b0xH1234", RC_OPERAND_8_BITS, 0x1234U, 1, 0);
+    parse_comp_term("B0xH1234", RC_MEMSIZE_8_BITS, 0x1234U, 1, 0);
+    parse_comp_term("B0xX1234", RC_MEMSIZE_32_BITS, 0x1234U, 1, 0);
+    parse_comp_term("b0xH1234", RC_MEMSIZE_8_BITS, 0x1234U, 1, 0);
 
     /* Value */
     parse_comp_term("V1234", 0, 1234, 0, 1);
@@ -1956,12 +2397,12 @@ static void test_term(void) {
     TestClauseParseFromStringMultiply
     ------------------------------------------------------------------------*/
 
-    parse_comp_term_fp("0xH1234", RC_OPERAND_8_BITS, 0x1234U, 1.0);
-    parse_comp_term_fp("0xH1234*1", RC_OPERAND_8_BITS, 0x1234U, 1.0);
-    parse_comp_term_fp("0xH1234*3", RC_OPERAND_8_BITS, 0x1234U, 3.0);
-    parse_comp_term_fp("0xH1234*0.5", RC_OPERAND_8_BITS, 0x1234U, 0.5);
-    parse_comp_term_fp("0xH1234*.5", RC_OPERAND_8_BITS, 0x1234U, 0.5);
-    parse_comp_term_fp("0xH1234*-1", RC_OPERAND_8_BITS, 0x1234U, -1.0);
+    parse_comp_term_fp("0xH1234", RC_MEMSIZE_8_BITS, 0x1234U, 1.0);
+    parse_comp_term_fp("0xH1234*1", RC_MEMSIZE_8_BITS, 0x1234U, 1.0);
+    parse_comp_term_fp("0xH1234*3", RC_MEMSIZE_8_BITS, 0x1234U, 3.0);
+    parse_comp_term_fp("0xH1234*0.5", RC_MEMSIZE_8_BITS, 0x1234U, 0.5);
+    parse_comp_term_fp("0xH1234*.5", RC_MEMSIZE_8_BITS, 0x1234U, 0.5);
+    parse_comp_term_fp("0xH1234*-1", RC_MEMSIZE_8_BITS, 0x1234U, -1.0);
   }
 
   {
@@ -1969,10 +2410,9 @@ static void test_term(void) {
     TestClauseParseFromStringMultiplyAddress
     ------------------------------------------------------------------------*/
 
-    parse_comp_term_mem("0xH1234", RC_OPERAND_8_BITS, 0x1234U, RC_OPERAND_8_BITS, 0U);
-    parse_comp_term_mem("0xH1234*0xH3456", RC_OPERAND_8_BITS, 0x1234U, RC_OPERAND_8_BITS, 0x3456U);
-    parse_comp_term_mem("0xH1234*0xL2222", RC_OPERAND_8_BITS, 0x1234U, RC_OPERAND_LOW, 0x2222U);
-    parse_comp_term_mem("0xH1234*0x1111", RC_OPERAND_8_BITS, 0x1234U, RC_OPERAND_16_BITS, 0x1111U);
+    parse_comp_term_mem("0xH1234*0xH3456", RC_MEMSIZE_8_BITS, 0x1234U, RC_MEMSIZE_8_BITS, 0x3456U);
+    parse_comp_term_mem("0xH1234*0xL2222", RC_MEMSIZE_8_BITS, 0x1234U, RC_MEMSIZE_LOW, 0x2222U);
+    parse_comp_term_mem("0xH1234*0x1111", RC_MEMSIZE_8_BITS, 0x1234U, RC_MEMSIZE_16_BITS, 0x1111U);
   }
 
   {
@@ -2508,6 +2948,9 @@ static rc_richpresence_t* parse_richpresence(const char* script, void* buffer) {
 }
 
 static void test_richpresence(void) {
+  char buffer[2048];
+  char output[128];
+
   {
     /*------------------------------------------------------------------------
     TestStaticDisplayString
@@ -2515,8 +2958,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2535,8 +2976,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2555,8 +2994,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2575,8 +3012,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2595,8 +3030,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2615,8 +3048,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2645,8 +3076,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2673,8 +3102,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -2713,8 +3140,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -2743,8 +3168,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2768,8 +3191,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2793,8 +3214,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2818,8 +3237,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2835,12 +3252,7 @@ static void test_richpresence(void) {
     /*------------------------------------------------------------------------
     TestMacroWithNoParameter
     ------------------------------------------------------------------------*/
-    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
-    memory_t memory;
     int result;
-
-    memory.ram = ram;
-    memory.size = sizeof(ram);
 
     result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points Points");
     assert(result == RC_MISSING_VALUE);
@@ -2850,12 +3262,7 @@ static void test_richpresence(void) {
     /*------------------------------------------------------------------------
     TestConditionalDisplayMacroWithNoParameter
     ------------------------------------------------------------------------*/
-    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
-    memory_t memory;
     int result;
-
-    memory.ram = ram;
-    memory.size = sizeof(ram);
 
     result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n?0x0h0001=1?@Points Points\nDefault");
     assert(result == RC_MISSING_VALUE);
@@ -2868,8 +3275,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2888,8 +3293,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2918,8 +3321,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2948,8 +3349,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -2978,8 +3377,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3008,8 +3405,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3038,8 +3433,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3068,8 +3461,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3098,8 +3489,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3128,8 +3517,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3158,8 +3545,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
     int result;
 
     memory.ram = ram;
@@ -3213,8 +3598,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3241,8 +3624,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3267,8 +3648,6 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    char buffer[2048];
-    char output[128];
 
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3324,6 +3703,7 @@ static void test_lua(void) {
 }
 
 int main(void) {
+  test_memref();
   test_operand();
   test_condition();
   test_trigger();
