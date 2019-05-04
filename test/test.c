@@ -1375,6 +1375,32 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestAddHitsNoHitCount
+    Odd use case: AddHits a=1
+                          b=1
+    Since b=1 doesn't have a hitcount, it ignores the hits tallied by a=1
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "C:0xH0001=18_0xH0000=1");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[0] = 1;
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestHitCountPauseIfResetIf
     Verifies that PauseIf prevents ResetIf processing
     ------------------------------------------------------------------------*/
@@ -3224,6 +3250,26 @@ static void test_richpresence(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestMacroWithNoParameter
+    ------------------------------------------------------------------------*/
+    int result;
+
+    result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points Points");
+    assert(result == RC_MISSING_VALUE);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestConditionalDisplayMacroWithNoParameter
+    ------------------------------------------------------------------------*/
+    int result;
+
+    result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n?0x0h0001=1?@Points Points\nDefault");
+    assert(result == RC_MISSING_VALUE);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestEscapedMacro
     ------------------------------------------------------------------------*/
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
@@ -3518,6 +3564,31 @@ static void test_richpresence(void) {
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "At '' ") == 0);
     assert(result == 6);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestLookupInvalid
+    ------------------------------------------------------------------------*/
+    int result;
+
+    result = rc_richpresence_size("Lookup:Location\nOx0=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
+    assert(result == RC_INVALID_CONST_OPERAND);
+
+    result = rc_richpresence_size("Lookup:Location\n0xO=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
+    assert(result == RC_INVALID_CONST_OPERAND);
+
+    result = rc_richpresence_size("Lookup:Location\nZero=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
+    assert(result == RC_INVALID_CONST_OPERAND);
+
+    result = rc_richpresence_size("Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location");
+    assert(result == RC_MISSING_VALUE);
+
+    result = rc_richpresence_size("Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location()");
+    assert(result == RC_INVALID_MEMORY_OPERAND);
+
+    result = rc_richpresence_size("Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location(Zero)");
+    assert(result == RC_INVALID_MEMORY_OPERAND);
   }
 
   {
