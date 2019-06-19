@@ -51,8 +51,10 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
   const char* in;
   char* out;
 
-  if (endline - line < 1)
+  if (endline - line < 1) {
+    parse->offset = RC_MISSING_DISPLAY_STRING;
     return 0;
+  }
 
   {
     self = RC_ALLOC(rc_richpresence_display_t, parse);

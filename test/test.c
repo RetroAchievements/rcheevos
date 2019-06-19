@@ -3163,6 +3163,42 @@ static void test_richpresence(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestConditionalDisplayNoText
+    ------------------------------------------------------------------------*/
+    int result = rc_richpresence_size("Display:\n?0xH0000=0?\nOther");
+    assert(result == RC_MISSING_DISPLAY_STRING);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestConditionalDisplayWhitespaceText
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\n?0xH0000=0? \n?0xH0000=1?One\nOther", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, " ") == 0);
+    assert(result == 1);
+
+    ram[0] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "One") == 0);
+    assert(result == 3);
+
+    ram[0] = 2;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Other") == 0);
+    assert(result == 5);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestValueMacro
     ------------------------------------------------------------------------*/
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
