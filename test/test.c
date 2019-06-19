@@ -466,6 +466,11 @@ static void test_operand(void) {
     parse_comp_operand_value("0x 3", &memory, 0x56ABU);
     parse_comp_operand_value("0x 4", &memory, 0x0056U); /* out of range */
 
+    /* twenty-four-bit */
+    parse_comp_operand_value("0xw0", &memory, 0x341200U);
+    parse_comp_operand_value("0xw2", &memory, 0x56AB34U);
+    parse_comp_operand_value("0xw3", &memory, 0x0056ABU); /* out of range */
+
     /* thirty-two-bit */
     parse_comp_operand_value("0xx0", &memory, 0xAB341200U);
     parse_comp_operand_value("0xx1", &memory, 0x56AB3412U);
@@ -493,6 +498,14 @@ static void test_operand(void) {
     parse_comp_operand_value("0xs3", &memory, 0x0U);
     parse_comp_operand_value("0xt3", &memory, 0x1U);
     parse_comp_operand_value("0xm5", &memory, 0x0U); /* out of range */
+
+    /* BCD */
+    ram[3] = 0x56;
+    parse_comp_operand_value("b0xh0", &memory, 00U);
+    parse_comp_operand_value("b0xh1", &memory, 12U);
+    parse_comp_operand_value("b0x 1", &memory, 3412U);
+    parse_comp_operand_value("b0xw1", &memory, 563412U);
+    parse_comp_operand_value("b0xx1", &memory, 56563412U);
   }
 
   {

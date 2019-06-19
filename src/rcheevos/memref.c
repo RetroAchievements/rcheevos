@@ -149,6 +149,7 @@ static unsigned rc_memref_get_value(rc_memref_t* self, rc_peek_t peek, void* ud)
       break;
 
     case RC_MEMSIZE_24_BITS:
+      /* peek 4 bytes - don't expect the caller to understand 24-bit numbers */
       value = peek(self->address, 4, ud);
 
       if (self->is_bcd) {
@@ -158,6 +159,8 @@ static unsigned rc_memref_get_value(rc_memref_t* self, rc_peek_t peek, void* ud)
               + ((value >> 8) & 0x0f) * 100
               + ((value >> 4) & 0x0f) * 10
               + ((value >> 0) & 0x0f) * 1;
+      } else {
+        value &= 0x00FFFFFF;
       }
 
       break;
