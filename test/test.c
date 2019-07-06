@@ -3465,23 +3465,22 @@ static void test_richpresence(void) {
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
     memory_t memory;
     rc_richpresence_t* richpresence;
-    int result;
 
     memory.ram = ram;
     memory.size = sizeof(ram);
 
     richpresence = parse_richpresence("Format:Hits\nFormatType=VALUE\n\nDisplay:\n@Hits(M:0xH01=1) Hits", buffer);
-    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "0 Hits") == 0);
 
     ram[1] = 1;
-    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "1 Hits") == 0);
 
-    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "2 Hits") == 0);
 
-    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "3 Hits") == 0);
   }
 
