@@ -771,6 +771,15 @@ static void test_condition(void) {
       0
     );
 
+    parse_comp_condition(
+      "M:0xH1234=8",
+      RC_CONDITION_MEASURED,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_EQ,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
     /* hit count */
     parse_comp_condition(
       "0xH1234=8(1)",
@@ -923,6 +932,10 @@ static rc_condition_t* condset_get_cond(rc_condset_t* condset, int ndx) {
 
   assert(cond != NULL);
   return cond;
+}
+
+static unsigned condset_get_total_hitcount(rc_condset_t* condset, int ndx) {
+  return rc_total_hit_count(condset->conditions, condset_get_cond(condset, ndx));
 }
 
 static rc_condset_t* trigger_get_set(rc_trigger_t* trigger, int ndx) {
@@ -1311,10 +1324,12 @@ static void test_trigger(void) {
     comp_trigger(trigger, &memory, 1); /* result is true, no non-reset conditions */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 2U);
 
     comp_trigger(trigger, &memory, 0); /* total hits met (2 for each condition, only needed 3 total) (2 hits on condition 2 is not enough), result is always false if reset */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 0U);
   }
 
   {
@@ -1405,11 +1420,13 @@ static void test_trigger(void) {
     comp_trigger(trigger, &memory, 0);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 1U);
 
     ram[0] = 1;
     comp_trigger(trigger, &memory, 1);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 3U);
   }
 
   {
@@ -1582,14 +1599,17 @@ static void test_trigger(void) {
     comp_trigger(trigger, &memory, 0);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 2U);
 
     comp_trigger(trigger, &memory, 1); /* total hits met (2 for each condition) */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 4U);
 
     comp_trigger(trigger, &memory, 1);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U); /* threshold met, stop incrementing */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U); /* total met prevents incrementing even though individual tally has not reached total */
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 4U);
 
     rc_reset_condset(trigger->requirement);
 
@@ -1600,15 +1620,18 @@ static void test_trigger(void) {
     comp_trigger(trigger, &memory, 0);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 2U);
 
     ram[1] = 16;
     comp_trigger(trigger, &memory, 0); /* 1 + 2 < 4, not met */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 3U);
 
     comp_trigger(trigger, &memory, 1); /* 1 + 3 = 4, met */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 3U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 4U);
   }
 
   {
@@ -1626,7 +1649,14 @@ static void test_trigger(void) {
     parse_trigger(&trigger, buffer, "A:0xH0001=0_C:0xH0002=70_0xH0000=0(2)"); /* repeated(2, (byte(1) + byte(2) == 70) || byte(0) == 0) */
     comp_trigger(trigger, &memory, 1); /* both conditions are true - addhits should match required 2 hits */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* 0x12+0x34 = 0x46 - true! */
-    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* 0 = 0 - true! */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U); /* 0 = 0 - true! */
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 2) == 2U);
+
+    parse_trigger(&trigger, buffer, "C:0xH0000=0_A:0xH0001=0_0xH0002=70(2)"); /* repeated(2, byte(0) == 0 || (byte(1) + byte(2) == 70)) */
+    comp_trigger(trigger, &memory, 1); /* both conditions are true - addhits should match required 2 hits */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U); /* 0 = 0 - true! */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U); /* 0x12+0x34 = 0x46 - true! */
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 2) == 2U);
   }
 
   {
@@ -1850,55 +1880,6 @@ static void test_trigger(void) {
   }
 
   {
-      /*------------------------------------------------------------------------
-      TestAddHits
-      ------------------------------------------------------------------------*/
-
-      unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
-      memory_t memory;
-      rc_trigger_t* trigger;
-      char buffer[2048];
-
-      rc_condset_t* condset;
-
-      memory.ram = ram;
-      memory.size = sizeof(ram);
-
-      parse_trigger(&trigger, buffer, "C:0xH0001=18(2)_0xL0004=6(4)"); /* repeated(4, byte(1) == 18 || low(4) == 6) */
-      comp_trigger(trigger, &memory, 0);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
-
-      comp_trigger(trigger, &memory, 1); /* total hits met (2 for each condition) */
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
-
-      comp_trigger(trigger, &memory, 1);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U); /* threshold met, stop incrementing */
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U); /* total met prevents incrementing even though individual tally has not reached total */
-
-      rc_reset_condset(trigger->requirement);
-
-      for (condset = trigger->alternative; condset != NULL; condset = condset->next)
-      {
-          rc_reset_condset(condset);
-      }
-
-      comp_trigger(trigger, &memory, 0);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
-
-      ram[1] = 16;
-      comp_trigger(trigger, &memory, 0); /* 1 + 2 < 4, not met */
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
-
-      comp_trigger(trigger, &memory, 1); /* 1 + 3 = 4, met */
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 3U);
-  }
-
-  {
     /*------------------------------------------------------------------------
     TestAndNextAddSource
     ------------------------------------------------------------------------*/
@@ -2013,22 +1994,27 @@ static void test_trigger(void) {
     comp_trigger(trigger, &memory, 0); /* second is true - hit count should be incremented */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 1U);
     ram[1] = 10;
     comp_trigger(trigger, &memory, 0); /* both are true - hit count should be incremented */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 3U);
     ram[2] = 0;
     comp_trigger(trigger, &memory, 0); /* first is true - hit count should be incremented */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 4U);
     ram[1] = 0;
     comp_trigger(trigger, &memory, 0); /* neither is true - hit count should not be incremented */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 4U);
     ram[1] = 10;
     comp_trigger(trigger, &memory, 1); /* first is true - hit count should be incremented and target met */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 5U);
   }
 
   {
@@ -2989,6 +2975,134 @@ static void test_lboard(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestValueFromHitCount
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_lboard_t* lboard;
+    lboard_test_state_t state;
+    unsigned value;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    lboard = parse_lboard("STA:0xH00=1::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH02!=d0xH02", buffer);
+    state.active = state.submitted = 0;
+
+    /* not active, value should not be tallied */
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(!state.active);
+    assert(value == 0U);
+    ram[2] = 3;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(!state.active);
+    assert(value == 0U);
+
+    /* active, tally will not occur as value hasn't changed */
+    ram[0] = 1;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 0U);
+
+    /* active, value changed, expect tally */
+    ram[2] = 11;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 1U);
+
+    /* not changed, no tally */
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 1U);
+
+    /* changed, tally */
+    ram[2] = 12;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 2U);
+
+    /* cancelled, no tally */
+    ram[0] = 2;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(!state.active);
+    assert(value == 0U);
+    ram[2] = 13;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(!state.active);
+    assert(value == 0U);
+
+    /* reactivated, tally should be reset */
+    ram[0] = 1;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 0U);
+
+    /* active, value changed, expect tally */
+    ram[2] = 11;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestValueFromHitCountAddHits
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_lboard_t* lboard;
+    lboard_test_state_t state;
+    unsigned value;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    lboard = parse_lboard("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:C:0xH03=1_M:0xH02=1", buffer);
+    state.active = state.submitted = 0;
+
+    /* active, nothing to tally */
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 0U);
+
+    /* second value tallied */
+    ram[2] = 1;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 1U);
+
+    /* both values tallied */
+    ram[3] = 1;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 3U);
+
+    /* first value tallied */
+    ram[2] = 12;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 4U);
+
+    /* cancelled, no tally */
+    ram[0] = 2;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(!state.active);
+    assert(value == 0U);
+
+    /* second evalute required before we can reactivate */
+    lboard_evaluate(lboard, &state, &memory);
+
+    /* reactivated, tally should be reset, and first still true */
+    ram[0] = 0;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestUnparsableStringWillNotStart
     We'll test for errors in the memaddr field instead
     ------------------------------------------------------------------------*/
@@ -3003,6 +3117,10 @@ static void test_lboard(void) {
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::SUB:0=0", RC_DUPLICATED_SUBMIT);
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::VAL:0", RC_DUPLICATED_VALUE);
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::PRO:0", RC_DUPLICATED_PROGRESS);
+    lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH01=1_M:0xH01=2", RC_DUPLICATED_VALUE_MEASURED);
+    lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH01=1_P:0xH01=2", RC_INVALID_VALUE_FLAG);
+    lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1_0xH01=2", RC_INVALID_VALUE_FLAG);
+    lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1", RC_MISSING_VALUE_MEASURED);
   }
 }
 
@@ -3338,6 +3456,33 @@ static void test_richpresence(void) {
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "3252 Points") == 0);
     assert(result == 11);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestValueMacroFromHits
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Format:Hits\nFormatType=VALUE\n\nDisplay:\n@Hits(M:0xH01=1) Hits", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "0 Hits") == 0);
+
+    ram[1] = 1;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "1 Hits") == 0);
+
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "2 Hits") == 0);
+
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "3 Hits") == 0);
   }
 
   {

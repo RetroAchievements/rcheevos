@@ -217,8 +217,11 @@ int rc_evaluate_lboard(rc_lboard_t* self, unsigned* value, rc_peek_t peek, void*
 
   /* Calculate the value */
   switch (action) {
-    case RC_LBOARD_ACTIVE: /* fall through */
     case RC_LBOARD_STARTED:
+      if (self->value.conditions)
+        rc_reset_condset(self->value.conditions);
+      /* fall through */
+    case RC_LBOARD_ACTIVE:
       *value = rc_evaluate_value(self->progress != 0 ? self->progress : &self->value, peek, peek_ud, L);
       break;
 

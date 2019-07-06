@@ -31,7 +31,10 @@ enum {
   RC_MISSING_VALUE = -16,
   RC_INVALID_LBOARD_FIELD = -17,
   RC_MISSING_DISPLAY_STRING = -18,
-  RC_OUT_OF_MEMORY = -19
+  RC_OUT_OF_MEMORY = -19,
+  RC_INVALID_VALUE_FLAG = -20,
+  RC_MISSING_VALUE_MEASURED = -21,
+  RC_DUPLICATED_VALUE_MEASURED = -22
 };
 
 /*****************************************************************************\
@@ -217,6 +220,8 @@ struct rc_condition_t {
   char oper; /* operator is a reserved word in C++. */
 };
 
+unsigned rc_total_hit_count(rc_condition_t* first, rc_condition_t* condition);
+
 /*****************************************************************************\
 | Condition sets                                                              |
 \*****************************************************************************/
@@ -287,6 +292,9 @@ struct rc_expression_t {
 typedef struct {
   /* The list of expression to evaluate. */
   rc_expression_t* expressions;
+
+  /* The list of conditions to evaluate. */
+  rc_condset_t* conditions;
 
   /* The memory references required by the value. */
   rc_memref_value_t* memrefs;
