@@ -1972,6 +1972,67 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestMeasured
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "M:0xH0002=52(3)"); /* measured(3, byte(2) == 52) */
+    comp_trigger(trigger, &memory, 0); /* condition is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    comp_trigger(trigger, &memory, 0); /* condition is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    comp_trigger(trigger, &memory, 1); /* condition is true - hit count should be incremented and target met */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    comp_trigger(trigger, &memory, 1); /* conditions is true, target met - hit count should stop incrementing */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+  }
+  
+  {
+    /*------------------------------------------------------------------------
+    TestMeasuredAddHits
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "C:0xH0001=10_M:0xH0002=10(5)"); /* measured(5, byte(1) == 10 || byte(2) == 10) */
+    comp_trigger(trigger, &memory, 0); /* neither is true - hit count should not be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    ram[2] = 10;
+    comp_trigger(trigger, &memory, 0); /* second is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    ram[1] = 10;
+    comp_trigger(trigger, &memory, 0); /* both are true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    ram[2] = 0;
+    comp_trigger(trigger, &memory, 0); /* first is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    ram[1] = 0;
+    comp_trigger(trigger, &memory, 0); /* neither is true - hit count should not be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    ram[1] = 10;
+    comp_trigger(trigger, &memory, 1); /* first is true - hit count should be incremented and target met */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestAltGroups
     ------------------------------------------------------------------------*/
 
