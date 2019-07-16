@@ -2513,6 +2513,7 @@ static void test_value(void) {
     ------------------------------------------------------------------------*/
 
     test_format_value(RC_FORMAT_VALUE, 12345, "12345");
+    test_format_value(RC_FORMAT_VALUE, 0xFFFFFFFF, "4294967295");
     test_format_value(RC_FORMAT_OTHER, 12345, "012345");
     test_format_value(RC_FORMAT_SCORE, 12345, "012345 Points");
     test_format_value(RC_FORMAT_SECONDS, 45, "0:45");
@@ -2524,6 +2525,9 @@ static void test_value(void) {
     test_format_value(RC_FORMAT_FRAMES, 345, "0:05.75");
     test_format_value(RC_FORMAT_FRAMES, 12345, "3:25.75");
     test_format_value(RC_FORMAT_FRAMES, 1234567, "5:42:56.11");
+    test_format_value(RC_FORMAT_SIGNED, 12345, "12345");
+    test_format_value(RC_FORMAT_SIGNED, (unsigned)-12345, "-12345");
+    test_format_value(RC_FORMAT_SIGNED, 0xFFFFFFFF, "-1");
   }
 
   {
@@ -3223,6 +3227,29 @@ static void test_richpresence(void) {
     ram[1] = 20;
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "13332 Points") == 0);
+    assert(result == 12);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestSignedMacro
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Format:Points\nFormatType=SIGNED\n\nDisplay:\n@Points(0x 0001_v-10000) Points", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "3330 Points") == 0);
+    assert(result == 11);
+
+    ram[2] = 10;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "-7422 Points") == 0);
     assert(result == 12);
   }
 

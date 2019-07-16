@@ -26,6 +26,9 @@ int rc_parse_format(const char* format_str) {
       if (!strcmp(format_str, "ECS")) {
         return RC_FORMAT_SECONDS;
       }
+      if (!strcmp(format_str, "IGNED")) {
+        return RC_FORMAT_SIGNED;
+      }
       if (!strcmp(format_str, "CORE")) {
         return RC_FORMAT_SCORE;
       }
@@ -123,6 +126,10 @@ int rc_format_value(char* buffer, int size, unsigned value, int format) {
 
     case RC_FORMAT_VALUE:
       chars = snprintf(buffer, size, "%01u", value);
+      break;
+
+    case RC_FORMAT_SIGNED:
+      chars = snprintf(buffer, size, "%01d", (int)value);
       break;
 
     case RC_FORMAT_OTHER:
