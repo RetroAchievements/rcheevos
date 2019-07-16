@@ -2480,6 +2480,15 @@ static void parse_comp_value(const char* memaddr, memory_t* memory, unsigned exp
   assert(rc_evaluate_value(self, peek, memory, NULL) == expected_value);
 }
 
+static void test_format_value(int format, unsigned value, const char* expected) {
+    char buffer[64];
+    int result;
+
+    result = rc_format_value(buffer, sizeof(buffer), value, format);
+    assert(!strcmp(expected, buffer));
+    assert(result == strlen(expected));
+}
+
 static void test_value(void) {
   {
     /*------------------------------------------------------------------------
@@ -2503,34 +2512,18 @@ static void test_value(void) {
     TestFormatValue
     ------------------------------------------------------------------------*/
 
-    char buffer[64];
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_VALUE);
-    assert(!strcmp("12345", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_OTHER);
-    assert(!strcmp("012345", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_SCORE);
-    assert(!strcmp("012345 Points", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_SECONDS);
-    assert(!strcmp("205:45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_CENTISECS);
-    assert(!strcmp("02:03.45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_FRAMES);
-    assert(!strcmp("03:25.75", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_SECONDS);
-    assert(!strcmp("05:45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_CENTISECS);
-    assert(!strcmp("00:03.45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_FRAMES);
-    assert(!strcmp("00:05.75", buffer));
+    test_format_value(RC_FORMAT_VALUE, 12345, "12345");
+    test_format_value(RC_FORMAT_OTHER, 12345, "012345");
+    test_format_value(RC_FORMAT_SCORE, 12345, "012345 Points");
+    test_format_value(RC_FORMAT_SECONDS, 45, "0:45");
+    test_format_value(RC_FORMAT_SECONDS, 345, "5:45");
+    test_format_value(RC_FORMAT_SECONDS, 12345, "3:25:45");
+    test_format_value(RC_FORMAT_CENTISECS, 345, "0:03.45");
+    test_format_value(RC_FORMAT_CENTISECS, 12345, "2:03.45");
+    test_format_value(RC_FORMAT_CENTISECS, 1234567, "3:25:45.67");
+    test_format_value(RC_FORMAT_FRAMES, 345, "0:05.75");
+    test_format_value(RC_FORMAT_FRAMES, 12345, "3:25.75");
+    test_format_value(RC_FORMAT_FRAMES, 1234567, "5:42:56.11");
   }
 
   {
@@ -3247,13 +3240,13 @@ static void test_richpresence(void) {
 
     richpresence = parse_richpresence("Format:Frames\nFormatType=FRAMES\n\nDisplay:\n@Frames(0x 0001)", buffer);
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
-    assert(strcmp(output, "03:42.16") == 0);
-    assert(result == 8);
+    assert(strcmp(output, "3:42.16") == 0);
+    assert(result == 7);
 
     ram[1] = 20;
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
-    assert(strcmp(output, "03:42.20") == 0);
-    assert(result == 8);
+    assert(strcmp(output, "3:42.20") == 0);
+    assert(result == 7);
   }
 
   {
