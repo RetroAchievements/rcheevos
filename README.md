@@ -369,7 +369,7 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int 
 To compute the value, use `rc_evaluate_value`:
 
 ```c
-unsigned rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
+int rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 ```
 
 `value` is the value to compute the value of, and `peek`, `ud`, and `L`, are as in [`rc_test_trigger`](#rc_test_trigger).
@@ -404,7 +404,7 @@ rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, in
 A leaderboard can be evaluated with the `rc_evaluate_lboard` function:
 
 ```c
-int rc_evaluate_lboard(rc_lboard_t* lboard, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L);
+int rc_evaluate_lboard(rc_lboard_t* lboard, int* value, rc_peek_t peek, void* peek_ud, lua_State* L);
 ```
 
 The function returns an action that must be performed by the caller, and `value` contains the value to be used for that action when the function returns. The action can be one of:
@@ -460,10 +460,10 @@ enum {
 `rc_format_value` can be used to format the given value into the provided buffer:
 
 ```c
-void rc_format_value(char* buffer, int size, unsigned value, int format);
+int rc_format_value(char* buffer, int size, int value, int format);
 ```
 
-`buffer` receives `value` formatted according to `format`. No more than `size` characters will be written to `buffer`. 32 characters are enough to hold any valid value with any format.
+`buffer` receives `value` formatted according to `format`. No more than `size` characters will be written to `buffer`. 32 characters are enough to hold any valid value with any format. The returned value is the number of characters written.
 
 # **rurl**
 
