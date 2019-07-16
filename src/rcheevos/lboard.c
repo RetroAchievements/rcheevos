@@ -162,7 +162,7 @@ rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, in
   return parse.offset >= 0 ? self : 0;
 }
 
-int rc_evaluate_lboard(rc_lboard_t* self, unsigned* value, rc_peek_t peek, void* peek_ud, lua_State* L) {
+int rc_evaluate_lboard(rc_lboard_t* self, int* value, rc_peek_t peek, void* peek_ud, lua_State* L) {
   int start_ok, cancel_ok, submit_ok;
   int action = -1;
 

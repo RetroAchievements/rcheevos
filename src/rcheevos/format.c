@@ -100,7 +100,7 @@ static int rc_format_value_centiseconds(char* buffer, int size, unsigned centise
   return chars;
 }
 
-int rc_format_value(char* buffer, int size, unsigned value, int format) {
+int rc_format_value(char* buffer, int size, int value, int format) {
   int chars;
 
   switch (format) {
@@ -118,16 +118,16 @@ int rc_format_value(char* buffer, int size, unsigned value, int format) {
       break;
 
     case RC_FORMAT_SCORE:
-      chars = snprintf(buffer, size, "%06u Points", value);
+      chars = snprintf(buffer, size, "%06d Points", value);
       break;
 
     case RC_FORMAT_VALUE:
-      chars = snprintf(buffer, size, "%01u", value);
+      chars = snprintf(buffer, size, "%01d", value);
       break;
 
     case RC_FORMAT_OTHER:
     default:
-      chars = snprintf(buffer, size, "%06u", value);
+      chars = snprintf(buffer, size, "%06d", value);
       break;
   }
 

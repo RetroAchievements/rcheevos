@@ -50,9 +50,9 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int 
   return parse.offset >= 0 ? self : 0;
 }
 
-unsigned rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
   rc_expression_t* exp;
-  unsigned value, max;
+  int value, max;
 
   rc_update_memref_values(self->memrefs, peek, ud);
 
