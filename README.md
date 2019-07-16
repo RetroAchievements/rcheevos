@@ -53,7 +53,12 @@ enum {
   RC_MISSING_CANCEL = -14,
   RC_MISSING_SUBMIT = -15,
   RC_MISSING_VALUE = -16,
-  RC_INVALID_LBOARD_FIELD = -17
+  RC_INVALID_LBOARD_FIELD = -17,
+  RC_MISSING_DISPLAY_STRING = -18,
+  RC_OUT_OF_MEMORY = -19,
+  RC_INVALID_VALUE_FLAG = -20,
+  RC_MISSING_VALUE_MEASURED = -21,
+  RC_DUPLICATED_VALUE_MEASURED = -22
 };
 ```
 
@@ -212,7 +217,9 @@ enum {
   RC_CONDITION_RESET_IF,
   RC_CONDITION_ADD_SOURCE,
   RC_CONDITION_SUB_SOURCE,
-  RC_CONDITION_ADD_HITS
+  RC_CONDITION_ADD_HITS,
+  RC_CONDITION_AND_NEXT,
+  RC_CONDITION_MEASURED
 };
 ```
 
@@ -348,6 +355,12 @@ A value is a collection of expressions. It's used to give the value for a leader
 typedef struct {
   /* The list of expression to evaluate. */
   rc_expression_t* expressions;
+
+  /* The list of conditions to evaluate. */
+  rc_condset_t* conditions;
+
+  /* The memory references required by the value. */
+  rc_memref_value_t* memrefs;
 }
 rc_value_t;
 ```
