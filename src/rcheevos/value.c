@@ -121,7 +121,7 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int 
   return parse.offset >= 0 ? self : 0;
 }
 
-static unsigned rc_evaluate_cond_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+static int rc_evaluate_cond_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
   rc_condition_t* condition;
   int reset;
 
@@ -135,9 +135,9 @@ static unsigned rc_evaluate_cond_value(rc_value_t* self, rc_peek_t peek, void* u
   return 0;
 }
 
-static unsigned rc_evaluate_expr_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+static int rc_evaluate_expr_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
   rc_expression_t* exp;
-  unsigned value, max;
+  int value, max;
 
   exp = self->expressions;
   max = rc_evaluate_expression(exp, peek, ud, L);
@@ -153,7 +153,7 @@ static unsigned rc_evaluate_expr_value(rc_value_t* self, rc_peek_t peek, void* u
   return max;
 }
 
-unsigned rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
   rc_update_memref_values(self->memrefs, peek, ud);
 
   if (self->expressions) {

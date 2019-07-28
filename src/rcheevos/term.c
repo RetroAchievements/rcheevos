@@ -88,12 +88,16 @@ rc_term_t* rc_parse_term(const char** memaddr, rc_parse_state_t* parse) {
   return self;
 }
 
-unsigned rc_evaluate_term(rc_term_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+int rc_evaluate_term(rc_term_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+  /* Operands are usually memory references and are always retrieved as unsigned. The floating
+   * point operand is signed, and will automatically make the result signed. Otherwise, multiply
+   * by the secondary operand (which is usually 1) and cast to signed.
+   */
   unsigned value = rc_evaluate_operand(&self->operand1, peek, ud, L);
 
   if (self->operand2.type != RC_OPERAND_FP) {
-    return value * (rc_evaluate_operand(&self->operand2, peek, ud, L) ^ self->invert);
+    return (int)(value * (rc_evaluate_operand(&self->operand2, peek, ud, L) ^ self->invert));
   }
 
-  return (unsigned)((double)value * self->operand2.value.dbl);
+  return (int)((double)value * self->operand2.value.dbl);
 }

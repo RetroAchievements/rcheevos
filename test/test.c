@@ -600,7 +600,7 @@ static void parse_comp_condition(
   char expected_left_type, char expected_left_size, unsigned expected_left_value,
   char expected_operator,
   char expected_right_type, char expected_right_size, unsigned expected_right_value,
-  int expected_required_hits
+  unsigned expected_required_hits
 ) {
   rc_condition_t* self;
   rc_parse_state_t parse;
@@ -2371,7 +2371,7 @@ static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsi
   assert(self->operand1.value.memref->memref.address == expected_address);
   if (self->operand2.type == RC_OPERAND_CONST) {
     assert(self->operand2.type == RC_OPERAND_CONST);
-    assert(self->operand2.value.num == (int)fp);
+    assert(self->operand2.value.num == (unsigned)fp);
   }
   else {
     assert(self->operand2.type == RC_OPERAND_FP);
@@ -2399,7 +2399,7 @@ static void parse_comp_term_mem(const char* memaddr, char expected_size_1, unsig
   assert(self->operand2.value.memref->memref.address == expected_address_2);
 }
 
-static void parse_comp_term_value(const char* memaddr, memory_t* memory, unsigned value) {
+static void parse_comp_term_value(const char* memaddr, memory_t* memory, int value) {
   rc_term_t* self;
   rc_parse_state_t parse;
   rc_memref_value_t* memrefs;
@@ -2490,8 +2490,8 @@ static void test_term(void) {
     parse_comp_term_value("V6", &memory, 6);
     parse_comp_term_value("V6*2", &memory, 12);
     parse_comp_term_value("V6*0.5", &memory, 3);
-    parse_comp_term_value("V-6", &memory, (unsigned)(-6));
-    parse_comp_term_value("V-6*2", &memory, (unsigned)(-12));
+    parse_comp_term_value("V-6", &memory, -6);
+    parse_comp_term_value("V-6*2", &memory, -12);
 
     /* memory */
     parse_comp_term_value("0xH01", &memory, 0x12);
@@ -2511,7 +2511,7 @@ static void test_term(void) {
   }
 }
 
-static void parse_comp_value(const char* memaddr, memory_t* memory, unsigned expected_value) {
+static void parse_comp_value(const char* memaddr, memory_t* memory, int expected_value) {
   rc_value_t* self;
   char buffer[2048];
   int ret;
@@ -2527,10 +2527,19 @@ static void parse_comp_value(const char* memaddr, memory_t* memory, unsigned exp
   assert(rc_evaluate_value(self, peek, memory, NULL) == expected_value);
 }
 
+static void test_format_value(int format, int value, const char* expected) {
+    char buffer[64];
+    int result;
+
+    result = rc_format_value(buffer, sizeof(buffer), value, format);
+    assert(!strcmp(expected, buffer));
+    assert(result == (int)strlen(expected));
+}
+
 static void test_value(void) {
   {
     /*------------------------------------------------------------------------
-    TestAdditionSimple
+    TestValueCalculations
     ------------------------------------------------------------------------*/
 
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
@@ -2539,10 +2548,12 @@ static void test_value(void) {
     memory.ram = ram;
     memory.size = sizeof(ram);
 
-    parse_comp_value("0xH0001_0xH0002", &memory, 0x12U + 0x34U); /* TestAdditionSimple */
-    parse_comp_value("0xH0001*100_0xH0002*0.5_0xL0003", &memory, 0x12U * 100 + 0x34U / 2 + 0x0B);/* TestAdditionComplex */
-    parse_comp_value("0xH0001$0xH0002", &memory, 0x34U);/* TestMaximumSimple */
-    parse_comp_value("0xH0001_0xH0004*3$0xH0002*0xL0003", &memory, 0x34U * 0xBU);/* TestMaximumComplex */
+    parse_comp_value("0xH0001_0xH0002", &memory, 0x12 + 0x34); /* TestAdditionSimple */
+    parse_comp_value("0xH0001*100_0xH0002*0.5_0xL0003", &memory, 0x12 * 100 + 0x34 / 2 + 0x0B);/* TestAdditionComplex */
+    parse_comp_value("0xH0001$0xH0002", &memory, 0x34);/* TestMaximumSimple */
+    parse_comp_value("0xH0001_0xH0004*3$0xH0002*0xL0003", &memory, 0x34 * 0xB);/* TestMaximumComplex */
+    parse_comp_value("0xH0001_V-20", &memory, 0x12 - 20);
+    parse_comp_value("0xH0001_H10", &memory, 0x12 + 0x10);
   }
 
   {
@@ -2550,34 +2561,20 @@ static void test_value(void) {
     TestFormatValue
     ------------------------------------------------------------------------*/
 
-    char buffer[64];
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_VALUE);
-    assert(!strcmp("12345", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_OTHER);
-    assert(!strcmp("012345", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_SCORE);
-    assert(!strcmp("012345 Points", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_SECONDS);
-    assert(!strcmp("205:45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_CENTISECS);
-    assert(!strcmp("02:03.45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_FRAMES);
-    assert(!strcmp("03:25.75", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_SECONDS);
-    assert(!strcmp("05:45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_CENTISECS);
-    assert(!strcmp("00:03.45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_FRAMES);
-    assert(!strcmp("00:05.75", buffer));
+    test_format_value(RC_FORMAT_VALUE, 12345, "12345");
+    test_format_value(RC_FORMAT_VALUE, -12345, "-12345");
+    test_format_value(RC_FORMAT_VALUE, 0xFFFFFFFF, "-1");
+    test_format_value(RC_FORMAT_OTHER, 12345, "012345");
+    test_format_value(RC_FORMAT_SCORE, 12345, "012345 Points");
+    test_format_value(RC_FORMAT_SECONDS, 45, "0:45");
+    test_format_value(RC_FORMAT_SECONDS, 345, "5:45");
+    test_format_value(RC_FORMAT_SECONDS, 12345, "3:25:45");
+    test_format_value(RC_FORMAT_CENTISECS, 345, "0:03.45");
+    test_format_value(RC_FORMAT_CENTISECS, 12345, "2:03.45");
+    test_format_value(RC_FORMAT_CENTISECS, 1234567, "3:25:45.67");
+    test_format_value(RC_FORMAT_FRAMES, 345, "0:05.75");
+    test_format_value(RC_FORMAT_FRAMES, 12345, "3:25.75");
+    test_format_value(RC_FORMAT_FRAMES, 1234567, "5:42:56.11");
   }
 
   {
@@ -2628,8 +2625,8 @@ static void lboard_reset(rc_lboard_t* lboard, lboard_test_state_t* state) {
   state->active = state->submitted = 0;
 }
 
-static unsigned lboard_evaluate(rc_lboard_t* lboard, lboard_test_state_t* test, memory_t* memory) {
-  unsigned value;
+static int lboard_evaluate(rc_lboard_t* lboard, lboard_test_state_t* test, memory_t* memory) {
+  int value;
 
   switch (rc_evaluate_lboard(lboard, &value, peek, memory, NULL)) {
     case RC_LBOARD_STARTED:
@@ -3410,6 +3407,16 @@ static void test_richpresence(void) {
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "13332 Points") == 0);
     assert(result == 12);
+
+    richpresence = parse_richpresence("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001_V-10000) Points", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "3332 Points") == 0);
+    assert(result == 11);
+
+    ram[2] = 7;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "-8188 Points") == 0);
+    assert(result == 12);
   }
 
   {
@@ -3426,13 +3433,13 @@ static void test_richpresence(void) {
 
     richpresence = parse_richpresence("Format:Frames\nFormatType=FRAMES\n\nDisplay:\n@Frames(0x 0001)", buffer);
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
-    assert(strcmp(output, "03:42.16") == 0);
-    assert(result == 8);
+    assert(strcmp(output, "3:42.16") == 0);
+    assert(result == 7);
 
     ram[1] = 20;
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
-    assert(strcmp(output, "03:42.20") == 0);
-    assert(result == 8);
+    assert(strcmp(output, "3:42.20") == 0);
+    assert(result == 7);
   }
 
   {
