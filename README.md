@@ -53,7 +53,9 @@ enum {
   RC_MISSING_CANCEL = -14,
   RC_MISSING_SUBMIT = -15,
   RC_MISSING_VALUE = -16,
-  RC_INVALID_LBOARD_FIELD = -17
+  RC_INVALID_LBOARD_FIELD = -17,
+  RC_MISSING_DISPLAY_STRING = -18,
+  RC_OUT_OF_MEMORY = -19
 };
 ```
 
@@ -109,24 +111,16 @@ An operand is the leaf node of RetroAchievements expressions, and can hold one o
 typedef struct {
   union {
     /* A value read from memory. */
-    struct {
-      /* The memory address or constant value of this variable. */
-      unsigned value;
-      /* The previous memory contents if RC_OPERAND_DELTA. */
-      unsigned previous;
+    rc_memref_value_t* memref;
 
-      /* The size of the variable. */
-      char size;
-      /* True if the value is in BCD. */
-      char is_bcd;
-      /* The type of the variable. */
-    };
+    /* An integer value. */
+    unsigned num;
 
     /* A floating point value. */
-    double fp_value;
+    double dbl;
 
     /* A reference to the Lua function that provides the value. */
-    int function_ref;
+    int luafunc;
   };
 
   char type;
@@ -138,20 +132,20 @@ The `size` field, when applicable, holds one of these values:
 
 ```c
 enum {
-  RC_OPERAND_BIT_0,
-  RC_OPERAND_BIT_1,
-  RC_OPERAND_BIT_2,
-  RC_OPERAND_BIT_3,
-  RC_OPERAND_BIT_4,
-  RC_OPERAND_BIT_5,
-  RC_OPERAND_BIT_6,
-  RC_OPERAND_BIT_7,
-  RC_OPERAND_LOW,
-  RC_OPERAND_HIGH,
-  RC_OPERAND_8_BITS,
-  RC_OPERAND_16_BITS,
-  RC_OPERAND_24_BITS,
-  RC_OPERAND_32_BITS,
+  RC_MEMSIZE_BIT_0,
+  RC_MEMSIZE_BIT_1,
+  RC_MEMSIZE_BIT_2,
+  RC_MEMSIZE_BIT_3,
+  RC_MEMSIZE_BIT_4,
+  RC_MEMSIZE_BIT_5,
+  RC_MEMSIZE_BIT_6,
+  RC_MEMSIZE_BIT_7,
+  RC_MEMSIZE_LOW,
+  RC_MEMSIZE_HIGH,
+  RC_MEMSIZE_8_BITS,
+  RC_MEMSIZE_16_BITS,
+  RC_MEMSIZE_24_BITS,
+  RC_MEMSIZE_32_BITS
 };
 ```
 
@@ -163,11 +157,12 @@ enum {
   RC_OPERAND_DELTA,   /* The value last known at this address. */
   RC_OPERAND_CONST,   /* A 32-bit unsigned integer. */
   RC_OPERAND_FP,      /* A floating point value. */
-  RC_OPERAND_LUA      /* A Lua function that provides the value. */
+  RC_OPERAND_LUA,     /* A Lua function that provides the value. */
+  RC_OPERAND_PRIOR    /* The last differing value at this address. */
 };
 ```
 
-`RC_OPERAND_ADDRESS`, `RC_OPERAND_DELTA` and `RC_OPERAND_CONST` mean that the anonymous structure in the union is active. `RC_OPERAND_FP` means that `fp_value` is active. `RC_OPERAND_LUA` means `function_ref` is active.
+`RC_OPERAND_ADDRESS`, `RC_OPERAND_DELTA`, and `RC_OPERAND_PRIOR` mean that `memref` is active. `RC_OPERAND_CONST` means that `num` is active. `RC_OPERAND_FP` means that `dbl` is active. `RC_OPERAND_LUA` means `luafunc` is active.
 
 
 ### `rc_condition_t`
@@ -178,9 +173,6 @@ A condition compares its two operands according to the defined operator. It also
 typedef struct rc_condition_t rc_condition_t;
 
 struct rc_condition_t {
-  /* The next condition in the chain. */
-  rc_condition_t* next;
-
   /* The condition's operands. */
   rc_operand_t operand1;
   rc_operand_t operand2;
@@ -189,6 +181,9 @@ struct rc_condition_t {
   unsigned required_hits;
   /* Number of hits so far. */
   unsigned current_hits;
+
+  /* The next condition in the chain. */
+  rc_condition_t* next;
 
   /**
    * Set if the condition needs to processed as part of the "check if paused"
@@ -212,7 +207,8 @@ enum {
   RC_CONDITION_RESET_IF,
   RC_CONDITION_ADD_SOURCE,
   RC_CONDITION_SUB_SOURCE,
-  RC_CONDITION_ADD_HITS
+  RC_CONDITION_ADD_HITS,
+  RC_CONDITION_AND_NEXT
 };
 ```
 
@@ -259,6 +255,9 @@ typedef struct {
 
   /* The list of sub condition sets in this test. */
   rc_condset_t* alternative;
+
+  /* The memory references required by the trigger. */
+  rc_memref_value_t* memrefs;
 }
 rc_trigger_t;
 ```
@@ -348,6 +347,9 @@ A value is a collection of expressions. It's used to give the value for a leader
 typedef struct {
   /* The list of expression to evaluate. */
   rc_expression_t* expressions;
+
+  /* The memory references required by the value. */
+  rc_memref_value_t* memrefs;
 }
 rc_value_t;
 ```
@@ -387,6 +389,7 @@ typedef struct {
   rc_trigger_t cancel;
   rc_value_t value;
   rc_value_t* progress;
+  rc_memref_value_t* memrefs;
 
   char started;
   char submitted;
