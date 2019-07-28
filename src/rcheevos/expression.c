@@ -27,9 +27,9 @@ rc_expression_t* rc_parse_expression(const char** memaddr, rc_parse_state_t* par
   return self;
 }
 
-unsigned rc_evaluate_expression(rc_expression_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+int rc_evaluate_expression(rc_expression_t* self, rc_peek_t peek, void* ud, lua_State* L) {
   rc_term_t* term;
-  unsigned value;
+  int value;
 
   value = 0;
 

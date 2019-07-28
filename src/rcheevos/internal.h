@@ -85,10 +85,10 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, r
 unsigned rc_evaluate_operand(rc_operand_t* self, rc_peek_t peek, void* ud, lua_State* L);
 
 rc_term_t* rc_parse_term(const char** memaddr, rc_parse_state_t* parse);
-unsigned rc_evaluate_term(rc_term_t* self, rc_peek_t peek, void* ud, lua_State* L);
+int rc_evaluate_term(rc_term_t* self, rc_peek_t peek, void* ud, lua_State* L);
 
 rc_expression_t* rc_parse_expression(const char** memaddr, rc_parse_state_t* parse);
-unsigned rc_evaluate_expression(rc_expression_t* self, rc_peek_t peek, void* ud, lua_State* L);
+int rc_evaluate_expression(rc_expression_t* self, rc_peek_t peek, void* ud, lua_State* L);
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
 
