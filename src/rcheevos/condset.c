@@ -90,7 +90,15 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, in
         continue;
       
       case RC_CONDITION_ADD_HITS:
-        if (rc_test_condition(condition, add_buffer, peek, ud, L)) {
+        /* always evaluate the condition to ensure everything is updated correctly */
+        cond_valid = rc_test_condition(condition, add_buffer, peek, ud, L);
+
+        /* merge AndNext value and reset it for the next condition */
+        cond_valid &= prev_cond;
+        prev_cond = 1;
+
+        /* if the condition is true, tally it */
+        if (cond_valid) {
           if (condition->required_hits == 0 || condition->current_hits < condition->required_hits) {
             condition->current_hits++;
           }
@@ -106,7 +114,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, in
         continue;
     }
 
-    /* always evaluate the condition to ensure delta values get tracked correctly */
+    /* always evaluate the condition to ensure everything is updated correctly */
     cond_valid = rc_test_condition(condition, add_buffer, peek, ud, L);
 
     /* merge AndNext value and reset it for the next condition */

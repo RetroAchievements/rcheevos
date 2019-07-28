@@ -1972,6 +1972,46 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestAndNextAddHits
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* repeated(5, (byte(0) == 1 && byte(0x0001) > prev(byte(0x0001))) || byte(0) == 2 || 0 == 1) */
+    parse_trigger(&trigger, buffer, "N:0xH00=1_C:0xH01>d0xH01_N:0=1_0=1.2.");
+
+    /* initialize delta */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    /* first part of AndNext not true */
+    ++ram[1];
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    /* AndNext should be true */
+    ram[0] = 1;
+    ++ram[1];
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    /* AndNext should be true, hit count should be sufficient to trigger */
+    ++ram[1];
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestAltGroups
     ------------------------------------------------------------------------*/
 
