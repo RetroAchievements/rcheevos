@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 
-rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse) {
+rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse, int is_indirect) {
   rc_condition_t* self;
   const char* aux;
   int ret2;
@@ -20,6 +20,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       case 'c': case 'C': self->type = RC_CONDITION_ADD_HITS; break;
       case 'n': case 'N': self->type = RC_CONDITION_AND_NEXT; break;
       case 'm': case 'M': self->type = RC_CONDITION_MEASURED; break;
+      case 'i': case 'I': self->type = RC_CONDITION_ADD_ADDRESS; break;
       default: parse->offset = RC_INVALID_CONDITION_TYPE; return 0;
     }
 
@@ -29,7 +30,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     self->type = RC_CONDITION_STANDARD;
   }
 
-  ret2 = rc_parse_operand(&self->operand1, &aux, 1, parse);
+  ret2 = rc_parse_operand(&self->operand1, &aux, 1, is_indirect, parse);
 
   if (ret2 < 0) {
     parse->offset = ret2;
@@ -72,9 +73,18 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       }
 
       break;
+
+    case '_':
+    case '\0':
+      self->oper = RC_CONDITION_NONE;
+      self->operand2.type = RC_OPERAND_CONST;
+      self->operand2.value.num = 1;
+      self->required_hits = 0;
+      *memaddr = aux - 1;
+      return self;
   }
 
-  ret2 = rc_parse_operand(&self->operand2, &aux, 1, parse);
+  ret2 = rc_parse_operand(&self->operand2, &aux, 1, is_indirect, parse);
 
   if (ret2 < 0) {
     parse->offset = ret2;
@@ -111,9 +121,9 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   return self;
 }
 
-int rc_test_condition(rc_condition_t* self, unsigned add_buffer, rc_peek_t peek, void* ud, lua_State* L) {
-  unsigned value1 = rc_evaluate_operand(&self->operand1, peek, ud, L) + add_buffer;
-  unsigned value2 = rc_evaluate_operand(&self->operand2, peek, ud, L);
+int rc_test_condition(rc_condition_t* self, unsigned add_buffer, unsigned address_offset, rc_peek_t peek, void* ud, lua_State* L) {
+  unsigned value1 = rc_evaluate_operand(&self->operand1, address_offset, peek, ud, L) + add_buffer;
+  unsigned value2 = rc_evaluate_operand(&self->operand2, address_offset, peek, ud, L);
 
   switch (self->oper) {
     case RC_CONDITION_EQ: return value1 == value2;
@@ -122,6 +132,7 @@ int rc_test_condition(rc_condition_t* self, unsigned add_buffer, rc_peek_t peek,
     case RC_CONDITION_LE: return value1 <= value2;
     case RC_CONDITION_GT: return value1 > value2;
     case RC_CONDITION_GE: return value1 >= value2;
+    case RC_CONDITION_NONE: return 1;
     default: return 1;
   }
 }
@@ -140,6 +151,7 @@ unsigned rc_total_hit_count(rc_condition_t* first, rc_condition_t* condition) {
       case RC_CONDITION_ADD_SOURCE:
       case RC_CONDITION_SUB_SOURCE:
       case RC_CONDITION_AND_NEXT:
+      case RC_CONDITION_ADD_ADDRESS:
         /* combining flag, don't reset total */
         break;
 

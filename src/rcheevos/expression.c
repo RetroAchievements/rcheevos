@@ -8,7 +8,7 @@ rc_expression_t* rc_parse_expression(const char** memaddr, rc_parse_state_t* par
   next = &self->terms;
 
   for (;;) {
-    *next = rc_parse_term(memaddr, parse);
+    *next = rc_parse_term(memaddr, 0, parse);
 
     if (parse->offset < 0) {
       return 0;

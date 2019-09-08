@@ -115,6 +115,8 @@ typedef struct {
   char size;
   /* True if the value is in BCD. */
   char is_bcd;
+  /* True if the reference will be used in indirection */
+  char is_indirect;
 } rc_memref_t;
 
 typedef struct rc_memref_value_t rc_memref_value_t;
@@ -180,7 +182,8 @@ enum {
   RC_CONDITION_SUB_SOURCE,
   RC_CONDITION_ADD_HITS,
   RC_CONDITION_AND_NEXT,
-  RC_CONDITION_MEASURED
+  RC_CONDITION_MEASURED,
+  RC_CONDITION_ADD_ADDRESS
 };
 
 /* operators */
@@ -190,7 +193,8 @@ enum {
   RC_CONDITION_LE,
   RC_CONDITION_GT,
   RC_CONDITION_GE,
-  RC_CONDITION_NE
+  RC_CONDITION_NE,
+  RC_CONDITION_NONE
 };
 
 typedef struct rc_condition_t rc_condition_t;

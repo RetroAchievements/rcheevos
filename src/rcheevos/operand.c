@@ -66,7 +66,7 @@ static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, rc_par
   return RC_OK;
 }
 
-static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
+static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse, int is_indirect) {
   const char* aux = *memaddr;
   char* end;
   unsigned long address;
@@ -135,7 +135,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
     address = 0xffffffffU;
   }
 
-  self->value.memref = rc_alloc_memref_value(parse, address, size, is_bcd);
+  self->value.memref = rc_alloc_memref_value(parse, address, size, is_bcd, is_indirect);
   if (parse->offset < 0)
     return parse->offset;
 
@@ -143,7 +143,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
   return RC_OK;
 }
 
-static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
+static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, int is_indirect, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   char* end;
   int ret;
@@ -171,7 +171,7 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, rc
       if (aux[1] == 'x' || aux[1] == 'X') {
         /* fall through */
     default:
-        ret = rc_parse_operand_memory(self, &aux, parse);
+        ret = rc_parse_operand_memory(self, &aux, parse, is_indirect);
 
         if (ret < 0) {
           return ret;
@@ -214,7 +214,7 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, rc
   return RC_OK;
 }
 
-static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
+static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, int is_indirect, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   char* end;
   int ret;
@@ -259,7 +259,7 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, rc_pa
       if (aux[1] == 'x' || aux[1] == 'X') {
         /* fall through */
     default:
-        ret = rc_parse_operand_memory(self, &aux, parse);
+        ret = rc_parse_operand_memory(self, &aux, parse, is_indirect);
 
         if (ret < 0) {
           return ret;
@@ -303,12 +303,12 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, rc_pa
   return RC_OK;
 }
 
-int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, rc_parse_state_t* parse) {
+int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, int is_indirect, rc_parse_state_t* parse) {
   if (is_trigger) {
-    return rc_parse_operand_trigger(self, memaddr, parse);
+    return rc_parse_operand_trigger(self, memaddr, is_indirect, parse);
   }
   else {
-    return rc_parse_operand_term(self, memaddr, parse);
+    return rc_parse_operand_term(self, memaddr, is_indirect, parse);
   }
 }
 
@@ -333,7 +333,7 @@ static int rc_luapeek(lua_State* L) {
 
 #endif /* RC_DISABLE_LUA */
 
-unsigned rc_evaluate_operand(rc_operand_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+unsigned rc_evaluate_operand(rc_operand_t* self, unsigned address_offset, rc_peek_t peek, void* ud, lua_State* L) {
 #ifndef RC_DISABLE_LUA
   rc_luapeek_t luapeek;
 #endif /* RC_DISABLE_LUA */
@@ -378,15 +378,15 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_peek_t peek, void* ud, lua_S
       break;
 
     case RC_OPERAND_ADDRESS:
-      value = self->value.memref->value;
+      value = rc_get_indirect_memref(self->value.memref, address_offset, peek, ud)->value;
       break;
 
     case RC_OPERAND_DELTA:
-      value = self->value.memref->previous;
+      value = rc_get_indirect_memref(self->value.memref, address_offset, peek, ud)->previous;
       break;
 
     case RC_OPERAND_PRIOR:
-      value = self->value.memref->prior;
+      value = rc_get_indirect_memref(self->value.memref, address_offset, peek, ud)->prior;
       break;
   }
 

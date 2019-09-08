@@ -69,8 +69,10 @@ void rc_destroy_parse_state(rc_parse_state_t* parse);
 void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch);
 char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length);
 
-rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned address, char size, char is_bcd);
+rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned address, char size, char is_bcd, char is_indirect);
 void rc_update_memref_values(rc_memref_value_t* memref, rc_peek_t peek, void* ud);
+void rc_update_memref_value(rc_memref_value_t* memref, rc_peek_t peek, void* ud);
+rc_memref_value_t* rc_get_indirect_memref(rc_memref_value_t* memref, unsigned address_offset, rc_peek_t peek, void* ud);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 
@@ -78,13 +80,13 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse);
 int rc_test_condset(rc_condset_t* self, int* reset, rc_peek_t peek, void* ud, lua_State* L);
 void rc_reset_condset(rc_condset_t* self);
 
-rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse);
-int rc_test_condition(rc_condition_t* self, unsigned add_buffer, rc_peek_t peek, void* ud, lua_State* L);
+rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse, int is_indirect);
+int rc_test_condition(rc_condition_t* self, unsigned add_value, unsigned address_offset, rc_peek_t peek, void* ud, lua_State* L);
 
-int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, rc_parse_state_t* parse);
-unsigned rc_evaluate_operand(rc_operand_t* self, rc_peek_t peek, void* ud, lua_State* L);
+int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, int is_indirect, rc_parse_state_t* parse);
+unsigned rc_evaluate_operand(rc_operand_t* self, unsigned address_offset, rc_peek_t peek, void* ud, lua_State* L);
 
-rc_term_t* rc_parse_term(const char** memaddr, rc_parse_state_t* parse);
+rc_term_t* rc_parse_term(const char** memaddr, int is_indirect, rc_parse_state_t* parse);
 int rc_evaluate_term(rc_term_t* self, rc_peek_t peek, void* ud, lua_State* L);
 
 rc_expression_t* rc_parse_expression(const char** memaddr, rc_parse_state_t* parse);

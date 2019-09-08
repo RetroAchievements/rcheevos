@@ -3,8 +3,10 @@
 static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condition_t** next;
   int has_measured;
+  int in_add_address;
 
   has_measured = 0;
+  in_add_address = 0;
   self->expressions = 0;
 
   /* this largely duplicates rc_parse_condset, but we cannot call it directly, as we need to check the 
@@ -15,17 +17,20 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
 
   next = &self->conditions->conditions;
   for (;;) {
-    *next = rc_parse_condition(memaddr, parse);
+    *next = rc_parse_condition(memaddr, parse, in_add_address);
 
     if (parse->offset < 0) {
       return;
     }
+
+    in_add_address = (*next)->type == RC_CONDITION_ADD_ADDRESS;
 
     switch ((*next)->type) {
       case RC_CONDITION_ADD_HITS:
       case RC_CONDITION_ADD_SOURCE:
       case RC_CONDITION_SUB_SOURCE:
       case RC_CONDITION_AND_NEXT:
+      case RC_CONDITION_ADD_ADDRESS:
         /* combining flags are allowed */
         break;
 
@@ -121,15 +126,54 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int 
   return parse.offset >= 0 ? self : 0;
 }
 
+static unsigned rc_total_value(rc_condition_t* first, rc_condition_t* condition, rc_peek_t peek, void* ud, lua_State* L) {
+  unsigned add_value, add_address;
+
+  add_value = add_address = 0;
+
+  for (; first != 0; first = first->next) {
+    switch (first->type) {
+      case RC_CONDITION_ADD_SOURCE:
+        add_value += rc_evaluate_operand(&first->operand1, add_address, peek, ud, L);
+        add_address = 0;
+        continue;
+
+      case RC_CONDITION_SUB_SOURCE:
+        add_value -= rc_evaluate_operand(&first->operand1, add_address, peek, ud, L);
+        add_address = 0;
+        continue;
+
+      case RC_CONDITION_ADD_ADDRESS:
+        add_address = rc_evaluate_operand(&first->operand1, add_address, peek, ud, L);
+        continue;
+
+      case RC_CONDITION_MEASURED:
+        if (first == condition)
+          return rc_evaluate_operand(&first->operand1, add_address, peek, ud, L) + add_value;
+        break;
+
+    }
+
+    add_value = add_address = 0;
+  }
+
+  return 0;
+}
+
 static int rc_evaluate_cond_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
   rc_condition_t* condition;
   int reset;
 
-  rc_test_condset(self->conditions, &reset, peek, ud, L);
-
   for (condition = self->conditions->conditions; condition != 0; condition = condition->next) {
-    if (condition->type == RC_CONDITION_MEASURED)
-      return rc_total_hit_count(self->conditions->conditions, condition);
+    if (condition->type == RC_CONDITION_MEASURED) {
+      if (condition->oper == RC_CONDITION_NONE) {
+        return rc_total_value(self->conditions->conditions, condition, peek, ud, L);
+      }
+      else {
+        rc_test_condset(self->conditions, &reset, peek, ud, L);
+        return rc_total_hit_count(self->conditions->conditions, condition);
+      }
+    }
   }
 
   return 0;
