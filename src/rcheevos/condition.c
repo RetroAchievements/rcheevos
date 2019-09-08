@@ -19,6 +19,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       case 'b': case 'B': self->type = RC_CONDITION_SUB_SOURCE; break;
       case 'c': case 'C': self->type = RC_CONDITION_ADD_HITS; break;
       case 'n': case 'N': self->type = RC_CONDITION_AND_NEXT; break;
+      case 'm': case 'M': self->type = RC_CONDITION_MEASURED; break;
       default: parse->offset = RC_INVALID_CONDITION_TYPE; return 0;
     }
 
@@ -123,4 +124,32 @@ int rc_test_condition(rc_condition_t* self, unsigned add_buffer, rc_peek_t peek,
     case RC_CONDITION_GE: return value1 >= value2;
     default: return 1;
   }
+}
+
+unsigned rc_total_hit_count(rc_condition_t* first, rc_condition_t* condition) {
+  unsigned total;
+
+  total = 0;
+  for (; first != 0; first = first->next) {
+    total += first->current_hits;
+    if (first == condition)
+      return total;
+
+    switch (first->type) {
+      case RC_CONDITION_ADD_HITS:
+      case RC_CONDITION_ADD_SOURCE:
+      case RC_CONDITION_SUB_SOURCE:
+      case RC_CONDITION_AND_NEXT:
+        /* combining flag, don't reset total */
+        break;
+
+      default:
+        /* non-combining flag, reset total */
+        total = 0;
+        break;
+    }
+  }
+
+  /* condition not found */
+  return 0;
 }
