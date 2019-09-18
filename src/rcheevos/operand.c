@@ -219,6 +219,7 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, rc_pa
   char* end;
   int ret;
   unsigned long value;
+  long svalue;
 
   switch (*aux) {
     case 'h': case 'H':
@@ -239,18 +240,18 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, rc_pa
       break;
     
     case 'v': case 'V':
-      value = strtoul(++aux, &end, 10);
+      svalue = strtol(++aux, &end, 10);
 
       if (end == aux) {
         return RC_INVALID_CONST_OPERAND;
       }
 
-      if (value > 0xffffffffU) {
-        value = 0xffffffffU;
+      if (svalue > 0xffffffffU) {
+        svalue = 0xffffffffU;
       }
 
       self->type = RC_OPERAND_CONST;
-      self->value.num = (unsigned)value;
+      self->value.num = (unsigned)svalue;
 
       aux = end;
       break;
