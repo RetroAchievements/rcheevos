@@ -29,12 +29,18 @@ int rc_parse_format(const char* format_str) {
       if (!strcmp(format_str, "CORE")) {
         return RC_FORMAT_SCORE;
       }
+      if (!strcmp(format_str, "ECS_AS_MINS")) {
+        return RC_FORMAT_SECONDS_AS_MINUTES;
+      }
 
       break;
     
     case 'M':
       if (!strcmp(format_str, "ILLISECS")) {
         return RC_FORMAT_CENTISECS;
+      }
+      if (!strcmp(format_str, "INUTES")) {
+        return RC_FORMAT_MINUTES;
       }
 
       break;
@@ -64,6 +70,14 @@ int rc_parse_format(const char* format_str) {
   return RC_FORMAT_VALUE;
 }
 
+static int rc_format_value_minutes(char* buffer, int size, unsigned minutes) {
+    unsigned hours;
+
+    hours = minutes / 60;
+    minutes -= hours * 60;
+    return snprintf(buffer, size, "%uh%02u", hours, minutes);
+}
+
 static int rc_format_value_seconds(char* buffer, int size, unsigned seconds) {
   unsigned hours, minutes;
 
@@ -76,7 +90,7 @@ static int rc_format_value_seconds(char* buffer, int size, unsigned seconds) {
 
   hours = minutes / 60;
   minutes -= hours * 60;
-  return snprintf(buffer, size, "%u:%02u:%02u", hours, minutes, seconds);
+  return snprintf(buffer, size, "%uh%02u:%02u", hours, minutes, seconds);
 }
 
 static int rc_format_value_centiseconds(char* buffer, int size, unsigned centiseconds) {
@@ -115,6 +129,14 @@ int rc_format_value(char* buffer, int size, int value, int format) {
 
     case RC_FORMAT_CENTISECS:
       chars = rc_format_value_centiseconds(buffer, size, value);
+      break;
+
+    case RC_FORMAT_SECONDS_AS_MINUTES:
+      chars = rc_format_value_minutes(buffer, size, value / 60);
+      break;
+
+    case RC_FORMAT_MINUTES:
+      chars = rc_format_value_minutes(buffer, size, value);
       break;
 
     case RC_FORMAT_SCORE:
