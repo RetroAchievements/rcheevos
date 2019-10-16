@@ -151,6 +151,11 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, in
 
   switch (*aux) {
     case 'h': case 'H':
+      if (aux[2] == 'x' || aux[2] == 'X') {
+        /* H0x1234 is a typo - either H1234 or 0xH1234 was probably meant */
+        return RC_INVALID_CONST_OPERAND;
+      }
+
       value = strtoul(++aux, &end, 16);
 
       if (end == aux) {

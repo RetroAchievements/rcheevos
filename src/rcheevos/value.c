@@ -42,7 +42,7 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
 
       case RC_CONDITION_MEASURED:
         if (has_measured) {
-          parse->offset = RC_DUPLICATED_VALUE_MEASURED;
+          parse->offset = RC_MULTIPLE_MEASURED;
           return;
         }
         has_measured = 1;

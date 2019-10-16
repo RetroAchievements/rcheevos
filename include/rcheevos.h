@@ -34,7 +34,8 @@ enum {
   RC_OUT_OF_MEMORY = -19,
   RC_INVALID_VALUE_FLAG = -20,
   RC_MISSING_VALUE_MEASURED = -21,
-  RC_DUPLICATED_VALUE_MEASURED = -22
+  RC_MULTIPLE_MEASURED = -22,
+  RC_INVALID_MEASURED_TARGET = -23
 };
 
 /*****************************************************************************\
@@ -214,6 +215,7 @@ struct rc_condition_t {
 
   /* The type of the condition. */
   char type;
+
   /* The comparison operator to use. */
   char oper; /* operator is a reserved word in C++. */
 
@@ -223,8 +225,6 @@ struct rc_condition_t {
   /* Whether or not the condition evaluated true on the last check */
   char is_true;
 };
-
-unsigned rc_total_hit_count(rc_condition_t* first, rc_condition_t* condition);
 
 /*****************************************************************************\
 | Condition sets                                                              |
@@ -244,9 +244,6 @@ struct rc_condset_t {
 
   /* True if the set is currently paused. */
   char is_paused;
-
-  /* True if any condition in the set has a nonzero hit target. */
-  char has_hit_targets;
 };
 
 /*****************************************************************************\
@@ -275,11 +272,11 @@ typedef struct {
   /* The current state of the MEASURED condition. */
   unsigned measured_value;
 
+  /* The target state of the MEASURED condition */
+  unsigned measured_target;
+
   /* The current state of the trigger */
   char state;
-
-  /* True if at least one condition has a reset flag and at least one condition has a hit target */
-  char can_reset;
 
   /* True if at least one condition has a non-zero hit count */
   char has_hits;

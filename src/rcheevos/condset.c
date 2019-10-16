@@ -31,7 +31,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
   int in_add_address;
 
   self = RC_ALLOC(rc_condset_t, parse);
-  self->has_pause = 0;
+  self->has_pause = self->is_paused = 0;
   next = &self->conditions;
 
   if (**memaddr == 'S' || **memaddr == 's' || !**memaddr) {
@@ -65,6 +65,25 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
 
     self->has_pause |= (*next)->type == RC_CONDITION_PAUSE_IF;
     in_add_address = (*next)->type == RC_CONDITION_ADD_ADDRESS;
+
+    if ((*next)->type == RC_CONDITION_MEASURED) {
+      if (parse->measured_target) {
+        parse->offset = RC_MULTIPLE_MEASURED;
+        return 0;
+      }
+
+      if ((*next)->required_hits == 0) {
+        if ((*next)->operand2.type != RC_OPERAND_CONST) {
+           parse->offset = RC_INVALID_MEASURED_TARGET;
+           return 0;
+        }
+
+        parse->measured_target = (*next)->operand2.value.num;
+      }
+      else {
+        parse->measured_target = (*next)->required_hits;
+      }
+    }
 
     next = &(*next)->next;
 
@@ -169,7 +188,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       }
     }
     condition->is_true = cond_valid;
-    eval_state->has_hits = (condition->current_hits || eval_state->add_hits);
+    eval_state->has_hits |= (condition->current_hits || eval_state->add_hits);
 
     /* capture measured state */
     if (condition->type == RC_CONDITION_MEASURED) {

@@ -74,6 +74,8 @@ typedef struct {
   rc_scratch_t scratch;
 
   rc_memref_value_t** first_memref;
+
+  unsigned measured_target;
 }
 rc_parse_state_t;
 

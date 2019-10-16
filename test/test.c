@@ -920,7 +920,8 @@ static void test_condition(void) {
     /*------------------------------------------------------------------------
     TestParseCondition
     ------------------------------------------------------------------------*/
-    assert(rc_trigger_size("0x1234==0") > 0);
+    assert(rc_trigger_size("0xH1234==0") > 0);
+    assert(rc_trigger_size("H0x1234==0") == RC_INVALID_CONST_OPERAND);
     assert(rc_trigger_size("0x1234") == RC_INVALID_OPERATOR);
     assert(rc_trigger_size("P:0x1234") == RC_INVALID_OPERATOR);
     assert(rc_trigger_size("R:0x1234") == RC_INVALID_OPERATOR);
@@ -1011,6 +1012,10 @@ static void comp_trigger(rc_trigger_t* self, memory_t* memory, int expected_resu
   assert(expected_result == ret);
 }
 
+static int evaluate_trigger(rc_trigger_t* self, memory_t* memory) {
+  return rc_evaluate_trigger(self, peek, memory, NULL);
+}
+
 static rc_condition_t* condset_get_cond(rc_condset_t* condset, int ndx) {
   rc_condition_t* cond = condset->conditions;
 
@@ -1024,7 +1029,34 @@ static rc_condition_t* condset_get_cond(rc_condset_t* condset, int ndx) {
 }
 
 static unsigned condset_get_total_hitcount(rc_condset_t* condset, int ndx) {
-  return rc_total_hit_count(condset->conditions, condset_get_cond(condset, ndx));
+  unsigned total;
+  rc_condition_t* first = condset->conditions;
+
+  total = 0;
+  for (; first != 0; first = first->next) {
+    total += first->current_hits;
+    if (ndx == 0)
+      return total;
+    ndx--;
+
+    switch (first->type) {
+      case RC_CONDITION_ADD_HITS:
+      case RC_CONDITION_ADD_SOURCE:
+      case RC_CONDITION_SUB_SOURCE:
+      case RC_CONDITION_AND_NEXT:
+      case RC_CONDITION_ADD_ADDRESS:
+        /* combining flag, don't reset total */
+        break;
+
+      default:
+        /* non-combining flag, reset total */
+        total = 0;
+        break;
+    }
+  }
+
+  /* condition not found */
+  return 0;
 }
 
 static rc_condset_t* trigger_get_set(rc_trigger_t* trigger, int ndx) {
@@ -2344,12 +2376,21 @@ static void test_trigger(void) {
     parse_trigger(&trigger, buffer, "M:0xH0002=52(3)"); /* measured(3, byte(2) == 52) */
     comp_trigger(trigger, &memory, 0); /* condition is true - hit count should be incremented */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(trigger->measured_value == 1U);
+    assert(trigger->measured_target == 3U);
+
     comp_trigger(trigger, &memory, 0); /* condition is true - hit count should be incremented */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 2U);
+
     comp_trigger(trigger, &memory, 1); /* condition is true - hit count should be incremented and target met */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+
     comp_trigger(trigger, &memory, 1); /* conditions is true, target met - hit count should stop incrementing */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+    assert(trigger->measured_target == 3U);
   }
   
   {
@@ -2372,27 +2413,28 @@ static void test_trigger(void) {
     comp_trigger(trigger, &memory, 0); /* second is true - hit count should be incremented */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
-    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 1U);
+    assert(trigger->measured_value == 1U);
+    assert(trigger->measured_target == 5U);
     ram[1] = 10;
     comp_trigger(trigger, &memory, 0); /* both are true - hit count should be incremented */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
-    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 3U);
+    assert(trigger->measured_value == 3U);
     ram[2] = 0;
     comp_trigger(trigger, &memory, 0); /* first is true - hit count should be incremented */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
-    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 4U);
+    assert(trigger->measured_value == 4U);
     ram[1] = 0;
     comp_trigger(trigger, &memory, 0); /* neither is true - hit count should not be incremented */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
-    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 4U);
+    assert(trigger->measured_value == 4U);
     ram[1] = 10;
     comp_trigger(trigger, &memory, 1); /* first is true - hit count should be incremented and target met */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
-    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 5U);
+    assert(trigger->measured_value == 5U);
   }
 
   {
@@ -2702,6 +2744,193 @@ static void test_trigger(void) {
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U); /* PauseIf false */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* delta = 52, count it */
   }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEvaluateTriggerTransistions
+    Verifies return codes of rc_evaluate_trigger
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0001=18_0xH0002<=52_R:0xL0004=4");
+
+    /* ==== INACTIVE ==== */
+    trigger->state = RC_TRIGGER_STATE_INACTIVE;
+
+    /* Inactive is a permanent state - trigger is initially true */
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    ram[2] = 24;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+
+    /* Trigger no longer true, still inactive */
+    ram[1] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+
+    /* hits should not be tallied when inactive */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    /* memrefs should be updated while inactive */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->operand1.value.memref->value == 24U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->operand1.value.memref->previous == 24U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->operand1.value.memref->prior == 52U);
+
+    /* reset should be ignored while inactive */
+    ram[4] = 4;
+    condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits = 1U;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+
+    /* ==== WAITING ==== */
+    trigger->state = RC_TRIGGER_STATE_WAITING;
+
+    /* set trigger state = true, ResetIf false */
+    ram[1] = 18;
+    ram[4] = 9;
+
+    /* state doesn't change as long as it's waiting - prevents triggers from uninitialized memory */
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_WAITING);
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_WAITING);
+    ram[2] = 16;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_WAITING);
+
+    /* waiting trigger should not tally hits */
+    assert(!trigger->has_hits);
+
+    /* ResetIf makes the trigger state false, so the trigger should become active */
+    ram[4] = 4;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    /* reset to previous state */
+    trigger->state = RC_TRIGGER_STATE_WAITING;
+    ram[4] = 9;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_WAITING);
+    assert(!trigger->has_hits);
+
+    /* trigger is no longer true, proceed to active state */
+    ram[1] = 5;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+    assert(trigger->has_hits);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    
+    /* ==== RESET ==== */
+    assert(trigger->state == RC_TRIGGER_STATE_ACTIVE);
+
+    /* reset when has_hits returns RESET notification, but doesn't change state */
+    ram[4] = 4;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_RESET);
+    assert(trigger->state == RC_TRIGGER_STATE_ACTIVE);
+    assert(!trigger->has_hits);
+
+    /* reset when !has_hits does not return RESET notification */
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+    assert(trigger->state == RC_TRIGGER_STATE_ACTIVE);
+    assert(!trigger->has_hits);
+
+    /* ==== TRIGGERED ==== */
+    ram[4] = 9;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    ram[1] = 18;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+
+    /* triggered trigger remains triggered but does not increment hit counts */
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+
+    /* triggered trigger remains triggered when no longer true */
+    ram[1] = 5;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+
+    /* triggered trigger does not update deltas */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->operand1.value.memref->value == 18U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->operand1.value.memref->previous == 5U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEvaluateTriggerTransistionsPause
+    Verifies return codes of rc_evaluate_trigger
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0001=18_0xH0003=171_P:0xH0002=1SR:0xH0004=4");
+
+    /* Inactive is a permanent state - trigger is initially true */
+    trigger->state = RC_TRIGGER_STATE_INACTIVE;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+
+    /* PauseIf is ignored while inactive */
+    ram[2] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+
+    /* switch state to waiting, ready to trigger */
+    ram[2] = 2;
+    trigger->state = RC_TRIGGER_STATE_WAITING;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_WAITING);
+
+    /* PauseIf makes the evaluation false, so state should advance to active, but paused */
+    ram[2] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PAUSED);
+    assert(trigger->has_hits); /* the pauseif has a hit */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+
+    /* hitcounts should update when unpaused - adjust memory so trigger no longer true */
+    ram[2] = 2;
+    ram[3] = 99;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+    assert(trigger->has_hits);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+
+    /* hitcounts should remain when paused */
+    ram[2] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PAUSED);
+    assert(trigger->has_hits);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+
+    /* Reset while paused should notify, but not change state */
+    ram[4] = 4;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_RESET);
+    assert(trigger->state == RC_TRIGGER_STATE_PAUSED);
+    assert(!trigger->has_hits);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+
+    /* Reset without hitcounts should return current state */
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PAUSED);
+
+    /* trigger while paused is ignored */
+    ram[4] = 0;
+    ram[3] = 171;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PAUSED);
+
+    /* trigger should fire when unpaused */
+    ram[2] = 2;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+
+    /* triggered trigger ignores pause */
+    ram[2] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+  }
+
 }
 
 static void parse_comp_term(const char* memaddr, char expected_var_size, unsigned expected_address, int is_bcd, int is_const) {
@@ -3514,7 +3743,7 @@ static void test_lboard(void) {
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::SUB:0=0", RC_DUPLICATED_SUBMIT);
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::VAL:0", RC_DUPLICATED_VALUE);
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::PRO:0", RC_DUPLICATED_PROGRESS);
-    lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH01=1_M:0xH01=2", RC_DUPLICATED_VALUE_MEASURED);
+    lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH01=1_M:0xH01=2", RC_MULTIPLE_MEASURED);
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH01=1_P:0xH01=2", RC_INVALID_VALUE_FLAG);
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1_0xH01=2", RC_INVALID_VALUE_FLAG);
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1", RC_MISSING_VALUE_MEASURED);

@@ -136,32 +136,3 @@ int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
     default: return 1;
   }
 }
-
-unsigned rc_total_hit_count(rc_condition_t* first, rc_condition_t* condition) {
-  unsigned total;
-
-  total = 0;
-  for (; first != 0; first = first->next) {
-    total += first->current_hits;
-    if (first == condition)
-      return total;
-
-    switch (first->type) {
-      case RC_CONDITION_ADD_HITS:
-      case RC_CONDITION_ADD_SOURCE:
-      case RC_CONDITION_SUB_SOURCE:
-      case RC_CONDITION_AND_NEXT:
-      case RC_CONDITION_ADD_ADDRESS:
-        /* combining flag, don't reset total */
-        break;
-
-      default:
-        /* non-combining flag, reset total */
-        total = 0;
-        break;
-    }
-  }
-
-  /* condition not found */
-  return 0;
-}
