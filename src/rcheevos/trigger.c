@@ -1,6 +1,7 @@
 #include "internal.h"
 
 #include <stddef.h>
+#include <memory.h>
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condset_t** next;
@@ -63,33 +64,50 @@ rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, 
   return parse.offset >= 0 ? self : 0;
 }
 
-int rc_test_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+  rc_eval_state_t eval_state;
   int ret, reset;
   rc_condset_t* condset;
+
+  memset(&eval_state, 0, sizeof(eval_state));
+  eval_state.peek = peek;
+  eval_state.peek_userdata = ud;
+  eval_state.L = L;
 
   rc_update_memref_values(self->memrefs, peek, ud);
 
   reset = 0;
-  ret = self->requirement != 0 ? rc_test_condset(self->requirement, &reset, peek, ud, L) : 1;
+  ret = self->requirement != 0 ? rc_test_condset(self->requirement, &eval_state) : 1;
   condset = self->alternative;
 
   if (condset) {
     int sub = 0;
 
     do {
-      sub |= rc_test_condset(condset, &reset, peek, ud, L);
+      sub |= rc_test_condset(condset, &eval_state);
       condset = condset->next;
     }
     while (condset != 0);
 
-    ret &= sub && !reset;
+    ret &= sub && !eval_state.was_reset;
   }
 
-  if (reset) {
+  self->measured_value = eval_state.measured_value;
+
+  if (eval_state.was_reset) {
     rc_reset_trigger(self);
+
+    if (self->can_reset && self->has_hits) {
+      self->has_hits = 0;
+      return RC_TRIGGER_STATE_RESET;
+    }
   }
 
-  return ret;
+  return ret ? RC_TRIGGER_STATE_TRIGGERED : RC_TRIGGER_STATE_ACTIVE;
+}
+
+int rc_test_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+  return (rc_evaluate_trigger(self, peek, ud, L) == RC_TRIGGER_STATE_TRIGGERED);
 }
 
 void rc_reset_trigger(rc_trigger_t* self) {

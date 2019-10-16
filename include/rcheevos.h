@@ -212,16 +212,16 @@ struct rc_condition_t {
   /* The next condition in the chain. */
   rc_condition_t* next;
 
-  /**
-   * Set if the condition needs to processed as part of the "check if paused"
-   * pass
-   */
-  char pause;
-
   /* The type of the condition. */
   char type;
   /* The comparison operator to use. */
   char oper; /* operator is a reserved word in C++. */
+
+  /* Set if the condition needs to processed as part of the "check if paused" pass. */
+  char pause;
+
+  /* Whether or not the condition evaluated true on the last check */
+  char is_true;
 };
 
 unsigned rc_total_hit_count(rc_condition_t* first, rc_condition_t* condition);
@@ -241,11 +241,26 @@ struct rc_condset_t {
 
   /* True if any condition in the set is a pause condition. */
   char has_pause;
+
+  /* True if the set is currently paused. */
+  char is_paused;
+
+  /* True if any condition in the set has a nonzero hit target. */
+  char has_hit_targets;
 };
 
 /*****************************************************************************\
 | Trigger                                                                     |
 \*****************************************************************************/
+
+enum {
+  RC_TRIGGER_STATE_INACTIVE,   /* achievement is not being processed */
+  RC_TRIGGER_STATE_WAITING,    /* achievement cannot trigger until it has been false for at least one frame */
+  RC_TRIGGER_STATE_ACTIVE,     /* achievement is active and may trigger */
+  RC_TRIGGER_STATE_PAUSED,     /* achievement is currently paused and will not trigger */
+  RC_TRIGGER_STATE_RESET,      /* achievement hit counts were reset */
+  RC_TRIGGER_STATE_TRIGGERED   /* achievement has triggered */
+};
 
 typedef struct {
   /* The main condition set. */
@@ -256,11 +271,24 @@ typedef struct {
 
   /* The memory references required by the trigger. */
   rc_memref_value_t* memrefs;
+
+  /* The current state of the MEASURED condition. */
+  unsigned measured_value;
+
+  /* The current state of the trigger */
+  char state;
+
+  /* True if at least one condition has a reset flag and at least one condition has a hit target */
+  char can_reset;
+
+  /* True if at least one condition has a non-zero hit count */
+  char has_hits;
 }
 rc_trigger_t;
 
 int rc_trigger_size(const char* memaddr);
 rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
+int rc_evaluate_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* L);
 int rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* L);
 void rc_reset_trigger(rc_trigger_t* self);
 

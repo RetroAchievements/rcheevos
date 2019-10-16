@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <assert.h>
+#include <memory.h>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -92,6 +93,18 @@ static void parse_error_operand(const char* memaddr, int valid_chars) {
   assert(memaddr - begin == valid_chars);
 }
 
+static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_value_t* memrefs)
+{
+  rc_eval_state_t eval_state;
+
+  memset(&eval_state, 0, sizeof(eval_state));
+  eval_state.peek = peek;
+  eval_state.peek_userdata = memory;
+
+  rc_update_memref_values(memrefs, peek, memory);
+  return rc_evaluate_operand(op, &eval_state);
+}
+
 static void parse_comp_operand_value(const char* memaddr, memory_t* memory, unsigned expected_value) {
   rc_operand_t self;
   rc_parse_state_t parse;
@@ -104,15 +117,8 @@ static void parse_comp_operand_value(const char* memaddr, memory_t* memory, unsi
   rc_parse_operand(&self, &memaddr, 1, 0, &parse);
   rc_destroy_parse_state(&parse);
 
-  rc_update_memref_values(memrefs, peek, memory);
-  value = rc_evaluate_operand(&self, 0, peek, memory, NULL);
+  value = evaluate_operand(&self, memory, memrefs);
   assert(value == expected_value);
-}
-
-static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_value_t* memrefs)
-{
-  rc_update_memref_values(memrefs, peek, memory);
-  return rc_evaluate_operand(op, 0, peek, memory, NULL);
 }
 
 static void test_memref(void) {
@@ -624,6 +630,17 @@ static void parse_comp_condition(
   assert(self->required_hits == expected_required_hits);
 }
 
+static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_value_t* memrefs) {
+  rc_eval_state_t eval_state;
+
+  memset(&eval_state, 0, sizeof(eval_state));
+  eval_state.peek = peek;
+  eval_state.peek_userdata = memory;
+  
+  rc_update_memref_values(memrefs, peek, memory);
+  return rc_test_condition(cond, &eval_state);
+}
+
 static void parse_test_condition(const char* memaddr, memory_t* memory, int value) {
   rc_condition_t* self;
   rc_parse_state_t parse;
@@ -639,15 +656,9 @@ static void parse_test_condition(const char* memaddr, memory_t* memory, int valu
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  rc_update_memref_values(memrefs, peek, memory);
-  ret = rc_test_condition(self, 0, 0, peek, memory, NULL);
+  ret = evaluate_condition(self, memory, memrefs);
 
   assert((ret && value) || (!ret && !value));
-}
-
-static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_value_t* memrefs) {
-  rc_update_memref_values(memrefs, peek, memory);
-  return rc_test_condition(cond, 0, 0, peek, memory, NULL);
 }
 
 static void test_condition(void) {
@@ -2770,6 +2781,7 @@ static void parse_comp_term_value(const char* memaddr, memory_t* memory, int val
   rc_term_t* self;
   rc_parse_state_t parse;
   rc_memref_value_t* memrefs;
+  rc_eval_state_t eval_state;
   char buffer[512];
 
   rc_init_parse_state(&parse, buffer, 0, 0);
@@ -2780,8 +2792,12 @@ static void parse_comp_term_value(const char* memaddr, memory_t* memory, int val
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
+  memset(&eval_state, 0, sizeof(eval_state));
+  eval_state.peek = peek;
+  eval_state.peek_userdata = memory;
+
   rc_update_memref_values(memrefs, peek, memory);
-  assert(rc_evaluate_term(self, peek, memory, NULL) == value);
+  assert(rc_evaluate_term(self, &eval_state) == value);
 }
 
 static void test_term(void) {
@@ -3002,14 +3018,14 @@ static void lboard_check(const char* memaddr, int expected_ret) {
 typedef struct {
   int active, submitted;
 }
-lboard_test_state_t;
+lboard_eval_state_t;
 
-static void lboard_reset(rc_lboard_t* lboard, lboard_test_state_t* state) {
+static void lboard_reset(rc_lboard_t* lboard, lboard_eval_state_t* state) {
   rc_reset_lboard(lboard);
   state->active = state->submitted = 0;
 }
 
-static int lboard_evaluate(rc_lboard_t* lboard, lboard_test_state_t* test, memory_t* memory) {
+static int lboard_evaluate(rc_lboard_t* lboard, lboard_eval_state_t* test, memory_t* memory) {
   int value;
 
   switch (rc_evaluate_lboard(lboard, &value, peek, memory, NULL)) {
@@ -3041,7 +3057,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     unsigned value;
     
     memory.ram = ram;
@@ -3102,7 +3118,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3148,7 +3164,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     unsigned value;
     
     memory.ram = ram;
@@ -3183,7 +3199,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     unsigned value;
     
     memory.ram = ram;
@@ -3212,7 +3228,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3236,7 +3252,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3269,7 +3285,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3302,7 +3318,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3327,7 +3343,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3362,7 +3378,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     unsigned value;
 
     memory.ram = ram;
@@ -3434,7 +3450,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_test_state_t state;
+    lboard_eval_state_t state;
     unsigned value;
 
     memory.ram = ram;

@@ -121,9 +121,9 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   return self;
 }
 
-int rc_test_condition(rc_condition_t* self, unsigned add_buffer, unsigned address_offset, rc_peek_t peek, void* ud, lua_State* L) {
-  unsigned value1 = rc_evaluate_operand(&self->operand1, address_offset, peek, ud, L) + add_buffer;
-  unsigned value2 = rc_evaluate_operand(&self->operand2, address_offset, peek, ud, L);
+int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
+  unsigned value1 = rc_evaluate_operand(&self->operand1, eval_state) + eval_state->add_value;
+  unsigned value2 = rc_evaluate_operand(&self->operand2, eval_state);
 
   switch (self->oper) {
     case RC_CONDITION_EQ: return value1 == value2;
