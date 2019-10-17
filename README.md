@@ -58,7 +58,8 @@ enum {
   RC_OUT_OF_MEMORY = -19,
   RC_INVALID_VALUE_FLAG = -20,
   RC_MISSING_VALUE_MEASURED = -21,
-  RC_DUPLICATED_VALUE_MEASURED = -22
+  RC_MULTIPLE_MEASURED = -22,
+  RC_INVALID_MEASURED_TARGET = -23
 };
 ```
 
@@ -195,16 +196,14 @@ struct rc_condition_t {
   /* Number of hits so far. */
   unsigned current_hits;
 
-  /**
-   * Set if the condition needs to processed as part of the "check if paused"
-   * pass
-   */
-  char pause;
-
   /* The type of the condition. */
   char type;
   /* The comparison operator to use. */
   char oper; /* operator is a reserved word in C++. */
+  /* Set if the condition needs to processed as part of the "check if paused" pass. */
+  char pause;
+  /* Whether or not the condition evaluated as true on the last check. */
+  char is_true;
 };
 ```
 
@@ -288,10 +287,10 @@ rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, 
 
 `buffer` is the caller-allocated buffer, which must have enough space for the trigger. `memaddr` describes the trigger, and must be the same one used to compute the trigger's size with `rc_trigger_size`. `L` must be a valid Lua state, and `funcs_ndx` must be an index to the current Lua stack which contains a table which is a map of names to functions. This map is used to look for operands which are Lua functions.
 
-Once the trigger is created, `rc_test_trigger` can be called to test whether the trigger fires or not.
+Once the trigger is created, `rc_evaluate_trigger` can be called to test whether the trigger fires or not.
 
 ```c
-int rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* L);
+int rc_evaluate_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* L);
 ```
 
 `trigger` is the trigger to test. `peek` is a callback used to read bytes from the emulated memory. `ud` is an user-provided opaque value that is passed to `peek`. `L` is the Lua state in which context the Lua functions are looked for and called, if necessary.
@@ -305,6 +304,18 @@ typedef unsigned (*rc_peek_t)(unsigned address, unsigned num_bytes, void* ud);
 where `address` is the starting address to read from, `num_bytes` the number of bytes to read (1, 2, or 4, little-endian), and `ud` is the same value passed to `rc_test_trigger`.
 
 > Addresses passed to `peek` do *not* map 1:1 to the emulated memory. (**TODO**: document the mapping from `peek` addresses to emulated memory for each supported system.)
+
+The return value of `rc_evaluate_trigger` is one of the following:
+```c
+enum {
+  RC_TRIGGER_STATE_INACTIVE,   /* achievement is not being processed */
+  RC_TRIGGER_STATE_WAITING,    /* achievement cannot trigger until it has been false for at least one frame */
+  RC_TRIGGER_STATE_ACTIVE,     /* achievement is active and may trigger */
+  RC_TRIGGER_STATE_PAUSED,     /* achievement is currently paused and will not trigger */
+  RC_TRIGGER_STATE_RESET,      /* achievement hit counts were reset */
+  RC_TRIGGER_STATE_TRIGGERED   /* achievement has triggered */
+};
+```
 
 Finally, `rc_reset_trigger` can be used to reset the internal state of a trigger.
 
