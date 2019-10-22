@@ -351,7 +351,9 @@ enum {
   RC_FORMAT_CENTISECS,
   RC_FORMAT_SCORE,
   RC_FORMAT_VALUE,
-  RC_FORMAT_OTHER
+  RC_FORMAT_OTHER,
+  RC_FORMAT_MINUTES,
+  RC_FORMAT_SECONDS_AS_MINUTES
 };
 
 int rc_parse_format(const char* format_str);

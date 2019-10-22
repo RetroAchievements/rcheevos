@@ -2891,7 +2891,8 @@ static void parse_comp_value(const char* memaddr, memory_t* memory, int expected
   assert(self != NULL);
   assert(*((int*)((char*)buffer + ret)) == 0xEEEEEEEE);
 
-  assert(rc_evaluate_value(self, peek, memory, NULL) == expected_value);
+  ret = rc_evaluate_value(self, peek, memory, NULL);
+  assert(ret == expected_value);
 }
 
 static void test_format_value(int format, int value, const char* expected) {
@@ -2923,6 +2924,8 @@ static void test_value(void) {
     parse_comp_value("0xH0001_V-20", &memory, 0x12 - 20);
     parse_comp_value("0xH0001_H10", &memory, 0x12 + 0x10);
 
+    parse_comp_value("0xh0000*-1_99_0xh0001*-100_5900", &memory, 4199);
+
     /* "Measured" format - supports hit counts, AddSource, SubSource, and AddAddress */
     parse_comp_value("A:0xH0001_M:0xH0002", &memory, 0x12 + 0x34);
     parse_comp_value("I:0xH0000_M:0xH0002", &memory, 0x34);
@@ -2941,13 +2944,19 @@ static void test_value(void) {
     test_format_value(RC_FORMAT_SCORE, 12345, "012345 Points");
     test_format_value(RC_FORMAT_SECONDS, 45, "0:45");
     test_format_value(RC_FORMAT_SECONDS, 345, "5:45");
-    test_format_value(RC_FORMAT_SECONDS, 12345, "3:25:45");
+    test_format_value(RC_FORMAT_SECONDS, 12345, "3h25:45");
     test_format_value(RC_FORMAT_CENTISECS, 345, "0:03.45");
     test_format_value(RC_FORMAT_CENTISECS, 12345, "2:03.45");
-    test_format_value(RC_FORMAT_CENTISECS, 1234567, "3:25:45.67");
+    test_format_value(RC_FORMAT_CENTISECS, 1234567, "3h25:45.67");
+    test_format_value(RC_FORMAT_SECONDS_AS_MINUTES, 45, "0h00");
+    test_format_value(RC_FORMAT_SECONDS_AS_MINUTES, 345, "0h05");
+    test_format_value(RC_FORMAT_SECONDS_AS_MINUTES, 12345, "3h25");
+    test_format_value(RC_FORMAT_MINUTES, 45, "0h45");
+    test_format_value(RC_FORMAT_MINUTES, 345, "5h45");
+    test_format_value(RC_FORMAT_MINUTES, 12345, "205h45");
     test_format_value(RC_FORMAT_FRAMES, 345, "0:05.75");
     test_format_value(RC_FORMAT_FRAMES, 12345, "3:25.75");
-    test_format_value(RC_FORMAT_FRAMES, 1234567, "5:42:56.11");
+    test_format_value(RC_FORMAT_FRAMES, 1234567, "5h42:56.11");
   }
 
   {
@@ -2959,6 +2968,8 @@ static void test_value(void) {
     assert(rc_parse_format("SECS") == RC_FORMAT_SECONDS);
     assert(rc_parse_format("TIMESECS") == RC_FORMAT_SECONDS);
     assert(rc_parse_format("TIME") == RC_FORMAT_FRAMES);
+    assert(rc_parse_format("MINUTES") == RC_FORMAT_MINUTES);
+    assert(rc_parse_format("SECS_AS_MINS") == RC_FORMAT_SECONDS_AS_MINUTES);
     assert(rc_parse_format("FRAMES") == RC_FORMAT_FRAMES);
     assert(rc_parse_format("SCORE") == RC_FORMAT_SCORE);
     assert(rc_parse_format("POINTS") == RC_FORMAT_SCORE);
