@@ -2845,13 +2845,15 @@ static void test_trigger(void) {
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
 
     /* triggered trigger remains triggered but does not increment hit counts */
-    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    assert(trigger->state == RC_TRIGGER_STATE_TRIGGERED);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
 
     /* triggered trigger remains triggered when no longer true */
     ram[1] = 5;
-    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    assert(trigger->state == RC_TRIGGER_STATE_TRIGGERED);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
 
@@ -2928,7 +2930,8 @@ static void test_trigger(void) {
 
     /* triggered trigger ignores pause */
     ram[2] = 1;
-    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    assert(trigger->state == RC_TRIGGER_STATE_TRIGGERED);
   }
 
 }

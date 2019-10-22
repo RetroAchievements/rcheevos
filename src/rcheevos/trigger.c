@@ -90,9 +90,9 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   int ret;
   char is_paused;
 
-  /* previously triggered, do nothing */
+  /* previously triggered, do nothing - return INACTIVE so caller doesn't report a repeated trigger */
   if (self->state == RC_TRIGGER_STATE_TRIGGERED)
-      return RC_TRIGGER_STATE_TRIGGERED;
+      return RC_TRIGGER_STATE_INACTIVE;
 
   rc_update_memref_values(self->memrefs, peek, ud);
 
