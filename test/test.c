@@ -3247,14 +3247,14 @@ static void lboard_check(const char* memaddr, int expected_ret) {
 typedef struct {
   int active, submitted;
 }
-lboard_eval_state_t;
+lboard_test_state_t;
 
-static void lboard_reset(rc_lboard_t* lboard, lboard_eval_state_t* state) {
+static void lboard_reset(rc_lboard_t* lboard, lboard_test_state_t* state) {
   rc_reset_lboard(lboard);
   state->active = state->submitted = 0;
 }
 
-static int lboard_evaluate(rc_lboard_t* lboard, lboard_eval_state_t* test, memory_t* memory) {
+static int lboard_evaluate(rc_lboard_t* lboard, lboard_test_state_t* test, memory_t* memory) {
   int value;
 
   switch (rc_evaluate_lboard(lboard, &value, peek, memory, NULL)) {
@@ -3286,7 +3286,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     unsigned value;
     
     memory.ram = ram;
@@ -3347,7 +3347,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3393,7 +3393,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     unsigned value;
     
     memory.ram = ram;
@@ -3428,7 +3428,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     unsigned value;
     
     memory.ram = ram;
@@ -3457,7 +3457,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3481,7 +3481,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3514,7 +3514,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3547,7 +3547,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3572,7 +3572,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     
     memory.ram = ram;
     memory.size = sizeof(ram);
@@ -3607,7 +3607,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     unsigned value;
 
     memory.ram = ram;
@@ -3679,7 +3679,7 @@ static void test_lboard(void) {
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_lboard_t* lboard;
-    lboard_eval_state_t state;
+    lboard_test_state_t state;
     unsigned value;
 
     memory.ram = ram;
