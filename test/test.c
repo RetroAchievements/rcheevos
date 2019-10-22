@@ -47,7 +47,7 @@ static void parse_operand(rc_operand_t* self, const char** memaddr) {
 
   rc_init_parse_state(&parse, buffer, 0, 0);   
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  ret = rc_parse_operand(self, memaddr, 1, &parse);
+  ret = rc_parse_operand(self, memaddr, 1, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(ret >= 0);
@@ -62,6 +62,10 @@ static void comp_operand(rc_operand_t* self, char expected_type, char expected_s
     case RC_OPERAND_PRIOR:
       assert(expected_size == self->value.memref->memref.size);
       assert(expected_address == self->value.memref->memref.address);
+      break;
+
+    case RC_OPERAND_CONST:
+      assert(expected_address == self->value.num);
       break;
   }
 }
@@ -81,7 +85,7 @@ static void parse_error_operand(const char* memaddr, int valid_chars) {
 
   rc_init_parse_state(&parse, 0, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  ret = rc_parse_operand(&self, &memaddr, 1, &parse);
+  ret = rc_parse_operand(&self, &memaddr, 1, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(ret < 0);
@@ -97,18 +101,18 @@ static void parse_comp_operand_value(const char* memaddr, memory_t* memory, unsi
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  rc_parse_operand(&self, &memaddr, 1, &parse);
+  rc_parse_operand(&self, &memaddr, 1, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   rc_update_memref_values(memrefs, peek, memory);
-  value = rc_evaluate_operand(&self, peek, memory, NULL);
+  value = rc_evaluate_operand(&self, 0, peek, memory, NULL);
   assert(value == expected_value);
 }
 
 static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_value_t* memrefs)
 {
   rc_update_memref_values(memrefs, peek, memory);
-  return rc_evaluate_operand(op, peek, memory, NULL);
+  return rc_evaluate_operand(op, 0, peek, memory, NULL);
 }
 
 static void test_memref(void) {
@@ -120,37 +124,37 @@ static void test_memref(void) {
     rc_parse_state_t parse;
     rc_init_parse_state(&parse, buffer, 0, 0);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 1);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* BCD will not match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1, 0); /* BCD will not match */
     assert(parse.scratch.memref_count == 2);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0, 0); /* differing size will not match */
     assert(parse.scratch.memref_count == 3);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0, 0); /* differing size will not match */
     assert(parse.scratch.memref_count == 4);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0, 0); /* differing size will not match */
     assert(parse.scratch.memref_count == 5);
 
-    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
+    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0, 0); /* differing address will not match */
     assert(parse.scratch.memref_count == 6);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0); /* match */
     assert(parse.scratch.memref_count == 6);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1, 0); /* match */
     assert(parse.scratch.memref_count == 6);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0, 0); /* match */
     assert(parse.scratch.memref_count == 6);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0, 0); /* match */
     assert(parse.scratch.memref_count == 6);
 
-    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
+    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0, 0); /* match */
     assert(parse.scratch.memref_count == 6);
 
     rc_destroy_parse_state(&parse);
@@ -165,23 +169,23 @@ static void test_memref(void) {
     rc_init_parse_state(&parse, buffer, 0, 0);
 
     for (i = 0; i < 100; i++) {
-      rc_alloc_memref_value(&parse, i, RC_MEMSIZE_8_BITS, 0);
+      rc_alloc_memref_value(&parse, i, RC_MEMSIZE_8_BITS, 0, 0);
     }
     assert(parse.scratch.memref_count == 100);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 100);
 
-    rc_alloc_memref_value(&parse, 25, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 25, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 100);
 
-    rc_alloc_memref_value(&parse, 50, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 50, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 100);
 
-    rc_alloc_memref_value(&parse, 75, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 75, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 100);
 
-    rc_alloc_memref_value(&parse, 99, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 99, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 100);
 
     rc_destroy_parse_state(&parse);
@@ -203,37 +207,38 @@ static void test_memref(void) {
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
 
-    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0);
     assert(memref1->memref.address == 1);
     assert(memref1->memref.size == RC_MEMSIZE_8_BITS);
     assert(memref1->memref.is_bcd == 0);
+    assert(memref1->memref.is_indirect == 0);
     assert(memref1->value == 0);
     assert(memref1->previous == 0);
     assert(memref1->prior == 0);
     assert(memref1->next == 0);
 
-    memref2 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* BCD will not match */
-    memref3 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
-    memref4 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
-    memref5 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
-    memref6 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
+    memref2 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1, 0); /* BCD will not match */
+    memref3 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0, 0); /* differing size will not match */
+    memref4 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0, 0); /* differing size will not match */
+    memref5 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0, 0); /* differing size will not match */
+    memref6 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0, 0); /* differing address will not match */
 
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0); /* match */
     assert(memrefX == memref1);
 
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1, 0); /* match */
     assert(memrefX == memref2);
 
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0, 0); /* match */
     assert(memrefX == memref3);
 
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0, 0); /* match */
     assert(memrefX == memref4);
 
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0, 0); /* match */
     assert(memrefX == memref5);
 
-    memrefX = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0, 0); /* match */
     assert(memrefX == memref6);
 
     rc_destroy_parse_state(&parse);
@@ -256,8 +261,8 @@ static void test_memref(void) {
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
 
-    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
-    memref2 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0);
+    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0);
+    memref2 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0, 0);
 
     rc_update_memref_values(memrefs, peek, &memory);
 
@@ -527,7 +532,7 @@ static void test_operand(void) {
     memaddr = "d0xh1";
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
-    rc_parse_operand(&op, &memaddr, 1, &parse);
+    rc_parse_operand(&op, &memaddr, 1, 0, &parse);
     rc_destroy_parse_state(&parse);
 
     assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* first call gets uninitialized value */
@@ -569,7 +574,7 @@ static void test_operand(void) {
     memaddr = "p0xh1";
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
-    rc_parse_operand(&op, &memaddr, 1, &parse);
+    rc_parse_operand(&op, &memaddr, 1, 0, &parse);
     rc_destroy_parse_state(&parse);
 
     /* RC_OPERAND_PRIOR only updates when the memory value changes */
@@ -609,7 +614,7 @@ static void parse_comp_condition(
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_condition(&memaddr, &parse);
+  self = rc_parse_condition(&memaddr, &parse, 0);
   rc_destroy_parse_state(&parse);
 
   assert(self->type == expected_type);
@@ -628,21 +633,21 @@ static void parse_test_condition(const char* memaddr, memory_t* memory, int valu
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_condition(&memaddr, &parse);
+  self = rc_parse_condition(&memaddr, &parse, 0);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
   rc_update_memref_values(memrefs, peek, memory);
-  ret = rc_test_condition(self, 0, peek, memory, NULL);
+  ret = rc_test_condition(self, 0, 0, peek, memory, NULL);
 
   assert((ret && value) || (!ret && !value));
 }
 
 static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_value_t* memrefs) {
   rc_update_memref_values(memrefs, peek, memory);
-  return rc_test_condition(cond, 0, peek, memory, NULL);
+  return rc_test_condition(cond, 0, 0, peek, memory, NULL);
 }
 
 static void test_condition(void) {
@@ -780,6 +785,15 @@ static void test_condition(void) {
       0
     );
 
+    parse_comp_condition(
+      "I:0xH1234=8",
+      RC_CONDITION_ADD_ADDRESS,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_EQ,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
     /* hit count */
     parse_comp_condition(
       "0xH1234=8(1)",
@@ -842,6 +856,70 @@ static void test_condition(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestParseConditionShorthand
+    ------------------------------------------------------------------------*/
+
+    parse_comp_condition(
+      "A:0xH1234",
+      RC_CONDITION_ADD_SOURCE,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_NONE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
+      0
+    );
+
+    parse_comp_condition(
+      "B:0xH1234",
+      RC_CONDITION_SUB_SOURCE,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_NONE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
+      0
+    );
+
+    parse_comp_condition(
+      "C:0xH1234",
+      RC_CONDITION_ADD_HITS,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_NONE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
+      0
+    );
+
+    parse_comp_condition(
+      "N:0xH1234",
+      RC_CONDITION_AND_NEXT,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_NONE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
+      0
+    );
+
+    parse_comp_condition(
+      "I:0xH1234",
+      RC_CONDITION_ADD_ADDRESS,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_NONE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
+      0
+    );
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestParseCondition
+    ------------------------------------------------------------------------*/
+    assert(rc_trigger_size("0x1234==0") > 0);
+    assert(rc_trigger_size("0x1234") == RC_INVALID_OPERATOR);
+    assert(rc_trigger_size("P:0x1234") == RC_INVALID_OPERATOR);
+    assert(rc_trigger_size("R:0x1234") == RC_INVALID_OPERATOR);
+    assert(rc_trigger_size("M:0x1234") == RC_INVALID_OPERATOR);
+    assert(rc_trigger_size("Z:0x1234") == RC_INVALID_CONDITION_TYPE);
+    assert(rc_trigger_size("0x1234=1.2") == RC_INVALID_REQUIRED_HITS);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestConditionCompare
     ------------------------------------------------------------------------*/
 
@@ -883,7 +961,7 @@ static void test_condition(void) {
     const char* cond_str = "0xH0001>d0xH0001";
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
-    cond = rc_parse_condition(&cond_str, &parse);
+    cond = rc_parse_condition(&cond_str, &parse, 0);
     rc_destroy_parse_state(&parse);
 
     assert(parse.offset >= 0);
@@ -1993,6 +2071,255 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestAddAddressDirectPointer
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0xH0000=22");
+    comp_trigger(trigger, &memory, 0);
+
+    ram[1] = 22; /* value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 2; /* point to new value */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 1; /* point to original value */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[1] = 11; /* original value is not correct */
+    comp_trigger(trigger, &memory, 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressIndirectPointer
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+
+    ram[1] = 22; /* non-offset value is correct */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[3] = 22; /* offset value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 2; /* point to new value */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[4] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 0; /* point to new value */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressIndirectPointerDataSizeDiffersFromPointerSize
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0x 0002=22");
+    comp_trigger(trigger, &memory, 0);
+
+    ram[3] = 22; /* 8-bit offset value is correct */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[4] = 0; /* 16-bit offset value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 0; /* point to new value */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[3] = 0; /* new value only partially correct */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressIndirectPointerOutOfRange
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56, 0x16};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = 5; /* 6th byte is valid, but out of range */
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+
+    ram[3] = 22; /* offset value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 100; /* way out of bounds */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[0] = 3; /* boundary condition - value is correct, but should be unreachable. 
+                   note: address validation must be handled by registered 'peek' callback */
+    comp_trigger(trigger, &memory, 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressDoubleIndirection
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x02, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_I:0xH0000=0_0xH0000=22"); /* $($($0000)) == 22 */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 22; /* value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[1] = 3; /* second pointer in chain causes final pointer to point at address 3 */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[3] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 2; /* first pointer points at address 2, which is 22, so out-of-bounds */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 3; /* second pointer points at address 3, which is correct */
+    comp_trigger(trigger, &memory, 1);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressBothSidesDiffer
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x02, 0x11, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0xH0000=0xH0001"); /* $($0) == $($0 + 1) */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = ram[3]; /* value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 1; /* adjust pointer */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[1] = ram[2]; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressBothSidesSame
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x02, 0x11, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0xH0000>d0xH0000"); /* $($0) > delta $($0) */
+    comp_trigger(trigger, &memory, 1); /* initial delta will be 0, so non-zero is greater */
+
+    comp_trigger(trigger, &memory, 0); /* delta should be same as current */
+
+    ram[2]++; /* value increased */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[2]--; /* value decreased */
+    comp_trigger(trigger, &memory, 0);
+
+    /* this is a small hiccup in the AddAddress behavior, we can't reasonably know the delta 
+     * of a value when the pointer changes as we didn't evaluate the new address on the last frame */
+    ram[0] = 3; /* point at new value, which is greater */
+    comp_trigger(trigger, &memory, 1);
+  }
+  
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressIndirectPointerMultiple
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x02, 0x03, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* the expectation is that the AddAddress lines will share rc_memref_value_t's, but the following lines
+       will generate their own rc_memref_value_t's for indirection. none of this is actually verified. */
+    parse_trigger(&trigger, buffer, 
+        "I:0xH0000=0_0xH0002=22_I:0xH0000=0_0xH0003=23_I:0xH0001=0_0xH0003=24");
+    /*   $(0002 + $0000) == 22 && $(0003 + $0000) == 23 && $(0003 + $0001) == 24 */
+    /*   $0003 (0x34)    == 22 && $0004 (0xAB)    == 23 && $0005 (0x56)    == 24 */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 5)->current_hits == 0U);
+
+    ram[3] = 22; /* first condition true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 5)->current_hits == 0U);
+
+    ram[4] = 23; /* second condition true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 5)->current_hits == 0U);
+
+    ram[5] = 24; /* third condition true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 5)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestMeasured
     ------------------------------------------------------------------------*/
 
@@ -2374,7 +2701,7 @@ static void parse_comp_term(const char* memaddr, char expected_var_size, unsigne
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_term(&memaddr, &parse);
+  self = rc_parse_term(&memaddr, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
@@ -2401,7 +2728,7 @@ static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsi
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_term(&memaddr, &parse);
+  self = rc_parse_term(&memaddr, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
@@ -2427,7 +2754,7 @@ static void parse_comp_term_mem(const char* memaddr, char expected_size_1, unsig
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_term(&memaddr, &parse);
+  self = rc_parse_term(&memaddr, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
@@ -2447,7 +2774,7 @@ static void parse_comp_term_value(const char* memaddr, memory_t* memory, int val
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_term(&memaddr, &parse);
+  self = rc_parse_term(&memaddr, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
@@ -2589,6 +2916,7 @@ static void test_value(void) {
     memory.ram = ram;
     memory.size = sizeof(ram);
 
+    /* classic format - supports multipliers, max, inversion */
     parse_comp_value("0xH0001_0xH0002", &memory, 0x12 + 0x34); /* TestAdditionSimple */
     parse_comp_value("0xH0001*100_0xH0002*0.5_0xL0003", &memory, 0x12 * 100 + 0x34 / 2 + 0x0B);/* TestAdditionComplex */
     parse_comp_value("0xH0001$0xH0002", &memory, 0x34);/* TestMaximumSimple */
@@ -2597,6 +2925,11 @@ static void test_value(void) {
     parse_comp_value("0xH0001_H10", &memory, 0x12 + 0x10);
 
     parse_comp_value("0xh0000*-1_99_0xh0001*-100_5900", &memory, 4199);
+
+    /* "Measured" format - supports hit counts, AddSource, SubSource, and AddAddress */
+    parse_comp_value("A:0xH0001_M:0xH0002", &memory, 0x12 + 0x34);
+    parse_comp_value("I:0xH0000_M:0xH0002", &memory, 0x34);
+    parse_comp_value("M:0xH0002!=d0xH0002", &memory, 1); /* delta should initially be 0, so a hit should be tallied */
   }
 
   {

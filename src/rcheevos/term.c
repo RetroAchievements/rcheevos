@@ -1,6 +1,6 @@
 #include "internal.h"
 
-rc_term_t* rc_parse_term(const char** memaddr, rc_parse_state_t* parse) {
+rc_term_t* rc_parse_term(const char** memaddr, int is_indirect, rc_parse_state_t* parse) {
   rc_term_t* self;
   const char* aux;
   char size;
@@ -10,7 +10,7 @@ rc_term_t* rc_parse_term(const char** memaddr, rc_parse_state_t* parse) {
   self = RC_ALLOC(rc_term_t, parse);
   self->invert = 0;
 
-  ret2 = rc_parse_operand(&self->operand1, &aux, 0, parse);
+  ret2 = rc_parse_operand(&self->operand1, &aux, 0, is_indirect, parse);
 
   if (ret2 < 0) {
     parse->offset = ret2;
@@ -25,7 +25,7 @@ rc_term_t* rc_parse_term(const char** memaddr, rc_parse_state_t* parse) {
       self->invert = 1;
     }
 
-    ret2 = rc_parse_operand(&self->operand2, &aux, 0, parse);
+    ret2 = rc_parse_operand(&self->operand2, &aux, 0, is_indirect, parse);
 
     if (ret2 < 0) {
       parse->offset = ret2;
@@ -93,10 +93,10 @@ int rc_evaluate_term(rc_term_t* self, rc_peek_t peek, void* ud, lua_State* L) {
    * point operand is signed, and will automatically make the result signed. Otherwise, multiply
    * by the secondary operand (which is usually 1) and cast to signed.
    */
-  unsigned value = rc_evaluate_operand(&self->operand1, peek, ud, L);
+  unsigned value = rc_evaluate_operand(&self->operand1, 0, peek, ud, L);
 
   if (self->operand2.type != RC_OPERAND_FP) {
-    return (int)(value * (rc_evaluate_operand(&self->operand2, peek, ud, L) ^ self->invert));
+    return (int)(value * (rc_evaluate_operand(&self->operand2, 0, peek, ud, L) ^ self->invert));
   }
 
   return (int)((double)value * self->operand2.value.dbl);
