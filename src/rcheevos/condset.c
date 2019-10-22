@@ -246,7 +246,7 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
   }
 
   if (self->has_pause) {
-    if (self->is_paused = rc_test_condset_internal(self, 1, eval_state)) {
+    if ((self->is_paused = rc_test_condset_internal(self, 1, eval_state))) {
       /* one or more Pause conditions exists, if any of them are true, stop processing this group */
       return 0;
     }
