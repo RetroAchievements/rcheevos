@@ -2564,7 +2564,8 @@ static void parse_comp_value(const char* memaddr, memory_t* memory, int expected
   assert(self != NULL);
   assert(*((int*)((char*)buffer + ret)) == 0xEEEEEEEE);
 
-  assert(rc_evaluate_value(self, peek, memory, NULL) == expected_value);
+  ret = rc_evaluate_value(self, peek, memory, NULL);
+  assert(ret == expected_value);
 }
 
 static void test_format_value(int format, int value, const char* expected) {
@@ -2594,6 +2595,8 @@ static void test_value(void) {
     parse_comp_value("0xH0001_0xH0004*3$0xH0002*0xL0003", &memory, 0x34 * 0xB);/* TestMaximumComplex */
     parse_comp_value("0xH0001_V-20", &memory, 0x12 - 20);
     parse_comp_value("0xH0001_H10", &memory, 0x12 + 0x10);
+
+    parse_comp_value("0xh0000*-1_99_0xh0001*-100_5900", &memory, 4199);
   }
 
   {
