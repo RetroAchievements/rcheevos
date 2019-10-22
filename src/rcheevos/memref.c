@@ -237,7 +237,7 @@ static unsigned rc_memref_get_value(rc_memref_t* self, rc_peek_t peek, void* ud)
   return value;
 }
 
-static void rc_update_memref_value(rc_memref_value_t* memref, rc_peek_t peek, void* ud) {
+void rc_update_memref_value(rc_memref_value_t* memref, rc_peek_t peek, void* ud) {
   memref->previous = memref->value;
   memref->value = rc_memref_get_value(&memref->memref, peek, ud);
   if (memref->value != memref->previous)
