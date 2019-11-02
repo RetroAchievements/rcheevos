@@ -1,5 +1,7 @@
 #include "internal.h"
 
+#include <memory.h>
+
 static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condition_t** next;
   int has_measured;
@@ -40,10 +42,12 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
 
       case RC_CONDITION_MEASURED:
         if (has_measured) {
-          parse->offset = RC_DUPLICATED_VALUE_MEASURED;
+          parse->offset = RC_MULTIPLE_MEASURED;
           return;
         }
         has_measured = 1;
+        if ((*next)->required_hits == 0 && (*next)->oper != RC_CONDITION_NONE)
+            (*next)->required_hits = (unsigned)-1;
         break;
 
       default:
@@ -126,68 +130,15 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int 
   return parse.offset >= 0 ? self : 0;
 }
 
-static unsigned rc_total_value(rc_condition_t* first, rc_condition_t* condition, rc_peek_t peek, void* ud, lua_State* L) {
-  unsigned add_value, add_address;
-
-  add_value = add_address = 0;
-
-  for (; first != 0; first = first->next) {
-    switch (first->type) {
-      case RC_CONDITION_ADD_SOURCE:
-        add_value += rc_evaluate_operand(&first->operand1, add_address, peek, ud, L);
-        add_address = 0;
-        continue;
-
-      case RC_CONDITION_SUB_SOURCE:
-        add_value -= rc_evaluate_operand(&first->operand1, add_address, peek, ud, L);
-        add_address = 0;
-        continue;
-
-      case RC_CONDITION_ADD_ADDRESS:
-        add_address = rc_evaluate_operand(&first->operand1, add_address, peek, ud, L);
-        continue;
-
-      case RC_CONDITION_MEASURED:
-        if (first == condition)
-          return rc_evaluate_operand(&first->operand1, add_address, peek, ud, L) + add_value;
-        break;
-
-    }
-
-    add_value = add_address = 0;
-  }
-
-  return 0;
-}
-
-static int rc_evaluate_cond_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
-  rc_condition_t* condition;
-  int reset;
-
-  for (condition = self->conditions->conditions; condition != 0; condition = condition->next) {
-    if (condition->type == RC_CONDITION_MEASURED) {
-      if (condition->oper == RC_CONDITION_NONE) {
-        return rc_total_value(self->conditions->conditions, condition, peek, ud, L);
-      }
-      else {
-        rc_test_condset(self->conditions, &reset, peek, ud, L);
-        return rc_total_hit_count(self->conditions->conditions, condition);
-      }
-    }
-  }
-
-  return 0;
-}
-
-static int rc_evaluate_expr_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+static int rc_evaluate_expr_value(rc_value_t* self, rc_eval_state_t* eval_state) {
   rc_expression_t* exp;
   int value, max;
 
   exp = self->expressions;
-  max = rc_evaluate_expression(exp, peek, ud, L);
+  max = rc_evaluate_expression(exp, eval_state);
 
   for (exp = exp->next; exp != 0; exp = exp->next) {
-    value = rc_evaluate_expression(exp, peek, ud, L);
+    value = rc_evaluate_expression(exp, eval_state);
 
     if (value > max) {
       max = value;
@@ -198,11 +149,18 @@ static int rc_evaluate_expr_value(rc_value_t* self, rc_peek_t peek, void* ud, lu
 }
 
 int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+  rc_eval_state_t eval_state;
+  memset(&eval_state, 0, sizeof(eval_state));
+  eval_state.peek = peek;
+  eval_state.peek_userdata = ud;
+  eval_state.L = L;
+
   rc_update_memref_values(self->memrefs, peek, ud);
 
   if (self->expressions) {
-    return rc_evaluate_expr_value(self, peek, ud, L);
+    return rc_evaluate_expr_value(self, &eval_state);
   }
 
-  return rc_evaluate_cond_value(self, peek, ud, L);
+  rc_test_condset(self->conditions, &eval_state);
+  return (int)eval_state.measured_value;
 }

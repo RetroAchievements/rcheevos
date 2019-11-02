@@ -50,6 +50,21 @@ typedef struct {
 rc_scratch_t;
 
 typedef struct {
+  unsigned add_value;       /* AddSource/SubSource */
+  unsigned add_hits;        /* AddHits */
+  unsigned add_address;     /* AddAddress */
+
+  rc_peek_t peek;
+  void* peek_userdata;
+  lua_State* L;
+
+  unsigned measured_value;  /* Measured */
+  char was_reset;           /* ResetIf triggered */
+  char has_hits;            /* one of more hit counts is non-zero */
+}
+rc_eval_state_t;
+
+typedef struct {
   int offset;
 
   lua_State* L;
@@ -59,6 +74,8 @@ typedef struct {
   rc_scratch_t scratch;
 
   rc_memref_value_t** first_memref;
+
+  unsigned measured_target;
 }
 rc_parse_state_t;
 
@@ -72,25 +89,25 @@ char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length);
 rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned address, char size, char is_bcd, char is_indirect);
 void rc_update_memref_values(rc_memref_value_t* memref, rc_peek_t peek, void* ud);
 void rc_update_memref_value(rc_memref_value_t* memref, rc_peek_t peek, void* ud);
-rc_memref_value_t* rc_get_indirect_memref(rc_memref_value_t* memref, unsigned address_offset, rc_peek_t peek, void* ud);
+rc_memref_value_t* rc_get_indirect_memref(rc_memref_value_t* memref, rc_eval_state_t* eval_state);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse);
-int rc_test_condset(rc_condset_t* self, int* reset, rc_peek_t peek, void* ud, lua_State* L);
+int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state);
 void rc_reset_condset(rc_condset_t* self);
 
 rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse, int is_indirect);
-int rc_test_condition(rc_condition_t* self, unsigned add_value, unsigned address_offset, rc_peek_t peek, void* ud, lua_State* L);
+int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state);
 
 int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, int is_indirect, rc_parse_state_t* parse);
-unsigned rc_evaluate_operand(rc_operand_t* self, unsigned address_offset, rc_peek_t peek, void* ud, lua_State* L);
+unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state);
 
 rc_term_t* rc_parse_term(const char** memaddr, int is_indirect, rc_parse_state_t* parse);
-int rc_evaluate_term(rc_term_t* self, rc_peek_t peek, void* ud, lua_State* L);
+int rc_evaluate_term(rc_term_t* self, rc_eval_state_t* eval_state);
 
 rc_expression_t* rc_parse_expression(const char** memaddr, rc_parse_state_t* parse);
-int rc_evaluate_expression(rc_expression_t* self, rc_peek_t peek, void* ud, lua_State* L);
+int rc_evaluate_expression(rc_expression_t* self, rc_eval_state_t* eval_state);
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
 

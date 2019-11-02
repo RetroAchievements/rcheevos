@@ -169,6 +169,7 @@
     <ClCompile Include="test.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\rcheevos.h" />
     <ClInclude Include="..\src\rcheevos\internal.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

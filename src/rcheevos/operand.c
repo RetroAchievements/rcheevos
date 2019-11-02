@@ -151,6 +151,11 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, in
 
   switch (*aux) {
     case 'h': case 'H':
+      if (aux[2] == 'x' || aux[2] == 'X') {
+        /* H0x1234 is a typo - either H1234 or 0xH1234 was probably meant */
+        return RC_INVALID_CONST_OPERAND;
+      }
+
       value = strtoul(++aux, &end, 16);
 
       if (end == aux) {
@@ -334,7 +339,7 @@ static int rc_luapeek(lua_State* L) {
 
 #endif /* RC_DISABLE_LUA */
 
-unsigned rc_evaluate_operand(rc_operand_t* self, unsigned address_offset, rc_peek_t peek, void* ud, lua_State* L) {
+unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
 #ifndef RC_DISABLE_LUA
   rc_luapeek_t luapeek;
 #endif /* RC_DISABLE_LUA */
@@ -353,25 +358,25 @@ unsigned rc_evaluate_operand(rc_operand_t* self, unsigned address_offset, rc_pee
     case RC_OPERAND_LUA:
 #ifndef RC_DISABLE_LUA
 
-      if (L != 0) {
-        lua_rawgeti(L, LUA_REGISTRYINDEX, self->value.luafunc);
-        lua_pushcfunction(L, rc_luapeek);
+      if (eval_state->L != 0) {
+        lua_rawgeti(eval_state->L, LUA_REGISTRYINDEX, self->value.luafunc);
+        lua_pushcfunction(eval_state->L, rc_luapeek);
 
-        luapeek.peek = peek;
-        luapeek.ud = ud;
+        luapeek.peek = eval_state->peek;
+        luapeek.ud = eval_state->peek_userdata;
 
-        lua_pushlightuserdata(L, &luapeek);
+        lua_pushlightuserdata(eval_state->L, &luapeek);
         
-        if (lua_pcall(L, 2, 1, 0) == LUA_OK) {
-          if (lua_isboolean(L, -1)) {
-            value = lua_toboolean(L, -1);
+        if (lua_pcall(eval_state->L, 2, 1, 0) == LUA_OK) {
+          if (lua_isboolean(eval_state->L, -1)) {
+            value = lua_toboolean(eval_state->L, -1);
           }
           else {
-            value = (unsigned)lua_tonumber(L, -1);
+            value = (unsigned)lua_tonumber(eval_state->L, -1);
           }
         }
 
-        lua_pop(L, 1);
+        lua_pop(eval_state->L, 1);
       }
 
 #endif /* RC_DISABLE_LUA */
@@ -379,15 +384,15 @@ unsigned rc_evaluate_operand(rc_operand_t* self, unsigned address_offset, rc_pee
       break;
 
     case RC_OPERAND_ADDRESS:
-      value = rc_get_indirect_memref(self->value.memref, address_offset, peek, ud)->value;
+      value = rc_get_indirect_memref(self->value.memref, eval_state)->value;
       break;
 
     case RC_OPERAND_DELTA:
-      value = rc_get_indirect_memref(self->value.memref, address_offset, peek, ud)->previous;
+      value = rc_get_indirect_memref(self->value.memref, eval_state)->previous;
       break;
 
     case RC_OPERAND_PRIOR:
-      value = rc_get_indirect_memref(self->value.memref, address_offset, peek, ud)->prior;
+      value = rc_get_indirect_memref(self->value.memref, eval_state)->prior;
       break;
   }
 

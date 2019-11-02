@@ -121,9 +121,9 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   return self;
 }
 
-int rc_test_condition(rc_condition_t* self, unsigned add_buffer, unsigned address_offset, rc_peek_t peek, void* ud, lua_State* L) {
-  unsigned value1 = rc_evaluate_operand(&self->operand1, address_offset, peek, ud, L) + add_buffer;
-  unsigned value2 = rc_evaluate_operand(&self->operand2, address_offset, peek, ud, L);
+int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
+  unsigned value1 = rc_evaluate_operand(&self->operand1, eval_state) + eval_state->add_value;
+  unsigned value2 = rc_evaluate_operand(&self->operand2, eval_state);
 
   switch (self->oper) {
     case RC_CONDITION_EQ: return value1 == value2;
@@ -135,33 +135,4 @@ int rc_test_condition(rc_condition_t* self, unsigned add_buffer, unsigned addres
     case RC_CONDITION_NONE: return 1;
     default: return 1;
   }
-}
-
-unsigned rc_total_hit_count(rc_condition_t* first, rc_condition_t* condition) {
-  unsigned total;
-
-  total = 0;
-  for (; first != 0; first = first->next) {
-    total += first->current_hits;
-    if (first == condition)
-      return total;
-
-    switch (first->type) {
-      case RC_CONDITION_ADD_HITS:
-      case RC_CONDITION_ADD_SOURCE:
-      case RC_CONDITION_SUB_SOURCE:
-      case RC_CONDITION_AND_NEXT:
-      case RC_CONDITION_ADD_ADDRESS:
-        /* combining flag, don't reset total */
-        break;
-
-      default:
-        /* non-combining flag, reset total */
-        total = 0;
-        break;
-    }
-  }
-
-  /* condition not found */
-  return 0;
 }

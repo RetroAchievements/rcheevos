@@ -27,14 +27,14 @@ rc_expression_t* rc_parse_expression(const char** memaddr, rc_parse_state_t* par
   return self;
 }
 
-int rc_evaluate_expression(rc_expression_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+int rc_evaluate_expression(rc_expression_t* self, rc_eval_state_t* eval_state) {
   rc_term_t* term;
   int value;
 
   value = 0;
 
   for (term = self->terms; term != 0; term = term->next) {
-    value += rc_evaluate_term(term, peek, ud, L);
+    value += rc_evaluate_term(term, eval_state);
   }
 
   return value;

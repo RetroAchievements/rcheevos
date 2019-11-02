@@ -257,16 +257,16 @@ void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_value_t** me
   *memrefs = 0;
 }
 
-rc_memref_value_t* rc_get_indirect_memref(rc_memref_value_t* memref, unsigned address_offset, rc_peek_t peek, void* ud) {
+rc_memref_value_t* rc_get_indirect_memref(rc_memref_value_t* memref, rc_eval_state_t* eval_state) {
   unsigned new_address;
 
-  if (address_offset == 0)
+  if (eval_state->add_address == 0)
     return memref;
 
   if (!memref->memref.is_indirect)
     return memref;
 
-  new_address = memref->memref.address + address_offset;
+  new_address = memref->memref.address + eval_state->add_address;
 
   /* an extra rc_memref_value_t is allocated for offset calculations */
   memref = memref->next;
@@ -274,7 +274,7 @@ rc_memref_value_t* rc_get_indirect_memref(rc_memref_value_t* memref, unsigned ad
   /* if the adjusted address has changed, update the record */
   if (memref->memref.address != new_address) {
     memref->memref.address = new_address;
-    rc_update_memref_value(memref, peek, ud);
+    rc_update_memref_value(memref, eval_state->peek, eval_state->peek_userdata);
   }
 
   return memref;
