@@ -61,7 +61,7 @@ int rc_parse_format(const char* format_str) {
 
     case 'O':
       if (!strcmp(format_str, "THER")) {
-        return RC_FORMAT_OTHER;
+        return RC_FORMAT_SCORE;
       }
 
       break;
@@ -140,16 +140,12 @@ int rc_format_value(char* buffer, int size, int value, int format) {
       break;
 
     case RC_FORMAT_SCORE:
-      chars = snprintf(buffer, size, "%06d Points", value);
-      break;
-
-    case RC_FORMAT_VALUE:
-      chars = snprintf(buffer, size, "%01d", value);
-      break;
-
-    case RC_FORMAT_OTHER:
-    default:
       chars = snprintf(buffer, size, "%06d", value);
+      break;
+
+    default:
+    case RC_FORMAT_VALUE:
+      chars = snprintf(buffer, size, "%d", value);
       break;
   }
 

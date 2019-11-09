@@ -3188,8 +3188,7 @@ static void test_value(void) {
     test_format_value(RC_FORMAT_VALUE, 12345, "12345");
     test_format_value(RC_FORMAT_VALUE, -12345, "-12345");
     test_format_value(RC_FORMAT_VALUE, 0xFFFFFFFF, "-1");
-    test_format_value(RC_FORMAT_OTHER, 12345, "012345");
-    test_format_value(RC_FORMAT_SCORE, 12345, "012345 Points");
+    test_format_value(RC_FORMAT_SCORE, 12345, "012345");
     test_format_value(RC_FORMAT_SECONDS, 45, "0:45");
     test_format_value(RC_FORMAT_SECONDS, 345, "5:45");
     test_format_value(RC_FORMAT_SECONDS, 12345, "3h25:45");
@@ -3222,7 +3221,7 @@ static void test_value(void) {
     assert(rc_parse_format("SCORE") == RC_FORMAT_SCORE);
     assert(rc_parse_format("POINTS") == RC_FORMAT_SCORE);
     assert(rc_parse_format("MILLISECS") == RC_FORMAT_CENTISECS);
-    assert(rc_parse_format("OTHER") == RC_FORMAT_OTHER);
+    assert(rc_parse_format("OTHER") == RC_FORMAT_SCORE);
     assert(rc_parse_format("INVALID") == RC_FORMAT_VALUE);
   }
 }
