@@ -4124,6 +4124,30 @@ static void test_richpresence(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestValueMacroFromIndirect
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Format:Value\nFormatType=VALUE\n\nDisplay:\nPointing at @Value(I:0xH00_M:0xH01)", buffer);
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Pointing at 18") == 0);
+
+    ram[1] = 99; /* pointed at data changes */
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Pointing at 99") == 0);
+
+    ram[0] = 1; /* pointer changes */
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Pointing at 52") == 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestUndefinedMacro
     ------------------------------------------------------------------------*/
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
