@@ -2439,6 +2439,67 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestMeasuredMultiple
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* multiple measured conditions are only okay if they all have the same target, in which
+     * case, the maximum of all the measured values is returned */
+    parse_trigger(&trigger, buffer, "SM:0xH0002=52(3)SM:0xH0003=17(3)"); /* measured(3, byte(2) == 52) || measured(3, byte(3) == 17) */
+    comp_trigger(trigger, &memory, 0); /* first condition is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(trigger->measured_value == 1U);
+    assert(trigger->measured_target == 3U);
+
+    /* second condition is true - hit count should be incremented - both values should be the same */
+    ram[2] = 9;
+    ram[3] = 17;
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 1U);
+    assert(trigger->measured_value == 1U);
+
+    comp_trigger(trigger, &memory, 0); /* second condition should become prominent */
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 2U);
+    assert(trigger->measured_target == 3U);
+
+    /* switch back to first condition */
+    ram[2] = 52;
+    ram[3] = 8;
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 2U);
+
+    comp_trigger(trigger, &memory, 1); /* hit count should be incremented and target met */
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 3U);
+
+    /* both conditions true - first should stop incrementing as target was hit */
+    ram[3] = 17;
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+
+    comp_trigger(trigger, &memory, 1); /* both conditions target met - hit count should stop incrementing */
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+    assert(trigger->measured_target == 3U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestAltGroups
     ------------------------------------------------------------------------*/
 
