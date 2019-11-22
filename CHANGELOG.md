@@ -1,3 +1,32 @@
+# v8.1.0
+
+* new flag: RC_CONDITION_MEASURED
+* new flag: RC_CONDITION_ADD_ADDRESS
+* add rc_evaluate_trigger - extended version of rc_test_trigger with more granular return codes
+* make rc_evaluate_value return a signed int (was unsigned int)
+* new formats: RC_FORMAT_MINUTES and RC_FORMAT_SECONDS_AS_MINUTES
+* removed " Points" text from RC_FORMAT_SCORE format
+* removed RC_FORMAT_OTHER format. "OTHER" format now parses to RC_FORMAT_SCORE
+* bugfix: AddHits will now honor AndNext on previous condition
+* bugfix: 24-bit read from memory should only read 24-bits
+
+# v8.0.0
+
+* support for prior operand type
+* support for AndNext condition flag
+* support for rich presence
+* bugfix: update delta/prior memory values while group is paused
+* bugfix: allow floating point number without leading 0
+* bugfix: support empty alt groups
+
+# v7.1.1
+
+* Address signed/unsigned mismatch warnings
+
+# v7.1.0
+
+* Added the RC_DISABLE_LUA macro to compile rcheevos without Lua support
+
 # v7.0.2
 
 * Make sure the code is C89-compliant
