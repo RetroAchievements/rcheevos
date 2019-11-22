@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <assert.h>
+#include <memory.h>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -47,7 +48,7 @@ static void parse_operand(rc_operand_t* self, const char** memaddr) {
 
   rc_init_parse_state(&parse, buffer, 0, 0);   
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  ret = rc_parse_operand(self, memaddr, 1, &parse);
+  ret = rc_parse_operand(self, memaddr, 1, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(ret >= 0);
@@ -62,6 +63,10 @@ static void comp_operand(rc_operand_t* self, char expected_type, char expected_s
     case RC_OPERAND_PRIOR:
       assert(expected_size == self->value.memref->memref.size);
       assert(expected_address == self->value.memref->memref.address);
+      break;
+
+    case RC_OPERAND_CONST:
+      assert(expected_address == self->value.num);
       break;
   }
 }
@@ -81,11 +86,23 @@ static void parse_error_operand(const char* memaddr, int valid_chars) {
 
   rc_init_parse_state(&parse, 0, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  ret = rc_parse_operand(&self, &memaddr, 1, &parse);
+  ret = rc_parse_operand(&self, &memaddr, 1, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(ret < 0);
   assert(memaddr - begin == valid_chars);
+}
+
+static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_value_t* memrefs)
+{
+  rc_eval_state_t eval_state;
+
+  memset(&eval_state, 0, sizeof(eval_state));
+  eval_state.peek = peek;
+  eval_state.peek_userdata = memory;
+
+  rc_update_memref_values(memrefs, peek, memory);
+  return rc_evaluate_operand(op, &eval_state);
 }
 
 static void parse_comp_operand_value(const char* memaddr, memory_t* memory, unsigned expected_value) {
@@ -97,18 +114,11 @@ static void parse_comp_operand_value(const char* memaddr, memory_t* memory, unsi
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  rc_parse_operand(&self, &memaddr, 1, &parse);
+  rc_parse_operand(&self, &memaddr, 1, 0, &parse);
   rc_destroy_parse_state(&parse);
 
-  rc_update_memref_values(memrefs, peek, memory);
-  value = rc_evaluate_operand(&self, peek, memory, NULL);
+  value = evaluate_operand(&self, memory, memrefs);
   assert(value == expected_value);
-}
-
-static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_value_t* memrefs)
-{
-  rc_update_memref_values(memrefs, peek, memory);
-  return rc_evaluate_operand(op, peek, memory, NULL);
 }
 
 static void test_memref(void) {
@@ -120,37 +130,37 @@ static void test_memref(void) {
     rc_parse_state_t parse;
     rc_init_parse_state(&parse, buffer, 0, 0);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 1);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* BCD will not match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1, 0); /* BCD will not match */
     assert(parse.scratch.memref_count == 2);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0, 0); /* differing size will not match */
     assert(parse.scratch.memref_count == 3);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0, 0); /* differing size will not match */
     assert(parse.scratch.memref_count == 4);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0, 0); /* differing size will not match */
     assert(parse.scratch.memref_count == 5);
 
-    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
+    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0, 0); /* differing address will not match */
     assert(parse.scratch.memref_count == 6);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0); /* match */
     assert(parse.scratch.memref_count == 6);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1, 0); /* match */
     assert(parse.scratch.memref_count == 6);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0, 0); /* match */
     assert(parse.scratch.memref_count == 6);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0, 0); /* match */
     assert(parse.scratch.memref_count == 6);
 
-    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
+    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0, 0); /* match */
     assert(parse.scratch.memref_count == 6);
 
     rc_destroy_parse_state(&parse);
@@ -165,23 +175,23 @@ static void test_memref(void) {
     rc_init_parse_state(&parse, buffer, 0, 0);
 
     for (i = 0; i < 100; i++) {
-      rc_alloc_memref_value(&parse, i, RC_MEMSIZE_8_BITS, 0);
+      rc_alloc_memref_value(&parse, i, RC_MEMSIZE_8_BITS, 0, 0);
     }
     assert(parse.scratch.memref_count == 100);
 
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 100);
 
-    rc_alloc_memref_value(&parse, 25, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 25, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 100);
 
-    rc_alloc_memref_value(&parse, 50, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 50, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 100);
 
-    rc_alloc_memref_value(&parse, 75, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 75, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 100);
 
-    rc_alloc_memref_value(&parse, 99, RC_MEMSIZE_8_BITS, 0);
+    rc_alloc_memref_value(&parse, 99, RC_MEMSIZE_8_BITS, 0, 0);
     assert(parse.scratch.memref_count == 100);
 
     rc_destroy_parse_state(&parse);
@@ -203,37 +213,38 @@ static void test_memref(void) {
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
 
-    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0);
     assert(memref1->memref.address == 1);
     assert(memref1->memref.size == RC_MEMSIZE_8_BITS);
     assert(memref1->memref.is_bcd == 0);
+    assert(memref1->memref.is_indirect == 0);
     assert(memref1->value == 0);
     assert(memref1->previous == 0);
     assert(memref1->prior == 0);
     assert(memref1->next == 0);
 
-    memref2 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* BCD will not match */
-    memref3 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
-    memref4 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
-    memref5 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
-    memref6 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
+    memref2 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1, 0); /* BCD will not match */
+    memref3 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0, 0); /* differing size will not match */
+    memref4 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0, 0); /* differing size will not match */
+    memref5 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0, 0); /* differing size will not match */
+    memref6 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0, 0); /* differing address will not match */
 
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0); /* match */
     assert(memrefX == memref1);
 
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 1, 0); /* match */
     assert(memrefX == memref2);
 
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0, 0); /* match */
     assert(memrefX == memref3);
 
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0, 0); /* match */
     assert(memrefX == memref4);
 
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0, 0); /* match */
     assert(memrefX == memref5);
 
-    memrefX = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
+    memrefX = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0, 0); /* match */
     assert(memrefX == memref6);
 
     rc_destroy_parse_state(&parse);
@@ -256,8 +267,8 @@ static void test_memref(void) {
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
 
-    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
-    memref2 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0);
+    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0, 0);
+    memref2 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0, 0);
 
     rc_update_memref_values(memrefs, peek, &memory);
 
@@ -527,7 +538,7 @@ static void test_operand(void) {
     memaddr = "d0xh1";
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
-    rc_parse_operand(&op, &memaddr, 1, &parse);
+    rc_parse_operand(&op, &memaddr, 1, 0, &parse);
     rc_destroy_parse_state(&parse);
 
     assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* first call gets uninitialized value */
@@ -569,7 +580,7 @@ static void test_operand(void) {
     memaddr = "p0xh1";
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
-    rc_parse_operand(&op, &memaddr, 1, &parse);
+    rc_parse_operand(&op, &memaddr, 1, 0, &parse);
     rc_destroy_parse_state(&parse);
 
     /* RC_OPERAND_PRIOR only updates when the memory value changes */
@@ -600,7 +611,7 @@ static void parse_comp_condition(
   char expected_left_type, char expected_left_size, unsigned expected_left_value,
   char expected_operator,
   char expected_right_type, char expected_right_size, unsigned expected_right_value,
-  int expected_required_hits
+  unsigned expected_required_hits
 ) {
   rc_condition_t* self;
   rc_parse_state_t parse;
@@ -609,7 +620,7 @@ static void parse_comp_condition(
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_condition(&memaddr, &parse);
+  self = rc_parse_condition(&memaddr, &parse, 0);
   rc_destroy_parse_state(&parse);
 
   assert(self->type == expected_type);
@@ -617,6 +628,17 @@ static void parse_comp_condition(
   assert(self->oper == expected_operator);
   comp_operand(&self->operand2, expected_right_type, expected_right_size, expected_right_value);
   assert(self->required_hits == expected_required_hits);
+}
+
+static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_value_t* memrefs) {
+  rc_eval_state_t eval_state;
+
+  memset(&eval_state, 0, sizeof(eval_state));
+  eval_state.peek = peek;
+  eval_state.peek_userdata = memory;
+  
+  rc_update_memref_values(memrefs, peek, memory);
+  return rc_test_condition(cond, &eval_state);
 }
 
 static void parse_test_condition(const char* memaddr, memory_t* memory, int value) {
@@ -628,21 +650,15 @@ static void parse_test_condition(const char* memaddr, memory_t* memory, int valu
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_condition(&memaddr, &parse);
+  self = rc_parse_condition(&memaddr, &parse, 0);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  rc_update_memref_values(memrefs, peek, memory);
-  ret = rc_test_condition(self, 0, peek, memory, NULL);
+  ret = evaluate_condition(self, memory, memrefs);
 
   assert((ret && value) || (!ret && !value));
-}
-
-static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_value_t* memrefs) {
-  rc_update_memref_values(memrefs, peek, memory);
-  return rc_test_condition(cond, 0, peek, memory, NULL);
 }
 
 static void test_condition(void) {
@@ -771,6 +787,24 @@ static void test_condition(void) {
       0
     );
 
+    parse_comp_condition(
+      "M:0xH1234=8",
+      RC_CONDITION_MEASURED,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_EQ,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
+    parse_comp_condition(
+      "I:0xH1234=8",
+      RC_CONDITION_ADD_ADDRESS,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_EQ,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
     /* hit count */
     parse_comp_condition(
       "0xH1234=8(1)",
@@ -833,6 +867,71 @@ static void test_condition(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestParseConditionShorthand
+    ------------------------------------------------------------------------*/
+
+    parse_comp_condition(
+      "A:0xH1234",
+      RC_CONDITION_ADD_SOURCE,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_NONE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
+      0
+    );
+
+    parse_comp_condition(
+      "B:0xH1234",
+      RC_CONDITION_SUB_SOURCE,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_NONE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
+      0
+    );
+
+    parse_comp_condition(
+      "C:0xH1234",
+      RC_CONDITION_ADD_HITS,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_NONE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
+      0
+    );
+
+    parse_comp_condition(
+      "N:0xH1234",
+      RC_CONDITION_AND_NEXT,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_NONE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
+      0
+    );
+
+    parse_comp_condition(
+      "I:0xH1234",
+      RC_CONDITION_ADD_ADDRESS,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_CONDITION_NONE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
+      0
+    );
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestParseCondition
+    ------------------------------------------------------------------------*/
+    assert(rc_trigger_size("0xH1234==0") > 0);
+    assert(rc_trigger_size("H0x1234==0") == RC_INVALID_CONST_OPERAND);
+    assert(rc_trigger_size("0x1234") == RC_INVALID_OPERATOR);
+    assert(rc_trigger_size("P:0x1234") == RC_INVALID_OPERATOR);
+    assert(rc_trigger_size("R:0x1234") == RC_INVALID_OPERATOR);
+    assert(rc_trigger_size("M:0x1234") == RC_INVALID_OPERATOR);
+    assert(rc_trigger_size("Z:0x1234") == RC_INVALID_CONDITION_TYPE);
+    assert(rc_trigger_size("0x1234=1.2") == RC_INVALID_REQUIRED_HITS);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestConditionCompare
     ------------------------------------------------------------------------*/
 
@@ -874,7 +973,7 @@ static void test_condition(void) {
     const char* cond_str = "0xH0001>d0xH0001";
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
-    cond = rc_parse_condition(&cond_str, &parse);
+    cond = rc_parse_condition(&cond_str, &parse, 0);
     rc_destroy_parse_state(&parse);
 
     assert(parse.offset >= 0);
@@ -913,6 +1012,10 @@ static void comp_trigger(rc_trigger_t* self, memory_t* memory, int expected_resu
   assert(expected_result == ret);
 }
 
+static int evaluate_trigger(rc_trigger_t* self, memory_t* memory) {
+  return rc_evaluate_trigger(self, peek, memory, NULL);
+}
+
 static rc_condition_t* condset_get_cond(rc_condset_t* condset, int ndx) {
   rc_condition_t* cond = condset->conditions;
 
@@ -923,6 +1026,37 @@ static rc_condition_t* condset_get_cond(rc_condset_t* condset, int ndx) {
 
   assert(cond != NULL);
   return cond;
+}
+
+static unsigned condset_get_total_hitcount(rc_condset_t* condset, int ndx) {
+  unsigned total;
+  rc_condition_t* first = condset->conditions;
+
+  total = 0;
+  for (; first != 0; first = first->next) {
+    total += first->current_hits;
+    if (ndx == 0)
+      return total;
+    ndx--;
+
+    switch (first->type) {
+      case RC_CONDITION_ADD_HITS:
+      case RC_CONDITION_ADD_SOURCE:
+      case RC_CONDITION_SUB_SOURCE:
+      case RC_CONDITION_AND_NEXT:
+      case RC_CONDITION_ADD_ADDRESS:
+        /* combining flag, don't reset total */
+        break;
+
+      default:
+        /* non-combining flag, reset total */
+        total = 0;
+        break;
+    }
+  }
+
+  /* condition not found */
+  return 0;
 }
 
 static rc_condset_t* trigger_get_set(rc_trigger_t* trigger, int ndx) {
@@ -1311,10 +1445,12 @@ static void test_trigger(void) {
     comp_trigger(trigger, &memory, 1); /* result is true, no non-reset conditions */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 2U);
 
     comp_trigger(trigger, &memory, 0); /* total hits met (2 for each condition, only needed 3 total) (2 hits on condition 2 is not enough), result is always false if reset */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 0U);
   }
 
   {
@@ -1405,11 +1541,13 @@ static void test_trigger(void) {
     comp_trigger(trigger, &memory, 0);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 1U);
 
     ram[0] = 1;
     comp_trigger(trigger, &memory, 1);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 3U);
   }
 
   {
@@ -1582,14 +1720,17 @@ static void test_trigger(void) {
     comp_trigger(trigger, &memory, 0);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 2U);
 
     comp_trigger(trigger, &memory, 1); /* total hits met (2 for each condition) */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 4U);
 
     comp_trigger(trigger, &memory, 1);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U); /* threshold met, stop incrementing */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U); /* total met prevents incrementing even though individual tally has not reached total */
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 4U);
 
     rc_reset_condset(trigger->requirement);
 
@@ -1600,15 +1741,18 @@ static void test_trigger(void) {
     comp_trigger(trigger, &memory, 0);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 2U);
 
     ram[1] = 16;
     comp_trigger(trigger, &memory, 0); /* 1 + 2 < 4, not met */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 3U);
 
     comp_trigger(trigger, &memory, 1); /* 1 + 3 = 4, met */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 3U);
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 1) == 4U);
   }
 
   {
@@ -1626,7 +1770,14 @@ static void test_trigger(void) {
     parse_trigger(&trigger, buffer, "A:0xH0001=0_C:0xH0002=70_0xH0000=0(2)"); /* repeated(2, (byte(1) + byte(2) == 70) || byte(0) == 0) */
     comp_trigger(trigger, &memory, 1); /* both conditions are true - addhits should match required 2 hits */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* 0x12+0x34 = 0x46 - true! */
-    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* 0 = 0 - true! */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U); /* 0 = 0 - true! */
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 2) == 2U);
+
+    parse_trigger(&trigger, buffer, "C:0xH0000=0_A:0xH0001=0_0xH0002=70(2)"); /* repeated(2, byte(0) == 0 || (byte(1) + byte(2) == 70)) */
+    comp_trigger(trigger, &memory, 1); /* both conditions are true - addhits should match required 2 hits */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U); /* 0 = 0 - true! */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U); /* 0x12+0x34 = 0x46 - true! */
+    assert(condset_get_total_hitcount(trigger_get_set(trigger, 0), 2) == 2U);
   }
 
   {
@@ -1850,55 +2001,6 @@ static void test_trigger(void) {
   }
 
   {
-      /*------------------------------------------------------------------------
-      TestAddHits
-      ------------------------------------------------------------------------*/
-
-      unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
-      memory_t memory;
-      rc_trigger_t* trigger;
-      char buffer[2048];
-
-      rc_condset_t* condset;
-
-      memory.ram = ram;
-      memory.size = sizeof(ram);
-
-      parse_trigger(&trigger, buffer, "C:0xH0001=18(2)_0xL0004=6(4)"); /* repeated(4, byte(1) == 18 || low(4) == 6) */
-      comp_trigger(trigger, &memory, 0);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
-
-      comp_trigger(trigger, &memory, 1); /* total hits met (2 for each condition) */
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
-
-      comp_trigger(trigger, &memory, 1);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U); /* threshold met, stop incrementing */
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U); /* total met prevents incrementing even though individual tally has not reached total */
-
-      rc_reset_condset(trigger->requirement);
-
-      for (condset = trigger->alternative; condset != NULL; condset = condset->next)
-      {
-          rc_reset_condset(condset);
-      }
-
-      comp_trigger(trigger, &memory, 0);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
-
-      ram[1] = 16;
-      comp_trigger(trigger, &memory, 0); /* 1 + 2 < 4, not met */
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
-
-      comp_trigger(trigger, &memory, 1); /* 1 + 3 = 4, met */
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
-      assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 3U);
-  }
-
-  {
     /*------------------------------------------------------------------------
     TestAndNextAddSource
     ------------------------------------------------------------------------*/
@@ -1968,6 +2070,432 @@ static void test_trigger(void) {
 
     /* value already 18 */
     comp_trigger(trigger, &memory, 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAndNextAddHits
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* repeated(5, (byte(0) == 1 && byte(0x0001) > prev(byte(0x0001))) || byte(0) == 2 || 0 == 1) */
+    parse_trigger(&trigger, buffer, "N:0xH00=1_C:0xH01>d0xH01_N:0=1_0=1.2.");
+
+    /* initialize delta */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    /* first part of AndNext not true */
+    ++ram[1];
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    /* AndNext should be true */
+    ram[0] = 1;
+    ++ram[1];
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+
+    /* AndNext should be true, hit count should be sufficient to trigger */
+    ++ram[1];
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressDirectPointer
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0xH0000=22");
+    comp_trigger(trigger, &memory, 0);
+
+    ram[1] = 22; /* value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 2; /* point to new value */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 1; /* point to original value */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[1] = 11; /* original value is not correct */
+    comp_trigger(trigger, &memory, 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressIndirectPointer
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+
+    ram[1] = 22; /* non-offset value is correct */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[3] = 22; /* offset value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 2; /* point to new value */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[4] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 0; /* point to new value */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressIndirectPointerDataSizeDiffersFromPointerSize
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0x 0002=22");
+    comp_trigger(trigger, &memory, 0);
+
+    ram[3] = 22; /* 8-bit offset value is correct */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[4] = 0; /* 16-bit offset value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 0; /* point to new value */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[3] = 0; /* new value only partially correct */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressIndirectPointerOutOfRange
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56, 0x16};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = 5; /* 6th byte is valid, but out of range */
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+
+    ram[3] = 22; /* offset value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 100; /* way out of bounds */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[0] = 3; /* boundary condition - value is correct, but should be unreachable. 
+                   note: address validation must be handled by registered 'peek' callback */
+    comp_trigger(trigger, &memory, 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressDoubleIndirection
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x02, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_I:0xH0000=0_0xH0000=22"); /* $($($0000)) == 22 */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 22; /* value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[1] = 3; /* second pointer in chain causes final pointer to point at address 3 */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[3] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 2; /* first pointer points at address 2, which is 22, so out-of-bounds */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 3; /* second pointer points at address 3, which is correct */
+    comp_trigger(trigger, &memory, 1);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressBothSidesDiffer
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x02, 0x11, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0xH0000=0xH0001"); /* $($0) == $($0 + 1) */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = ram[3]; /* value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 1; /* adjust pointer */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[1] = ram[2]; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressBothSidesSame
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x02, 0x11, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000=0_0xH0000>d0xH0000"); /* $($0) > delta $($0) */
+    comp_trigger(trigger, &memory, 1); /* initial delta will be 0, so non-zero is greater */
+
+    comp_trigger(trigger, &memory, 0); /* delta should be same as current */
+
+    ram[2]++; /* value increased */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[2]--; /* value decreased */
+    comp_trigger(trigger, &memory, 0);
+
+    /* this is a small hiccup in the AddAddress behavior, we can't reasonably know the delta 
+     * of a value when the pointer changes as we didn't evaluate the new address on the last frame */
+    ram[0] = 3; /* point at new value, which is greater */
+    comp_trigger(trigger, &memory, 1);
+  }
+  
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressIndirectPointerMultiple
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x02, 0x03, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* the expectation is that the AddAddress lines will share rc_memref_value_t's, but the following lines
+       will generate their own rc_memref_value_t's for indirection. none of this is actually verified. */
+    parse_trigger(&trigger, buffer, 
+        "I:0xH0000=0_0xH0002=22_I:0xH0000=0_0xH0003=23_I:0xH0001=0_0xH0003=24");
+    /*   $(0002 + $0000) == 22 && $(0003 + $0000) == 23 && $(0003 + $0001) == 24 */
+    /*   $0003 (0x34)    == 22 && $0004 (0xAB)    == 23 && $0005 (0x56)    == 24 */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 5)->current_hits == 0U);
+
+    ram[3] = 22; /* first condition true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 5)->current_hits == 0U);
+
+    ram[4] = 23; /* second condition true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 5)->current_hits == 0U);
+
+    ram[5] = 24; /* third condition true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 5)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestMeasured
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "M:0xH0002=52(3)"); /* measured(3, byte(2) == 52) */
+    comp_trigger(trigger, &memory, 0); /* condition is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(trigger->measured_value == 1U);
+    assert(trigger->measured_target == 3U);
+
+    comp_trigger(trigger, &memory, 0); /* condition is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 2U);
+
+    comp_trigger(trigger, &memory, 1); /* condition is true - hit count should be incremented and target met */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+
+    comp_trigger(trigger, &memory, 1); /* conditions is true, target met - hit count should stop incrementing */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+    assert(trigger->measured_target == 3U);
+  }
+  
+  {
+    /*------------------------------------------------------------------------
+    TestMeasuredAddHits
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "C:0xH0001=10_M:0xH0002=10(5)"); /* measured(5, byte(1) == 10 || byte(2) == 10) */
+    comp_trigger(trigger, &memory, 0); /* neither is true - hit count should not be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    ram[2] = 10;
+    comp_trigger(trigger, &memory, 0); /* second is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    assert(trigger->measured_value == 1U);
+    assert(trigger->measured_target == 5U);
+    ram[1] = 10;
+    comp_trigger(trigger, &memory, 0); /* both are true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(trigger->measured_value == 3U);
+    ram[2] = 0;
+    comp_trigger(trigger, &memory, 0); /* first is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(trigger->measured_value == 4U);
+    ram[1] = 0;
+    comp_trigger(trigger, &memory, 0); /* neither is true - hit count should not be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(trigger->measured_value == 4U);
+    ram[1] = 10;
+    comp_trigger(trigger, &memory, 1); /* first is true - hit count should be incremented and target met */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+    assert(trigger->measured_value == 5U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestMeasuredMultiple
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* multiple measured conditions are only okay if they all have the same target, in which
+     * case, the maximum of all the measured values is returned */
+    parse_trigger(&trigger, buffer, "SM:0xH0002=52(3)SM:0xH0003=17(3)"); /* measured(3, byte(2) == 52) || measured(3, byte(3) == 17) */
+    comp_trigger(trigger, &memory, 0); /* first condition is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(trigger->measured_value == 1U);
+    assert(trigger->measured_target == 3U);
+
+    /* second condition is true - hit count should be incremented - both values should be the same */
+    ram[2] = 9;
+    ram[3] = 17;
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 1U);
+    assert(trigger->measured_value == 1U);
+
+    comp_trigger(trigger, &memory, 0); /* second condition should become prominent */
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 2U);
+    assert(trigger->measured_target == 3U);
+
+    /* switch back to first condition */
+    ram[2] = 52;
+    ram[3] = 8;
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 2U);
+
+    comp_trigger(trigger, &memory, 1); /* hit count should be incremented and target met */
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 3U);
+
+    /* both conditions true - first should stop incrementing as target was hit */
+    ram[3] = 17;
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+
+    comp_trigger(trigger, &memory, 1); /* both conditions target met - hit count should stop incrementing */
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+    assert(trigger->measured_target == 3U);
   }
 
   {
@@ -2277,6 +2805,196 @@ static void test_trigger(void) {
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U); /* PauseIf false */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* delta = 52, count it */
   }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEvaluateTriggerTransistions
+    Verifies return codes of rc_evaluate_trigger
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0001=18_0xH0002<=52_R:0xL0004=4");
+
+    /* ==== INACTIVE ==== */
+    trigger->state = RC_TRIGGER_STATE_INACTIVE;
+
+    /* Inactive is a permanent state - trigger is initially true */
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    ram[2] = 24;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+
+    /* Trigger no longer true, still inactive */
+    ram[1] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+
+    /* hits should not be tallied when inactive */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    /* memrefs should be updated while inactive */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->operand1.value.memref->value == 24U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->operand1.value.memref->previous == 24U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->operand1.value.memref->prior == 52U);
+
+    /* reset should be ignored while inactive */
+    ram[4] = 4;
+    condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits = 1U;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+
+    /* ==== WAITING ==== */
+    trigger->state = RC_TRIGGER_STATE_WAITING;
+
+    /* set trigger state = true, ResetIf false */
+    ram[1] = 18;
+    ram[4] = 9;
+
+    /* state doesn't change as long as it's waiting - prevents triggers from uninitialized memory */
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_WAITING);
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_WAITING);
+    ram[2] = 16;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_WAITING);
+
+    /* waiting trigger should not tally hits */
+    assert(!trigger->has_hits);
+
+    /* ResetIf makes the trigger state false, so the trigger should become active */
+    ram[4] = 4;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    /* reset to previous state */
+    trigger->state = RC_TRIGGER_STATE_WAITING;
+    ram[4] = 9;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_WAITING);
+    assert(!trigger->has_hits);
+
+    /* trigger is no longer true, proceed to active state */
+    ram[1] = 5;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+    assert(trigger->has_hits);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+    
+    /* ==== RESET ==== */
+    assert(trigger->state == RC_TRIGGER_STATE_ACTIVE);
+
+    /* reset when has_hits returns RESET notification, but doesn't change state */
+    ram[4] = 4;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_RESET);
+    assert(trigger->state == RC_TRIGGER_STATE_ACTIVE);
+    assert(!trigger->has_hits);
+
+    /* reset when !has_hits does not return RESET notification */
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+    assert(trigger->state == RC_TRIGGER_STATE_ACTIVE);
+    assert(!trigger->has_hits);
+
+    /* ==== TRIGGERED ==== */
+    ram[4] = 9;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    ram[1] = 18;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+
+    /* triggered trigger remains triggered but does not increment hit counts */
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    assert(trigger->state == RC_TRIGGER_STATE_TRIGGERED);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+
+    /* triggered trigger remains triggered when no longer true */
+    ram[1] = 5;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    assert(trigger->state == RC_TRIGGER_STATE_TRIGGERED);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+
+    /* triggered trigger does not update deltas */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->operand1.value.memref->value == 18U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->operand1.value.memref->previous == 5U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEvaluateTriggerTransistionsPause
+    Verifies return codes of rc_evaluate_trigger
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0001=18_0xH0003=171_P:0xH0002=1SR:0xH0004=4");
+
+    /* Inactive is a permanent state - trigger is initially true */
+    trigger->state = RC_TRIGGER_STATE_INACTIVE;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+
+    /* PauseIf is ignored while inactive */
+    ram[2] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+
+    /* switch state to waiting, ready to trigger */
+    ram[2] = 2;
+    trigger->state = RC_TRIGGER_STATE_WAITING;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_WAITING);
+
+    /* PauseIf makes the evaluation false, so state should advance to active, but paused */
+    ram[2] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PAUSED);
+    assert(trigger->has_hits); /* the pauseif has a hit */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+
+    /* hitcounts should update when unpaused - adjust memory so trigger no longer true */
+    ram[2] = 2;
+    ram[3] = 99;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+    assert(trigger->has_hits);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+
+    /* hitcounts should remain when paused */
+    ram[2] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PAUSED);
+    assert(trigger->has_hits);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+
+    /* Reset while paused should notify, but not change state */
+    ram[4] = 4;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_RESET);
+    assert(trigger->state == RC_TRIGGER_STATE_PAUSED);
+    assert(!trigger->has_hits);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+
+    /* Reset without hitcounts should return current state */
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PAUSED);
+
+    /* trigger while paused is ignored */
+    ram[4] = 0;
+    ram[3] = 171;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PAUSED);
+
+    /* trigger should fire when unpaused */
+    ram[2] = 2;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+
+    /* triggered trigger ignores pause */
+    ram[2] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_INACTIVE);
+    assert(trigger->state == RC_TRIGGER_STATE_TRIGGERED);
+  }
+
 }
 
 static void parse_comp_term(const char* memaddr, char expected_var_size, unsigned expected_address, int is_bcd, int is_const) {
@@ -2287,7 +3005,7 @@ static void parse_comp_term(const char* memaddr, char expected_var_size, unsigne
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_term(&memaddr, &parse);
+  self = rc_parse_term(&memaddr, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
@@ -2314,7 +3032,7 @@ static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsi
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_term(&memaddr, &parse);
+  self = rc_parse_term(&memaddr, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
@@ -2324,7 +3042,7 @@ static void parse_comp_term_fp(const char* memaddr, char expected_var_size, unsi
   assert(self->operand1.value.memref->memref.address == expected_address);
   if (self->operand2.type == RC_OPERAND_CONST) {
     assert(self->operand2.type == RC_OPERAND_CONST);
-    assert(self->operand2.value.num == (int)fp);
+    assert(self->operand2.value.num == (unsigned)fp);
   }
   else {
     assert(self->operand2.type == RC_OPERAND_FP);
@@ -2340,7 +3058,7 @@ static void parse_comp_term_mem(const char* memaddr, char expected_size_1, unsig
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_term(&memaddr, &parse);
+  self = rc_parse_term(&memaddr, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
@@ -2352,22 +3070,27 @@ static void parse_comp_term_mem(const char* memaddr, char expected_size_1, unsig
   assert(self->operand2.value.memref->memref.address == expected_address_2);
 }
 
-static void parse_comp_term_value(const char* memaddr, memory_t* memory, unsigned value) {
+static void parse_comp_term_value(const char* memaddr, memory_t* memory, int value) {
   rc_term_t* self;
   rc_parse_state_t parse;
   rc_memref_value_t* memrefs;
+  rc_eval_state_t eval_state;
   char buffer[512];
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_term(&memaddr, &parse);
+  self = rc_parse_term(&memaddr, 0, &parse);
   rc_destroy_parse_state(&parse);
 
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
+  memset(&eval_state, 0, sizeof(eval_state));
+  eval_state.peek = peek;
+  eval_state.peek_userdata = memory;
+
   rc_update_memref_values(memrefs, peek, memory);
-  assert(rc_evaluate_term(self, peek, memory, NULL) == value);
+  assert(rc_evaluate_term(self, &eval_state) == value);
 }
 
 static void test_term(void) {
@@ -2443,8 +3166,8 @@ static void test_term(void) {
     parse_comp_term_value("V6", &memory, 6);
     parse_comp_term_value("V6*2", &memory, 12);
     parse_comp_term_value("V6*0.5", &memory, 3);
-    parse_comp_term_value("V-6", &memory, (unsigned)(-6));
-    parse_comp_term_value("V-6*2", &memory, (unsigned)(-12));
+    parse_comp_term_value("V-6", &memory, -6);
+    parse_comp_term_value("V-6*2", &memory, -12);
 
     /* memory */
     parse_comp_term_value("0xH01", &memory, 0x12);
@@ -2464,7 +3187,7 @@ static void test_term(void) {
   }
 }
 
-static void parse_comp_value(const char* memaddr, memory_t* memory, unsigned expected_value) {
+static void parse_comp_value(const char* memaddr, memory_t* memory, int expected_value) {
   rc_value_t* self;
   char buffer[2048];
   int ret;
@@ -2477,13 +3200,23 @@ static void parse_comp_value(const char* memaddr, memory_t* memory, unsigned exp
   assert(self != NULL);
   assert(*((int*)((char*)buffer + ret)) == 0xEEEEEEEE);
 
-  assert(rc_evaluate_value(self, peek, memory, NULL) == expected_value);
+  ret = rc_evaluate_value(self, peek, memory, NULL);
+  assert(ret == expected_value);
+}
+
+static void test_format_value(int format, int value, const char* expected) {
+    char buffer[64];
+    int result;
+
+    result = rc_format_value(buffer, sizeof(buffer), value, format);
+    assert(!strcmp(expected, buffer));
+    assert(result == (int)strlen(expected));
 }
 
 static void test_value(void) {
   {
     /*------------------------------------------------------------------------
-    TestAdditionSimple
+    TestValueCalculations
     ------------------------------------------------------------------------*/
 
     unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
@@ -2492,10 +3225,20 @@ static void test_value(void) {
     memory.ram = ram;
     memory.size = sizeof(ram);
 
-    parse_comp_value("0xH0001_0xH0002", &memory, 0x12U + 0x34U); /* TestAdditionSimple */
-    parse_comp_value("0xH0001*100_0xH0002*0.5_0xL0003", &memory, 0x12U * 100 + 0x34U / 2 + 0x0B);/* TestAdditionComplex */
-    parse_comp_value("0xH0001$0xH0002", &memory, 0x34U);/* TestMaximumSimple */
-    parse_comp_value("0xH0001_0xH0004*3$0xH0002*0xL0003", &memory, 0x34U * 0xBU);/* TestMaximumComplex */
+    /* classic format - supports multipliers, max, inversion */
+    parse_comp_value("0xH0001_0xH0002", &memory, 0x12 + 0x34); /* TestAdditionSimple */
+    parse_comp_value("0xH0001*100_0xH0002*0.5_0xL0003", &memory, 0x12 * 100 + 0x34 / 2 + 0x0B);/* TestAdditionComplex */
+    parse_comp_value("0xH0001$0xH0002", &memory, 0x34);/* TestMaximumSimple */
+    parse_comp_value("0xH0001_0xH0004*3$0xH0002*0xL0003", &memory, 0x34 * 0xB);/* TestMaximumComplex */
+    parse_comp_value("0xH0001_V-20", &memory, 0x12 - 20);
+    parse_comp_value("0xH0001_H10", &memory, 0x12 + 0x10);
+
+    parse_comp_value("0xh0000*-1_99_0xh0001*-100_5900", &memory, 4199);
+
+    /* "Measured" format - supports hit counts, AddSource, SubSource, and AddAddress */
+    parse_comp_value("A:0xH0001_M:0xH0002", &memory, 0x12 + 0x34);
+    parse_comp_value("I:0xH0000_M:0xH0002", &memory, 0x34);
+    parse_comp_value("M:0xH0002!=d0xH0002", &memory, 1); /* delta should initially be 0, so a hit should be tallied */
   }
 
   {
@@ -2503,34 +3246,25 @@ static void test_value(void) {
     TestFormatValue
     ------------------------------------------------------------------------*/
 
-    char buffer[64];
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_VALUE);
-    assert(!strcmp("12345", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_OTHER);
-    assert(!strcmp("012345", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_SCORE);
-    assert(!strcmp("012345 Points", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_SECONDS);
-    assert(!strcmp("205:45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_CENTISECS);
-    assert(!strcmp("02:03.45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 12345, RC_FORMAT_FRAMES);
-    assert(!strcmp("03:25.75", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_SECONDS);
-    assert(!strcmp("05:45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_CENTISECS);
-    assert(!strcmp("00:03.45", buffer));
-
-    rc_format_value(buffer, sizeof(buffer), 345, RC_FORMAT_FRAMES);
-    assert(!strcmp("00:05.75", buffer));
+    test_format_value(RC_FORMAT_VALUE, 12345, "12345");
+    test_format_value(RC_FORMAT_VALUE, -12345, "-12345");
+    test_format_value(RC_FORMAT_VALUE, 0xFFFFFFFF, "-1");
+    test_format_value(RC_FORMAT_SCORE, 12345, "012345");
+    test_format_value(RC_FORMAT_SECONDS, 45, "0:45");
+    test_format_value(RC_FORMAT_SECONDS, 345, "5:45");
+    test_format_value(RC_FORMAT_SECONDS, 12345, "3h25:45");
+    test_format_value(RC_FORMAT_CENTISECS, 345, "0:03.45");
+    test_format_value(RC_FORMAT_CENTISECS, 12345, "2:03.45");
+    test_format_value(RC_FORMAT_CENTISECS, 1234567, "3h25:45.67");
+    test_format_value(RC_FORMAT_SECONDS_AS_MINUTES, 45, "0h00");
+    test_format_value(RC_FORMAT_SECONDS_AS_MINUTES, 345, "0h05");
+    test_format_value(RC_FORMAT_SECONDS_AS_MINUTES, 12345, "3h25");
+    test_format_value(RC_FORMAT_MINUTES, 45, "0h45");
+    test_format_value(RC_FORMAT_MINUTES, 345, "5h45");
+    test_format_value(RC_FORMAT_MINUTES, 12345, "205h45");
+    test_format_value(RC_FORMAT_FRAMES, 345, "0:05.75");
+    test_format_value(RC_FORMAT_FRAMES, 12345, "3:25.75");
+    test_format_value(RC_FORMAT_FRAMES, 1234567, "5h42:56.11");
   }
 
   {
@@ -2542,11 +3276,13 @@ static void test_value(void) {
     assert(rc_parse_format("SECS") == RC_FORMAT_SECONDS);
     assert(rc_parse_format("TIMESECS") == RC_FORMAT_SECONDS);
     assert(rc_parse_format("TIME") == RC_FORMAT_FRAMES);
+    assert(rc_parse_format("MINUTES") == RC_FORMAT_MINUTES);
+    assert(rc_parse_format("SECS_AS_MINS") == RC_FORMAT_SECONDS_AS_MINUTES);
     assert(rc_parse_format("FRAMES") == RC_FORMAT_FRAMES);
     assert(rc_parse_format("SCORE") == RC_FORMAT_SCORE);
     assert(rc_parse_format("POINTS") == RC_FORMAT_SCORE);
     assert(rc_parse_format("MILLISECS") == RC_FORMAT_CENTISECS);
-    assert(rc_parse_format("OTHER") == RC_FORMAT_OTHER);
+    assert(rc_parse_format("OTHER") == RC_FORMAT_SCORE);
     assert(rc_parse_format("INVALID") == RC_FORMAT_VALUE);
   }
 }
@@ -2581,8 +3317,8 @@ static void lboard_reset(rc_lboard_t* lboard, lboard_test_state_t* state) {
   state->active = state->submitted = 0;
 }
 
-static unsigned lboard_evaluate(rc_lboard_t* lboard, lboard_test_state_t* test, memory_t* memory) {
-  unsigned value;
+static int lboard_evaluate(rc_lboard_t* lboard, lboard_test_state_t* test, memory_t* memory) {
+  int value;
 
   switch (rc_evaluate_lboard(lboard, &value, peek, memory, NULL)) {
     case RC_LBOARD_STARTED:
@@ -2928,6 +3664,134 @@ static void test_lboard(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestValueFromHitCount
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_lboard_t* lboard;
+    lboard_test_state_t state;
+    unsigned value;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    lboard = parse_lboard("STA:0xH00=1::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH02!=d0xH02", buffer);
+    state.active = state.submitted = 0;
+
+    /* not active, value should not be tallied */
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(!state.active);
+    assert(value == 0U);
+    ram[2] = 3;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(!state.active);
+    assert(value == 0U);
+
+    /* active, tally will not occur as value hasn't changed */
+    ram[0] = 1;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 0U);
+
+    /* active, value changed, expect tally */
+    ram[2] = 11;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 1U);
+
+    /* not changed, no tally */
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 1U);
+
+    /* changed, tally */
+    ram[2] = 12;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 2U);
+
+    /* cancelled, no tally */
+    ram[0] = 2;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(!state.active);
+    assert(value == 0U);
+    ram[2] = 13;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(!state.active);
+    assert(value == 0U);
+
+    /* reactivated, tally should be reset */
+    ram[0] = 1;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 0U);
+
+    /* active, value changed, expect tally */
+    ram[2] = 11;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestValueFromHitCountAddHits
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_lboard_t* lboard;
+    lboard_test_state_t state;
+    unsigned value;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    lboard = parse_lboard("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:C:0xH03=1_M:0xH02=1", buffer);
+    state.active = state.submitted = 0;
+
+    /* active, nothing to tally */
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 0U);
+
+    /* second value tallied */
+    ram[2] = 1;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 1U);
+
+    /* both values tallied */
+    ram[3] = 1;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 3U);
+
+    /* first value tallied */
+    ram[2] = 12;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 4U);
+
+    /* cancelled, no tally */
+    ram[0] = 2;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(!state.active);
+    assert(value == 0U);
+
+    /* second evalute required before we can reactivate */
+    lboard_evaluate(lboard, &state, &memory);
+
+    /* reactivated, tally should be reset, and first still true */
+    ram[0] = 0;
+    value = lboard_evaluate(lboard, &state, &memory);
+    assert(state.active);
+    assert(value == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestUnparsableStringWillNotStart
     We'll test for errors in the memaddr field instead
     ------------------------------------------------------------------------*/
@@ -2942,6 +3806,10 @@ static void test_lboard(void) {
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::SUB:0=0", RC_DUPLICATED_SUBMIT);
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::VAL:0", RC_DUPLICATED_VALUE);
     lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::PRO:0", RC_DUPLICATED_PROGRESS);
+    lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH01=1_M:0xH01=2", RC_MULTIPLE_MEASURED);
+    lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH01=1_P:0xH01=2", RC_INVALID_VALUE_FLAG);
+    lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1_0xH01=2", RC_INVALID_VALUE_FLAG);
+    lboard_check("STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1", RC_MISSING_VALUE_MEASURED);
   }
 }
 
@@ -3231,6 +4099,16 @@ static void test_richpresence(void) {
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "13332 Points") == 0);
     assert(result == 12);
+
+    richpresence = parse_richpresence("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001_V-10000) Points", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "3332 Points") == 0);
+    assert(result == 11);
+
+    ram[2] = 7;
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "-8188 Points") == 0);
+    assert(result == 12);
   }
 
   {
@@ -3247,13 +4125,13 @@ static void test_richpresence(void) {
 
     richpresence = parse_richpresence("Format:Frames\nFormatType=FRAMES\n\nDisplay:\n@Frames(0x 0001)", buffer);
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
-    assert(strcmp(output, "03:42.16") == 0);
-    assert(result == 8);
+    assert(strcmp(output, "3:42.16") == 0);
+    assert(result == 7);
 
     ram[1] = 20;
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
-    assert(strcmp(output, "03:42.20") == 0);
-    assert(result == 8);
+    assert(strcmp(output, "3:42.20") == 0);
+    assert(result == 7);
   }
 
   {
@@ -3277,6 +4155,56 @@ static void test_richpresence(void) {
     result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
     assert(strcmp(output, "3252 Points") == 0);
     assert(result == 11);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestValueMacroFromHits
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Format:Hits\nFormatType=VALUE\n\nDisplay:\n@Hits(M:0xH01=1) Hits", buffer);
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "0 Hits") == 0);
+
+    ram[1] = 1;
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "1 Hits") == 0);
+
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "2 Hits") == 0);
+
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "3 Hits") == 0);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestValueMacroFromIndirect
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Format:Value\nFormatType=VALUE\n\nDisplay:\nPointing at @Value(I:0xH00_M:0xH01)", buffer);
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Pointing at 18") == 0);
+
+    ram[1] = 99; /* pointed at data changes */
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Pointing at 99") == 0);
+
+    ram[0] = 1; /* pointer changes */
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "Pointing at 52") == 0);
   }
 
   {

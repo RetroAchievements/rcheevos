@@ -150,5 +150,8 @@
     <ClInclude Include="..\src\rcheevos\internal.h">
       <Filter>rcheevos</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\rcheevos.h">
+      <Filter>rcheevos</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
