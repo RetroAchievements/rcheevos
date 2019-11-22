@@ -8,6 +8,10 @@
 * removed " Points" text from RC_FORMAT_SCORE format
 * removed RC_FORMAT_OTHER format. "OTHER" format now parses to RC_FORMAT_SCORE
 * bugfix: AddHits will now honor AndNext on previous condition
+
+# v8.0.1
+
+* bugfix: prevent null reference exception if rich presence contains condition without display string
 * bugfix: 24-bit read from memory should only read 24-bits
 
 # v8.0.0
