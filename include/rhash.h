@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+  /* ===================================================== */
+
   /* generates a hash from a block of memory.
    * returns non-zero on success, or zero on failure.
    */
@@ -20,6 +22,8 @@ extern "C" {
    * returns non-zero on success, or zero on failure.
    */
   int rc_hash_generate_from_file(char hash[33], int console_id, const char* path);
+
+  /* ===================================================== */
 
   /* data for rc_hash_iterate
    */
@@ -47,9 +51,13 @@ extern "C" {
    */
   int rc_hash_iterate(char hash[33], struct rc_hash_iterator* iterator);
 
+  /* ===================================================== */
+
   /* specifies a function to call when an error occurs to display the error message */
   typedef void (*rc_hash_error_message_callback)(const char*);
   void rc_hash_init_error_message_callback(rc_hash_error_message_callback callback);
+
+  /* ===================================================== */
 
   /* opens a file */
   typedef void* (*rc_hash_filereader_open_file_handler)(const char* path_utf8);
@@ -79,6 +87,8 @@ extern "C" {
 
   void rc_hash_init_custom_filereader(struct rc_hash_filereader* reader);
 
+  /* ===================================================== */
+
   /* opens a track from the specified file. track 0 indicates the first data track should be opened.
    * returns a handle to be passed to the other functions, or NULL if the track could not be opened.
    */
@@ -101,6 +111,8 @@ extern "C" {
 
   void rc_hash_init_default_cdreader();
   void rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader);
+
+  /* ===================================================== */
 
 #ifdef __cplusplus
 }
