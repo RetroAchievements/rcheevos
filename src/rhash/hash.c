@@ -305,9 +305,10 @@ static int rc_hash_buffer(char hash[33], uint8_t* buffer, size_t buffer_size)
 
 static int rc_hash_arcade(char hash[33], const char* path)
 {
-  /* arcade hash is just the hash of the filename - the cores are pretty stringent about having the right ROM data */
+  /* arcade hash is just the hash of the filename (no extension) - the cores are pretty stringent about having the right ROM data */
   const char* ptr = rc_path_get_filename(path);
-  return rc_hash_buffer(hash, (uint8_t*)ptr, strlen(ptr));
+  const char* ext = rc_path_get_extension(ptr);
+  return rc_hash_buffer(hash, (uint8_t*)ptr, ext - ptr - 1);
 }
 
 static int rc_hash_lynx(char hash[33], uint8_t* buffer, size_t buffer_size)
@@ -574,7 +575,7 @@ static int rc_hash_sega_cd(char hash[33], const char* path)
   // if we could determine the primary one, it's just the tip of the iceberg. As such, we've decided that
   // hashing the volume and ROM headers is sufficient for identifying the game, and we'll have to trust
   // that our players aren't modifying anything else on the disc.
-  rc_cd_read_sector(track_handle, 1, buffer, sizeof(buffer));
+  rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
 
   return rc_hash_buffer(hash, buffer, sizeof(buffer));
 }
