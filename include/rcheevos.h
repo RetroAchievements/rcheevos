@@ -131,11 +131,13 @@ enum {
   RC_MEMSIZE_BIT_5,
   RC_MEMSIZE_BIT_6,
   RC_MEMSIZE_BIT_7,
+
+  /* items below here are only valid as operand sizes */
   RC_MEMSIZE_8_BITS_BCD,
   RC_MEMSIZE_16_BITS_BCD,
   RC_MEMSIZE_24_BITS_BCD,
   RC_MEMSIZE_32_BITS_BCD,
-  RC_MEMSIZE_8_BITS_BITCOUNT,
+  RC_MEMSIZE_8_BITS_BITCOUNT
 };
 
 typedef struct {

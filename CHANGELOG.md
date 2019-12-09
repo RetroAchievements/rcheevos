@@ -1,3 +1,8 @@
+# v9.0.0
+
+* new size: RC_MEMSIZE_8_BITS_BITCOUNT
+* is_bcd removed from memref - now part of RC_MEMSIZE
+
 # v8.1.0
 
 * new flag: RC_CONDITION_MEASURED
