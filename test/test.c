@@ -61,7 +61,7 @@ static void comp_operand(rc_operand_t* self, char expected_type, char expected_s
     case RC_OPERAND_ADDRESS:
     case RC_OPERAND_DELTA:
     case RC_OPERAND_PRIOR:
-      assert(expected_size == self->value.memref->memref.size);
+      assert(expected_size == self->size);
       assert(expected_address == self->value.memref->memref.address);
       break;
 
@@ -1767,7 +1767,7 @@ static void test_trigger(void) {
     memory.ram = ram;
     memory.size = sizeof(ram);
 
-    parse_trigger(&trigger, buffer, "A:0xH0001=0_C:0xH0002=70_0xH0000=0(2)"); /* repeated(2, (byte(1) + byte(2) == 70) || byte(0) == 0) */
+    parse_trigger(&trigger, buffer, "A:0xH0001_C:0xH0002=70_0xH0000=0(2)"); /* repeated(2, (byte(1) + byte(2) == 70) || byte(0) == 0) */
     comp_trigger(trigger, &memory, 1); /* both conditions are true - addhits should match required 2 hits */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U); /* 0x12+0x34 = 0x46 - true! */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U); /* 0 = 0 - true! */
@@ -3015,7 +3015,7 @@ static void parse_comp_term(const char* memaddr, char expected_var_size, unsigne
     assert(self->operand1.type == RC_OPERAND_CONST);
   }
   else {
-    assert(self->operand1.value.memref->memref.size == expected_var_size);
+    assert(self->operand1.size == expected_var_size);
     assert(self->operand1.value.memref->memref.address == expected_address);
     assert(self->operand1.value.memref->memref.is_bcd == is_bcd);
   }
@@ -3064,9 +3064,9 @@ static void parse_comp_term_mem(const char* memaddr, char expected_size_1, unsig
   assert(parse.offset >= 0);
   assert(*memaddr == 0);
 
-  assert(self->operand1.value.memref->memref.size == expected_size_1);
+  assert(self->operand1.size == expected_size_1);
   assert(self->operand1.value.memref->memref.address == expected_address_1);
-  assert(self->operand2.value.memref->memref.size == expected_size_2);
+  assert(self->operand2.size == expected_size_2);
   assert(self->operand2.value.memref->memref.address == expected_address_2);
 }
 

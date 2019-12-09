@@ -190,7 +190,11 @@ typedef struct {
     int luafunc;
   } value;
 
+  /* specifies which member of the value union is being used */
   char type;
+
+  /* the actual RC_MEMSIZE of the operand - memref.size may differ */
+  char size;
 }
 rc_operand_t;
 
