@@ -498,8 +498,17 @@ static void test_operand(void) {
     parse_comp_operand_value("0xt3", &memory, 0x1U);
     parse_comp_operand_value("0xm5", &memory, 0x0U); /* out of range */
 
+    /* bit count */
+    parse_comp_operand_value("0xc0", &memory, 0x0U); /* 0 bits in 0x00 */
+    parse_comp_operand_value("0xc1", &memory, 0x2U); /* 2 bits in 0x12 */
+    parse_comp_operand_value("0xc2", &memory, 0x3U); /* 3 bits in 0x34 */
+    parse_comp_operand_value("0xc3", &memory, 0x5U); /* 5 bits in 0xAB */
+    parse_comp_operand_value("0xc4", &memory, 0x4U); /* 4 bits in 0x56 */
+
     /* BCD */
-    ram[3] = 0x56;
+    parse_comp_operand_value("b0xh3", &memory, 111U); /* 0xAB not technically valid in BCD */
+
+    ram[3] = 0x56; /* 0xAB not valid in BCD */
     parse_comp_operand_value("b0xh0", &memory, 00U);
     parse_comp_operand_value("b0xh1", &memory, 12U);
     parse_comp_operand_value("b0x 1", &memory, 3412U);
@@ -3107,6 +3116,9 @@ static void test_term(void) {
     parse_comp_term("B0xH1234", RC_MEMSIZE_8_BITS_BCD, 0x1234U, 0);
     parse_comp_term("B0xX1234", RC_MEMSIZE_32_BITS_BCD, 0x1234U, 0);
     parse_comp_term("b0xH1234", RC_MEMSIZE_8_BITS_BCD, 0x1234U, 0);
+
+    /* bit count */
+    parse_comp_term("0xC1234", RC_MEMSIZE_8_BITS_BITCOUNT, 0x1234U, 0);
 
     /* Value */
     parse_comp_term("V1234", 0, 1234, 1);
