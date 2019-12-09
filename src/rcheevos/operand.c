@@ -135,9 +135,19 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
     address = 0xffffffffU;
   }
 
-  self->value.memref = rc_alloc_memref_value(parse, address, size, is_bcd, is_indirect);
+  self->value.memref = rc_alloc_memref_value(parse, address, size, is_indirect);
   if (parse->offset < 0)
     return parse->offset;
+
+  if (is_bcd) {
+    switch (self->size) {
+      case RC_MEMSIZE_8_BITS: self->size = RC_MEMSIZE_8_BITS_BCD; break;
+      case RC_MEMSIZE_16_BITS: self->size = RC_MEMSIZE_16_BITS_BCD; break;
+      case RC_MEMSIZE_24_BITS: self->size = RC_MEMSIZE_24_BITS_BCD; break;
+      case RC_MEMSIZE_32_BITS: self->size = RC_MEMSIZE_32_BITS_BCD; break;
+      default: break; /* sizes less than 8-bit don't need a BCD conversion */
+    }
+  }
 
   *memaddr = end;
   return RC_OK;
@@ -440,6 +450,37 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
 
     case RC_MEMSIZE_HIGH:
       value = (value >> 4) & 0x0f;
+      break;
+
+    case RC_MEMSIZE_8_BITS_BCD:
+      value = ((value >> 4) & 0x0f) * 10 + (value & 0x0f);
+      break;
+
+    case RC_MEMSIZE_16_BITS_BCD:
+      value = ((value >> 12) & 0x0f) * 1000
+            + ((value >> 8) & 0x0f) * 100
+            + ((value >> 4) & 0x0f) * 10
+            + ((value >> 0) & 0x0f);
+      break;
+
+    case RC_MEMSIZE_24_BITS_BCD:
+      value = ((value >> 20) & 0x0f) * 100000
+            + ((value >> 16) & 0x0f) * 10000
+            + ((value >> 12) & 0x0f) * 1000
+            + ((value >> 8) & 0x0f) * 100
+            + ((value >> 4) & 0x0f) * 10
+            + ((value >> 0) & 0x0f);
+      break;
+
+    case RC_MEMSIZE_32_BITS_BCD:
+      value = ((value >> 28) & 0x0f) * 10000000
+            + ((value >> 24) & 0x0f) * 1000000
+            + ((value >> 20) & 0x0f) * 100000
+            + ((value >> 16) & 0x0f) * 10000
+            + ((value >> 12) & 0x0f) * 1000
+            + ((value >> 8) & 0x0f) * 100
+            + ((value >> 4) & 0x0f) * 10
+            + ((value >> 0) & 0x0f);
       break;
 
     default:

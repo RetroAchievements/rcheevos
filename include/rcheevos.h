@@ -117,6 +117,12 @@ typedef unsigned (*rc_peek_t)(unsigned address, unsigned num_bytes, void* ud);
 
 /* Sizes. */
 enum {
+  RC_MEMSIZE_8_BITS,
+  RC_MEMSIZE_16_BITS,
+  RC_MEMSIZE_24_BITS,
+  RC_MEMSIZE_32_BITS,
+  RC_MEMSIZE_LOW,
+  RC_MEMSIZE_HIGH,
   RC_MEMSIZE_BIT_0,
   RC_MEMSIZE_BIT_1,
   RC_MEMSIZE_BIT_2,
@@ -125,12 +131,10 @@ enum {
   RC_MEMSIZE_BIT_5,
   RC_MEMSIZE_BIT_6,
   RC_MEMSIZE_BIT_7,
-  RC_MEMSIZE_LOW,
-  RC_MEMSIZE_HIGH,
-  RC_MEMSIZE_8_BITS,
-  RC_MEMSIZE_16_BITS,
-  RC_MEMSIZE_24_BITS,
-  RC_MEMSIZE_32_BITS
+  RC_MEMSIZE_8_BITS_BCD,
+  RC_MEMSIZE_16_BITS_BCD,
+  RC_MEMSIZE_24_BITS_BCD,
+  RC_MEMSIZE_32_BITS_BCD
 };
 
 typedef struct {
@@ -138,8 +142,6 @@ typedef struct {
   unsigned address;
   /* The size of the variable. */
   char size;
-  /* True if the value is in BCD. */
-  char is_bcd;
   /* True if the reference will be used in indirection */
   char is_indirect;
 } rc_memref_t;
