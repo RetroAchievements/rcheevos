@@ -174,7 +174,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path)
   slash = strrchr(path, '\\');
   if (slash)
   {
-    // find the directory record for the first part of the path
+    /* find the directory record for the first part of the path */
     memcpy(buffer, path, slash - path);
     buffer[slash - path] = '\0';
 
@@ -188,16 +188,17 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path)
   }
   else
   {
-    // find the cd information (always 16 frames in)
+    /* find the cd information (always 16 frames in) */
     if (!rc_cd_read_sector(track_handle, 16, buffer, 256))
       return 0;
 
-    // the directory_record starts at 156, the sector containing the table of contents is 2 bytes into that.
-    // https://www.cdroller.com/htm/readdata.html
+    /* the directory_record starts at 156, the sector containing the table of contents is 2 bytes into that.
+     * https://www.cdroller.com/htm/readdata.html
+     */
     sector = buffer[156 + 2] | (buffer[156 + 3] << 8) | (buffer[156 + 4] << 16);
   }
 
-  // fetch and process the directory record
+  /* fetch and process the directory record */
   if (!rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer)))
     return 0;
 
@@ -207,7 +208,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path)
     if (!*tmp)
       return 0;
 
-    // filename is 33 bytes into the record and the format is "FILENAME;version" or "DIRECTORY"
+    /* filename is 33 bytes into the record and the format is "FILENAME;version" or "DIRECTORY" */
     if ((tmp[33 + filename_length] == ';' || tmp[33 + filename_length] == '\0') && 
         strncasecmp((const char*)(tmp + 33), path, filename_length) == 0)
     {
@@ -215,7 +216,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path)
       return sector;
     }
 
-    // the first byte of the record is the length of the record
+    /* the first byte of the record is the length of the record */
     tmp += *tmp;
   }
 
@@ -421,20 +422,22 @@ static int rc_hash_pce_cd(char hash[33], const char* path)
   if (!track_handle)
     return rc_hash_error("Could not open track");
 
-  // the PC-Engine uses the second sector to specify boot information and program name.
-  // the string "PC Engine CD-ROM SYSTEM" should exist at 32 bytes into the sector
-  // http://shu.sheldows.com/shu/download/pcedocs/pce_cdrom.html
+  /* the PC-Engine uses the second sector to specify boot information and program name.
+   * the string "PC Engine CD-ROM SYSTEM" should exist at 32 bytes into the sector
+   * http://shu.sheldows.com/shu/download/pcedocs/pce_cdrom.html
+   */
   rc_cd_read_sector(track_handle, 1, buffer, 128);
 
   if (strncmp("PC Engine CD-ROM SYSTEM", (const char*)&buffer[32], 23) != 0)
     return rc_hash_error("Not a PC Engine CD");
 
-  // the title of the disc is the last 22 bytes of the header
+  /* the title of the disc is the last 22 bytes of the header */
   md5_init(&md5);
   md5_append(&md5, &buffer[106], 22);
 
-  // the first three bytes specify the sector of the program data, and the fourth byte
-  // is the number of sectors.
+  /* the first three bytes specify the sector of the program data, and the fourth byte
+   * is the number of sectors.
+   */
   sector = buffer[0] * 65536 + buffer[1] * 256 + buffer[2];
   num_sectors = buffer[3];
 
@@ -527,12 +530,14 @@ static int rc_hash_psx(char hash[33], const char* path)
   else if ((num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer))) == sizeof(buffer) &&
       memcmp(buffer, "PS-X EXE", 7) == 0)
   {
-    // the PS-X EXE header specifies the executable size as a 4-byte value 28 bytes into the header, which doesn't
-    // include the header itself. We want to include the header in the hash, so append another 2048 to that value.
+    /* the PS-X EXE header specifies the executable size as a 4-byte value 28 bytes into the header, which doesn't
+     * include the header itself. We want to include the header in the hash, so append another 2048 to that value.
+     */
     size = (((uint8_t)buffer[31] << 24) | ((uint8_t)buffer[30] << 16) | ((uint8_t)buffer[29] << 8) | (uint8_t)buffer[28]) + 2048;
 
-    // there's also a few games that are use a singular engine and only differ via their data files. luckily, they have
-    // unique serial numbers, and use the serial number as the boot file in the standard way. include the boot file in the hash
+    /* there's also a few games that are use a singular engine and only differ via their data files. luckily, they have
+     * unique serial numbers, and use the serial number as the boot file in the standard way. include the boot file in the hash
+     */
     md5_init(&md5);
     md5_append(&md5, exe_name, strlen(exe_name));
 
@@ -568,13 +573,14 @@ static int rc_hash_sega_cd(char hash[33], const char* path)
   if (!track_handle)
     return rc_hash_error("Could not open track");
 
-  // the first 512 bytes of sector 0 are a volume header and ROM header that uniquely identify the game.
-  // After that is an arbitrary amount of code that ensures the game is being run in the correct region.
-  // Then more arbitrary code follows that actually starts the boot process. Somewhere in there, the
-  // primary executable is loaded. In many cases, a single game will have multiple executables, so even
-  // if we could determine the primary one, it's just the tip of the iceberg. As such, we've decided that
-  // hashing the volume and ROM headers is sufficient for identifying the game, and we'll have to trust
-  // that our players aren't modifying anything else on the disc.
+  /* the first 512 bytes of sector 0 are a volume header and ROM header that uniquely identify the game.
+   * After that is an arbitrary amount of code that ensures the game is being run in the correct region.
+   * Then more arbitrary code follows that actually starts the boot process. Somewhere in there, the
+   * primary executable is loaded. In many cases, a single game will have multiple executables, so even
+   * if we could determine the primary one, it's just the tip of the iceberg. As such, we've decided that
+   * hashing the volume and ROM headers is sufficient for identifying the game, and we'll have to trust
+   * that our players aren't modifying anything else on the disc.
+   */
   rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
 
   return rc_hash_buffer(hash, buffer, sizeof(buffer));
@@ -1002,6 +1008,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         else if (rc_path_compare_extension(ext, "sg"))
         {
           iterator->consoles[0] = RC_CONSOLE_SG1000;
+        }
+        else if (rc_path_compare_extension(ext, "sgx"))
+        {
+            iterator->consoles[0] = RC_CONSOLE_PC_ENGINE;
         }
         break;
 
