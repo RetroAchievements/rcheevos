@@ -284,7 +284,7 @@ static const char* rc_path_get_extension(const char* path)
   return ptr;
 }
 
-static int rc_path_compare_extension(const char* path, const char* ext)
+int rc_path_compare_extension(const char* path, const char* ext)
 {
   int path_len = strlen(path);
   int ext_len = strlen(ext);

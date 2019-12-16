@@ -12,6 +12,7 @@ extern size_t rc_file_read(void* file_handle, void* buffer, int requested_bytes)
 extern void rc_file_close(void* file_handle);
 extern int rc_hash_error(const char* message);
 extern const char* rc_path_get_filename(const char* path);
+extern int rc_path_compare_extension(const char* path, const char* ext);
 extern rc_hash_message_callback verbose_message_callback;
 
 struct cdrom_t
@@ -37,6 +38,7 @@ static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
   const int toc_sector = 16;
 
   cdrom->sector_size = 0;
+  cdrom->sector_header_size = 0;
 
   rc_file_seek(cdrom->file_handle, toc_sector * 2352 + cdrom->first_sector_offset, SEEK_SET);
   rc_file_read(cdrom->file_handle, header, sizeof(header));
@@ -78,7 +80,69 @@ static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
   }
 }
 
-static void* cdreader_open_track(const char* path, uint32_t track)
+static void* cdreader_open_bin_track(const char* path, uint32_t track)
+{
+  void* file_handle;
+  struct cdrom_t* cdrom;
+
+  if (track > 1)
+  {
+    if (verbose_message_callback)
+      verbose_message_callback("Cannot locate secondary tracks without a cue sheet");
+
+    return NULL;
+  }
+
+  file_handle = rc_file_open(path);
+  if (!file_handle)
+    return NULL;
+
+  cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
+  cdrom->file_handle = file_handle;
+  cdrom->first_sector_offset = 0;
+
+  cdreader_determine_sector_size(cdrom);
+
+  if (cdrom->sector_size == 0)
+  {
+    size_t size;
+
+    rc_file_seek(cdrom->file_handle, 0, SEEK_END);
+    size = ftell(cdrom->file_handle);
+
+    if ((size % 2352) == 0)
+    {
+      /* raw tracks use all 2352 bytes and have a 24 byte header */
+      cdrom->sector_size = 2352;
+      cdrom->sector_header_size = 24;
+    }
+    else if ((size % 2048) == 0)
+    {
+      /* cooked tracks eliminate all header/footer data */
+      cdrom->sector_size = 2048;
+      cdrom->sector_header_size = 0;
+    }
+    else if ((size % 2336) == 0)
+    {
+      /* MODE 2 format without 16-byte sync data */
+      cdrom->sector_size = 2336;
+      cdrom->sector_header_size = 8;
+    }
+    else
+    {
+      free(cdrom);
+
+      if (verbose_message_callback)
+        verbose_message_callback("Could not determine sector size");
+
+      return NULL;
+    }
+  }
+
+  return cdrom;
+}
+
+static void* cdreader_open_cue_track(const char* path, uint32_t track)
 {
   void* file_handle;
   char buffer[1024], *file = buffer, *ptr, *ptr2, *mode = buffer, *bin_filename;
@@ -273,6 +337,14 @@ static void* cdreader_open_track(const char* path, uint32_t track)
   }
 
   return NULL;
+}
+
+static void* cdreader_open_track(const char* path, uint32_t track)
+{
+  if (rc_path_compare_extension(path, "cue"))
+    return cdreader_open_cue_track(path, track);
+
+  return cdreader_open_bin_track(path, track);
 }
 
 static size_t cdreader_read_sector(void* track_handle, uint32_t sector, void* buffer, size_t requested_bytes)
