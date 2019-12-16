@@ -627,7 +627,7 @@ static int rc_hash_psx(char hash[33], const char* path)
     if (verbose_message_callback)
     {
       char message[128];
-      snprintf(message, sizeof(message), "Hashing %s (%zu bytes)", exe_name, size);
+      snprintf(message, sizeof(message), "Hashing %s title (%zu bytes) and contents (%zu bytes) ", exe_name, strlen(exe_name), size);
       verbose_message_callback(message);
     }
 
