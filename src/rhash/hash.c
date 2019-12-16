@@ -29,11 +29,14 @@
 /* arbitrary limit to prevent allocating and hashing large files */
 #define MAX_BUFFER_SIZE 64 * 1024 * 1024
 
+const char* rc_path_get_filename(const char* path);
+
 /* ===================================================== */
 
-static rc_hash_error_message_callback error_message_callback = NULL;
+static rc_hash_message_callback error_message_callback = NULL;
+rc_hash_message_callback verbose_message_callback = NULL;
 
-void rc_hash_init_error_message_callback(rc_hash_error_message_callback callback)
+void rc_hash_init_error_message_callback(rc_hash_message_callback callback)
 {
   error_message_callback = callback;
 }
@@ -44,6 +47,17 @@ int rc_hash_error(const char* message)
     error_message_callback(message);
 
   return 0;
+}
+
+void rc_hash_init_verbose_message_callback(rc_hash_message_callback callback)
+{
+  verbose_message_callback = callback;
+}
+
+static void rc_hash_verbose(const char* message)
+{
+  if (verbose_message_callback)
+    verbose_message_callback(message);
 }
 
 /* ===================================================== */
@@ -84,6 +98,8 @@ static void filereader_close(void* file_handle)
 
 void* rc_file_open(const char* path)
 {
+  void* handle;
+
   if (!filereader)
   {
     filereader_funcs.open = filereader_open;
@@ -95,7 +111,15 @@ void* rc_file_open(const char* path)
     filereader = &filereader_funcs;
   }
 
-  return filereader->open(path);
+  handle = filereader->open(path);
+  if (handle && verbose_message_callback)
+  {
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer), "Opened %s", rc_path_get_filename(path));
+    verbose_message_callback(buffer);
+  }
+
+  return handle;
 }
 
 void rc_file_seek(void* file_handle, size_t offset, int origin)
@@ -213,6 +237,13 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path)
         strncasecmp((const char*)(tmp + 33), path, filename_length) == 0)
     {
       sector = tmp[2] | (tmp[3] << 8) | (tmp[4] << 16);
+
+      if (verbose_message_callback)
+      {
+        snprintf((char*)buffer, sizeof(buffer), "Found %s at sector %d", path, sector);
+        verbose_message_callback((const char*)buffer);
+      }
+
       return sector;
     }
 
@@ -283,10 +314,18 @@ static int rc_hash_finalize(md5_state_t* md5, char hash[33])
 
   md5_finish(md5, digest);
 
-  sprintf(hash, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+  /* NOTE: sizeof(hash) is 4 because it's still treated like a pointer, despite specifying a size */
+  snprintf(hash, 33, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
     digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],
     digest[8], digest[9], digest[10], digest[11], digest[12], digest[13], digest[14], digest[15]
   );
+
+  if (verbose_message_callback)
+  {
+    char buffer[128];
+    snprintf(buffer, sizeof(buffer), "Generated hash %s", hash);
+    verbose_message_callback(buffer);
+  }
 
   return 1;
 }
@@ -300,6 +339,13 @@ static int rc_hash_buffer(char hash[33], uint8_t* buffer, size_t buffer_size)
     buffer_size = MAX_BUFFER_SIZE;
 
   md5_append(&md5, buffer, buffer_size);
+
+  if (verbose_message_callback)
+  {
+    char buffer[128];
+    snprintf(buffer, sizeof(buffer), "Hashing %zu byte buffer", buffer_size);
+    verbose_message_callback(buffer);
+  }
 
   return rc_hash_finalize(&md5, hash);
 }
@@ -317,6 +363,8 @@ static int rc_hash_lynx(char hash[33], uint8_t* buffer, size_t buffer_size)
   /* if the file contains a header, ignore it */
   if (buffer[0] == 'L' && buffer[1] == 'Y' && buffer[2] == 'N' && buffer[3] == 'X' && buffer[4] == 0)
   {
+    rc_hash_verbose("Ignoring LYNX header");
+
     buffer += 64;
     buffer_size -= 64;
   }
@@ -329,6 +377,8 @@ static int rc_hash_nes(char hash[33], uint8_t* buffer, size_t buffer_size)
   /* if the file contains a header, ignore it */
   if (buffer[0] == 'N' && buffer[1] == 'E' && buffer[2] == 'S' && buffer[3] == 0x1A)
   {
+    rc_hash_verbose("Ignoring NES header");
+
     buffer += 16;
     buffer_size -= 16;
   }
@@ -357,6 +407,8 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
     header[0xB0] == 0x44 && header[0xB1] == 0x46 && header[0xB2] == 0x96 && header[0xB3] == 0)
   {
     /* SuperCard header detected, ignore it */
+    rc_hash_verbose("Ignoring SuperCard header");
+
     offset = 512;
     rc_file_seek(file_handle, offset, SEEK_SET);
     rc_file_read(file_handle, header, sizeof(header));
@@ -371,7 +423,7 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
   if (arm9_size + arm7_size > 16 * 1024 * 1024)
   {
     /* sanity check - code blocks are typically less than 1MB each - assume not a DS ROM */
-    sprintf((char*)header, "arm9 code size (%u) + arm7 code size (%u) exceeds 16MB", arm9_size, arm7_size);
+    snprintf((char*)header, sizeof(header), "arm9 code size (%u) + arm7 code size (%u) exceeds 16MB", arm9_size, arm7_size);
     return rc_hash_error((const char*)header);
   }
 
@@ -386,21 +438,36 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
   {
     rc_file_close(file_handle);
 
-    sprintf((char*)header, "Failed to allocate %u bytes", hash_size);
+    snprintf((char*)header, sizeof(header), "Failed to allocate %u bytes", hash_size);
     return rc_hash_error((const char*)header);
   }
 
   md5_init(&md5);
+
+  rc_hash_verbose("Hashing 352 byte header");
   md5_append(&md5, header, 0x160);
+
+  if (verbose_message_callback)
+  {
+    snprintf((char*)header, sizeof(header), "Hashing %u byte arm9 code (at %08X)", arm9_size, arm9_addr);
+    verbose_message_callback((const char*)header);
+  }
 
   rc_file_seek(file_handle, arm9_addr + offset, SEEK_SET);
   rc_file_read(file_handle, hash_buffer, arm9_size);
   md5_append(&md5, hash_buffer, arm9_size);
 
+  if (verbose_message_callback)
+  {
+    snprintf((char*)header, sizeof(header), "Hashing %u byte arm7 code (at %08X)", arm7_size, arm7_addr);
+    verbose_message_callback((const char*)header);
+  }
+
   rc_file_seek(file_handle, arm7_addr + offset, SEEK_SET);
   rc_file_read(file_handle, hash_buffer, arm7_size);
   md5_append(&md5, hash_buffer, arm7_size);
 
+  rc_hash_verbose("Hashing 2560 byte icon and labels data");
   rc_file_seek(file_handle, icon_addr + offset, SEEK_SET);
   rc_file_read(file_handle, hash_buffer, 0xA00);
   md5_append(&md5, hash_buffer, 0xA00);
@@ -435,11 +502,26 @@ static int rc_hash_pce_cd(char hash[33], const char* path)
   md5_init(&md5);
   md5_append(&md5, &buffer[106], 22);
 
+  if (verbose_message_callback)
+  {
+    char message[128];
+    buffer[128] = '\0';
+    snprintf(message, sizeof(message), "Found PC Engine CD, title=%s", &buffer[106]);
+    verbose_message_callback(message);
+  }
+
   /* the first three bytes specify the sector of the program data, and the fourth byte
    * is the number of sectors.
    */
   sector = buffer[0] * 65536 + buffer[1] * 256 + buffer[2];
   num_sectors = buffer[3];
+
+  if (verbose_message_callback)
+  {
+    char message[128];
+    snprintf(message, sizeof(message), "Hashing %d sectors starting at sector %d", num_sectors, sector);
+    verbose_message_callback(message);
+  }
 
   while (num_sectors > 0)
   {
@@ -512,6 +594,13 @@ static int rc_hash_psx(char hash[33], const char* path)
 
           memcpy(exe_name, start, size);
           exe_name[size] = '\0';
+
+          if (verbose_message_callback)
+          {
+            snprintf((char*)buffer, sizeof(buffer), "Looking for boot executable: %s", exe_name);
+            verbose_message_callback((const char*)buffer);
+          }
+
           sector = rc_cd_find_file_sector(track_handle, exe_name);
           break;
         }
@@ -534,6 +623,13 @@ static int rc_hash_psx(char hash[33], const char* path)
      * include the header itself. We want to include the header in the hash, so append another 2048 to that value.
      */
     size = (((uint8_t)buffer[31] << 24) | ((uint8_t)buffer[30] << 16) | ((uint8_t)buffer[29] << 8) | (uint8_t)buffer[28]) + 2048;
+
+    if (verbose_message_callback)
+    {
+      char message[128];
+      snprintf(message, sizeof(message), "Hashing %s (%zu bytes)", exe_name, size);
+      verbose_message_callback(message);
+    }
 
     /* there's also a few games that are use a singular engine and only differ via their data files. luckily, they have
      * unique serial numbers, and use the serial number as the boot file in the standard way. include the boot file in the hash
@@ -592,6 +688,8 @@ static int rc_hash_snes(char hash[33], uint8_t* buffer, size_t buffer_size)
   uint32_t calc_size = (buffer_size / 0x2000) * 0x2000;
   if (buffer_size - calc_size == 512)
   {
+    rc_hash_verbose("Ignoring SNES header");
+
     buffer += 512;
     buffer_size -= 512;
   }
@@ -606,7 +704,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
     default:
     {
       char buffer[128];
-      sprintf(buffer, "Unsupported console for buffer hash: %d", console_id);
+      snprintf(buffer, sizeof(buffer), "Unsupported console for buffer hash: %d", console_id);
       return rc_hash_error(buffer);
     }
 
@@ -660,6 +758,16 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
   rc_file_seek(file_handle, 0, SEEK_END);
   size = rc_file_tell(file_handle);
 
+  if (verbose_message_callback)
+  {
+    char message[1024];
+    if (size > MAX_BUFFER_SIZE)
+      snprintf(message, sizeof(message), "Hashing first %zu bytes (of %zu bytes) of %s", MAX_BUFFER_SIZE, size, rc_path_get_filename(path));
+    else
+      snprintf(message, sizeof(message), "Hashing %s (%zu bytes)", rc_path_get_filename(path), size);
+    verbose_message_callback(message);
+  }
+
   if (size > MAX_BUFFER_SIZE)
     size = MAX_BUFFER_SIZE;
 
@@ -703,6 +811,16 @@ static int rc_hash_buffered_file(char hash[33], int console_id, const char* path
 
   rc_file_seek(file_handle, 0, SEEK_END);
   size = rc_file_tell(file_handle);
+
+  if (verbose_message_callback)
+  {
+    char message[1024];
+    if (size > MAX_BUFFER_SIZE)
+      snprintf(message, sizeof(message), "Buffering first %zu bytes (of %zu bytes) of %s", MAX_BUFFER_SIZE, size, rc_path_get_filename(path));
+    else
+      snprintf(message, sizeof(message), "Buffering %s (%zu bytes)", rc_path_get_filename(path), size);
+    verbose_message_callback(message);
+  }
 
   if (size > MAX_BUFFER_SIZE)
     size = MAX_BUFFER_SIZE;
@@ -749,6 +867,13 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
     --ptr;
   *ptr = '\0';
 
+  if (verbose_message_callback)
+  {
+    char message[1024];
+    snprintf(message, sizeof(message), "Extracted %s from playlist", buffer);
+    verbose_message_callback(message);
+  }
+
   ptr = (char*)rc_path_get_filename(path);
   num_read = (ptr - path) + strlen(buffer) + 1;
 
@@ -764,8 +889,16 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
 static int rc_hash_generate_from_playlist(char hash[33], int console_id, const char* path)
 {
   int result;
+  const char* disc_path;
 
-  const char* disc_path = rc_hash_get_first_item_from_playlist(path);
+  if (verbose_message_callback)
+  {
+    char message[1024];
+    snprintf(message, sizeof(message), "Processing playlist: %s", rc_path_get_filename(path));
+    verbose_message_callback(message);
+  }
+  
+  disc_path = rc_hash_get_first_item_from_playlist(path);
   if (!disc_path)
     return rc_hash_error("Failed to get first item from playlist");
 
@@ -782,7 +915,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     default:
     {
       char buffer[128];
-      sprintf(buffer, "Unsupported console for file hash: %d", console_id);
+      snprintf(buffer, sizeof(buffer), "Unsupported console for file hash: %d", console_id);
       return rc_hash_error(buffer);
     }
 
@@ -853,7 +986,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
   iterator->buffer = buffer;
   iterator->buffer_size = buffer_size;
 
-  iterator->consoles[0] = RC_CONSOLE_GAMEBOY; /* default to something that does a whole file hash */
+  iterator->consoles[0] = 0;
 
   do
   {
@@ -1011,7 +1144,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "sgx"))
         {
-            iterator->consoles[0] = RC_CONSOLE_PC_ENGINE;
+          iterator->consoles[0] = RC_CONSOLE_PC_ENGINE;
         }
         break;
 
@@ -1046,12 +1179,27 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         break;
     }
 
+    if (verbose_message_callback)
+    {
+      char message[256];
+      int count = 0;
+      while (iterator->consoles[count])
+        ++count;
+
+      snprintf(message, sizeof(message), "Found %d potential consoles for %s file extension", count, ext);
+      verbose_message_callback(message);
+    }
+
     /* loop is only for specific cases that redirect to another file - like m3u */
     break;
   } while (1);
 
   if (need_path && !iterator->path)
     iterator->path = strdup(path);
+
+  /* if we didn't match the extension, default to something that does a whole file hash */
+  if (!iterator->consoles[0])
+    iterator->consoles[0] = RC_CONSOLE_GAMEBOY;
 }
 
 void rc_hash_destroy_iterator(struct rc_hash_iterator* iterator)
@@ -1075,6 +1223,13 @@ int rc_hash_iterate(char hash[33], struct rc_hash_iterator* iterator)
       break;
 
     ++iterator->index;
+
+    if (verbose_message_callback)
+    {
+      char message[128];
+      snprintf(message, sizeof(message), "Trying console %d", next_console);
+      verbose_message_callback(message);
+    }
 
     if (iterator->buffer)
       result = rc_hash_generate_from_buffer(hash, next_console, iterator->buffer, iterator->buffer_size);

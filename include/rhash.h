@@ -54,8 +54,11 @@ extern "C" {
   /* ===================================================== */
 
   /* specifies a function to call when an error occurs to display the error message */
-  typedef void (*rc_hash_error_message_callback)(const char*);
-  void rc_hash_init_error_message_callback(rc_hash_error_message_callback callback);
+  typedef void (*rc_hash_message_callback)(const char*);
+  void rc_hash_init_error_message_callback(rc_hash_message_callback callback);
+
+  /* specifies a function to call for verbose logging */
+  void rc_hash_init_verbose_message_callback(rc_hash_message_callback callback);
 
   /* ===================================================== */
 

@@ -12,32 +12,33 @@ extern size_t rc_file_read(void* file_handle, void* buffer, int requested_bytes)
 extern void rc_file_close(void* file_handle);
 extern int rc_hash_error(const char* message);
 extern const char* rc_path_get_filename(const char* path);
+extern rc_hash_message_callback verbose_message_callback;
 
 struct cdrom_t
 {
   void* file_handle;
   int sector_size;
   int sector_header_size;
-  int pregap_sectors;
+  int first_sector_offset;
 };
 
 static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
 {
-  // Attempt to determine the sector and header sizes. The CUE file may be lying.
-  // Look for the sync pattern using each of the supported sector sizes.
-  // Then check for the presence of "CD001", which is gauranteed to be in either the
-  // boot record or primary volume descriptor, one of which is always at sector 16.
+  /* Attempt to determine the sector and header sizes. The CUE file may be lying.
+   * Look for the sync pattern using each of the supported sector sizes.
+   * Then check for the presence of "CD001", which is gauranteed to be in either the
+   * boot record or primary volume descriptor, one of which is always at sector 16.
+   */
   const unsigned char sync_pattern[] = {
     0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00
   };
 
   unsigned char header[32];
-  int toc_sector;
+  const int toc_sector = 16;
 
   cdrom->sector_size = 0;
 
-  toc_sector = cdrom->pregap_sectors + 16;
-  rc_file_seek(cdrom->file_handle, toc_sector * 2352, SEEK_SET);
+  rc_file_seek(cdrom->file_handle, toc_sector * 2352 + cdrom->first_sector_offset, SEEK_SET);
   rc_file_read(cdrom->file_handle, header, sizeof(header));
 
   if (memcmp(header, sync_pattern, 12) == 0)
@@ -51,7 +52,7 @@ static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
   }
   else
   {
-    rc_file_seek(cdrom->file_handle, toc_sector * 2336, SEEK_SET);
+    rc_file_seek(cdrom->file_handle, toc_sector * 2336 + cdrom->first_sector_offset, SEEK_SET);
     rc_file_read(cdrom->file_handle, header, sizeof(header));
 
     if (memcmp(header, sync_pattern, 12) == 0)
@@ -65,7 +66,7 @@ static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
     }
     else
     {
-      rc_file_seek(cdrom->file_handle, toc_sector * 2048, SEEK_SET);
+      rc_file_seek(cdrom->file_handle, toc_sector * 2048 + cdrom->first_sector_offset, SEEK_SET);
       rc_file_read(cdrom->file_handle, header, sizeof(header));
 
       if (memcmp(&header[1], "CD001", 5) == 0)
@@ -82,7 +83,7 @@ static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
     long size;
 
     rc_file_seek(cdrom->file_handle, 0, SEEK_END);
-    size = ftell(cdrom->file_handle);
+    size = ftell(cdrom->file_handle) - cdrom->first_sector_offset;
 
     if ((size % 2352) == 0)
     {
@@ -110,7 +111,10 @@ static void* cdreader_open_track(const char* path, uint32_t track)
   void* file_handle;
   char buffer[1024], *file = buffer, *ptr, *ptr2, *mode = buffer, *bin_filename;
   int current_track = 0;
-  int pregap_sectors = 0;
+  int sector_size = 0;
+  int previous_sector_size = 0;
+  int previous_index_sector_offset = 0;
+  int offset = 0;
   size_t num_read = 0;
   struct cdrom_t* cdrom = NULL;
 
@@ -131,6 +135,8 @@ static void* cdreader_open_track(const char* path, uint32_t track)
     {
       file = ptr + 5;
       current_track = 0;
+      previous_sector_size = 0;
+      offset = 0;
     }
     else if (memcmp(ptr, "TRACK ", 6) == 0)
     {
@@ -141,29 +147,50 @@ static void* cdreader_open_track(const char* path, uint32_t track)
         ++ptr;
       while (*ptr == ' ')
         ++ptr;
-
       mode = ptr;
-      if (track == 0 && memcmp(ptr, "MODE", 4) == 0)
-        track = current_track;
+
+      previous_sector_size = sector_size;
+      previous_index_sector_offset = 0;
+
+      if (memcmp(mode, "MODE", 4) == 0)
+      {
+        if (track == 0)
+          track = current_track;
+
+        sector_size = atoi(ptr + 6);
+      }
+      else
+      {
+        /* assume AUDIO */
+        sector_size = 2352;
+      }
     }
-    else if (current_track == track && memcmp(ptr, "INDEX ", 6) == 0)
+    else if (memcmp(ptr, "INDEX ", 6) == 0)
     {
+      int m = 0, s = 0, f = 0;
+      int index, sector_offset;
+
       ptr += 6;
-      int index = atoi(ptr);
-      if (index == 1)
+      index = atoi(ptr);
+
+      while (*ptr != ' ' && *ptr != '\n')
+        ++ptr;
+      while (*ptr == ' ')
+        ++ptr;
+
+      sscanf_s(ptr, "%d:%d:%d", &m, &s, &f);
+      sector_offset = ((m * 60) + s) * 75 + f;
+      sector_offset -= previous_index_sector_offset;
+      offset += sector_offset * previous_sector_size;
+      previous_sector_size = sector_size;
+      previous_index_sector_offset += sector_offset;
+
+      if (index == 1 && current_track == track)
       {
         cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
+        cdrom->first_sector_offset = offset;
           
-        while (*ptr != ' ' && *ptr != '\n')
-          ++ptr;
-        while (*ptr == ' ')
-          ++ptr;
-
-        int m = 0, s = 0, f = 0;
-        sscanf_s(ptr, "%d:%d:%d", &m, &s, &f);
-        cdrom->pregap_sectors = ((m * 60) + s) * 75 + f;
-
-        // open bin file
+        /* open bin file */
         ptr2 = file;
         if (*ptr2 == '"')
         {
@@ -196,50 +223,60 @@ static void* cdreader_open_track(const char* path, uint32_t track)
           {
             free(bin_filename);
               
-            // determine frame size
+            /* determine sector size */
             cdreader_determine_sector_size(cdrom);
 
-            // could not determine, which means we'll probably have more issues later
-            // but use the CUE provided information anyway
+            /* could not determine, which means we'll probably have more issues later
+             * but use the CUE provided information anyway
+             */
             if (cdrom->sector_size == 0)
             {
-              // All of these modes have 2048 byte payloads. In MODE1/2352 and MODE2/2352
-              // modes, the mode can actually be specified per sector to change the payload
-              // size, but that reduces the ability to recover from errors when the disc
-              // is damaged, so it's seldomly used, and when it is, it's mostly for audio
-              // or video data where a blip or two probably won't be noticed by the user.
-              // So, while we techincally support all of the following modes, we only do
-              // so with 2048 byte payloads.
-              // http://totalsonicmastering.com/cuesheetsyntax.htm
-              // MODE1/2048 ? CDROM Mode1 Data (cooked) [no header, no footer]
-              // MODE1/2352 ? CDROM Mode1 Data (raw)    [16 byte header, 288 byte footer]
-              // MODE2/2336 ? CDROM-XA Mode2 Data       [8 byte header, 280 byte footer]
-              // MODE2/2352 ? CDROM-XA Mode2 Data       [24 byte header, 280 byte footer]
-
-              cdrom->sector_size = 2352;       // default to MODE1/2352
+              /* All of these modes have 2048 byte payloads. In MODE1/2352 and MODE2/2352
+               * modes, the mode can actually be specified per sector to change the payload
+               * size, but that reduces the ability to recover from errors when the disc
+               * is damaged, so it's seldomly used, and when it is, it's mostly for audio
+               * or video data where a blip or two probably won't be noticed by the user.
+               * So, while we techincally support all of the following modes, we only do
+               * so with 2048 byte payloads.
+               * http://totalsonicmastering.com/cuesheetsyntax.htm
+               * MODE1/2048 ? CDROM Mode1 Data (cooked) [no header, no footer]
+               * MODE1/2352 ? CDROM Mode1 Data (raw)    [16 byte header, 288 byte footer]
+               * MODE2/2336 ? CDROM-XA Mode2 Data       [8 byte header, 280 byte footer]
+               * MODE2/2352 ? CDROM-XA Mode2 Data       [24 byte header, 280 byte footer]
+               */
+              cdrom->sector_size = sector_size;
               cdrom->sector_header_size = 16;
 
-              if (memcmp(ptr, "MODE2/2352", 10) == 0)
+              if (memcmp(mode, "MODE2/2352", 10) == 0)
               {
                 cdrom->sector_header_size = 24;
               }
-              else if (memcmp(ptr, "MODE1/2048", 10) == 0)
+              else if (memcmp(mode, "MODE1/2048", 10) == 0)
               {
                 cdrom->sector_size = 2048;
                 cdrom->sector_header_size = 0;
               }
-              else if (memcmp(ptr, "MODE2/2336", 10) == 0)
+              else if (memcmp(mode, "MODE2/2336", 10) == 0)
               {
                 cdrom->sector_size = 2336;
                 cdrom->sector_header_size = 8;
               }
             }
 
+            if (verbose_message_callback)
+            {
+              if (cdrom->first_sector_offset)
+                snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d, track starts at %d)", track, cdrom->sector_size, cdrom->first_sector_offset);
+              else
+                snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d)", track, cdrom->sector_size);
+              verbose_message_callback((const char*)buffer);
+            }
+
             return cdrom;
           }
 
-          sprintf((char*)buffer, "Could not open %s", bin_filename);
-          rc_hash_error((char*)buffer);
+          snprintf((char*)buffer, sizeof(buffer), "Could not open %s", bin_filename);
+          rc_hash_error((const char*)buffer);
 
           free(bin_filename);
         }
@@ -264,7 +301,7 @@ static size_t cdreader_read_sector(void* track_handle, uint32_t sector, void* bu
   if (!cdrom)
     return 0;
 
-  sector_start = (sector + cdrom->pregap_sectors) * cdrom->sector_size + cdrom->sector_header_size;
+  sector_start = sector * cdrom->sector_size + cdrom->sector_header_size + cdrom->first_sector_offset;
 
   while (requested_bytes > 2048)
   {
