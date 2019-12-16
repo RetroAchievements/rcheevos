@@ -76,34 +76,6 @@ static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
       }
     }
   }
-
-  /* no recognizable header - attempt to determine sector size from stream size */
-  if (cdrom->sector_size == 0)
-  {
-    long size;
-
-    rc_file_seek(cdrom->file_handle, 0, SEEK_END);
-    size = ftell(cdrom->file_handle) - cdrom->first_sector_offset;
-
-    if ((size % 2352) == 0)
-    {
-      /* audio tracks use all 2352 bytes without a header */
-      cdrom->sector_size = 2352;
-      cdrom->sector_header_size = 0;
-    }
-    else if ((size % 2048) == 0)
-    {
-      /* cooked tracks eliminate all header/footer data */
-      cdrom->sector_size = 2048;
-      cdrom->sector_header_size = 0;
-    }
-    else if ((size % 2336) == 0)
-    {
-      /* MODE 2 format without 16-byte sync data */
-      cdrom->sector_size = 2336;
-      cdrom->sector_header_size = 8;
-    }
-  }
 }
 
 static void* cdreader_open_track(const char* path, uint32_t track)
@@ -180,7 +152,6 @@ static void* cdreader_open_track(const char* path, uint32_t track)
       sscanf_s(ptr, "%d:%d:%d", &m, &s, &f);
       sector_offset = ((m * 60) + s) * 75 + f;
       sector_offset -= previous_index_sector_offset;
-
       offset += sector_offset * previous_sector_size;
       previous_sector_size = sector_size;
       previous_index_sector_offset += sector_offset;
