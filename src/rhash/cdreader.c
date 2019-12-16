@@ -150,7 +150,6 @@ static void* cdreader_open_track(const char* path, uint32_t track)
       mode = ptr;
 
       previous_sector_size = sector_size;
-      previous_index_sector_offset = 0;
 
       if (memcmp(mode, "MODE", 4) == 0)
       {
@@ -181,9 +180,22 @@ static void* cdreader_open_track(const char* path, uint32_t track)
       sscanf_s(ptr, "%d:%d:%d", &m, &s, &f);
       sector_offset = ((m * 60) + s) * 75 + f;
       sector_offset -= previous_index_sector_offset;
+
       offset += sector_offset * previous_sector_size;
       previous_sector_size = sector_size;
       previous_index_sector_offset += sector_offset;
+
+      if (verbose_message_callback)
+      {
+        char message[128];
+        char* scan = mode;
+        while (!isspace(*scan))
+          ++scan;
+        *scan = '\0';
+
+        snprintf(message, sizeof(message), "Found %s track %d (sector size %d, track starts at %d)", mode, current_track, sector_size, offset);
+        verbose_message_callback(message);
+      }
 
       if (index == 1 && current_track == track)
       {
