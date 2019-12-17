@@ -142,15 +142,66 @@ static void* cdreader_open_bin_track(const char* path, uint32_t track)
   return cdrom;
 }
 
+static int cdreader_open_bin(struct cdrom_t* cdrom, const char* path, const char* mode)
+{
+  cdrom->file_handle = rc_file_open(path);
+  if (!cdrom->file_handle)
+    return 0;
+
+  /* determine sector size */
+  cdreader_determine_sector_size(cdrom);
+
+  /* could not determine, which means we'll probably have more issues later
+   * but use the CUE provided information anyway
+   */
+  if (cdrom->sector_size == 0)
+  {
+    /* All of these modes have 2048 byte payloads. In MODE1/2352 and MODE2/2352
+     * modes, the mode can actually be specified per sector to change the payload
+     * size, but that reduces the ability to recover from errors when the disc
+     * is damaged, so it's seldomly used, and when it is, it's mostly for audio
+     * or video data where a blip or two probably won't be noticed by the user.
+     * So, while we techincally support all of the following modes, we only do
+     * so with 2048 byte payloads.
+     * http://totalsonicmastering.com/cuesheetsyntax.htm
+     * MODE1/2048 ? CDROM Mode1 Data (cooked) [no header, no footer]
+     * MODE1/2352 ? CDROM Mode1 Data (raw)    [16 byte header, 288 byte footer]
+     * MODE2/2336 ? CDROM-XA Mode2 Data       [8 byte header, 280 byte footer]
+     * MODE2/2352 ? CDROM-XA Mode2 Data       [24 byte header, 280 byte footer]
+     */
+    if (memcmp(mode, "MODE2/2352", 10) == 0)
+    {
+      cdrom->sector_size = 2352;
+      cdrom->sector_header_size = 24;
+    }
+    else if (memcmp(mode, "MODE1/2048", 10) == 0)
+    {
+      cdrom->sector_size = 2048;
+      cdrom->sector_header_size = 0;
+    }
+    else if (memcmp(mode, "MODE2/2336", 10) == 0)
+    {
+      cdrom->sector_size = 2336;
+      cdrom->sector_header_size = 8;
+    }
+  }
+
+  return (cdrom->sector_size != 0);
+}
+
 static void* cdreader_open_cue_track(const char* path, uint32_t track)
 {
   void* file_handle;
-  char buffer[1024], *file = buffer, *ptr, *ptr2, *mode = buffer, *bin_filename;
+  int file_offset = 0;
+  char buffer[1024], *mode = buffer, *bin_filename;
+  char file[256];
+  char *ptr, *ptr2, *end;
   int current_track = 0;
   int sector_size = 0;
   int previous_sector_size = 0;
   int previous_index_sector_offset = 0;
   int offset = 0;
+  int done = 0;
   size_t num_read = 0;
   struct cdrom_t* cdrom = NULL;
 
@@ -158,185 +209,186 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
   if (!file_handle)
     return NULL;
 
-  num_read = rc_file_read(file_handle, buffer, sizeof(buffer) - 1);
-  buffer[num_read] = 0;
-  rc_file_close(file_handle);
-
-  for (ptr = buffer; *ptr; ++ptr)
+  file[0] = '\0';
+  do
   {
-    while (*ptr == ' ')
-      ++ptr;
+    num_read = rc_file_read(file_handle, buffer, sizeof(buffer) - 1);
+    buffer[num_read] = 0;
+    if (num_read == sizeof(buffer) - 1)
+      end = buffer + sizeof(buffer) * 3 / 4;
+    else
+      end = buffer + num_read;
 
-    if (memcmp(ptr, "FILE ", 5) == 0)
+    for (ptr = buffer; ptr < end; ++ptr)
     {
-      file = ptr + 5;
-      current_track = 0;
-      previous_sector_size = 0;
-      offset = 0;
-    }
-    else if (memcmp(ptr, "TRACK ", 6) == 0)
-    {
-      ptr += 6;
-      current_track = atoi(ptr);
-
-      while (*ptr != ' ')
-        ++ptr;
-      while (*ptr == ' ')
-        ++ptr;
-      mode = ptr;
-
-      previous_sector_size = sector_size;
-
-      if (memcmp(mode, "MODE", 4) == 0)
-      {
-        if (track == 0)
-          track = current_track;
-
-        sector_size = atoi(ptr + 6);
-      }
-      else
-      {
-        /* assume AUDIO */
-        sector_size = 2352;
-      }
-    }
-    else if (memcmp(ptr, "INDEX ", 6) == 0)
-    {
-      int m = 0, s = 0, f = 0;
-      int index, sector_offset;
-
-      ptr += 6;
-      index = atoi(ptr);
-
-      while (*ptr != ' ' && *ptr != '\n')
-        ++ptr;
       while (*ptr == ' ')
         ++ptr;
 
-      sscanf_s(ptr, "%d:%d:%d", &m, &s, &f);
-      sector_offset = ((m * 60) + s) * 75 + f;
-      sector_offset -= previous_index_sector_offset;
-      offset += sector_offset * previous_sector_size;
-      previous_sector_size = sector_size;
-      previous_index_sector_offset += sector_offset;
-
-      if (verbose_message_callback)
+      if (memcmp(ptr, "INDEX ", 6) == 0)
       {
-        char message[128];
-        char* scan = mode;
-        while (!isspace(*scan))
-          ++scan;
-        *scan = '\0';
+        int m = 0, s = 0, f = 0;
+        int index, sector_offset;
 
-        snprintf(message, sizeof(message), "Found %s track %d (sector size %d, track starts at %d)", mode, current_track, sector_size, offset);
-        verbose_message_callback(message);
-      }
+        ptr += 6;
+        index = atoi(ptr);
 
-      if (index == 1 && current_track == track)
-      {
-        cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
-        cdrom->first_sector_offset = offset;
-          
-        /* open bin file */
-        ptr2 = file;
-        if (*ptr2 == '"')
+        while (*ptr != ' ' && *ptr != '\n')
+          ++ptr;
+        while (*ptr == ' ')
+          ++ptr;
+
+        sscanf_s(ptr, "%d:%d:%d", &m, &s, &f);
+        sector_offset = ((m * 60) + s) * 75 + f;
+        sector_offset -= previous_index_sector_offset;
+        offset += sector_offset * previous_sector_size;
+        previous_sector_size = sector_size;
+        previous_index_sector_offset += sector_offset;
+
+        if (verbose_message_callback)
         {
-          ++file;
+          char message[128];
+          char* scan = mode;
+          while (!isspace(*scan))
+            ++scan;
+          *scan = '\0';
+
+          snprintf(message, sizeof(message), "Found %s track %d (sector size %d, track starts at %d)", mode, current_track, sector_size, offset);
+          verbose_message_callback(message);
+        }
+
+        if (index == 1 && current_track == track)
+        {
+          cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
+          if (!cdrom)
+          {
+            snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", sizeof(*cdrom));
+            rc_hash_error((const char*)buffer);
+
+            done = 1;
+            break;
+          }
+
+          cdrom->first_sector_offset = offset;
+
+          /* open bin file */
+          ptr = (char*)rc_path_get_filename(path);
+          ptr2 = file + strlen(file);
+          num_read = (ptr - path) + (ptr2 - file) + 1;
+
+          bin_filename = (char*)malloc(num_read);
+          if (!bin_filename)
+          {
+            snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", num_read);
+            rc_hash_error((const char*)buffer);
+          }
+          else
+          {
+            memcpy(bin_filename, path, ptr - path);
+            memcpy(bin_filename + (ptr - path), file, ptr2 - file + 1);
+
+            if (cdreader_open_bin(cdrom, bin_filename, mode))
+            {
+              if (verbose_message_callback)
+              {
+                if (cdrom->first_sector_offset)
+                  snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d, track starts at %d)", track, cdrom->sector_size, cdrom->first_sector_offset);
+                else
+                  snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d)", track, cdrom->sector_size);
+                verbose_message_callback((const char*)buffer);
+              }
+            }
+            else
+            {
+              snprintf((char*)buffer, sizeof(buffer), "Could not open %s", bin_filename);
+              rc_hash_error((const char*)buffer);
+
+              free(cdrom);
+              cdrom = NULL;
+            }
+
+            free(bin_filename);
+          }
+
+          done = 1;
+          break;
+        }
+      }
+      else if (memcmp(ptr, "TRACK ", 6) == 0)
+      {
+        ptr += 6;
+        current_track = atoi(ptr);
+
+        while (*ptr != ' ')
+          ++ptr;
+        while (*ptr == ' ')
+          ++ptr;
+        mode = ptr;
+
+        previous_sector_size = sector_size;
+
+        if (memcmp(mode, "MODE", 4) == 0)
+        {
+          if (track == 0)
+            track = current_track;
+
+          sector_size = atoi(ptr + 6);
+        }
+        else
+        {
+          /* assume AUDIO */
+          sector_size = 2352;
+        }
+      }
+      else if (memcmp(ptr, "FILE ", 5) == 0)
+      {
+        ptr += 5;
+        ptr2 = ptr;
+        if (*ptr == '"')
+        {
+          ++ptr;
           do
           {
             ++ptr2;
-          } while (*ptr2 != '\n' && *ptr2 != '"');
+          } while (*ptr2 && *ptr2 != '\n' && *ptr2 != '"');
         }
         else
         {
           do
           {
             ++ptr2;
-          } while (*ptr2 != '\n' && *ptr2 != ' ');
+          } while (*ptr2 && *ptr2 != '\n' && *ptr2 != ' ');
         }
-        *ptr2 = '\0';
 
-        ptr = (char*)rc_path_get_filename(path);
-        num_read = (ptr - path) + (ptr2 - file) + 1;
-
-        bin_filename = (char*)malloc(num_read);
-        if (bin_filename)
+        if (ptr2 - ptr < sizeof(file))
         {
-          memcpy(bin_filename, path, ptr - path);
-          memcpy(bin_filename + (ptr - path), file, ptr2 - file + 1);
-
-          cdrom->file_handle = rc_file_open(bin_filename);
-          if (cdrom->file_handle)
-          {
-            free(bin_filename);
-              
-            /* determine sector size */
-            cdreader_determine_sector_size(cdrom);
-
-            /* could not determine, which means we'll probably have more issues later
-             * but use the CUE provided information anyway
-             */
-            if (cdrom->sector_size == 0)
-            {
-              /* All of these modes have 2048 byte payloads. In MODE1/2352 and MODE2/2352
-               * modes, the mode can actually be specified per sector to change the payload
-               * size, but that reduces the ability to recover from errors when the disc
-               * is damaged, so it's seldomly used, and when it is, it's mostly for audio
-               * or video data where a blip or two probably won't be noticed by the user.
-               * So, while we techincally support all of the following modes, we only do
-               * so with 2048 byte payloads.
-               * http://totalsonicmastering.com/cuesheetsyntax.htm
-               * MODE1/2048 ? CDROM Mode1 Data (cooked) [no header, no footer]
-               * MODE1/2352 ? CDROM Mode1 Data (raw)    [16 byte header, 288 byte footer]
-               * MODE2/2336 ? CDROM-XA Mode2 Data       [8 byte header, 280 byte footer]
-               * MODE2/2352 ? CDROM-XA Mode2 Data       [24 byte header, 280 byte footer]
-               */
-              cdrom->sector_size = sector_size;
-              cdrom->sector_header_size = 16;
-
-              if (memcmp(mode, "MODE2/2352", 10) == 0)
-              {
-                cdrom->sector_header_size = 24;
-              }
-              else if (memcmp(mode, "MODE1/2048", 10) == 0)
-              {
-                cdrom->sector_size = 2048;
-                cdrom->sector_header_size = 0;
-              }
-              else if (memcmp(mode, "MODE2/2336", 10) == 0)
-              {
-                cdrom->sector_size = 2336;
-                cdrom->sector_header_size = 8;
-              }
-            }
-
-            if (verbose_message_callback)
-            {
-              if (cdrom->first_sector_offset)
-                snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d, track starts at %d)", track, cdrom->sector_size, cdrom->first_sector_offset);
-              else
-                snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d)", track, cdrom->sector_size);
-              verbose_message_callback((const char*)buffer);
-            }
-
-            return cdrom;
-          }
-
-          snprintf((char*)buffer, sizeof(buffer), "Could not open %s", bin_filename);
-          rc_hash_error((const char*)buffer);
-
-          free(bin_filename);
+          memcpy(file, ptr, ptr2 - ptr);
+          file[ptr2 - ptr] = '\0';
+        }
+        else
+        {
+          file[0] = '\0';
         }
 
-        free(cdrom);
+        current_track = 0;
+        previous_sector_size = 0;
+        offset = 0;
       }
+
+      while (*ptr && *ptr != '\n')
+        ++ptr;
     }
 
-    while (*ptr && *ptr != '\n')
-      ++ptr;
-  }
+    if (done)
+      break;
 
-  return NULL;
+    file_offset += (ptr - buffer);
+    rc_file_seek(file_handle, file_offset, SEEK_SET);
+
+  } while (1);
+
+  rc_file_close(file_handle);
+
+  return cdrom;
 }
 
 static void* cdreader_open_track(const char* path, uint32_t track)

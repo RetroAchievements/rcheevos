@@ -184,7 +184,7 @@ static void rc_cd_close_track(void* track_handle)
   rc_hash_error("no hook registered for cdreader_close_track");
 }
 
-static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path)
+static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, unsigned* size)
 {
   uint8_t buffer[2048], *tmp;
   int sector;
@@ -202,7 +202,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path)
     memcpy(buffer, path, slash - path);
     buffer[slash - path] = '\0';
 
-    sector = rc_cd_find_file_sector(track_handle, (const char *)buffer);
+    sector = rc_cd_find_file_sector(track_handle, (const char *)buffer, NULL);
     if (!sector)
       return 0;
 
@@ -243,6 +243,9 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path)
         snprintf((char*)buffer, sizeof(buffer), "Found %s at sector %d", path, sector);
         verbose_message_callback((const char*)buffer);
       }
+
+      if (size)
+        *size = tmp[10] | (tmp[11] << 8) | (tmp[12] << 16) | (tmp[13] << 24);
 
       return sector;
     }
@@ -300,6 +303,7 @@ int rc_path_compare_extension(const char* path, const char* ext)
     if (tolower(*ptr) != *ext)
       return 0;
 
+    ++ext;
     ++ptr;
   } while (*ptr);
 
@@ -484,6 +488,7 @@ static int rc_hash_pce_cd(char hash[33], const char* path)
   void* track_handle;
   md5_state_t md5;
   int sector, num_sectors;
+  unsigned size;
 
   track_handle = rc_cd_open_track(path, 0);
   if (!track_handle)
@@ -495,41 +500,66 @@ static int rc_hash_pce_cd(char hash[33], const char* path)
    */
   rc_cd_read_sector(track_handle, 1, buffer, 128);
 
-  if (strncmp("PC Engine CD-ROM SYSTEM", (const char*)&buffer[32], 23) != 0)
+  /* normal PC Engine CD will have a header block in sector 1 */
+  if (strncmp("PC Engine CD-ROM SYSTEM", (const char*)&buffer[32], 23) == 0)
+  {
+    /* the title of the disc is the last 22 bytes of the header */
+    md5_init(&md5);
+    md5_append(&md5, &buffer[106], 22);
+
+    if (verbose_message_callback)
+    {
+      char message[128];
+      buffer[128] = '\0';
+      snprintf(message, sizeof(message), "Found PC Engine CD, title=%s", &buffer[106]);
+      verbose_message_callback(message);
+    }
+
+    /* the first three bytes specify the sector of the program data, and the fourth byte
+     * is the number of sectors.
+     */
+    sector = buffer[0] * 65536 + buffer[1] * 256 + buffer[2];
+    num_sectors = buffer[3];
+
+    if (verbose_message_callback)
+    {
+      char message[128];
+      snprintf(message, sizeof(message), "Hashing %d sectors starting at sector %d", num_sectors, sector);
+      verbose_message_callback(message);
+    }
+
+    while (num_sectors > 0)
+    {
+      rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+      md5_append(&md5, buffer, sizeof(buffer));
+
+      ++sector;
+      --num_sectors;
+    }
+  }
+  /* GameExpress CDs use a standard Joliet filesystem - locate and hash the BOOT.BIN */
+  else if ((sector = rc_cd_find_file_sector(track_handle, "BOOT.BIN", &size)) != 0 && size < MAX_BUFFER_SIZE)
+  {
+    md5_init(&md5);
+    while (size > sizeof(buffer))
+    {
+      rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+      md5_append(&md5, buffer, sizeof(buffer));
+
+      ++sector;
+      size -= sizeof(buffer);
+    }
+
+    if (size > 0)
+    {
+      rc_cd_read_sector(track_handle, sector, buffer, size);
+      md5_append(&md5, buffer, size);
+    }
+  }
+  else
+  {
+    rc_cd_close_track(track_handle);
     return rc_hash_error("Not a PC Engine CD");
-
-  /* the title of the disc is the last 22 bytes of the header */
-  md5_init(&md5);
-  md5_append(&md5, &buffer[106], 22);
-
-  if (verbose_message_callback)
-  {
-    char message[128];
-    buffer[128] = '\0';
-    snprintf(message, sizeof(message), "Found PC Engine CD, title=%s", &buffer[106]);
-    verbose_message_callback(message);
-  }
-
-  /* the first three bytes specify the sector of the program data, and the fourth byte
-   * is the number of sectors.
-   */
-  sector = buffer[0] * 65536 + buffer[1] * 256 + buffer[2];
-  num_sectors = buffer[3];
-
-  if (verbose_message_callback)
-  {
-    char message[128];
-    snprintf(message, sizeof(message), "Hashing %d sectors starting at sector %d", num_sectors, sector);
-    verbose_message_callback(message);
-  }
-
-  while (num_sectors > 0)
-  {
-    rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
-    md5_append(&md5, buffer, sizeof(buffer));
-    
-    ++sector;
-    --num_sectors;
   }
 
   rc_cd_close_track(track_handle);
@@ -553,10 +583,10 @@ static int rc_hash_psx(char hash[33], const char* path)
   if (!track_handle)
     return rc_hash_error("Could not open track");
 
-  sector = rc_cd_find_file_sector(track_handle, "SYSTEM.CNF");
+  sector = rc_cd_find_file_sector(track_handle, "SYSTEM.CNF", NULL);
   if (!sector)
   {
-    sector = rc_cd_find_file_sector(track_handle, "PSX.EXE");
+    sector = rc_cd_find_file_sector(track_handle, "PSX.EXE", NULL);
     if (sector)
       strcpy(exe_name, "PSX.EXE");
   }
@@ -601,7 +631,7 @@ static int rc_hash_psx(char hash[33], const char* path)
             verbose_message_callback((const char*)buffer);
           }
 
-          sector = rc_cd_find_file_sector(track_handle, exe_name);
+          sector = rc_cd_find_file_sector(track_handle, exe_name, NULL);
           break;
         }
       }
