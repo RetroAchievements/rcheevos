@@ -2992,6 +2992,52 @@ static void test_trigger(void) {
     assert(trigger->state == RC_TRIGGER_STATE_TRIGGERED);
   }
 
+  {
+    /*------------------------------------------------------------------------
+    TestBitLookupsShareMemRef
+    Verifies a single memref is used for multiple bit references to the same byte
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xM0001=1_0xN0x0001=0_0xO0x0001=1");
+
+    assert(trigger->memrefs->memref.address == 1);
+    assert(trigger->memrefs->memref.size == RC_MEMSIZE_8_BITS);
+    assert(trigger->memrefs->next == NULL);
+
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->operand1.size == RC_MEMSIZE_BIT_0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->operand1.size == RC_MEMSIZE_BIT_1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->operand1.size == RC_MEMSIZE_BIT_2);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestLargeMemRefNotShared
+    Verifies a single memref is used for multiple bit references to the same byte
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH1234=1_0xX1234>d0xX1234");
+
+    assert(trigger->memrefs->memref.address == 0x1234);
+    assert(trigger->memrefs->memref.size == RC_MEMSIZE_8_BITS);
+    assert(trigger->memrefs->next != NULL);
+    assert(trigger->memrefs->next->memref.address == 0x1234);
+    assert(trigger->memrefs->next->memref.size == RC_MEMSIZE_32_BITS);
+    assert(trigger->memrefs->next->next == NULL);
+  }
 }
 
 static void parse_comp_term(const char* memaddr, char expected_var_size, unsigned expected_address, int is_const) {

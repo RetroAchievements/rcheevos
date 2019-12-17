@@ -74,7 +74,8 @@ static rc_memref_value_t* rc_alloc_memref_value_constuct_mode(rc_parse_state_t* 
     next_memref_value = parse->first_memref;
     while (*next_memref_value) {
       memref_value = *next_memref_value;
-      if (!memref_value->memref.is_indirect && memref_value->memref.address == address) {
+      if (!memref_value->memref.is_indirect && memref_value->memref.address == address &&
+          memref_value->memref.size == size) {
         return memref_value;
       }
 
