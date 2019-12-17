@@ -575,7 +575,8 @@ static int rc_hash_psx(char hash[33], const char* path)
   char* start;
   void* track_handle;
   uint32_t sector;
-  size_t size, num_read;
+  unsigned size;
+  size_t num_read;
   int result = 0;
   md5_state_t md5;
 
@@ -586,7 +587,7 @@ static int rc_hash_psx(char hash[33], const char* path)
   sector = rc_cd_find_file_sector(track_handle, "SYSTEM.CNF", NULL);
   if (!sector)
   {
-    sector = rc_cd_find_file_sector(track_handle, "PSX.EXE", NULL);
+    sector = rc_cd_find_file_sector(track_handle, "PSX.EXE", &size);
     if (sector)
       strcpy(exe_name, "PSX.EXE");
   }
@@ -631,7 +632,7 @@ static int rc_hash_psx(char hash[33], const char* path)
             verbose_message_callback((const char*)buffer);
           }
 
-          sector = rc_cd_find_file_sector(track_handle, exe_name, NULL);
+          sector = rc_cd_find_file_sector(track_handle, exe_name, &size);
           break;
         }
       }
@@ -646,13 +647,31 @@ static int rc_hash_psx(char hash[33], const char* path)
   {
     rc_hash_error("Could not locate primary executable");
   }
-  else if ((num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer))) == sizeof(buffer) &&
-      memcmp(buffer, "PS-X EXE", 7) == 0)
+  else if ((num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
   {
-    /* the PS-X EXE header specifies the executable size as a 4-byte value 28 bytes into the header, which doesn't
-     * include the header itself. We want to include the header in the hash, so append another 2048 to that value.
-     */
-    size = (((uint8_t)buffer[31] << 24) | ((uint8_t)buffer[30] << 16) | ((uint8_t)buffer[29] << 8) | (uint8_t)buffer[28]) + 2048;
+    rc_hash_error("Could not read primary executable");
+  }
+  else
+  {
+    if (memcmp(buffer, "PS-X EXE", 7) != 0)
+    {
+      if (verbose_message_callback)
+      {
+        char message[128];
+        snprintf(message, sizeof(message), "%s did not contain PS-X EXE marker", exe_name);
+        verbose_message_callback(message);
+      }
+    }
+    else
+    {
+      /* the PS-X EXE header specifies the executable size as a 4-byte value 28 bytes into the header, which doesn't
+       * include the header itself. We want to include the header in the hash, so append another 2048 to that value.
+       */
+      size = (((uint8_t)buffer[31] << 24) | ((uint8_t)buffer[30] << 16) | ((uint8_t)buffer[29] << 8) | (uint8_t)buffer[28]) + 2048;
+    }
+
+    if (size > MAX_BUFFER_SIZE)
+      size = MAX_BUFFER_SIZE;
 
     if (verbose_message_callback)
     {
