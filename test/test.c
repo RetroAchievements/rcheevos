@@ -2500,6 +2500,89 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestMeasuredWhilePaused
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "M:0xH0002=52(3)_P:0xH0001=1"); /* measured(3, byte(2) == 52) && unless(byte(1) == 1) */
+    comp_trigger(trigger, &memory, 0); /* condition is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(trigger->measured_value == 1U);
+    assert(trigger->measured_target == 3U);
+
+    comp_trigger(trigger, &memory, 0); /* condition is true - hit count should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 2U);
+
+    memory.ram[1] = 1; /* paused, hit count should not be incremented */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 2U);
+
+    memory.ram[1] = 2; /* unpaused, hit count should be incremented */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestMeasuredWhilePausedAlts
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x00, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* (measured(6, byte(2) == 52) && unless(bit0(1) == 1)) || (measured(6, byte(0) == 0) && unless(bit1(1) == 1)) */
+    parse_trigger(&trigger, buffer, "SM:0xH0002=52(6)_P:0xM0001=1SM:0xH0000=0(6)_P:0xN0001=1");
+    comp_trigger(trigger, &memory, 0); /* both alts should be incremented */
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 1U);
+    assert(trigger->measured_value == 1U);
+    assert(trigger->measured_target == 6U);
+
+    memory.ram[1] = 1; /* first alt is paused, second should update */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 2U);
+    assert(trigger->measured_value == 2U);
+
+    comp_trigger(trigger, &memory, 0); /* first alt still paused, second should update again */
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+
+    memory.ram[1] = 3; /* both alts paused, neither should update, last measured value is kept */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 3U);
+
+    memory.ram[1] = 2; /* first alt unpaused, it should update, measured will use unpaused value */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 3U);
+    assert(trigger->measured_value == 2U);
+
+    memory.ram[1] = 0; /* both alts unpaused, both should update, measured will use higher value */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 1), 0)->current_hits == 3U);
+    assert(condset_get_cond(trigger_get_set(trigger, 2), 0)->current_hits == 4U);
+    assert(trigger->measured_value == 4U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestAltGroups
     ------------------------------------------------------------------------*/
 

@@ -92,7 +92,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
 
   /* previously triggered, do nothing - return INACTIVE so caller doesn't report a repeated trigger */
   if (self->state == RC_TRIGGER_STATE_TRIGGERED)
-      return RC_TRIGGER_STATE_INACTIVE;
+    return RC_TRIGGER_STATE_INACTIVE;
 
   rc_update_memref_values(self->memrefs, peek, ud);
 
@@ -106,22 +106,36 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   eval_state.peek_userdata = ud;
   eval_state.L = L;
 
-  ret = self->requirement != 0 ? rc_test_condset(self->requirement, &eval_state) : 1;
-  condset = self->alternative;
+  if (self->requirement != NULL) {
+    ret = rc_test_condset(self->requirement, &eval_state);
+    is_paused = self->requirement->is_paused;
+  } else {
+    ret = 1;
+    is_paused = 0;
+  }
 
+  condset = self->alternative;
   if (condset) {
     int sub = 0;
+    char sub_paused = 1;
 
     do {
       sub |= rc_test_condset(condset, &eval_state);
-      condset = condset->next;
-    }
-    while (condset != 0);
+      sub_paused &= condset->is_paused;
 
+      condset = condset->next;
+    } while (condset != 0);
+
+    /* to trigger, the core must be true and at least one alt must be true */
     ret &= sub;
+
+    /* if the core is not paused, all alts must be paused to count as a paused trigger */
+    is_paused |= sub_paused;
   }
 
-  self->measured_value = eval_state.measured_value;
+  /* if paused, the measured value may not be captured, keep the old value */
+  if (!is_paused)
+    self->measured_value = eval_state.measured_value;
 
   /* if the state is WAITING and the trigger is ready to fire, ignore it and reset the hit counts */
   /* otherwise, if the state is WAITING, proceed to activating the trigger */
@@ -152,19 +166,6 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
 
   /* did not trigger this frame - update the information we'll need for next time */
   self->has_hits = eval_state.has_hits;
-
-  /* check to see if the trigger is paused */
-  is_paused = (self->requirement != NULL) ? self->requirement->is_paused : 0;
-  if (!is_paused) {
-    /* if the core is not paused, all alts must be paused to count as a paused trigger */
-    is_paused = (self->alternative != NULL);
-    for (condset = self->alternative; condset != NULL; condset = condset->next) {
-      if (!condset->is_paused) {
-        is_paused = 0;
-        break;
-      }
-    }
-  }
 
   self->state = is_paused ? RC_TRIGGER_STATE_PAUSED : RC_TRIGGER_STATE_ACTIVE;
   return self->state;
