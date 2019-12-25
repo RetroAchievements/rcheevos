@@ -395,6 +395,7 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
   uint8_t header[512];
   uint8_t* hash_buffer;
   unsigned int hash_size, arm9_size, arm9_addr, arm7_size, arm7_addr, icon_addr;
+  size_t num_read;
   int offset = 0;
   md5_state_t md5;
   void* file_handle;
@@ -471,9 +472,27 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
   rc_file_read(file_handle, hash_buffer, arm7_size);
   md5_append(&md5, hash_buffer, arm7_size);
 
-  rc_hash_verbose("Hashing 2560 byte icon and labels data");
+  if (verbose_message_callback)
+  {
+    snprintf((char*)header, sizeof(header), "Hashing 2560 byte icon and labels data (at %08X)", icon_addr);
+    verbose_message_callback((const char*)header);
+  }
+
   rc_file_seek(file_handle, icon_addr + offset, SEEK_SET);
-  rc_file_read(file_handle, hash_buffer, 0xA00);
+  num_read = rc_file_read(file_handle, hash_buffer, 0xA00);
+  if (num_read < 0xA00)
+  {
+    /* some homebrew games don't provide a full icon block, and no data after the icon block.
+     * if we didn't get a full icon block, fill the remaining portion with 0s
+     */
+    if (verbose_message_callback)
+    {
+      snprintf((char*)header, sizeof(header), "Warning: only got %zu bytes for icon and labels data, 0-padding to 2560 bytes", num_read);
+      verbose_message_callback((const char*)header);
+    }
+
+    memset(&hash_buffer[num_read], 0, 0xA00 - num_read);
+  }
   md5_append(&md5, hash_buffer, 0xA00);
 
   free(hash_buffer);
