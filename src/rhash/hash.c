@@ -695,7 +695,7 @@ static int rc_hash_psx(char hash[33], const char* path)
     if (verbose_message_callback)
     {
       char message[128];
-      snprintf(message, sizeof(message), "Hashing %s title (%zu bytes) and contents (%zu bytes) ", exe_name, strlen(exe_name), size);
+      snprintf(message, sizeof(message), "Hashing %s title (%zu bytes) and contents (%u bytes) ", exe_name, strlen(exe_name), size);
       verbose_message_callback(message);
     }
 
@@ -814,7 +814,7 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
 {
   md5_state_t md5;
   uint8_t* buffer;
-  int size;
+  size_t size;
   const int buffer_size = 65536;
   void* file_handle;
   int result = 0;
@@ -830,7 +830,7 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
   {
     char message[1024];
     if (size > MAX_BUFFER_SIZE)
-      snprintf(message, sizeof(message), "Hashing first %zu bytes (of %zu bytes) of %s", MAX_BUFFER_SIZE, size, rc_path_get_filename(path));
+      snprintf(message, sizeof(message), "Hashing first %u bytes (of %zu bytes) of %s", MAX_BUFFER_SIZE, size, rc_path_get_filename(path));
     else
       snprintf(message, sizeof(message), "Hashing %s (%zu bytes)", rc_path_get_filename(path), size);
     verbose_message_callback(message);
@@ -1023,7 +1023,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
       return rc_hash_nintendo_ds(hash, path);
 
     case RC_CONSOLE_PC_ENGINE:
-      if (rc_path_compare_extension(path, "cue"))
+      if (rc_path_compare_extension(path, "cue") || rc_path_compare_extension(path, "chd"))
         return rc_hash_pce_cd(hash, path);
 
       if (rc_path_compare_extension(path, "m3u"))
@@ -1071,6 +1071,30 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
       case 'b':
         if (rc_path_compare_extension(ext, "bin"))
         {
+           if (buffer_size == 0)
+           {
+              /* raw bin file may be a CD track. if it's more than 32MB, try a CD hash. */
+              void* file = rc_file_open(path);
+              if (file)
+              {
+                 size_t size;
+
+                 rc_file_seek(file, 0, SEEK_END);
+                 size = rc_file_tell(file);
+                 rc_file_close(file);
+
+                 if (size > 32 * 1024 * 1024)
+                 {
+                    /* Sega CD is the only core that supports directly opening the bin file. */
+                    iterator->consoles[0] = RC_CONSOLE_SEGA_CD;
+
+                    /* fallback to megadrive - see comment below */
+                    iterator->consoles[1] = RC_CONSOLE_MEGA_DRIVE;
+                    break;
+                 }
+              }
+           }
+
           /* bin is associated with MegaDrive, Sega32X and Atari 2600. Since they all use the same
            * hashing algorithm, only specify one of them */
           iterator->consoles[0] = RC_CONSOLE_MEGA_DRIVE;
@@ -1078,7 +1102,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         break;
 
       case 'c':
-        if (rc_path_compare_extension(ext, "cue"))
+        if (rc_path_compare_extension(ext, "cue") || rc_path_compare_extension(ext, "chd"))
         {
           iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
           iterator->consoles[1] = RC_CONSOLE_PC_ENGINE;
