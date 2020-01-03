@@ -347,7 +347,7 @@ static int rc_hash_buffer(char hash[33], uint8_t* buffer, size_t buffer_size)
   if (verbose_message_callback)
   {
     char buffer[128];
-    snprintf(buffer, sizeof(buffer), "Hashing %zu byte buffer", buffer_size);
+    snprintf(buffer, sizeof(buffer), "Hashing %u byte buffer", (unsigned)buffer_size);
     verbose_message_callback(buffer);
   }
 
@@ -487,7 +487,7 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
      */
     if (verbose_message_callback)
     {
-      snprintf((char*)header, sizeof(header), "Warning: only got %zu bytes for icon and labels data, 0-padding to 2560 bytes", num_read);
+      snprintf((char*)header, sizeof(header), "Warning: only got %u bytes for icon and labels data, 0-padding to 2560 bytes", (unsigned)num_read);
       verbose_message_callback((const char*)header);
     }
 
@@ -695,7 +695,7 @@ static int rc_hash_psx(char hash[33], const char* path)
     if (verbose_message_callback)
     {
       char message[128];
-      snprintf(message, sizeof(message), "Hashing %s title (%zu bytes) and contents (%u bytes) ", exe_name, strlen(exe_name), size);
+      snprintf(message, sizeof(message), "Hashing %s title (%u bytes) and contents (%u bytes) ", exe_name, (unsigned)strlen(exe_name), size);
       verbose_message_callback(message);
     }
 
@@ -703,7 +703,7 @@ static int rc_hash_psx(char hash[33], const char* path)
      * unique serial numbers, and use the serial number as the boot file in the standard way. include the boot file in the hash
      */
     md5_init(&md5);
-    md5_append(&md5, exe_name, strlen(exe_name));
+    md5_append(&md5, (md5_byte_t*)exe_name, strlen(exe_name));
 
     do
     {
@@ -830,9 +830,9 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
   {
     char message[1024];
     if (size > MAX_BUFFER_SIZE)
-      snprintf(message, sizeof(message), "Hashing first %u bytes (of %zu bytes) of %s", MAX_BUFFER_SIZE, size, rc_path_get_filename(path));
+      snprintf(message, sizeof(message), "Hashing first %u bytes (of %u bytes) of %s", MAX_BUFFER_SIZE, (unsigned)size, rc_path_get_filename(path));
     else
-      snprintf(message, sizeof(message), "Hashing %s (%zu bytes)", rc_path_get_filename(path), size);
+      snprintf(message, sizeof(message), "Hashing %s (%u bytes)", rc_path_get_filename(path), (unsigned)size);
     verbose_message_callback(message);
   }
 
@@ -869,7 +869,7 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
 static int rc_hash_buffered_file(char hash[33], int console_id, const char* path)
 {
   uint8_t* buffer;
-  int size;
+  size_t size;
   int result = 0;
   void* file_handle;
 
@@ -884,9 +884,9 @@ static int rc_hash_buffered_file(char hash[33], int console_id, const char* path
   {
     char message[1024];
     if (size > MAX_BUFFER_SIZE)
-      snprintf(message, sizeof(message), "Buffering first %zu bytes (of %zu bytes) of %s", MAX_BUFFER_SIZE, size, rc_path_get_filename(path));
+      snprintf(message, sizeof(message), "Buffering first %u bytes (of %d bytes) of %s", MAX_BUFFER_SIZE, (unsigned)size, rc_path_get_filename(path));
     else
-      snprintf(message, sizeof(message), "Buffering %s (%zu bytes)", rc_path_get_filename(path), size);
+      snprintf(message, sizeof(message), "Buffering %s (%d bytes)", rc_path_get_filename(path), (unsigned)size);
     verbose_message_callback(message);
   }
 

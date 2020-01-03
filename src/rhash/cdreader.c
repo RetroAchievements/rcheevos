@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <memory.h>
+#include <string.h>
 #include <stdlib.h>
 
 /* internal helper functions in hash.c */
@@ -237,7 +238,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
         while (*ptr == ' ')
           ++ptr;
 
-        sscanf_s(ptr, "%d:%d:%d", &m, &s, &f);
+        sscanf(ptr, "%d:%d:%d", &m, &s, &f);
         sector_offset = ((m * 60) + s) * 75 + f;
         sector_offset -= previous_index_sector_offset;
         offset += sector_offset * previous_sector_size;
