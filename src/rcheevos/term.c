@@ -37,7 +37,7 @@ rc_term_t* rc_parse_term(const char** memaddr, int is_indirect, rc_parse_state_t
         case RC_OPERAND_ADDRESS:
         case RC_OPERAND_DELTA:
         case RC_OPERAND_PRIOR:
-          size = self->operand2.value.memref->memref.size;
+          size = self->operand2.size;
           break;
         default:
           size = RC_MEMSIZE_32_BITS;
