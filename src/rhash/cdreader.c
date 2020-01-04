@@ -193,7 +193,7 @@ static int cdreader_open_bin(struct cdrom_t* cdrom, const char* path, const char
 static void* cdreader_open_cue_track(const char* path, uint32_t track)
 {
   void* file_handle;
-  int file_offset = 0;
+  size_t file_offset = 0;
   char buffer[1024], *mode = buffer, *bin_filename;
   char file[256];
   char *ptr, *ptr2, *end;
@@ -262,7 +262,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
           cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
           if (!cdrom)
           {
-            snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", sizeof(*cdrom));
+            snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", (unsigned)sizeof(*cdrom));
             rc_hash_error((const char*)buffer);
 
             done = 1;
@@ -279,7 +279,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
           bin_filename = (char*)malloc(num_read);
           if (!bin_filename)
           {
-            snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", num_read);
+            snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", (unsigned)num_read);
             rc_hash_error((const char*)buffer);
           }
           else
@@ -414,7 +414,7 @@ static size_t cdreader_read_sector(void* track_handle, uint32_t sector, void* bu
   while (requested_bytes > 2048)
   {
     rc_file_seek(cdrom->file_handle, sector_start, SEEK_SET);
-    num_read = rc_file_read(cdrom->file_handle, buffer, requested_bytes);
+    num_read = rc_file_read(cdrom->file_handle, buffer, (int)requested_bytes);
     total_read += num_read;
 
     if (num_read < 2048)
@@ -425,7 +425,7 @@ static size_t cdreader_read_sector(void* track_handle, uint32_t sector, void* bu
   }
 
   rc_file_seek(cdrom->file_handle, sector_start, SEEK_SET);
-  num_read = rc_file_read(cdrom->file_handle, buffer, requested_bytes);
+  num_read = rc_file_read(cdrom->file_handle, buffer, (int)requested_bytes);
   total_read += num_read;
 
   return total_read;

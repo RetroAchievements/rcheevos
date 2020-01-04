@@ -78,7 +78,7 @@ static void* filereader_open(const char* path)
 
 static void filereader_seek(void* file_handle, size_t offset, int origin)
 {
-  fseek((FILE*)file_handle, offset, origin);
+  fseek((FILE*)file_handle, (long)offset, origin);
 }
 
 static size_t filereader_tell(void* file_handle)
@@ -188,7 +188,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
 {
   uint8_t buffer[2048], *tmp;
   int sector;
-  int filename_length;
+  size_t filename_length;
   const char* slash;
 
   if (!track_handle)
@@ -289,8 +289,8 @@ static const char* rc_path_get_extension(const char* path)
 
 int rc_path_compare_extension(const char* path, const char* ext)
 {
-  int path_len = strlen(path);
-  int ext_len = strlen(ext);
+  size_t path_len = strlen(path);
+  size_t ext_len = strlen(ext);
   const char* ptr = path + path_len - ext_len;
   if (ptr[-1] != '.')
     return 0;
@@ -342,7 +342,7 @@ static int rc_hash_buffer(char hash[33], uint8_t* buffer, size_t buffer_size)
   if (buffer_size > MAX_BUFFER_SIZE)
     buffer_size = MAX_BUFFER_SIZE;
 
-  md5_append(&md5, buffer, buffer_size);
+  md5_append(&md5, buffer, (int)buffer_size);
 
   if (verbose_message_callback)
   {
@@ -612,7 +612,7 @@ static int rc_hash_psx(char hash[33], const char* path)
   }
   else
   {
-    size = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer) - 1);
+    size = (unsigned)rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer) - 1);
     buffer[size] = '\0';
 
     for (ptr = (char*)buffer; *ptr; ++ptr)
@@ -638,7 +638,7 @@ static int rc_hash_psx(char hash[33], const char* path)
           while (!isspace(*ptr) && *ptr != ';')
             ++ptr;
 
-          size = ptr - start;
+          size = (unsigned)(ptr - start);
           if (size >= sizeof(exe_name))
             size = sizeof(exe_name) - 1;
 
@@ -703,13 +703,13 @@ static int rc_hash_psx(char hash[33], const char* path)
      * unique serial numbers, and use the serial number as the boot file in the standard way. include the boot file in the hash
      */
     md5_init(&md5);
-    md5_append(&md5, (md5_byte_t*)exe_name, strlen(exe_name));
+    md5_append(&md5, (md5_byte_t*)exe_name, (int)strlen(exe_name));
 
     do
     {
-      md5_append(&md5, buffer, num_read);
+      md5_append(&md5, buffer, (int)num_read);
 
-      size -= num_read;
+      size -= (unsigned)num_read;
       if (size == 0)
         break;
 
@@ -753,7 +753,7 @@ static int rc_hash_sega_cd(char hash[33], const char* path)
 static int rc_hash_snes(char hash[33], uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it */
-  uint32_t calc_size = (buffer_size / 0x2000) * 0x2000;
+  uint32_t calc_size = ((uint32_t)buffer_size / 0x2000) * 0x2000;
   if (buffer_size - calc_size == 512)
   {
     rc_hash_verbose("Ignoring SNES header");
@@ -854,8 +854,8 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
 
     if (size > 0)
     {
-      rc_file_read(file_handle, buffer, size);
-      md5_append(&md5, buffer, size);
+      rc_file_read(file_handle, buffer, (int)size);
+      md5_append(&md5, buffer, (int)size);
     }
 
     free(buffer);
@@ -897,7 +897,7 @@ static int rc_hash_buffered_file(char hash[33], int console_id, const char* path
   if (buffer)
   {
     rc_file_seek(file_handle, 0, SEEK_SET);
-    rc_file_read(file_handle, buffer, size);
+    rc_file_read(file_handle, buffer, (int)size);
 
     result = rc_hash_generate_from_buffer(hash, console_id, buffer, size);
 
