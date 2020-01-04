@@ -97,13 +97,12 @@ int rc_url_submit_lboard(char* buffer, size_t size, const char* user_name, const
   return (size_t)written >= size ? -1 : 0;
 }
 
-int rc_url_get_gameid(char* buffer, size_t size, unsigned char hash[16]) {
+int rc_url_get_gameid(char* buffer, size_t size, const char* hash) {
   int written = snprintf(
     buffer,
     size,
-    "http://retroachievements.org/dorequest.php?r=gameid&m=%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-    hash[ 0], hash[ 1], hash[ 2], hash[ 3], hash[ 4], hash[ 5], hash[ 6], hash[ 7],
-    hash[ 8], hash[ 9], hash[10], hash[11],hash[12], hash[13], hash[14], hash[15]
+    "http://retroachievements.org/dorequest.php?r=gameid&m=%s",
+    hash
   );
 
   return (size_t)written >= size ? -1 : 0;
