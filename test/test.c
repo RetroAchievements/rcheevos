@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <assert.h>
-#include <memory.h>
+#include <string.h> // memset
 
 #include "lua.h"
 #include "lauxlib.h"
