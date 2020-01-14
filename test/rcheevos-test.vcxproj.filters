@@ -145,6 +145,12 @@
     <ClCompile Include="..\src\rcheevos\memref.c">
       <Filter>rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rcheevos\runtime.c">
+      <Filter>rcheevos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rhash\md5.c">
+      <Filter>rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">

@@ -96,7 +96,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
 
   rc_update_memref_values(self->memrefs, peek, ud);
 
-  /* not yet active, only update the memrefs - so deltas are corrent when it becomes active */
+  /* not yet active, only update the memrefs - so deltas are correct when it becomes active */
   if (self->state == RC_TRIGGER_STATE_INACTIVE)
     return RC_TRIGGER_STATE_INACTIVE;
 

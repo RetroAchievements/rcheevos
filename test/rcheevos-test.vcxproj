@@ -130,9 +130,11 @@
     <ClCompile Include="..\src\rcheevos\memref.c" />
     <ClCompile Include="..\src\rcheevos\operand.c" />
     <ClCompile Include="..\src\rcheevos\richpresence.c" />
+    <ClCompile Include="..\src\rcheevos\runtime.c" />
     <ClCompile Include="..\src\rcheevos\term.c" />
     <ClCompile Include="..\src\rcheevos\trigger.c" />
     <ClCompile Include="..\src\rcheevos\value.c" />
+    <ClCompile Include="..\src\rhash\md5.c" />
     <ClCompile Include="lua\src\lapi.c" />
     <ClCompile Include="lua\src\lauxlib.c" />
     <ClCompile Include="lua\src\lbaselib.c" />

@@ -311,11 +311,12 @@ int rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L)
 
 /* Return values for rc_evaluate_lboard. */
 enum {
-  RC_LBOARD_INACTIVE,
-  RC_LBOARD_ACTIVE,
-  RC_LBOARD_STARTED,
-  RC_LBOARD_CANCELED,
-  RC_LBOARD_TRIGGERED
+  RC_LBOARD_STATE_INACTIVE,  /* leaderboard is not being processed */
+  RC_LBOARD_STATE_WAITING,   /* leaderboard cannot activate until the start condition has been false for at least one frame */
+  RC_LBOARD_STATE_ACTIVE,    /* leaderboard is active and may start */
+  RC_LBOARD_STATE_STARTED,   /* leaderboard attempt in progress */
+  RC_LBOARD_STATE_CANCELED,  /* leaderboard attempt canceled */
+  RC_LBOARD_STATE_TRIGGERED  /* leaderboard attempt complete, value should be submitted */
 };
 
 typedef struct {
@@ -326,8 +327,7 @@ typedef struct {
   rc_value_t* progress;
   rc_memref_value_t* memrefs;
 
-  char started;
-  char submitted;
+  char state;
 }
 rc_lboard_t;
 
@@ -403,6 +403,85 @@ rc_richpresence_t;
 int rc_richpresence_size(const char* script);
 rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_State* L, int funcs_ndx);
 int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
+
+/*****************************************************************************\
+| Runtime                                                                     |
+\*****************************************************************************/
+
+typedef struct rc_runtime_trigger_t {
+  int id;
+  rc_trigger_t* trigger;
+  void* buffer;
+  unsigned char md5[16];
+  char owns_memrefs;
+}
+rc_runtime_trigger_t;
+
+typedef struct rc_runtime_lboard_t {
+  int id;
+  int value;
+  rc_lboard_t* lboard;
+  void* buffer;
+  unsigned char md5[16];
+  char owns_memrefs;
+}
+rc_runtime_lboard_t;
+
+typedef struct rc_runtime_t {
+  rc_runtime_trigger_t* triggers;
+  unsigned trigger_count;
+  unsigned trigger_capacity;
+
+  rc_runtime_lboard_t* lboards;
+  unsigned lboard_count;
+  unsigned lboard_capacity;
+
+  rc_richpresence_t* richpresence;
+  void* richpresence_buffer;
+  char* richpresence_display_buffer;
+  char  richpresence_update_timer;
+
+  rc_memref_value_t* memrefs;
+  rc_memref_value_t** next_memref;
+}
+rc_runtime_t;
+
+void rc_runtime_init(rc_runtime_t* runtime);
+void rc_runtime_destroy(rc_runtime_t* runtime);
+
+int rc_runtime_activate_achievement(rc_runtime_t* runtime, unsigned id, const char* memaddr, lua_State* L, int funcs_idx);
+void rc_runtime_deactivate_achievement(rc_runtime_t* runtime, unsigned id);
+rc_trigger_t* rc_runtime_get_achievement(rc_runtime_t* runtime, unsigned id);
+
+int rc_runtime_activate_lboard(rc_runtime_t* runtime, unsigned id, const char* memaddr, lua_State* L, int funcs_idx);
+void rc_runtime_deactivate_lboard(rc_runtime_t* runtime, unsigned id);
+rc_lboard_t* rc_runtime_get_lboard(rc_runtime_t* runtime, unsigned id);
+
+int rc_runtime_activate_richpresence(rc_runtime_t* runtime, const char* script, lua_State* L, int funcs_idx);
+const char* rc_runtime_get_richpresence(rc_runtime_t* runtime);
+
+enum {
+  RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, /* from WAITING or PAUSED to ACTIVE */
+  RC_RUNTIME_EVENT_ACHIEVEMENT_PAUSED,
+  RC_RUNTIME_EVENT_ACHIEVEMENT_RESET,
+  RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED,
+  RC_RUNTIME_EVENT_LBOARD_STARTED,
+  RC_RUNTIME_EVENT_LBOARD_CANCELED,
+  RC_RUNTIME_EVENT_LBOARD_UPDATED,
+  RC_RUNTIME_EVENT_LBOARD_TRIGGERED,
+};
+
+typedef struct rc_runtime_event_t {
+  unsigned id;
+  int value;
+  char type;
+}
+rc_runtime_event_t;
+
+typedef void (*rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_event);
+
+void rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_peek_t peek, void* ud, lua_State* L);
+void rc_runtime_reset(rc_runtime_t* runtime);
 
 #ifdef __cplusplus
 }
