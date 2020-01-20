@@ -182,4 +182,5 @@ void rc_reset_trigger(rc_trigger_t* self) {
   rc_reset_trigger_hitcounts(self);
 
   self->state = RC_TRIGGER_STATE_WAITING;
+  self->has_hits = 0;
 }

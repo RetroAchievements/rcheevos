@@ -56,7 +56,7 @@ void rc_runtime_destroy(rc_runtime_t* self) {
 static void rc_runtime_checksum(const char* memaddr, unsigned char* md5) {
   md5_state_t state;
   md5_init(&state);
-  md5_append(&state, (unsigned char*)memaddr, strlen(memaddr));
+  md5_append(&state, (unsigned char*)memaddr, (int)strlen(memaddr));
   md5_finish(&state, md5);  
 }
 
@@ -183,7 +183,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
   return RC_OK;
 }
 
-rc_trigger_t* rc_runtime_get_achievement(rc_runtime_t* self, unsigned id)
+rc_trigger_t* rc_runtime_get_achievement(const rc_runtime_t* self, unsigned id)
 {
   for (unsigned i = 0; i < self->trigger_count; ++i) {
     if (self->triggers[i].id == id && self->triggers[i].trigger != NULL)
@@ -317,7 +317,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   return RC_OK;
 }
 
-rc_lboard_t* rc_runtime_get_lboard(rc_runtime_t* self, unsigned id)
+rc_lboard_t* rc_runtime_get_lboard(const rc_runtime_t* self, unsigned id)
 {
   for (unsigned i = 0; i < self->lboard_count; ++i) {
     if (self->lboards[i].id == id && self->lboards[i].lboard != NULL)
@@ -405,7 +405,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   return RC_OK;
 }
 
-const char* rc_runtime_get_richpresence(rc_runtime_t* self)
+const char* rc_runtime_get_richpresence(const rc_runtime_t* self)
 {
   if (self->richpresence_display_buffer)
     return self->richpresence_display_buffer;
@@ -462,11 +462,12 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
   
   for (unsigned i = 0; i < self->lboard_count; ++i) {
     rc_lboard_t* lboard = self->lboards[i].lboard;
-    int lboard_state = lboard->state;
+    int lboard_state;
 
     if (!lboard)
       continue;
     
+    lboard_state = lboard->state;
     switch (rc_evaluate_lboard(lboard, &runtime_event.value, peek, ud, L))
     {
       case RC_LBOARD_STATE_STARTED: /* leaderboard is running */
@@ -547,4 +548,5 @@ void rc_runtime_reset(rc_runtime_t* self) {
 
 // TODO: char* rc_runtime_serialize_progress(rc_runtime_t* runtime)
 //       returns malloc'd string to be written to disk
+//       make sure to include measured_value and state in serialized format (only serialize active and paused)
 // TODO: int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const char* serialized)
