@@ -1,7 +1,7 @@
 #include "internal.h"
 
 #include <stddef.h>
-#include <string.h> // memset
+#include <string.h> /* memset */
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condset_t** next;

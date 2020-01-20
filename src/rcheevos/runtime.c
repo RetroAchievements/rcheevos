@@ -22,8 +22,10 @@ void rc_runtime_init(rc_runtime_t* self) {
 }
 
 void rc_runtime_destroy(rc_runtime_t* self) {
+  unsigned i;
+
   if (self->triggers) {
-    for (unsigned i = 0; i < self->trigger_count; ++i)
+    for (i = 0; i < self->trigger_count; ++i)
       free(self->triggers[i].buffer);
 
     free(self->triggers);
@@ -78,7 +80,9 @@ static void rc_runtime_deactivate_trigger_by_index(rc_runtime_t* self, unsigned 
 }
 
 void rc_runtime_deactivate_achievement(rc_runtime_t* self, unsigned id) {
-  for (unsigned i = 0; i < self->trigger_count; ++i) {
+  unsigned i;
+
+  for (i = 0; i < self->trigger_count; ++i) {
     if (self->triggers[i].id == id && self->triggers[i].trigger != NULL)
       rc_runtime_deactivate_trigger_by_index(self, i);
   }
@@ -91,6 +95,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
   unsigned char md5[16];
   int size;
   char owns_memref;
+  unsigned i;
 
   if (memaddr == NULL)
     return RC_INVALID_MEMORY_OPERAND;
@@ -98,7 +103,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
   rc_runtime_checksum(memaddr, md5);
 
   /* check to see if the id is already registered with an active trigger */
-  for (unsigned i = 0; i < self->trigger_count; ++i) {
+  for (i = 0; i < self->trigger_count; ++i) {
     if (self->triggers[i].id == id && self->triggers[i].trigger != NULL) {
       if (memcmp(self->triggers[i].md5, md5, 16) == 0) {
         /* if the checksum hasn't changed, we can reuse the existing item */
@@ -117,7 +122,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
   }
 
   /* check to see if a disabled trigger for the specific id matches the trigger being registered */
-  for (unsigned i = 0; i < self->trigger_count; ++i) {
+  for (i = 0; i < self->trigger_count; ++i) {
     if (self->triggers[i].id == id && memcmp(self->triggers[i].md5, md5, 16) == 0) {
       /* retrieve the trigger pointer from the buffer */
       size = 0;
@@ -185,7 +190,9 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
 
 rc_trigger_t* rc_runtime_get_achievement(const rc_runtime_t* self, unsigned id)
 {
-  for (unsigned i = 0; i < self->trigger_count; ++i) {
+  unsigned i;
+
+  for (i = 0; i < self->trigger_count; ++i) {
     if (self->triggers[i].id == id && self->triggers[i].trigger != NULL)
       return self->triggers[i].trigger;
   }
@@ -211,7 +218,9 @@ static void rc_runtime_deactivate_lboard_by_index(rc_runtime_t* self, unsigned i
 }
 
 void rc_runtime_deactivate_lboard(rc_runtime_t* self, unsigned id) {
-  for (unsigned i = 0; i < self->lboard_count; ++i) {
+  unsigned i;
+
+  for (i = 0; i < self->lboard_count; ++i) {
     if (self->lboards[i].id == id && self->lboards[i].lboard != NULL)
       rc_runtime_deactivate_lboard_by_index(self, i);
   }
@@ -224,6 +233,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   rc_parse_state_t parse;
   int size;
   char owns_memref;
+  unsigned i;
 
   if (memaddr == 0)
     return RC_INVALID_MEMORY_OPERAND;
@@ -231,7 +241,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   rc_runtime_checksum(memaddr, md5);
 
   /* check to see if the id is already registered with an active lboard */
-  for (unsigned i = 0; i < self->lboard_count; ++i) {
+  for (i = 0; i < self->lboard_count; ++i) {
     if (self->lboards[i].id == id && self->lboards[i].lboard != NULL) {
       if (memcmp(self->lboards[i].md5, md5, 16) == 0) {
         /* if the checksum hasn't changed, we can reuse the existing item */
@@ -250,7 +260,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   }
 
   /* check to see if a disabled lboard for the specific id matches the lboard being registered */
-  for (unsigned i = 0; i < self->trigger_count; ++i) {
+  for (i = 0; i < self->trigger_count; ++i) {
     if (self->lboards[i].id == id && memcmp(self->lboards[i].md5, md5, 16) == 0) {
       /* retrieve the lboard pointer from the buffer */
       size = 0;
@@ -319,7 +329,9 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
 
 rc_lboard_t* rc_runtime_get_lboard(const rc_runtime_t* self, unsigned id)
 {
-  for (unsigned i = 0; i < self->lboard_count; ++i) {
+  unsigned i;
+
+  for (i = 0; i < self->lboard_count; ++i) {
     if (self->lboards[i].id == id && self->lboards[i].lboard != NULL)
       return self->lboards[i].lboard;
   }
@@ -415,11 +427,13 @@ const char* rc_runtime_get_richpresence(const rc_runtime_t* self)
 
 void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_handler, rc_peek_t peek, void* ud, lua_State* L) {
   rc_runtime_event_t runtime_event;
+  unsigned i;
+
   runtime_event.value = 0;
 
   rc_update_memref_values(self->memrefs, peek, ud);
 
-  for (unsigned i = 0; i < self->trigger_count; ++i) {
+  for (i = 0; i < self->trigger_count; ++i) {
     rc_trigger_t* trigger = self->triggers[i].trigger;
     int trigger_state;
 
@@ -460,7 +474,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     }
   }
   
-  for (unsigned i = 0; i < self->lboard_count; ++i) {
+  for (i = 0; i < self->lboard_count; ++i) {
     rc_lboard_t* lboard = self->lboards[i].lboard;
     int lboard_state;
 
@@ -512,8 +526,10 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
       int len = rc_evaluate_richpresence(self->richpresence, buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1, peek, ud, L);
 
       /* copy into the real buffer - write the 0 terminator first to ensure reads don't overflow the buffer */
-      buffer[RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1] = '\0';
-      memcpy(self->richpresence_display_buffer, buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE);
+      if (len > 0) {
+        buffer[RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1] = '\0';
+        memcpy(self->richpresence_display_buffer, buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE);
+      }
 
       /* schedule the next update for 60 frames later - most systems use a 60 fps framerate (some use more 50 or 75)
        * since we're only sending to the server every two minutes, that's only every 7200 frames while active, which
@@ -527,12 +543,14 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 }
 
 void rc_runtime_reset(rc_runtime_t* self) {
-  for (unsigned i = 0; i < self->trigger_count; ++i) {
+  unsigned i;
+
+  for (i = 0; i < self->trigger_count; ++i) {
     if (self->triggers[i].trigger)
       rc_reset_trigger(self->triggers[i].trigger);
   }
 
-  for (unsigned i = 0; i < self->lboard_count; ++i) {
+  for (i = 0; i < self->lboard_count; ++i) {
     if (self->lboards[i].lboard)
       rc_reset_lboard(self->lboards[i].lboard);
   }
@@ -546,7 +564,9 @@ void rc_runtime_reset(rc_runtime_t* self) {
   }
 }
 
-// TODO: char* rc_runtime_serialize_progress(rc_runtime_t* runtime)
-//       returns malloc'd string to be written to disk
-//       make sure to include measured_value and state in serialized format (only serialize active and paused)
-// TODO: int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const char* serialized)
+/*
+ * TODO: char* rc_runtime_serialize_progress(rc_runtime_t* runtime)
+ *       returns malloc'd string to be written to disk
+ *       make sure to include measured_value and state in serialized format (only serialize active and paused)
+ * TODO: int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const char* serialized)
+*/

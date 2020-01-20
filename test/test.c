@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <assert.h>
-#include <string.h> // memset
+#include <string.h> /* memset */
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -3081,12 +3081,7 @@ static void test_trigger(void) {
     Verifies a single memref is used for multiple bit references to the same byte
     ------------------------------------------------------------------------*/
 
-    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
-    memory_t memory;
     rc_trigger_t* trigger;
-
-    memory.ram = ram;
-    memory.size = sizeof(ram);
 
     parse_trigger(&trigger, buffer, "0xM0001=1_0xN0x0001=0_0xO0x0001=1");
 
@@ -3105,12 +3100,7 @@ static void test_trigger(void) {
     Verifies a single memref is used for multiple bit references to the same byte
     ------------------------------------------------------------------------*/
 
-    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
-    memory_t memory;
     rc_trigger_t* trigger;
-
-    memory.ram = ram;
-    memory.size = sizeof(ram);
 
     parse_trigger(&trigger, buffer, "0xH1234=1_0xX1234>d0xX1234");
 
@@ -4788,7 +4778,9 @@ static void event_handler(const rc_runtime_event_t* e)
 
 static void assert_event(char type, int id, int value)
 {
-  for (int i = 0; i < event_count; ++i) {
+  int i;
+
+  for (i = 0; i < event_count; ++i) {
     if (events[i].id == id && events[i].type == type && events[i].value == value)
       return;
   }
@@ -5343,7 +5335,6 @@ static void test_runtime(void) {
     unsigned char ram[] = { 2, 10, 10 };
     memory_t memory;
     rc_runtime_t runtime;
-    int frame_count = 0;
 
     memory.ram = ram;
     memory.size = sizeof(ram);
