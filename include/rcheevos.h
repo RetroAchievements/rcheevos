@@ -427,6 +427,14 @@ typedef struct rc_runtime_lboard_t {
 }
 rc_runtime_lboard_t;
 
+typedef struct rc_runtime_richpresence_t {
+  rc_richpresence_t* richpresence;
+  void* buffer;
+  struct rc_runtime_richpresence_t* previous;
+  char owns_memrefs;
+}
+rc_runtime_richpresence_t;
+
 typedef struct rc_runtime_t {
   rc_runtime_trigger_t* triggers;
   unsigned trigger_count;
@@ -436,8 +444,7 @@ typedef struct rc_runtime_t {
   unsigned lboard_count;
   unsigned lboard_capacity;
 
-  rc_richpresence_t* richpresence;
-  void* richpresence_buffer;
+  rc_runtime_richpresence_t* richpresence;
   char* richpresence_display_buffer;
   char  richpresence_update_timer;
 

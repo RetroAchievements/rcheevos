@@ -41,9 +41,12 @@ void rc_runtime_destroy(rc_runtime_t* self) {
     self->lboard_count = self->lboard_capacity = 0;
   }
   
-  if (self->richpresence_buffer) {
-    free(self->richpresence_buffer);
-    self->richpresence_buffer = NULL;
+  while (self->richpresence) {
+    rc_runtime_richpresence_t* previous = self->richpresence->previous;
+
+    free(self->richpresence->buffer);
+    free(self->richpresence);
+    self->richpresence = previous;
   }
   
   if (self->richpresence_display_buffer) {
@@ -341,6 +344,7 @@ rc_lboard_t* rc_runtime_get_lboard(const rc_runtime_t* self, unsigned id)
 
 int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua_State* L, int funcs_idx) {
   rc_richpresence_t* richpresence;
+  rc_runtime_richpresence_t* previous;
   rc_richpresence_display_t* display;
   rc_parse_state_t parse;
   int size;
@@ -359,38 +363,55 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   }
   self->richpresence_display_buffer[0] = '\0';
 
-  if (self->richpresence_buffer)
-    free(self->richpresence_buffer);
-  self->richpresence_buffer = malloc(size);
-  if (!self->richpresence_buffer)
-    return RC_OUT_OF_MEMORY;
+  previous = self->richpresence;
+  if (previous) {
+    if (!previous->owns_memrefs) {
+      free(previous->buffer);
+      previous = previous->previous;
+    }
+  }
   
-  rc_init_parse_state(&parse, self->richpresence_buffer, L, funcs_idx);
-  richpresence = RC_ALLOC(rc_richpresence_t, &parse);
+  self->richpresence = malloc(sizeof(rc_runtime_richpresence_t));
+  if (!self->richpresence)
+      return RC_OUT_OF_MEMORY;
+
+  self->richpresence->previous = previous;
+  self->richpresence->owns_memrefs = 0;
+  self->richpresence->buffer = malloc(size);
+
+  if (!self->richpresence->buffer)
+    return RC_OUT_OF_MEMORY;
+
+  rc_init_parse_state(&parse, self->richpresence->buffer, L, funcs_idx);
+  self->richpresence->richpresence = richpresence = RC_ALLOC(rc_richpresence_t, &parse);
   parse.first_memref = &self->memrefs;
   rc_parse_richpresence_internal(richpresence, script, &parse);
   rc_destroy_parse_state(&parse);
 
   if (parse.offset < 0) {
-    self->richpresence = NULL;
-    free(self->richpresence_buffer);
-    self->richpresence_buffer = NULL;
+    free(self->richpresence->buffer);
+    free(self->richpresence);
+    self->richpresence = previous;
     *self->next_memref = NULL; /* disassociate any memrefs allocated by the failed parse */
     return parse.offset;
   }
 
-  /* advance through the new memrefs so we're ready for the next allocation */
-  while (*self->next_memref != NULL)
-    self->next_memref = &(*self->next_memref)->next;
+  /* if at least one memref was allocated within the rich presence, we can't free the buffer when the rich presence is deactivated */
+  self->richpresence->owns_memrefs = (*self->next_memref != NULL);
+  if (self->richpresence->owns_memrefs) {
+      /* advance through the new memrefs so we're ready for the next allocation */
+      do {
+          self->next_memref = &(*self->next_memref)->next;
+      } while (*self->next_memref != NULL);
+  }
 
   richpresence->memrefs = NULL;
-  self->richpresence = richpresence;
   self->richpresence_update_timer = 0;
 
   if (!richpresence->first_display || !richpresence->first_display->display) {
     /* non-existant rich presence, treat like static empty string */
     *self->richpresence_display_buffer = '\0';
-    self->richpresence = NULL;
+    self->richpresence->richpresence = NULL;
   } 
   else if (richpresence->first_display->next || richpresence->first_display->trigger.requirement ||
       richpresence->first_display->display->value.conditions || richpresence->first_display->display->value.expressions) {
@@ -519,11 +540,11 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     }
   }
 
-  if (self->richpresence) {
+  if (self->richpresence && self->richpresence->richpresence) {
     if (self->richpresence_update_timer == 0) {
       /* generate into a temporary buffer so we don't get a partially updated string if it's read while its being updated */
       char buffer[RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE];
-      int len = rc_evaluate_richpresence(self->richpresence, buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1, peek, ud, L);
+      int len = rc_evaluate_richpresence(self->richpresence->richpresence, buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1, peek, ud, L);
 
       /* copy into the real buffer - write the 0 terminator first to ensure reads don't overflow the buffer */
       if (len > 0) {
@@ -537,8 +558,9 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
        */
       self->richpresence_update_timer = 59;
     }
-    else
+    else {
       self->richpresence_update_timer--;
+    }
   }
 }
 
@@ -556,7 +578,7 @@ void rc_runtime_reset(rc_runtime_t* self) {
   }
     
   if (self->richpresence) {
-    rc_richpresence_display_t* display = self->richpresence->first_display;
+    rc_richpresence_display_t* display = self->richpresence->richpresence->first_display;
     while (display != 0) {
       rc_reset_trigger(&display->trigger);
       display = display->next;
