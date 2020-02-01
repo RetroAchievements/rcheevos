@@ -25,6 +25,9 @@ int rc_url_get_unlock_list(char* buffer, size_t size, const char* user_name, con
 
 int rc_url_post_playing(char* buffer, size_t size, const char* user_name, const char* login_token, unsigned gameid);
 
+int rc_url_ping(char* url_buffer, size_t url_buffer_size, char* post_buffer, size_t post_buffer_size,
+                const char* user_name, const char* login_token, unsigned gameid, const char* rich_presence);
+
 #ifdef __cplusplus
 }
 #endif

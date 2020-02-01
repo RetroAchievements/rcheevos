@@ -267,3 +267,83 @@ int rc_url_post_playing(char* buffer, size_t size, const char* user_name, const 
 
   return (size_t)written >= size ? -1 : 0;
 }
+
+static int rc_url_append_num(char* buffer, size_t buffer_size, size_t* buffer_offset, const char* param, unsigned value) {
+  size_t written = 0;
+
+  if (!buffer_offset || *buffer_offset > buffer_size)
+    return -1;
+
+  if (*buffer_offset)
+  {
+    buffer += *buffer_offset;
+    buffer_size -= *buffer_offset;
+
+    if (buffer[-1] != '?') {
+      *buffer++ = '&';
+      buffer_size--;
+      written = 1;
+    }
+  }
+
+  written += (size_t)snprintf(buffer, buffer_size, "%s=%u", param, value);
+  *buffer_offset += written;
+  return 0;
+}
+
+static int rc_url_append_str(char* buffer, size_t buffer_size, size_t* buffer_offset, const char* param, const char* value) {
+  size_t written = 0;
+  size_t param_written;
+
+  if (!buffer_offset || *buffer_offset >= buffer_size)
+    return -1;
+
+  if (*buffer_offset)
+  {
+    buffer += *buffer_offset;
+    buffer_size -= *buffer_offset;
+
+    if (buffer[-1] != '?') {
+      *buffer++ = '&';
+      buffer_size--;
+      written = 1;
+    }
+  }
+
+  param_written = (size_t)snprintf(buffer, buffer_size, "%s=", param);
+
+  written += param_written;
+  if (written > buffer_size)
+    return -1;
+
+  buffer += param_written;
+  buffer_size -= param_written;
+
+  if (rc_url_encode(buffer, buffer_size, value) != 0)
+    return -1;
+
+  written += strlen(buffer);
+  *buffer_offset += written;
+  return 0;
+}
+
+int rc_url_ping(char* url_buffer, size_t url_buffer_size, char* post_buffer, size_t post_buffer_size,
+                const char* user_name, const char* login_token, unsigned gameid, const char* rich_presence) {
+  int success = 0;
+  size_t written;
+
+  written = (size_t)snprintf(url_buffer, url_buffer_size, "http://retroachievements.org/dorequest.php");
+  if (written >= url_buffer_size)
+    return -1;
+
+  written = 0;
+  success |= rc_url_append_str(post_buffer, post_buffer_size, &written, "r", "ping");
+  success |= rc_url_append_str(post_buffer, post_buffer_size, &written, "u", user_name);
+  success |= rc_url_append_str(post_buffer, post_buffer_size, &written, "t", login_token);
+  success |= rc_url_append_num(post_buffer, post_buffer_size, &written, "g", gameid);
+
+  if (rich_presence && *rich_presence)
+    success |= rc_url_append_str(post_buffer, post_buffer_size, &written, "m", rich_presence);
+
+  return success;
+}
