@@ -1,7 +1,7 @@
 #include "internal.h"
 
 #include <stddef.h>
-#include <string.h> // memset
+#include <string.h> /* memset */
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condset_t** next;
@@ -96,7 +96,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
 
   rc_update_memref_values(self->memrefs, peek, ud);
 
-  /* not yet active, only update the memrefs - so deltas are corrent when it becomes active */
+  /* not yet active, only update the memrefs - so deltas are correct when it becomes active */
   if (self->state == RC_TRIGGER_STATE_INACTIVE)
     return RC_TRIGGER_STATE_INACTIVE;
 
@@ -182,4 +182,5 @@ void rc_reset_trigger(rc_trigger_t* self) {
   rc_reset_trigger_hitcounts(self);
 
   self->state = RC_TRIGGER_STATE_WAITING;
+  self->has_hits = 0;
 }

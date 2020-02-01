@@ -1,6 +1,6 @@
 #include "internal.h"
 
-#include <string.h> // memset
+#include <string.h> /* memset */
 
 static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condition_t** next;
