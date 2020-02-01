@@ -43,7 +43,8 @@ static int rc_url_encode(char* encoded, size_t len, const char* str) {
   }
 }
 
-int rc_url_award_cheevo(char* buffer, size_t size, const char* user_name, const char* login_token, unsigned cheevo_id, int hardcore) {
+int rc_url_award_cheevo(char* buffer, size_t size, const char* user_name, const char* login_token,
+                        unsigned cheevo_id, int hardcore, const char* game_hash) {
   char urle_user_name[64];
   char urle_login_token[64];
   int written;
@@ -65,6 +66,10 @@ int rc_url_award_cheevo(char* buffer, size_t size, const char* user_name, const 
     cheevo_id,
     hardcore ? 1 : 0
   );
+
+  if (game_hash && strlen(game_hash) == 32 && (size - (size_t)written) >= 35) {
+     written += snprintf(buffer + written, size - (size_t)written, "&m=%s", game_hash);
+  }
 
   return (size_t)written >= size ? -1 : 0;
 }
