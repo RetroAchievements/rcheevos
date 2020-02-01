@@ -446,8 +446,7 @@ typedef struct {
   rc_value_t* progress;
   rc_memref_value_t* memrefs;
 
-  char started;
-  char submitted;
+  char state;
 }
 rc_lboard_t;
 ```
@@ -469,11 +468,12 @@ The function returns an action that must be performed by the caller, and `value`
 
 ```c
 enum {
-  RC_LBOARD_INACTIVE,
-  RC_LBOARD_ACTIVE,
-  RC_LBOARD_STARTED,
-  RC_LBOARD_CANCELED,
-  RC_LBOARD_TRIGGERED
+  RC_LBOARD_STATE_INACTIVE,  /* leaderboard is not being processed */
+  RC_LBOARD_STATE_WAITING,   /* leaderboard cannot activate until the start condition has been false for at least one frame */
+  RC_LBOARD_STATE_ACTIVE,    /* leaderboard is active and may start */
+  RC_LBOARD_STATE_STARTED,   /* leaderboard attempt in progress */
+  RC_LBOARD_STATE_CANCELED,  /* leaderboard attempt canceled */
+  RC_LBOARD_STATE_TRIGGERED  /* leaderboard attempt complete, value should be submitted */
 };
 ```
 
@@ -489,6 +489,99 @@ The caller must keep track of these values and do the necessary actions:
 ```c
 void rc_reset_lboard(rc_lboard_t* lboard);
 ```
+
+### `rc_runtime_t`
+
+The runtime encapsulates a set of achievements and leaderboards and manages processing them for each frame. When important things occur, events are raised for the caller via a callback.
+
+```c
+typedef struct rc_runtime_t {
+  rc_runtime_trigger_t* triggers;
+  unsigned trigger_count;
+  unsigned trigger_capacity;
+
+  rc_runtime_lboard_t* lboards;
+  unsigned lboard_count;
+  unsigned lboard_capacity;
+
+  rc_runtime_richpresence_t* richpresence;
+  char* richpresence_display_buffer;
+  char  richpresence_update_timer;
+
+  rc_memref_value_t* memrefs;
+  rc_memref_value_t** next_memref;
+}
+rc_runtime_t;
+```
+
+The runtime must first be initialized.
+```c
+void rc_runtime_init(rc_runtime_t* runtime);
+```
+
+Then individual achievements, leaderboards, and even rich presence can be loaded into the runtime. These functions return RC_OK, or one of the negative value error codes listed above.
+```c
+int rc_runtime_activate_achievement(rc_runtime_t* runtime, unsigned id, const char* memaddr, lua_State* L, int funcs_idx);
+int rc_runtime_activate_lboard(rc_runtime_t* runtime, unsigned id, const char* memaddr, lua_State* L, int funcs_idx);
+int rc_runtime_activate_richpresence(rc_runtime_t* runtime, const char* script, lua_State* L, int funcs_idx);
+```
+
+The runtime should be called once per frame to evaluate the state of the active achievements/leaderboards:
+```c
+void rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_peek_t peek, void* ud, lua_State* L);
+```
+
+The `event_handler` is a callback function that is called for each event that occurs when processing the frame.
+```c
+typedef struct rc_runtime_event_t {
+  unsigned id;
+  int value;
+  char type;
+}
+rc_runtime_event_t;
+
+typedef void (*rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_event);
+```
+
+The `event.type` field will be one of the following:
+* RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED (id=achievement id)
+  An achievement starts in the RC_TRIGGER_STATE_WAITING state and cannot trigger until it has been false for at least one frame. This event indicates the achievement is no longer waiting and may trigger on a future frame.
+* RC_RUNTIME_EVENT_ACHIEVEMENT_PAUSED (id=achievement id)
+  One or more conditions in the achievement have disabled the achievement.
+* RC_RUNTIME_EVENT_ACHIEVEMENT_RESET (id=achievement id)
+  One or more conditions in the achievement have reset any progress captured in the achievement.
+* RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED (id=achievement id)
+  All conditions for the achievement have been met and the user should be informed.
+  NOTE: If `rc_runtime_reset` is called without deactivating the achievement, it may trigger again.
+* RC_RUNTIME_EVENT_LBOARD_STARTED (id=leaderboard id, value=leaderboard value)
+  The leaderboard's start condition has been met and the user should be informed that a leaderboard attempt has started.
+* RC_RUNTIME_EVENT_LBOARD_CANCELED (id=leaderboard id, value=leaderboard value)
+  The leaderboard's cancel condition has been met and the user should be informed that a leaderboard attempt has failed.
+* RC_RUNTIME_EVENT_LBOARD_UPDATED (id=leaderboard id, value=leaderboard value)
+  The leaderboard value has changed.
+* RC_RUNTIME_EVENT_LBOARD_TRIGGERED (id=leaderboard id, value=leaderboard value)
+  The leaderboard's submit condition has been met and the user should be informed that a leaderboard attempt was successful. The value should be submitted.
+
+When an achievement triggers, it should be deactivated so it won't trigger again:
+```c
+void rc_runtime_deactivate_achievement(rc_runtime_t* runtime, unsigned id);
+```
+Additionally, the unlock should be submitted to the server.
+
+When a leaderboard triggers, it should not be deactivated in case the player wants to try again for a better score. The value should be submitted to the server.
+
+`rc_runtime_do_frame` also periodically updates the rich presense string (every 60 frames). To get the current value, call
+```c
+const char* rc_runtime_get_richpresence(const rc_runtime_t* runtime);
+```
+
+When the game is reset, the runtime should also be reset:
+```c
+void rc_runtime_reset(rc_runtime_t* runtime);
+```
+
+This ensures any active achievements/leaderboards are set back to their initial states and prevents unexpected triggers when the memory changes in atypical way.
+
 
 ### Value Formatting
 
