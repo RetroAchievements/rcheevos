@@ -5305,10 +5305,10 @@ static void test_runtime(void) {
     /* initial value */
     assert(strcmp(rc_runtime_get_richpresence(&runtime), "") == 0);
 
-    /* loading does not update display string */
+    /* loading generates display string with uninitialized memrefs - ensures non-empty string if loaded while paused */
     assert(rc_runtime_activate_richpresence(&runtime, 
         "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Points", NULL, 0) == RC_OK);
-    assert(strcmp(rc_runtime_get_richpresence(&runtime), "") == 0);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "0 Points") == 0);
 
     /* first frame should update display string */
     rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
@@ -5324,6 +5324,48 @@ static void test_runtime(void) {
     /* string should update on 60th frame */
     rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
     assert(strcmp(rc_runtime_get_richpresence(&runtime), "2580 Points") == 0);
+
+    rc_runtime_destroy(&runtime);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestRuntimeRichPresenceReload
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 2, 10, 10 };
+    memory_t memory;
+    rc_runtime_t runtime;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    rc_runtime_init(&runtime);
+
+    /* initial value */
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "") == 0);
+
+    /* loading generates display string with uninitialized memrefs */
+    assert(rc_runtime_activate_richpresence(&runtime,
+        "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Points", NULL, 0) == RC_OK);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "0 Points") == 0);
+
+    /* first frame should update display string */
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "2570 Points") == 0);
+    ram[1] = 20;
+
+    /* reloading should generate display string with current memrefs */
+    assert(rc_runtime_activate_richpresence(&runtime,
+        "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Bananas", NULL, 0) == RC_OK);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "2570 Bananas") == 0);
+
+    /* should reuse the memrefs from the first runtime */
+    assert(runtime.richpresence->owns_memrefs == 0);
+    assert(runtime.richpresence->previous != NULL);
+
+    /* first frame after reloading should update display string */
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "2580 Bananas") == 0);
 
     rc_runtime_destroy(&runtime);
   }

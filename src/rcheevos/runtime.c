@@ -422,7 +422,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
       display = display->next;
     }
 
-    rc_evaluate_richpresence(self->richpresence->richpresence, self->richpresence_display_buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1, NULL, L, funcs_idx);
+    rc_evaluate_richpresence(self->richpresence->richpresence, self->richpresence_display_buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1, NULL, NULL, L);
   }
   else {
     /* static rich presence - copy the static string */
