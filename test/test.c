@@ -728,6 +728,34 @@ static void test_condition(void) {
       0
     );
 
+    /* modifiers (only valid with some flags, use A:) */
+    parse_comp_condition(
+      "A:0xH1234*8",
+      RC_CONDITION_ADD_SOURCE,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_OPERATOR_MULT,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
+    parse_comp_condition(
+      "A:0xH1234/8",
+      RC_CONDITION_ADD_SOURCE,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_OPERATOR_DIV,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
+    parse_comp_condition(
+      "A:0xH1234&8",
+      RC_CONDITION_ADD_SOURCE,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_OPERATOR_AND,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
     /* delta */
     parse_comp_condition(
       "d0xH1234=8",
@@ -1701,6 +1729,204 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestAddSourceMultiply
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "A:0xH0001*3_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 4; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 1; /* sum is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 19; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestSubSourceMultiply
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "B:0xH0001*3_0xH0002=14"); /* NOTE: SubSource subtracts the first value from the second! */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 32; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 1; /* difference is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 17; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddSourceDivide
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "A:0xH0001/3_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 20; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 14; /* sum is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 18; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestSubSourceDivide
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "B:0xH0001/3_0xH0002=14"); /* NOTE: SubSource subtracts the first value from the second! */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 16; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 14; /* difference is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 18; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddSourceMask
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x6E, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "A:0xH0001&h7_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 16; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 0x74; /* sum is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 18; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestSubSourceMask
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "B:0xH0001&6_0xH0002=14"); /* NOTE: SubSource subtracts the first value from the second! */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 18; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 10; /* difference is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 16; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestAddHits
     ------------------------------------------------------------------------*/
 
@@ -2356,6 +2582,37 @@ static void test_trigger(void) {
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 3U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 2U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 5)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressScaled
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000*2_0xH0000=22");
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 22; /* value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 2; /* point to new value */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[4] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 1; /* point to original value */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[2] = 11; /* original value is not correct */
+    comp_trigger(trigger, &memory, 0);
   }
 
   {

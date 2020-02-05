@@ -6,6 +6,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   rc_condition_t* self;
   const char* aux;
   int ret2;
+  int can_modify = 0;
 
   aux = *memaddr;
   self = RC_ALLOC(rc_condition_t, parse);
@@ -15,12 +16,12 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     switch (*aux) {
       case 'p': case 'P': self->type = RC_CONDITION_PAUSE_IF; break;
       case 'r': case 'R': self->type = RC_CONDITION_RESET_IF; break;
-      case 'a': case 'A': self->type = RC_CONDITION_ADD_SOURCE; break;
-      case 'b': case 'B': self->type = RC_CONDITION_SUB_SOURCE; break;
+      case 'a': case 'A': self->type = RC_CONDITION_ADD_SOURCE; can_modify = 1; break;
+      case 'b': case 'B': self->type = RC_CONDITION_SUB_SOURCE; can_modify = 1; break;
       case 'c': case 'C': self->type = RC_CONDITION_ADD_HITS; break;
       case 'n': case 'N': self->type = RC_CONDITION_AND_NEXT; break;
       case 'm': case 'M': self->type = RC_CONDITION_MEASURED; break;
-      case 'i': case 'I': self->type = RC_CONDITION_ADD_ADDRESS; break;
+      case 'i': case 'I': self->type = RC_CONDITION_ADD_ADDRESS; can_modify = 1; break;
       default: parse->offset = RC_INVALID_CONDITION_TYPE; return 0;
     }
 
@@ -74,6 +75,18 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
       break;
 
+    case '*':
+      self->oper = RC_OPERATOR_MULT;
+      break;
+
+    case '/':
+      self->oper = RC_OPERATOR_DIV;
+      break;
+
+    case '&':
+      self->oper = RC_OPERATOR_AND;
+      break;
+
     case '_':
     case ')':
     case '\0':
@@ -83,6 +96,30 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       self->required_hits = 0;
       *memaddr = aux - 1;
       return self;
+  }
+
+  switch (self->oper) {
+    case RC_OPERATOR_MULT:
+    case RC_OPERATOR_DIV:
+    case RC_OPERATOR_AND:
+      /* modifying operators are only valid on modifying statements */
+      if (!can_modify) {
+        parse->offset = RC_INVALID_OPERATOR;
+        return 0;
+      }
+      break;
+
+    case RC_OPERATOR_EQ:
+      /* legacy support for AddSource, etc - A:0x1234=0 */
+      break;
+
+    default:
+      /* comparison operators are not valid on modifying statements */
+      if (can_modify) {
+        parse->offset = RC_INVALID_OPERATOR;
+        return 0;
+      }
+      break;
   }
 
   ret2 = rc_parse_operand(&self->operand2, &aux, 1, is_indirect, parse);
@@ -136,4 +173,30 @@ int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
     case RC_OPERATOR_NONE: return 1;
     default: return 1;
   }
+}
+
+int rc_evaluate_condition_value(rc_condition_t* self, rc_eval_state_t* eval_state) {
+  unsigned value = rc_evaluate_operand(&self->operand1, eval_state);
+
+  switch (self->oper) {
+    case RC_OPERATOR_MULT:
+      if (self->operand2.type == RC_OPERAND_FP)
+        value = (int)((double)value * self->operand2.value.dbl);
+      else
+        value *= rc_evaluate_operand(&self->operand2, eval_state);
+      break;
+
+    case RC_OPERATOR_DIV:
+      if (self->operand2.type == RC_OPERAND_FP)
+        value = (int)((double)value / self->operand2.value.dbl);
+      else
+        value /= rc_evaluate_operand(&self->operand2, eval_state);
+      break;
+
+    case RC_OPERATOR_AND:
+      value &= rc_evaluate_operand(&self->operand2, eval_state);
+      break;
+  }
+
+  return value;
 }

@@ -166,7 +166,10 @@ enum {
   RC_OPERATOR_GT,
   RC_OPERATOR_GE,
   RC_OPERATOR_NE,
-  RC_OPERATOR_NONE
+  RC_OPERATOR_NONE,
+  RC_OPERATOR_MULT,
+  RC_OPERATOR_DIV,
+  RC_OPERATOR_AND
 };
 
 typedef struct rc_condition_t rc_condition_t;

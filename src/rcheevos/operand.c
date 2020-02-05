@@ -369,7 +369,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
       break;
 
     case RC_OPERAND_FP:
-      /* This is handled by rc_evaluate_expression. */
+      /* This is handled by rc_evaluate_term and rc_evaluate_condition_value. */
       return 0;
     
     case RC_OPERAND_LUA:
