@@ -184,6 +184,24 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, in
 
       aux = end;
       break;
+
+    case 'f': case 'F':
+      self->value.dbl = strtod(++aux, &end);
+
+      if (end == aux) {
+        return RC_INVALID_FP_OPERAND;
+      }
+
+      if (floor(self->value.dbl) == self->value.dbl) {
+        self->type = RC_OPERAND_CONST;
+        self->value.num = (unsigned)floor(self->value.dbl);
+      }
+      else {
+        self->type = RC_OPERAND_FP;
+      }
+
+      aux = end;
+      break;
     
     case '0':
       if (aux[1] == 'x' || aux[1] == 'X') {
@@ -198,7 +216,7 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, in
         break;
       }
 
-      /* fall through */
+      /* fall through for case '0' where not '0x' */
     case '+': case '-':
     case '1': case '2': case '3': case '4': case '5':
     case '6': case '7': case '8': case '9':
@@ -289,7 +307,7 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, int i
         break;
       }
 
-      /* fall through */
+      /* fall through for case '0' where not '0x' */
     case '.':
     case '+': case '-':
     case '1': case '2': case '3': case '4': case '5':

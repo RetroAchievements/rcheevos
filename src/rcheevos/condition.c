@@ -38,6 +38,11 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     return 0;
   }
 
+  if (self->operand1.type == RC_OPERAND_FP) {
+    parse->offset = can_modify ? RC_INVALID_FP_OPERAND : RC_INVALID_COMPARISON;
+    return 0;
+  }
+
   switch (*aux++) {
     case '=':
       self->oper = RC_OPERATOR_EQ;
@@ -126,6 +131,11 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
   if (ret2 < 0) {
     parse->offset = ret2;
+    return 0;
+  }
+
+  if (!can_modify && self->operand2.type == RC_OPERAND_FP) {
+    parse->offset = RC_INVALID_COMPARISON;
     return 0;
   }
 

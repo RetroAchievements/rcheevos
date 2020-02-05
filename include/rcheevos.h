@@ -35,7 +35,8 @@ enum {
   RC_INVALID_VALUE_FLAG = -20,
   RC_MISSING_VALUE_MEASURED = -21,
   RC_MULTIPLE_MEASURED = -22,
-  RC_INVALID_MEASURED_TARGET = -23
+  RC_INVALID_MEASURED_TARGET = -23,
+  RC_INVALID_COMPARISON = -24
 };
 
 /*****************************************************************************\

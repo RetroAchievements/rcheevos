@@ -77,6 +77,21 @@ static void parse_comp_operand(const char* memaddr, char expected_type, char exp
   comp_operand(&self, expected_type, expected_size, expected_value);
 }
 
+static void parse_comp_operand_fp(const char* memaddr, char expected_type, double expected_value) {
+  rc_operand_t self;
+  parse_operand(&self, &memaddr);
+
+  assert(expected_type == self.type);
+  switch (expected_type) {
+    case RC_OPERAND_CONST:
+      assert(expected_value == (double)self.value.num);
+      break;
+    case RC_OPERAND_FP:
+      assert(expected_value == self.value.dbl);
+      break;
+  }
+}
+
 static void parse_error_operand(const char* memaddr, int valid_chars) {
   rc_operand_t self;
   rc_parse_state_t parse;
@@ -427,6 +442,18 @@ static void test_operand(void) {
     parse_comp_operand("h123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x123U);
     parse_comp_operand("habcd", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xABCDU);
     parse_comp_operand("HFFFFFFFF", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
+
+    /* floating point - 'F' prefix */
+    parse_comp_operand_fp("f0.5", RC_OPERAND_FP, 0.5);
+    parse_comp_operand_fp("F0.5", RC_OPERAND_FP, 0.5);
+    parse_comp_operand_fp("f+0.5", RC_OPERAND_FP, 0.5);
+    parse_comp_operand_fp("f-0.5", RC_OPERAND_FP, -0.5);
+    parse_comp_operand_fp("f1.0", RC_OPERAND_CONST, 1.0);
+    parse_comp_operand_fp("f1", RC_OPERAND_CONST, 1.0);
+    parse_comp_operand_fp("f0.666666", RC_OPERAND_FP, 0.666666);
+
+    /* NOTE: cannot test floating point without a prefix ("0.5") as the "0" will be parsed successfuly 
+     * and the ".5" ignored - this case is handled in the TestParseCondition test */
 
     /* '0x' is an address */
     parse_comp_operand("0x123", RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x123U);
@@ -953,6 +980,12 @@ static void test_condition(void) {
     assert(rc_trigger_size("M:0x1234") == RC_INVALID_OPERATOR);
     assert(rc_trigger_size("Z:0x1234") == RC_INVALID_CONDITION_TYPE);
     assert(rc_trigger_size("0x1234=1.2") == RC_INVALID_REQUIRED_HITS);
+    assert(rc_trigger_size("0.1234==0") == RC_INVALID_OPERATOR); /* period is assumed to be operator */
+    assert(rc_trigger_size("0==0.1234") == RC_INVALID_REQUIRED_HITS); /* period is assumed to be start of hit target, no end marker */
+    assert(rc_trigger_size("F0.1234==0") == RC_INVALID_COMPARISON); /* floating value only valid on modifiers */
+    assert(rc_trigger_size("0==f0.1234") == RC_INVALID_COMPARISON); /* floating value only valid on modifiers */
+    assert(rc_trigger_size("A:F0.1234*2") == RC_INVALID_FP_OPERAND); /* floating value only valid on right side of modifiers */
+    assert(rc_trigger_size("A:2*f0.1234") > 0); /* floating value only valid on right side of modifiers */
   }
 
   {
@@ -1788,6 +1821,39 @@ static void test_trigger(void) {
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
 
     ram[2] = 17; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddSourceMultiplyFraction
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x08, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "A:0xH0001*f0.75_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 16; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 15; /* sum is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 11; /* sum is correct */
     comp_trigger(trigger, &memory, 1);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
