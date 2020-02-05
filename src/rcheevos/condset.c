@@ -48,7 +48,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
       return 0;
     }
 
-    if ((*next)->oper == RC_CONDITION_NONE) {
+    if ((*next)->oper == RC_OPERATOR_NONE) {
       switch ((*next)->type) {
         case RC_CONDITION_ADD_ADDRESS:
         case RC_CONDITION_ADD_HITS:

@@ -160,13 +160,13 @@ enum {
 
 /* operators */
 enum {
-  RC_CONDITION_EQ,
-  RC_CONDITION_LT,
-  RC_CONDITION_LE,
-  RC_CONDITION_GT,
-  RC_CONDITION_GE,
-  RC_CONDITION_NE,
-  RC_CONDITION_NONE
+  RC_OPERATOR_EQ,
+  RC_OPERATOR_LT,
+  RC_OPERATOR_LE,
+  RC_OPERATOR_GT,
+  RC_OPERATOR_GE,
+  RC_OPERATOR_NE,
+  RC_OPERATOR_NONE
 };
 
 typedef struct rc_condition_t rc_condition_t;

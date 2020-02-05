@@ -39,7 +39,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
   switch (*aux++) {
     case '=':
-      self->oper = RC_CONDITION_EQ;
+      self->oper = RC_OPERATOR_EQ;
       aux += *aux == '=';
       break;
     
@@ -51,24 +51,24 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
         return 0;
       }
 
-      self->oper = RC_CONDITION_NE;
+      self->oper = RC_OPERATOR_NE;
       break;
     
     case '<':
-      self->oper = RC_CONDITION_LT;
+      self->oper = RC_OPERATOR_LT;
 
       if (*aux == '=') {
-        self->oper = RC_CONDITION_LE;
+        self->oper = RC_OPERATOR_LE;
         aux++;
       }
 
       break;
     
     case '>':
-      self->oper = RC_CONDITION_GT;
+      self->oper = RC_OPERATOR_GT;
 
       if (*aux == '=') {
-        self->oper = RC_CONDITION_GE;
+        self->oper = RC_OPERATOR_GE;
         aux++;
       }
 
@@ -77,7 +77,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     case '_':
     case ')':
     case '\0':
-      self->oper = RC_CONDITION_NONE;
+      self->oper = RC_OPERATOR_NONE;
       self->operand2.type = RC_OPERAND_CONST;
       self->operand2.value.num = 1;
       self->required_hits = 0;
@@ -127,13 +127,13 @@ int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
   unsigned value2 = rc_evaluate_operand(&self->operand2, eval_state);
 
   switch (self->oper) {
-    case RC_CONDITION_EQ: return value1 == value2;
-    case RC_CONDITION_NE: return value1 != value2;
-    case RC_CONDITION_LT: return value1 < value2;
-    case RC_CONDITION_LE: return value1 <= value2;
-    case RC_CONDITION_GT: return value1 > value2;
-    case RC_CONDITION_GE: return value1 >= value2;
-    case RC_CONDITION_NONE: return 1;
+    case RC_OPERATOR_EQ: return value1 == value2;
+    case RC_OPERATOR_NE: return value1 != value2;
+    case RC_OPERATOR_LT: return value1 < value2;
+    case RC_OPERATOR_LE: return value1 <= value2;
+    case RC_OPERATOR_GT: return value1 > value2;
+    case RC_OPERATOR_GE: return value1 >= value2;
+    case RC_OPERATOR_NONE: return 1;
     default: return 1;
   }
 }

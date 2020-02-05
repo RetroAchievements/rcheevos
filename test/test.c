@@ -669,7 +669,7 @@ static void test_condition(void) {
       "0xH1234=8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -678,7 +678,7 @@ static void test_condition(void) {
       "0xH1234==8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -687,7 +687,7 @@ static void test_condition(void) {
       "0xH1234!=8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NE,
+      RC_OPERATOR_NE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -696,7 +696,7 @@ static void test_condition(void) {
       "0xH1234<8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_LT,
+      RC_OPERATOR_LT,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -705,7 +705,7 @@ static void test_condition(void) {
       "0xH1234<=8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_LE,
+      RC_OPERATOR_LE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -714,7 +714,7 @@ static void test_condition(void) {
       "0xH1234>8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_GT,
+      RC_OPERATOR_GT,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -723,7 +723,7 @@ static void test_condition(void) {
       "0xH1234>=8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_GE,
+      RC_OPERATOR_GE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -733,7 +733,7 @@ static void test_condition(void) {
       "d0xH1234=8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -743,7 +743,7 @@ static void test_condition(void) {
       "R:0xH1234=8",
       RC_CONDITION_RESET_IF,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -752,7 +752,7 @@ static void test_condition(void) {
       "P:0xH1234=8",
       RC_CONDITION_PAUSE_IF,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -761,7 +761,7 @@ static void test_condition(void) {
       "A:0xH1234=8",
       RC_CONDITION_ADD_SOURCE,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -770,7 +770,7 @@ static void test_condition(void) {
       "B:0xH1234=8",
       RC_CONDITION_SUB_SOURCE,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -779,7 +779,7 @@ static void test_condition(void) {
       "C:0xH1234=8",
       RC_CONDITION_ADD_HITS,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -788,7 +788,7 @@ static void test_condition(void) {
       "M:0xH1234=8",
       RC_CONDITION_MEASURED,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -797,7 +797,7 @@ static void test_condition(void) {
       "I:0xH1234=8",
       RC_CONDITION_ADD_ADDRESS,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -807,7 +807,7 @@ static void test_condition(void) {
       "0xH1234=8(1)",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       1
     );
@@ -816,7 +816,7 @@ static void test_condition(void) {
       "0xH1234=8.1.", /* legacy format */
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       1
     );
@@ -825,7 +825,7 @@ static void test_condition(void) {
       "0xH1234=8(100)",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       100
     );
@@ -841,7 +841,7 @@ static void test_condition(void) {
       "0xH1234=0x80",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x80U,
       0
     );
@@ -856,7 +856,7 @@ static void test_condition(void) {
       "0xL1234!=0xU3456",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_LOW, 0x1234U,
-      RC_CONDITION_NE,
+      RC_OPERATOR_NE,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_HIGH, 0x3456U,
       0
     );
@@ -871,7 +871,7 @@ static void test_condition(void) {
       "A:0xH1234",
       RC_CONDITION_ADD_SOURCE,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NONE,
+      RC_OPERATOR_NONE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
       0
     );
@@ -880,7 +880,7 @@ static void test_condition(void) {
       "B:0xH1234",
       RC_CONDITION_SUB_SOURCE,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NONE,
+      RC_OPERATOR_NONE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
       0
     );
@@ -889,7 +889,7 @@ static void test_condition(void) {
       "C:0xH1234",
       RC_CONDITION_ADD_HITS,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NONE,
+      RC_OPERATOR_NONE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
       0
     );
@@ -898,7 +898,7 @@ static void test_condition(void) {
       "N:0xH1234",
       RC_CONDITION_AND_NEXT,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NONE,
+      RC_OPERATOR_NONE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
       0
     );
@@ -907,7 +907,7 @@ static void test_condition(void) {
       "I:0xH1234",
       RC_CONDITION_ADD_ADDRESS,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NONE,
+      RC_OPERATOR_NONE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
       0
     );
