@@ -2111,6 +2111,165 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestAndNextWithHits
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* AndNext has higher priority than AddHits
+     *
+     *   AddHits byte(0x0001) == 20 (2)
+     *   AndNext byte(0x0002) == 20 (2)  <-- hit count will be ignored so line 1's hits can affect line 3
+     *           byte(0x0003) == 20 (4)
+     *
+     * The AndNext on line 2 will combine with line 3, not line 1, so the overall interpretation is:
+     *
+     *   repeated(4, repeated(2, byte(0x0001) == 20) || (byte(0x0002) == 20 && byte(0x0003) == 20)))
+     */
+    parse_trigger(&trigger, buffer, "C:0xH0001=20.2._N:0xH0002=20.2._0xH0003=20.4.");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+
+    ram[3] = 20; /* final condition is not enough to trigger */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+
+    ram[2] = 20; /* two conditions will trigger the secondary subclause - line 2 will not tally */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U);
+
+    ram[3] = 0; /* first conditions true, but not second, only first will increment */
+    ram[1] = 20;
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 1U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U);
+
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U);
+
+    ram[3] = 20; /* all three conditions true, first already hit target hit count, third will, so overall will be true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 2U);
+
+    /* HitCounts reached, nothing will be tallied. overall still true */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 2U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestOrNext
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* repeated(5, byte(0x0001) == 20 || byte(0x0002) == 20 || byte(0x0003) == 20) */
+    parse_trigger(&trigger, buffer, "O:0xH0001=20_O:0xH0002=20_0xH0003=20.6.");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 0U);
+
+    ram[1] = 20; /* first condition is true, only captured on last */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 1U);
+
+    ram[2] = 20; /* two conditions are true, should only increment last once */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 2U);
+
+    ram[3] = 20; /* all three conditions true, only increment last */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 3U);
+
+    ram[1] = ram[3] = 30; /* only middle is true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 4U);
+
+    ram[2] = 30; ram[3] = 20; /* only last is true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 5U);
+
+    ram[3] = 30; /* none are true */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 5U);
+
+    ram[1] = 20; /* first is true, hitcount met, trigger */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 6U);
+
+    comp_trigger(trigger, &memory, 1); /* HitCount reached */
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 6U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAndNextOrNextInteraction
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = { 0, 0, 0, 0, 0 };
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    /* AndNext and OrNext are evaluated at each step: (((1 || 2) && 3) || 4) */
+    parse_trigger(&trigger, buffer, "O:0xH0001=1_N:0xH0002=1_O:0xH0003=1_0xH0004=1");
+
+                comp_trigger(trigger, &memory, 0); /* (((0 || 0) && 0) || 0) = 0 */
+    ram[4] = 1; comp_trigger(trigger, &memory, 1); /* (((0 || 0) && 0) || 1) = 1 */
+    ram[3] = 1; comp_trigger(trigger, &memory, 1); /* (((0 || 0) && 1) || 1) = 1 */
+    ram[4] = 0; comp_trigger(trigger, &memory, 0); /* (((0 || 0) && 1) || 0) = 0 */
+    ram[2] = 1; comp_trigger(trigger, &memory, 1); /* (((0 || 1) && 1) || 0) = 1 */
+    ram[1] = 1; comp_trigger(trigger, &memory, 1); /* (((1 || 1) && 1) || 0) = 1 */
+    ram[2] = 0; comp_trigger(trigger, &memory, 1); /* (((1 || 0) && 1) || 0) = 1 */
+    ram[3] = 0; comp_trigger(trigger, &memory, 0); /* (((1 || 0) && 0) || 0) = 0 */
+    ram[4] = 1; comp_trigger(trigger, &memory, 1); /* (((1 || 0) && 0) || 1) = 1 */
+    ram[3] = 1; comp_trigger(trigger, &memory, 1); /* (((1 || 0) && 1) || 1) = 1 */
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestAddAddressDirectPointer
     ------------------------------------------------------------------------*/
 
