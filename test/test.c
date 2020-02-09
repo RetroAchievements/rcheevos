@@ -3680,6 +3680,9 @@ static void test_value(void) {
     parse_comp_value("A:0xH0001_M:0xH0002", &memory, 0x12 + 0x34);
     parse_comp_value("I:0xH0000_M:0xH0002", &memory, 0x34);
     parse_comp_value("M:0xH0002!=d0xH0002", &memory, 1); /* delta should initially be 0, so a hit should be tallied */
+
+    /* overflow */
+    parse_comp_value("0xX0001*0xH0004", &memory, 0x1D837E0C); /* 1454060562 * 86 = 125049208332 -> 0x1D1D837E0C, leading 0x1D is truncated off */
   }
 
   {
