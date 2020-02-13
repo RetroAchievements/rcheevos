@@ -113,7 +113,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
 static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc_eval_state_t* eval_state) {
   rc_condition_t* condition;
   int set_valid, cond_valid, and_next, or_next;
-  unsigned measured_value, total_hits;
+  unsigned measured_value;
 
   set_valid = 1;
   and_next = 1;
@@ -125,7 +125,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       continue;
     }
 
-    /* process modifier conditions */
+    /* STEP 1: process modifier conditions */
     switch (condition->type) {
       case RC_CONDITION_ADD_SOURCE:
         eval_state->add_value += rc_evaluate_operand(&condition->operand1, eval_state);
@@ -143,6 +143,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
 
       case RC_CONDITION_MEASURED:
         if (condition->required_hits == 0) {
+          /* Measured condition without a hit target measures the value of the left operand */
           measured_value = rc_evaluate_operand(&condition->operand1, eval_state) + eval_state->add_value;
         }
         break;
@@ -151,7 +152,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         break;
     }
 
-    /* evaluate the current condition */
+    /* STEP 2: evaluate the current condition */
     condition->is_true = rc_test_condition(condition, eval_state);
     eval_state->add_value = 0;
     eval_state->add_address = 0;
@@ -167,30 +168,36 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     if (cond_valid) {
       eval_state->has_hits = 1;
 
-      if (condition->required_hits == 0 ||
-          (condition->current_hits + eval_state->add_hits) < condition->required_hits) {
+      if (condition->required_hits == 0) {
+        /* no target hit count, just keep tallying */
         ++condition->current_hits;
+      }
+      else if (condition->current_hits < condition->required_hits) {
+        /* target hit count hasn't been met, tally and revalidate - only true if hit count becomes met */
+        ++condition->current_hits;
+        cond_valid = (condition->current_hits == condition->required_hits);
+      }
+      else {
+        /* target hit count has been met, do nothing */
       }
     }
     else if (condition->current_hits > 0) {
+      /* target has been true in the past, if the hit target is met, consider it true now */
       eval_state->has_hits = 1;
+      cond_valid = (condition->current_hits == condition->required_hits);
     }
 
-    /* handle logic flags */
+    /* STEP 3: handle logic flags */
     switch (condition->type) {
       case RC_CONDITION_ADD_HITS:
         eval_state->add_hits += condition->current_hits;
         continue;
 
       case RC_CONDITION_AND_NEXT:
-        /* don't count hits on non-final clause of compound condition */
-        condition->current_hits = 0;
         and_next = cond_valid;
         continue;
 
       case RC_CONDITION_OR_NEXT:
-        /* don't count hits on non-final clause of compound condition */
-        condition->current_hits = 0;
         or_next = cond_valid;
         continue;
 
@@ -198,18 +205,25 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         break;
     }
 
-    /* calculate the total hit count and reset the AddHits counter */
-    total_hits = (condition->current_hits + eval_state->add_hits);
-    eval_state->add_hits = 0;
+    if (eval_state->add_hits) {
+      if (condition->required_hits != 0) {
+        /* if the condition has a target hit count, we have to recalculate cond_valid including the AddHits counter */
+        measured_value = condition->current_hits + eval_state->add_hits;
+        cond_valid = (measured_value >= condition->required_hits);
+      }
+      else {
+        /* no target hit count. we can't tell if the add_hits value is from this frame or not, so ignore it.
+           complex condition will only be true if the current condition is true */
+      }
 
-    /* if the condition has a target hit count, the overall truthiness of the condition (cond_valid)
-       is determined by that, not the individual truthiness (condition->is_true). */
-    if (condition->required_hits != 0) {
-      cond_valid = (total_hits >= condition->required_hits);
-      measured_value = total_hits;
+      eval_state->add_hits = 0;
+    }
+    else if (condition->required_hits != 0) {
+      /* if there's a hit target, capture the current hits for recording Measured value later */
+      measured_value = condition->current_hits;
     }
 
-    /* handle special flags */
+    /* STEP 4: handle special flags */
     switch (condition->type) {
       case RC_CONDITION_PAUSE_IF:
         /* as soon as we find a PauseIf that evaluates to true, stop processing the rest of the group */
@@ -248,7 +262,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         break;
     }
 
-    /* update overall truthiness of set */
+    /* STEP 5: update overall truthiness of set */
     set_valid &= cond_valid;
   }
 
