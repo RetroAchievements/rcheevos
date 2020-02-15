@@ -63,6 +63,11 @@ enum {
 };
 ```
 
+To convert the return code into something human-readable, pass it to:
+```c
+const char* rc_error_str(int ret);
+```
+
 ### Console identifiers
 
 This enumeration uniquely identifies each of the supported platforms in RetroAchievements.
