@@ -46,7 +46,7 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
           return;
         }
         has_measured = 1;
-        if ((*next)->required_hits == 0 && (*next)->oper != RC_CONDITION_NONE)
+        if ((*next)->required_hits == 0 && (*next)->oper != RC_OPERATOR_NONE)
           (*next)->required_hits = (unsigned)-1;
         break;
 

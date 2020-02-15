@@ -77,6 +77,21 @@ static void parse_comp_operand(const char* memaddr, char expected_type, char exp
   comp_operand(&self, expected_type, expected_size, expected_value);
 }
 
+static void parse_comp_operand_fp(const char* memaddr, char expected_type, double expected_value) {
+  rc_operand_t self;
+  parse_operand(&self, &memaddr);
+
+  assert(expected_type == self.type);
+  switch (expected_type) {
+    case RC_OPERAND_CONST:
+      assert(expected_value == (double)self.value.num);
+      break;
+    case RC_OPERAND_FP:
+      assert(expected_value == self.value.dbl);
+      break;
+  }
+}
+
 static void parse_error_operand(const char* memaddr, int valid_chars) {
   rc_operand_t self;
   rc_parse_state_t parse;
@@ -428,6 +443,18 @@ static void test_operand(void) {
     parse_comp_operand("habcd", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xABCDU);
     parse_comp_operand("HFFFFFFFF", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
 
+    /* floating point - 'F' prefix */
+    parse_comp_operand_fp("f0.5", RC_OPERAND_FP, 0.5);
+    parse_comp_operand_fp("F0.5", RC_OPERAND_FP, 0.5);
+    parse_comp_operand_fp("f+0.5", RC_OPERAND_FP, 0.5);
+    parse_comp_operand_fp("f-0.5", RC_OPERAND_FP, -0.5);
+    parse_comp_operand_fp("f1.0", RC_OPERAND_CONST, 1.0);
+    parse_comp_operand_fp("f1", RC_OPERAND_CONST, 1.0);
+    parse_comp_operand_fp("f0.666666", RC_OPERAND_FP, 0.666666);
+
+    /* NOTE: cannot test floating point without a prefix ("0.5") as the "0" will be parsed successfuly 
+     * and the ".5" ignored - this case is handled in the TestParseCondition test */
+
     /* '0x' is an address */
     parse_comp_operand("0x123", RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x123U);
 
@@ -669,7 +696,7 @@ static void test_condition(void) {
       "0xH1234=8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -678,7 +705,7 @@ static void test_condition(void) {
       "0xH1234==8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -687,7 +714,7 @@ static void test_condition(void) {
       "0xH1234!=8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NE,
+      RC_OPERATOR_NE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -696,7 +723,7 @@ static void test_condition(void) {
       "0xH1234<8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_LT,
+      RC_OPERATOR_LT,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -705,7 +732,7 @@ static void test_condition(void) {
       "0xH1234<=8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_LE,
+      RC_OPERATOR_LE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -714,7 +741,7 @@ static void test_condition(void) {
       "0xH1234>8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_GT,
+      RC_OPERATOR_GT,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -723,7 +750,35 @@ static void test_condition(void) {
       "0xH1234>=8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_GE,
+      RC_OPERATOR_GE,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
+    /* modifiers (only valid with some flags, use A:) */
+    parse_comp_condition(
+      "A:0xH1234*8",
+      RC_CONDITION_ADD_SOURCE,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_OPERATOR_MULT,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
+    parse_comp_condition(
+      "A:0xH1234/8",
+      RC_CONDITION_ADD_SOURCE,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_OPERATOR_DIV,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
+    parse_comp_condition(
+      "A:0xH1234&8",
+      RC_CONDITION_ADD_SOURCE,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_OPERATOR_AND,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -733,7 +788,7 @@ static void test_condition(void) {
       "d0xH1234=8",
       RC_CONDITION_STANDARD,
       RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -743,7 +798,7 @@ static void test_condition(void) {
       "R:0xH1234=8",
       RC_CONDITION_RESET_IF,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -752,7 +807,7 @@ static void test_condition(void) {
       "P:0xH1234=8",
       RC_CONDITION_PAUSE_IF,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -761,7 +816,7 @@ static void test_condition(void) {
       "A:0xH1234=8",
       RC_CONDITION_ADD_SOURCE,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -770,7 +825,7 @@ static void test_condition(void) {
       "B:0xH1234=8",
       RC_CONDITION_SUB_SOURCE,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -779,7 +834,7 @@ static void test_condition(void) {
       "C:0xH1234=8",
       RC_CONDITION_ADD_HITS,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -788,7 +843,7 @@ static void test_condition(void) {
       "M:0xH1234=8",
       RC_CONDITION_MEASURED,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -797,7 +852,7 @@ static void test_condition(void) {
       "I:0xH1234=8",
       RC_CONDITION_ADD_ADDRESS,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       0
     );
@@ -807,7 +862,7 @@ static void test_condition(void) {
       "0xH1234=8(1)",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       1
     );
@@ -816,7 +871,7 @@ static void test_condition(void) {
       "0xH1234=8.1.", /* legacy format */
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       1
     );
@@ -825,7 +880,7 @@ static void test_condition(void) {
       "0xH1234=8(100)",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
       100
     );
@@ -841,7 +896,7 @@ static void test_condition(void) {
       "0xH1234=0x80",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_EQ,
+      RC_OPERATOR_EQ,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x80U,
       0
     );
@@ -856,7 +911,7 @@ static void test_condition(void) {
       "0xL1234!=0xU3456",
       RC_CONDITION_STANDARD,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_LOW, 0x1234U,
-      RC_CONDITION_NE,
+      RC_OPERATOR_NE,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_HIGH, 0x3456U,
       0
     );
@@ -871,7 +926,7 @@ static void test_condition(void) {
       "A:0xH1234",
       RC_CONDITION_ADD_SOURCE,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NONE,
+      RC_OPERATOR_NONE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
       0
     );
@@ -880,7 +935,7 @@ static void test_condition(void) {
       "B:0xH1234",
       RC_CONDITION_SUB_SOURCE,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NONE,
+      RC_OPERATOR_NONE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
       0
     );
@@ -889,7 +944,7 @@ static void test_condition(void) {
       "C:0xH1234",
       RC_CONDITION_ADD_HITS,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NONE,
+      RC_OPERATOR_NONE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
       0
     );
@@ -898,7 +953,7 @@ static void test_condition(void) {
       "N:0xH1234",
       RC_CONDITION_AND_NEXT,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NONE,
+      RC_OPERATOR_NONE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
       0
     );
@@ -907,7 +962,7 @@ static void test_condition(void) {
       "I:0xH1234",
       RC_CONDITION_ADD_ADDRESS,
       RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
-      RC_CONDITION_NONE,
+      RC_OPERATOR_NONE,
       RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1U,
       0
     );
@@ -925,6 +980,12 @@ static void test_condition(void) {
     assert(rc_trigger_size("M:0x1234") == RC_INVALID_OPERATOR);
     assert(rc_trigger_size("Z:0x1234") == RC_INVALID_CONDITION_TYPE);
     assert(rc_trigger_size("0x1234=1.2") == RC_INVALID_REQUIRED_HITS);
+    assert(rc_trigger_size("0.1234==0") == RC_INVALID_OPERATOR); /* period is assumed to be operator */
+    assert(rc_trigger_size("0==0.1234") == RC_INVALID_REQUIRED_HITS); /* period is assumed to be start of hit target, no end marker */
+    assert(rc_trigger_size("F0.1234==0") == RC_INVALID_COMPARISON); /* floating value only valid on modifiers */
+    assert(rc_trigger_size("0==f0.1234") == RC_INVALID_COMPARISON); /* floating value only valid on modifiers */
+    assert(rc_trigger_size("A:F0.1234*2") == RC_INVALID_FP_OPERAND); /* floating value only valid on right side of modifiers */
+    assert(rc_trigger_size("A:2*f0.1234") > 0); /* floating value only valid on right side of modifiers */
   }
 
   {
@@ -1698,6 +1759,237 @@ static void test_trigger(void) {
     assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U); /* AddSource condition does not have hit tracking */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U); /* SubSource condition does not have hit tracking */
     assert(condset_get_cond(trigger_get_set(trigger, 0), 2)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddSourceMultiply
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "A:0xH0001*3_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 4; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 1; /* sum is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 19; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestSubSourceMultiply
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "B:0xH0001*3_0xH0002=14"); /* NOTE: SubSource subtracts the first value from the second! */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 32; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 1; /* difference is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 17; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddSourceMultiplyFraction
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x08, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "A:0xH0001*f0.75_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 16; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 15; /* sum is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 11; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddSourceDivide
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "A:0xH0001/3_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 20; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 14; /* sum is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 18; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestSubSourceDivide
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "B:0xH0001/3_0xH0002=14"); /* NOTE: SubSource subtracts the first value from the second! */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 16; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 14; /* difference is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 18; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddSourceMask
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x6E, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "A:0xH0001&h7_0xH0002=22");
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 16; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 0x74; /* sum is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 18; /* sum is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestSubSourceMask
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "B:0xH0001&6_0xH0002=14"); /* NOTE: SubSource subtracts the first value from the second! */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 0U);
+
+    ram[2] = 18; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[1] = 10; /* difference is not correct */
+    comp_trigger(trigger, &memory, 0);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 1U);
+
+    ram[2] = 16; /* difference is correct */
+    comp_trigger(trigger, &memory, 1);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 0)->current_hits == 0U);
+    assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 2U);
   }
 
   {
@@ -2622,6 +2914,37 @@ static void test_trigger(void) {
     assert(condset_get_cond(trigger_get_set(trigger, 0), 1)->current_hits == 3U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 3)->current_hits == 2U);
     assert(condset_get_cond(trigger_get_set(trigger, 0), 5)->current_hits == 1U);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestAddAddressScaled
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "I:0xH0000*2_0xH0000=22");
+    comp_trigger(trigger, &memory, 0);
+
+    ram[2] = 22; /* value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 2; /* point to new value */
+    comp_trigger(trigger, &memory, 0);
+
+    ram[4] = 22; /* new value is correct */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[0] = 1; /* point to original value */
+    comp_trigger(trigger, &memory, 1);
+
+    ram[2] = 11; /* original value is not correct */
+    comp_trigger(trigger, &memory, 0);
   }
 
   {
@@ -3623,6 +3946,9 @@ static void test_value(void) {
     parse_comp_value("A:0xH0001_M:0xH0002", &memory, 0x12 + 0x34);
     parse_comp_value("I:0xH0000_M:0xH0002", &memory, 0x34);
     parse_comp_value("M:0xH0002!=d0xH0002", &memory, 1); /* delta should initially be 0, so a hit should be tallied */
+
+    /* overflow */
+    parse_comp_value("0xX0001*0xH0004", &memory, 0x1D837E0C); /* 1454060562 * 86 = 125049208332 -> 0x1D1D837E0C, leading 0x1D is truncated off */
   }
 
   {

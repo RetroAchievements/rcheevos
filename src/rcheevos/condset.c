@@ -49,7 +49,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
       return 0;
     }
 
-    if ((*next)->oper == RC_CONDITION_NONE) {
+    if ((*next)->oper == RC_OPERATOR_NONE) {
       switch ((*next)->type) {
         case RC_CONDITION_ADD_ADDRESS:
         case RC_CONDITION_ADD_HITS:
@@ -128,17 +128,17 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     /* STEP 1: process modifier conditions */
     switch (condition->type) {
       case RC_CONDITION_ADD_SOURCE:
-        eval_state->add_value += rc_evaluate_operand(&condition->operand1, eval_state);
+        eval_state->add_value += rc_evaluate_condition_value(condition, eval_state);
         eval_state->add_address = 0;
         continue;
       
       case RC_CONDITION_SUB_SOURCE:
-        eval_state->add_value -= rc_evaluate_operand(&condition->operand1, eval_state);
+        eval_state->add_value -= rc_evaluate_condition_value(condition, eval_state);
         eval_state->add_address = 0;
         continue;
 
       case RC_CONDITION_ADD_ADDRESS:
-        eval_state->add_address = rc_evaluate_operand(&condition->operand1, eval_state);
+        eval_state->add_address = rc_evaluate_condition_value(condition, eval_state);
         continue;
 
       case RC_CONDITION_MEASURED:
