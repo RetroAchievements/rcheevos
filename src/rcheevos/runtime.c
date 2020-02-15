@@ -53,8 +53,8 @@ void rc_runtime_destroy(rc_runtime_t* self) {
     free(self->richpresence_display_buffer);
     self->richpresence_display_buffer = NULL;
   }
-  
-  self->richpresence = 0;
+
+  self->next_memref = 0;
   self->memrefs = 0;
 }
 

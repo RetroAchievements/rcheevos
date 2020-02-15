@@ -80,6 +80,7 @@ const char* rc_error_str(int ret)
     case RC_MISSING_VALUE_MEASURED: return "Missing measured flag in value expression";
     case RC_MULTIPLE_MEASURED: return "Multiple measured targets";
     case RC_INVALID_MEASURED_TARGET: return "Invalid measured target";
+    case RC_INVALID_COMPARISON: return "Invalid comparison";
 
     default: return "Unknown error";
   }
