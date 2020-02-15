@@ -14,6 +14,7 @@ static void rc_update_condition_pause(rc_condition_t* condition, int* in_pause) 
     case RC_CONDITION_SUB_SOURCE:
     case RC_CONDITION_ADD_HITS:
     case RC_CONDITION_AND_NEXT:
+    case RC_CONDITION_OR_NEXT:
     case RC_CONDITION_ADD_ADDRESS:
       condition->pause = *in_pause;
       break;
@@ -55,7 +56,8 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
         case RC_CONDITION_ADD_SOURCE:
         case RC_CONDITION_SUB_SOURCE:
         case RC_CONDITION_AND_NEXT:
-          break;
+        case RC_CONDITION_OR_NEXT:
+            break;
 
         default:
           parse->offset = RC_INVALID_OPERATOR;
@@ -110,10 +112,12 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
 
 static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc_eval_state_t* eval_state) {
   rc_condition_t* condition;
-  int set_valid, cond_valid, prev_cond;
+  int set_valid, cond_valid, and_next, or_next;
+  unsigned measured_value;
 
   set_valid = 1;
-  prev_cond = 1;
+  and_next = 1;
+  or_next = 0;
   eval_state->add_value = eval_state->add_hits = eval_state->add_address = 0;
 
   for (condition = self->conditions; condition != 0; condition = condition->next) {
@@ -121,6 +125,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       continue;
     }
 
+    /* STEP 1: process modifier conditions */
     switch (condition->type) {
       case RC_CONDITION_ADD_SOURCE:
         eval_state->add_value += rc_evaluate_condition_value(condition, eval_state);
@@ -131,83 +136,94 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         eval_state->add_value -= rc_evaluate_condition_value(condition, eval_state);
         eval_state->add_address = 0;
         continue;
-      
-      case RC_CONDITION_ADD_HITS:
-        /* always evaluate the condition to ensure everything is updated correctly */
-        cond_valid = rc_test_condition(condition, eval_state);
-
-        /* merge AndNext value and reset it for the next condition */
-        cond_valid &= prev_cond;
-        prev_cond = 1;
-
-        /* if the condition is true, tally it */
-        if (cond_valid) {
-          if (condition->required_hits == 0 || condition->current_hits < condition->required_hits) {
-            condition->current_hits++;
-          }
-
-          condition->is_true = (condition->required_hits == 0 || condition->current_hits >= condition->required_hits);
-        }
-        else {
-          condition->is_true = 0;
-        }
-
-        eval_state->add_value = 0;
-        eval_state->add_address = 0;
-        eval_state->add_hits += condition->current_hits;
-        continue;
-
-      case RC_CONDITION_AND_NEXT:
-        prev_cond &= rc_test_condition(condition, eval_state);
-        eval_state->add_value = 0;
-        eval_state->add_address = 0;
-        continue;
 
       case RC_CONDITION_ADD_ADDRESS:
         eval_state->add_address = rc_evaluate_condition_value(condition, eval_state);
         continue;
+
+      case RC_CONDITION_MEASURED:
+        if (condition->required_hits == 0) {
+          /* Measured condition without a hit target measures the value of the left operand */
+          measured_value = rc_evaluate_operand(&condition->operand1, eval_state) + eval_state->add_value;
+        }
+        break;
+
+      default:
+        break;
     }
 
-    /* always evaluate the condition to ensure everything is updated correctly */
-    cond_valid = rc_test_condition(condition, eval_state);
+    /* STEP 2: evaluate the current condition */
+    condition->is_true = rc_test_condition(condition, eval_state);
+    eval_state->add_value = 0;
+    eval_state->add_address = 0;
 
-    /* merge AndNext value and reset it for the next condition */
-    cond_valid &= prev_cond;
-    prev_cond = 1;
+    /* apply logic flags and reset them for the next condition */
+    cond_valid = condition->is_true;
+    cond_valid &= and_next;
+    cond_valid |= or_next;
+    and_next = 1;
+    or_next = 0;
 
-    /* if the condition has a target hit count that has already been met, it's automatically true, even if not currently true. */
-    if (condition->required_hits != 0 && (condition->current_hits + eval_state->add_hits) >= condition->required_hits) {
-      cond_valid = 1;
-    }
-    else if (cond_valid) {
-      condition->current_hits++;
+    /* true conditions should update hit count */
+    if (cond_valid) {
+      eval_state->has_hits = 1;
 
       if (condition->required_hits == 0) {
-        /* not a hit-based requirement: ignore any additional logic! */
+        /* no target hit count, just keep tallying */
+        ++condition->current_hits;
       }
-      else if ((condition->current_hits + eval_state->add_hits) < condition->required_hits) {
-        /* HitCount target has not yet been met, condition is not yet valid */
-        cond_valid = 0;
+      else if (condition->current_hits < condition->required_hits) {
+        /* target hit count hasn't been met, tally and revalidate - only true if hit count becomes met */
+        ++condition->current_hits;
+        cond_valid = (condition->current_hits == condition->required_hits);
+      }
+      else {
+        /* target hit count has been met, do nothing */
       }
     }
-    condition->is_true = cond_valid;
-    eval_state->has_hits |= (condition->current_hits || eval_state->add_hits);
+    else if (condition->current_hits > 0) {
+      /* target has been true in the past, if the hit target is met, consider it true now */
+      eval_state->has_hits = 1;
+      cond_valid = (condition->current_hits == condition->required_hits);
+    }
 
-    /* capture measured state */
-    if (condition->type == RC_CONDITION_MEASURED) {
-      unsigned int measured_value;
-      if (condition->required_hits > 0)
+    /* STEP 3: handle logic flags */
+    switch (condition->type) {
+      case RC_CONDITION_ADD_HITS:
+        eval_state->add_hits += condition->current_hits;
+        continue;
+
+      case RC_CONDITION_AND_NEXT:
+        and_next = cond_valid;
+        continue;
+
+      case RC_CONDITION_OR_NEXT:
+        or_next = cond_valid;
+        continue;
+
+      default:
+        break;
+    }
+
+    if (eval_state->add_hits) {
+      if (condition->required_hits != 0) {
+        /* if the condition has a target hit count, we have to recalculate cond_valid including the AddHits counter */
         measured_value = condition->current_hits + eval_state->add_hits;
-      else
-        measured_value = rc_evaluate_operand(&condition->operand1, eval_state) + eval_state->add_value;
+        cond_valid = (measured_value >= condition->required_hits);
+      }
+      else {
+        /* no target hit count. we can't tell if the add_hits value is from this frame or not, so ignore it.
+           complex condition will only be true if the current condition is true */
+      }
 
-      if (measured_value > eval_state->measured_value)
-        eval_state->measured_value = measured_value;
+      eval_state->add_hits = 0;
+    }
+    else if (condition->required_hits != 0) {
+      /* if there's a hit target, capture the current hits for recording Measured value later */
+      measured_value = condition->current_hits;
     }
 
-    /* reset AddHits and AddSource/SubSource values */
-    eval_state->add_value = eval_state->add_hits = eval_state->add_address = 0;
-
+    /* STEP 4: handle special flags */
     switch (condition->type) {
       case RC_CONDITION_PAUSE_IF:
         /* as soon as we find a PauseIf that evaluates to true, stop processing the rest of the group */
@@ -227,20 +243,27 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
           /* PauseIf has a HitCount that hasn't been met, ignore it for now. */
         }
 
-        break;
+        continue;
       
       case RC_CONDITION_RESET_IF:
         if (cond_valid) {
           eval_state->was_reset = 1; /* let caller know to reset all hit counts */
           set_valid = 0; /* cannot be valid if we've hit a reset condition */
         }
+        continue;
 
+      case RC_CONDITION_MEASURED:
+        if (measured_value > eval_state->measured_value) {
+          eval_state->measured_value = measured_value;
+        }
         break;
 
       default:
-        set_valid &= cond_valid;
         break;
     }
+
+    /* STEP 5: update overall truthiness of set */
+    set_valid &= cond_valid;
   }
 
   return set_valid;

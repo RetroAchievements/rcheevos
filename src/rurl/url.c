@@ -12,6 +12,7 @@
 #endif
 
 #include <stdio.h>
+#include <string.h>
 
 static int rc_url_encode(char* encoded, size_t len, const char* str) {
   for (;;) {
