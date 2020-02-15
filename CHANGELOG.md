@@ -2,6 +2,12 @@
 
 * new size: RC_MEMSIZE_8_BITS_BITCOUNT
 * is_bcd removed from memref - now part of RC_MEMSIZE
+* add rc_runtime_t and associated functions
+* add rc_hash_ functions
+* add rc_error_str function
+* add game_hash parameter to rc_url_award_cheevo
+* remove hash parameter from rc_url_submit_lboard
+* add rc_url_ping function
 
 # v8.1.0
 
