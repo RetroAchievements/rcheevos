@@ -263,7 +263,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   }
 
   /* check to see if a disabled lboard for the specific id matches the lboard being registered */
-  for (i = 0; i < self->trigger_count; ++i) {
+  for (i = 0; i < self->lboard_count; ++i) {
     if (self->lboards[i].id == id && memcmp(self->lboards[i].md5, md5, 16) == 0) {
       /* retrieve the lboard pointer from the buffer */
       size = 0;
