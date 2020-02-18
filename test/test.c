@@ -4,6 +4,8 @@
 #include "smw_snes.h"
 #include "galaga_nes.h"
 
+#include "test_framework.h"
+
 #include <stddef.h>
 #include <string.h>
 #include <assert.h>
@@ -40,21 +42,6 @@ static unsigned peek(unsigned address, unsigned num_bytes, void* ud) {
   return 0;
 }
 
-static void parse_operand(rc_operand_t* self, const char** memaddr) {
-  rc_parse_state_t parse;
-  char buffer[256];
-  rc_memref_value_t* memrefs;
-  int ret;
-
-  rc_init_parse_state(&parse, buffer, 0, 0);   
-  rc_init_parse_state_memrefs(&parse, &memrefs);
-  ret = rc_parse_operand(self, memaddr, 1, 0, &parse);
-  rc_destroy_parse_state(&parse);
-
-  assert(ret >= 0);
-  assert(**memaddr == 0);
-}
-
 static void comp_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
   assert(expected_type == self->type);
   switch (expected_type) {
@@ -69,71 +56,6 @@ static void comp_operand(rc_operand_t* self, char expected_type, char expected_s
       assert(expected_address == self->value.num);
       break;
   }
-}
-
-static void parse_comp_operand(const char* memaddr, char expected_type, char expected_size, unsigned expected_value) {
-  rc_operand_t self;
-  parse_operand(&self, &memaddr);
-  comp_operand(&self, expected_type, expected_size, expected_value);
-}
-
-static void parse_comp_operand_fp(const char* memaddr, char expected_type, double expected_value) {
-  rc_operand_t self;
-  parse_operand(&self, &memaddr);
-
-  assert(expected_type == self.type);
-  switch (expected_type) {
-    case RC_OPERAND_CONST:
-      assert(expected_value == (double)self.value.num);
-      break;
-    case RC_OPERAND_FP:
-      assert(expected_value == self.value.dbl);
-      break;
-  }
-}
-
-static void parse_error_operand(const char* memaddr, int valid_chars) {
-  rc_operand_t self;
-  rc_parse_state_t parse;
-  int ret;
-  const char* begin = memaddr;
-  rc_memref_value_t* memrefs;
-
-  rc_init_parse_state(&parse, 0, 0, 0);
-  rc_init_parse_state_memrefs(&parse, &memrefs);
-  ret = rc_parse_operand(&self, &memaddr, 1, 0, &parse);
-  rc_destroy_parse_state(&parse);
-
-  assert(ret < 0);
-  assert(memaddr - begin == valid_chars);
-}
-
-static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_value_t* memrefs)
-{
-  rc_eval_state_t eval_state;
-
-  memset(&eval_state, 0, sizeof(eval_state));
-  eval_state.peek = peek;
-  eval_state.peek_userdata = memory;
-
-  rc_update_memref_values(memrefs, peek, memory);
-  return rc_evaluate_operand(op, &eval_state);
-}
-
-static void parse_comp_operand_value(const char* memaddr, memory_t* memory, unsigned expected_value) {
-  rc_operand_t self;
-  rc_parse_state_t parse;
-  rc_memref_value_t* memrefs;
-  char buffer[512];
-  unsigned value;
-
-  rc_init_parse_state(&parse, buffer, 0, 0);
-  rc_init_parse_state_memrefs(&parse, &memrefs);
-  rc_parse_operand(&self, &memaddr, 1, 0, &parse);
-  rc_destroy_parse_state(&parse);
-
-  value = evaluate_operand(&self, memory, memrefs);
-  assert(value == expected_value);
 }
 
 static void test_memref(void) {
@@ -313,320 +235,6 @@ static void test_memref(void) {
     assert(memref2->prior == 0x34);
 
     rc_destroy_parse_state(&parse);
-  }
-}
-
-static void test_operand(void) {
-  {
-    /*------------------------------------------------------------------------
-    TestParseVariableAddress
-    ------------------------------------------------------------------------*/
-
-    /* sizes */
-    parse_comp_operand("0xH1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U);
-    parse_comp_operand("0x 1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x1234U);
-    parse_comp_operand("0x1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x1234U);
-    parse_comp_operand("0xW1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_24_BITS, 0x1234U);
-    parse_comp_operand("0xX1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_32_BITS, 0x1234U);
-    parse_comp_operand("0xL1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_LOW, 0x1234U);
-    parse_comp_operand("0xU1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_HIGH, 0x1234U);
-    parse_comp_operand("0xM1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_0, 0x1234U);
-    parse_comp_operand("0xN1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_1, 0x1234U);
-    parse_comp_operand("0xO1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_2, 0x1234U);
-    parse_comp_operand("0xP1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_3, 0x1234U);
-    parse_comp_operand("0xQ1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_4, 0x1234U);
-    parse_comp_operand("0xR1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_5, 0x1234U);
-    parse_comp_operand("0xS1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_6, 0x1234U);
-    parse_comp_operand("0xT1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_7, 0x1234U);
-
-    /* sizes (ignore case) */
-    parse_comp_operand("0Xh1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U);
-    parse_comp_operand("0xx1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_32_BITS, 0x1234U);
-    parse_comp_operand("0xl1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_LOW, 0x1234U);
-    parse_comp_operand("0xu1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_HIGH, 0x1234U);
-    parse_comp_operand("0xm1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_0, 0x1234U);
-    parse_comp_operand("0xn1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_1, 0x1234U);
-    parse_comp_operand("0xo1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_2, 0x1234U);
-    parse_comp_operand("0xp1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_3, 0x1234U);
-    parse_comp_operand("0xq1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_4, 0x1234U);
-    parse_comp_operand("0xr1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_5, 0x1234U);
-    parse_comp_operand("0xs1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_6, 0x1234U);
-    parse_comp_operand("0xt1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_7, 0x1234U);
-
-    /* addresses */
-    parse_comp_operand("0xH0000", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x0000U);
-    parse_comp_operand("0xH12345678", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x12345678U);
-    parse_comp_operand("0xHABCD", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0xABCDU);
-    parse_comp_operand("0xhabcd", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0xABCDU);
-  }
-
-  {
-    /*------------------------------------------------------------------------
-    TestParseVariableDeltaMem
-    ------------------------------------------------------------------------*/
-
-    /* sizes */
-    parse_comp_operand("d0xH1234", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x1234U);
-    parse_comp_operand("d0x 1234", RC_OPERAND_DELTA, RC_MEMSIZE_16_BITS, 0x1234U);
-    parse_comp_operand("d0x1234", RC_OPERAND_DELTA, RC_MEMSIZE_16_BITS, 0x1234U);
-    parse_comp_operand("d0xW1234", RC_OPERAND_DELTA, RC_MEMSIZE_24_BITS, 0x1234U);
-    parse_comp_operand("d0xX1234", RC_OPERAND_DELTA, RC_MEMSIZE_32_BITS, 0x1234U);
-    parse_comp_operand("d0xL1234", RC_OPERAND_DELTA, RC_MEMSIZE_LOW, 0x1234U);
-    parse_comp_operand("d0xU1234", RC_OPERAND_DELTA, RC_MEMSIZE_HIGH, 0x1234U);
-    parse_comp_operand("d0xM1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_0, 0x1234U);
-    parse_comp_operand("d0xN1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_1, 0x1234U);
-    parse_comp_operand("d0xO1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_2, 0x1234U);
-    parse_comp_operand("d0xP1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_3, 0x1234U);
-    parse_comp_operand("d0xQ1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_4, 0x1234U);
-    parse_comp_operand("d0xR1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_5, 0x1234U);
-    parse_comp_operand("d0xS1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_6, 0x1234U);
-    parse_comp_operand("d0xT1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_7, 0x1234U);
-
-    /* ignores case */
-    parse_comp_operand("D0Xh1234", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x1234U);
-
-    /* addresses */
-    parse_comp_operand("d0xH0000", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x0000U);
-    parse_comp_operand("d0xH12345678", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x12345678U);
-    parse_comp_operand("d0xHABCD", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0xABCDU);
-    parse_comp_operand("d0xhabcd", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0xABCDU);
-  }
-
-  {
-    /*------------------------------------------------------------------------
-    TestParseVariablePriorMem
-    ------------------------------------------------------------------------*/
-
-    /* sizes */
-    parse_comp_operand("p0xH1234", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0x1234U);
-    parse_comp_operand("p0x 1234", RC_OPERAND_PRIOR, RC_MEMSIZE_16_BITS, 0x1234U);
-    parse_comp_operand("p0x1234", RC_OPERAND_PRIOR, RC_MEMSIZE_16_BITS, 0x1234U);
-    parse_comp_operand("p0xW1234", RC_OPERAND_PRIOR, RC_MEMSIZE_24_BITS, 0x1234U);
-    parse_comp_operand("p0xX1234", RC_OPERAND_PRIOR, RC_MEMSIZE_32_BITS, 0x1234U);
-    parse_comp_operand("p0xL1234", RC_OPERAND_PRIOR, RC_MEMSIZE_LOW, 0x1234U);
-    parse_comp_operand("p0xU1234", RC_OPERAND_PRIOR, RC_MEMSIZE_HIGH, 0x1234U);
-    parse_comp_operand("p0xM1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_0, 0x1234U);
-    parse_comp_operand("p0xN1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_1, 0x1234U);
-    parse_comp_operand("p0xO1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_2, 0x1234U);
-    parse_comp_operand("p0xP1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_3, 0x1234U);
-    parse_comp_operand("p0xQ1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_4, 0x1234U);
-    parse_comp_operand("p0xR1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_5, 0x1234U);
-    parse_comp_operand("p0xS1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_6, 0x1234U);
-    parse_comp_operand("p0xT1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_7, 0x1234U);
-
-    /* ignores case */
-    parse_comp_operand("P0Xh1234", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0x1234U);
-
-    /* addresses */
-    parse_comp_operand("p0xH0000", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0x0000U);
-    parse_comp_operand("p0xH12345678", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0x12345678U);
-    parse_comp_operand("p0xHABCD", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0xABCDU);
-    parse_comp_operand("p0xhabcd", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0xABCDU);
-  }
-
-  {
-    /*------------------------------------------------------------------------
-    TestParseVariableValue
-    ------------------------------------------------------------------------*/
-
-    /* decimal - values don't actually have size, default is RC_MEMSIZE_8_BITS */
-    parse_comp_operand("123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 123U);
-    parse_comp_operand("123456", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 123456U);
-    parse_comp_operand("0", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0U);
-    parse_comp_operand("0000000000", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0U);
-    parse_comp_operand("4294967295", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
-
-    /* hex - 'H' prefix, not '0x'! */
-    parse_comp_operand("H123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x123U);
-    parse_comp_operand("HABCD", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xABCDU);
-    parse_comp_operand("h123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x123U);
-    parse_comp_operand("habcd", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xABCDU);
-    parse_comp_operand("HFFFFFFFF", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
-
-    /* floating point - 'F' prefix */
-    parse_comp_operand_fp("f0.5", RC_OPERAND_FP, 0.5);
-    parse_comp_operand_fp("F0.5", RC_OPERAND_FP, 0.5);
-    parse_comp_operand_fp("f+0.5", RC_OPERAND_FP, 0.5);
-    parse_comp_operand_fp("f-0.5", RC_OPERAND_FP, -0.5);
-    parse_comp_operand_fp("f1.0", RC_OPERAND_CONST, 1.0);
-    parse_comp_operand_fp("f1", RC_OPERAND_CONST, 1.0);
-    parse_comp_operand_fp("f0.666666", RC_OPERAND_FP, 0.666666);
-
-    /* NOTE: cannot test floating point without a prefix ("0.5") as the "0" will be parsed successfuly 
-     * and the ".5" ignored - this case is handled in the TestParseCondition test */
-
-    /* '0x' is an address */
-    parse_comp_operand("0x123", RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x123U);
-
-    /* hex without prefix */
-    parse_error_operand("ABCD", 0);
-
-    /* more than 32-bits (error), will be constrained to 32-bits */
-    parse_comp_operand("4294967296", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
-
-    /* negative value (error), will be "wrapped around": -1 = 0x100000000 - 1 = 0xFFFFFFFF = 4294967295 */
-    parse_comp_operand("-1", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
-  }
-
-  {
-    /*------------------------------------------------------------------------
-    TestVariableGetValue
-    ------------------------------------------------------------------------*/
-
-    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
-    memory_t memory;
-    memory.ram = ram;
-    memory.size = sizeof(ram);
-
-    /* value */
-    parse_comp_operand_value("0", &memory, 0x00U);
-
-    /* eight-bit */
-    parse_comp_operand_value("0xh0", &memory, 0x00U);
-    parse_comp_operand_value("0xh1", &memory, 0x12U);
-    parse_comp_operand_value("0xh4", &memory, 0x56U);
-    parse_comp_operand_value("0xh5", &memory, 0x00U); /* out of range */
-
-    /* sixteen-bit */
-    parse_comp_operand_value("0x 0", &memory, 0x1200U);
-    parse_comp_operand_value("0x 3", &memory, 0x56ABU);
-    parse_comp_operand_value("0x 4", &memory, 0x0056U); /* out of range */
-
-    /* twenty-four-bit */
-    parse_comp_operand_value("0xw0", &memory, 0x341200U);
-    parse_comp_operand_value("0xw2", &memory, 0x56AB34U);
-    parse_comp_operand_value("0xw3", &memory, 0x0056ABU); /* out of range */
-
-    /* thirty-two-bit */
-    parse_comp_operand_value("0xx0", &memory, 0xAB341200U);
-    parse_comp_operand_value("0xx1", &memory, 0x56AB3412U);
-    parse_comp_operand_value("0xx3", &memory, 0x000056ABU); /* out of range */
-
-    /* nibbles */
-    parse_comp_operand_value("0xu0", &memory, 0x0U);
-    parse_comp_operand_value("0xu1", &memory, 0x1U);
-    parse_comp_operand_value("0xu4", &memory, 0x5U);
-    parse_comp_operand_value("0xu5", &memory, 0x0U); /* out of range */
-
-    parse_comp_operand_value("0xl0", &memory, 0x0U);
-    parse_comp_operand_value("0xl1", &memory, 0x2U);
-    parse_comp_operand_value("0xl4", &memory, 0x6U);
-    parse_comp_operand_value("0xl5", &memory, 0x0U); /* out of range */
-
-    /* bits */
-    parse_comp_operand_value("0xm0", &memory, 0x0U);
-    parse_comp_operand_value("0xm3", &memory, 0x1U);
-    parse_comp_operand_value("0xn3", &memory, 0x1U);
-    parse_comp_operand_value("0xo3", &memory, 0x0U);
-    parse_comp_operand_value("0xp3", &memory, 0x1U);
-    parse_comp_operand_value("0xq3", &memory, 0x0U);
-    parse_comp_operand_value("0xr3", &memory, 0x1U);
-    parse_comp_operand_value("0xs3", &memory, 0x0U);
-    parse_comp_operand_value("0xt3", &memory, 0x1U);
-    parse_comp_operand_value("0xm5", &memory, 0x0U); /* out of range */
-
-    /* bit count */
-    parse_comp_operand_value("0xc0", &memory, 0x0U); /* 0 bits in 0x00 */
-    parse_comp_operand_value("0xc1", &memory, 0x2U); /* 2 bits in 0x12 */
-    parse_comp_operand_value("0xc2", &memory, 0x3U); /* 3 bits in 0x34 */
-    parse_comp_operand_value("0xc3", &memory, 0x5U); /* 5 bits in 0xAB */
-    parse_comp_operand_value("0xc4", &memory, 0x4U); /* 4 bits in 0x56 */
-
-    /* BCD */
-    parse_comp_operand_value("b0xh3", &memory, 111U); /* 0xAB not technically valid in BCD */
-
-    ram[3] = 0x56; /* 0xAB not valid in BCD */
-    parse_comp_operand_value("b0xh0", &memory, 00U);
-    parse_comp_operand_value("b0xh1", &memory, 12U);
-    parse_comp_operand_value("b0x 1", &memory, 3412U);
-    parse_comp_operand_value("b0xw1", &memory, 563412U);
-    parse_comp_operand_value("b0xx1", &memory, 56563412U);
-  }
-
-  {
-    /*------------------------------------------------------------------------
-    TestVariableGetValueDelta
-    ------------------------------------------------------------------------*/
-
-    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
-    memory_t memory;
-    rc_operand_t op;
-    const char* memaddr;
-    rc_parse_state_t parse;
-    char buffer[256];
-    rc_memref_value_t* memrefs;
-
-    memory.ram = ram;
-    memory.size = sizeof(ram);
-
-    memaddr = "d0xh1";
-    rc_init_parse_state(&parse, buffer, 0, 0);
-    rc_init_parse_state_memrefs(&parse, &memrefs);
-    rc_parse_operand(&op, &memaddr, 1, 0, &parse);
-    rc_destroy_parse_state(&parse);
-
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* first call gets uninitialized value */
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x12); /* second gets current value */
-
-    /* RC_OPERAND_DELTA is always one frame behind */
-    ram[1] = 0x13;
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
-
-    ram[1] = 0x14;
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x13U);
-
-    ram[1] = 0x15;
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x14U);
-
-    ram[1] = 0x16;
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
-
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x16U);
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x16U);
-  }
-
-  {
-    /*------------------------------------------------------------------------
-    TestVariableGetValueDelta
-    ------------------------------------------------------------------------*/
-
-    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
-    memory_t memory;
-    rc_operand_t op;
-    const char* memaddr;
-    rc_parse_state_t parse;
-    char buffer[256];
-    rc_memref_value_t* memrefs;
-
-    memory.ram = ram;
-    memory.size = sizeof(ram);
-
-    memaddr = "p0xh1";
-    rc_init_parse_state(&parse, buffer, 0, 0);
-    rc_init_parse_state_memrefs(&parse, &memrefs);
-    rc_parse_operand(&op, &memaddr, 1, 0, &parse);
-    rc_destroy_parse_state(&parse);
-
-    /* RC_OPERAND_PRIOR only updates when the memory value changes */
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* first call gets uninitialized value */
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x00); /* value only changes when memory changes */
-
-    ram[1] = 0x13;
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x12U);
-
-    ram[1] = 0x14;
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x13U);
-
-    ram[1] = 0x15;
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x14U);
-
-    ram[1] = 0x16;
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
-    assert(evaluate_operand(&op, &memory, memrefs) == 0x15U);
   }
 }
 
@@ -6024,7 +5632,13 @@ static void test_lua(void) {
   }
 }
 
+extern void test_operand();
+
+TEST_FRAMEWORK_DECLARATIONS()
+
 int main(void) {
+  TEST_FRAMEWORK_INIT();
+
   test_memref();
   test_operand();
   test_condition();
@@ -6036,5 +5650,7 @@ int main(void) {
   test_runtime();
   test_lua();
 
-  return 0;
+  TEST_FRAMEWORK_SHUTDOWN();
+
+  return TEST_FRAMEWORK_PASSED() ? 0 : 1;
 }
