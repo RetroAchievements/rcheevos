@@ -115,6 +115,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
   int set_valid, cond_valid, and_next, or_next;
   unsigned measured_value;
 
+  eval_state->primed = 1;
   set_valid = 1;
   and_next = 1;
   or_next = 0;
@@ -258,11 +259,17 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         }
         break;
 
+      case RC_CONDITION_TRIGGER:
+        /* update truthiness of set, but do not update truthiness of primed state */
+        set_valid &= cond_valid;
+        continue;
+
       default:
         break;
     }
 
-    /* STEP 5: update overall truthiness of set */
+    /* STEP 5: update overall truthiness of set and primed state */
+    eval_state->primed &= cond_valid;
     set_valid &= cond_valid;
   }
 
@@ -278,6 +285,7 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
   if (self->has_pause) {
     if ((self->is_paused = rc_test_condset_internal(self, 1, eval_state))) {
       /* one or more Pause conditions exists, if any of them are true, stop processing this group */
+      eval_state->primed = 0;
       return 0;
     }
   }

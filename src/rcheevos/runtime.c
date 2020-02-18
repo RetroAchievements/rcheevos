@@ -487,6 +487,14 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
         }
         break;
         
+      case RC_TRIGGER_STATE_PRIMED:
+        if (trigger_state != RC_TRIGGER_STATE_PRIMED) {
+          runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED;
+          runtime_event.id = self->triggers[i].id;
+          event_handler(&runtime_event);
+        }
+        break;
+
       case RC_TRIGGER_STATE_ACTIVE:
         if (trigger_state != RC_TRIGGER_STATE_ACTIVE) {
           runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED;

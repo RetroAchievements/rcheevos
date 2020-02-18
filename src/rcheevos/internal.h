@@ -61,6 +61,7 @@ typedef struct {
   unsigned measured_value;  /* Measured */
   char was_reset;           /* ResetIf triggered */
   char has_hits;            /* one of more hit counts is non-zero */
+  char primed;              /* true if all non-Trigger conditions are true */
 }
 rc_eval_state_t;
 
