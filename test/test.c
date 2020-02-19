@@ -58,186 +58,6 @@ static void comp_operand(rc_operand_t* self, char expected_type, char expected_s
   }
 }
 
-static void test_memref(void) {
-  char buffer[512];
-  {
-    /*------------------------------------------------------------------------
-    TestAllocMemrefValueDuplicatesSizing
-    ------------------------------------------------------------------------*/
-    rc_parse_state_t parse;
-    rc_init_parse_state(&parse, buffer, 0, 0);
-
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
-    assert(parse.scratch.memref_count == 1);
-
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
-    assert(parse.scratch.memref_count == 2);
-
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
-    assert(parse.scratch.memref_count == 3);
-
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
-    assert(parse.scratch.memref_count == 4);
-
-    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
-    assert(parse.scratch.memref_count == 5);
-
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
-    assert(parse.scratch.memref_count == 5);
-
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
-    assert(parse.scratch.memref_count == 5);
-
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
-    assert(parse.scratch.memref_count == 5);
-
-    rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
-    assert(parse.scratch.memref_count == 5);
-
-    rc_destroy_parse_state(&parse);
-  }
-
-  {
-    /*------------------------------------------------------------------------
-    TestAllocMemrefValueGrowthSizing
-    ------------------------------------------------------------------------*/
-    int i;
-    rc_parse_state_t parse;
-    rc_init_parse_state(&parse, buffer, 0, 0);
-
-    for (i = 0; i < 100; i++) {
-      rc_alloc_memref_value(&parse, i, RC_MEMSIZE_8_BITS, 0);
-    }
-    assert(parse.scratch.memref_count == 100);
-
-    rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
-    assert(parse.scratch.memref_count == 100);
-
-    rc_alloc_memref_value(&parse, 25, RC_MEMSIZE_8_BITS, 0);
-    assert(parse.scratch.memref_count == 100);
-
-    rc_alloc_memref_value(&parse, 50, RC_MEMSIZE_8_BITS, 0);
-    assert(parse.scratch.memref_count == 100);
-
-    rc_alloc_memref_value(&parse, 75, RC_MEMSIZE_8_BITS, 0);
-    assert(parse.scratch.memref_count == 100);
-
-    rc_alloc_memref_value(&parse, 99, RC_MEMSIZE_8_BITS, 0);
-    assert(parse.scratch.memref_count == 100);
-
-    rc_destroy_parse_state(&parse);
-  }
-
-  {
-    /*------------------------------------------------------------------------
-    TestAllocMemrefValueDuplicates
-    ------------------------------------------------------------------------*/
-    rc_parse_state_t parse;
-    rc_memref_value_t* memrefs;
-    rc_memref_value_t* memref1;
-    rc_memref_value_t* memref2;
-    rc_memref_value_t* memref3;
-    rc_memref_value_t* memref4;
-    rc_memref_value_t* memref5;
-    rc_memref_value_t* memrefX;
-    rc_init_parse_state(&parse, buffer, 0, 0);
-    rc_init_parse_state_memrefs(&parse, &memrefs);
-
-    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
-    assert(memref1->memref.address == 1);
-    assert(memref1->memref.size == RC_MEMSIZE_8_BITS);
-    assert(memref1->memref.is_indirect == 0);
-    assert(memref1->value == 0);
-    assert(memref1->previous == 0);
-    assert(memref1->prior == 0);
-    assert(memref1->next == 0);
-
-    memref2 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
-    memref3 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
-    memref4 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
-    memref5 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
-
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
-    assert(memrefX == memref1);
-
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
-    assert(memrefX == memref2);
-
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_LOW, 0); /* match */
-    assert(memrefX == memref3);
-
-    memrefX = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
-    assert(memrefX == memref4);
-
-    memrefX = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
-    assert(memrefX == memref5);
-
-    rc_destroy_parse_state(&parse);
-  }
-
-  {
-    /*------------------------------------------------------------------------
-    TestUpdateMemrefValues
-    ------------------------------------------------------------------------*/
-    rc_parse_state_t parse;
-    rc_memref_value_t* memrefs;
-    rc_memref_value_t* memref1;
-    rc_memref_value_t* memref2;
-
-    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
-    memory_t memory;
-    memory.ram = ram;
-    memory.size = sizeof(ram);
-
-    rc_init_parse_state(&parse, buffer, 0, 0);
-    rc_init_parse_state_memrefs(&parse, &memrefs);
-
-    memref1 = rc_alloc_memref_value(&parse, 1, RC_MEMSIZE_8_BITS, 0);
-    memref2 = rc_alloc_memref_value(&parse, 2, RC_MEMSIZE_8_BITS, 0);
-
-    rc_update_memref_values(memrefs, peek, &memory);
-
-    assert(memref1->value == 0x12);
-    assert(memref1->previous == 0);
-    assert(memref1->prior == 0);
-    assert(memref2->value == 0x34);
-    assert(memref2->previous == 0);
-    assert(memref2->prior == 0);
-
-    ram[1] = 3;
-    rc_update_memref_values(memrefs, peek, &memory);
-
-    assert(memref1->value == 3);
-    assert(memref1->previous == 0x12);
-    assert(memref1->prior == 0x12);
-    assert(memref2->value == 0x34);
-    assert(memref2->previous == 0x34);
-    assert(memref2->prior == 0);
-
-    ram[1] = 5;
-    rc_update_memref_values(memrefs, peek, &memory);
-
-    assert(memref1->value == 5);
-    assert(memref1->previous == 3);
-    assert(memref1->prior == 3);
-    assert(memref2->value == 0x34);
-    assert(memref2->previous == 0x34);
-    assert(memref2->prior == 0);
-
-    ram[2] = 7;
-    rc_update_memref_values(memrefs, peek, &memory);
-
-    assert(memref1->value == 5);
-    assert(memref1->previous == 5);
-    assert(memref1->prior == 3);
-    assert(memref2->value == 7);
-    assert(memref2->previous == 0x34);
-    assert(memref2->prior == 0x34);
-
-    rc_destroy_parse_state(&parse);
-  }
-}
-
 static void parse_comp_condition(
   const char* memaddr, char expected_type,
   char expected_left_type, char expected_left_size, unsigned expected_left_value,
@@ -5632,6 +5452,7 @@ static void test_lua(void) {
   }
 }
 
+extern void test_memref();
 extern void test_operand();
 
 TEST_FRAMEWORK_DECLARATIONS()
@@ -5641,6 +5462,7 @@ int main(void) {
 
   test_memref();
   test_operand();
+
   test_condition();
   test_trigger();
   test_term();

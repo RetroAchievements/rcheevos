@@ -168,6 +168,9 @@
     <ClCompile Include="test.c">
       <Filter>tests</Filter>
     </ClCompile>
+    <ClCompile Include="rcheevos\test_memref.c">
+      <Filter>tests\rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">

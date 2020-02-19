@@ -110,8 +110,9 @@ extern const char* test_framework_basename(const char* path);
 #define ASSERT_NUM_LESS(value, expected)           ASSERT_COMPARE(value, <,  expected, int, "%d")
 #define ASSERT_NUM_LESS_EQUALS(value, expected)    ASSERT_COMPARE(value, <=, expected, int, "%d")
 
-#define ASSERT_UNUM_EQUALS(value, expected) ASSERT_COMPARE(value, ==, expected, unsigned, "%u")
-#define ASSERT_DBL_EQUALS(value, expected)  ASSERT_COMPARE(value, ==, expected, double, "%g")
+#define ASSERT_UNUM_EQUALS(value, expected)        ASSERT_COMPARE(value, ==, expected, unsigned, "%u")
+#define ASSERT_DBL_EQUALS(value, expected)         ASSERT_COMPARE(value, ==, expected, double, "%g")
+#define ASSERT_PTR_EQUALS(value, expected)         ASSERT_COMPARE(value, ==, expected, void*, "%p")
 
 #define ASSERT_STR_EQUALS(value, expected) { \
   const char* __v = (const char*)(value); \
