@@ -857,6 +857,15 @@ static void test_condition(void) {
       0
     );
 
+    parse_comp_condition(
+      "T:0xH1234=8",
+      RC_CONDITION_TRIGGER,
+      RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+      RC_OPERATOR_EQ,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      0
+    );
+
     /* hit count */
     parse_comp_condition(
       "0xH1234=8(1)",
@@ -3666,6 +3675,125 @@ static void test_trigger(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestEvaluateTriggerTransitionsTrigger
+    Verifies return codes of rc_evaluate_trigger
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x01, 0x00, 0x01, 0x00};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0000=1_T:0xH0001=1_0xH0002=1_T:0xH0003=1_0xH0004=1");
+
+    /* trigger conditions are true, but nothing else */
+    trigger->state = RC_TRIGGER_STATE_ACTIVE;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    /* one non-trigger condition is still false */
+    ram[0] = ram[2] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    /* all non-trigger conditions are true, one trigger condition is not true */
+    ram[1] = 0; ram[4] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PRIMED);
+
+    /* non-trigger condition is false again */
+    ram[0] = 0;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    /* all conditions are true */
+    ram[0] = ram[1] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+
+    /* one non-trigger condition is false */
+    ram[3] = 0;
+    trigger->state = RC_TRIGGER_STATE_ACTIVE;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PRIMED);
+
+    /* all conditions are true */
+    ram[3] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEvaluateTriggerTriggerInAlts
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x01, 0x00, 0x00, 0x00, 0x00};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0000=1ST:0xH0001=1_0xH0002=1ST:0xH0003=1_0xH0004=1");
+
+    /* core is true, but neither alt is primed */
+    trigger->state = RC_TRIGGER_STATE_ACTIVE;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    /* both alts primed */
+    ram[2] = ram[4] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PRIMED);
+
+    /* only second alt is primed */
+    ram[4] = 0;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PRIMED);
+
+    /* neither alt is primed */
+    ram[2] = 0;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    /* both alts primed */
+    ram[2] = ram[4] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PRIMED);
+
+    /* alt 2 is true */
+    ram[3] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestEvaluateTriggerTriggerIsAlts
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+    memory_t memory;
+    rc_trigger_t* trigger;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    parse_trigger(&trigger, buffer, "0xH0000=1ST:0xH0001=1S0xH0002=1");
+
+    /* core must be true for trigger to be primed */
+    trigger->state = RC_TRIGGER_STATE_ACTIVE;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    /* second alt is true, but core is not */
+    ram[2] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    /* first alt is true, but core is not */
+    ram[2] = 0; ram[1] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_ACTIVE);
+
+    /* only core is true, first alt is marked as Trigger, eligible to fire */
+    ram[1] = 0; ram[0] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_PRIMED);
+
+    /* alt is true */
+    ram[1] = 1;
+    assert(evaluate_trigger(trigger, &memory) == RC_TRIGGER_STATE_TRIGGERED);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestBitLookupsShareMemRef
     Verifies a single memref is used for multiple bit references to the same byte
     ------------------------------------------------------------------------*/
@@ -5778,6 +5906,57 @@ static void test_runtime(void) {
     assert(event_count == 0);
 
     rc_runtime_destroy(&runtime);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestRuntimeTriggerPrimed
+    ------------------------------------------------------------------------*/
+
+    unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+    memory_t memory;
+    rc_runtime_t runtime;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    rc_runtime_init(&runtime);
+
+    assert(rc_runtime_activate_achievement(&runtime, 1, "0xH0000=1_T:0xH0001=1_0xH0002=1_T:0xH0003=1_0xH0004=1", NULL, 0) == RC_OK);
+
+    /* trigger conditions are true, but nothing else */
+    event_count = 0;
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(event_count == 1);
+    assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
+
+    /* primed */
+    event_count = 0;
+    ram[0] = ram[2] = ram[4] = 1;
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(event_count == 1);
+    assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
+
+    /* no longer primed */
+    event_count = 0;
+    ram[0] = 0;
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(event_count == 1);
+    assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
+
+    /* primed */
+    event_count = 0;
+    ram[0] = ram[2] = ram[4] = 1;
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(event_count == 1);
+    assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
+
+    /* all conditions are true */
+    event_count = 0;
+    ram[1] = ram[3] = 1;
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(event_count == 1);
+    assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
   }
 
   {

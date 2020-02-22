@@ -89,6 +89,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   rc_condset_t* condset;
   int ret;
   char is_paused;
+  char is_primed;
 
   /* previously triggered, do nothing - return INACTIVE so caller doesn't report a repeated trigger */
   if (self->state == RC_TRIGGER_STATE_TRIGGERED)
@@ -109,25 +110,30 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   if (self->requirement != NULL) {
     ret = rc_test_condset(self->requirement, &eval_state);
     is_paused = self->requirement->is_paused;
+    is_primed = eval_state.primed;
   } else {
     ret = 1;
     is_paused = 0;
+    is_primed = 1;
   }
 
   condset = self->alternative;
   if (condset) {
     int sub = 0;
     char sub_paused = 1;
+    char sub_primed = 0;
 
     do {
       sub |= rc_test_condset(condset, &eval_state);
       sub_paused &= condset->is_paused;
+      sub_primed |= eval_state.primed;
 
       condset = condset->next;
     } while (condset != 0);
 
     /* to trigger, the core must be true and at least one alt must be true */
     ret &= sub;
+    is_primed &= sub_primed;
 
     /* if the core is not paused, all alts must be paused to count as a paused trigger */
     is_paused |= sub_paused;
@@ -157,6 +163,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
 
     /* any hits that were tallied were just reset */
     eval_state.has_hits = 0;
+    is_primed = 0;
   }
   else if (ret) {
     /* trigger was triggered */
@@ -167,7 +174,16 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   /* did not trigger this frame - update the information we'll need for next time */
   self->has_hits = eval_state.has_hits;
 
-  self->state = is_paused ? RC_TRIGGER_STATE_PAUSED : RC_TRIGGER_STATE_ACTIVE;
+  if (is_paused) {
+    self->state = RC_TRIGGER_STATE_PAUSED;
+  }
+  else if (is_primed) {
+    self->state = RC_TRIGGER_STATE_PRIMED;
+  }
+  else {
+    self->state = RC_TRIGGER_STATE_ACTIVE;
+  }
+
   return self->state;
 }
 

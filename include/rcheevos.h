@@ -159,7 +159,8 @@ enum {
   RC_CONDITION_AND_NEXT,
   RC_CONDITION_MEASURED,
   RC_CONDITION_ADD_ADDRESS,
-  RC_CONDITION_OR_NEXT
+  RC_CONDITION_OR_NEXT,
+  RC_CONDITION_TRIGGER
 };
 
 /* operators */
@@ -234,7 +235,8 @@ enum {
   RC_TRIGGER_STATE_ACTIVE,     /* achievement is active and may trigger */
   RC_TRIGGER_STATE_PAUSED,     /* achievement is currently paused and will not trigger */
   RC_TRIGGER_STATE_RESET,      /* achievement hit counts were reset */
-  RC_TRIGGER_STATE_TRIGGERED   /* achievement has triggered */
+  RC_TRIGGER_STATE_TRIGGERED,  /* achievement has triggered */
+  RC_TRIGGER_STATE_PRIMED      /* all non-Trigger conditions are true */
 };
 
 typedef struct {
@@ -475,10 +477,11 @@ int rc_runtime_activate_richpresence(rc_runtime_t* runtime, const char* script, 
 const char* rc_runtime_get_richpresence(const rc_runtime_t* runtime);
 
 enum {
-  RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, /* from WAITING or PAUSED to ACTIVE */
+  RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, /* from WAITING, PAUSED, or PRIMED to ACTIVE */
   RC_RUNTIME_EVENT_ACHIEVEMENT_PAUSED,
   RC_RUNTIME_EVENT_ACHIEVEMENT_RESET,
   RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED,
+  RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED,
   RC_RUNTIME_EVENT_LBOARD_STARTED,
   RC_RUNTIME_EVENT_LBOARD_CANCELED,
   RC_RUNTIME_EVENT_LBOARD_UPDATED,

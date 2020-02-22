@@ -253,7 +253,8 @@ enum {
   RC_CONDITION_ADD_HITS,
   RC_CONDITION_AND_NEXT,
   RC_CONDITION_MEASURED,
-  RC_CONDITION_ADD_ADDRESS
+  RC_CONDITION_ADD_ADDRESS,
+  RC_CONDITION_TRIGGER,
 };
 ```
 
@@ -353,7 +354,8 @@ enum {
   RC_TRIGGER_STATE_ACTIVE,     /* achievement is active and may trigger */
   RC_TRIGGER_STATE_PAUSED,     /* achievement is currently paused and will not trigger */
   RC_TRIGGER_STATE_RESET,      /* achievement hit counts were reset */
-  RC_TRIGGER_STATE_TRIGGERED   /* achievement has triggered */
+  RC_TRIGGER_STATE_TRIGGERED,  /* achievement has triggered */
+  RC_TRIGGER_STATE_PRIMED      /* all non-Trigger conditions are true */
 };
 ```
 
@@ -562,6 +564,8 @@ The `event.type` field will be one of the following:
 * RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED (id=achievement id)
   All conditions for the achievement have been met and the user should be informed.
   NOTE: If `rc_runtime_reset` is called without deactivating the achievement, it may trigger again.
+* RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED (id=achievement id)
+  All non-trigger conditions for the achievement have been met. This typically indicates the achievement is a challenge achievement and the challenge is active.
 * RC_RUNTIME_EVENT_LBOARD_STARTED (id=leaderboard id, value=leaderboard value)
   The leaderboard's start condition has been met and the user should be informed that a leaderboard attempt has started.
 * RC_RUNTIME_EVENT_LBOARD_CANCELED (id=leaderboard id, value=leaderboard value)
