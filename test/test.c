@@ -4349,6 +4349,14 @@ static void test_richpresence(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestEmpty
+    ------------------------------------------------------------------------*/
+    int result = rc_richpresence_size("");
+    assert(result == RC_MISSING_DISPLAY_STRING);
+  }
+
+  {
+    /*------------------------------------------------------------------------
     TestValueMacro
     ------------------------------------------------------------------------*/
     unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
@@ -4493,6 +4501,23 @@ static void test_richpresence(void) {
     assert(strcmp(output, "[Unknown macro]Points(0x 0001) Points") == 0);
     assert(result == 37);
   }
+
+  {
+    /*------------------------------------------------------------------------
+    TestUndefinedMacroAtEndOfLine
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+    int result;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    richpresence = parse_richpresence("Display:\n@Points(0x 0001)", buffer);
+    result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "[Unknown macro]Points(0x 0001)") == 0);
+    assert(result == 30);  }
 
   {
     /*------------------------------------------------------------------------
