@@ -168,6 +168,7 @@
     <ClCompile Include="lua\src\lutf8lib.c" />
     <ClCompile Include="lua\src\lvm.c" />
     <ClCompile Include="lua\src\lzio.c" />
+    <ClCompile Include="rcheevos\test_condition.c" />
     <ClCompile Include="rcheevos\test_memref.c" />
     <ClCompile Include="rcheevos\test_operand.c" />
     <ClCompile Include="test.c" />

@@ -87,6 +87,33 @@ extern const char* test_framework_basename(const char* path);
   func(p1, p2, p3, p4); \
   ++__test_framework_state.run_count
 
+#define TEST_PARAMS5(func, p1, p2, p3, p4, p5) \
+  __test_framework_state.current_test = #func "(" #p1 ", " #p2 ", " #p3 ", " #p4 ", " #p5 ")"; \
+  __test_framework_state.current_test_file = __FILE__; \
+  __test_framework_state.current_test_line = __LINE__; \
+  printf("."); \
+  fflush(stdout); \
+  func(p1, p2, p3, p4, p5); \
+  ++__test_framework_state.run_count
+
+#define TEST_PARAMS6(func, p1, p2, p3, p4, p5, p6) \
+  __test_framework_state.current_test = #func "(" #p1 ", " #p2 ", " #p3 ", " #p4 ", " #p5 ", " #p6 ")"; \
+  __test_framework_state.current_test_file = __FILE__; \
+  __test_framework_state.current_test_line = __LINE__; \
+  printf("."); \
+  fflush(stdout); \
+  func(p1, p2, p3, p4, p5, p6); \
+  ++__test_framework_state.run_count
+
+#define TEST_PARAMS7(func, p1, p2, p3, p4, p5, p6, p7) \
+  __test_framework_state.current_test = #func "(" #p1 ", " #p2 ", " #p3 ", " #p4 ", " #p5 ", " #p6 ", " #p7 ")"; \
+  __test_framework_state.current_test_file = __FILE__; \
+  __test_framework_state.current_test_line = __LINE__; \
+  printf("."); \
+  fflush(stdout); \
+  func(p1, p2, p3, p4, p5, p6, p7); \
+  ++__test_framework_state.run_count
+
 #define ASSERT_FAIL(message, ...) \
   fprintf(stderr, "\n* %s/%s (%s:%d)\n  ", __test_framework_state.current_suite, __test_framework_state.current_test, \
           test_framework_basename(__test_framework_state.current_test_file), __test_framework_state.current_test_line); \
