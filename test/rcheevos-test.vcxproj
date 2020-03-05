@@ -168,11 +168,15 @@
     <ClCompile Include="lua\src\lutf8lib.c" />
     <ClCompile Include="lua\src\lvm.c" />
     <ClCompile Include="lua\src\lzio.c" />
+    <ClCompile Include="rcheevos\test_memref.c" />
+    <ClCompile Include="rcheevos\test_operand.c" />
     <ClCompile Include="test.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h" />
     <ClInclude Include="..\src\rcheevos\internal.h" />
+    <ClInclude Include="rcheevos\mock_memory.h" />
+    <ClInclude Include="test_framework.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
