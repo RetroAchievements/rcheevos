@@ -18,6 +18,7 @@ OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/oper
     rcheevos/test_memref.o \
     rcheevos/test_operand.o \
     rcheevos/test_condition.o \
+    rcheevos/test_condset.o \
     test.o
 
 all: test

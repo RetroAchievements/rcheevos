@@ -11,6 +11,7 @@ typedef struct
   const char* current_test;
   const char* current_test_file;
   unsigned current_test_line;
+  int current_test_fail;
   int fail_count;
   int run_count;
   time_t time_start;
@@ -51,76 +52,62 @@ extern const char* test_framework_basename(const char* path);
   printf("\n"); \
   fflush(stdout)
 
-#define TEST(func) \
-  __test_framework_state.current_test = #func; \
+#define TEST_INIT() \
   __test_framework_state.current_test_file = __FILE__; \
   __test_framework_state.current_test_line = __LINE__; \
+  __test_framework_state.current_test_fail = 0; \
+  ++__test_framework_state.run_count; \
   printf("."); \
-  fflush(stdout); \
-  func(); \
-  ++__test_framework_state.run_count
+  fflush(stdout);
+
+#define TEST(func) \
+  __test_framework_state.current_test = #func; \
+  TEST_INIT() \
+  func();
 
 #define TEST_PARAMS2(func, p1, p2) \
   __test_framework_state.current_test = #func "(" #p1 ", " #p2 ")"; \
-  __test_framework_state.current_test_file = __FILE__; \
-  __test_framework_state.current_test_line = __LINE__; \
-  printf("."); \
-  fflush(stdout); \
-  func(p1, p2); \
-  ++__test_framework_state.run_count
+  TEST_INIT() \
+  func(p1, p2);
 
 #define TEST_PARAMS3(func, p1, p2, p3) \
   __test_framework_state.current_test = #func "(" #p1 ", " #p2 ", " #p3 ")"; \
-  __test_framework_state.current_test_file = __FILE__; \
-  __test_framework_state.current_test_line = __LINE__; \
-  printf("."); \
-  fflush(stdout); \
-  func(p1, p2, p3); \
-  ++__test_framework_state.run_count
+  TEST_INIT() \
+  func(p1, p2, p3);
 
 #define TEST_PARAMS4(func, p1, p2, p3, p4) \
   __test_framework_state.current_test = #func "(" #p1 ", " #p2 ", " #p3 ", " #p4 ")"; \
-  __test_framework_state.current_test_file = __FILE__; \
-  __test_framework_state.current_test_line = __LINE__; \
-  printf("."); \
-  fflush(stdout); \
-  func(p1, p2, p3, p4); \
-  ++__test_framework_state.run_count
+  TEST_INIT() \
+  func(p1, p2, p3, p4);
 
 #define TEST_PARAMS5(func, p1, p2, p3, p4, p5) \
   __test_framework_state.current_test = #func "(" #p1 ", " #p2 ", " #p3 ", " #p4 ", " #p5 ")"; \
-  __test_framework_state.current_test_file = __FILE__; \
-  __test_framework_state.current_test_line = __LINE__; \
-  printf("."); \
-  fflush(stdout); \
-  func(p1, p2, p3, p4, p5); \
-  ++__test_framework_state.run_count
+  TEST_INIT() \
+  func(p1, p2, p3, p4, p5);
 
 #define TEST_PARAMS6(func, p1, p2, p3, p4, p5, p6) \
   __test_framework_state.current_test = #func "(" #p1 ", " #p2 ", " #p3 ", " #p4 ", " #p5 ", " #p6 ")"; \
-  __test_framework_state.current_test_file = __FILE__; \
-  __test_framework_state.current_test_line = __LINE__; \
-  printf("."); \
-  fflush(stdout); \
-  func(p1, p2, p3, p4, p5, p6); \
-  ++__test_framework_state.run_count
+  TEST_INIT() \
+  func(p1, p2, p3, p4, p5, p6);
 
 #define TEST_PARAMS7(func, p1, p2, p3, p4, p5, p6, p7) \
   __test_framework_state.current_test = #func "(" #p1 ", " #p2 ", " #p3 ", " #p4 ", " #p5 ", " #p6 ", " #p7 ")"; \
-  __test_framework_state.current_test_file = __FILE__; \
-  __test_framework_state.current_test_line = __LINE__; \
-  printf("."); \
-  fflush(stdout); \
-  func(p1, p2, p3, p4, p5, p6, p7); \
-  ++__test_framework_state.run_count
+  TEST_INIT() \
+  func(p1, p2, p3, p4, p5, p6, p7);
 
-#define ASSERT_FAIL(message, ...) \
-  fprintf(stderr, "\n* %s/%s (%s:%d)\n  ", __test_framework_state.current_suite, __test_framework_state.current_test, \
-          test_framework_basename(__test_framework_state.current_test_file), __test_framework_state.current_test_line); \
+#define ASSERT_FAIL(message, ...) { \
+  if (!__test_framework_state.current_test_fail) { \
+    __test_framework_state.current_test_fail = 1; \
+    ++__test_framework_state.fail_count; \
+    fprintf(stderr, "\n* %s/%s (%s:%d)\n  ", __test_framework_state.current_suite, __test_framework_state.current_test, \
+            test_framework_basename(__test_framework_state.current_test_file), __test_framework_state.current_test_line); \
+  } else { \
+    fprintf(stderr, "\n  "); \
+  } \
   fprintf(stderr, message "\n", __VA_ARGS__); \
   fflush(stderr); \
-  ++__test_framework_state.fail_count; \
-  return
+  return; \
+}
 
 #define ASSERT_COMPARE(value, compare, expected, type, format) { \
   type __v = (type)(value); \
@@ -128,7 +115,8 @@ extern const char* test_framework_basename(const char* path);
   if (!(__v compare __e)) { \
     ASSERT_FAIL("Expected: " #value " " #compare " " #expected " (%s:%d)\n  Found:    " format " " #compare " " format, \
                 test_framework_basename(__FILE__), __LINE__, __v, __e); \
-  }}
+  } \
+}
 
 #define ASSERT_NUM_EQUALS(value, expected)         ASSERT_COMPARE(value, ==, expected, int, "%d")
 #define ASSERT_NUM_NOT_EQUALS(value, expected)     ASSERT_COMPARE(value, !=, expected, int, "%d")
@@ -140,6 +128,7 @@ extern const char* test_framework_basename(const char* path);
 #define ASSERT_UNUM_EQUALS(value, expected)        ASSERT_COMPARE(value, ==, expected, unsigned, "%u")
 #define ASSERT_DBL_EQUALS(value, expected)         ASSERT_COMPARE(value, ==, expected, double, "%g")
 #define ASSERT_PTR_EQUALS(value, expected)         ASSERT_COMPARE(value, ==, expected, void*, "%p")
+#define ASSERT_PTR_NOT_NULL(value)                 ASSERT_COMPARE(value, !=, NULL, void*, "%p")
 
 #define ASSERT_STR_EQUALS(value, expected) { \
   const char* __v = (const char*)(value); \
