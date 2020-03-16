@@ -116,15 +116,21 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       }
       break;
 
-    case RC_OPERATOR_EQ:
-      /* legacy support for AddSource, etc - A:0x1234=0 */
-      break;
-
     default:
       /* comparison operators are not valid on modifying statements */
       if (can_modify) {
-        parse->offset = RC_INVALID_OPERATOR;
-        return 0;
+        switch (self->type) {
+          case RC_CONDITION_ADD_SOURCE:
+          case RC_CONDITION_SUB_SOURCE:
+          case RC_CONDITION_ADD_ADDRESS:
+            /* prevent parse errors on legacy achievements where a condition was present before changing the type */
+            self->oper = RC_OPERATOR_NONE;
+            break;
+
+          default:
+            parse->offset = RC_INVALID_OPERATOR;
+            return 0;
+        }
       }
       break;
   }
@@ -134,6 +140,12 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   if (ret2 < 0) {
     parse->offset = ret2;
     return 0;
+  }
+
+  if (self->oper == RC_OPERATOR_NONE) {
+    /* if operator is none, explicitly clear out the right side */
+    self->operand2.type = RC_INVALID_CONST_OPERAND;
+    self->operand2.value.num = 0;
   }
 
   if (!can_modify && self->operand2.type == RC_OPERAND_FP) {
