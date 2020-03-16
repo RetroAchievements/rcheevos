@@ -1,6 +1,6 @@
 #include "internal.h"
 
-#include "..\test_framework.h"
+#include "../test_framework.h"
 #include "mock_memory.h"
 
 static void assert_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
@@ -46,12 +46,22 @@ static void assert_parse_condition(
 
 static void test_parse_condition(const char* memaddr, int expected_type, int expected_left_type, 
     int expected_operator, int expected_required_hits) {
-  assert_parse_condition(memaddr, expected_type,
-    expected_left_type, RC_MEMSIZE_8_BITS, 0x1234U,
-    expected_operator,
-    RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
-    expected_required_hits
-  );
+  if (expected_operator == RC_OPERATOR_NONE) {
+    assert_parse_condition(memaddr, expected_type,
+      expected_left_type, RC_MEMSIZE_8_BITS, 0x1234U,
+      expected_operator,
+      RC_INVALID_CONST_OPERAND, RC_MEMSIZE_8_BITS, 0U,
+      expected_required_hits
+    );
+  }
+  else {
+    assert_parse_condition(memaddr, expected_type,
+      expected_left_type, RC_MEMSIZE_8_BITS, 0x1234U,
+      expected_operator,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 8U,
+      expected_required_hits
+    );
+  }
 }
 
 static void test_parse_operands(const char* memaddr, 
@@ -176,11 +186,11 @@ void test_condition(void) {
   /* flags */
   TEST_PARAMS5(test_parse_condition, "R:0xH1234=8", RC_CONDITION_RESET_IF, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
   TEST_PARAMS5(test_parse_condition, "P:0xH1234=8", RC_CONDITION_PAUSE_IF, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
-  TEST_PARAMS5(test_parse_condition, "A:0xH1234=8", RC_CONDITION_ADD_SOURCE, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
-  TEST_PARAMS5(test_parse_condition, "B:0xH1234=8", RC_CONDITION_SUB_SOURCE, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
+  TEST_PARAMS5(test_parse_condition, "A:0xH1234=8", RC_CONDITION_ADD_SOURCE, RC_OPERAND_ADDRESS, RC_OPERATOR_NONE, 0);
+  TEST_PARAMS5(test_parse_condition, "B:0xH1234=8", RC_CONDITION_SUB_SOURCE, RC_OPERAND_ADDRESS, RC_OPERATOR_NONE, 0);
   TEST_PARAMS5(test_parse_condition, "C:0xH1234=8", RC_CONDITION_ADD_HITS, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
   TEST_PARAMS5(test_parse_condition, "M:0xH1234=8", RC_CONDITION_MEASURED, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
-  TEST_PARAMS5(test_parse_condition, "I:0xH1234=8", RC_CONDITION_ADD_ADDRESS, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
+  TEST_PARAMS5(test_parse_condition, "I:0xH1234=8", RC_CONDITION_ADD_ADDRESS, RC_OPERAND_ADDRESS, RC_OPERATOR_NONE, 0);
   TEST_PARAMS5(test_parse_condition, "T:0xH1234=8", RC_CONDITION_TRIGGER, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
 
   /* modifiers (only valid with some flags, use A:) */
