@@ -17,6 +17,8 @@ OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/oper
     $(LUA_SRC)/ltablib.o $(LUA_SRC)/lutf8lib.o $(LUA_SRC)/loadlib.o $(LUA_SRC)/linit.o \
     rcheevos/test_memref.o \
     rcheevos/test_operand.o \
+    rcheevos/test_condition.o \
+    rcheevos/test_condset.o \
     test.o
 
 all: test
