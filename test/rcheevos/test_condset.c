@@ -1,6 +1,6 @@
 #include "internal.h"
 
-#include "..\test_framework.h"
+#include "../test_framework.h"
 #include "mock_memory.h"
 
 static void assert_parse_condset(rc_condset_t** condset, rc_memref_value_t** memrefs, void* buffer, const char* memaddr)

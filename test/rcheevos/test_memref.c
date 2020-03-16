@@ -1,6 +1,6 @@
 #include "internal.h"
 
-#include "..\test_framework.h"
+#include "../test_framework.h"
 #include "mock_memory.h"
 
 static void test_allocate_shared_address() {
