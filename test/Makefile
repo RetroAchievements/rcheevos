@@ -20,6 +20,7 @@ OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/oper
     rcheevos/test_condition.o \
     rcheevos/test_condset.o \
     rcheevos/test_trigger.o \
+    rcheevos/test_value.o \
     test.o
 
 all: test

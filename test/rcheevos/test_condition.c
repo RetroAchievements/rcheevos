@@ -44,7 +44,7 @@ static void assert_parse_condition(
     ASSERT_NUM_EQUALS(self->required_hits, expected_required_hits);
 }
 
-static void test_parse_condition(const char* memaddr, int expected_type, int expected_left_type, 
+static void test_parse_condition(const char* memaddr, int expected_type, int expected_left_type,
     int expected_operator, int expected_required_hits) {
   if (expected_operator == RC_OPERATOR_NONE) {
     assert_parse_condition(memaddr, expected_type,
@@ -64,13 +64,22 @@ static void test_parse_condition(const char* memaddr, int expected_type, int exp
   }
 }
 
-static void test_parse_operands(const char* memaddr, 
+static void test_parse_operands(const char* memaddr,
     int expected_left_type, int expected_left_size, unsigned expected_left_value,
     int expected_right_type, int expected_right_size, unsigned expected_right_value) {
   assert_parse_condition(memaddr, RC_CONDITION_STANDARD,
     expected_left_type, expected_left_size, expected_left_value,
     RC_OPERATOR_EQ,
     expected_right_type, expected_right_size, expected_right_value,
+    0
+  );
+}
+
+static void test_parse_modifier(const char* memaddr, int expected_operator, int expected_operand, double expected_multiplier) {
+  assert_parse_condition(memaddr, RC_CONDITION_ADD_SOURCE,
+    RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
+    expected_operator,
+    expected_operand, RC_MEMSIZE_8_BITS, expected_multiplier,
     0
   );
 }
@@ -98,7 +107,7 @@ static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_
   memset(&eval_state, 0, sizeof(eval_state));
   eval_state.peek = peek;
   eval_state.peek_userdata = memory;
-  
+
   rc_update_memref_values(memrefs, peek, memory);
   return rc_test_condition(cond, &eval_state);
 }
@@ -197,6 +206,14 @@ void test_condition(void) {
   TEST_PARAMS5(test_parse_condition, "A:0xH1234*8", RC_CONDITION_ADD_SOURCE, RC_OPERAND_ADDRESS, RC_OPERATOR_MULT, 0);
   TEST_PARAMS5(test_parse_condition, "A:0xH1234/8", RC_CONDITION_ADD_SOURCE, RC_OPERAND_ADDRESS, RC_OPERATOR_DIV, 0);
   TEST_PARAMS5(test_parse_condition, "A:0xH1234&8", RC_CONDITION_ADD_SOURCE, RC_OPERAND_ADDRESS, RC_OPERATOR_AND, 0);
+
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234", RC_OPERATOR_NONE, RC_OPERAND_CONST, 1);
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234*1", RC_OPERATOR_MULT, RC_OPERAND_CONST, 1);
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234*3", RC_OPERATOR_MULT, RC_OPERAND_CONST, 3);
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234*f0.5", RC_OPERATOR_MULT, RC_OPERAND_FP, 0.5);
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234*f.5", RC_OPERATOR_MULT, RC_OPERAND_FP, 0.5);
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234*-1", RC_OPERATOR_MULT, RC_OPERAND_CONST, -1);
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234*0xH3456", RC_OPERATOR_MULT, RC_OPERAND_ADDRESS, 0x3456);
 
   /* hit counts */
   TEST_PARAMS5(test_parse_condition, "0xH1234=8(1)", RC_CONDITION_STANDARD, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 1);

@@ -71,6 +71,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
   char* end;
   unsigned long address;
   char is_bcd = 0;
+  char is_inverted = 0;
   char size;
 
   switch (*aux++) {
@@ -85,6 +86,11 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
 
     case 'p': case 'P':
       self->type = RC_OPERAND_PRIOR;
+      break;
+
+    case '~':
+      self->type = RC_OPERAND_ADDRESS;
+      is_inverted = 1;
       break;
 
     default:
@@ -149,6 +155,12 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
       default: break; /* sizes less than 8-bit don't need a BCD conversion */
     }
   }
+  else if (is_inverted) {
+    if (self->size == RC_MEMSIZE_8_BITS_BITCOUNT)
+      return RC_INVALID_MEMORY_OPERAND;
+
+    self->size += (RC_MEMSIZE_8_BITS_INVERTED - RC_MEMSIZE_8_BITS);
+  }
 
   *memaddr = end;
   return RC_OK;
@@ -159,11 +171,12 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, in
   char* end;
   int ret;
   unsigned long value;
+  long svalue;
 
   self->size = RC_MEMSIZE_32_BITS;
 
   switch (*aux) {
-    case 'h': case 'H':
+    case 'h': case 'H': /* hex constant */
       if (aux[2] == 'x' || aux[2] == 'X') {
         /* H0x1234 is a typo - either H1234 or 0xH1234 was probably meant */
         return RC_INVALID_CONST_OPERAND;
@@ -185,7 +198,7 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, in
       aux = end;
       break;
 
-    case 'f': case 'F':
+    case 'f': case 'F': /* floating point constant */
       self->value.dbl = strtod(++aux, &end);
 
       if (end == aux) {
@@ -203,6 +216,23 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, in
       aux = end;
       break;
     
+    case 'v': case 'V': /* signed integer constant */
+      svalue = strtol(++aux, &end, 10);
+
+      if (end == aux) {
+        return RC_INVALID_CONST_OPERAND;
+      }
+
+      if (svalue > 0xffffffffU) {
+        svalue = 0xffffffffU;
+      }
+
+      self->type = RC_OPERAND_CONST;
+      self->value.num = (unsigned)svalue;
+
+      aux = end;
+      break;
+
     case '0':
       if (aux[1] == 'x' || aux[1] == 'X') {
         /* fall through */
@@ -507,6 +537,62 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
     case RC_MEMSIZE_8_BITS_BITCOUNT:
       value = rc_bits_set[(value & 0x0F)]
             + rc_bits_set[((value >> 4) & 0x0F)];
+      break;
+
+    case RC_MEMSIZE_BIT_0_INVERTED:
+      value = ((value >> 0) & 1) ^ 1;
+      break;
+
+    case RC_MEMSIZE_BIT_1_INVERTED:
+      value = ((value >> 1) & 1) ^ 1;
+      break;
+
+    case RC_MEMSIZE_BIT_2_INVERTED:
+      value = ((value >> 2) & 1) ^ 1;
+      break;
+
+    case RC_MEMSIZE_BIT_3_INVERTED:
+      value = ((value >> 3) & 1) ^ 1;
+      break;
+
+    case RC_MEMSIZE_BIT_4_INVERTED:
+      value = ((value >> 4) & 1) ^ 1;
+      break;
+
+    case RC_MEMSIZE_BIT_5_INVERTED:
+      value = ((value >> 5) & 1) ^ 1;
+      break;
+
+    case RC_MEMSIZE_BIT_6_INVERTED:
+      value = ((value >> 6) & 1) ^ 1;
+      break;
+
+    case RC_MEMSIZE_BIT_7_INVERTED:
+      value = ((value >> 7) & 1) ^ 1;
+      break;
+
+    case RC_MEMSIZE_LOW_INVERTED:
+      value = (value & 0x0f) ^ 0x0f;
+      break;
+
+    case RC_MEMSIZE_HIGH_INVERTED:
+      value = ((value >> 4) & 0x0f) ^ 0x0f;
+      break;
+
+    case RC_MEMSIZE_8_BITS_INVERTED:
+      value ^= 0xff;
+      break;
+
+    case RC_MEMSIZE_16_BITS_INVERTED:
+      value ^= 0xffff;
+      break;
+
+    case RC_MEMSIZE_24_BITS_INVERTED:
+      value ^= 0xffffff;
+      break;
+
+    case RC_MEMSIZE_32_BITS_INVERTED:
+      value ^= 0xffffffff;
       break;
 
     default:

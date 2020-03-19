@@ -145,7 +145,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_MEASURED:
         if (condition->required_hits == 0) {
           /* Measured condition without a hit target measures the value of the left operand */
-          measured_value = rc_evaluate_operand(&condition->operand1, eval_state) + eval_state->add_value;
+          measured_value = rc_evaluate_condition_value(condition, eval_state) + eval_state->add_value;
         }
         break;
 
