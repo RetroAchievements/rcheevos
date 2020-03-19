@@ -24,9 +24,6 @@
     <ClCompile Include="..\src\rcheevos\operand.c">
       <Filter>src\rcheevos</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\rcheevos\term.c">
-      <Filter>src\rcheevos</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\rcheevos\trigger.c">
       <Filter>src\rcheevos</Filter>
     </ClCompile>
@@ -40,9 +37,6 @@
       <Filter>src\rcheevos</Filter>
     </ClCompile>
     <ClCompile Include="..\src\rcheevos\condset.c">
-      <Filter>src\rcheevos</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\rcheevos\expression.c">
       <Filter>src\rcheevos</Filter>
     </ClCompile>
     <ClCompile Include="..\test\lua\src\lapi.c">

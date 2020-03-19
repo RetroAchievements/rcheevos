@@ -191,6 +191,21 @@ enum {
   RC_MEMSIZE_24_BITS_BCD,
   RC_MEMSIZE_32_BITS_BCD,
   RC_MEMSIZE_8_BITS_BITCOUNT
+
+  RC_MEMSIZE_8_BITS_INVERTED,
+  RC_MEMSIZE_16_BITS_INVERTED,
+  RC_MEMSIZE_24_BITS_INVERTED,
+  RC_MEMSIZE_32_BITS_INVERTED,
+  RC_MEMSIZE_LOW_INVERTED,
+  RC_MEMSIZE_HIGH_INVERTED,
+  RC_MEMSIZE_BIT_0_INVERTED,
+  RC_MEMSIZE_BIT_1_INVERTED,
+  RC_MEMSIZE_BIT_2_INVERTED,
+  RC_MEMSIZE_BIT_3_INVERTED,
+  RC_MEMSIZE_BIT_4_INVERTED,
+  RC_MEMSIZE_BIT_5_INVERTED,
+  RC_MEMSIZE_BIT_6_INVERTED,
+  RC_MEMSIZE_BIT_7_INVERTED
 };
 ```
 
@@ -365,52 +380,12 @@ Finally, `rc_reset_trigger` can be used to reset the internal state of a trigger
 void rc_reset_trigger(rc_trigger_t* self);
 ```
 
-### `rc_term_t`
-
-A term is the leaf node of expressions used to compute values from operands. A term is evaluated by multiplying its two operands. `invert` is used to invert the bits of the second operand of the term, when the unary operator `~` is used.
-
-```c
-typedef struct rc_term_t rc_term_t;
-
-struct rc_term_t {
-  /* The next term in this chain. */
-  rc_term_t* next;
-
-  /* The first operand. */
-  rc_operand_t operand1;
-  /* The second operand. */
-  rc_operand_t operand2;
-
-  /* A value that is applied to the second variable to invert its bits. */
-  unsigned invert;
-};
-```
-
-### `rc_expression_t`
-
-An expression is a collection of terms. All terms in the collection are added together to give the value of the expression.
-
-```c
-typedef struct rc_expression_t rc_expression_t;
-
-struct rc_expression_t {
-  /* The next expression in this chain. */
-  rc_expression_t* next;
-
-  /* The list of terms in this expression. */
-  rc_term_t* terms;
-};
-```
-
 ### `rc_value_t`
 
-A value is a collection of expressions. It's used to give the value for a leaderboard, and it evaluates to value of the expression with the greatest value in the collection.
+A value is a collection of conditions that result in a single RC_CONDITION_MEASURED expression. It's used to calculate the value for a leaderboard and for lookups in rich presence.
 
 ```c
 typedef struct {
-  /* The list of expression to evaluate. */
-  rc_expression_t* expressions;
-
   /* The list of conditions to evaluate. */
   rc_condset_t* conditions;
 

@@ -10,12 +10,10 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
 
   has_measured = 0;
   in_add_address = 0;
-  self->expressions = 0;
 
   /* this largely duplicates rc_parse_condset, but we cannot call it directly, as we need to check the
    * type of each condition as we go */
   self->conditions = RC_ALLOC(rc_condset_t, parse);
-  self->conditions->next = 0;
   self->conditions->has_pause = 0;
 
   next = &self->conditions->conditions;
@@ -72,6 +70,8 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
   if (!has_measured) {
     parse->offset = RC_MISSING_VALUE_MEASURED;
   }
+
+  self->conditions->next = 0;
 }
 
 void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
@@ -82,8 +82,6 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
   const char* buffer_ptr;
   char* ptr;
   int end_of_clause;
-
-  self->expressions = 0;
 
   /* this largely duplicates rc_parse_condset, but we cannot call it directly, as we need to check the
    * type of each condition as we go */
@@ -216,24 +214,6 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int 
   return parse.offset >= 0 ? self : 0;
 }
 
-static int rc_evaluate_expr_value(rc_value_t* self, rc_eval_state_t* eval_state) {
-  rc_expression_t* exp;
-  int value, max;
-
-  exp = self->expressions;
-  max = rc_evaluate_expression(exp, eval_state);
-
-  for (exp = exp->next; exp != 0; exp = exp->next) {
-    value = rc_evaluate_expression(exp, eval_state);
-
-    if (value > max) {
-      max = value;
-    }
-  }
-
-  return max;
-}
-
 int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
   rc_eval_state_t eval_state;
   rc_condset_t* condset;
@@ -245,10 +225,6 @@ int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) 
   eval_state.L = L;
 
   rc_update_memref_values(self->memrefs, peek, ud);
-
-  if (self->expressions) {
-    return rc_evaluate_expr_value(self, &eval_state);
-  }
 
   rc_test_condset(self->conditions, &eval_state);
   result = (int)eval_state.measured_value;

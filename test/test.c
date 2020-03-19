@@ -136,7 +136,7 @@ static void test_lboard(void) {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     unsigned value;
-    
+
     memory.ram = ram;
     memory.size = sizeof(ram);
 
@@ -196,7 +196,7 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    
+
     memory.ram = ram;
     memory.size = sizeof(ram);
 
@@ -243,7 +243,7 @@ static void test_lboard(void) {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     unsigned value;
-    
+
     memory.ram = ram;
     memory.size = sizeof(ram);
 
@@ -278,7 +278,7 @@ static void test_lboard(void) {
     rc_lboard_t* lboard;
     lboard_test_state_t state;
     unsigned value;
-    
+
     memory.ram = ram;
     memory.size = sizeof(ram);
 
@@ -306,7 +306,7 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    
+
     memory.ram = ram;
     memory.size = sizeof(ram);
 
@@ -330,7 +330,7 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    
+
     memory.ram = ram;
     memory.size = sizeof(ram);
 
@@ -363,7 +363,7 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    
+
     memory.ram = ram;
     memory.size = sizeof(ram);
 
@@ -397,7 +397,7 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    
+
     memory.ram = ram;
     memory.size = sizeof(ram);
 
@@ -407,7 +407,7 @@ static void test_lboard(void) {
     lboard_evaluate(lboard, &state, &memory);
     assert(state.active);
 
-    ram[3] = 18; 
+    ram[3] = 18;
     lboard_evaluate(lboard, &state, &memory);
     assert(!state.active);
     assert(state.submitted);
@@ -422,7 +422,7 @@ static void test_lboard(void) {
     memory_t memory;
     rc_lboard_t* lboard;
     lboard_test_state_t state;
-    
+
     memory.ram = ram;
     memory.size = sizeof(ram);
 
@@ -2048,7 +2048,7 @@ static void test_runtime(void) {
     assert(strcmp(rc_runtime_get_richpresence(&runtime), "") == 0);
 
     /* loading generates display string with uninitialized memrefs - ensures non-empty string if loaded while paused */
-    assert(rc_runtime_activate_richpresence(&runtime, 
+    assert(rc_runtime_activate_richpresence(&runtime,
         "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Points", NULL, 0) == RC_OK);
     assert(strcmp(rc_runtime_get_richpresence(&runtime), "0 Points") == 0);
 
@@ -2129,7 +2129,7 @@ static void test_runtime(void) {
     assert(strcmp(rc_runtime_get_richpresence(&runtime), "") == 0);
 
     /* static string will be set on first frame */
-    assert(rc_runtime_activate_richpresence(&runtime, 
+    assert(rc_runtime_activate_richpresence(&runtime,
         "Display:\nHello, world!", NULL, 0) == RC_OK);
     assert(strcmp(rc_runtime_get_richpresence(&runtime), "Hello, world!") == 0);
 
@@ -2191,8 +2191,6 @@ int main(void) {
   test_condition();
   test_condset();
   test_trigger();
-
-  /*test_term();*/
   test_value();
 
   test_lboard();

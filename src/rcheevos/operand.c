@@ -166,7 +166,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
   return RC_OK;
 }
 
-static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, int is_indirect, rc_parse_state_t* parse) {
+int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, int is_indirect, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   char* end;
   int ret;
@@ -215,7 +215,7 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, in
 
       aux = end;
       break;
-    
+
     case 'v': case 'V': /* signed integer constant */
       svalue = strtol(++aux, &end, 10);
 
@@ -251,47 +251,6 @@ static int rc_parse_operand_trigger(rc_operand_t* self, const char** memaddr, in
     case '1': case '2': case '3': case '4': case '5':
     case '6': case '7': case '8': case '9':
       value = strtoul(aux, &end, 10);
-      
-      if (end == aux) {
-        return RC_INVALID_CONST_OPERAND;
-      }
-
-      if (value > 0xffffffffU) {
-        value = 0xffffffffU;
-      }
-
-      self->type = RC_OPERAND_CONST;
-      self->value.num = (unsigned)value;
-
-      aux = end;
-      break;
-    
-    case '@':
-      ret = rc_parse_operand_lua(self, &aux, parse);
-
-      if (ret < 0) {
-        return ret;
-      }
-
-      break;
-  }
-
-  *memaddr = aux;
-  return RC_OK;
-}
-
-static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, int is_indirect, rc_parse_state_t* parse) {
-  const char* aux = *memaddr;
-  char* end;
-  int ret;
-  unsigned long value;
-  long svalue;
-
-  self->size = RC_MEMSIZE_32_BITS;
-
-  switch (*aux) {
-    case 'h': case 'H':
-      value = strtoul(++aux, &end, 16);
 
       if (end == aux) {
         return RC_INVALID_CONST_OPERAND;
@@ -306,58 +265,7 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, int i
 
       aux = end;
       break;
-    
-    case 'v': case 'V':
-      svalue = strtol(++aux, &end, 10);
 
-      if (end == aux) {
-        return RC_INVALID_CONST_OPERAND;
-      }
-
-      if (svalue > 0xffffffffU) {
-        svalue = 0xffffffffU;
-      }
-
-      self->type = RC_OPERAND_CONST;
-      self->value.num = (unsigned)svalue;
-
-      aux = end;
-      break;
-    
-    case '0':
-      if (aux[1] == 'x' || aux[1] == 'X') {
-        /* fall through */
-    default:
-        ret = rc_parse_operand_memory(self, &aux, parse, is_indirect);
-
-        if (ret < 0) {
-          return ret;
-        }
-
-        break;
-      }
-
-      /* fall through for case '0' where not '0x' */
-    case '.':
-    case '+': case '-':
-    case '1': case '2': case '3': case '4': case '5':
-    case '6': case '7': case '8': case '9':
-      self->value.dbl = strtod(aux, &end);
-
-      if (end == aux) {
-        return RC_INVALID_FP_OPERAND;
-      }
-
-      if (floor(self->value.dbl) == self->value.dbl) {
-        self->type = RC_OPERAND_CONST;
-        self->value.num = (unsigned)floor(self->value.dbl);
-      }
-      else {
-        self->type = RC_OPERAND_FP;
-      }
-      aux = end;
-      break;
-    
     case '@':
       ret = rc_parse_operand_lua(self, &aux, parse);
 
@@ -370,15 +278,6 @@ static int rc_parse_operand_term(rc_operand_t* self, const char** memaddr, int i
 
   *memaddr = aux;
   return RC_OK;
-}
-
-int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, int is_indirect, rc_parse_state_t* parse) {
-  if (is_trigger) {
-    return rc_parse_operand_trigger(self, memaddr, is_indirect, parse);
-  }
-  else {
-    return rc_parse_operand_term(self, memaddr, is_indirect, parse);
-  }
 }
 
 #ifndef RC_DISABLE_LUA
@@ -417,9 +316,9 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
       break;
 
     case RC_OPERAND_FP:
-      /* This is handled by rc_evaluate_term and rc_evaluate_condition_value. */
+      /* This is handled by rc_evaluate_condition_value. */
       return 0;
-    
+
     case RC_OPERAND_LUA:
 #ifndef RC_DISABLE_LUA
 
@@ -431,7 +330,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
         luapeek.ud = eval_state->peek_userdata;
 
         lua_pushlightuserdata(eval_state->L, &luapeek);
-        
+
         if (lua_pcall(eval_state->L, 2, 1, 0) == LUA_OK) {
           if (lua_isboolean(eval_state->L, -1)) {
             value = lua_toboolean(eval_state->L, -1);

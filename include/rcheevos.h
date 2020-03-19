@@ -80,6 +80,7 @@ enum {
   RC_MEMSIZE_32_BITS_BCD,
   RC_MEMSIZE_8_BITS_BITCOUNT,
 
+  /* NOTE: these must be in the same order as the non-inverted values above */
   RC_MEMSIZE_8_BITS_INVERTED,
   RC_MEMSIZE_16_BITS_INVERTED,
   RC_MEMSIZE_24_BITS_INVERTED,
@@ -93,7 +94,7 @@ enum {
   RC_MEMSIZE_BIT_4_INVERTED,
   RC_MEMSIZE_BIT_5_INVERTED,
   RC_MEMSIZE_BIT_6_INVERTED,
-  RC_MEMSIZE_BIT_7_INVERTED,
+  RC_MEMSIZE_BIT_7_INVERTED
 };
 
 typedef struct {
@@ -285,38 +286,10 @@ int rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* 
 void rc_reset_trigger(rc_trigger_t* self);
 
 /*****************************************************************************\
-| Expressions and values                                                      |
+| Values                                                                      |
 \*****************************************************************************/
 
-typedef struct rc_term_t rc_term_t;
-
-struct rc_term_t {
-  /* The next term in this chain. */
-  rc_term_t* next;
-
-  /* The first operand. */
-  rc_operand_t operand1;
-  /* The second operand. */
-  rc_operand_t operand2;
-
-  /* A value that is applied to the second variable to invert its bits. */
-  unsigned invert;
-};
-
-typedef struct rc_expression_t rc_expression_t;
-
-struct rc_expression_t {
-  /* The next expression in this chain. */
-  rc_expression_t* next;
-
-  /* The list of terms in this expression. */
-  rc_term_t* terms;
-};
-
 typedef struct {
-  /* The list of expression to evaluate. */
-  rc_expression_t* expressions;
-
   /* The list of conditions to evaluate. */
   rc_condset_t* conditions;
 

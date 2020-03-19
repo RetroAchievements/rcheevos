@@ -7,10 +7,12 @@
 #include <string.h> /* memset */
 
 #ifdef _CRT_SECURE_NO_WARNINGS /* windows build*/
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+ #define WIN32_LEAN_AND_MEAN
+ #include <windows.h>
 #else
-#include <dirent.h>
+ #include <dirent.h>
+ #include <strings.h>
+ #define stricmp strcasecmp
 #endif
 
 /* usage exmaple:
@@ -164,7 +166,7 @@ static char* get_json_value(char* start, const char* id, char** next)
           *ptr++ = '\0';
         *copy = '\0';
       } else if (*ptr == '[') {
-        if (next) 
+        if (next)
           *next = ptr;
         return ptr;
       } else {
@@ -180,7 +182,7 @@ static char* get_json_value(char* start, const char* id, char** next)
 
       return value;
     }
-    
+
     ++ptr;
   }
 
@@ -329,7 +331,7 @@ static int usage() {
 }
 
 int main(int argc, char* argv[]) {
-  
+
   if (argc < 3)
     return usage();
 
