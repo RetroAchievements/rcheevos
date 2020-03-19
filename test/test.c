@@ -2180,6 +2180,7 @@ extern void test_operand();
 extern void test_condset();
 extern void test_trigger();
 extern void test_value();
+extern void test_format();
 
 TEST_FRAMEWORK_DECLARATIONS()
 
@@ -2192,6 +2193,7 @@ int main(void) {
   test_condset();
   test_trigger();
   test_value();
+  test_format();
 
   test_lboard();
   test_richpresence();

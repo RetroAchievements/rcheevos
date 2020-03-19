@@ -165,11 +165,8 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
         next_clause = &(*next_clause)->next;
         break;
 
-      case ':': /* end of leaderboard clause */
-        --(*memaddr);
-        /* fallthrough */
-
       default: /* end of valid string */
+        --(*memaddr); /* undo the increment we performed when copying the string */
         cond->type = RC_CONDITION_MEASURED;
         cond->next = 0;
         *next_clause = 0;
