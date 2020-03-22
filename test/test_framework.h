@@ -104,7 +104,7 @@ extern const char* test_framework_basename(const char* path);
   } else { \
     fprintf(stderr, "\n  "); \
   } \
-  fprintf(stderr, message "\n", __VA_ARGS__); \
+  fprintf(stderr, message "\n", ## __VA_ARGS__); \
   fflush(stderr); \
   return; \
 }
@@ -125,10 +125,14 @@ extern const char* test_framework_basename(const char* path);
 #define ASSERT_NUM_LESS(value, expected)           ASSERT_COMPARE(value, <,  expected, int, "%d")
 #define ASSERT_NUM_LESS_EQUALS(value, expected)    ASSERT_COMPARE(value, <=, expected, int, "%d")
 
+#define ASSERT_TRUE(value)                         ASSERT_NUM_NOT_EQUALS(value, 0)
+#define ASSERT_FALSE(value)                        ASSERT_NUM_EQUALS(value, 0)
+
 #define ASSERT_UNUM_EQUALS(value, expected)        ASSERT_COMPARE(value, ==, expected, unsigned, "%u")
 #define ASSERT_DBL_EQUALS(value, expected)         ASSERT_COMPARE(value, ==, expected, double, "%g")
 #define ASSERT_PTR_EQUALS(value, expected)         ASSERT_COMPARE(value, ==, expected, void*, "%p")
 #define ASSERT_PTR_NOT_NULL(value)                 ASSERT_COMPARE(value, !=, NULL, void*, "%p")
+#define ASSERT_PTR_NULL(value)                     ASSERT_COMPARE(value, ==, NULL, void*, "%p")
 
 #define ASSERT_STR_EQUALS(value, expected) { \
   const char* __v = (const char*)(value); \
@@ -136,5 +140,6 @@ extern const char* test_framework_basename(const char* path);
   if (strcmp(__v, __e) != 0) { \
     ASSERT_FAIL( "String mismatch for: " #value " (%s:%d)\n  Expected: %s\n  Found:    %s", test_framework_basename(__FILE__), __LINE__, __e, __v); \
   }}
+
 
 #endif /* TEST_FRAMEWORK_H */

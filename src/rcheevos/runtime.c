@@ -8,7 +8,7 @@
  #define md5_append(state, buffer, size) MD5_Update(state, buffer, size)
  #define md5_finish(state, hash) MD5_Final(hash, state)
 #else
- #include "..\rhash\md5.h"
+ #include "../rhash/md5.h"
 #endif
 
 #include <stdlib.h>
