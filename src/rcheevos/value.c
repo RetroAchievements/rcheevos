@@ -65,13 +65,14 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
     (*memaddr)++;
   }
 
-  *next = 0;
-
   if (!has_measured) {
     parse->offset = RC_MISSING_VALUE_MEASURED;
   }
 
-  self->conditions->next = 0;
+  if (parse->buffer) {
+    *next = 0;
+    self->conditions->next = 0;
+  }
 }
 
 void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
@@ -101,6 +102,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
         case '$': /* maximum of */
         case '\0': /* end of string */
         case ':': /* end of leaderboard clause */
+        case ')': /* end of rich presence macro */
           end_of_clause = 1;
           *ptr = '\0';
           break;

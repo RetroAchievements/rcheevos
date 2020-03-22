@@ -183,29 +183,7 @@ enum {
   RC_MEMSIZE_BIT_4,
   RC_MEMSIZE_BIT_5,
   RC_MEMSIZE_BIT_6,
-  RC_MEMSIZE_BIT_7,
-
-  /* items below here are only valid as operand sizes */
-  RC_MEMSIZE_8_BITS_BCD,
-  RC_MEMSIZE_16_BITS_BCD,
-  RC_MEMSIZE_24_BITS_BCD,
-  RC_MEMSIZE_32_BITS_BCD,
-  RC_MEMSIZE_8_BITS_BITCOUNT
-
-  RC_MEMSIZE_8_BITS_INVERTED,
-  RC_MEMSIZE_16_BITS_INVERTED,
-  RC_MEMSIZE_24_BITS_INVERTED,
-  RC_MEMSIZE_32_BITS_INVERTED,
-  RC_MEMSIZE_LOW_INVERTED,
-  RC_MEMSIZE_HIGH_INVERTED,
-  RC_MEMSIZE_BIT_0_INVERTED,
-  RC_MEMSIZE_BIT_1_INVERTED,
-  RC_MEMSIZE_BIT_2_INVERTED,
-  RC_MEMSIZE_BIT_3_INVERTED,
-  RC_MEMSIZE_BIT_4_INVERTED,
-  RC_MEMSIZE_BIT_5_INVERTED,
-  RC_MEMSIZE_BIT_6_INVERTED,
-  RC_MEMSIZE_BIT_7_INVERTED
+  RC_MEMSIZE_BIT_7
 };
 ```
 
@@ -213,16 +191,20 @@ The `type` field is always valid, and holds one of these values:
 
 ```c
 enum {
-  RC_OPERAND_ADDRESS, /* Compare to the value of a live address in RAM. */
-  RC_OPERAND_DELTA,   /* The value last known at this address. */
-  RC_OPERAND_CONST,   /* A 32-bit unsigned integer. */
-  RC_OPERAND_FP,      /* A floating point value. */
-  RC_OPERAND_LUA,     /* A Lua function that provides the value. */
-  RC_OPERAND_PRIOR    /* The last differing value at this address. */
+  RC_OPERAND_ADDRESS,        /* The value of a live address in RAM. */
+  RC_OPERAND_DELTA,          /* The value last known at this address. */
+  RC_OPERAND_CONST,          /* A 32-bit unsigned integer. */
+  RC_OPERAND_FP,             /* A floating point value. */
+  RC_OPERAND_LUA,            /* A Lua function that provides the value. */
+  RC_OPERAND_PRIOR,          /* The last differing value at this address. */
+  RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM */
+  RC_OPERAND_BITCOUNT,       /* The number of bits set in a value from RAM */
+  RC_OPERAND_DELTA_BITCOUNT, /* The number of bits set in the last known value value from RAM */
+  RC_OPERAND_INVERTED,       /* The twos-complement value of a live address in RAM */
 };
 ```
 
-`RC_OPERAND_ADDRESS`, `RC_OPERAND_DELTA`, and `RC_OPERAND_PRIOR` mean that `memref` is active. `RC_OPERAND_CONST` means that `num` is active. `RC_OPERAND_FP` means that `dbl` is active. `RC_OPERAND_LUA` means `luafunc` is active.
+`RC_OPERAND_ADDRESS`, `RC_OPERAND_DELTA`, `RC_OPERAND_PRIOR`, `RC_OPERAND_BCD`, `RC_OPERAND_BITCOUNT`, `RC_OPERAND_DELTA_BITCOUNT`, and `RC_OPERAND_INVERTED` mean that `memref` is active. `RC_OPERAND_CONST` means that `num` is active. `RC_OPERAND_FP` means that `dbl` is active. `RC_OPERAND_LUA` means `luafunc` is active.
 
 
 ### `rc_condition_t`
@@ -269,7 +251,7 @@ enum {
   RC_CONDITION_AND_NEXT,
   RC_CONDITION_MEASURED,
   RC_CONDITION_ADD_ADDRESS,
-  RC_CONDITION_TRIGGER,
+  RC_CONDITION_TRIGGER
 };
 ```
 

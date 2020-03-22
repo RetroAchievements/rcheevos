@@ -71,30 +71,7 @@ enum {
   RC_MEMSIZE_BIT_4,
   RC_MEMSIZE_BIT_5,
   RC_MEMSIZE_BIT_6,
-  RC_MEMSIZE_BIT_7,
-
-  /* items below here are only valid as operand sizes */
-  RC_MEMSIZE_8_BITS_BCD,
-  RC_MEMSIZE_16_BITS_BCD,
-  RC_MEMSIZE_24_BITS_BCD,
-  RC_MEMSIZE_32_BITS_BCD,
-  RC_MEMSIZE_8_BITS_BITCOUNT,
-
-  /* NOTE: these must be in the same order as the non-inverted values above */
-  RC_MEMSIZE_8_BITS_INVERTED,
-  RC_MEMSIZE_16_BITS_INVERTED,
-  RC_MEMSIZE_24_BITS_INVERTED,
-  RC_MEMSIZE_32_BITS_INVERTED,
-  RC_MEMSIZE_LOW_INVERTED,
-  RC_MEMSIZE_HIGH_INVERTED,
-  RC_MEMSIZE_BIT_0_INVERTED,
-  RC_MEMSIZE_BIT_1_INVERTED,
-  RC_MEMSIZE_BIT_2_INVERTED,
-  RC_MEMSIZE_BIT_3_INVERTED,
-  RC_MEMSIZE_BIT_4_INVERTED,
-  RC_MEMSIZE_BIT_5_INVERTED,
-  RC_MEMSIZE_BIT_6_INVERTED,
-  RC_MEMSIZE_BIT_7_INVERTED
+  RC_MEMSIZE_BIT_7
 };
 
 typedef struct {
@@ -129,12 +106,16 @@ struct rc_memref_value_t {
 
 /* types */
 enum {
-  RC_OPERAND_ADDRESS, /* Compare to the value of a live address in RAM. */
-  RC_OPERAND_DELTA,   /* The value last known at this address. */
-  RC_OPERAND_CONST,   /* A 32-bit unsigned integer. */
-  RC_OPERAND_FP,      /* A floating point value. */
-  RC_OPERAND_LUA,     /* A Lua function that provides the value. */
-  RC_OPERAND_PRIOR    /* The last differing value at this address. */
+  RC_OPERAND_ADDRESS,        /* The value of a live address in RAM. */
+  RC_OPERAND_DELTA,          /* The value last known at this address. */
+  RC_OPERAND_CONST,          /* A 32-bit unsigned integer. */
+  RC_OPERAND_FP,             /* A floating point value. */
+  RC_OPERAND_LUA,            /* A Lua function that provides the value. */
+  RC_OPERAND_PRIOR,          /* The last differing value at this address. */
+  RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM */
+  RC_OPERAND_BITCOUNT,       /* The number of bits set in a value from RAM */
+  RC_OPERAND_DELTA_BITCOUNT, /* The number of bits set in the last known value from RAM */
+  RC_OPERAND_INVERTED        /* The twos-complement value of a live address in RAM */
 };
 
 typedef struct {
