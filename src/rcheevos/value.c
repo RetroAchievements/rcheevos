@@ -84,8 +84,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
   char* ptr;
   int end_of_clause;
 
-  /* this largely duplicates rc_parse_condset, but we cannot call it directly, as we need to check the
-   * type of each condition as we go */
+  /* convert legacy format into condset */
   self->conditions = RC_ALLOC(rc_condset_t, parse);
   self->conditions->has_pause = 0;
 
