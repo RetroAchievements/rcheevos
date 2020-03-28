@@ -171,6 +171,15 @@
     <ClCompile Include="rcheevos\test_condset.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="rcheevos\test_value.c">
+      <Filter>tests\rcheevos</Filter>
+    </ClCompile>
+    <ClCompile Include="rcheevos\test_format.c">
+      <Filter>tests\rcheevos</Filter>
+    </ClCompile>
+    <ClCompile Include="rcheevos\test_trigger.c">
+      <Filter>tests\rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">

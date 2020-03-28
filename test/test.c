@@ -831,6 +831,20 @@ static void test_richpresence(void) {
 
   {
     /*------------------------------------------------------------------------
+    TestTextAfterDisplay
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+    memory_t memory;
+    rc_richpresence_t* richpresence;
+
+    richpresence = parse_richpresence("Display:\nFirst\n\nOther", buffer);
+    rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, &memory, NULL);
+    assert(strcmp(output, "First") == 0);
+  }
+
+
+  {
+    /*------------------------------------------------------------------------
     TestConditionalDisplayNoText
     ------------------------------------------------------------------------*/
     int result = rc_richpresence_size("Display:\n?0xH0000=0?\nOther");
