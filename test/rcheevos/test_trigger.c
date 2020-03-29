@@ -671,6 +671,103 @@ static void test_measured_while_paused_multiple() {
   ASSERT_NUM_EQUALS(trigger->measured_target, 6U);
 }
 
+static void test_measured_reset_hitcount() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* measured(3, byte(2) == 52) && unless(byte(1) == 1) && never(byte(3) == 1) */
+  assert_parse_trigger(&trigger, buffer, "M:0xH0002=52(3)_P:0xH0001=1_R:0xH0003=1");
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+
+  /* paused - hit count should not be incremented */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+
+  /* reset primed, but ignored by pause */
+  ram[3] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+
+  /* unpaused, reset should clear value */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+
+  /* no longer reset, hit count should increment */
+  ram[3] = 0;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+
+  /* reset again, hit count should go back to 0 */
+  ram[3] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+}
+
+static void test_measured_reset_comparison() {
+  unsigned char ram[] = {0x00, 0x12, 0x02, 0xAB, 0x56};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* measured(3, byte(2) == 52) && unless(byte(1) == 1) && never(byte(3) == 1) */
+  assert_parse_trigger(&trigger, buffer, "M:0xH0002>=10_P:0xH0001=1_R:0xH0003=1");
+
+  /* condition is true - measured will come from value */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 10U);
+
+  /* condition is true - value updated */
+  ram[2] = 3;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 3U);
+
+  /* paused - updated value should be ignored */
+  ram[1] = 1;
+  ram[2] = 4;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 3U);
+
+  /* reset primed, but ignored by pause */
+  ram[3] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 3U);
+
+  /* unpaused, reset should not affect non-hitcount measurement */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 4U);
+
+  /* no longer reset, value updated */
+  ram[3] = 0;
+  ram[2] = 5;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 5U);
+
+  /* reset again, should not affect non-hitcount measurement */
+  ram[3] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 5U);
+}
+
 static void test_evaluate_trigger_inactive() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -1079,6 +1176,8 @@ void test_trigger(void) {
   TEST(test_measured_multiple);
   TEST(test_measured_while_paused);
   TEST(test_measured_while_paused_multiple);
+  TEST(test_measured_reset_hitcount);
+  TEST(test_measured_reset_comparison);
 
   /* rc_evaluate_trigger */
   TEST(test_evaluate_trigger_inactive);
