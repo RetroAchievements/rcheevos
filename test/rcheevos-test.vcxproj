@@ -169,6 +169,7 @@
     <ClCompile Include="rcheevos\test_condition.c" />
     <ClCompile Include="rcheevos\test_condset.c" />
     <ClCompile Include="rcheevos\test_format.c" />
+    <ClCompile Include="rcheevos\test_lboard.c" />
     <ClCompile Include="rcheevos\test_memref.c" />
     <ClCompile Include="rcheevos\test_operand.c" />
     <ClCompile Include="rcheevos\test_trigger.c" />
