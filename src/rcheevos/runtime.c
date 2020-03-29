@@ -37,10 +37,10 @@ void rc_runtime_destroy(rc_runtime_t* self) {
   if (self->lboards) {
     free(self->lboards);
     self->lboards = NULL;
-   
+
     self->lboard_count = self->lboard_capacity = 0;
   }
-  
+
   while (self->richpresence) {
     rc_runtime_richpresence_t* previous = self->richpresence->previous;
 
@@ -48,7 +48,7 @@ void rc_runtime_destroy(rc_runtime_t* self) {
     free(self->richpresence);
     self->richpresence = previous;
   }
-  
+
   if (self->richpresence_display_buffer) {
     free(self->richpresence_display_buffer);
     self->richpresence_display_buffer = NULL;
@@ -62,7 +62,7 @@ static void rc_runtime_checksum(const char* memaddr, unsigned char* md5) {
   md5_state_t state;
   md5_init(&state);
   md5_append(&state, (unsigned char*)memaddr, (int)strlen(memaddr));
-  md5_finish(&state, md5);  
+  md5_finish(&state, md5);
 }
 
 static void rc_runtime_deactivate_trigger_by_index(rc_runtime_t* self, unsigned index) {
@@ -145,7 +145,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
   trigger_buffer = malloc(size);
   if (!trigger_buffer)
     return RC_OUT_OF_MEMORY;
-  
+
   /* populate the item, using the communal memrefs pool */
   rc_init_parse_state(&parse, trigger_buffer, L, funcs_idx);
   parse.first_memref = &self->memrefs;
@@ -274,7 +274,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
       return RC_OK;
     }
   }
-  
+
   /* item has not been previously registered, determine how much space we need for it, and allocate it */
   size = rc_lboard_size(memaddr);
   if (size < 0)
@@ -283,7 +283,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   lboard_buffer = malloc(size);
   if (!lboard_buffer)
     return RC_OUT_OF_MEMORY;
-  
+
   /* populate the item, using the communal memrefs pool */
   rc_init_parse_state(&parse, lboard_buffer, L, funcs_idx);
   lboard = RC_ALLOC(rc_lboard_t, &parse);
@@ -305,7 +305,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
       self->next_memref = &(*self->next_memref)->next;
     } while (*self->next_memref != NULL);
   }
-  
+
   /* grow the lboard buffer if necessary */
   if (self->lboard_count == self->lboard_capacity) {
     self->lboard_capacity += 16;
@@ -370,7 +370,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
       previous = previous->previous;
     }
   }
-  
+
   self->richpresence = malloc(sizeof(rc_runtime_richpresence_t));
   if (!self->richpresence)
       return RC_OUT_OF_MEMORY;
@@ -412,9 +412,9 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
     /* non-existant rich presence, treat like static empty string */
     *self->richpresence_display_buffer = '\0';
     self->richpresence->richpresence = NULL;
-  } 
+  }
   else if (richpresence->first_display->next || richpresence->first_display->trigger.requirement ||
-      richpresence->first_display->display->value.conditions || richpresence->first_display->display->value.expressions) {
+      richpresence->first_display->display->value.conditions) {
     /* dynamic rich presence - reset all of the conditions */
     display = richpresence->first_display;
     while (display != NULL) {
@@ -462,9 +462,9 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 
     if (!trigger)
       continue;
-    
+
     trigger_state = trigger->state;
-    
+
     switch (rc_evaluate_trigger(trigger, peek, ud, L))
     {
       case RC_TRIGGER_STATE_RESET:
@@ -472,7 +472,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
         runtime_event.id = self->triggers[i].id;
         event_handler(&runtime_event);
         break;
-        
+
       case RC_TRIGGER_STATE_TRIGGERED:
         runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED;
         runtime_event.id = self->triggers[i].id;
@@ -486,7 +486,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
           event_handler(&runtime_event);
         }
         break;
-        
+
       case RC_TRIGGER_STATE_PRIMED:
         if (trigger_state != RC_TRIGGER_STATE_PRIMED) {
           runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED;
@@ -504,34 +504,34 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
         break;
     }
   }
-  
+
   for (i = 0; i < self->lboard_count; ++i) {
     rc_lboard_t* lboard = self->lboards[i].lboard;
     int lboard_state;
 
     if (!lboard)
       continue;
-    
+
     lboard_state = lboard->state;
     switch (rc_evaluate_lboard(lboard, &runtime_event.value, peek, ud, L))
     {
       case RC_LBOARD_STATE_STARTED: /* leaderboard is running */
         if (lboard_state != RC_LBOARD_STATE_STARTED) {
           self->lboards[i].value = runtime_event.value;
-            
+
           runtime_event.type = RC_RUNTIME_EVENT_LBOARD_STARTED;
           runtime_event.id = self->lboards[i].id;
           event_handler(&runtime_event);
         }
         else if (runtime_event.value != self->lboards[i].value) {
           self->lboards[i].value = runtime_event.value;
-          
+
           runtime_event.type = RC_RUNTIME_EVENT_LBOARD_UPDATED;
           runtime_event.id = self->lboards[i].id;
-          event_handler(&runtime_event);        
+          event_handler(&runtime_event);
         }
         break;
-        
+
       case RC_LBOARD_STATE_CANCELED:
         if (lboard_state != RC_LBOARD_STATE_CANCELED) {
           runtime_event.type = RC_RUNTIME_EVENT_LBOARD_CANCELED;
@@ -539,7 +539,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
           event_handler(&runtime_event);
         }
         break;
-        
+
       case RC_LBOARD_STATE_TRIGGERED:
         if (lboard_state != RC_RUNTIME_EVENT_LBOARD_TRIGGERED) {
           runtime_event.type = RC_RUNTIME_EVENT_LBOARD_TRIGGERED;
@@ -586,7 +586,7 @@ void rc_runtime_reset(rc_runtime_t* self) {
     if (self->lboards[i].lboard)
       rc_reset_lboard(self->lboards[i].lboard);
   }
-    
+
   if (self->richpresence) {
     rc_richpresence_display_t* display = self->richpresence->richpresence->first_display;
     while (display != 0) {

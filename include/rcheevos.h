@@ -71,14 +71,7 @@ enum {
   RC_MEMSIZE_BIT_4,
   RC_MEMSIZE_BIT_5,
   RC_MEMSIZE_BIT_6,
-  RC_MEMSIZE_BIT_7,
-
-  /* items below here are only valid as operand sizes */
-  RC_MEMSIZE_8_BITS_BCD,
-  RC_MEMSIZE_16_BITS_BCD,
-  RC_MEMSIZE_24_BITS_BCD,
-  RC_MEMSIZE_32_BITS_BCD,
-  RC_MEMSIZE_8_BITS_BITCOUNT
+  RC_MEMSIZE_BIT_7
 };
 
 typedef struct {
@@ -113,12 +106,16 @@ struct rc_memref_value_t {
 
 /* types */
 enum {
-  RC_OPERAND_ADDRESS, /* Compare to the value of a live address in RAM. */
-  RC_OPERAND_DELTA,   /* The value last known at this address. */
-  RC_OPERAND_CONST,   /* A 32-bit unsigned integer. */
-  RC_OPERAND_FP,      /* A floating point value. */
-  RC_OPERAND_LUA,     /* A Lua function that provides the value. */
-  RC_OPERAND_PRIOR    /* The last differing value at this address. */
+  RC_OPERAND_ADDRESS,        /* The value of a live address in RAM. */
+  RC_OPERAND_DELTA,          /* The value last known at this address. */
+  RC_OPERAND_CONST,          /* A 32-bit unsigned integer. */
+  RC_OPERAND_FP,             /* A floating point value. */
+  RC_OPERAND_LUA,            /* A Lua function that provides the value. */
+  RC_OPERAND_PRIOR,          /* The last differing value at this address. */
+  RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM */
+  RC_OPERAND_BITCOUNT,       /* The number of bits set in a value from RAM */
+  RC_OPERAND_DELTA_BITCOUNT, /* The number of bits set in the last known value from RAM */
+  RC_OPERAND_INVERTED        /* The twos-complement value of a live address in RAM */
 };
 
 typedef struct {
@@ -270,38 +267,10 @@ int rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* 
 void rc_reset_trigger(rc_trigger_t* self);
 
 /*****************************************************************************\
-| Expressions and values                                                      |
+| Values                                                                      |
 \*****************************************************************************/
 
-typedef struct rc_term_t rc_term_t;
-
-struct rc_term_t {
-  /* The next term in this chain. */
-  rc_term_t* next;
-
-  /* The first operand. */
-  rc_operand_t operand1;
-  /* The second operand. */
-  rc_operand_t operand2;
-
-  /* A value that is applied to the second variable to invert its bits. */
-  unsigned invert;
-};
-
-typedef struct rc_expression_t rc_expression_t;
-
-struct rc_expression_t {
-  /* The next expression in this chain. */
-  rc_expression_t* next;
-
-  /* The list of terms in this expression. */
-  rc_term_t* terms;
-};
-
 typedef struct {
-  /* The list of expression to evaluate. */
-  rc_expression_t* expressions;
-
   /* The list of conditions to evaluate. */
   rc_condset_t* conditions;
 

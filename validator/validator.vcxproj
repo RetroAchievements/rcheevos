@@ -129,14 +129,12 @@
     <ClCompile Include="..\src\rcheevos\alloc.c" />
     <ClCompile Include="..\src\rcheevos\condition.c" />
     <ClCompile Include="..\src\rcheevos\condset.c" />
-    <ClCompile Include="..\src\rcheevos\expression.c" />
     <ClCompile Include="..\src\rcheevos\format.c" />
     <ClCompile Include="..\src\rcheevos\lboard.c" />
     <ClCompile Include="..\src\rcheevos\memref.c" />
     <ClCompile Include="..\src\rcheevos\operand.c" />
     <ClCompile Include="..\src\rcheevos\richpresence.c" />
     <ClCompile Include="..\src\rcheevos\runtime.c" />
-    <ClCompile Include="..\src\rcheevos\term.c" />
     <ClCompile Include="..\src\rcheevos\trigger.c" />
     <ClCompile Include="..\src\rcheevos\value.c" />
     <ClCompile Include="..\src\rhash\md5.c" />

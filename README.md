@@ -183,14 +183,7 @@ enum {
   RC_MEMSIZE_BIT_4,
   RC_MEMSIZE_BIT_5,
   RC_MEMSIZE_BIT_6,
-  RC_MEMSIZE_BIT_7,
-
-  /* items below here are only valid as operand sizes */
-  RC_MEMSIZE_8_BITS_BCD,
-  RC_MEMSIZE_16_BITS_BCD,
-  RC_MEMSIZE_24_BITS_BCD,
-  RC_MEMSIZE_32_BITS_BCD,
-  RC_MEMSIZE_8_BITS_BITCOUNT
+  RC_MEMSIZE_BIT_7
 };
 ```
 
@@ -198,16 +191,20 @@ The `type` field is always valid, and holds one of these values:
 
 ```c
 enum {
-  RC_OPERAND_ADDRESS, /* Compare to the value of a live address in RAM. */
-  RC_OPERAND_DELTA,   /* The value last known at this address. */
-  RC_OPERAND_CONST,   /* A 32-bit unsigned integer. */
-  RC_OPERAND_FP,      /* A floating point value. */
-  RC_OPERAND_LUA,     /* A Lua function that provides the value. */
-  RC_OPERAND_PRIOR    /* The last differing value at this address. */
+  RC_OPERAND_ADDRESS,        /* The value of a live address in RAM. */
+  RC_OPERAND_DELTA,          /* The value last known at this address. */
+  RC_OPERAND_CONST,          /* A 32-bit unsigned integer. */
+  RC_OPERAND_FP,             /* A floating point value. */
+  RC_OPERAND_LUA,            /* A Lua function that provides the value. */
+  RC_OPERAND_PRIOR,          /* The last differing value at this address. */
+  RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM */
+  RC_OPERAND_BITCOUNT,       /* The number of bits set in a value from RAM */
+  RC_OPERAND_DELTA_BITCOUNT, /* The number of bits set in the last known value value from RAM */
+  RC_OPERAND_INVERTED,       /* The twos-complement value of a live address in RAM */
 };
 ```
 
-`RC_OPERAND_ADDRESS`, `RC_OPERAND_DELTA`, and `RC_OPERAND_PRIOR` mean that `memref` is active. `RC_OPERAND_CONST` means that `num` is active. `RC_OPERAND_FP` means that `dbl` is active. `RC_OPERAND_LUA` means `luafunc` is active.
+`RC_OPERAND_ADDRESS`, `RC_OPERAND_DELTA`, `RC_OPERAND_PRIOR`, `RC_OPERAND_BCD`, `RC_OPERAND_BITCOUNT`, `RC_OPERAND_DELTA_BITCOUNT`, and `RC_OPERAND_INVERTED` mean that `memref` is active. `RC_OPERAND_CONST` means that `num` is active. `RC_OPERAND_FP` means that `dbl` is active. `RC_OPERAND_LUA` means `luafunc` is active.
 
 
 ### `rc_condition_t`
@@ -254,7 +251,7 @@ enum {
   RC_CONDITION_AND_NEXT,
   RC_CONDITION_MEASURED,
   RC_CONDITION_ADD_ADDRESS,
-  RC_CONDITION_TRIGGER,
+  RC_CONDITION_TRIGGER
 };
 ```
 
@@ -365,52 +362,12 @@ Finally, `rc_reset_trigger` can be used to reset the internal state of a trigger
 void rc_reset_trigger(rc_trigger_t* self);
 ```
 
-### `rc_term_t`
-
-A term is the leaf node of expressions used to compute values from operands. A term is evaluated by multiplying its two operands. `invert` is used to invert the bits of the second operand of the term, when the unary operator `~` is used.
-
-```c
-typedef struct rc_term_t rc_term_t;
-
-struct rc_term_t {
-  /* The next term in this chain. */
-  rc_term_t* next;
-
-  /* The first operand. */
-  rc_operand_t operand1;
-  /* The second operand. */
-  rc_operand_t operand2;
-
-  /* A value that is applied to the second variable to invert its bits. */
-  unsigned invert;
-};
-```
-
-### `rc_expression_t`
-
-An expression is a collection of terms. All terms in the collection are added together to give the value of the expression.
-
-```c
-typedef struct rc_expression_t rc_expression_t;
-
-struct rc_expression_t {
-  /* The next expression in this chain. */
-  rc_expression_t* next;
-
-  /* The list of terms in this expression. */
-  rc_term_t* terms;
-};
-```
-
 ### `rc_value_t`
 
-A value is a collection of expressions. It's used to give the value for a leaderboard, and it evaluates to value of the expression with the greatest value in the collection.
+A value is a collection of conditions that result in a single RC_CONDITION_MEASURED expression. It's used to calculate the value for a leaderboard and for lookups in rich presence.
 
 ```c
 typedef struct {
-  /* The list of expression to evaluate. */
-  rc_expression_t* expressions;
-
   /* The list of conditions to evaluate. */
   rc_condset_t* conditions;
 
