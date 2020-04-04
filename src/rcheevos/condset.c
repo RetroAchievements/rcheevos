@@ -9,7 +9,7 @@ static void rc_update_condition_pause(rc_condition_t* condition, int* in_pause) 
     case RC_CONDITION_PAUSE_IF:
       *in_pause = condition->pause = 1;
       break;
-    
+
     case RC_CONDITION_ADD_SOURCE:
     case RC_CONDITION_SUB_SOURCE:
     case RC_CONDITION_ADD_HITS:
@@ -18,7 +18,7 @@ static void rc_update_condition_pause(rc_condition_t* condition, int* in_pause) 
     case RC_CONDITION_ADD_ADDRESS:
       condition->pause = *in_pause;
       break;
-    
+
     default:
       *in_pause = condition->pause = 0;
       break;
@@ -132,7 +132,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         eval_state->add_value += rc_evaluate_condition_value(condition, eval_state);
         eval_state->add_address = 0;
         continue;
-      
+
       case RC_CONDITION_SUB_SOURCE:
         eval_state->add_value -= rc_evaluate_condition_value(condition, eval_state);
         eval_state->add_address = 0;
@@ -245,7 +245,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         }
 
         continue;
-      
+
       case RC_CONDITION_RESET_IF:
         if (cond_valid) {
           eval_state->was_reset = 1; /* let caller know to reset all hit counts */
@@ -256,6 +256,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_MEASURED:
         if (measured_value > eval_state->measured_value) {
           eval_state->measured_value = measured_value;
+          eval_state->measured_from_hits = (condition->required_hits != 0);
         }
         break;
 

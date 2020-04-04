@@ -33,7 +33,7 @@ void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_pars
 
     next = &(*next)->next;
   }
-  
+
   *next = 0;
   *memaddr = aux;
 
@@ -59,7 +59,7 @@ rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, 
   rc_trigger_t* self;
   rc_parse_state_t parse;
   rc_init_parse_state(&parse, buffer, L, funcs_ndx);
-  
+
   self = RC_ALLOC(rc_trigger_t, &parse);
   rc_init_parse_state_memrefs(&parse, &self->memrefs);
 
@@ -154,6 +154,10 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   if (eval_state.was_reset) {
     /* if any ResetIf condition was true, reset the hit counts */
     rc_reset_trigger_hitcounts(self);
+
+    /* if the measured value came from a hit count, reset it too */
+    if (eval_state.measured_from_hits)
+      self->measured_value = 0;
 
     /* if there were hit counts to clear, return RESET, but don't change the state */
     if (self->has_hits) {
