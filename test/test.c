@@ -1512,10 +1512,50 @@ static void test_runtime(void) {
 
     rc_runtime_destroy(&runtime);
   }
-
+  
   {
     /*------------------------------------------------------------------------
     TestRuntimeRichPresence
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 2, 10, 10 };
+    memory_t memory;
+    rc_runtime_t runtime;
+    int frame_count = 0;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    rc_runtime_init(&runtime);
+
+    /* initial value */
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "") == 0);
+
+    /* loading generates display string with uninitialized memrefs - ensures non-empty string if loaded while paused */
+    assert(rc_runtime_activate_richpresence(&runtime,
+        "Format:Points\nFormatType=VALUE\n\nDisplay:\nScore is @Points(0x 0001) Points", NULL, 0) == RC_OK);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "Score is 0 Points") == 0);
+
+    /* first frame should update display string */
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "Score is 2570 Points") == 0);
+
+    /* display string should not update for 60 frames */
+    ram[1] = 20;
+    for (frame_count = 0; frame_count < 59; ++frame_count) {
+      rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+      assert(strcmp(rc_runtime_get_richpresence(&runtime), "Score is 2570 Points") == 0);
+    }
+
+    /* string should update on 60th frame */
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "Score is 2580 Points") == 0);
+
+    rc_runtime_destroy(&runtime);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestRuntimeRichPresenceStartsWithMacro
     ------------------------------------------------------------------------*/
     unsigned char ram[] = { 2, 10, 10 };
     memory_t memory;
@@ -1549,6 +1589,87 @@ static void test_runtime(void) {
     /* string should update on 60th frame */
     rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
     assert(strcmp(rc_runtime_get_richpresence(&runtime), "2580 Points") == 0);
+
+    rc_runtime_destroy(&runtime);
+  }
+
+  {
+    /*------------------------------------------------------------------------
+    TestRuntimeRichPresenceOnlyMacro
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 2, 10, 10 };
+    memory_t memory;
+    rc_runtime_t runtime;
+    int frame_count = 0;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    rc_runtime_init(&runtime);
+
+    /* initial value */
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "") == 0);
+
+    /* loading generates display string with uninitialized memrefs - ensures non-empty string if loaded while paused */
+    assert(rc_runtime_activate_richpresence(&runtime,
+        "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001)", NULL, 0) == RC_OK);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "0") == 0);
+
+    /* first frame should update display string */
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "2570") == 0);
+
+    /* display string should not update for 60 frames */
+    ram[1] = 20;
+    for (frame_count = 0; frame_count < 59; ++frame_count) {
+      rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+      assert(strcmp(rc_runtime_get_richpresence(&runtime), "2570") == 0);
+    }
+
+    /* string should update on 60th frame */
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "2580") == 0);
+
+    rc_runtime_destroy(&runtime);
+  }
+  
+  {
+    /*------------------------------------------------------------------------
+    TestRuntimeRichPresenceConditional
+    ------------------------------------------------------------------------*/
+    unsigned char ram[] = { 2, 10, 10 };
+    memory_t memory;
+    rc_runtime_t runtime;
+    int frame_count = 0;
+
+    memory.ram = ram;
+    memory.size = sizeof(ram);
+
+    rc_runtime_init(&runtime);
+
+    /* initial value */
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "") == 0);
+
+    /* loading generates display string with uninitialized memrefs - ensures non-empty string if loaded while paused */
+    assert(rc_runtime_activate_richpresence(&runtime,
+        "Format:Points\nFormatType=VALUE\n\nDisplay:\n?0xH0000=2?@Points(0x 0001) points\nScore is @Points(0x 0001) Points", NULL, 0) == RC_OK);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "Score is 0 Points") == 0);
+
+    /* first frame should update display string */
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "2570 points") == 0);
+
+    /* display string should not update for 60 frames */
+    ram[1] = 20;
+    ram[0] = 0;
+    for (frame_count = 0; frame_count < 59; ++frame_count) {
+      rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+      assert(strcmp(rc_runtime_get_richpresence(&runtime), "2570 points") == 0);
+    }
+
+    /* string should update on 60th frame */
+    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    assert(strcmp(rc_runtime_get_richpresence(&runtime), "Score is 2580 Points") == 0);
 
     rc_runtime_destroy(&runtime);
   }
