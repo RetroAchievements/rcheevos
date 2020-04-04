@@ -172,6 +172,7 @@
     <ClCompile Include="rcheevos\test_lboard.c" />
     <ClCompile Include="rcheevos\test_memref.c" />
     <ClCompile Include="rcheevos\test_operand.c" />
+    <ClCompile Include="rcheevos\test_richpresence.c" />
     <ClCompile Include="rcheevos\test_trigger.c" />
     <ClCompile Include="rcheevos\test_value.c" />
     <ClCompile Include="test.c" />

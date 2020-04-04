@@ -79,7 +79,7 @@ static void test_parse_modifier(const char* memaddr, int expected_operator, int 
   assert_parse_condition(memaddr, RC_CONDITION_ADD_SOURCE,
     RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
     expected_operator,
-    expected_operand, RC_MEMSIZE_8_BITS, expected_multiplier,
+    expected_operand, RC_MEMSIZE_8_BITS, (int)expected_multiplier,
     0
   );
 }

@@ -183,6 +183,9 @@
     <ClCompile Include="rcheevos\test_lboard.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="rcheevos\test_richpresence.c">
+      <Filter>tests\rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">
