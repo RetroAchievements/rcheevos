@@ -385,6 +385,13 @@ static int rc_hash_nes(char hash[33], uint8_t* buffer, size_t buffer_size)
     buffer += 16;
     buffer_size -= 16;
   }
+  else if (buffer[0] == 'F' && buffer[1] == 'D' && buffer[2] == 'S' && buffer[3] == 0x1A)
+  {
+      rc_hash_verbose("Ignoring FDS header");
+
+      buffer += 16;
+      buffer_size -= 16;
+  }
 
   return rc_hash_buffer(hash, buffer, buffer_size);
 }
@@ -814,7 +821,7 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
   md5_state_t md5;
   uint8_t* buffer;
   size_t size;
-  const int buffer_size = 65536;
+  const size_t buffer_size = 65536;
   void* file_handle;
   int result = 0;
 
@@ -1311,7 +1318,10 @@ int rc_hash_iterate(char hash[33], struct rc_hash_iterator* iterator)
   {
     next_console = iterator->consoles[iterator->index];
     if (next_console == 0)
+    {
+      hash[0] = '\0';
       break;
+    }
 
     ++iterator->index;
 
