@@ -1,5 +1,7 @@
 #include "rhash.h"
 
+#include "../rcheevos/compat.h"
+
 #ifdef RARCH_INTERNAL
  #include <libretro-common/include/rhash.h>
  #define md5_state_t MD5_CTX
@@ -12,18 +14,6 @@
 #endif
 
 #include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#ifdef _WIN32
- #ifndef strcasecmp
-  #define strcasecmp _stricmp
- #endif
- #ifndef strncasecmp
-  #define strncasecmp _strnicmp
- #endif
-#endif
 
 /* arbitrary limit to prevent allocating and hashing large files */
 #define MAX_BUFFER_SIZE 64 * 1024 * 1024
@@ -232,7 +222,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
       return 0;
 
     /* filename is 33 bytes into the record and the format is "FILENAME;version" or "DIRECTORY" */
-    if ((tmp[33 + filename_length] == ';' || tmp[33 + filename_length] == '\0') && 
+    if ((tmp[33 + filename_length] == ';' || tmp[33 + filename_length] == '\0') &&
         strncasecmp((const char*)(tmp + 33), path, filename_length) == 0)
     {
       sector = tmp[2] | (tmp[3] << 8) | (tmp[4] << 16);
@@ -807,7 +797,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
 
     case RC_CONSOLE_ATARI_LYNX:
       return rc_hash_lynx(hash, buffer, buffer_size);
-      
+
     case RC_CONSOLE_NINTENDO:
       return rc_hash_nes(hash, buffer, buffer_size);
 
@@ -971,7 +961,7 @@ static int rc_hash_generate_from_playlist(char hash[33], int console_id, const c
     snprintf(message, sizeof(message), "Processing playlist: %s", rc_path_get_filename(path));
     verbose_message_callback(message);
   }
-  
+
   disc_path = rc_hash_get_first_item_from_playlist(path);
   if (!disc_path)
     return rc_hash_error("Failed to get first item from playlist");
@@ -1113,7 +1103,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
           iterator->consoles[1] = RC_CONSOLE_PC_ENGINE;
           /* SEGA CD hash doesn't have any logic to ensure it's being used against a SEGA CD, so it should always be last */
-          iterator->consoles[2] = RC_CONSOLE_SEGA_CD; 
+          iterator->consoles[2] = RC_CONSOLE_SEGA_CD;
           need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "col"))

@@ -5,7 +5,7 @@ LUA_SRC=lua/src
 
 OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/operand.o \
     $(RC_SRC)/value.o $(RC_SRC)/lboard.o $(RC_SRC)/richpresence.o $(RC_SRC)/runtime.o \
-    $(RC_SRC)/alloc.o $(RC_SRC)/memref.o $(RC_SRC)/format.o \
+    $(RC_SRC)/alloc.o $(RC_SRC)/memref.o $(RC_SRC)/format.o $(RC_SRC)/c89_compat.o \
     $(RC_HASH_SRC)/md5.o $(RC_HASH_SRC)/hash.o \
     $(RC_URL_SRC)/url.o \
     $(LUA_SRC)/lapi.o $(LUA_SRC)/lcode.o $(LUA_SRC)/lctype.o $(LUA_SRC)/ldebug.o \

@@ -1,9 +1,8 @@
 #include "internal.h"
 
+#include "compat.h"
+
 #include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 /* special formats only used by rc_richpresence_display_part_t.display_type. must not overlap other RC_FORMAT values */
 enum {
@@ -372,7 +371,7 @@ int rc_richpresence_size(const char* script) {
   rc_richpresence_t* self;
   rc_parse_state_t parse;
   rc_init_parse_state(&parse, 0, 0, 0);
-  
+
   self = RC_ALLOC(rc_richpresence_t, &parse);
   rc_parse_richpresence_internal(self, script, &parse);
 
@@ -389,7 +388,7 @@ rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_S
   rc_init_parse_state_memrefs(&parse, &self->memrefs);
 
   rc_parse_richpresence_internal(self, script, &parse);
-  
+
   rc_destroy_parse_state(&parse);
   return parse.offset >= 0 ? self : 0;
 }

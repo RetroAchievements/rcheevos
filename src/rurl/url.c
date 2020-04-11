@@ -1,5 +1,7 @@
 #include "rurl.h"
 
+#include "../rcheevos/c89_compat.h"
+
 #ifdef RARCH_INTERNAL
 #include <libretro-common/include/rhash.h>
 #define md5_state_t MD5_CTX
@@ -34,7 +36,7 @@ static int rc_url_encode(char* encoded, size_t len, const char* str) {
         }
 
         break;
-      
+
       default:
         if (len >= 4) {
           snprintf(encoded, len, "%%%02x", (unsigned char)*str);
@@ -47,7 +49,7 @@ static int rc_url_encode(char* encoded, size_t len, const char* str) {
         }
 
         break;
-      
+
       case 0:
         *encoded = 0;
         return 0;
@@ -64,11 +66,11 @@ int rc_url_award_cheevo(char* buffer, size_t size, const char* user_name, const 
   if (rc_url_encode(urle_user_name, sizeof(urle_user_name), user_name) != 0) {
     return -1;
   }
-  
+
   if (rc_url_encode(urle_login_token, sizeof(urle_login_token), login_token) != 0) {
     return -1;
   }
-  
+
   written = snprintf(
     buffer,
     size,
@@ -97,7 +99,7 @@ int rc_url_submit_lboard(char* buffer, size_t size, const char* user_name, const
   if (rc_url_encode(urle_user_name, sizeof(urle_user_name), user_name) != 0) {
     return -1;
   }
-  
+
   if (rc_url_encode(urle_login_token, sizeof(urle_login_token), login_token) != 0) {
     return -1;
   }
@@ -142,11 +144,11 @@ int rc_url_get_patch(char* buffer, size_t size, const char* user_name, const cha
   if (rc_url_encode(urle_user_name, sizeof(urle_user_name), user_name) != 0) {
     return -1;
   }
-  
+
   if (rc_url_encode(urle_login_token, sizeof(urle_login_token), login_token) != 0) {
     return -1;
   }
-  
+
   written = snprintf(
     buffer,
     size,
@@ -178,11 +180,11 @@ int rc_url_login_with_password(char* buffer, size_t size, const char* user_name,
   if (rc_url_encode(urle_user_name, sizeof(urle_user_name), user_name) != 0) {
     return -1;
   }
-  
+
   if (rc_url_encode(urle_password, sizeof(urle_password), password) != 0) {
     return -1;
   }
-  
+
   written = snprintf(
     buffer,
     size,
@@ -202,11 +204,11 @@ int rc_url_login_with_token(char* buffer, size_t size, const char* user_name, co
   if (rc_url_encode(urle_user_name, sizeof(urle_user_name), user_name) != 0) {
     return -1;
   }
-  
+
   if (rc_url_encode(urle_login_token, sizeof(urle_login_token), login_token) != 0) {
     return -1;
   }
-  
+
   written = snprintf(
     buffer,
     size,
@@ -226,11 +228,11 @@ int rc_url_get_unlock_list(char* buffer, size_t size, const char* user_name, con
   if (rc_url_encode(urle_user_name, sizeof(urle_user_name), user_name) != 0) {
     return -1;
   }
-  
+
   if (rc_url_encode(urle_login_token, sizeof(urle_login_token), login_token) != 0) {
     return -1;
   }
-  
+
   written = snprintf(
     buffer,
     size,
@@ -252,11 +254,11 @@ int rc_url_post_playing(char* buffer, size_t size, const char* user_name, const 
   if (rc_url_encode(urle_user_name, sizeof(urle_user_name), user_name) != 0) {
     return -1;
   }
-  
+
   if (rc_url_encode(urle_login_token, sizeof(urle_login_token), login_token) != 0) {
     return -1;
   }
-  
+
   written = snprintf(
     buffer,
     size,
@@ -330,12 +332,14 @@ static int rc_url_append_str(char* buffer, size_t buffer_size, size_t* buffer_of
 
 int rc_url_ping(char* url_buffer, size_t url_buffer_size, char* post_buffer, size_t post_buffer_size,
                 const char* user_name, const char* login_token, unsigned gameid, const char* rich_presence) {
+  const char* base_url = "http://retroachievements.org/dorequest.php";
   int success = 0;
   size_t written;
 
-  written = (size_t)snprintf(url_buffer, url_buffer_size, "http://retroachievements.org/dorequest.php");
-  if (written >= url_buffer_size)
+  written = strlen(base_url);
+  if (url_buffer_size < written + 1)
     return -1;
+  memcpy(url_buffer, base_url, written + 1);
 
   written = 0;
   success |= rc_url_append_str(post_buffer, post_buffer_size, &written, "r", "ping");

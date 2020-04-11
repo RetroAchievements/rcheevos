@@ -198,6 +198,9 @@
     <ClCompile Include="rcheevos\test_richpresence.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rcheevos\compat.c">
+      <Filter>src\rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">
@@ -217,6 +220,9 @@
     </ClInclude>
     <ClInclude Include="..\include\rhash.h">
       <Filter>src\rhash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rcheevos\compat.h">
+      <Filter>src\rcheevos</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
