@@ -413,8 +413,9 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
     *self->richpresence_display_buffer = '\0';
     self->richpresence->richpresence = NULL;
   }
-  else if (richpresence->first_display->next || richpresence->first_display->trigger.requirement ||
-      richpresence->first_display->display->value.conditions) {
+  else if (richpresence->first_display->next || /* has conditional display strings */
+      richpresence->first_display->display->next || /* has macros */
+      richpresence->first_display->display->value.conditions) { /* is only a macro */
     /* dynamic rich presence - reset all of the conditions */
     display = richpresence->first_display;
     while (display != NULL) {

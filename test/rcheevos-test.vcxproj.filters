@@ -195,6 +195,9 @@
     <ClCompile Include="rhash\data.c">
       <Filter>tests\rhash</Filter>
     </ClCompile>
+    <ClCompile Include="rcheevos\test_richpresence.c">
+      <Filter>tests\rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">
