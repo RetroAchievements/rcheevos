@@ -19,6 +19,9 @@
     <Filter Include="tests\rcheevos">
       <UniqueIdentifier>{f890b4f1-8de5-4730-b612-3a7dbf65ca74}</UniqueIdentifier>
     </Filter>
+    <Filter Include="tests\rhash">
+      <UniqueIdentifier>{21341552-6b14-4f5b-a26c-d9393ffbdbcc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\rcheevos\format.c">
@@ -183,6 +186,15 @@
     <ClCompile Include="rcheevos\test_lboard.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rhash\hash.c">
+      <Filter>src\rhash</Filter>
+    </ClCompile>
+    <ClCompile Include="rhash\test_hash.c">
+      <Filter>tests\rhash</Filter>
+    </ClCompile>
+    <ClCompile Include="rhash\data.c">
+      <Filter>tests\rhash</Filter>
+    </ClCompile>
     <ClCompile Include="rcheevos\test_richpresence.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
@@ -199,6 +211,12 @@
     </ClInclude>
     <ClInclude Include="test_framework.h">
       <Filter>tests</Filter>
+    </ClInclude>
+    <ClInclude Include="rhash\data.h">
+      <Filter>tests\rhash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rhash.h">
+      <Filter>src\rhash</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

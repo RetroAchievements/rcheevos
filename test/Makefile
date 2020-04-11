@@ -6,7 +6,7 @@ LUA_SRC=lua/src
 OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/operand.o \
     $(RC_SRC)/value.o $(RC_SRC)/lboard.o $(RC_SRC)/richpresence.o $(RC_SRC)/runtime.o \
     $(RC_SRC)/alloc.o $(RC_SRC)/memref.o $(RC_SRC)/format.o \
-    $(RC_HASH_SRC)/md5.o \
+    $(RC_HASH_SRC)/md5.o $(RC_HASH_SRC)/hash.o \
     $(RC_URL_SRC)/url.o \
     $(LUA_SRC)/lapi.o $(LUA_SRC)/lcode.o $(LUA_SRC)/lctype.o $(LUA_SRC)/ldebug.o \
     $(LUA_SRC)/ldo.o $(LUA_SRC)/ldump.o $(LUA_SRC)/lfunc.o $(LUA_SRC)/lgc.o $(LUA_SRC)/llex.o \
@@ -25,6 +25,8 @@ OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/oper
     rcheevos/test_format.o \
     rcheevos/test_lboard.o \
     rcheevos/test_richpresence.o \
+    rhash/data.o \
+    rhash/test_hash.o \
     test.o
 
 all: test

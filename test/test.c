@@ -917,6 +917,8 @@ extern void test_format();
 extern void test_lboard();
 extern void test_richpresence();
 
+extern void test_hash();
+
 TEST_FRAMEWORK_DECLARATIONS()
 
 int main(void) {
@@ -934,6 +936,8 @@ int main(void) {
   test_richpresence();
   test_runtime();
   test_lua();
+
+  test_hash();
 
   TEST_FRAMEWORK_SHUTDOWN();
 
