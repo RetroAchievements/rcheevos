@@ -9,7 +9,11 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _MSC_VER
+#if defined(MINGW) || defined(__MINGW32__) || defined(__MINGW64__)
+
+/* MinGW redefinitions */
+
+#elif defined(_MSC_VER)
 
 /* Visual Studio redefinitions */
 

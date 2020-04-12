@@ -1,6 +1,6 @@
 #include "rurl.h"
 
-#include "../rcheevos/c89_compat.h"
+#include "../rcheevos/compat.h"
 
 #ifdef RARCH_INTERNAL
 #include <libretro-common/include/rhash.h>
