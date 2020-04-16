@@ -1,5 +1,16 @@
 #include "internal.h"
 
+#ifdef RARCH_INTERNAL
+ #include <libretro-common/include/rhash.h>
+ #define md5_state_t MD5_CTX
+ #define md5_byte_t unsigned char
+ #define md5_init(state) MD5_Init(state)
+ #define md5_append(state, buffer, size) MD5_Update(state, buffer, size)
+ #define md5_finish(state, hash) MD5_Final(hash, state)
+#else
+ #include "../rhash/md5.h"
+#endif
+
 #include <string.h>
 
 #define RC_RUNTIME_MARKER            0x1A504152 /* RAP\n */
@@ -272,7 +283,6 @@ static int rc_runtime_progress_read_achievement(rc_runtime_progress_t* progress)
 {
   unsigned id = rc_runtime_progress_read_uint(progress);
   unsigned i;
-  int result;
 
   for (i = 0; i < progress->runtime->trigger_count; ++i) {
     rc_runtime_trigger_t* runtime_trigger = &progress->runtime->triggers[i];
@@ -287,6 +297,8 @@ static int rc_runtime_progress_read_achievement(rc_runtime_progress_t* progress)
 
 static int rc_runtime_progress_serialize_internal(rc_runtime_progress_t* progress)
 {
+  md5_state_t state;
+  unsigned char md5[16];
   int result;
 
   rc_runtime_progress_write_uint(progress, RC_RUNTIME_MARKER);
@@ -298,7 +310,16 @@ static int rc_runtime_progress_serialize_internal(rc_runtime_progress_t* progres
       return result;
 
   rc_runtime_progress_write_uint(progress, RC_RUNTIME_CHUNK_DONE);
-  rc_runtime_progress_write_uint(progress, 0);
+  rc_runtime_progress_write_uint(progress, 16);
+
+  if (progress->buffer) {
+    md5_init(&state);
+    md5_append(&state, progress->buffer, progress->offset);
+    md5_finish(&state, md5);
+  }
+
+  rc_runtime_progress_write_md5(progress, md5);
+
   return RC_OK;
 }
 
@@ -329,10 +350,13 @@ int rc_runtime_serialize_progress(void* buffer, rc_runtime_t* runtime, lua_State
 int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const unsigned char* serialized, lua_State* L)
 {
   rc_runtime_progress_t progress;
+  md5_state_t state;
+  unsigned char md5[16];
   unsigned chunk_id;
   unsigned chunk_size;
+  unsigned next_chunk_offset;
   unsigned i;
-  int result;
+  int result = RC_OK;
   const char RC_TRIGGER_STATE_UNUPDATED = 0x7F;
 
   rc_runtime_progress_init(&progress, runtime, L);
@@ -351,6 +375,7 @@ int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const unsigned char* 
   do {
     chunk_id = rc_runtime_progress_read_uint(&progress);
     chunk_size = rc_runtime_progress_read_uint(&progress);
+    next_chunk_offset = progress.offset + chunk_size;
 
     switch (chunk_id)
     {
@@ -363,15 +388,20 @@ int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const unsigned char* 
         break;
 
       case RC_RUNTIME_CHUNK_DONE:
+        md5_init(&state);
+        md5_append(&state, progress.buffer, progress.offset);
+        md5_finish(&state, md5);
+        if (!rc_runtime_progress_match_md5(&progress, md5))
+          result = RC_INVALID_STATE;
         break;
 
       default:
         if (chunk_size & 0xFFFF0000)
           result = RC_INVALID_STATE; /* assume unknown chunk > 64KB is invalid */
-        else
-          progress.offset += chunk_size; /* skip over unknown chunk */
         break;
     }
+
+    progress.offset = next_chunk_offset;
   } while (result == RC_OK && chunk_id != RC_RUNTIME_CHUNK_DONE);
 
   if (result != RC_OK) {
