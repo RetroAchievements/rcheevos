@@ -31,6 +31,8 @@ typedef struct rc_runtime_progress_t {
   lua_State* L;
 } rc_runtime_progress_t;
 
+#define RC_TRIGGER_STATE_UNUPDATED 0x7F
+
 static void rc_runtime_progress_write_uint(rc_runtime_progress_t* progress, unsigned value)
 {
   if (progress->buffer) {
@@ -255,14 +257,13 @@ static int rc_runtime_progress_write_achievements(rc_runtime_progress_t* progres
 
     switch (runtime_trigger->trigger->state)
     {
-      case RC_TRIGGER_STATE_ACTIVE:
-      case RC_TRIGGER_STATE_PAUSED:
-      case RC_TRIGGER_STATE_PRIMED:
-        /* only store state for active achievements */
+      case RC_TRIGGER_STATE_INACTIVE:
+      case RC_TRIGGER_STATE_TRIGGERED:
+        /* don't store state for inactive or triggered achievements */
         break;
 
       default:
-        continue;
+        break;
     }
 
     rc_runtime_progress_start_chunk(progress, RC_RUNTIME_CHUNK_ACHIEVEMENT);
@@ -287,8 +288,13 @@ static int rc_runtime_progress_read_achievement(rc_runtime_progress_t* progress)
   for (i = 0; i < progress->runtime->trigger_count; ++i) {
     rc_runtime_trigger_t* runtime_trigger = &progress->runtime->triggers[i];
     if (runtime_trigger->id == id && runtime_trigger->trigger != NULL) {
-      if (rc_runtime_progress_match_md5(progress, runtime_trigger->md5))
-        return rc_runtime_progress_read_trigger(progress, runtime_trigger->trigger);
+      /* ignore triggered and waiting achievements */
+      if (runtime_trigger->trigger->state == RC_TRIGGER_STATE_UNUPDATED) {
+        /* only update state if definition hasn't changed (md5 matches) */
+        if (rc_runtime_progress_match_md5(progress, runtime_trigger->md5))
+          return rc_runtime_progress_read_trigger(progress, runtime_trigger->trigger);
+        break;
+      }
     }
   }
 
@@ -357,7 +363,6 @@ int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const unsigned char* 
   unsigned next_chunk_offset;
   unsigned i;
   int result = RC_OK;
-  const char RC_TRIGGER_STATE_UNUPDATED = 0x7F;
 
   rc_runtime_progress_init(&progress, runtime, L);
   progress.buffer = (unsigned char*)serialized;
@@ -368,8 +373,22 @@ int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const unsigned char* 
   }
 
   for (i = 0; i < runtime->trigger_count; ++i) {
-    if (runtime->triggers[i].trigger)
-      runtime->triggers[i].trigger->state = RC_TRIGGER_STATE_UNUPDATED;
+    rc_runtime_trigger_t* runtime_trigger = &runtime->triggers[i];
+    if (runtime_trigger->trigger) {
+      switch (runtime_trigger->trigger->state)
+      {
+        case RC_TRIGGER_STATE_INACTIVE:
+        case RC_TRIGGER_STATE_TRIGGERED:
+          /* don't update state for inactive or triggered achievements */
+          break;
+
+        default:
+          /* mark active achievements as unupdated. anything that's still unupdated
+           * after deserializing the progress will be reset to waiting */
+          runtime_trigger->trigger->state = RC_TRIGGER_STATE_UNUPDATED;
+          break;
+      }
+    }
   }
 
   do {

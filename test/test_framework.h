@@ -95,7 +95,7 @@ extern const char* test_framework_basename(const char* path);
   TEST_INIT() \
   func(p1, p2, p3, p4, p5, p6, p7);
 
-#define ASSERT_FAIL(message, ...) { \
+#define ASSERT_MESSAGE(message, ...) { \
   if (!__test_framework_state.current_test_fail) { \
     __test_framework_state.current_test_fail = 1; \
     ++__test_framework_state.fail_count; \
@@ -106,8 +106,9 @@ extern const char* test_framework_basename(const char* path);
   } \
   fprintf(stderr, message "\n", ## __VA_ARGS__); \
   fflush(stderr); \
-  return; \
 }
+
+#define ASSERT_FAIL(message, ...) { ASSERT_MESSAGE(message, ## __VA_ARGS__); return; }
 
 #define ASSERT_COMPARE(value, compare, expected, type, format) { \
   type __v = (type)(value); \
