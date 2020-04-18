@@ -30,7 +30,7 @@ static void test_simple_leaderboard() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
@@ -82,7 +82,7 @@ static void test_start_and_cancel_same_frame() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
@@ -119,7 +119,7 @@ static void test_start_and_submit_same_frame() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
@@ -149,7 +149,7 @@ static void test_start_and_conditions() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
@@ -175,7 +175,7 @@ static void test_start_or_conditions() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
@@ -205,7 +205,7 @@ static void test_cancel_or_conditions() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
@@ -235,7 +235,7 @@ static void test_submit_and_conditions() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
@@ -261,7 +261,7 @@ static void test_submit_or_conditions() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
@@ -291,7 +291,7 @@ static void test_progress() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
@@ -314,7 +314,7 @@ static void test_value_from_hitcount() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
@@ -375,7 +375,7 @@ static void test_value_from_addhits() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
-  char buffer[512];
+  char buffer[1024];
   int value;
 
   memory.ram = ram;
