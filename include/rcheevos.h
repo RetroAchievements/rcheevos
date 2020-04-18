@@ -71,7 +71,8 @@ enum {
   RC_MEMSIZE_BIT_4,
   RC_MEMSIZE_BIT_5,
   RC_MEMSIZE_BIT_6,
-  RC_MEMSIZE_BIT_7
+  RC_MEMSIZE_BIT_7,
+  RC_MEMSIZE_BITCOUNT,
 };
 
 typedef struct {
@@ -113,8 +114,6 @@ enum {
   RC_OPERAND_LUA,            /* A Lua function that provides the value. */
   RC_OPERAND_PRIOR,          /* The last differing value at this address. */
   RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM */
-  RC_OPERAND_BITCOUNT,       /* The number of bits set in a value from RAM */
-  RC_OPERAND_DELTA_BITCOUNT, /* The number of bits set in the last known value from RAM */
   RC_OPERAND_INVERTED        /* The twos-complement value of a live address in RAM */
 };
 
