@@ -13,7 +13,7 @@
 
 #include <string.h>
 
-#define RC_RUNTIME_MARKER            0x1A504152 /* RAP\n */
+#define RC_RUNTIME_MARKER            0x0A504152 /* RAP\n */
 
 #define RC_RUNTIME_CHUNK_MEMREFS     0x4645524D /* MREF */
 #define RC_RUNTIME_CHUNK_ACHIEVEMENT 0x56484341 /* ACHV */
@@ -32,6 +32,8 @@ typedef struct rc_runtime_progress_t {
 } rc_runtime_progress_t;
 
 #define RC_TRIGGER_STATE_UNUPDATED 0x7F
+
+#define RC_MEMREF_FLAG_PREV_IS_PRIOR 0x00010000
 
 static void rc_runtime_progress_write_uint(rc_runtime_progress_t* progress, unsigned value)
 {
@@ -113,13 +115,18 @@ static void rc_runtime_progress_init(rc_runtime_progress_t* progress, rc_runtime
 static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
 {
   rc_memref_value_t* memref = progress->runtime->memrefs;
+  unsigned int flags = 0;
 
   rc_runtime_progress_start_chunk(progress, RC_RUNTIME_CHUNK_MEMREFS);
 
   while (memref) {
+    flags = memref->memref.size;
+    if (memref->previous == memref->prior)
+      flags |= RC_MEMREF_FLAG_PREV_IS_PRIOR;
+
     rc_runtime_progress_write_uint(progress, memref->memref.address);
+    rc_runtime_progress_write_uint(progress, flags);
     rc_runtime_progress_write_uint(progress, memref->value);
-    rc_runtime_progress_write_uint(progress, memref->previous);
     rc_runtime_progress_write_uint(progress, memref->prior);
 
     memref = memref->next;
@@ -132,7 +139,8 @@ static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
 static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
 {
   unsigned entries;
-  unsigned address, value, previous, prior;
+  unsigned address, flags, value, prior;
+  char size;
   rc_memref_value_t* memref;
 
   /* re-read the chunk size to determine how many memrefs are present */
@@ -141,15 +149,17 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
 
   while (entries != 0) {
     address = rc_runtime_progress_read_uint(progress);
+    flags = rc_runtime_progress_read_uint(progress);
     value = rc_runtime_progress_read_uint(progress);
-    previous = rc_runtime_progress_read_uint(progress);
     prior = rc_runtime_progress_read_uint(progress);
+
+    size = flags & 0xFF;
 
     memref = progress->runtime->memrefs;
     while (memref) {
-      if (memref->memref.address == address) {
+      if (memref->memref.address == address && memref->memref.size == size) {
         memref->value = value;
-        memref->previous = previous;
+        memref->previous = (flags & RC_MEMREF_FLAG_PREV_IS_PRIOR) ? prior : value;
         memref->prior = prior;
       }
 
@@ -204,9 +214,11 @@ static int rc_runtime_progress_write_trigger(rc_runtime_progress_t* progress, rc
   rc_runtime_progress_write_uint(progress, trigger->state);
   rc_runtime_progress_write_uint(progress, trigger->measured_value);
 
-  result = rc_runtime_progress_write_condset(progress, trigger->requirement);
-  if (result != RC_OK)
-    return result;
+  if (trigger->requirement) {
+    result = rc_runtime_progress_write_condset(progress, trigger->requirement);
+    if (result != RC_OK)
+      return result;
+  }
 
   condset = trigger->alternative;
   while (condset)
@@ -229,9 +241,11 @@ static int rc_runtime_progress_read_trigger(rc_runtime_progress_t* progress, rc_
   trigger->state = rc_runtime_progress_read_uint(progress);
   trigger->measured_value = rc_runtime_progress_read_uint(progress);
 
-  result = rc_runtime_progress_read_condset(progress, trigger->requirement);
-  if (result != RC_OK)
-    return result;
+  if (trigger->requirement) {
+    result = rc_runtime_progress_read_condset(progress, trigger->requirement);
+    if (result != RC_OK)
+      return result;
+  }
 
   condset = trigger->alternative;
   while (condset)
@@ -329,12 +343,12 @@ static int rc_runtime_progress_serialize_internal(rc_runtime_progress_t* progres
   return RC_OK;
 }
 
-int rc_runtime_progress_size(rc_runtime_t* runtime, lua_State* L)
+int rc_runtime_progress_size(const rc_runtime_t* runtime, lua_State* L)
 {
   rc_runtime_progress_t progress;
   int result;
 
-  rc_runtime_progress_init(&progress, runtime, L);
+  rc_runtime_progress_init(&progress, (rc_runtime_t*)runtime, L);
 
   result = rc_runtime_progress_serialize_internal(&progress);
   if (result != RC_OK)
@@ -343,11 +357,11 @@ int rc_runtime_progress_size(rc_runtime_t* runtime, lua_State* L)
   return progress.offset;
 }
 
-int rc_runtime_serialize_progress(void* buffer, rc_runtime_t* runtime, lua_State* L)
+int rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua_State* L)
 {
   rc_runtime_progress_t progress;
 
-  rc_runtime_progress_init(&progress, runtime, L);
+  rc_runtime_progress_init(&progress, (rc_runtime_t*)runtime, L);
   progress.buffer = (unsigned char*)buffer;
 
   return rc_runtime_progress_serialize_internal(&progress);

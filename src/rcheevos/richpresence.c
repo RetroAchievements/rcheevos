@@ -169,7 +169,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
 
             /* assert: the allocated string is going to be smaller than the memory used for the parameter of the macro */
             part->display_type = RC_FORMAT_UNKNOWN_MACRO;
-            part->text = rc_alloc_str(parse, line, ptr - line);
+            part->text = rc_alloc_str(parse, line, (int)(ptr - line));
           }
         }
       }

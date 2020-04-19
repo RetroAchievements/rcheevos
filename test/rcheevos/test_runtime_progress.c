@@ -44,12 +44,12 @@ static void assert_deserialize(rc_runtime_t* runtime, unsigned char* buffer)
   ASSERT_NUM_EQUALS(result, RC_OK);
 }
 
-static void assert_memref(rc_runtime_t* runtime, unsigned address, unsigned value, unsigned prev, unsigned prior)
+static void assert_sized_memref(rc_runtime_t* runtime, unsigned address, char size, unsigned value, unsigned prev, unsigned prior)
 {
   rc_memref_value_t* memref = runtime->memrefs;
   while (memref)
   {
-    if (memref->memref.address == address)
+    if (memref->memref.address == address && memref->memref.size == size)
     {
       ASSERT_NUM_EQUALS(memref->value, value);
       ASSERT_NUM_EQUALS(memref->previous, prev);
@@ -61,6 +61,11 @@ static void assert_memref(rc_runtime_t* runtime, unsigned address, unsigned valu
   }
 
   ASSERT_FAIL("could not find memref for address %u", address);
+}
+
+static void assert_memref(rc_runtime_t* runtime, unsigned address, unsigned value, unsigned prev, unsigned prior)
+{
+  assert_sized_memref(runtime, address, RC_MEMSIZE_8_BITS, value, prev, prior);
 }
 
 static rc_trigger_t* find_trigger(rc_runtime_t* runtime, unsigned ach_id)
@@ -521,6 +526,92 @@ static void setup_multiple_achievements(rc_runtime_t* runtime, memory_t* memory)
   assert_hitcount(runtime, 4, 0, 0, 1);
 }
 
+static void test_no_core_group()
+{
+  unsigned char ram[] = { 2, 3, 6 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_achievement(&runtime, 1, "S0xH0001=4_0xH0002=5");
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 4;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 5;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+
+  assert_memref(&runtime, 1, 5, 5, 4);
+  assert_memref(&runtime, 2, 6, 6, 0);
+  assert_hitcount(&runtime, 1, 1, 0, 3);
+  assert_hitcount(&runtime, 1, 1, 1, 0);
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  assert_memref(&runtime, 1, 5, 5, 4);
+  assert_memref(&runtime, 2, 6, 6, 0);
+  assert_hitcount(&runtime, 1, 1, 0, 3);
+  assert_hitcount(&runtime, 1, 1, 1, 0);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_memref_shared_address()
+{
+  unsigned char ram[] = { 2, 3, 0, 0, 0 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=4_0x 0001=5_0xX0001=6");
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 4;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 5;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 6;
+  assert_do_frame(&runtime, &memory);
+
+  assert_sized_memref(&runtime, 1, RC_MEMSIZE_8_BITS, 6, 5, 5);
+  assert_sized_memref(&runtime, 1, RC_MEMSIZE_16_BITS, 6, 5, 5);
+  assert_sized_memref(&runtime, 1, RC_MEMSIZE_32_BITS, 6, 5, 5);
+  assert_hitcount(&runtime, 1, 0, 0, 3);
+  assert_hitcount(&runtime, 1, 0, 1, 2);
+  assert_hitcount(&runtime, 1, 0, 2, 1);
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  assert_sized_memref(&runtime, 1, RC_MEMSIZE_8_BITS, 6, 5, 5);
+  assert_sized_memref(&runtime, 1, RC_MEMSIZE_16_BITS, 6, 5, 5);
+  assert_sized_memref(&runtime, 1, RC_MEMSIZE_32_BITS, 6, 5, 5);
+  assert_hitcount(&runtime, 1, 0, 0, 3);
+  assert_hitcount(&runtime, 1, 0, 1, 2);
+  assert_hitcount(&runtime, 1, 0, 2, 1);
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_multiple_achievements()
 {
   unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
@@ -752,6 +843,9 @@ void test_runtime_progress(void) {
   TEST(test_modified_data);
   TEST(test_single_achievement_deactivated);
   TEST(test_single_achievement_md5_changed);
+
+  TEST(test_no_core_group);
+  TEST(test_memref_shared_address);
 
   TEST(test_multiple_achievements);
   TEST(test_multiple_achievements_ignore_triggered_and_inactive);
