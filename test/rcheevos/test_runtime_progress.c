@@ -831,6 +831,112 @@ static void test_multiple_achievements_paused_and_primed()
   rc_runtime_destroy(&runtime);
 }
 
+static void test_multiple_achievements_deactivated_memrefs()
+{
+  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  rc_runtime_init(&runtime);
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0000=1");
+  assert_activate_achievement(&runtime, 2, "0xH0001=5_0xH0000=2");
+  assert_activate_achievement(&runtime, 3, "0xH0001=6_0xH0000=3");
+
+  ram[1] = 4;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 5;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 6;
+  assert_do_frame(&runtime, &memory);
+
+  assert_hitcount(&runtime, 1, 0, 0, 3);
+  assert_hitcount(&runtime, 2, 0, 0, 2);
+  assert_hitcount(&runtime, 3, 0, 0, 1);
+
+  /* deactivate an achievement with memrefs - trigger should be nulled */
+  ASSERT_NUM_EQUALS(runtime.trigger_count, 3);
+  ASSERT_TRUE(runtime.triggers[0].owns_memrefs);
+  rc_runtime_deactivate_achievement(&runtime, 1);
+  ASSERT_NUM_EQUALS(runtime.trigger_count, 3);
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  /* reactivate achievement 1 */
+  assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0000=2");
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  assert_achievement_state(&runtime, 1, RC_TRIGGER_STATE_WAITING);
+  assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_ACTIVE);
+  assert_achievement_state(&runtime, 3, RC_TRIGGER_STATE_ACTIVE);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 2, 0, 0, 2);
+  assert_hitcount(&runtime, 3, 0, 0, 1);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_multiple_achievements_deactivated_no_memrefs()
+{
+  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  rc_runtime_init(&runtime);
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0000=1");
+  assert_activate_achievement(&runtime, 2, "0xH0001=5_0xH0000=2");
+  assert_activate_achievement(&runtime, 3, "0xH0001=6_0xH0000=3");
+
+  ram[1] = 4;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 5;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 6;
+  assert_do_frame(&runtime, &memory);
+
+  assert_hitcount(&runtime, 1, 0, 0, 3);
+  assert_hitcount(&runtime, 2, 0, 0, 2);
+  assert_hitcount(&runtime, 3, 0, 0, 1);
+
+  /* deactivate an achievement without memrefs - trigger should be removed */
+  ASSERT_NUM_EQUALS(runtime.trigger_count, 3);
+  ASSERT_FALSE(runtime.triggers[1].owns_memrefs);
+  rc_runtime_deactivate_achievement(&runtime, 2);
+  ASSERT_NUM_EQUALS(runtime.trigger_count, 2);
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  /* reactivate achievement 2 */
+  assert_activate_achievement(&runtime, 2, "0xH0001=5_0xH0000=2");
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  assert_achievement_state(&runtime, 1, RC_TRIGGER_STATE_ACTIVE);
+  assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_WAITING);
+  assert_achievement_state(&runtime, 3, RC_TRIGGER_STATE_ACTIVE);
+  assert_hitcount(&runtime, 1, 0, 0, 3);
+  assert_hitcount(&runtime, 2, 0, 0, 0);
+  assert_hitcount(&runtime, 3, 0, 0, 1);
+
+  rc_runtime_destroy(&runtime);
+}
+
 /* ======================================================== */
 
 void test_runtime_progress(void) {
@@ -852,6 +958,8 @@ void test_runtime_progress(void) {
   TEST(test_multiple_achievements_overwrite_waiting);
   TEST(test_multiple_achievements_reactivate_waiting);
   TEST(test_multiple_achievements_paused_and_primed);
+  TEST(test_multiple_achievements_deactivated_memrefs);
+  TEST(test_multiple_achievements_deactivated_no_memrefs);
 
 
   TEST_SUITE_END();

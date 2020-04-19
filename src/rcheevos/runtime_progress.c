@@ -268,6 +268,8 @@ static int rc_runtime_progress_write_achievements(rc_runtime_progress_t* progres
   for (i = 0; i < progress->runtime->trigger_count; ++i)
   {
     rc_runtime_trigger_t* runtime_trigger = &progress->runtime->triggers[i];
+    if (!runtime_trigger->trigger)
+      continue;
 
     switch (runtime_trigger->trigger->state)
     {
