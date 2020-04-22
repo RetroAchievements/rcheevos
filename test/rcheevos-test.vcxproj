@@ -127,6 +127,7 @@
     <ClCompile Include="..\src\rcheevos\compat.c" />
     <ClCompile Include="..\src\rcheevos\condition.c" />
     <ClCompile Include="..\src\rcheevos\condset.c" />
+    <ClCompile Include="..\src\rcheevos\consoleinfo.c" />
     <ClCompile Include="..\src\rcheevos\format.c" />
     <ClCompile Include="..\src\rcheevos\lboard.c" />
     <ClCompile Include="..\src\rcheevos\memref.c" />
@@ -172,6 +173,7 @@
     <ClCompile Include="lua\src\lzio.c" />
     <ClCompile Include="rcheevos\test_condition.c" />
     <ClCompile Include="rcheevos\test_condset.c" />
+    <ClCompile Include="rcheevos\test_consoleinfo.c" />
     <ClCompile Include="rcheevos\test_format.c" />
     <ClCompile Include="rcheevos\test_lboard.c" />
     <ClCompile Include="rcheevos\test_memref.c" />
@@ -186,6 +188,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h" />
+    <ClInclude Include="..\include\rconsoles.h" />
     <ClInclude Include="..\include\rhash.h" />
     <ClInclude Include="..\src\rcheevos\compat.h" />
     <ClInclude Include="..\src\rcheevos\internal.h" />

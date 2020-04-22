@@ -55,6 +55,8 @@ extern void test_lboard();
 extern void test_richpresence();
 extern void test_runtime();
 
+extern void test_consoleinfo();
+
 extern void test_hash();
 
 TEST_FRAMEWORK_DECLARATIONS()
@@ -72,6 +74,7 @@ int main(void) {
   test_lboard();
   test_richpresence();
   test_runtime();
+  test_consoleinfo();
 
   test_lua();
 

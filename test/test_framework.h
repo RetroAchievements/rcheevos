@@ -141,5 +141,11 @@ extern const char* test_framework_basename(const char* path);
     ASSERT_FAIL( "String mismatch for: " #value " (%s:%d)\n  Expected: %s\n  Found:    %s", test_framework_basename(__FILE__), __LINE__, __e, __v); \
   }}
 
+#define ASSERT_STR_NOT_EQUALS(value, expected) { \
+  const char* __v = (const char*)(value); \
+  const char* __e = (const char*)(expected); \
+  if (strcmp(__v, __e) == 0) { \
+    ASSERT_FAIL( "String match for: " #value " (%s:%d)\n  Found, but not expected: %s", test_framework_basename(__FILE__), __LINE__, __v); \
+  }}
 
 #endif /* TEST_FRAMEWORK_H */

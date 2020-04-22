@@ -204,6 +204,12 @@
     <ClCompile Include="rcheevos\test_runtime.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rcheevos\consoleinfo.c">
+      <Filter>src\rcheevos</Filter>
+    </ClCompile>
+    <ClCompile Include="rcheevos\test_consoleinfo.c">
+      <Filter>tests\rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">
@@ -225,6 +231,9 @@
       <Filter>src\rhash</Filter>
     </ClInclude>
     <ClInclude Include="..\src\rcheevos\compat.h">
+      <Filter>src\rcheevos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rconsoles.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
   </ItemGroup>
