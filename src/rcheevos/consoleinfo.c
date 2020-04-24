@@ -242,12 +242,17 @@ static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
     { 0x00A000U, 0x00BFFFU, 0x00A000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM"},
     { 0x00C000U, 0x00CFFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM (fixed)" },
     { 0x00D000U, 0x00DFFFU, 0x00D000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM (bank 1)" },
-    { 0x00E000U, 0x00FDFFU, 0x00E000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Echo RAM" },
+    { 0x00E000U, 0x00FDFFU, 0x00C000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Echo RAM" },
     { 0x00FE00U, 0x00FE9FU, 0x00FE00U, RC_MEMORY_TYPE_VIDEO_RAM, "Sprite RAM"},
     { 0x00FEA0U, 0x00FEFFU, 0x00FEA0U, RC_MEMORY_TYPE_READONLY, "Unusable"},
     { 0x00FF00U, 0x00FF7FU, 0x00FF00U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Hardware I/O"},
     { 0x00FF80U, 0x00FFFEU, 0x00FF80U, RC_MEMORY_TYPE_SYSTEM_RAM, "Quick RAM"},
     { 0x00FFFFU, 0x00FFFFU, 0x00FFFFU, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Interrupt enable"},
+
+    /* GameBoy Color provides six extra banks of memory that can be paged out through the $DXXX 
+     * memory space, but the timing of that does not correspond with blanks, which is when achievements 
+     * are processed. As such, it is desirable to always have access to these extra banks. We do this
+     * by expecting the extra banks to be addressable at addresses not supported by the native system. */
     { 0x010000U, 0x015FFFU, 0x010000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM (banks 2-7, GBC only)" }
 };
 static const rc_memory_regions_t rc_memory_regions_gameboy = { _rc_memory_regions_gameboy, 16 };
@@ -309,9 +314,9 @@ static const rc_memory_regions_t rc_memory_regions_neo_geo_pocket = { _rc_memory
 /* https://wiki.nesdev.com/w/index.php/CPU_memory_map */
 static const rc_memory_region_t _rc_memory_regions_nes[] = {
     { 0x0000U, 0x07FFU, 0x0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
-    { 0x0800U, 0x0FFFU, 0x0800U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirror RAM" }, /* duplicates memory from $0000-$07FF */
-    { 0x1000U, 0x17FFU, 0x1000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirror RAM" }, /* duplicates memory from $0000-$07FF */
-    { 0x1800U, 0x1FFFU, 0x1800U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirror RAM" }, /* duplicates memory from $0000-$07FF */
+    { 0x0800U, 0x0FFFU, 0x0000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirror RAM" }, /* duplicates memory from $0000-$07FF */
+    { 0x1000U, 0x17FFU, 0x0000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirror RAM" }, /* duplicates memory from $0000-$07FF */
+    { 0x1800U, 0x1FFFU, 0x0000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirror RAM" }, /* duplicates memory from $0000-$07FF */
     { 0x2000U, 0x2007U, 0x2000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "PPU Register" },
     { 0x2008U, 0x3FFFU, 0x2008U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirrored PPU Register" }, /* repeats every 8 bytes */
     { 0x4000U, 0x4017U, 0x4000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "APU and I/O register" },
