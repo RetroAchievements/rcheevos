@@ -36,7 +36,8 @@ enum {
   RC_MISSING_VALUE_MEASURED = -21,
   RC_MULTIPLE_MEASURED = -22,
   RC_INVALID_MEASURED_TARGET = -23,
-  RC_INVALID_COMPARISON = -24
+  RC_INVALID_COMPARISON = -24,
+  RC_INVALID_STATE = -25
 };
 
 const char* rc_error_str(int ret);
@@ -467,6 +468,10 @@ typedef void (*rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_eve
 
 void rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_peek_t peek, void* ud, lua_State* L);
 void rc_runtime_reset(rc_runtime_t* runtime);
+
+int rc_runtime_progress_size(const rc_runtime_t* runtime, lua_State* L);
+int rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua_State* L);
+int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const unsigned char* serialized, lua_State* L);
 
 #ifdef __cplusplus
 }

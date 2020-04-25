@@ -596,10 +596,3 @@ void rc_runtime_reset(rc_runtime_t* self) {
     }
   }
 }
-
-/*
- * TODO: char* rc_runtime_serialize_progress(rc_runtime_t* runtime)
- *       returns malloc'd string to be written to disk
- *       make sure to include measured_value and state in serialized format (only serialize active and paused)
- * TODO: int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const char* serialized)
-*/

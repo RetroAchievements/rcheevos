@@ -133,6 +133,7 @@
     <ClCompile Include="..\src\rcheevos\operand.c" />
     <ClCompile Include="..\src\rcheevos\richpresence.c" />
     <ClCompile Include="..\src\rcheevos\runtime.c" />
+    <ClCompile Include="..\src\rcheevos\runtime_progress.c" />
     <ClCompile Include="..\src\rcheevos\trigger.c" />
     <ClCompile Include="..\src\rcheevos\value.c" />
     <ClCompile Include="..\src\rhash\hash.c" />
@@ -178,6 +179,7 @@
     <ClCompile Include="rcheevos\test_operand.c" />
     <ClCompile Include="rcheevos\test_richpresence.c" />
     <ClCompile Include="rcheevos\test_runtime.c" />
+    <ClCompile Include="rcheevos\test_runtime_progress.c" />
     <ClCompile Include="rcheevos\test_trigger.c" />
     <ClCompile Include="rcheevos\test_value.c" />
     <ClCompile Include="rhash\data.c" />
