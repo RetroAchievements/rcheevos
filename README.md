@@ -183,7 +183,8 @@ enum {
   RC_MEMSIZE_BIT_4,
   RC_MEMSIZE_BIT_5,
   RC_MEMSIZE_BIT_6,
-  RC_MEMSIZE_BIT_7
+  RC_MEMSIZE_BIT_7,
+  RC_MEMSIZE_BITCOUNT
 };
 ```
 
@@ -198,13 +199,11 @@ enum {
   RC_OPERAND_LUA,            /* A Lua function that provides the value. */
   RC_OPERAND_PRIOR,          /* The last differing value at this address. */
   RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM */
-  RC_OPERAND_BITCOUNT,       /* The number of bits set in a value from RAM */
-  RC_OPERAND_DELTA_BITCOUNT, /* The number of bits set in the last known value value from RAM */
-  RC_OPERAND_INVERTED,       /* The twos-complement value of a live address in RAM */
+  RC_OPERAND_INVERTED        /* The twos-complement value of a live address in RAM */
 };
 ```
 
-`RC_OPERAND_ADDRESS`, `RC_OPERAND_DELTA`, `RC_OPERAND_PRIOR`, `RC_OPERAND_BCD`, `RC_OPERAND_BITCOUNT`, `RC_OPERAND_DELTA_BITCOUNT`, and `RC_OPERAND_INVERTED` mean that `memref` is active. `RC_OPERAND_CONST` means that `num` is active. `RC_OPERAND_FP` means that `dbl` is active. `RC_OPERAND_LUA` means `luafunc` is active.
+`RC_OPERAND_ADDRESS`, `RC_OPERAND_DELTA`, `RC_OPERAND_PRIOR`, `RC_OPERAND_BCD`, and `RC_OPERAND_INVERTED` mean that `memref` is active. `RC_OPERAND_CONST` means that `num` is active. `RC_OPERAND_FP` means that `dbl` is active. `RC_OPERAND_LUA` means `luafunc` is active.
 
 
 ### `rc_condition_t`

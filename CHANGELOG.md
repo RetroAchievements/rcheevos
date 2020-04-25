@@ -1,6 +1,6 @@
 # v9.0.0
 
-* new size: RC_MEMSIZE_8_BITS_BITCOUNT
+* new size: RC_MEMSIZE_BITCOUNT
 * new flag: RC_CONDITION_OR_NEXT
 * new flag: RC_CONDITION_TRIGGER
 * new operators: RC_OPERATOR_MULT / RC_OPERATOR_DIV
