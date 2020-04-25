@@ -132,3 +132,13 @@ uint8_t* generate_fds_file(size_t sides, int with_header, size_t* image_size)
     *image_size = size_needed;
   return image;
 }
+
+uint8_t* generate_generic_file(size_t size)
+{
+  uint8_t* image;
+  image = (uint8_t*)calloc(size, 1);
+  if (image != NULL)
+    fill_image(image, size);
+
+  return image;
+}
