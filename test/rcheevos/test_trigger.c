@@ -1122,7 +1122,7 @@ static void test_bitcount_shares_memref() {
   rc_trigger_t* trigger;
   char buffer[512];
 
-  assert_parse_trigger(&trigger, buffer, "0xH0001>5_c0xH0001!=3");
+  assert_parse_trigger(&trigger, buffer, "0xH0001>5_0xC0001!=3");
 
   ASSERT_NUM_EQUALS(trigger->memrefs->memref.address, 1U);
   ASSERT_NUM_EQUALS(trigger->memrefs->memref.size, RC_MEMSIZE_8_BITS);
@@ -1130,8 +1130,8 @@ static void test_bitcount_shares_memref() {
 
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.type, RC_OPERAND_ADDRESS);
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.size, RC_MEMSIZE_8_BITS);
-  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.type, RC_OPERAND_BITCOUNT);
-  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.size, RC_MEMSIZE_8_BITS);
+  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.type, RC_OPERAND_ADDRESS);
+  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.size, RC_MEMSIZE_BITCOUNT);
 }
 
 static void test_large_memref_not_shared() {

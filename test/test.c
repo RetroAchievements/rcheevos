@@ -54,6 +54,7 @@ extern void test_format();
 extern void test_lboard();
 extern void test_richpresence();
 extern void test_runtime();
+extern void test_runtime_progress();
 
 extern void test_consoleinfo();
 
@@ -74,6 +75,8 @@ int main(void) {
   test_lboard();
   test_richpresence();
   test_runtime();
+  test_runtime_progress();
+
   test_consoleinfo();
 
   test_lua();

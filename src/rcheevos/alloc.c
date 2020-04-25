@@ -81,6 +81,7 @@ const char* rc_error_str(int ret)
     case RC_MULTIPLE_MEASURED: return "Multiple measured targets";
     case RC_INVALID_MEASURED_TARGET: return "Invalid measured target";
     case RC_INVALID_COMPARISON: return "Invalid comparison";
+    case RC_INVALID_STATE: return "Invalid state";
 
     default: return "Unknown error";
   }

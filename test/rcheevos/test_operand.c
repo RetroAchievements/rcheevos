@@ -117,6 +117,7 @@ static void test_parse_memory_references() {
   TEST_PARAMS4(test_parse_operand, "0xR1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_5, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "0xS1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_6, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "0xT1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_7, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "0xC1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BITCOUNT, 0x1234U);
 
   /* sizes (ignore case) */
   TEST_PARAMS4(test_parse_operand, "0Xh1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U);
@@ -131,6 +132,7 @@ static void test_parse_memory_references() {
   TEST_PARAMS4(test_parse_operand, "0xr1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_5, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "0xs1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_6, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "0xt1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BIT_7, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "0xc1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_BITCOUNT, 0x1234U);
 
   /* addresses */
   TEST_PARAMS4(test_parse_operand, "0xH0000", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x0000U);
@@ -156,6 +158,7 @@ static void test_parse_delta_memory_references() {
   TEST_PARAMS4(test_parse_operand, "d0xR1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_5, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "d0xS1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_6, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "d0xT1234", RC_OPERAND_DELTA, RC_MEMSIZE_BIT_7, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "d0xC1234", RC_OPERAND_DELTA, RC_MEMSIZE_BITCOUNT, 0x1234U);
 
   /* ignores case */
   TEST_PARAMS4(test_parse_operand, "D0Xh1234", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x1234U);
@@ -184,6 +187,7 @@ static void test_parse_prior_memory_references() {
   TEST_PARAMS4(test_parse_operand, "p0xR1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_5, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "p0xS1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_6, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "p0xT1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BIT_7, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "p0xC1234", RC_OPERAND_PRIOR, RC_MEMSIZE_BITCOUNT, 0x1234U);
 
   /* ignores case */
   TEST_PARAMS4(test_parse_operand, "P0Xh1234", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0x1234U);
@@ -214,62 +218,6 @@ static void test_parse_bcd_memory_references() {
   TEST_PARAMS4(test_parse_operand, "b0xR1234", RC_OPERAND_BCD, RC_MEMSIZE_BIT_5, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "b0xS1234", RC_OPERAND_BCD, RC_MEMSIZE_BIT_6, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "b0xT1234", RC_OPERAND_BCD, RC_MEMSIZE_BIT_7, 0x1234U);
-}
-
-static void test_parse_bitcount_memory_references() {
-  /* sizes */
-  TEST_PARAMS4(test_parse_operand, "c0xH1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_8_BITS, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0x 1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_16_BITS, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0x1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_16_BITS, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xW1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_24_BITS, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xX1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_32_BITS, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xL1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_LOW, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xU1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_HIGH, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xM1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_BIT_0, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xN1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_BIT_1, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xO1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_BIT_2, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xP1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_BIT_3, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xQ1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_BIT_4, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xR1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_BIT_5, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xS1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_BIT_6, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "c0xT1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_BIT_7, 0x1234U);
-
-  /* ignores case */
-  TEST_PARAMS4(test_parse_operand, "C0Xh1234", RC_OPERAND_BITCOUNT, RC_MEMSIZE_8_BITS, 0x1234U);
-
-  /* addresses */
-  TEST_PARAMS4(test_parse_operand, "c0xH0000", RC_OPERAND_BITCOUNT, RC_MEMSIZE_8_BITS, 0x0000U);
-  TEST_PARAMS4(test_parse_operand, "c0xH12345678", RC_OPERAND_BITCOUNT, RC_MEMSIZE_8_BITS, 0x12345678U);
-  TEST_PARAMS4(test_parse_operand, "c0xHABCD", RC_OPERAND_BITCOUNT, RC_MEMSIZE_8_BITS, 0xABCDU);
-  TEST_PARAMS4(test_parse_operand, "c0xhabcd", RC_OPERAND_BITCOUNT, RC_MEMSIZE_8_BITS, 0xABCDU);
-}
-
-static void test_parse_delta_bitcount_memory_references() {
-  /* sizes */
-  TEST_PARAMS4(test_parse_operand, "e0xH1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_8_BITS, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0x 1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_16_BITS, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0x1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_16_BITS, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xW1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_24_BITS, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xX1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_32_BITS, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xL1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_LOW, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xU1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_HIGH, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xM1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_BIT_0, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xN1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_BIT_1, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xO1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_BIT_2, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xP1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_BIT_3, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xQ1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_BIT_4, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xR1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_BIT_5, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xS1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_BIT_6, 0x1234U);
-  TEST_PARAMS4(test_parse_operand, "e0xT1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_BIT_7, 0x1234U);
-
-  /* ignores case */
-  TEST_PARAMS4(test_parse_operand, "E0Xh1234", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_8_BITS, 0x1234U);
-
-  /* addresses */
-  TEST_PARAMS4(test_parse_operand, "e0xH0000", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_8_BITS, 0x0000U);
-  TEST_PARAMS4(test_parse_operand, "e0xH12345678", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_8_BITS, 0x12345678U);
-  TEST_PARAMS4(test_parse_operand, "e0xHABCD", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_8_BITS, 0xABCDU);
-  TEST_PARAMS4(test_parse_operand, "e0xhabcd", RC_OPERAND_DELTA_BITCOUNT, RC_MEMSIZE_8_BITS, 0xABCDU);
 }
 
 static void test_parse_inverted_memory_references() {
@@ -408,26 +356,11 @@ static void test_evaluate_memory_references() {
   TEST_PARAMS3(test_evaluate_operand, "~0xt3", &memory, 0x0U);
 
   /* bit count */
-  TEST_PARAMS3(test_evaluate_operand, "c0xh00", &memory, 0U); /* 0 bits in 0x00 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xh01", &memory, 2U); /* 2 bits in 0x12 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xh02", &memory, 3U); /* 3 bits in 0x34 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xh03", &memory, 5U); /* 5 bits in 0xAB */
-  TEST_PARAMS3(test_evaluate_operand, "c0xh04", &memory, 4U); /* 4 bits in 0x56 */
-  TEST_PARAMS3(test_evaluate_operand, "c0x 00", &memory, 2U); /* 2 bits in 0x1200 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xw00", &memory, 5U); /* 5 bits in 0x341200 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xx00", &memory, 10U); /* 10 bits in 0xAB341200 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xl03", &memory, 3U); /* 3 bits in 0x0B */
-  TEST_PARAMS3(test_evaluate_operand, "c0xu03", &memory, 2U); /* 2 bits in 0xA0 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xh03", &memory, 5U); /* 5 bits in 0xAB */
-  TEST_PARAMS3(test_evaluate_operand, "c0xm03", &memory, 1U); /* 1 bits in 0x01 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xn03", &memory, 1U); /* 1 bits in 0x02 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xo03", &memory, 0U); /* 0 bits in 0x00 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xp03", &memory, 1U); /* 1 bits in 0x08 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xq03", &memory, 0U); /* 0 bits in 0x00 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xr03", &memory, 1U); /* 1 bits in 0x20 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xs03", &memory, 0U); /* 0 bits in 0x00 */
-  TEST_PARAMS3(test_evaluate_operand, "c0xt03", &memory, 1U); /* 1 bits in 0x80 */
-
+  TEST_PARAMS3(test_evaluate_operand, "0xc00", &memory, 0U); /* 0 bits in 0x00 */
+  TEST_PARAMS3(test_evaluate_operand, "0xc01", &memory, 2U); /* 2 bits in 0x12 */
+  TEST_PARAMS3(test_evaluate_operand, "0xc02", &memory, 3U); /* 3 bits in 0x34 */
+  TEST_PARAMS3(test_evaluate_operand, "0xc03", &memory, 5U); /* 5 bits in 0xAB */
+  TEST_PARAMS3(test_evaluate_operand, "0xc04", &memory, 4U); /* 4 bits in 0x56 */
 
   /* BCD */
   TEST_PARAMS3(test_evaluate_operand, "b0xh3", &memory, 111U); /* 0xAB not technically valid in BCD */
@@ -525,8 +458,6 @@ void test_operand(void) {
   test_parse_delta_memory_references();
   test_parse_prior_memory_references();
   test_parse_bcd_memory_references();
-  test_parse_bitcount_memory_references();
-  test_parse_delta_bitcount_memory_references();
   test_parse_inverted_memory_references();
   test_parse_values();
 
