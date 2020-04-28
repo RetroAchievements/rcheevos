@@ -691,6 +691,46 @@ static void test_richpresence_reload(void)
   rc_runtime_destroy(&runtime);
 }
 
+static void test_richpresence_reload_addaddress(void)
+{
+  /* ram[1] must be non-zero */
+  unsigned char ram[] = { 1, 10, 10, 10 };
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  /* loading generates a display string with uninitialized memrefs, which ensures a non-empty display string */
+  assert_activate_richpresence(&runtime,
+      "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(I:0xH0000_M:0x 0001) Points");
+  ASSERT_STR_EQUALS(rc_runtime_get_richpresence(&runtime), "0 Points");
+
+  /* first frame should update display string with correct memrfs */
+  assert_do_frame(&runtime, &memory);
+  ASSERT_STR_EQUALS(rc_runtime_get_richpresence(&runtime), "2570 Points");
+
+  /* reloading should generate display string with current memrefs */
+  /* AddAddress will always generate a new memref for the indirection. */
+  /* because the reset doesn't provide a peek, the indirection can't be resolved, and the value will be 0. */
+  ram[2] = 20;
+  assert_activate_richpresence(&runtime,
+      "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(I:0xH0000_M:0x 0001) Bananas");
+  ASSERT_STR_EQUALS(rc_runtime_get_richpresence(&runtime), "0 Bananas");
+
+  /* AddAddress always generates a new memrefs for the indirection. */
+  ASSERT_NUM_EQUALS(runtime.richpresence->owns_memrefs, 1);
+  ASSERT_PTR_NOT_NULL(runtime.richpresence->previous);
+
+  /* first frame after reloading should update display string */
+  assert_do_frame(&runtime, &memory);
+  ASSERT_STR_EQUALS(rc_runtime_get_richpresence(&runtime), "2580 Bananas");
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_richpresence_static(void)
 {
   unsigned char ram[] = { 2, 10, 10 };
@@ -740,6 +780,7 @@ void test_runtime(void) {
   TEST(test_richpresence_macro_only);
   TEST(test_richpresence_conditional);
   TEST(test_richpresence_reload);
+  TEST(test_richpresence_reload_addaddress);
   TEST(test_richpresence_static);
 
   TEST_SUITE_END();
