@@ -17,7 +17,7 @@ static void assert_parse_richpresence(rc_richpresence_t** richpresence, void* bu
   ASSERT_PTR_NOT_NULL(*richpresence);
 
   if (*overflow != 0xCDCDCDCD) {
-      ASSERT_FAIL("write past end of buffer");
+    ASSERT_FAIL("write past end of buffer");
   }
 }
 
@@ -550,6 +550,26 @@ static void test_macro_undefined_at_end_of_line() {
   assert_richpresence_output(richpresence, &memory, "[Unknown macro]Points(0x 0001)");
 }
 
+static void test_macro_unterminated() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* valid macro with no closing parenthesis should just be dumped as-is */
+  assert_parse_richpresence(&richpresence, buffer, "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001");
+  assert_richpresence_output(richpresence, &memory, "@Points(0x 0001");
+
+  /* adding [Unknown macro] to the output effectively makes the script larger than it started.
+  * since we don't detect unknown macros in `rc_richpresence_size`, this was causing a 
+  * write-past-end-of-buffer memory corruption error. this test recreated that error. */
+  assert_parse_richpresence(&richpresence, buffer, "Display:\n@Points(0x 0001");
+  assert_richpresence_output(richpresence, &memory, "[Unknown macro]Points(0x 0001");
+}
+
 static void test_macro_without_parameter() {
   int result;
 
@@ -687,6 +707,7 @@ void test_richpresence(void) {
   /* macro errors */
   TEST(test_macro_undefined);
   TEST(test_macro_undefined_at_end_of_line);
+  TEST(test_macro_unterminated);
   TEST(test_macro_without_parameter);
   TEST(test_macro_without_parameter_conditional_display);
   TEST(test_macro_non_numeric_parameter);

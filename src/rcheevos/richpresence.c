@@ -115,6 +115,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
           /* just calculating size, can't confirm lookup exists */
           part = RC_ALLOC(rc_richpresence_display_part_t, parse);
 
+          in = line;
           line = ++ptr;
           while (ptr < endline && *ptr != ')')
             ++ptr;
@@ -123,6 +124,10 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
             if (parse->offset < 0)
               return 0;
             ++ptr;
+          } else {
+            /* no closing parenthesis - allocate space for the invalid string */
+            --in; /* already skipped over @ */
+            rc_alloc_str(parse, line, (int)(ptr - in));
           }
 
         } else {
@@ -138,6 +143,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
               part->first_lookup_item = lookup->first_item;
               part->display_type = lookup->format;
 
+              in = line;
               line = ++ptr;
               while (ptr < endline && *ptr != ')')
                 ++ptr;
@@ -147,6 +153,12 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
                 if (parse->offset < 0)
                   return 0;
                 ++ptr;
+              }
+              else {
+                /* non-terminated macro, dump the macro and the remaining portion of the line */
+                --in; /* already skipped over @ */
+                part->display_type = RC_FORMAT_STRING;
+                part->text = rc_alloc_str(parse, in, (int)(ptr - in));
               }
 
               break;
