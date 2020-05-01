@@ -48,6 +48,70 @@ static void test_simple_richpresence(const char* script, const char* expected_di
   assert_richpresence_output(richpresence, &memory, expected_display_string);
 }
 
+static void assert_buffer_boundary(rc_richpresence_t* richpresence, memory_t* memory, int buffersize, int expected_result, const char* expected_display_string) {
+  char output[256];
+  int result;
+  unsigned* overflow = (unsigned*)(&output[buffersize]);
+  *overflow = 0xCDCDCDCD;
+
+  result = rc_evaluate_richpresence(richpresence, output, buffersize, peek, memory, NULL);
+  ASSERT_NUM_EQUALS(result, expected_result);
+
+  if (*overflow != 0xCDCDCDCD) {
+    ASSERT_FAIL("write past end of buffer");
+  }
+
+  ASSERT_STR_EQUALS(output, expected_display_string);
+}
+
+static void test_buffer_boundary() {
+  unsigned char ram[] = { 0x00, 0x00, 0x00, 0x01, 0x00 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* static strings */
+  assert_parse_richpresence(&richpresence, &buffer[32], "Display:\nABCDEFGH");
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 7, 8, "ABCDEF"); /* only 6 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 8, "ABCDEFG"); /* only 7 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 9, 8, "ABCDEFGH"); /* all 8 chars written */
+
+  /* number formatting */
+  assert_parse_richpresence(&richpresence, &buffer[32], "Format:V\nFormatType=VALUE\n\nDisplay:\n@V(0xX0000)");
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 7, 8, "167772"); /* only 6 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 8, "1677721"); /* only 7 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 9, 8, "16777216"); /* all 8 chars written */
+
+  /* lookup */
+  assert_parse_richpresence(&richpresence, &buffer[32], "Lookup:L\n1=ABCDEFGH\n\nDisplay:\n@L(0xH0003)");
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 7, 8, "ABCDEF"); /* only 6 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 8, "ABCDEFG"); /* only 7 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 9, 8, "ABCDEFGH"); /* all 8 chars written */
+
+  /* unknown macro - "[Unknown macro]L(0xH0003)" = 25 chars */
+  assert_parse_richpresence(&richpresence, &buffer[32], "Display:\n@L(0xH0003)");
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 7, 25, "[Unkno"); /* only 6 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 25, 25, "[Unknown macro]L(0xH0003"); /* only 24 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 26, 25, "[Unknown macro]L(0xH0003)"); /* all 25 chars written */
+
+  /* multipart */
+  assert_parse_richpresence(&richpresence, &buffer[32], "Lookup:L\n0=\n1=A\n4=ABCD\n8=ABCDEFGH\n\nFormat:V\nFormatType=VALUE\n\nDisplay:\n@L(0xH0000)--@L(0xH0001)--@V(0xH0002)");
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 5, "----0"); /* initial value fits */
+  ram[1] = 4;
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 9, "--ABCD-"); /* only 7 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 9, 9, "--ABCD--"); /* only 8 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 10, 9, "--ABCD--0"); /* all 9 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 5, 9, "--AB"); /* only 7 chars written */
+  ram[2] = 123;
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 10, 11, "--ABCD--1"); /* only 9 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 11, 11, "--ABCD--12"); /* only 10 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 12, 11, "--ABCD--123"); /* all 11 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 2, 11, "-"); /* only 1 char written */
+}
+
 static void test_conditional_display_simple() {
   unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -667,6 +731,9 @@ void test_richpresence(void) {
 
   /* static display string with trailing text */
   TEST_PARAMS2(test_simple_richpresence, "Display:\nWhat\n\nWhere", "What");
+
+  /* buffer boundary */
+  test_buffer_boundary();
 
   /* condition display */
   TEST(test_conditional_display_simple);

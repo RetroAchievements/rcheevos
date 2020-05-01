@@ -451,7 +451,11 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsi
 
         if (chars > 0) {
           ptr += chars;
-          buffersize -= chars;
+
+          if ((unsigned)chars > buffersize) /* prevent write past end of buffer */
+            buffersize = 0;
+          else
+            buffersize -= chars;
         }
 
         part = part->next;
