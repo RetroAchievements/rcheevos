@@ -373,7 +373,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
 
   self->richpresence = malloc(sizeof(rc_runtime_richpresence_t));
   if (!self->richpresence)
-      return RC_OUT_OF_MEMORY;
+    return RC_OUT_OF_MEMORY;
 
   self->richpresence->previous = previous;
   self->richpresence->owns_memrefs = 0;

@@ -845,8 +845,8 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
     rc_file_seek(file_handle, 0, SEEK_SET);
     while (size >= buffer_size)
     {
-      rc_file_read(file_handle, buffer, buffer_size);
-      md5_append(&md5, buffer, buffer_size);
+      rc_file_read(file_handle, buffer, (int)buffer_size);
+      md5_append(&md5, buffer, (int)buffer_size);
       size -= buffer_size;
     }
 
