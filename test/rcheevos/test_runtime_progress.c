@@ -191,13 +191,8 @@ static void reset_runtime(rc_runtime_t* runtime)
 
 static void test_empty()
 {
-  unsigned char ram[] = { 2, 3, 6 };
   unsigned char buffer[2048];
-  memory_t memory;
   rc_runtime_t runtime;
-
-  memory.ram = ram;
-  memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
 

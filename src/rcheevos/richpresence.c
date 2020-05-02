@@ -115,6 +115,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
           /* just calculating size, can't confirm lookup exists */
           part = RC_ALLOC(rc_richpresence_display_part_t, parse);
 
+          in = line;
           line = ++ptr;
           while (ptr < endline && *ptr != ')')
             ++ptr;
@@ -123,6 +124,10 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
             if (parse->offset < 0)
               return 0;
             ++ptr;
+          } else {
+            /* no closing parenthesis - allocate space for the invalid string */
+            --in; /* already skipped over @ */
+            rc_alloc_str(parse, line, (int)(ptr - in));
           }
 
         } else {
@@ -138,6 +143,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
               part->first_lookup_item = lookup->first_item;
               part->display_type = lookup->format;
 
+              in = line;
               line = ++ptr;
               while (ptr < endline && *ptr != ')')
                 ++ptr;
@@ -147,6 +153,12 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
                 if (parse->offset < 0)
                   return 0;
                 ++ptr;
+              }
+              else {
+                /* non-terminated macro, dump the macro and the remaining portion of the line */
+                --in; /* already skipped over @ */
+                part->display_type = RC_FORMAT_STRING;
+                part->text = rc_alloc_str(parse, in, (int)(ptr - in));
               }
 
               break;
@@ -397,8 +409,10 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsi
   rc_richpresence_display_t* display;
   rc_richpresence_display_part_t* part;
   rc_richpresence_lookup_item_t* item;
+  char tmp[256];
   char* ptr;
-  int chars;
+  const char* text;
+  size_t chars;
   unsigned value;
 
   rc_update_memref_values(richpresence->memrefs, peek, peek_ud);
@@ -411,37 +425,52 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsi
       while (part) {
         switch (part->display_type) {
           case RC_FORMAT_STRING:
-            chars = snprintf(ptr, buffersize, "%s", part->text);
+            text = part->text;
+            chars = strlen(text);
             break;
 
           case RC_FORMAT_LOOKUP:
             value = rc_evaluate_value(&part->value, peek, peek_ud, L);
             item = part->first_lookup_item;
             if (!item) {
+              text = "";
               chars = 0;
             } else {
               while (item->next_item && item->value != value)
                 item = item->next_item;
 
-              chars = snprintf(ptr, buffersize, "%s", item->label);
+              text = item->label;
+              chars = strlen(text);
             }
             break;
 
           case RC_FORMAT_UNKNOWN_MACRO:
-            chars = snprintf(ptr, buffersize, "[Unknown macro]%s", part->text);
+            chars = snprintf(tmp, sizeof(tmp), "[Unknown macro]%s", part->text);
+            text = tmp;
             break;
 
           default:
             value = rc_evaluate_value(&part->value, peek, peek_ud, L);
-            chars = rc_format_value(ptr, buffersize, value, part->display_type);
+            chars = rc_format_value(tmp, sizeof(tmp), value, part->display_type);
+            text = tmp;
             break;
         }
 
-        if (chars > 0) {
-          ptr += chars;
-          buffersize -= chars;
+        if (chars > 0 && buffersize > 0) {
+          if ((unsigned)chars >= buffersize) {
+            /* prevent write past end of buffer */
+            memcpy(ptr, text, buffersize - 1);
+            ptr[buffersize - 1] = '\0';
+            buffersize = 0;
+          }
+          else {
+            memcpy(ptr, text, chars);
+            ptr[chars] = '\0';
+            buffersize -= chars;
+          }
         }
 
+        ptr += chars;
         part = part->next;
       }
 
