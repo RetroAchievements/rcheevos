@@ -4,7 +4,7 @@
 
 static void fill_image(uint8_t* image, size_t size)
 {
-  int seed = size ^ (size >> 8) ^ ((size - 1) * 25387);
+  int seed = (int)(size ^ (size >> 8) ^ ((size - 1) * 25387));
   int count;
   uint8_t value;
 

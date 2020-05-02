@@ -130,6 +130,9 @@ rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned addre
 static unsigned rc_memref_get_value(rc_memref_t* self, rc_peek_t peek, void* ud) {
   unsigned value;
 
+  if (!peek)
+    return 0;
+
   switch (self->size)
   {
     case RC_MEMSIZE_BIT_0:

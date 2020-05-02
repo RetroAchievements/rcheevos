@@ -133,7 +133,7 @@ static void update_md5(unsigned char* buffer)
   ptr += 8;
 
   md5_init(&state);
-  md5_append(&state, buffer, ptr - buffer);
+  md5_append(&state, buffer, (int)(ptr - buffer));
   md5_finish(&state, ptr);
 }
 
