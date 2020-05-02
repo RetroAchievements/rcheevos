@@ -466,7 +466,7 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsi
           else {
             memcpy(ptr, text, chars);
             ptr[chars] = '\0';
-            buffersize -= chars;
+            buffersize -= (unsigned)chars;
           }
         }
 
