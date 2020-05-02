@@ -32,7 +32,7 @@ enum {
   RC_CONSOLE_WII_U = 20,
   RC_CONSOLE_PLAYSTATION_2 = 21,
   RC_CONSOLE_XBOX = 22,
-  RC_CONSOLE_SKYNET = 23,
+  RC_CONSOLE_EVENTS = 23,
   RC_CONSOLE_POKEMON_MINI = 24,
   RC_CONSOLE_ATARI_2600 = 25,
   RC_CONSOLE_MS_DOS = 26,
@@ -66,6 +66,8 @@ enum {
   RC_CONSOLE_CASSETTEVISION = 54,
   RC_CONSOLE_SUPER_CASSETTEVISION = 55
 };
+
+const char* rc_console_name(int console_id);
 
 #ifdef __cplusplus
 }
