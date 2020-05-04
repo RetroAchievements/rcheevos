@@ -6,27 +6,34 @@
 #include <stdlib.h>
 
 
-typedef struct mock_file
+typedef struct mock_file_data
 {
   const char* path;
-  uint8_t* data;
+  const uint8_t* data;
   size_t size;
   size_t pos;
-} mock_file;
+} mock_file_data;
 
-static mock_file mock_file_instance;
+static mock_file_data mock_file_instance[4];
 
 static void* mock_file_open(const char* path)
 {
-  if (strcmp(path, mock_file_instance.path) == 0)
-    return &mock_file_instance;
+  int i;
+  for (i = 0; i < sizeof(mock_file_instance)/sizeof(mock_file_instance[0]); ++i)
+  {
+    if (strcmp(path, mock_file_instance[i].path) == 0)
+    {
+      mock_file_instance[i].pos = 0;
+      return &mock_file_instance[i];
+    }
+  }
 
   return NULL;
 }
 
 static void mock_file_seek(void* file_handle, size_t offset, int origin)
 {
-  mock_file* file = (mock_file*)file_handle;
+  mock_file_data* file = (mock_file_data*)file_handle;
   switch (origin)
   {
     case SEEK_SET:
@@ -43,13 +50,13 @@ static void mock_file_seek(void* file_handle, size_t offset, int origin)
 
 static size_t mock_file_tell(void* file_handle)
 {
-  mock_file* file = (mock_file*)file_handle;
+  mock_file_data* file = (mock_file_data*)file_handle;
   return file->pos;
 }
 
 static size_t mock_file_read(void* file_handle, void* buffer, size_t count)
 {
-  mock_file* file = (mock_file*)file_handle;
+  mock_file_data* file = (mock_file_data*)file_handle;
   size_t remaining = file->size - file->pos;
   if (count > remaining)
     count = remaining;
@@ -69,6 +76,8 @@ static void mock_file_close(void* file_handle)
 
 static void init_mock_filereader()
 {
+  int i;
+
   struct rc_hash_filereader reader;
   reader.open = mock_file_open;
   reader.seek = mock_file_seek;
@@ -77,24 +86,30 @@ static void init_mock_filereader()
   reader.close = mock_file_close;
 
   rc_hash_init_custom_filereader(&reader);
+
+  memset(&mock_file_instance, 0, sizeof(mock_file_instance));
+  for (i = 0; i < sizeof(mock_file_instance) / sizeof(mock_file_instance[0]); ++i)
+    mock_file_instance[i].path = "";
 }
 
-static int hash_mock_file(const char* filename, char hash[33], int console_id, uint8_t* buffer, size_t buffer_size)
+static void mock_file(int index, const char* filename, const uint8_t* buffer, size_t buffer_size)
 {
-  mock_file_instance.path = filename;
-  mock_file_instance.data = buffer;
-  mock_file_instance.size = buffer_size;
-  mock_file_instance.pos = 0;
+  mock_file_instance[index].path = filename;
+  mock_file_instance[index].data = buffer;
+  mock_file_instance[index].size = buffer_size;
+  mock_file_instance[index].pos = 0;
+}
+
+static int hash_mock_file(const char* filename, char hash[33], int console_id, const uint8_t* buffer, size_t buffer_size)
+{
+  mock_file(0, filename, buffer, buffer_size);
 
   return rc_hash_generate_from_file(hash, console_id, filename);
 }
 
-static void iterate_mock_file(struct rc_hash_iterator *iterator, const char* filename, uint8_t* buffer, size_t buffer_size)
+static void iterate_mock_file(struct rc_hash_iterator *iterator, const char* filename, const uint8_t* buffer, size_t buffer_size)
 {
-  mock_file_instance.path = filename;
-  mock_file_instance.data = buffer;
-  mock_file_instance.size = buffer_size;
-  mock_file_instance.pos = 0;
+  mock_file(0, filename, buffer, buffer_size);
 
   rc_hash_initialize_iterator(iterator, filename, NULL, 0);
 }
@@ -127,6 +142,38 @@ static void test_hash_full_file(int console_id, const char* filename, size_t siz
   ASSERT_NUM_EQUALS(result_buffer, 1);
   ASSERT_STR_EQUALS(hash_buffer, expected_md5);
 
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_m3u(int console_id, const char* filename, size_t size, const char* expected_md5)
+{
+  uint8_t* image = generate_generic_file(size);
+  char hash_file[33], hash_iterator[33];
+  const char* m3u_filename = "test.m3u";
+
+  mock_file(0, filename, image, size);
+  mock_file(1, m3u_filename, filename, strlen(filename));
+  mock_file(1, m3u_filename, "# comment\r\ntest.d88", 19);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, console_id, m3u_filename);
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, m3u_filename, NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
   ASSERT_NUM_EQUALS(result_file, 1);
   ASSERT_STR_EQUALS(hash_file, expected_md5);
 
@@ -256,6 +303,40 @@ static void test_hash_nes_file_iterator_32k()
   ASSERT_STR_EQUALS(hash2, "");
 }
 
+static void test_hash_m3u_with_comments()
+{
+  const size_t size = 131072;
+  uint8_t* image = generate_generic_file(size);
+  char hash_file[33], hash_iterator[33];
+  const char* m3u_filename = "test.m3u";
+  const char* m3u_contents = "#EXTM3U\r\n\r\n#EXTBYT:131072\r\ntest.d88\r\n";
+  const char* expected_md5 = "a0f425b23200568132ba76b2405e3933";
+
+  mock_file(0, "test.d88", image, size);
+  mock_file(1, m3u_filename, m3u_contents, strlen(m3u_contents));
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PC8800, m3u_filename);
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, m3u_filename, NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
 void test_hash(void) {
   TEST_SUITE_BEGIN();
 
@@ -319,6 +400,7 @@ void test_hash(void) {
 
   /* PC-8800 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC8800, "test.d88", 348288, "8cca4121bf87200f45e91b905a9f5afd");
+  TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_PC8800, "test.d88", 348288, "8cca4121bf87200f45e91b905a9f5afd");
 
   /* Pokemon Mini */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_POKEMON_MINI, "test.min", 524288, "68f0f13b598e0b66461bc578375c3888");
@@ -338,6 +420,9 @@ void test_hash(void) {
   /* WonderSwan */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.ws", 524288, "68f0f13b598e0b66461bc578375c3888");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.wsc", 4194304, "a247ec8a8c42e18fcb80702dfadac14b");
+
+  /* special cases */
+  TEST(test_hash_m3u_with_comments);
 
   TEST_SUITE_END();
 }
