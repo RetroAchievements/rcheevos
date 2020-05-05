@@ -22,6 +22,12 @@
     <Filter Include="tests\rhash">
       <UniqueIdentifier>{21341552-6b14-4f5b-a26c-d9393ffbdbcc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\rurl">
+      <UniqueIdentifier>{8789fd50-d142-4c00-8ef5-c33fbac7bd2c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tests\rurl">
+      <UniqueIdentifier>{b10820d1-368c-422b-a8ef-b3f7e804464e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\rcheevos\format.c">
@@ -215,6 +221,12 @@
     </ClCompile>
     <ClCompile Include="rcheevos\test_runtime_progress.c">
       <Filter>tests\rcheevos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rurl\url.c">
+      <Filter>src\rurl</Filter>
+    </ClCompile>
+    <ClCompile Include="rurl\test_url.c">
+      <Filter>tests\rurl</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

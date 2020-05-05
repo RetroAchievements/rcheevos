@@ -65,6 +65,11 @@ extern const char* test_framework_basename(const char* path);
   TEST_INIT() \
   func();
 
+#define TEST_PARAMS1(func, p1) \
+  __test_framework_state.current_test = #func "(" #p1 ")"; \
+  TEST_INIT() \
+  func(p1);
+
 #define TEST_PARAMS2(func, p1, p2) \
   __test_framework_state.current_test = #func "(" #p1 ", " #p2 ")"; \
   TEST_INIT() \

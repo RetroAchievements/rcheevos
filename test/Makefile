@@ -20,6 +20,7 @@ OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/oper
     rcheevos/test_runtime.o \
     rcheevos/test_runtime_progress.o \
     rcheevos/test_consoleinfo.o \
+    rurl/test_url.o \
     rhash/data.o \
     rhash/test_hash.o \
     test.o
