@@ -187,6 +187,7 @@ const char* rc_error_str(int ret)
     case RC_INVALID_MEASURED_TARGET: return "Invalid measured target";
     case RC_INVALID_COMPARISON: return "Invalid comparison";
     case RC_INVALID_STATE: return "Invalid state";
+    case RC_INVALID_JSON: return "Invalid JSON";
 
     default: return "Unknown error";
   }

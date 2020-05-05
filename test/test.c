@@ -62,6 +62,8 @@ extern void test_url();
 extern void test_cdreader();
 extern void test_hash();
 
+extern void test_user_api();
+
 TEST_FRAMEWORK_DECLARATIONS()
 
 int main(void) {
@@ -87,6 +89,8 @@ int main(void) {
 
   test_cdreader();
   test_hash();
+
+  test_user_api();
 
   TEST_FRAMEWORK_SHUTDOWN();
 

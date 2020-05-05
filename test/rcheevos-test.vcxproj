@@ -126,6 +126,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\rapi\rapi_common.c" />
+    <ClCompile Include="..\src\rapi\user.c" />
     <ClCompile Include="..\src\rcheevos\alloc.c" />
     <ClCompile Include="..\src\rcheevos\compat.c" />
     <ClCompile Include="..\src\rcheevos\condition.c" />
@@ -177,6 +179,7 @@
     <ClCompile Include="lua\src\lutf8lib.c" />
     <ClCompile Include="lua\src\lvm.c" />
     <ClCompile Include="lua\src\lzio.c" />
+    <ClCompile Include="rapi\test_user.c" />
     <ClCompile Include="rcheevos\test_condition.c" />
     <ClCompile Include="rcheevos\test_condset.c" />
     <ClCompile Include="rcheevos\test_consoleinfo.c" />
@@ -195,14 +198,15 @@
     <ClCompile Include="rhash\test_hash.c" />
     <ClCompile Include="rurl\test_url.c" />
     <ClCompile Include="test.c" />
-  </ItemGroup>
-  <ItemGroup>
+    <ClInclude Include="..\include\rapi.h" />
     <ClInclude Include="..\include\rcheevos.h" />
     <ClInclude Include="..\include\rc_consoles.h" />
     <ClInclude Include="..\include\rc_hash.h" />
     <ClInclude Include="..\include\rc_url.h" />
     <ClInclude Include="..\src\rcheevos\rc_compat.h" />
     <ClInclude Include="..\src\rcheevos\rc_internal.h" />
+    <ClInclude Include="..\include\rerror.h" />
+    <ClInclude Include="..\src\rapi\rapi_common.h" />
     <ClInclude Include="..\src\rhash\md5.h" />
     <ClInclude Include="rcheevos\mock_memory.h" />
     <ClInclude Include="rhash\data.h" />
