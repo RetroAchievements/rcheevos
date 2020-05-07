@@ -248,6 +248,37 @@ static void test_hash_3do_cue()
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
+static void test_hash_3do_iso()
+{
+  size_t image_size;
+  uint8_t* image = generate_3do_bin(1, 9347, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "257d1d19365a864266b236214dbea29c";
+
+  mock_file(0, "game.iso", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_3DO, "game.iso");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.iso", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
 static void test_hash_3do_invalid_header()
 {
   /* this is meant to simulate attempting to open a non-3DO CD. TODO: generate PSX CD */

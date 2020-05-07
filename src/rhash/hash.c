@@ -1301,7 +1301,8 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
       case 'i':
         if (rc_path_compare_extension(ext, "iso"))
         {
-          iterator->consoles[0] = RC_CONSOLE_SEGA_CD;
+          iterator->consoles[0] = RC_CONSOLE_3DO;
+          iterator->consoles[1] = RC_CONSOLE_SEGA_CD;
           need_path = 1;
         }
         break;
