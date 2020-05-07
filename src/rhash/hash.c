@@ -343,6 +343,139 @@ static int rc_hash_buffer(char hash[33], uint8_t* buffer, size_t buffer_size)
   return rc_hash_finalize(&md5, hash);
 }
 
+static int rc_hash_3do(char hash[33], const char* path)
+{
+  uint8_t buffer[2048];
+  const uint8_t operafs_identifier[7] = { 0x01, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x01 };
+  void* track_handle;
+  md5_state_t md5;
+  int sector;
+  int block_size, block_location;
+  int offset, stop;
+  size_t size = 0;
+
+  track_handle = rc_cd_open_track(path, 1);
+  if (!track_handle)
+    return rc_hash_error("Could not open track");
+
+  /* the Opera filesystem stores the volume information in the first 132 bytes of sector 0
+   * https://github.com/barbeque/3dodump/blob/master/OperaFS-Format.md
+   */
+  rc_cd_read_sector(track_handle, 0, buffer, 132);
+
+  if (memcmp(buffer, operafs_identifier, sizeof(operafs_identifier)) == 0)
+  {
+    if (verbose_message_callback)
+    {
+      char message[128];
+      snprintf(message, sizeof(message), "Found 3DO CD, title=%s", &buffer[0x28]);
+      verbose_message_callback(message);
+    }
+
+    /* include the volume header in the hash */
+    md5_init(&md5);
+    md5_append(&md5, buffer, 132);
+
+    /* the block size is at offset 0x4C (assume 0x4C is always 0) */
+    block_size = buffer[0x4D] * 65536 + buffer[0x4E] * 256 + buffer[0x4F];
+
+    /* the root directory block location is at offset 0x64 (and duplicated several 
+     * times, but we just look at the primary record) (assume 0x64 is always 0)*/
+    block_location = buffer[0x65] * 65536 + buffer[0x66] * 256 + buffer[0x67];
+
+    /* multiply the block index by the block size to get the real address */
+    block_location *= block_size;
+
+    /* convert that to a sector and read it */
+    sector = block_location / 2048;
+
+    do
+    {
+      rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+
+      /* offset to start of entries is at offset 0x10 (assume 0x10 and 0x11 are always 0) */
+      offset = buffer[0x12] * 256 + buffer[0x13];
+
+      /* offset to end of entries is at offset 0x0C (assume 0x0C is always 0) */
+      stop = buffer[0x0D] * 65536 + buffer[0x0E] * 256 + buffer[0x0F];
+
+      while (offset < stop)
+      {
+        if (buffer[offset + 0x03] == 0x02) /* file */
+        {
+          if (strcasecmp(&buffer[offset + 0x20], "LaunchMe") == 0)
+          {
+            /* the block size is at offset 0x0C (assume 0x0C is always 0) */
+            block_size = buffer[offset + 0x0D] * 65536 + buffer[offset + 0x0E] * 256 + buffer[offset + 0x0F];
+
+            /* the block location is at offset 0x44 (assume 0x44 is always 0) */
+            block_location = buffer[offset + 0x45] * 65536 + buffer[offset + 0x46] * 256 + buffer[offset + 0x47];
+            block_location *= block_size;
+
+            /* the file size is at offset 0x10 (assume 0x10 is always 0) */
+            size = buffer[offset + 0x11] * 65536 + buffer[offset + 0x12] * 256 + buffer[offset + 0x13];
+
+            if (verbose_message_callback)
+            {
+              char message[128];
+              snprintf(message, sizeof(message), "Hashing header (%u bytes) and %s (%zu bytes) ", 132, &buffer[offset + 0x20], size);
+              verbose_message_callback(message);
+            }
+
+            break;
+          }
+        }
+
+        /* the number of extra copies of the file is at offset 0x40 (assume 0x40-0x42 are always 0) */
+        offset += 0x48 + buffer[offset + 0x43] * 4;
+      }
+
+      if (size != 0)
+        break;
+
+      /* did not find the file, see if the directory listing is continued in another sector */
+      offset = buffer[0x02] * 256 + buffer[0x03];
+
+      /* no more sectors to search*/
+      if (offset == 0xFFFF)
+        break;
+
+      /* get next sector */
+      offset *= block_size;
+      sector = (block_location + offset) / 2048;
+    } while (1);
+
+    if (size == 0)
+    {
+      rc_cd_close_track(track_handle);
+      return rc_hash_error("Could not find LaunchMe");
+    }
+
+    sector = block_location / 2048;
+
+    while (size > 2048)
+    {
+      rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+      md5_append(&md5, buffer, sizeof(buffer));
+
+      ++sector;
+      size -= 2048;
+    }
+
+    rc_cd_read_sector(track_handle, sector, buffer, size);
+    md5_append(&md5, buffer, size);
+  }
+  else
+  {
+    rc_cd_close_track(track_handle);
+    return rc_hash_error("Not a 3DO CD");
+  }
+
+  rc_cd_close_track(track_handle);
+
+  return rc_hash_finalize(&md5, hash);
+}
+
 static int rc_hash_arcade(char hash[33], const char* path)
 {
   /* arcade hash is just the hash of the filename (no extension) - the cores are pretty stringent about having the right ROM data */
@@ -1016,6 +1149,12 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
       /* additional logic whole-file hash - buffer then call rc_hash_generate_from_buffer */
       return rc_hash_buffered_file(hash, console_id, path);
 
+    case RC_CONSOLE_3DO:
+      if (rc_path_compare_extension(path, "m3u"))
+        return rc_hash_generate_from_playlist(hash, console_id, path);
+
+      return rc_hash_3do(hash, path);
+
     case RC_CONSOLE_ARCADE:
       return rc_hash_arcade(hash, path);
 
@@ -1085,11 +1224,12 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
 
                  if (size > 32 * 1024 * 1024)
                  {
-                    /* Sega CD is the only core that supports directly opening the bin file. */
-                    iterator->consoles[0] = RC_CONSOLE_SEGA_CD;
+                    /* 3DO and Sega CD are the only cores that supports directly opening the bin file. */
+                    iterator->consoles[0] = RC_CONSOLE_3DO;
+                    iterator->consoles[1] = RC_CONSOLE_SEGA_CD;
 
                     /* fallback to megadrive - see comment below */
-                    iterator->consoles[1] = RC_CONSOLE_MEGA_DRIVE;
+                    iterator->consoles[2] = RC_CONSOLE_MEGA_DRIVE;
                     break;
                  }
               }
@@ -1106,8 +1246,9 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
           iterator->consoles[1] = RC_CONSOLE_PC_ENGINE;
+          iterator->consoles[2] = RC_CONSOLE_3DO;
           /* SEGA CD hash doesn't have any logic to ensure it's being used against a SEGA CD, so it should always be last */
-          iterator->consoles[2] = RC_CONSOLE_SEGA_CD;
+          iterator->consoles[3] = RC_CONSOLE_SEGA_CD;
           need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "col"))

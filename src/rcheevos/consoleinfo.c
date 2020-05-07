@@ -177,6 +177,18 @@ const char* rc_console_name(int console_id)
   }
 }
 
+/* ===== 3DO ===== */
+/* http://www.arcaderestoration.com/memorymap/48/3DO+Bios.aspx */
+/* NOTE: the Opera core attempts to expose the NVRAM as RETRO_SAVE_RAM, but the 3DO documentation
+ * says that applications should only access NVRAM through API calls as it's shared across mulitple
+ * games. This suggests that even if the core does expose it, it may change depending on which other
+ * games the user has played - so ignore it.
+ */
+static const rc_memory_region_t _rc_memory_regions_3do[] = {
+    { 0x000000U, 0x1FFFFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Main RAM" },
+};
+static const rc_memory_regions_t rc_memory_regions_3do = { _rc_memory_regions_3do, 1 };
+
 /* ===== Apple II ===== */
 static const rc_memory_region_t _rc_memory_regions_appleii[] = {
     { 0x000000U, 0x00FFFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Main RAM" },
@@ -456,6 +468,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 {
   switch (console_id)
   {
+    case RC_CONSOLE_3DO:
+      return &rc_memory_regions_3do;
+
     case RC_CONSOLE_APPLE_II:
       return &rc_memory_regions_appleii;
 
