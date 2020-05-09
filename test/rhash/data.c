@@ -240,6 +240,7 @@ uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size,
   /* binary data */
   fill_image(&image[offset], binary_size);
 
+  *image_size = size_needed;
   return image;
 }
 

@@ -190,8 +190,8 @@ static void test_hash_m3u(int console_id, const char* filename, size_t size, con
   const char* m3u_filename = "test.m3u";
 
   mock_file(0, filename, image, size);
-  mock_file(1, m3u_filename, filename, strlen(filename));
-  mock_file(1, m3u_filename, "# comment\r\ntest.d88", 19);
+  mock_file(1, m3u_filename, (uint8_t*)filename, strlen(filename));
+  mock_file(1, m3u_filename, (uint8_t*)"# comment\r\ntest.d88", 19);
 
   /* test file hash */
   int result_file = rc_hash_generate_from_file(hash_file, console_id, m3u_filename);
@@ -233,7 +233,10 @@ static void test_hash_3do_bin()
   int result_iterator;
   struct rc_hash_iterator iterator;
 
+  mock_file_instance[0].size = 45678901; /* must be > 32MB for iterator to consider CD formats for bin */
   rc_hash_initialize_iterator(&iterator, "game.bin", NULL, 0);
+  mock_file_instance[0].size = image_size; /* change it back before doing the hashing */
+
   result_iterator = rc_hash_iterate(hash_iterator, &iterator);
   rc_hash_destroy_iterator(&iterator);
 
@@ -256,7 +259,7 @@ static void test_hash_3do_cue()
   const char* expected_md5 = "257d1d19365a864266b236214dbea29c";
 
   mock_file(0, "game.bin", image, image_size);
-  mock_file(1, "game.cue", "game.bin", 8);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
 
   /* test file hash */
   int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_3DO, "game.cue");
@@ -531,7 +534,7 @@ static void test_hash_m3u_with_comments()
   const char* expected_md5 = "a0f425b23200568132ba76b2405e3933";
 
   mock_file(0, "test.d88", image, size);
-  mock_file(1, m3u_filename, m3u_contents, strlen(m3u_contents));
+  mock_file(1, m3u_filename, (uint8_t*)m3u_contents, strlen(m3u_contents));
 
   /* test file hash */
   int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PC8800, m3u_filename);
@@ -565,6 +568,7 @@ void test_hash(void) {
   /* 3DO */
   TEST(test_hash_3do_bin);
   TEST(test_hash_3do_cue);
+  TEST(test_hash_3do_iso);
   TEST(test_hash_3do_invalid_header);
   TEST(test_hash_3do_launchme_case_insensitive);
   TEST(test_hash_3do_no_launchme);
