@@ -140,6 +140,7 @@
     <ClCompile Include="..\src\rcheevos\value.c" />
     <ClCompile Include="..\src\rhash\hash.c" />
     <ClCompile Include="..\src\rhash\md5.c" />
+    <ClCompile Include="..\src\rurl\url.c" />
     <ClCompile Include="lua\src\lapi.c" />
     <ClCompile Include="lua\src\lauxlib.c" />
     <ClCompile Include="lua\src\lbaselib.c" />
@@ -187,6 +188,7 @@
     <ClCompile Include="rcheevos\test_value.c" />
     <ClCompile Include="rhash\data.c" />
     <ClCompile Include="rhash\test_hash.c" />
+    <ClCompile Include="rurl\test_url.c" />
     <ClCompile Include="test.c" />
   </ItemGroup>
   <ItemGroup>
