@@ -113,7 +113,8 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
 static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc_eval_state_t* eval_state) {
   rc_condition_t* condition;
   int set_valid, cond_valid, and_next, or_next;
-  unsigned measured_value;
+  unsigned measured_value = 0;
+  int can_measure = 1, measured_from_hits = 0;
 
   eval_state->primed = 1;
   set_valid = 1;
@@ -209,6 +210,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     if (eval_state->add_hits) {
       if (condition->required_hits != 0) {
         /* if the condition has a target hit count, we have to recalculate cond_valid including the AddHits counter */
+        measured_from_hits = 1;
         measured_value = condition->current_hits + eval_state->add_hits;
         cond_valid = (measured_value >= condition->required_hits);
       }
@@ -221,6 +223,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     }
     else if (condition->required_hits != 0) {
       /* if there's a hit target, capture the current hits for recording Measured value later */
+      measured_from_hits = 1;
       measured_value = condition->current_hits;
     }
 
@@ -253,11 +256,9 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         }
         continue;
 
-      case RC_CONDITION_MEASURED:
-        if (measured_value > eval_state->measured_value) {
-          eval_state->measured_value = measured_value;
-          eval_state->measured_from_hits = (condition->required_hits != 0);
-        }
+      case RC_CONDITION_MEASURED_IF:
+        if (!cond_valid)
+          can_measure = 0;
         break;
 
       case RC_CONDITION_TRIGGER:
@@ -272,6 +273,12 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     /* STEP 5: update overall truthiness of set and primed state */
     eval_state->primed &= cond_valid;
     set_valid &= cond_valid;
+  }
+
+  /* if not suppressed, update the measured value */
+  if (measured_value > eval_state->measured_value && can_measure) {
+    eval_state->measured_value = measured_value;
+    eval_state->measured_from_hits = measured_from_hits;
   }
 
   return set_valid;

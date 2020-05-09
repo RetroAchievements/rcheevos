@@ -10,6 +10,8 @@ extern "C" {
 
 uint8_t* generate_generic_file(size_t size);
 
+uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size, size_t* image_size);
+
 uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size);
 uint8_t* generate_fds_file(size_t sides, int with_header, size_t* image_size);
 

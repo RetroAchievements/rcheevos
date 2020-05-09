@@ -22,6 +22,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       case 'n': case 'N': self->type = RC_CONDITION_AND_NEXT; break;
       case 'o': case 'O': self->type = RC_CONDITION_OR_NEXT; break;
       case 'm': case 'M': self->type = RC_CONDITION_MEASURED; break;
+      case 'q': case 'Q': self->type = RC_CONDITION_MEASURED_IF; break;
       case 'i': case 'I': self->type = RC_CONDITION_ADD_ADDRESS; can_modify = 1; break;
       case 't': case 'T': self->type = RC_CONDITION_TRIGGER; break;
       default: parse->offset = RC_INVALID_CONDITION_TYPE; return 0;

@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE 128
+#define RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE 256
 
 void rc_runtime_init(rc_runtime_t* self) {
   memset(self, 0, sizeof(rc_runtime_t));

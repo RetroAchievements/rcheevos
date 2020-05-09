@@ -62,7 +62,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 20, "Wii-U");
   TEST_PARAMS2(test_name, 21, "PlayStation 2");
   TEST_PARAMS2(test_name, 22, "XBOX");
-  TEST_PARAMS2(test_name, 23, "Events");
+  TEST_PARAMS2(test_name, 23, "Unknown");
   TEST_PARAMS2(test_name, 24, "Pokemon Mini");
   TEST_PARAMS2(test_name, 25, "Atari 2600");
   TEST_PARAMS2(test_name, 26, "MS-DOS");
@@ -97,7 +97,11 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 55, "Super CassetteVision");
   TEST_PARAMS2(test_name, 56, "Unknown");
 
+  TEST_PARAMS2(test_name, 100, "Hubs");
+  TEST_PARAMS2(test_name, 101, "Events");
+
   /* memory maps */
+  TEST_PARAMS2(test_memory, RC_CONSOLE_3DO, 0x200000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_APPLE_II, 0x020000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ARCADE, 0x000000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_2600, 0x000080);

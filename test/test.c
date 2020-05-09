@@ -58,6 +58,8 @@ extern void test_runtime_progress();
 
 extern void test_consoleinfo();
 
+extern void test_url();
+
 extern void test_hash();
 
 TEST_FRAMEWORK_DECLARATIONS()
@@ -80,6 +82,8 @@ int main(void) {
   test_consoleinfo();
 
   test_lua();
+
+  test_url();
 
   test_hash();
 
