@@ -1048,7 +1048,7 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
 {
   char buffer[1024];
   char* disc_path;
-  char* ptr;
+  char* ptr, *start;
   size_t num_read;
   void* file_handle;
 
@@ -1064,10 +1064,21 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
 
   rc_file_close(file_handle);
 
-  ptr = buffer;
+  ptr = start = buffer;
+  /* ignore empty and commented lines */
+  while (*ptr == '#' || *ptr == '\r' || *ptr == '\n')
+  {
+    while (*ptr && *ptr != '\n')
+      ++ptr;
+    if (*ptr)
+      ++ptr;
+    start = ptr;
+  }
+
+  /* find and extract the current line */
   while (*ptr && *ptr != '\n')
     ++ptr;
-  if (ptr > buffer && ptr[-1] == '\r')
+  if (ptr > start && ptr[-1] == '\r')
     --ptr;
   *ptr = '\0';
 
@@ -1079,14 +1090,14 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
   }
 
   ptr = (char*)rc_path_get_filename(path);
-  num_read = (ptr - path) + strlen(buffer) + 1;
+  num_read = (ptr - path) + strlen(start) + 1;
 
   disc_path = (char*)malloc(num_read);
   if (!disc_path)
     return NULL;
 
   memcpy(disc_path, path, ptr - path);
-  strcpy(disc_path + (ptr - path), buffer);
+  strcpy(disc_path + (ptr - path), start);
   return disc_path;
 }
 
@@ -1138,7 +1149,6 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_NEOGEO_POCKET:
     case RC_CONSOLE_NINTENDO_64:
     case RC_CONSOLE_ORIC:
-    case RC_CONSOLE_PC8800:
     case RC_CONSOLE_POKEMON_MINI:
     case RC_CONSOLE_SEGA_32X:
     case RC_CONSOLE_SG1000:
@@ -1170,6 +1180,12 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
       if (rc_path_compare_extension(path, "cue") || rc_path_compare_extension(path, "chd"))
         return rc_hash_pce_cd(hash, path);
 
+      if (rc_path_compare_extension(path, "m3u"))
+        return rc_hash_generate_from_playlist(hash, console_id, path);
+
+      return rc_hash_whole_file(hash, console_id, path);
+
+    case RC_CONSOLE_PC8800:
       if (rc_path_compare_extension(path, "m3u"))
         return rc_hash_generate_from_playlist(hash, console_id, path);
 
