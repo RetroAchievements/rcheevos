@@ -73,6 +73,9 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_GAME_GEAR:
       return "Game Gear";
 
+    case RC_CONSOLE_HUBS:
+      return "Hubs";
+
     case RC_CONSOLE_INTELLIVISION:
       return "Intellivision";
 
