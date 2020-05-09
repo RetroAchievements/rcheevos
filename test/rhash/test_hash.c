@@ -6,27 +6,34 @@
 #include <stdlib.h>
 
 
-typedef struct mock_file
+typedef struct mock_file_data
 {
   const char* path;
-  uint8_t* data;
+  const uint8_t* data;
   size_t size;
   size_t pos;
-} mock_file;
+} mock_file_data;
 
-static mock_file mock_file_instance;
+static mock_file_data mock_file_instance[4];
 
-static void* mock_file_open(const char* path)
+static void* _mock_file_open(const char* path)
 {
-  if (strcmp(path, mock_file_instance.path) == 0)
-    return &mock_file_instance;
+  int i;
+  for (i = 0; i < sizeof(mock_file_instance)/sizeof(mock_file_instance[0]); ++i)
+  {
+    if (strcmp(path, mock_file_instance[i].path) == 0)
+    {
+      mock_file_instance[i].pos = 0;
+      return &mock_file_instance[i];
+    }
+  }
 
   return NULL;
 }
 
-static void mock_file_seek(void* file_handle, size_t offset, int origin)
+static void _mock_file_seek(void* file_handle, size_t offset, int origin)
 {
-  mock_file* file = (mock_file*)file_handle;
+  mock_file_data* file = (mock_file_data*)file_handle;
   switch (origin)
   {
     case SEEK_SET:
@@ -39,17 +46,20 @@ static void mock_file_seek(void* file_handle, size_t offset, int origin)
       file->pos = file->size - offset;
       break;
   }
+
+  if (file->pos > file->size)
+    file->pos = file->size;
 }
 
-static size_t mock_file_tell(void* file_handle)
+static size_t _mock_file_tell(void* file_handle)
 {
-  mock_file* file = (mock_file*)file_handle;
+  mock_file_data* file = (mock_file_data*)file_handle;
   return file->pos;
 }
 
-static size_t mock_file_read(void* file_handle, void* buffer, size_t count)
+static size_t _mock_file_read(void* file_handle, void* buffer, size_t count)
 {
-  mock_file* file = (mock_file*)file_handle;
+  mock_file_data* file = (mock_file_data*)file_handle;
   size_t remaining = file->size - file->pos;
   if (count > remaining)
     count = remaining;
@@ -63,38 +73,77 @@ static size_t mock_file_read(void* file_handle, void* buffer, size_t count)
   return count;
 }
 
-static void mock_file_close(void* file_handle)
+static void _mock_file_close(void* file_handle)
 {
+}
+
+static void* _mock_cd_open_track(const char* path, uint32_t track)
+{
+  if (track == 1)
+  {
+    if (strstr(path, ".cue")) 
+    {
+      mock_file_data* file = (mock_file_data*)_mock_file_open(path);
+      if (!file)
+        return file;
+
+      return _mock_file_open((const char*)file->data);
+    }
+
+    return _mock_file_open(path);
+  }
+
+  return NULL;
+}
+
+static size_t _mock_cd_read_sector(void* track_handle, uint32_t sector, void* buffer, size_t requested_bytes)
+{
+  _mock_file_seek(track_handle, sector * 2048, SEEK_SET);
+  return _mock_file_read(track_handle, buffer, requested_bytes);
 }
 
 static void init_mock_filereader()
 {
+  int i;
+
   struct rc_hash_filereader reader;
-  reader.open = mock_file_open;
-  reader.seek = mock_file_seek;
-  reader.tell = mock_file_tell;
-  reader.read = mock_file_read;
-  reader.close = mock_file_close;
+  reader.open = _mock_file_open;
+  reader.seek = _mock_file_seek;
+  reader.tell = _mock_file_tell;
+  reader.read = _mock_file_read;
+  reader.close = _mock_file_close;
+
+  struct rc_hash_cdreader cdreader;
+  cdreader.open_track = _mock_cd_open_track;
+  cdreader.close_track = _mock_file_close;
+  cdreader.read_sector = _mock_cd_read_sector;
 
   rc_hash_init_custom_filereader(&reader);
+  rc_hash_init_custom_cdreader(&cdreader);
+
+  memset(&mock_file_instance, 0, sizeof(mock_file_instance));
+  for (i = 0; i < sizeof(mock_file_instance) / sizeof(mock_file_instance[0]); ++i)
+    mock_file_instance[i].path = "";
+}
+
+static void mock_file(int index, const char* filename, const uint8_t* buffer, size_t buffer_size)
+{
+  mock_file_instance[index].path = filename;
+  mock_file_instance[index].data = buffer;
+  mock_file_instance[index].size = buffer_size;
+  mock_file_instance[index].pos = 0;
 }
 
 static int hash_mock_file(const char* filename, char hash[33], int console_id, uint8_t* buffer, size_t buffer_size)
 {
-  mock_file_instance.path = filename;
-  mock_file_instance.data = buffer;
-  mock_file_instance.size = buffer_size;
-  mock_file_instance.pos = 0;
+  mock_file(0, filename, buffer, buffer_size);
 
   return rc_hash_generate_from_file(hash, console_id, filename);
 }
 
-static void iterate_mock_file(struct rc_hash_iterator *iterator, const char* filename, uint8_t* buffer, size_t buffer_size)
+static void iterate_mock_file(struct rc_hash_iterator *iterator, const char* filename, const uint8_t* buffer, size_t buffer_size)
 {
-  mock_file_instance.path = filename;
-  mock_file_instance.data = buffer;
-  mock_file_instance.size = buffer_size;
-  mock_file_instance.pos = 0;
+  mock_file(0, filename, buffer, buffer_size);
 
   rc_hash_initialize_iterator(iterator, filename, NULL, 0);
 }
@@ -132,6 +181,190 @@ static void test_hash_full_file(int console_id, const char* filename, size_t siz
 
   ASSERT_NUM_EQUALS(result_iterator, 1);
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+/* ========================================================================= */
+
+static void test_hash_3do_bin()
+{
+  size_t image_size;
+  uint8_t* image = generate_3do_bin(1, 123456, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "9b2266b8f5abed9c12cce780750e88d6";
+
+  mock_file(0, "game.bin", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_3DO, "game.bin");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.bin", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_3do_cue()
+{
+  size_t image_size;
+  uint8_t* image = generate_3do_bin(1, 9347, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "257d1d19365a864266b236214dbea29c";
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", "game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_3DO, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_3do_iso()
+{
+  size_t image_size;
+  uint8_t* image = generate_3do_bin(1, 9347, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "257d1d19365a864266b236214dbea29c";
+
+  mock_file(0, "game.iso", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_3DO, "game.iso");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.iso", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_3do_invalid_header()
+{
+  /* this is meant to simulate attempting to open a non-3DO CD. TODO: generate PSX CD */
+  size_t image_size;
+  uint8_t* image = generate_3do_bin(1, 12, &image_size);
+  char hash_file[33];
+
+  /* make the header not match */
+  image[3] = 0x34;
+
+  mock_file(0, "game.bin", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_3DO, "game.bin");
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 0);
+}
+
+static void test_hash_3do_launchme_case_insensitive()
+{
+  /* main executable for "Captain Quazar" is "launchme" */
+  /* main executable for "Rise of the Robots" is "launchMe" */
+  /* main executable for "Road Rash" is "LaunchMe" */
+  /* main executable for "Sewer Shark" is "Launchme" */
+  size_t image_size;
+  uint8_t* image = generate_3do_bin(1, 6543, &image_size);
+  char hash_file[33];
+  const char* expected_md5 = "59622882e3261237e8a1e396825ae4f5";
+
+  memcpy(&image[2048 + 0x14 + 0x48 + 0x20], "launchme", 8);
+  mock_file(0, "game.bin", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_3DO, "game.bin");
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+}
+
+static void test_hash_3do_no_launchme()
+{
+  /* this case should not happen */
+  size_t image_size;
+  uint8_t* image = generate_3do_bin(1, 6543, &image_size);
+  char hash_file[33];
+
+  memcpy(&image[2048 + 0x14 + 0x48 + 0x20], "filename", 8);
+  mock_file(0, "game.bin", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_3DO, "game.bin");
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 0);
+}
+
+static void test_hash_3do_long_directory()
+{
+  /* root directory for "Dragon's Lair" uses more than one sector */
+  size_t image_size;
+  uint8_t* image = generate_3do_bin(3, 6543, &image_size);
+  char hash_file[33];
+  const char* expected_md5 = "8979e876ae502e0f79218f7ff7bd8c2a";
+
+  mock_file(0, "game.bin", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_3DO, "game.bin");
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
 }
 
 /* ========================================================================= */
@@ -218,22 +451,22 @@ static void test_hash_nes_file_32k()
 
 static void test_hash_nes_iterator_32k()
 {
-    size_t image_size;
-    uint8_t* image = generate_nes_file(32, 0, &image_size);
-    char hash1[33], hash2[33];
-    int result1, result2;
-    struct rc_hash_iterator iterator;
-    iterate_mock_file(&iterator, "test.nes", image, image_size);
-    result1 = rc_hash_iterate(hash1, &iterator);
-    result2 = rc_hash_iterate(hash2, &iterator);
-    rc_hash_destroy_iterator(&iterator);
-    free(image);
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 0, &image_size);
+  char hash1[33], hash2[33];
+  int result1, result2;
+  struct rc_hash_iterator iterator;
+  iterate_mock_file(&iterator, "test.nes", image, image_size);
+  result1 = rc_hash_iterate(hash1, &iterator);
+  result2 = rc_hash_iterate(hash2, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+  free(image);
 
-    ASSERT_NUM_EQUALS(result1, 1);
-    ASSERT_STR_EQUALS(hash1, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_NUM_EQUALS(result1, 1);
+  ASSERT_STR_EQUALS(hash1, "6a2305a2b6675a97ff792709be1ca857");
 
-    ASSERT_NUM_EQUALS(result2, 0);
-    ASSERT_STR_EQUALS(hash2, "");
+  ASSERT_NUM_EQUALS(result2, 0);
+  ASSERT_STR_EQUALS(hash2, "");
 }
 
 static void test_hash_nes_file_iterator_32k()
@@ -256,10 +489,20 @@ static void test_hash_nes_file_iterator_32k()
   ASSERT_STR_EQUALS(hash2, "");
 }
 
+/* ========================================================================= */
+
 void test_hash(void) {
   TEST_SUITE_BEGIN();
 
   init_mock_filereader();
+
+  /* 3DO */
+  TEST(test_hash_3do_bin);
+  TEST(test_hash_3do_cue);
+  TEST(test_hash_3do_invalid_header);
+  TEST(test_hash_3do_launchme_case_insensitive);
+  TEST(test_hash_3do_no_launchme);
+  TEST(test_hash_3do_long_directory);
 
   /* Apple II */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_APPLE_II, "test.dsk", 143360, "88be638f4d78b4072109e55f13e8a0ac");
