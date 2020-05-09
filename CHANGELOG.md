@@ -3,6 +3,7 @@
 * new size: RC_MEMSIZE_BITCOUNT
 * new flag: RC_CONDITION_OR_NEXT
 * new flag: RC_CONDITION_TRIGGER
+* new flag: RC_CONDITION_MEASURED_IF
 * new operators: RC_OPERATOR_MULT / RC_OPERATOR_DIV
 * is_bcd removed from memref - now part of RC_MEMSIZE
 * add rc_runtime_t and associated functions
@@ -11,6 +12,7 @@
 * add game_hash parameter to rc_url_award_cheevo
 * remove hash parameter from rc_url_submit_lboard
 * add rc_url_ping function
+* add rc_console_ functions
 
 # v8.1.0
 
