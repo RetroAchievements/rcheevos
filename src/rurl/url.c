@@ -331,7 +331,7 @@ static int rc_url_append_str(char* buffer, size_t buffer_size, size_t* buffer_of
 
     if (rc_url_encode(buffer, buffer_size, value) == 0)
     {
-      written += strlen(buffer);
+      written += (int)strlen(buffer);
       *buffer_offset = written;
       return 0;
     }

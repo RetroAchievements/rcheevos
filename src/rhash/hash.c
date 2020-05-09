@@ -468,7 +468,7 @@ static int rc_hash_3do(char hash[33], const char* path)
     }
 
     rc_cd_read_sector(track_handle, sector, buffer, size);
-    md5_append(&md5, buffer, size);
+    md5_append(&md5, buffer, (int)size);
   }
   else
   {

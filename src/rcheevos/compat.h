@@ -17,9 +17,15 @@ extern "C" {
 
 /* Visual Studio redefinitions */
 
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
-#define strdup _strdup
+#ifndef strcasecmp
+ #define strcasecmp _stricmp
+#endif
+#ifndef strncasecmp
+ #define strncasecmp _strnicmp
+#endif
+#ifndef strdup
+ #define strdup _strdup
+#endif
 
 #elif __STDC_VERSION__ < 199901L
 
@@ -27,11 +33,15 @@ extern "C" {
 
 #define snprintf(buffer, size, format, ...) sprintf(buffer, format, __VA_ARGS__)
 
-extern int rc_strncasecmp(const char* left, const char* right, size_t length);
-#define strncasecmp rc_strncasecmp
+#ifndef strncasecmp
+ extern int rc_strncasecmp(const char* left, const char* right, size_t length);
+ #define strncasecmp rc_strncasecmp
+#endif
 
-extern char* rc_strdup(const char* str);
-#define strdup rc_strdup
+#ifndef strdup
+ extern char* rc_strdup(const char* str);
+ #define strdup rc_strdup
+#endif
 
 #endif /* __STDC_VERSION__ >= 199901L */
 
