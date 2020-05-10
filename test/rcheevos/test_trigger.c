@@ -897,7 +897,7 @@ static void test_measured_if_comparison() {
   ASSERT_NUM_EQUALS(trigger->measured_target, 80U);
 }
 
-static void test_measured_if_multiple() {
+static void test_measured_if_multiple_measured() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
@@ -973,6 +973,65 @@ static void test_measured_if_multiple() {
   assert_evaluate_trigger(trigger, &memory, 1);
   assert_hit_count(trigger, 1, 0, 5U);
   assert_hit_count(trigger, 2, 0, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 5U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 5U);
+}
+
+static void test_measured_if_multiple_measured_if() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* measured(repeated(5, byte(2) == 52), when=byte(0)=1 && byte(1)==1) */
+  assert_parse_trigger(&trigger, buffer, "M:0xH0002=52(5)_Q:0xH0000=1_Q:0xH0001=1");
+
+  /* first condition is true - hit count should be incremented, but not measured */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 0, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 5U);
+
+  /* second condition is true - hit count still incremented, but not measured because of third condition */
+  ram[0] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 0, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 5U);
+
+  /* third condition is true, measured should be measured */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 0, 3U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 3U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 5U);
+
+  /* second condition no longer true, measured ignored */
+  ram[0] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 0, 4U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 5U);
+
+  /* hit target met, but not measured */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 0, 5U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 5U);
+
+  /* hit target met, but not measured */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 0, 5U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 5U);
+
+  /* second condition true, measured should be measured, trigger will fire */
+  ram[0] = 1;
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 0, 5U);
   ASSERT_NUM_EQUALS(trigger->measured_value, 5U);
   ASSERT_NUM_EQUALS(trigger->measured_target, 5U);
 }
@@ -1381,7 +1440,7 @@ static void test_bitcount_shares_memref() {
   rc_trigger_t* trigger;
   char buffer[512];
 
-  assert_parse_trigger(&trigger, buffer, "0xH0001>5_0xC0001!=3");
+  assert_parse_trigger(&trigger, buffer, "0xH0001>5_0xK0001!=3");
 
   ASSERT_NUM_EQUALS(trigger->memrefs->memref.address, 1U);
   ASSERT_NUM_EQUALS(trigger->memrefs->memref.size, RC_MEMSIZE_8_BITS);
@@ -1440,7 +1499,8 @@ void test_trigger(void) {
   TEST(test_measured_reset_comparison);
   TEST(test_measured_if);
   TEST(test_measured_if_comparison);
-  TEST(test_measured_if_multiple);
+  TEST(test_measured_if_multiple_measured);
+  TEST(test_measured_if_multiple_measured_if);
   TEST(test_measured_if_while_paused);
 
   /* rc_evaluate_trigger */

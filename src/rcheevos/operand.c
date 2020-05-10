@@ -116,16 +116,23 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
     case 't': case 'T': self->size = RC_MEMSIZE_BIT_7; size = RC_MEMSIZE_8_BITS; break;
     case 'l': case 'L': self->size = RC_MEMSIZE_LOW; size = RC_MEMSIZE_8_BITS; break;
     case 'u': case 'U': self->size = RC_MEMSIZE_HIGH; size = RC_MEMSIZE_8_BITS; break;
-    case 'c': case 'C': self->size = RC_MEMSIZE_BITCOUNT; size = RC_MEMSIZE_8_BITS; break;
+    case 'k': case 'K': self->size = RC_MEMSIZE_BITCOUNT; size = RC_MEMSIZE_8_BITS; break;
     case 'h': case 'H': self->size = size = RC_MEMSIZE_8_BITS; break;
     case 'w': case 'W': self->size = size = RC_MEMSIZE_24_BITS; break;
     case 'x': case 'X': self->size = size = RC_MEMSIZE_32_BITS; break;
 
-    default: /* fall through */
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+    case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+    case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
       aux--;
+      /* fallthrough */
     case ' ':
       self->size = size = RC_MEMSIZE_16_BITS;
       break;
+
+    default:
+      return RC_INVALID_MEMORY_OPERAND;
   }
 
   address = strtoul(aux, &end, 16);
