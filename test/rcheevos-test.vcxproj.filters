@@ -254,5 +254,8 @@
     <ClInclude Include="..\include\rconsoles.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\rhash\md5.h">
+      <Filter>src\rhash</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

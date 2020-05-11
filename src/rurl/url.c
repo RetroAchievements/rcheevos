@@ -1,17 +1,7 @@
 #include "rurl.h"
 
 #include "../rcheevos/compat.h"
-
-#ifdef RARCH_INTERNAL
-#include <libretro-common/include/rhash.h>
-#define md5_state_t MD5_CTX
-#define md5_byte_t unsigned char
-#define md5_init(state) MD5_Init(state)
-#define md5_append(state, buffer, size) MD5_Update(state, buffer, size)
-#define md5_finish(state, hash) MD5_Final(hash, state)
-#else
 #include "../rhash/md5.h"
-#endif
 
 #include <stdio.h>
 #include <string.h>

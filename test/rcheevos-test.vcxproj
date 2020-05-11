@@ -197,6 +197,7 @@
     <ClInclude Include="..\include\rhash.h" />
     <ClInclude Include="..\src\rcheevos\compat.h" />
     <ClInclude Include="..\src\rcheevos\internal.h" />
+    <ClInclude Include="..\src\rhash\md5.h" />
     <ClInclude Include="rcheevos\mock_memory.h" />
     <ClInclude Include="rhash\data.h" />
     <ClInclude Include="test_framework.h" />

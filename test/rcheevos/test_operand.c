@@ -269,6 +269,8 @@ static void test_parse_values() {
   TEST_PARAMS4(test_parse_operand, "V+1", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1);
   TEST_PARAMS4(test_parse_operand, "V-1", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xFFFFFFFFU);
   TEST_PARAMS4(test_parse_operand, "V-2", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xFFFFFFFEU);
+  TEST_PARAMS4(test_parse_operand, "V9876543210", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x7FFFFFFFU);
+  TEST_PARAMS4(test_parse_operand, "V-9876543210", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x80000001U);
 
   /* NOTE: cannot test floating point without a prefix ("0.5") as the "0" will be parsed successfuly
    * and the ".5" ignored - this case is handled in the TestParseCondition test */
