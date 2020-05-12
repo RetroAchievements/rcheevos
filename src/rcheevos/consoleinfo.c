@@ -317,6 +317,19 @@ static const rc_memory_region_t _rc_memory_regions_megadrive[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_megadrive = { _rc_memory_regions_megadrive, 2 };
 
+/* ===== MSX ===== */
+/* https://www.msx.org/wiki/The_Memory */
+/* MSX only has 64KB of addressable RAM, of which 32KB is reserved for the system/BIOS.
+ * However, the system has up to 512KB of RAM, which is paged into the addressable RAM
+ * We expect the raw RAM to be exposed, rather than force the devs to worry about the
+ * paging system. The entire RAM is expected to appear starting at $10000, which is not
+ * addressable by the system itself.
+ */
+static const rc_memory_region_t _rc_memory_regions_msx[] = {
+    { 0x000000U, 0x07FFFFU, 0x010000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+};
+static const rc_memory_regions_t rc_memory_regions_msx = { _rc_memory_regions_msx, 1 };
+
 /* ===== Neo Geo Pocket ===== */
 /* http://neopocott.emuunlim.com/docs/tech-11.txt */
 static const rc_memory_region_t _rc_memory_regions_neo_geo_pocket[] = {
@@ -515,6 +528,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
       /* NOTE: 32x adds an extra 512KB of memory (256KB RAM + 256KB VRAM) to the 
        *       Genesis, but we currently don't support it. */
       return &rc_memory_regions_megadrive;
+
+    case RC_CONSOLE_MSX:
+      return &rc_memory_regions_msx;
 
     case RC_CONSOLE_NEOGEO_POCKET:
       return &rc_memory_regions_neo_geo_pocket;
