@@ -158,7 +158,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
   char* end;
   int ret;
   unsigned long value;
-  long svalue;
+  int negative;
 
   self->size = RC_MEMSIZE_32_BITS;
 
@@ -204,18 +204,35 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
       break;
 
     case 'v': case 'V': /* signed integer constant */
-      svalue = strtol(++aux, &end, 10);
+      negative = 0;
+      ++aux;
+
+      if (*aux == '-')
+      {
+        negative = 1;
+        ++aux;
+      }
+      else if (*aux == '+')
+      {
+        ++aux;
+      }
+
+      value = strtoul(aux, &end, 10);
 
       if (end == aux) {
         return RC_INVALID_CONST_OPERAND;
       }
 
-      if (svalue > 0xffffffffU) {
-        svalue = 0xffffffffU;
+      if (value > 0x7fffffffU) {
+        value = 0x7fffffffU;
       }
 
       self->type = RC_OPERAND_CONST;
-      self->value.num = (unsigned)svalue;
+
+      if (negative)
+        self->value.num = (unsigned)(-((long)value));
+      else
+        self->value.num = (unsigned)value;
 
       aux = end;
       break;

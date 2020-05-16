@@ -1,15 +1,6 @@
 #include "internal.h"
 
-#ifdef RARCH_INTERNAL
- #include <libretro-common/include/rhash.h>
- #define md5_state_t MD5_CTX
- #define md5_byte_t unsigned char
- #define md5_init(state) MD5_Init(state)
- #define md5_append(state, buffer, size) MD5_Update(state, buffer, size)
- #define md5_finish(state, hash) MD5_Final(hash, state)
-#else
- #include "../rhash/md5.h"
-#endif
+#include "../rhash/md5.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -371,7 +362,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
     }
   }
 
-  self->richpresence = malloc(sizeof(rc_runtime_richpresence_t));
+  self->richpresence = (rc_runtime_richpresence_t*)malloc(sizeof(rc_runtime_richpresence_t));
   if (!self->richpresence)
     return RC_OUT_OF_MEMORY;
 

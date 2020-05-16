@@ -1,6 +1,7 @@
 #include "compat.h"
 
 #include <ctype.h>
+#include <stdarg.h>
 
 int rc_strncasecmp(const char* left, const char* right, size_t length)
 {
@@ -27,4 +28,17 @@ char* rc_strdup(const char* str)
   char* buffer = (char*)malloc(length + 1);
   memcpy(buffer, str, length + 1);
   return buffer;
+}
+
+int rc_snprintf(char* buffer, size_t size, const char* format, ...)
+{
+   int result;
+   va_list args;
+
+   va_start(args, format);
+   /* assume buffer is large enough and ignore size */
+   result = vsprintf(buffer, format, args);
+   va_end(args);
+
+   return result;
 }

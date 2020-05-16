@@ -27,6 +27,9 @@ OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/oper
 
 CFLAGS=-Wall -O0 -g -std=c89 -ansi -Wno-long-long -I../include -I$(RC_SRC)
 
+# more strict validation for source files to eliminate warnings/errors in RetroArch compile
+SRC_CFLAGS=-pedantic -Wsign-compare
+
 ifdef HAVE_LUA
   OBJ += $(LUA_SRC)/lapi.o $(LUA_SRC)/lcode.o $(LUA_SRC)/lctype.o $(LUA_SRC)/ldebug.o \
          $(LUA_SRC)/ldo.o $(LUA_SRC)/ldump.o $(LUA_SRC)/lfunc.o $(LUA_SRC)/lgc.o $(LUA_SRC)/llex.o \
@@ -43,8 +46,16 @@ else
 endif
 
 
-
 all: test
+
+$(RC_SRC)/%.o: $(RC_SRC)/%.c
+	gcc $(CFLAGS) $(SRC_CFLAGS) -c $< -o $@
+
+$(RC_HASH_SRC)/%.o: $(RC_HASH_SRC)/%.c
+	gcc $(CFLAGS) $(SRC_CFLAGS) -c $< -o $@
+
+$(RC_URL_SRC)/%.o: $(RC_URL_SRC)/%.c
+	gcc $(CFLAGS) $(SRC_CFLAGS) -c $< -o $@
 
 %.o: %.c
 	gcc $(CFLAGS) -c $< -o $@

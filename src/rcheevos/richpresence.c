@@ -205,7 +205,7 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
   const char* defaultlabel = 0;
   char* endptr = 0;
   unsigned key;
-  int chars;
+  unsigned chars;
 
   next = &lookup->first_item;
 

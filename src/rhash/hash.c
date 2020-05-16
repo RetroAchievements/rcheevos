@@ -7,16 +7,7 @@
 
 #include "../rcheevos/compat.h"
 
-#ifdef RARCH_INTERNAL
- #include <libretro-common/include/rhash.h>
- #define md5_state_t MD5_CTX
- #define md5_byte_t unsigned char
- #define md5_init(state) MD5_Init(state)
- #define md5_append(state, buffer, size) MD5_Update(state, buffer, size)
- #define md5_finish(state, hash) MD5_Final(hash, state)
-#else
- #include "md5.h"
-#endif
+#include "md5.h"
 
 #include <ctype.h>
 
@@ -108,9 +99,9 @@ void* rc_file_open(const char* path)
   handle = filereader->open(path);
   if (handle && verbose_message_callback)
   {
-    char buffer[1024];
-    snprintf(buffer, sizeof(buffer), "Opened %s", rc_path_get_filename(path));
-    verbose_message_callback(buffer);
+    char message[1024];
+    snprintf(message, sizeof(message), "Opened %s", rc_path_get_filename(path));
+    verbose_message_callback(message);
   }
 
   return handle;
@@ -320,9 +311,9 @@ static int rc_hash_finalize(md5_state_t* md5, char hash[33])
 
   if (verbose_message_callback)
   {
-    char buffer[128];
-    snprintf(buffer, sizeof(buffer), "Generated hash %s", hash);
-    verbose_message_callback(buffer);
+    char message[128];
+    snprintf(message, sizeof(message), "Generated hash %s", hash);
+    verbose_message_callback(message);
   }
 
   return 1;
@@ -340,9 +331,9 @@ static int rc_hash_buffer(char hash[33], uint8_t* buffer, size_t buffer_size)
 
   if (verbose_message_callback)
   {
-    char buffer[128];
-    snprintf(buffer, sizeof(buffer), "Hashing %u byte buffer", (unsigned)buffer_size);
-    verbose_message_callback(buffer);
+    char message[128];
+    snprintf(message, sizeof(message), "Hashing %u byte buffer", (unsigned)buffer_size);
+    verbose_message_callback(message);
   }
 
   return rc_hash_finalize(&md5, hash);
@@ -905,9 +896,9 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
   {
     default:
     {
-      char buffer[128];
-      snprintf(buffer, sizeof(buffer), "Unsupported console for buffer hash: %d", console_id);
-      return rc_hash_error(buffer);
+      char message[128];
+      snprintf(message, sizeof(message), "Unsupported console for buffer hash: %d", console_id);
+      return rc_hash_error(message);
     }
 
     case RC_CONSOLE_APPLE_II:

@@ -31,7 +31,10 @@ extern "C" {
 
 /* C89 redefinitions */
 
-#define snprintf(buffer, size, format, ...) sprintf(buffer, format, __VA_ARGS__)
+#ifndef snprintf
+ extern int rc_snprintf(char* buffer, size_t size, const char* format, ...);
+ #define snprintf rc_snprintf
+#endif
 
 #ifndef strncasecmp
  extern int rc_strncasecmp(const char* left, const char* right, size_t length);
@@ -43,7 +46,7 @@ extern "C" {
  #define strdup rc_strdup
 #endif
 
-#endif /* __STDC_VERSION__ >= 199901L */
+#endif /* __STDC_VERSION__ < 199901L */
 
 #ifdef __cplusplus
 }
