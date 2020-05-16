@@ -913,6 +913,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
     case RC_CONSOLE_INTELLIVISION:
     case RC_CONSOLE_MASTER_SYSTEM:
     case RC_CONSOLE_MEGA_DRIVE:
+    case RC_CONSOLE_MSX:
     case RC_CONSOLE_NEOGEO_POCKET:
     case RC_CONSOLE_NINTENDO_64:
     case RC_CONSOLE_ORIC:
@@ -1149,6 +1150,14 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
       /* generic whole-file hash - don't buffer */
       return rc_hash_whole_file(hash, console_id, path);
 
+    case RC_CONSOLE_MSX:
+    case RC_CONSOLE_PC8800:
+      /* generic whole-file hash with m3u support - don't buffer */
+      if (rc_path_compare_extension(path, "m3u"))
+        return rc_hash_generate_from_playlist(hash, console_id, path);
+
+      return rc_hash_whole_file(hash, console_id, path);
+
     case RC_CONSOLE_ATARI_LYNX:
     case RC_CONSOLE_NINTENDO:
     case RC_CONSOLE_SUPER_NINTENDO:
@@ -1176,12 +1185,6 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
 
       return rc_hash_whole_file(hash, console_id, path);
 
-    case RC_CONSOLE_PC8800:
-      if (rc_path_compare_extension(path, "m3u"))
-        return rc_hash_generate_from_playlist(hash, console_id, path);
-
-      return rc_hash_whole_file(hash, console_id, path);
-
     case RC_CONSOLE_PLAYSTATION:
       if (rc_path_compare_extension(path, "m3u"))
         return rc_hash_generate_from_playlist(hash, console_id, path);
@@ -1195,6 +1198,69 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
 
       return rc_hash_sega_cd(hash, path);
   }
+}
+
+static void rc_hash_iterator_append_console(struct rc_hash_iterator* iterator, int console_id)
+{
+  int i = 0;
+  while (iterator->consoles[i] != 0)
+  {
+    if (iterator->consoles[i] == console_id)
+      return;
+
+    ++i;
+  }
+
+  iterator->consoles[i] = console_id;
+}
+
+static void rc_hash_initialize_dsk_iterator(struct rc_hash_iterator* iterator, const char* path)
+{
+  size_t size = iterator->buffer_size;
+  if (size == 0)
+  {
+    /* attempt to use disk size to determine system */
+    void* file = rc_file_open(path);
+    if (file)
+    {
+      rc_file_seek(file, 0, SEEK_END);
+      size = rc_file_tell(file);
+      rc_file_close(file);
+    }
+  }
+
+  if (size == 512 * 9 * 80) /* 360KB */
+  {
+    /* FAT-12 3.5" DD (512 byte sectors, 9 sectors per track, 80 tracks per side */
+    /* FAT-12 5.25" DD double-sided (512 byte sectors, 9 sectors per track, 80 tracks per side */
+    iterator->consoles[0] = RC_CONSOLE_MSX;
+  }
+  else if (size == 512 * 9 * 80 * 2) /* 720KB */
+  {
+    /* FAT-12 3.5" DD double-sided (512 byte sectors, 9 sectors per track, 80 tracks per side */
+    iterator->consoles[0] = RC_CONSOLE_MSX;
+  }
+  else if (size == 512 * 9 * 40) /* 180KB */
+  {
+    /* FAT-12 5.25" DD (512 byte sectors, 9 sectors per track, 40 tracks per side */
+    iterator->consoles[0] = RC_CONSOLE_MSX;
+  }
+  else if (size == 256 * 16 * 35) /* 140KB */
+  {
+    /* Apple II new format - 256 byte sectors, 16 sectors per track, 35 tracks per side */
+    iterator->consoles[0] = RC_CONSOLE_APPLE_II;
+  }
+  else if (size == 256 * 13 * 35) /* 113.75KB */
+  {
+    /* Apple II old format - 256 byte sectors, 13 sectors per track, 35 tracks per side */
+    iterator->consoles[0] = RC_CONSOLE_APPLE_II;
+  }
+
+  /* once a best guess has been identified, make sure the others are added as fallbacks */
+
+  /* check MSX first, as Apple II isn't supported by RetroArch, and RAppleWin won't use the iterator */
+  rc_hash_iterator_append_console(iterator, RC_CONSOLE_MSX);
+  rc_hash_iterator_append_console(iterator, RC_CONSOLE_APPLE_II);
 }
 
 void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* path, uint8_t* buffer, size_t buffer_size)
@@ -1267,12 +1333,16 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_COLECOVISION;
         }
+        else if (rc_path_compare_extension(ext, "cas"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_MSX;
+        }
         break;
 
       case 'd':
         if (rc_path_compare_extension(ext, "dsk"))
         {
-          iterator->consoles[0] = RC_CONSOLE_APPLE_II;
+          rc_hash_initialize_dsk_iterator(iterator, path);
         }
         else if (rc_path_compare_extension(ext, "d88"))
         {
@@ -1351,6 +1421,14 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_POKEMON_MINI;
         }
+        else if (rc_path_compare_extension(ext, "mx1"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_MSX;
+        }
+        else if (rc_path_compare_extension(ext, "mx2"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_MSX;
+        }
         break;
 
       case 'n':
@@ -1376,6 +1454,17 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         if (rc_path_compare_extension(ext, "pce"))
         {
           iterator->consoles[0] = RC_CONSOLE_PC_ENGINE;
+        }
+        break;
+
+      case 'r':
+        if (rc_path_compare_extension(ext, "rom"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_MSX;
+        }
+        if (rc_path_compare_extension(ext, "ri"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_MSX;
         }
         break;
 
@@ -1412,6 +1501,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         if (rc_path_compare_extension(ext, "wsc"))
         {
           iterator->consoles[0] = RC_CONSOLE_WONDERSWAN;
+        }
+        else if (rc_path_compare_extension(ext, "woz"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_APPLE_II;
         }
         break;
 
