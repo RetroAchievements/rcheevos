@@ -191,7 +191,6 @@ static void test_hash_m3u(int console_id, const char* filename, size_t size, con
 
   mock_file(0, filename, image, size);
   mock_file(1, m3u_filename, (uint8_t*)filename, strlen(filename));
-  mock_file(1, m3u_filename, (uint8_t*)"# comment\r\ntest.d88", 19);
 
   /* test file hash */
   int result_file = rc_hash_generate_from_file(hash_file, console_id, m3u_filename);
@@ -609,6 +608,10 @@ void test_hash(void) {
 
   /* Mega Drive */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MEGA_DRIVE, "test.md", 1048576, "da9461b3b0f74becc3ccf6c2a094c516");
+
+  /* MSX */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
+  TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
 
   /* Neo Geo Pocket */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_NEOGEO_POCKET, "test.ngc", 2097152, "cf86acf519625a25a17b1246975e90ae");
