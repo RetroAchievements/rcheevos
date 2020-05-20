@@ -3,7 +3,7 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-static void assert_parse_condset(rc_condset_t** condset, rc_memref_value_t** memrefs, void* buffer, const char* memaddr)
+static void _assert_parse_condset(rc_condset_t** condset, rc_memref_value_t** memrefs, void* buffer, const char* memaddr)
 {
   rc_parse_state_t parse;
   int size;
@@ -18,8 +18,9 @@ static void assert_parse_condset(rc_condset_t** condset, rc_memref_value_t** mem
   ASSERT_NUM_GREATER(size, 0);
   ASSERT_PTR_NOT_NULL(*condset);
 }
+#define assert_parse_condset(condset, memrefs_out, buffer, memaddr) ASSERT_HELPER(_assert_parse_condset(condset, memrefs_out, buffer, memaddr), "assert_parse_condset")
 
-static void assert_evaluate_condset(rc_condset_t* condset, rc_memref_value_t* memrefs, memory_t* memory, int expected_result) {
+static void _assert_evaluate_condset(rc_condset_t* condset, rc_memref_value_t* memrefs, memory_t* memory, int expected_result) {
   int result;
   rc_eval_state_t eval_state;
 
@@ -37,6 +38,7 @@ static void assert_evaluate_condset(rc_condset_t* condset, rc_memref_value_t* me
 
   ASSERT_NUM_EQUALS(result, expected_result);
 }
+#define assert_evaluate_condset(condset, memrefs, memory, expected_result) ASSERT_HELPER(_assert_evaluate_condset(condset, memrefs, memory, expected_result), "assert_evaluate_condset")
 
 static rc_condition_t* condset_get_cond(rc_condset_t* condset, int cond_index) {
   rc_condition_t* cond = condset->conditions;
@@ -51,12 +53,14 @@ static rc_condition_t* condset_get_cond(rc_condset_t* condset, int cond_index) {
   return cond;
 }
 
-static void assert_hit_count(rc_condset_t* condset, int cond_index, unsigned expected_hit_count) {
+static void _assert_hit_count(rc_condset_t* condset, int cond_index, unsigned expected_hit_count) {
   rc_condition_t* cond = condset_get_cond(condset, cond_index);
   ASSERT_PTR_NOT_NULL(cond);
 
   ASSERT_NUM_EQUALS(cond->current_hits, expected_hit_count);
 }
+#define assert_hit_count(condset, cond_index, expected_hit_count) ASSERT_HELPER(_assert_hit_count(condset, cond_index, expected_hit_count), "assert_hit_count")
+
 
 static void test_hitcount_increment_when_true() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};

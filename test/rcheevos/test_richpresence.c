@@ -3,7 +3,7 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-static void assert_parse_richpresence(rc_richpresence_t** richpresence, void* buffer, const char* script) {
+static void _assert_parse_richpresence(rc_richpresence_t** richpresence, void* buffer, const char* script) {
   int size;
   unsigned* overflow;
 
@@ -20,8 +20,9 @@ static void assert_parse_richpresence(rc_richpresence_t** richpresence, void* bu
     ASSERT_FAIL("write past end of buffer");
   }
 }
+#define assert_parse_richpresence(richpresence_out, buffer, script) ASSERT_HELPER(_assert_parse_richpresence(richpresence_out, buffer, script), "assert_parse_richpresence")
 
-static void assert_richpresence_output(rc_richpresence_t* richpresence, memory_t* memory, const char* expected_display_string) {
+static void _assert_richpresence_output(rc_richpresence_t* richpresence, memory_t* memory, const char* expected_display_string) {
   char output[256];
   int result;
 
@@ -29,6 +30,7 @@ static void assert_richpresence_output(rc_richpresence_t* richpresence, memory_t
   ASSERT_STR_EQUALS(output, expected_display_string);
   ASSERT_NUM_EQUALS(result, strlen(expected_display_string));
 }
+#define assert_richpresence_output(richpresence, memory, expected_display_string) ASSERT_HELPER(_assert_richpresence_output(richpresence, memory, expected_display_string), "assert_richpresence_output")
 
 static void test_empty_script() {
   int result = rc_richpresence_size("");
