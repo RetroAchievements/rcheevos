@@ -14,6 +14,8 @@
 /* arbitrary limit to prevent allocating and hashing large files */
 #define MAX_BUFFER_SIZE 64 * 1024 * 1024
 
+#define MAX_MESSAGE_LENGTH 2048
+
 const char* rc_path_get_filename(const char* path);
 
 /* ===================================================== */
@@ -99,7 +101,7 @@ void* rc_file_open(const char* path)
   handle = filereader->open(path);
   if (handle && verbose_message_callback)
   {
-    char message[1024];
+    char message[MAX_MESSAGE_LENGTH];
     snprintf(message, sizeof(message), "Opened %s", rc_path_get_filename(path));
     verbose_message_callback(message);
   }
@@ -311,7 +313,7 @@ static int rc_hash_finalize(md5_state_t* md5, char hash[33])
 
   if (verbose_message_callback)
   {
-    char message[128];
+    char message[MAX_MESSAGE_LENGTH];
     snprintf(message, sizeof(message), "Generated hash %s", hash);
     verbose_message_callback(message);
   }
@@ -331,7 +333,7 @@ static int rc_hash_buffer(char hash[33], uint8_t* buffer, size_t buffer_size)
 
   if (verbose_message_callback)
   {
-    char message[128];
+    char message[MAX_MESSAGE_LENGTH];
     snprintf(message, sizeof(message), "Hashing %u byte buffer", (unsigned)buffer_size);
     verbose_message_callback(message);
   }
@@ -363,7 +365,7 @@ static int rc_hash_3do(char hash[33], const char* path)
   {
     if (verbose_message_callback)
     {
-      char message[128];
+      char message[MAX_MESSAGE_LENGTH];
       snprintf(message, sizeof(message), "Found 3DO CD, title=%s", &buffer[0x28]);
       verbose_message_callback(message);
     }
@@ -413,7 +415,7 @@ static int rc_hash_3do(char hash[33], const char* path)
 
             if (verbose_message_callback)
             {
-              char message[128];
+              char message[MAX_MESSAGE_LENGTH];
               snprintf(message, sizeof(message), "Hashing header (%u bytes) and %s (%u bytes) ", 132, &buffer[offset + 0x20], (unsigned)size);
               verbose_message_callback(message);
             }
@@ -653,8 +655,7 @@ static int rc_hash_pce_cd(char hash[33], const char* path)
 
     if (verbose_message_callback)
     {
-      char message[128];
-      buffer[128] = '\0';
+      char message[MAX_MESSAGE_LENGTH];
       snprintf(message, sizeof(message), "Found PC Engine CD, title=%s", &buffer[106]);
       verbose_message_callback(message);
     }
@@ -667,7 +668,7 @@ static int rc_hash_pce_cd(char hash[33], const char* path)
 
     if (verbose_message_callback)
     {
-      char message[128];
+      char message[MAX_MESSAGE_LENGTH];
       snprintf(message, sizeof(message), "Hashing %d sectors starting at sector %d", num_sectors, sector);
       verbose_message_callback(message);
     }
@@ -801,7 +802,7 @@ static int rc_hash_psx(char hash[33], const char* path)
     {
       if (verbose_message_callback)
       {
-        char message[128];
+        char message[MAX_MESSAGE_LENGTH];
         snprintf(message, sizeof(message), "%s did not contain PS-X EXE marker", exe_name);
         verbose_message_callback(message);
       }
@@ -819,7 +820,7 @@ static int rc_hash_psx(char hash[33], const char* path)
 
     if (verbose_message_callback)
     {
-      char message[128];
+      char message[MAX_MESSAGE_LENGTH];
       snprintf(message, sizeof(message), "Hashing %s title (%u bytes) and contents (%u bytes) ", exe_name, (unsigned)strlen(exe_name), size);
       verbose_message_callback(message);
     }
@@ -896,7 +897,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
   {
     default:
     {
-      char message[128];
+      char message[MAX_MESSAGE_LENGTH];
       snprintf(message, sizeof(message), "Unsupported console for buffer hash: %d", console_id);
       return rc_hash_error(message);
     }
@@ -956,7 +957,7 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
 
   if (verbose_message_callback)
   {
-    char message[1024];
+    char message[MAX_MESSAGE_LENGTH];
     if (size > MAX_BUFFER_SIZE)
       snprintf(message, sizeof(message), "Hashing first %u bytes (of %u bytes) of %s", MAX_BUFFER_SIZE, (unsigned)size, rc_path_get_filename(path));
     else
@@ -1010,7 +1011,7 @@ static int rc_hash_buffered_file(char hash[33], int console_id, const char* path
 
   if (verbose_message_callback)
   {
-    char message[1024];
+    char message[MAX_MESSAGE_LENGTH];
     if (size > MAX_BUFFER_SIZE)
       snprintf(message, sizeof(message), "Buffering first %u bytes (of %d bytes) of %s", MAX_BUFFER_SIZE, (unsigned)size, rc_path_get_filename(path));
     else
@@ -1076,7 +1077,7 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
 
   if (verbose_message_callback)
   {
-    char message[1024];
+    char message[MAX_MESSAGE_LENGTH];
     snprintf(message, sizeof(message), "Extracted %s from playlist", buffer);
     verbose_message_callback(message);
   }
@@ -1100,7 +1101,7 @@ static int rc_hash_generate_from_playlist(char hash[33], int console_id, const c
 
   if (verbose_message_callback)
   {
-    char message[1024];
+    char message[MAX_MESSAGE_LENGTH];
     snprintf(message, sizeof(message), "Processing playlist: %s", rc_path_get_filename(path));
     verbose_message_callback(message);
   }
@@ -1520,7 +1521,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
 
     if (verbose_message_callback)
     {
-      char message[256];
+      char message[MAX_MESSAGE_LENGTH];
       int count = 0;
       while (iterator->consoles[count])
         ++count;
@@ -1568,7 +1569,7 @@ int rc_hash_iterate(char hash[33], struct rc_hash_iterator* iterator)
 
     if (verbose_message_callback)
     {
-      char message[128];
+      char message[MAX_MESSAGE_LENGTH];
       snprintf(message, sizeof(message), "Trying console %d", next_console);
       verbose_message_callback(message);
     }
