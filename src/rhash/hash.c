@@ -364,7 +364,7 @@ static int rc_hash_3do(char hash[33], const char* path)
     if (verbose_message_callback)
     {
       char message[128];
-      snprintf(message, sizeof(message), "Found 3DO CD, title=%s", &buffer[0x28]);
+      snprintf(message, sizeof(message), "Found 3DO CD, title=%.32s", &buffer[0x28]);
       verbose_message_callback(message);
     }
 
@@ -414,7 +414,7 @@ static int rc_hash_3do(char hash[33], const char* path)
             if (verbose_message_callback)
             {
               char message[128];
-              snprintf(message, sizeof(message), "Hashing header (%u bytes) and %s (%u bytes) ", 132, &buffer[offset + 0x20], (unsigned)size);
+              snprintf(message, sizeof(message), "Hashing header (%u bytes) and %.32s (%u bytes) ", 132, &buffer[offset + 0x20], (unsigned)size);
               verbose_message_callback(message);
             }
 
@@ -655,7 +655,7 @@ static int rc_hash_pce_cd(char hash[33], const char* path)
     {
       char message[128];
       buffer[128] = '\0';
-      snprintf(message, sizeof(message), "Found PC Engine CD, title=%s", &buffer[106]);
+      snprintf(message, sizeof(message), "Found PC Engine CD, title=%.22s", &buffer[106]);
       verbose_message_callback(message);
     }
 
@@ -1077,7 +1077,7 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
   if (verbose_message_callback)
   {
     char message[1024];
-    snprintf(message, sizeof(message), "Extracted %s from playlist", buffer);
+    snprintf(message, sizeof(message), "Extracted %.*s from playlist", (int)sizeof(message) - 32, buffer);
     verbose_message_callback(message);
   }
 

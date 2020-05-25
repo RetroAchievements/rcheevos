@@ -28,7 +28,7 @@ OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/oper
 CFLAGS=-Wall -O0 -g -std=c89 -ansi -Wno-long-long -I../include -I$(RC_SRC)
 
 # more strict validation for source files to eliminate warnings/errors in RetroArch compile
-SRC_CFLAGS=-pedantic -Wsign-compare
+SRC_CFLAGS=-pedantic -Wsign-compare -std=gnu99 -D_GNU_SOURCE -Wall
 
 ifdef HAVE_LUA
   OBJ += $(LUA_SRC)/lapi.o $(LUA_SRC)/lcode.o $(LUA_SRC)/lctype.o $(LUA_SRC)/ldebug.o \
