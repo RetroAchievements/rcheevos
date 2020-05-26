@@ -475,9 +475,73 @@ static int rc_hash_3do(char hash[33], const char* path)
 static int rc_hash_arcade(char hash[33], const char* path)
 {
   /* arcade hash is just the hash of the filename (no extension) - the cores are pretty stringent about having the right ROM data */
-  const char* ptr = rc_path_get_filename(path);
-  const char* ext = rc_path_get_extension(ptr);
-  return rc_hash_buffer(hash, (uint8_t*)ptr, ext - ptr - 1);
+  const char* filename = rc_path_get_filename(path);
+  const char* ext = rc_path_get_extension(filename);
+  size_t filename_length = ext - filename - 1;
+
+  /* fbneo supports loading subsystems by using specific folder names.
+   * if one is found, include it in the hash.
+   * https://github.com/libretro/FBNeo/blob/master/src/burner/libretro/README.md#emulating-consoles
+   */
+  if (filename > path + 1)
+  {
+    int include_folder = 0;
+    const char* folder = filename - 1;
+    size_t parent_folder_length = 0;
+
+    do
+    {
+      if (folder[-1] == '/' || folder[-1] == '\\')
+        break;
+
+      --folder;
+    } while (folder > path);
+
+    parent_folder_length = filename - folder - 1;
+    switch (parent_folder_length)
+    {
+      case 3:
+        if (memcmp(folder, "nes", 3) == 0 ||
+            memcmp(folder, "fds", 3) == 0 ||
+            memcmp(folder, "sms", 3) == 0 ||
+            memcmp(folder, "msx", 3) == 0 ||
+            memcmp(folder, "pce", 3) == 0 ||
+            memcmp(folder, "sgx", 3) == 0)
+          include_folder = 1;
+        break;
+      case 4:
+        if (memcmp(folder, "tg16", 4) == 0)
+          include_folder = 1;
+        break;
+      case 6:
+        if (memcmp(folder, "coleco", 6) == 0 ||
+            memcmp(folder, "sg1000", 6) == 0)
+          include_folder = 1;
+        break;
+      case 8:
+        if (memcmp(folder, "gamegear", 8) == 0 ||
+            memcmp(folder, "megadriv", 8) == 0 ||
+            memcmp(folder, "spectrum", 8) == 0)
+          include_folder = 1;
+        break;
+      default:
+        break;
+    }
+
+    if (include_folder)
+    {
+      char buffer[128]; /* realistically, this should never need more than ~20 characters */
+      if (parent_folder_length + filename_length + 1 < sizeof(buffer))
+      {
+        memcpy(&buffer[0], folder, parent_folder_length);
+        buffer[parent_folder_length] = '_';
+        memcpy(&buffer[parent_folder_length + 1], filename, filename_length);
+        return rc_hash_buffer(hash, (uint8_t*)&buffer[0], parent_folder_length + filename_length + 1);
+      }
+    }
+  }
+
+  return rc_hash_buffer(hash, (uint8_t*)filename, filename_length);
 }
 
 static int rc_hash_lynx(char hash[33], uint8_t* buffer, size_t buffer_size)
