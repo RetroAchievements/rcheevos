@@ -25,6 +25,12 @@ ifeq ($(BUILD),)
     BUILD=c89
 endif
 
+ifeq ($(OS),Windows_NT)
+    EXE=.exe
+else
+    EXE=
+endif
+
 # source files
 OBJ=$(RC_SRC)/alloc.o \
     $(RC_SRC)/compat.o \
@@ -131,12 +137,12 @@ $(LUA_SRC)/%.o: $(LUA_SRC)/%.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 test: $(OBJ)
-	$(CC) -o $@ $+ -lm
+	$(CC) -o $@$(EXE) $+ -lm
 	@echo ---------------------------------
 
 runtests: test
 	@ls -l test*
-	@./test
+	@./test$(EXE)
 
 clean:
-	rm -f test $(OBJ)
+	rm -f test$(EXE) $(OBJ)
