@@ -10,14 +10,14 @@ language: c
 jobs:
   include:
     - name: "x86 mingw c89"
-      compiler: mingw-x86
+      compiler: i686-w64-mingw32-gcc
       addons:
         packages:
           - g++-multilib # sys/cdefs.h
       env: ARCH=x86 BUILD=c89
 
     - name: "x64 mingw c89"
-      compiler: mingw-x64
+      compiler: i686-w64-mingw32-gcc
       env: ARCH=x64 BUILD=c89
 
     - name: "x86 linux c89"

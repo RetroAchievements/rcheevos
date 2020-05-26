@@ -116,23 +116,23 @@ $(info ==== rcheevos test [$(BUILD)/$(ARCH)$(EXTRA)] ====)
 all: test
 
 $(RC_SRC)/%.o: $(RC_SRC)/%.c
-	gcc $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
 
 $(RC_HASH_SRC)/%.o: $(RC_HASH_SRC)/%.c
-	gcc $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
 
 $(RC_URL_SRC)/%.o: $(RC_URL_SRC)/%.c
-	gcc $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
 
 $(LUA_SRC)/%.o: $(LUA_SRC)/%.c
-	gcc $(CFLAGS) -I$(LUA_SRC) -c $< -o $@
+	$(CC) $(CFLAGS) -I$(LUA_SRC) -c $< -o $@
 
 %.o: %.c
-	gcc $(CFLAGS) $(INCLUDES) -c $< -o $@
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 test: $(OBJ)
-	@gcc --version
-	gcc -o $@ $+ -lm
+	@$(CC) --version
+	$(CC) -o $@ $+ -lm
 	@echo ---------------------------------
 
 runtests: test
