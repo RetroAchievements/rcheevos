@@ -75,8 +75,10 @@ INCLUDES=-I../include -I$(RC_SRC)
 
 ifeq ($(ARCH), x86)
     CFLAGS += -m32
+    LDFLAGS += -m32
 else ifeq ($(ARCH), x64)
     CFLAGS += -m64
+    LDFLAGS += -m64
 else
     $(error unknown ARCH "$(ARCH)")
 endif
@@ -140,11 +142,10 @@ $(LUA_SRC)/%.o: $(LUA_SRC)/%.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 test: $(OBJ)
-	$(CC) -o $@$(EXE) $+ -lm
+	$(CC) $(LDFLAGS) -o $@$(EXE) $+ -lm
 	@echo ---------------------------------
 
 runtests: test
-	@ls -l test*
 	@./test$(EXE)
 
 clean:
