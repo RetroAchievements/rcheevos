@@ -16,7 +16,7 @@ jobs:
       compiler: gcc
       addons:
         packages:
-          - g++-multilib # sys/cdefs.h
+          - libc6-dev-i386 # sys/cdefs.h
       env: ARCH=x86 BUILD=c89 TARGET=runtests
 
     - name: "64-bit build/tests (Linux)"
@@ -27,7 +27,7 @@ jobs:
     # Windows EXE can't be run on linux. This is a just to make sure things compile with MinGW.
     - name: "32-bit build (MinGW)"
       compiler: i686-w64-mingw32-gcc
-      env: ARCH=x64 BUILD=c89 TARGET=test
+      env: ARCH=x86 BUILD=c89 TARGET=test
 
     # RetroArch compiles with gcc-8, gnu99, and a different set of warnings.
     # Attempt to catch issues caused by those discrepencies.
