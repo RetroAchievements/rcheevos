@@ -10,7 +10,10 @@ language: c
 jobs:
   include:
     - name: "x86 mingw c89"
-      compiler: mingw-x64
+      compiler: mingw-x86
+      addons:
+        packages:
+          - g++-multilib # sys/cdefs.h
       env: ARCH=x86 BUILD=c89
 
     - name: "x64 mingw c89"
@@ -20,6 +23,9 @@ jobs:
     - name: "x86 linux c89"
       os: linux
       compiler: gcc
+      addons:
+        packages:
+          - g++-multilib # sys/cdefs.h
       env: ARCH=x86 BUILD=c89
 
     - name: "x64 linux c89"
@@ -36,6 +42,11 @@ jobs:
             - ubuntu-toolchain-r-test
           packages:
             - gcc-8
-      env: ARCH=x64 BUILD=retroarch CC=gcc-8
+      env:
+         - ARCH=x64 BUILD=retroarch CC=gcc-8
+         - MATRIX_EVAL="CC=gcc-8"
+
+before_install:
+    - eval "${MATRIX_EVAL}"
 
 script: make -C test ARCH=$ARCH BUILD=$BUILD runtests
