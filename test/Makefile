@@ -25,7 +25,10 @@ ifeq ($(BUILD),)
     BUILD=c89
 endif
 
+# OS specific stuff
 ifeq ($(OS),Windows_NT)
+    EXE=.exe
+else ifeq ($(findstring mingw, $(CC)), mingw)
     EXE=.exe
 else
     EXE=

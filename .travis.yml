@@ -7,34 +7,31 @@ branches:
 
 language: c
 
-addons:
-  packages:
-    - g++-multilib # sys/cdefs.h
+
 
 jobs:
   include:
-    - name: "x86 mingw c89"
-      compiler: i686-w64-mingw32-gcc
-      addons: true
-      env: ARCH=x86 BUILD=c89 TARGET=test # Windows EXE can't be run on linux, so only compile
-
-    - name: "x64 mingw c89"
-      compiler: i686-w64-mingw64-gcc
-      addons: true
-      env: ARCH=x64 BUILD=c89 TARGET=test # Windows EXE can't be run on linux, so only compile
-
-    - name: "x86 linux c89"
+    - name: "32-bit build/tests (Linux)"
       os: linux
       compiler: gcc
-      addons: true
+      addons:
+        packages:
+          - g++-multilib # sys/cdefs.h
       env: ARCH=x86 BUILD=c89 TARGET=runtests
 
-    - name: "x64 linux c89"
+    - name: "64-bit build/tests (Linux)"
       os: linux
       compiler: gcc
       env: ARCH=x64 BUILD=c89 TARGET=runtests
 
-    - name: "x64 linux retroarch"
+    # Windows EXE can't be run on linux. This is a just to make sure things compile with MinGW.
+    - name: "32-bit build (MinGW)"
+      compiler: i686-w64-mingw32-gcc
+      env: ARCH=x64 BUILD=c89 TARGET=test
+
+    # RetroArch compiles with gcc-8, gnu99, and a different set of warnings.
+    # Attempt to catch issues caused by those discrepencies.
+    - name: "64-bit build/tests (Linux/RetroArch compile flags)"
       os: linux
       compiler: gcc-8
       addons:
