@@ -15,8 +15,9 @@ jobs:
       os: linux
       compiler: gcc
       addons:
-        packages:
-          - libc6-dev-i386 # sys/cdefs.h
+        apt:
+          packages:
+            - libc6-dev-i386 # sys/cdefs.h
       env: ARCH=x86 BUILD=c89 TARGET=runtests
 
     - name: "64-bit build/tests (Linux)"
@@ -31,7 +32,7 @@ jobs:
 
     # RetroArch compiles with gcc-8, gnu99, and a different set of warnings.
     # Attempt to catch issues caused by those discrepencies.
-    - name: "64-bit build/tests (Linux/RetroArch compile flags)"
+    - name: "64-bit build/tests (Linux with RetroArch compile flags)"
       os: linux
       compiler: gcc-8
       addons:
