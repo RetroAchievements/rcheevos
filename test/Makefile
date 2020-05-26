@@ -131,11 +131,11 @@ $(LUA_SRC)/%.o: $(LUA_SRC)/%.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 test: $(OBJ)
-	@$(CC) --version
 	$(CC) -o $@ $+ -lm
 	@echo ---------------------------------
 
 runtests: test
+	@ls -l test*
 	@./test
 
 clean:
