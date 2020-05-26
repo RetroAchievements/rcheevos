@@ -1,0 +1,33 @@
+# ignore release tags
+branches:
+  except:
+    /^v\d+\.\d+(\.\d+)?(-\S*)?$/  
+
+language: c
+
+jobs:
+  include:
+    - name: "x86 mingw c89"
+      compiler: mingw-x86
+      env: ARCH=x86 BUILD=c89
+
+    - name: "x64 mingw c89"
+      compiler: mingw-x64
+      env: ARCH=x64 BUILD=c89
+
+    - name: "x64 linux retroarch"
+      os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env: 
+         - ARCH=x64 BUILD=retroarch
+         - BEFORE_INSTALL="CC=gcc-8"
+      
+before-install:
+    - eval "${BEFORE_INSTALL}"
+    
+script: make -C test ARCH=$ARCH BUILD=$BUILD runtests
