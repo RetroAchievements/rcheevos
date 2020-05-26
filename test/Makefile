@@ -131,6 +131,7 @@ $(LUA_SRC)/%.o: $(LUA_SRC)/%.c
 	gcc $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 test: $(OBJ)
+	@gcc --version
 	gcc -o $@ $+ -lm
 	@echo ---------------------------------
 
