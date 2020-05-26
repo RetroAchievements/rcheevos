@@ -23,11 +23,6 @@ jobs:
             - ubuntu-toolchain-r-test
           packages:
             - g++-8
-      env: 
-         - ARCH=x64 BUILD=retroarch
-         - BEFORE_INSTALL="CC=gcc-8"
-      
-before-install:
-    - eval "${BEFORE_INSTALL}"
-    
+      env: ARCH=x64 BUILD=retroarch CC=gcc-8
+
 script: make -C test ARCH=$ARCH BUILD=$BUILD runtests
