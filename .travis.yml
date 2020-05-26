@@ -17,7 +17,8 @@ jobs:
       addons:
         apt:
           packages:
-            - libc6-dev-i386 # sys/cdefs.h
+            - libc6-dev-i386 # fatal error: sys/cdefs.h: No such file or directory
+            - gcc-5-multilib # skipping incompatible /usr/lib/gcc/x86_64-linux-gnu/5/libgcc.a when searching for -lgcc
       env: ARCH=x86 BUILD=c89 TARGET=runtests
 
     - name: "64-bit build/tests (Linux)"
