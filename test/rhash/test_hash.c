@@ -613,6 +613,7 @@ void test_hash(void) {
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/megadriv/game.zip", "f99d0aaf12ba3eb6ced9878c76692c63");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/sg1000/game.zip", "e8f6c711c4371f09537b4f2a7a304d6c");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/spectrum/game.zip", "a5f62157b2617bd728c4b1bc885c29e9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/ngp/game.zip", "d4133b74c4e57274ca514e27a370dcb6");
 
   /* Atari 2600 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_2600, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");

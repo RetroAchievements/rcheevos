@@ -505,6 +505,7 @@ static int rc_hash_arcade(char hash[33], const char* path)
             memcmp(folder, "fds", 3) == 0 ||
             memcmp(folder, "sms", 3) == 0 ||
             memcmp(folder, "msx", 3) == 0 ||
+            memcmp(folder, "ngp", 3) == 0 ||
             memcmp(folder, "pce", 3) == 0 ||
             memcmp(folder, "sgx", 3) == 0)
           include_folder = 1;
