@@ -413,7 +413,7 @@ static const rc_memory_regions_t rc_memory_regions_pokemini = { _rc_memory_regio
 /* ===== Sega CD ===== */
 static const rc_memory_region_t _rc_memory_regions_segacd[] = {
     { 0x000000U, 0x00FFFFU, 0x00FF0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "68000 RAM" },
-    { 0x010000U, 0x08FFFFU, 0x80000000U, RC_MEMORY_TYPE_SAVE_RAM, "CD PRG RAM" } /* normally banked into $020000-$03FFFF */
+    { 0x010000U, 0x08FFFFU, 0x80020000U, RC_MEMORY_TYPE_SAVE_RAM, "CD PRG RAM" } /* normally banked into $020000-$03FFFF */
 };
 static const rc_memory_regions_t rc_memory_regions_segacd = { _rc_memory_regions_segacd, 2 };
 
@@ -459,9 +459,10 @@ static const rc_memory_regions_t rc_memory_regions_snes = { _rc_memory_regions_s
 /* http://daifukkat.su/docs/wsman/#ovr_memmap */
 static const rc_memory_region_t _rc_memory_regions_wonderswan[] = {
     /* RAM ends at 0x3FFF for WonderSwan, WonderSwan color uses all 64KB */
-    { 0x000000U, 0x00FFFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+    { 0x000000U, 0x00FFFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x010000U, 0x01FFFFU, 0x000000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
 };
-static const rc_memory_regions_t rc_memory_regions_wonderswan = { _rc_memory_regions_wonderswan, 1 };
+static const rc_memory_regions_t rc_memory_regions_wonderswan = { _rc_memory_regions_wonderswan, 2 };
 
 /* ===== Vectrex ===== */
 /* https://roadsidethoughts.com/vectrex/vectrex-memory-map.htm */
