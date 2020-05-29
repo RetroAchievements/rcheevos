@@ -523,16 +523,14 @@ static void test_hash_nes_file_iterator_32k()
   ASSERT_STR_EQUALS(hash2, "");
 }
 
-static void test_hash_m3u_with_comments()
+static void assert_valid_m3u(const char* disc_filename, const char* m3u_filename, const char* m3u_contents)
 {
   const size_t size = 131072;
   uint8_t* image = generate_generic_file(size);
   char hash_file[33], hash_iterator[33];
-  const char* m3u_filename = "test.m3u";
-  const char* m3u_contents = "#EXTM3U\r\n\r\n#EXTBYT:131072\r\ntest.d88\r\n";
   const char* expected_md5 = "a0f425b23200568132ba76b2405e3933";
 
-  mock_file(0, "test.d88", image, size);
+  mock_file(0, disc_filename, image, size);
   mock_file(1, m3u_filename, (uint8_t*)m3u_contents, strlen(m3u_contents));
 
   /* test file hash */
@@ -555,6 +553,68 @@ static void test_hash_m3u_with_comments()
 
   ASSERT_NUM_EQUALS(result_iterator, 1);
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_m3u_with_comments()
+{
+  assert_valid_m3u("test.d88", "test.m3u", 
+      "#EXTM3U\r\n\r\n#EXTBYT:131072\r\ntest.d88\r\n");
+}
+
+static void test_hash_m3u_empty()
+{
+  char hash_file[33], hash_iterator[33];
+  const char* m3u_filename = "test.m3u";
+  const char* m3u_contents = "#EXTM3U\r\n\r\n#EXTBYT:131072\r\n";
+
+  mock_file(0, m3u_filename, (uint8_t*)m3u_contents, strlen(m3u_contents));
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PC8800, m3u_filename);
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, m3u_filename, NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 0);
+  ASSERT_NUM_EQUALS(result_iterator, 0);
+}
+
+static void test_hash_m3u_trailing_whitespace()
+{
+  assert_valid_m3u("test.d88", "test.m3u", 
+      "#EXTM3U  \r\n  \r\n#EXTBYT:131072  \r\ntest.d88  \t  \r\n");
+}
+
+static void test_hash_m3u_line_ending()
+{
+  assert_valid_m3u("test.d88", "test.m3u", 
+      "#EXTM3U\n\n#EXTBYT:131072\ntest.d88\n");
+}
+
+static void test_hash_m3u_extension_case()
+{
+  assert_valid_m3u("test.D88", "test.M3U", 
+      "#EXTM3U\r\n\r\n#EXTBYT:131072\r\ntest.D88\r\n");
+}
+
+static void test_hash_m3u_relative_path()
+{
+  assert_valid_m3u("folder1/folder2/test.d88", "folder1/test.m3u", 
+      "#EXTM3U\r\n\r\n#EXTBYT:131072\r\nfolder2/test.d88");
+}
+
+static void test_hash_m3u_absolute_path(const char* absolute_path)
+{
+  char m3u_contents[128] = "#EXTM3U\r\n\r\n#EXTBYT:131072\r\n";
+  strcat(m3u_contents, absolute_path);
+
+  assert_valid_m3u(absolute_path, "relative/test.m3u", m3u_contents);
 }
 
 static void test_hash_file_without_ext()
@@ -690,8 +750,20 @@ void test_hash(void) {
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.ws", 524288, "68f0f13b598e0b66461bc578375c3888");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.wsc", 4194304, "a247ec8a8c42e18fcb80702dfadac14b");
 
-  /* special cases */
+  /* m3u support */
   TEST(test_hash_m3u_with_comments);
+  TEST(test_hash_m3u_empty);
+  TEST(test_hash_m3u_trailing_whitespace);
+  TEST(test_hash_m3u_line_ending);
+  TEST(test_hash_m3u_extension_case);
+  TEST(test_hash_m3u_relative_path);
+  TEST_PARAMS1(test_hash_m3u_absolute_path, "/absolute/test.d88");
+  TEST_PARAMS1(test_hash_m3u_absolute_path, "\\absolute\\test.d88");
+  TEST_PARAMS1(test_hash_m3u_absolute_path, "C:\\absolute\\test.d88");
+  TEST_PARAMS1(test_hash_m3u_absolute_path, "\\\\server\\absolute\\test.d88");
+  TEST_PARAMS1(test_hash_m3u_absolute_path, "samba:/absolute/test.d88");
+
+  /* other */
   TEST(test_hash_file_without_ext);
 
   TEST_SUITE_END();

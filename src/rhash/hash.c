@@ -1036,12 +1036,37 @@ static int rc_hash_buffered_file(char hash[33], int console_id, const char* path
   return result;
 }
 
+static int rc_hash_path_is_absolute(const char* path)
+{
+  if (!path[0])
+    return 0;
+
+  /* "/path/to/file" or "\path\to\file" */
+  if (path[0] == '/' || path[0] == '\\')
+    return 1;
+
+  /* "C:\path\to\file" */
+  if (path[1] == ':' && path[2] == '\\')
+    return 1;
+
+  /* "scheme:/path/to/file" */
+  while (*path)
+  {
+    if (path[0] == ':' && path[1] == '/')
+      return 1;
+
+    ++path;
+  }
+
+  return 0;
+}
+
 static const char* rc_hash_get_first_item_from_playlist(const char* path)
 {
   char buffer[1024];
   char* disc_path;
-  char* ptr, *start;
-  size_t num_read;
+  char* ptr, *start, *next;
+  size_t num_read, path_len, file_len;
   void* file_handle;
 
   file_handle = rc_file_open(path);
@@ -1057,39 +1082,61 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
   rc_file_close(file_handle);
 
   ptr = start = buffer;
-  /* ignore empty and commented lines */
-  while (*ptr == '#' || *ptr == '\r' || *ptr == '\n')
+  do
   {
+    /* ignore empty and commented lines */
+    while (*ptr == '#' || *ptr == '\r' || *ptr == '\n')
+    {
+      while (*ptr && *ptr != '\n')
+        ++ptr;
+      if (*ptr)
+        ++ptr;
+    }
+
+    /* find and extract the current line */
+    start = ptr;
     while (*ptr && *ptr != '\n')
       ++ptr;
-    if (*ptr)
-      ++ptr;
-    start = ptr;
-  }
+    next = ptr;
 
-  /* find and extract the current line */
-  while (*ptr && *ptr != '\n')
-    ++ptr;
-  if (ptr > start && ptr[-1] == '\r')
-    --ptr;
-  *ptr = '\0';
+    /* remove trailing whitespace - especially '\r' */
+    while (ptr > start && isspace(ptr[-1]))
+      --ptr;
+
+    /* if we found a non-empty line, break out of the loop to process it */
+    file_len = ptr - start;
+    if (file_len)
+      break;
+
+    /* did we reach the end of the file? */
+    if (!*next)
+      return NULL;
+
+    /* if the line only contained whitespace, keep searching */
+    ptr = next + 1;
+  } while (1);
 
   if (verbose_message_callback)
   {
     char message[1024];
-    snprintf(message, sizeof(message), "Extracted %.*s from playlist", (int)sizeof(message) - 32, buffer);
+    snprintf(message, sizeof(message), "Extracted %.*s from playlist", file_len, start);
     verbose_message_callback(message);
   }
 
-  ptr = (char*)rc_path_get_filename(path);
-  num_read = (ptr - path) + strlen(start) + 1;
+  start[file_len++] = '\0';
+  if (rc_hash_path_is_absolute(start))
+    path_len = 0;
+  else
+    path_len = rc_path_get_filename(path) - path;
 
-  disc_path = (char*)malloc(num_read);
+  disc_path = (char*)malloc(path_len + file_len + 1);
   if (!disc_path)
     return NULL;
 
-  memcpy(disc_path, path, ptr - path);
-  strcpy(disc_path + (ptr - path), start);
+  if (path_len)
+    memcpy(disc_path, path, path_len);
+
+  memcpy(&disc_path[path_len], start, file_len);
   return disc_path;
 }
 
@@ -1407,11 +1454,11 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         if (rc_path_compare_extension(ext, "m3u"))
         {
           const char* disc_path = rc_hash_get_first_item_from_playlist(path);
-          if (disc_path)
-          {
-            path = iterator->path = disc_path;
-            continue; /* retry with disc_path */
-          }
+          if (!disc_path) /* did not find a disc */
+            return;
+
+          path = iterator->path = disc_path;
+          continue; /* retry with disc_path */
         }
         else if (rc_path_compare_extension(ext, "md"))
         {
