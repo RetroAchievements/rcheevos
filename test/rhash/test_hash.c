@@ -557,6 +557,40 @@ static void test_hash_m3u_with_comments()
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
+static void test_hash_file_without_ext()
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* filename = "test";
+
+  mock_file(0, filename, image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO, filename);
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, filename, NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+
+  /* specifying a console will use the appropriate hasher */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, "6a2305a2b6675a97ff792709be1ca857");
+
+  /* no extension will use the default full file iterator, so hash should include header */
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, "64b131c5c7fec32985d9c99700babb7e");
+}
+
 /* ========================================================================= */
 
 void test_hash(void) {
@@ -658,6 +692,7 @@ void test_hash(void) {
 
   /* special cases */
   TEST(test_hash_m3u_with_comments);
+  TEST(test_hash_file_without_ext);
 
   TEST_SUITE_END();
 }

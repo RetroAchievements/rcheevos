@@ -264,12 +264,12 @@ static const char* rc_path_get_extension(const char* path)
   do
   {
     if (ptr[-1] == '.')
-      break;
+      return ptr;
 
     --ptr;
   } while (ptr > path);
 
-  return ptr;
+  return path + strlen(path);
 }
 
 int rc_path_compare_extension(const char* path, const char* ext)
@@ -1276,7 +1276,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
   do
   {
     const char* ext = rc_path_get_extension(path);
-    switch (tolower(*ext--))
+    switch (tolower(*ext))
     {
       case 'a':
         if (rc_path_compare_extension(ext, "a78"))
