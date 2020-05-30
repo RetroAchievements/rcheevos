@@ -4,11 +4,12 @@
 #include "../rhash/md5.h"
 #include "mock_memory.h"
 
-static void assert_activate_achievement(rc_runtime_t* runtime, unsigned int id, const char* memaddr)
+static void _assert_activate_achievement(rc_runtime_t* runtime, unsigned int id, const char* memaddr)
 {
   int result = rc_runtime_activate_achievement(runtime, id, memaddr, NULL, 0);
   ASSERT_NUM_EQUALS(result, RC_OK);
 }
+#define assert_activate_achievement(runtime, id, memaddr) ASSERT_HELPER(_assert_activate_achievement(runtime, id, memaddr), "assert_activate_achievement")
 
 static void event_handler(const rc_runtime_event_t* e)
 {
@@ -19,7 +20,7 @@ static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)
   rc_runtime_do_frame(runtime, event_handler, peek, memory, NULL);
 }
 
-static void assert_serialize(rc_runtime_t* runtime, unsigned char* buffer, unsigned buffer_size)
+static void _assert_serialize(rc_runtime_t* runtime, unsigned char* buffer, unsigned buffer_size)
 {
   int result;
   unsigned* overflow;
@@ -37,14 +38,16 @@ static void assert_serialize(rc_runtime_t* runtime, unsigned char* buffer, unsig
     ASSERT_FAIL("write past end of buffer");
   }
 }
+#define assert_serialize(runtime, buffer, buffer_size) ASSERT_HELPER(_assert_serialize(runtime, buffer, buffer_size), "assert_serialize")
 
-static void assert_deserialize(rc_runtime_t* runtime, unsigned char* buffer)
+static void _assert_deserialize(rc_runtime_t* runtime, unsigned char* buffer)
 {
   int result = rc_runtime_deserialize_progress(runtime, buffer, NULL);
   ASSERT_NUM_EQUALS(result, RC_OK);
 }
+#define assert_deserialize(runtime, buffer) ASSERT_HELPER(_assert_deserialize(runtime, buffer), "assert_deserialize")
 
-static void assert_sized_memref(rc_runtime_t* runtime, unsigned address, char size, unsigned value, unsigned prev, unsigned prior)
+static void _assert_sized_memref(rc_runtime_t* runtime, unsigned address, char size, unsigned value, unsigned prev, unsigned prior)
 {
   rc_memref_value_t* memref = runtime->memrefs;
   while (memref)
@@ -62,11 +65,8 @@ static void assert_sized_memref(rc_runtime_t* runtime, unsigned address, char si
 
   ASSERT_FAIL("could not find memref for address %u", address);
 }
-
-static void assert_memref(rc_runtime_t* runtime, unsigned address, unsigned value, unsigned prev, unsigned prior)
-{
-  assert_sized_memref(runtime, address, RC_MEMSIZE_8_BITS, value, prev, prior);
-}
+#define assert_sized_memref(runtime, address, size, value, prev, prior) ASSERT_HELPER(_assert_sized_memref(runtime, address, size, value, prev, prior), "assert_sized_memref")
+#define assert_memref(runtime, address, value, prev, prior) ASSERT_HELPER(_assert_sized_memref(runtime, address, RC_MEMSIZE_8_BITS, value, prev, prior), "assert_memref")
 
 static rc_trigger_t* find_trigger(rc_runtime_t* runtime, unsigned ach_id)
 {
@@ -97,7 +97,7 @@ static rc_condset_t* find_condset(rc_runtime_t* runtime, unsigned ach_id, unsign
   return condset;
 }
 
-static void assert_hitcount(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
+static void _assert_hitcount(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
 {
   rc_condition_t* cond;
 
@@ -113,14 +113,16 @@ static void assert_hitcount(rc_runtime_t* runtime, unsigned ach_id, unsigned gro
 
   ASSERT_NUM_EQUALS(cond->current_hits, expected_hits);
 }
+#define assert_hitcount(runtime, ach_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_hitcount(runtime, ach_id, group_idx, cond_idx, expected_hits), "assert_hitcount")
 
-static void assert_achievement_state(rc_runtime_t* runtime, unsigned ach_id, int state)
+static void _assert_achievement_state(rc_runtime_t* runtime, unsigned ach_id, int state)
 {
   rc_trigger_t* trigger = find_trigger(runtime, ach_id);
   ASSERT_PTR_NOT_NULL(trigger);
 
   ASSERT_NUM_EQUALS(trigger->state, state);
 }
+#define assert_achievement_state(runtime, ach_id, state) ASSERT_HELPER(_assert_achievement_state(runtime, ach_id, state), "assert_achievement_state")
 
 static void update_md5(unsigned char* buffer)
 {
