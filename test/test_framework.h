@@ -9,8 +9,10 @@ typedef struct
 {
   const char* current_suite;
   const char* current_test;
-  const char* current_test_file;
-  unsigned current_test_line;
+  const char* current_test_file_stack[16];
+  const char* current_test_func_stack[16];
+  unsigned current_test_line_stack[16];
+  unsigned current_test_stack_index;
   int current_test_fail;
   int fail_count;
   int run_count;
@@ -52,9 +54,17 @@ extern const char* test_framework_basename(const char* path);
   printf("\n"); \
   fflush(stdout)
 
+#define TEST_PUSH_CURRENT_LINE(func_name) \
+  __test_framework_state.current_test_file_stack[__test_framework_state.current_test_stack_index] = __FILE__; \
+  __test_framework_state.current_test_line_stack[__test_framework_state.current_test_stack_index] = __LINE__; \
+  __test_framework_state.current_test_func_stack[__test_framework_state.current_test_stack_index] = func_name; \
+  ++__test_framework_state.current_test_stack_index;
+
+#define TEST_POP_CURRENT_LINE() --__test_framework_state.current_test_stack_index;
+
 #define TEST_INIT() \
-  __test_framework_state.current_test_file = __FILE__; \
-  __test_framework_state.current_test_line = __LINE__; \
+  __test_framework_state.current_test_stack_index = 0; \
+  TEST_PUSH_CURRENT_LINE(__func__); \
   __test_framework_state.current_test_fail = 0; \
   ++__test_framework_state.run_count; \
   printf("."); \
@@ -100,15 +110,29 @@ extern const char* test_framework_basename(const char* path);
   TEST_INIT() \
   func(p1, p2, p3, p4, p5, p6, p7);
 
+#define ASSERT_HELPER(func_call, func_name) { \
+  TEST_PUSH_CURRENT_LINE(func_name); \
+  func_call; \
+  TEST_POP_CURRENT_LINE(); \
+  if (__test_framework_state.current_test_fail) \
+    return; \
+}
+
 #define ASSERT_MESSAGE(message, ...) { \
+  unsigned __stack_index; \
   if (!__test_framework_state.current_test_fail) { \
     __test_framework_state.current_test_fail = 1; \
     ++__test_framework_state.fail_count; \
-    fprintf(stderr, "\n* %s/%s (%s:%d)\n  ", __test_framework_state.current_suite, __test_framework_state.current_test, \
-            test_framework_basename(__test_framework_state.current_test_file), __test_framework_state.current_test_line); \
-  } else { \
-    fprintf(stderr, "\n  "); \
+    fprintf(stderr, "\n* %s/%s (%s:%d)", __test_framework_state.current_suite, __test_framework_state.current_test, \
+            test_framework_basename(__test_framework_state.current_test_file_stack[0]), __test_framework_state.current_test_line_stack[0]); \
   } \
+  for (__stack_index = 1; __stack_index < __test_framework_state.current_test_stack_index; ++__stack_index) { \
+    fprintf(stderr, "\n  via %s (%s:%d)", \
+      __test_framework_state.current_test_func_stack[__stack_index], \
+      test_framework_basename(__test_framework_state.current_test_file_stack[__stack_index]), \
+      __test_framework_state.current_test_line_stack[__stack_index]); \
+  } \
+  fprintf(stderr, "\n  "); \
   fprintf(stderr, message "\n", ## __VA_ARGS__); \
   fflush(stderr); \
 }

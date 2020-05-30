@@ -3,7 +3,7 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-static void assert_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
+static void _assert_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
   ASSERT_NUM_EQUALS(self->type, expected_type);
 
   switch (expected_type) {
@@ -19,8 +19,9 @@ static void assert_operand(rc_operand_t* self, char expected_type, char expected
       break;
   }
 }
+#define assert_operand(operand, expected_type, expected_size, expected_address) ASSERT_HELPER(_assert_operand(operand, expected_type, expected_size, expected_address), "assert_operand")
 
-static void assert_parse_condition(
+static void _assert_parse_condition(
     const char* memaddr, char expected_type,
     char expected_left_type, char expected_left_size, unsigned expected_left_value,
     char expected_operator,
@@ -43,6 +44,10 @@ static void assert_parse_condition(
     assert_operand(&self->operand2, expected_right_type, expected_right_size, expected_right_value);
     ASSERT_NUM_EQUALS(self->required_hits, expected_required_hits);
 }
+#define assert_parse_condition(memaddr, expected_type, expected_left_type, expected_left_size, expected_left_value, \
+                               expected_operator, expected_right_type, expected_right_size, expected_right_value, expected_required_hits) \
+    ASSERT_HELPER(_assert_parse_condition(memaddr, expected_type, expected_left_type, expected_left_size, expected_left_value, \
+                                          expected_operator, expected_right_type, expected_right_size, expected_right_value, expected_required_hits), "assert_parse_condition")
 
 static void test_parse_condition(const char* memaddr, int expected_type, int expected_left_type,
     int expected_operator, int expected_required_hits) {
