@@ -214,6 +214,15 @@ static void test_hash_m3u(int console_id, const char* filename, size_t size, con
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
+static void test_hash_filename(int console_id, const char* path, const char* expected_md5)
+{
+    char hash_file[33];
+    int result_file = rc_hash_generate_from_file(hash_file, console_id, path);
+
+    ASSERT_NUM_EQUALS(result_file, 1);
+    ASSERT_STR_EQUALS(hash_file, expected_md5);
+}
+
 /* ========================================================================= */
 
 static void test_hash_3do_bin()
@@ -609,6 +618,36 @@ void test_hash(void) {
 
   /* Apple II */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_APPLE_II, "test.dsk", 143360, "88be638f4d78b4072109e55f13e8a0ac");
+
+  /* Arcade */
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "roms\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "C:\\roms\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/roms/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/games/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/roms/game.7z", "c8d46d341bea4fd5bff866a65ff8aea9");
+
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/nes_game.zip", "9b7aad36b365712fc93728088de4c209");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/nes/game.zip", "9b7aad36b365712fc93728088de4c209");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "C:\\roms\\nes\\game.zip", "9b7aad36b365712fc93728088de4c209");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "nes\\game.zip", "9b7aad36b365712fc93728088de4c209");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/snes/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/nes2/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/coleco/game.zip", "c546f63ae7de98add4b9f221a4749260");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/msx/game.zip", "59ab85f6b56324fd81b4e324b804c29f");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/pce/game.zip", "c414a783f3983bbe2e9e01d9d5320c7e");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/sgx/game.zip", "db545ab29694bfda1010317d4bac83b8");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/tg16/game.zip", "8b6c5c2e54915be2cdba63973862e143");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/fds/game.zip", "c0c135a97e8c577cfdf9204823ff211f");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/gamegear/game.zip", "f6f471e952b8103032b723f57bdbe767");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/sms/game.zip", "43f35f575dead94dd2f42f9caf69fe5a");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/megadriv/game.zip", "f99d0aaf12ba3eb6ced9878c76692c63");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/sg1000/game.zip", "e8f6c711c4371f09537b4f2a7a304d6c");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/spectrum/game.zip", "a5f62157b2617bd728c4b1bc885c29e9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/ngp/game.zip", "d4133b74c4e57274ca514e27a370dcb6");
 
   /* Atari 2600 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_2600, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");
