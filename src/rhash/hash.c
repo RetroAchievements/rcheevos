@@ -1440,6 +1440,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
            * hashing algorithm, only specify one of them */
           iterator->consoles[0] = RC_CONSOLE_MEGA_DRIVE;
         }
+        else if (rc_path_compare_extension(ext, "bs"))
+        {
+           iterator->consoles[0] = RC_CONSOLE_SUPER_NINTENDO;
+        }
         break;
 
       case 'c':
@@ -1592,7 +1596,9 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         break;
 
       case 's':
-        if (rc_path_compare_extension(ext, "smc") || rc_path_compare_extension(ext, "sfc"))
+        if (rc_path_compare_extension(ext, "smc") ||
+            rc_path_compare_extension(ext, "sfc") ||
+            rc_path_compare_extension(ext, "swc"))
         {
           iterator->consoles[0] = RC_CONSOLE_SUPER_NINTENDO;
         }
