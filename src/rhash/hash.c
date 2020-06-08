@@ -1423,12 +1423,14 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
 
                  if (size > 32 * 1024 * 1024)
                  {
-                    /* 3DO and Sega CD are the only cores that supports directly opening the bin file. */
-                    iterator->consoles[0] = RC_CONSOLE_3DO;
-                    iterator->consoles[1] = RC_CONSOLE_SEGA_CD;
+                    iterator->consoles[0] = RC_CONSOLE_3DO; /* 4DO supports directly opening the bin file */
+                    iterator->consoles[1] = RC_CONSOLE_PLAYSTATION; /* PCSX ReARMed supports directly opening the bin file*/
 
-                    /* fallback to megadrive - see comment below */
-                    iterator->consoles[2] = RC_CONSOLE_MEGA_DRIVE;
+                    /* SEGA CD hash doesn't have any logic to ensure it's being used against a SEGA CD, so it should always be last */
+                    iterator->consoles[2] = RC_CONSOLE_SEGA_CD; /* Genesis Plus GX supports directly opening the bin file*/
+
+                    /* fallback to megadrive - will only be checked if SEGA CD hash does not match */
+                    iterator->consoles[3] = RC_CONSOLE_MEGA_DRIVE;
                     break;
                  }
               }
