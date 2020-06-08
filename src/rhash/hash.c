@@ -1184,7 +1184,7 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
   if (verbose_message_callback)
   {
     char message[1024];
-    snprintf(message, sizeof(message), "Extracted %.*s from playlist", file_len, start);
+    snprintf(message, sizeof(message), "Extracted %.*s from playlist", (int)file_len, start);
     verbose_message_callback(message);
   }
 
@@ -1390,6 +1390,15 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
     const char* ext = rc_path_get_extension(path);
     switch (tolower(*ext))
     {
+      case '7':
+        if (rc_path_compare_extension(ext, "7z"))
+        {
+          /* decompressing zip file not supported */
+          iterator->consoles[0] = RC_CONSOLE_ARCADE;
+          need_path = 1;
+        }
+        break;
+
       case 'a':
         if (rc_path_compare_extension(ext, "a78"))
         {
