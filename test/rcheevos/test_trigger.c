@@ -3,7 +3,7 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-static void assert_parse_trigger(rc_trigger_t** trigger, void* buffer, const char* memaddr)
+static void _assert_parse_trigger(rc_trigger_t** trigger, void* buffer, const char* memaddr)
 {
   int size;
   unsigned* overflow;
@@ -21,11 +21,13 @@ static void assert_parse_trigger(rc_trigger_t** trigger, void* buffer, const cha
     ASSERT_FAIL("write past end of buffer");
   }
 }
+#define assert_parse_trigger(trigger, buffer, memaddr) ASSERT_HELPER(_assert_parse_trigger(trigger, buffer, memaddr), "assert_parse_trigger")
 
-static void assert_evaluate_trigger(rc_trigger_t* trigger, memory_t* memory, int expected_result) {
+static void _assert_evaluate_trigger(rc_trigger_t* trigger, memory_t* memory, int expected_result) {
   int result = rc_test_trigger(trigger, peek, memory, NULL);
   ASSERT_NUM_EQUALS(result, expected_result);
 }
+#define assert_evaluate_trigger(trigger, memory, expected_result) ASSERT_HELPER(_assert_evaluate_trigger(trigger, memory, expected_result), "assert_evaluate_trigger")
 
 static rc_condition_t* trigger_get_cond(rc_trigger_t* trigger, int group_index, int cond_index) {
   rc_condset_t* condset = trigger->requirement;
@@ -56,12 +58,13 @@ static rc_condition_t* trigger_get_cond(rc_trigger_t* trigger, int group_index, 
   return cond;
 }
 
-static void assert_hit_count(rc_trigger_t* trigger, int group_index, int cond_index, unsigned expected_hit_count) {
+static void _assert_hit_count(rc_trigger_t* trigger, int group_index, int cond_index, unsigned expected_hit_count) {
   rc_condition_t* cond = trigger_get_cond(trigger, group_index, cond_index);
   ASSERT_PTR_NOT_NULL(cond);
 
   ASSERT_NUM_EQUALS(cond->current_hits, expected_hit_count);
 }
+#define assert_hit_count(trigger, group_index, cond_index, expected_hit_count) ASSERT_HELPER(_assert_hit_count(trigger, group_index, cond_index, expected_hit_count), "assert_hit_count")
 
 static int evaluate_trigger(rc_trigger_t* self, memory_t* memory) {
   return rc_evaluate_trigger(self, peek, memory, NULL);

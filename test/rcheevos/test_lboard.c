@@ -3,7 +3,7 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-static void assert_parse_lboard(rc_lboard_t** lboard, void* buffer, const char* memaddr)
+static void _assert_parse_lboard(rc_lboard_t** lboard, void* buffer, const char* memaddr)
 {
   int size;
   unsigned* overflow;
@@ -21,6 +21,7 @@ static void assert_parse_lboard(rc_lboard_t** lboard, void* buffer, const char* 
     ASSERT_FAIL("write past end of buffer");
   }
 }
+#define assert_parse_lboard(lboard, buffer, memaddr) ASSERT_HELPER(_assert_parse_lboard(lboard, buffer, memaddr), "assert_parse_lboard")
 
 static int evaluate_lboard(rc_lboard_t* lboard, memory_t* memory, int* value) {
   return rc_evaluate_lboard(lboard, value, peek, memory, NULL);

@@ -12,7 +12,7 @@ static void event_handler(const rc_runtime_event_t* e)
   memcpy(&events[event_count++], e, sizeof(rc_runtime_event_t));
 }
 
-static void assert_event(char type, int id, int value)
+static void _assert_event(char type, int id, int value)
 {
   int i;
 
@@ -23,24 +23,28 @@ static void assert_event(char type, int id, int value)
 
   ASSERT_FAIL("expected event not found");
 }
+#define assert_event(type, id, value) ASSERT_HELPER(_assert_event(type, id, value), "assert_event")
 
-static void assert_activate_achievement(rc_runtime_t* runtime, unsigned int id, const char* memaddr)
+static void _assert_activate_achievement(rc_runtime_t* runtime, unsigned int id, const char* memaddr)
 {
   int result = rc_runtime_activate_achievement(runtime, id, memaddr, NULL, 0);
   ASSERT_NUM_EQUALS(result, RC_OK);
 }
+#define assert_activate_achievement(runtime, id, memaddr) ASSERT_HELPER(_assert_activate_achievement(runtime, id, memaddr), "assert_activate_achievement")
 
-static void assert_activate_lboard(rc_runtime_t* runtime, unsigned int id, const char* memaddr)
+static void _assert_activate_lboard(rc_runtime_t* runtime, unsigned int id, const char* memaddr)
 {
   int result = rc_runtime_activate_lboard(runtime, id, memaddr, NULL, 0);
   ASSERT_NUM_EQUALS(result, RC_OK);
 }
+#define assert_activate_lboard(runtime, id, memaddr) ASSERT_HELPER(_assert_activate_lboard(runtime, id, memaddr), "assert_activate_lboard")
 
-static void assert_activate_richpresence(rc_runtime_t* runtime, const char* script)
+static void _assert_activate_richpresence(rc_runtime_t* runtime, const char* script)
 {
   int result = rc_runtime_activate_richpresence(runtime, script, NULL, 0);
   ASSERT_NUM_EQUALS(result, RC_OK);
 }
+#define assert_activate_richpresence(runtime, script) ASSERT_HELPER(_assert_activate_richpresence(runtime, script), "assert_activate_richpresence")
 
 static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)
 {

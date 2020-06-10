@@ -3,7 +3,7 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-static void parse_operand(rc_operand_t* self, const char** memaddr) {
+static void _assert_parse_operand(rc_operand_t* self, const char** memaddr) {
   rc_parse_state_t parse;
   char buffer[256];
   rc_memref_value_t* memrefs;
@@ -17,8 +17,9 @@ static void parse_operand(rc_operand_t* self, const char** memaddr) {
   ASSERT_NUM_GREATER_EQUALS(ret, 0);
   ASSERT_NUM_EQUALS(**memaddr, 0);
 }
+#define assert_parse_operand(operand, memaddr_out) ASSERT_HELPER(_assert_parse_operand(operand, memaddr_out), "assert_parse_operand")
 
-static void assert_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
+static void _assert_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
   ASSERT_NUM_EQUALS(expected_type, self->type);
   switch (expected_type) {
     case RC_OPERAND_ADDRESS:
@@ -33,16 +34,17 @@ static void assert_operand(rc_operand_t* self, char expected_type, char expected
       break;
   }
 }
+#define assert_operand(operand, expected_type, expected_size, expected_address) ASSERT_HELPER(_assert_operand(operand, expected_type, expected_size, expected_address), "assert_operand")
 
 static void test_parse_operand(const char* memaddr, char expected_type, char expected_size, unsigned expected_value) {
   rc_operand_t self;
-  parse_operand(&self, &memaddr);
+  assert_parse_operand(&self, &memaddr);
   assert_operand(&self, expected_type, expected_size, expected_value);
 }
 
 static void test_parse_operand_fp(const char* memaddr, char expected_type, double expected_value) {
   rc_operand_t self;
-  parse_operand(&self, &memaddr);
+  assert_parse_operand(&self, &memaddr);
 
   ASSERT_NUM_EQUALS(expected_type, self.type);
   switch (expected_type) {
