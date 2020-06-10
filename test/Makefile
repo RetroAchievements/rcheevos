@@ -70,7 +70,7 @@ OBJ=$(RC_SRC)/alloc.o \
     test.o
 
 # compile flags
-CFLAGS=-Wall -Wno-long-long -Werror
+CFLAGS=-Wall -Wno-long-long
 INCLUDES=-I../include -I$(RC_SRC)
 
 ifeq ($(ARCH), x86)
@@ -115,10 +115,15 @@ ifdef HAVE_LUA
          $(LUA_SRC)/ltablib.o $(LUA_SRC)/lutf8lib.o $(LUA_SRC)/loadlib.o $(LUA_SRC)/linit.o
 
   CFLAGS += -DLUA_32BITS
+
+  ifeq ($(BUILD), c89)
+    CFLAGS += -DLUA_USE_C89
+  endif
+
   INCLUDES += -I$(LUA_SRC)
-  EXTRA +=  HAVE_LUA
+  EXTRA += |HAVE_LUA
 else
-  CFLAGS += -DRC_DISABLE_LUA
+  CFLAGS += -DRC_DISABLE_LUA -Werror
 endif
 
 # recipes
