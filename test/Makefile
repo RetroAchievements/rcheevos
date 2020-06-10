@@ -70,7 +70,7 @@ OBJ=$(RC_SRC)/alloc.o \
     test.o
 
 # compile flags
-CFLAGS=-Wall -Wno-long-long
+CFLAGS=-Wall -Wno-long-long -Werror
 INCLUDES=-I../include -I$(RC_SRC)
 
 ifeq ($(ARCH), x86)
