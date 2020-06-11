@@ -216,11 +216,25 @@ static void test_hash_m3u(int console_id, const char* filename, size_t size, con
 
 static void test_hash_filename(int console_id, const char* path, const char* expected_md5)
 {
-    char hash_file[33];
+    char hash_file[33], hash_iterator[33];
+
+    /* test file hash */
     int result_file = rc_hash_generate_from_file(hash_file, console_id, path);
 
+    /* test file identification from iterator */
+    int result_iterator;
+    struct rc_hash_iterator iterator;
+
+    rc_hash_initialize_iterator(&iterator, path, NULL, 0);
+    result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+    rc_hash_destroy_iterator(&iterator);
+
+    /* validation */
     ASSERT_NUM_EQUALS(result_file, 1);
     ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+    ASSERT_NUM_EQUALS(result_iterator, 1);
+    ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
 /* ========================================================================= */
@@ -681,6 +695,7 @@ void test_hash(void) {
 
   /* Arcade */
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "game.7z", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "roms\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
