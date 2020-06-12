@@ -1078,38 +1078,6 @@ static void test_addhits() {
   assert_hit_count(condset, 1, 3);
 }
 
-static void test_addhits_multiple() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
-  memory_t memory;
-  rc_condset_t* condset;
-  rc_memref_value_t* memrefs = NULL;
-  char buffer[2048];
-
-  memory.ram = ram;
-  memory.size = sizeof(ram);
-
-  /*  repeated(4, byte(1) == 18 || low(4) == 6) */
-  assert_parse_condset(&condset, &memrefs, buffer, "C:0xH0001=18(2)_0xL0004=6(4)_0xL0004=6(3)");
-
-  /* both conditions true, total not met */
-  assert_evaluate_condset(condset, memrefs, &memory, 0);
-  assert_hit_count(condset, 0, 1);
-  assert_hit_count(condset, 1, 1);
-  assert_hit_count(condset, 2, 1);
-
-  /* total hits met (two for each condition), third condition not yet met */
-  assert_evaluate_condset(condset, memrefs, &memory, 0);
-  assert_hit_count(condset, 0, 2);
-  assert_hit_count(condset, 1, 2);
-  assert_hit_count(condset, 2, 2);
-
-  /* target met for first, it stops incrementing, second and third continue */
-  assert_evaluate_condset(condset, memrefs, &memory, 1);
-  assert_hit_count(condset, 0, 2);
-  assert_hit_count(condset, 1, 3);
-  assert_hit_count(condset, 2, 3);
-}
-
 static void test_addhits_no_target() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -2199,7 +2167,6 @@ void test_condset(void) {
   TEST(test_addhits);
   TEST(test_addhits_no_target);
   TEST(test_addhits_with_addsource);
-  TEST(test_addhits_multiple);
 
   /* andnext */
   TEST(test_andnext);
