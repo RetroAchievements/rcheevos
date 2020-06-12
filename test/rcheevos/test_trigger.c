@@ -613,6 +613,41 @@ static void test_measured_multiple() {
   ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
 }
 
+static void test_measured_multiple_with_hitcount_in_core() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* multiple measured conditions are only okay if they all have the same target, in which
+   * case, the maximum of all the measured values is returned */
+
+  /* repeated(7, byte(1) == 18) && (measured(repeated(3, byte(2) == 52)) || measured(repeated(3, byte(3) == 17))) */
+  assert_parse_trigger(&trigger, buffer, "0xH0001=18(7)SM:0xH0002=52(3)SM:0xH0003=17(3)");
+
+  /* first condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 0, 1U);
+  assert_hit_count(trigger, 1, 0, 1U);
+  assert_hit_count(trigger, 2, 0, 0U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* second condition is true - second hit count should be incremented - both will be the same */
+  /* core hit target is greater than any measured value, but should not be measured */
+  ram[2] = 9;
+  ram[3] = 17;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 0, 2U);
+  assert_hit_count(trigger, 1, 0, 1U);
+  assert_hit_count(trigger, 2, 0, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+}
+
 static void test_measured_while_paused() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -1493,6 +1528,7 @@ void test_trigger(void) {
   TEST(test_measured_comparison);
   TEST(test_measured_addhits);
   TEST(test_measured_multiple);
+  TEST(test_measured_multiple_with_hitcount_in_core);
   TEST(test_measured_while_paused);
   TEST(test_measured_while_paused_multiple);
   TEST(test_measured_reset_hitcount);
