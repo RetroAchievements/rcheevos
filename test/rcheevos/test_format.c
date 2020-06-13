@@ -7,7 +7,7 @@ static void test_format_value(int format, int value, const char* expected) {
   int result;
 
   result = rc_format_value(buffer, sizeof(buffer), value, format);
-  ASSERT_STR_EQUALS(expected, buffer);
+  ASSERT_STR_EQUALS(buffer, expected);
   ASSERT_NUM_EQUALS(result, strlen(expected));
 }
 
@@ -20,7 +20,7 @@ void test_format(void) {
 
   /* rc_format_value */
   TEST_PARAMS3(test_format_value, RC_FORMAT_VALUE, 12345, "12345");
-  TEST_PARAMS3(test_format_value, RC_FORMAT_VALUE, -12345, "-123345");
+  TEST_PARAMS3(test_format_value, RC_FORMAT_VALUE, -12345, "-12345");
   TEST_PARAMS3(test_format_value, RC_FORMAT_VALUE, 0xFFFFFFFF, "-1");
   TEST_PARAMS3(test_format_value, RC_FORMAT_SCORE, 12345, "012345");
   TEST_PARAMS3(test_format_value, RC_FORMAT_SECONDS, 45, "0:45");
