@@ -20,7 +20,7 @@ void test_format(void) {
 
   /* rc_format_value */
   TEST_PARAMS3(test_format_value, RC_FORMAT_VALUE, 12345, "12345");
-  TEST_PARAMS3(test_format_value, RC_FORMAT_VALUE, -12345, "-12345");
+  TEST_PARAMS3(test_format_value, RC_FORMAT_VALUE, -12345, "-123345");
   TEST_PARAMS3(test_format_value, RC_FORMAT_VALUE, 0xFFFFFFFF, "-1");
   TEST_PARAMS3(test_format_value, RC_FORMAT_SCORE, 12345, "012345");
   TEST_PARAMS3(test_format_value, RC_FORMAT_SECONDS, 45, "0:45");
