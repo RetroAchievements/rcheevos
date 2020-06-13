@@ -88,7 +88,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 46, "Vectrex");
   TEST_PARAMS2(test_name, 47, "PC-8000/8800");
   TEST_PARAMS2(test_name, 48, "PC-9800");
-  TEST_PARAMS2(test_name, 49, "PCFX");
+  TEST_PARAMS2(test_name, 49, "PC-FX");
   TEST_PARAMS2(test_name, 50, "Atari 5200");
   TEST_PARAMS2(test_name, 51, "Atari 7800");
   TEST_PARAMS2(test_name, 52, "X68K");
@@ -124,6 +124,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_ORIC, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_PC8800, 0x011000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_PC_ENGINE, 0x42800);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_PCFX, 0x210000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_PLAYSTATION, 0x200000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_POKEMON_MINI, 0x002000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_SATURN, 0x200000);
