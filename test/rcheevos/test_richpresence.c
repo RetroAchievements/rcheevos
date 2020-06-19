@@ -6,6 +6,7 @@
 static void _assert_parse_richpresence(rc_richpresence_t** richpresence, void* buffer, const char* script) {
   int size;
   unsigned* overflow;
+  *richpresence = NULL;
 
   size = rc_richpresence_size(script);
   ASSERT_NUM_GREATER(size, 0);

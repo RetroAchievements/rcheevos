@@ -1,0 +1,55 @@
+# Control file for continuous integration testing at http://travis-ci.org/
+
+# ignore release tags
+branches:
+  except:
+    /^v\d+\.\d+(\.\d+)?(-\S*)?$/  
+
+language: c
+
+
+
+jobs:
+  include:
+    - name: "32-bit build/tests (Linux)"
+      os: linux
+      compiler: gcc
+      addons:
+        apt:
+          packages:
+            - libc6-dev-i386 # fatal error: sys/cdefs.h: No such file or directory
+            - gcc-5-multilib # skipping incompatible /usr/lib/gcc/x86_64-linux-gnu/5/libgcc.a when searching for -lgcc
+      env: ARCH=x86 BUILD=c89 TARGET=runtests
+
+    - name: "64-bit build/tests (Linux)"
+      os: linux
+      compiler: gcc
+      env: ARCH=x64 BUILD=c89 TARGET=runtests
+
+    # Windows EXE can't be run on linux. This is a just to make sure things compile with MinGW.
+    - name: "32-bit build (MinGW)"
+      compiler: i686-w64-mingw32-gcc
+      env: ARCH=x86 BUILD=c89 TARGET=test
+
+    # RetroArch compiles with gcc-8, gnu99, and a different set of warnings.
+    # Attempt to catch issues caused by those discrepencies.
+    - name: "64-bit build/tests (Linux with RetroArch compile flags)"
+      os: linux
+      compiler: gcc-8
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-8
+      env:
+         - ARCH=x64 BUILD=retroarch TARGET=runtests
+
+    # Compile with HAVE_LUA just to make sure it doesn't get neglected, we don't actually support it yet
+    - name: "64-bit build/tests (Linux with LUA)"
+      os: linux
+      compiler: gcc
+      env: ARCH=x64 BUILD=c89 TARGET=runtests HAVE_LUA=1
+
+
+script: make -C test ARCH=$ARCH BUILD=$BUILD $TARGET
