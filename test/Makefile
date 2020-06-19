@@ -49,6 +49,7 @@ OBJ=$(RC_SRC)/alloc.o \
     $(RC_SRC)/runtime_progress.o \
     $(RC_SRC)/trigger.o \
     $(RC_SRC)/value.o \
+    $(RC_HASH_SRC)/cdreader.o \
     $(RC_HASH_SRC)/hash.o \
     $(RC_HASH_SRC)/md5.o \
     $(RC_URL_SRC)/url.o \
