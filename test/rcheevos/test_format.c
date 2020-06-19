@@ -7,7 +7,7 @@ static void test_format_value(int format, int value, const char* expected) {
   int result;
 
   result = rc_format_value(buffer, sizeof(buffer), value, format);
-  ASSERT_STR_EQUALS(expected, buffer);
+  ASSERT_STR_EQUALS(buffer, expected);
   ASSERT_NUM_EQUALS(result, strlen(expected));
 }
 

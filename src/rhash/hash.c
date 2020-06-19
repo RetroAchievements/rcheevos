@@ -399,7 +399,7 @@ static int rc_hash_3do(char hash[33], const char* path)
       {
         if (buffer[offset + 0x03] == 0x02) /* file */
         {
-          if (strcasecmp((char*)&buffer[offset + 0x20], "LaunchMe") == 0)
+          if (strcasecmp((const char*)&buffer[offset + 0x20], "LaunchMe") == 0)
           {
             /* the block size is at offset 0x0C (assume 0x0C is always 0) */
             block_size = buffer[offset + 0x0D] * 65536 + buffer[offset + 0x0E] * 256 + buffer[offset + 0x0F];
