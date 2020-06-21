@@ -421,7 +421,7 @@ static const rc_memory_regions_t rc_memory_regions_segacd = { _rc_memory_regions
 /* https://segaretro.org/Sega_Saturn_hardware_notes_(2004-04-27) */
 static const rc_memory_region_t _rc_memory_regions_saturn[] = {
     { 0x000000U, 0x0FFFFFU, 0x00200000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Work RAM Low" },
-    { 0x100000U, 0x1FFFFFU, 0x06000000U, RC_MEMORY_TYPE_SAVE_RAM, "Work RAM High" }
+    { 0x100000U, 0x1FFFFFU, 0x06000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Work RAM High" }
 };
 static const rc_memory_regions_t rc_memory_regions_saturn = { _rc_memory_regions_saturn, 2 };
 
