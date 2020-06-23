@@ -244,6 +244,75 @@ uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size,
   return image;
 }
 
+uint8_t* generate_pce_cd_bin(unsigned binary_sectors, size_t* image_size)
+{
+  const uint8_t volume_header[] = {
+    0x00, 0x00, 0x02,       /* first sector of boot code */
+    0x14,                   /* number of sectors for boot code */
+    0x00, 0x40,             /* program load address */
+    0x00, 0x40,             /* program execute address  */
+    0, 1, 2, 3, 4,          /* IPLMPR */
+    0,                      /* open mode */
+    0, 0, 0, 0, 0, 0,       /* GRPBLK and addr */
+    0, 0, 0, 0, 0,          /* ADPBLK and rate */
+    0, 0, 0, 0, 0, 0, 0,    /* reserved */
+    'P', 'C', ' ', 'E', 'n', 'g', 'i', 'n', 'e', ' ', 'C', 'D', '-', 'R', 'O', 'M',
+    ' ', 'S', 'Y', 'S', 'T', 'E', 'M', '\0', 'C', 'o', 'p', 'y', 'r', 'i', 'g', 'h',
+    't', ' ', 'H', 'U', 'D', 'S', 'O', 'N', ' ', 'S', 'O', 'F', 'T', ' ', '/', ' ',
+    'N', 'E', 'C', ' ', 'H', 'o', 'm', 'e', ' ', 'E', 'l', 'e', 'c', 't', 'r', 'o',
+    'n', 'i', 'c', 's', ',', 'L', 't', 'd', '.', '\0', 'G', 'A', 'M', 'E', 'N', 'A',
+    'M', 'E', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+  };
+
+  size_t size_needed = (binary_sectors + 2) * 2048;
+  uint8_t* image = (uint8_t*)calloc(size_needed, 1);
+
+  /* volume header goes in second sector */
+  memcpy(&image[2048], volume_header, sizeof(volume_header));
+  image[2048 + 0x03] = (uint8_t)binary_sectors;
+
+  /* binary data */
+  fill_image(&image[4096], binary_sectors * 2048);
+
+  *image_size = size_needed;
+  return image;
+}
+
+uint8_t* generate_pcfx_bin(unsigned binary_sectors, size_t* image_size)
+{
+  const uint8_t volume_header[] = {
+    'G', 'A', 'M', 'E', 'N', 'A', 'M', 'E', 0, 0, 0, 0, 0, 0, 0, 0, /* title (32-bytes) */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0x02, 0x00, 0x00, 0x00, /* first sector of boot code */
+    0x14, 0x00, 0x00, 0x00, /* number of sectors for boot code */
+    0x00, 0x80, 0x00, 0x00, /* program load address */
+    0x00, 0x80, 0x00, 0x00, /* program execute address  */
+    'N', '/', 'A', '\0',    /* maker id */
+    'r', 'c', 'h', 'e', 'e', 'v', 'o', 's', 't', 'e', 's', 't', 0, 0, 0, 0, /* maker name (60-bytes) */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0x00, 0x00, 0x00, 0x00, /* volume number */
+    0x00, 0x01,             /* version */
+    0x01, 0x00,             /* country */
+    '2', '0', '2', '0', 'X', 'X', 'X', 'X', /* date */
+  };
+
+  size_t size_needed = (binary_sectors + 2) * 2048;
+  uint8_t* image = (uint8_t*)calloc(size_needed, 1);
+
+  /* volume header goes in second sector */
+  strcpy((char*)&image[0], "PC-FX:Hu_CD-ROM");
+  memcpy(&image[2048], volume_header, sizeof(volume_header));
+  image[2048 + 0x24] = (uint8_t)binary_sectors;
+
+  /* binary data */
+  fill_image(&image[4096], binary_sectors * 2048);
+
+  *image_size = size_needed;
+  return image;
+}
+
 uint8_t* generate_generic_file(size_t size)
 {
   uint8_t* image;

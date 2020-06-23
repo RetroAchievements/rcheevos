@@ -79,7 +79,7 @@ static void _mock_file_close(void* file_handle)
 
 static void* _mock_cd_open_track(const char* path, uint32_t track)
 {
-  if (track == 1)
+  if (track < 2) /* 0 = first data track, 1 = primary track */
   {
     if (strstr(path, ".cue")) 
     {
@@ -546,6 +546,176 @@ static void test_hash_nes_file_iterator_32k()
   ASSERT_STR_EQUALS(hash2, "");
 }
 
+/* ========================================================================= */
+
+static void test_hash_pce_cd()
+{
+  size_t image_size;
+  uint8_t* image = generate_pce_cd_bin(72, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "6565819195a49323e080e7539b54f251";
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PC_ENGINE, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_pce_cd_invalid_header()
+{
+  size_t image_size;
+  uint8_t* image = generate_pce_cd_bin(72, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "bf619eac0cdf3f68d496ea9344137e8b"; /* Sega CD hash */
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* make the header not match */
+  image[2048 + 0x24] = 0x34;
+
+  /* test file hash (won't match) */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PC_ENGINE, "game.cue");
+
+  /* test file identification from iterator (won't match PC-FX; will fallback to Sega CD) */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 0);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+/* ========================================================================= */
+
+static void test_hash_pcfx()
+{
+  size_t image_size;
+  uint8_t* image = generate_pcfx_bin(72, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "0a03af66559b8529c50c4e7788379598";
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PCFX, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_pcfx_invalid_header()
+{
+  size_t image_size;
+  uint8_t* image = generate_pcfx_bin(72, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "ae2af724fcd27ffca04ed2dd4ac83e28"; /* Sega CD hash */
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* make the header not match */
+  image[12] = 0x34;
+
+  /* test file hash (won't match) */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PC_ENGINE, "game.cue");
+
+  /* test file identification from iterator (won't match PC-FX; will fallback to Sega CD) */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 0);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_pcfx_pce_cd()
+{
+  /* Battle Heat is formatted as a PC-Engine CD */
+  size_t image_size;
+  uint8_t* image = generate_pce_cd_bin(72, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "6565819195a49323e080e7539b54f251";
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PCFX, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+/* ========================================================================= */
+
 static void assert_valid_m3u(const char* disc_filename, const char* m3u_filename, const char* m3u_contents)
 {
   const size_t size = 131072;
@@ -784,6 +954,15 @@ void test_hash(void) {
   /* PC-8800 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC8800, "test.d88", 348288, "8cca4121bf87200f45e91b905a9f5afd");
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_PC8800, "test.d88", 348288, "8cca4121bf87200f45e91b905a9f5afd");
+
+  /* PC Engine CD */
+  TEST(test_hash_pce_cd);
+  TEST(test_hash_pce_cd_invalid_header);
+
+  /* PC-FX */
+  TEST(test_hash_pcfx);
+  TEST(test_hash_pcfx_invalid_header);
+  TEST(test_hash_pcfx_pce_cd);
 
   /* Pokemon Mini */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_POKEMON_MINI, "test.min", 524288, "68f0f13b598e0b66461bc578375c3888");
