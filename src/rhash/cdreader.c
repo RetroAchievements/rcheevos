@@ -1,5 +1,7 @@
 #include "rhash.h"
 
+#include "../rcheevos/compat.h"
+
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
@@ -224,7 +226,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
       while (*ptr == ' ')
         ++ptr;
 
-      if (memcmp(ptr, "INDEX ", 6) == 0)
+      if (strncasecmp(ptr, "INDEX ", 6) == 0)
       {
         int m = 0, s = 0, f = 0;
         int index, sector_offset;
@@ -256,7 +258,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
           verbose_message_callback(message);
         }
 
-        if (index == 1 && current_track == track)
+        if (index == 1 && current_track == (int)track)
         {
           cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
           if (!cdrom)
@@ -313,7 +315,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
           break;
         }
       }
-      else if (memcmp(ptr, "TRACK ", 6) == 0)
+      else if (strncasecmp(ptr, "TRACK ", 6) == 0)
       {
         ptr += 6;
         current_track = atoi(ptr);
@@ -339,7 +341,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
           sector_size = 2352;
         }
       }
-      else if (memcmp(ptr, "FILE ", 5) == 0)
+      else if (strncasecmp(ptr, "FILE ", 5) == 0)
       {
         ptr += 5;
         ptr2 = ptr;
@@ -359,7 +361,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
           } while (*ptr2 && *ptr2 != '\n' && *ptr2 != ' ');
         }
 
-        if (ptr2 - ptr < sizeof(file))
+        if (ptr2 - ptr < (int)sizeof(file))
         {
           memcpy(file, ptr, ptr2 - ptr);
           file[ptr2 - ptr] = '\0';

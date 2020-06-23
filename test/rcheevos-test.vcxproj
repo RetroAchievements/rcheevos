@@ -138,6 +138,7 @@
     <ClCompile Include="..\src\rcheevos\runtime_progress.c" />
     <ClCompile Include="..\src\rcheevos\trigger.c" />
     <ClCompile Include="..\src\rcheevos\value.c" />
+    <ClCompile Include="..\src\rhash\cdreader.c" />
     <ClCompile Include="..\src\rhash\hash.c" />
     <ClCompile Include="..\src\rhash\md5.c" />
     <ClCompile Include="..\src\rurl\url.c" />
