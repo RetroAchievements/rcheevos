@@ -228,6 +228,9 @@
     <ClCompile Include="rurl\test_url.c">
       <Filter>tests\rurl</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rhash\cdreader.c">
+      <Filter>src\rhash</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">
