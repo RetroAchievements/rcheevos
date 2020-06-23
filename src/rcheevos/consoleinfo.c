@@ -113,7 +113,7 @@ const char* rc_console_name(int console_id)
       return "PC-9800";
 
     case RC_CONSOLE_PCFX:
-      return "PCFX";
+      return "PC-FX";
 
     case RC_CONSOLE_PC_ENGINE:
       return "PCEngine";
@@ -394,6 +394,15 @@ static const rc_memory_region_t _rc_memory_regions_pcengine[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_pcengine = { _rc_memory_regions_pcengine, 4 };
 
+/* ===== PC-FX ===== */
+/* http://daifukkat.su/pcfx/data/memmap.html */
+static const rc_memory_region_t _rc_memory_regions_pcfx[] = {
+    { 0x000000U, 0x1FFFFFU, 0x00000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x200000U, 0x207FFFU, 0xE0000000U, RC_MEMORY_TYPE_SAVE_RAM, "Internal Backup Memory" },
+    { 0x208000U, 0x20FFFFU, 0xE8000000U, RC_MEMORY_TYPE_SAVE_RAM, "External Backup Memory" },
+};
+static const rc_memory_regions_t rc_memory_regions_pcfx = { _rc_memory_regions_pcfx, 3 };
+
 /* ===== PlayStation ===== */
 /* http://www.raphnet.net/electronique/psx_adaptor/Playstation.txt */
 static const rc_memory_region_t _rc_memory_regions_playstation[] = {
@@ -553,6 +562,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_PC_ENGINE:
       return &rc_memory_regions_pcengine;
+
+    case RC_CONSOLE_PCFX:
+        return &rc_memory_regions_pcfx;
 
     case RC_CONSOLE_PLAYSTATION:
       return &rc_memory_regions_playstation;
