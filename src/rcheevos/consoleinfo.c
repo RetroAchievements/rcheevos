@@ -464,15 +464,6 @@ static const rc_memory_region_t _rc_memory_regions_snes[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_snes = { _rc_memory_regions_snes, 2 };
 
-/* ===== WonderSwan ===== */
-/* http://daifukkat.su/docs/wsman/#ovr_memmap */
-static const rc_memory_region_t _rc_memory_regions_wonderswan[] = {
-    /* RAM ends at 0x3FFF for WonderSwan, WonderSwan color uses all 64KB */
-    { 0x000000U, 0x00FFFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
-    { 0x010000U, 0x01FFFFU, 0x000000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
-};
-static const rc_memory_regions_t rc_memory_regions_wonderswan = { _rc_memory_regions_wonderswan, 2 };
-
 /* ===== Vectrex ===== */
 /* https://roadsidethoughts.com/vectrex/vectrex-memory-map.htm */
 static const rc_memory_region_t _rc_memory_regions_vectrex[] = {
@@ -486,6 +477,23 @@ static const rc_memory_region_t _rc_memory_regions_virtualboy[] = {
     { 0x010000U, 0x01FFFFU, 0x06000000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
 };
 static const rc_memory_regions_t rc_memory_regions_virtualboy = { _rc_memory_regions_virtualboy, 2 };
+
+/* ===== WonderSwan ===== */
+/* http://daifukkat.su/docs/wsman/#ovr_memmap */
+static const rc_memory_region_t _rc_memory_regions_wonderswan[] = {
+    /* RAM ends at 0x3FFF for WonderSwan, WonderSwan color uses all 64KB */
+    { 0x000000U, 0x00FFFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    /* Only 64KB of SRAM is accessible via the addressing scheme, but the cartridge
+     * may have up to 512KB of SRAM. http://daifukkat.su/docs/wsman/#cart_meta
+     * Since beetle_wswan exposes it as a contiguous block, assume its contiguous
+     * even though the documentation says $20000-$FFFFF is ROM data. If this causes
+     * a conflict in the future, we can revisit. A new region with a virtual address
+     * could be added to pick up the additional SRAM data. As long as it immediately
+     * follows the 64KB at $10000, all existing achievements should be unaffected.
+     */
+    { 0x010000U, 0x08FFFFU, 0x010000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_wonderswan = { _rc_memory_regions_wonderswan, 2 };
 
 /* ===== default ===== */
 static const rc_memory_regions_t rc_memory_regions_none = { 0, 0 };
@@ -587,14 +595,14 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
     case RC_CONSOLE_SUPER_NINTENDO:
       return &rc_memory_regions_snes;
 
-    case RC_CONSOLE_WONDERSWAN:
-      return &rc_memory_regions_wonderswan;
-
     case RC_CONSOLE_VECTREX:
       return &rc_memory_regions_vectrex;
 
     case RC_CONSOLE_VIRTUAL_BOY:
       return &rc_memory_regions_virtualboy;
+
+    case RC_CONSOLE_WONDERSWAN:
+        return &rc_memory_regions_wonderswan;
 
     default:
       return &rc_memory_regions_none;
