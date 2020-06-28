@@ -14,7 +14,7 @@ void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_pars
     self->requirement = 0;
   }
   else {
-    self->requirement = rc_parse_condset(&aux, parse);
+    self->requirement = rc_parse_condset(&aux, parse, 0);
 
     if (parse->offset < 0) {
       return;
@@ -25,7 +25,7 @@ void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_pars
 
   while (*aux == 's' || *aux == 'S') {
     aux++;
-    *next = rc_parse_condset(&aux, parse);
+    *next = rc_parse_condset(&aux, parse, 0);
 
     if (parse->offset < 0) {
       return;

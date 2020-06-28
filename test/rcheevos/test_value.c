@@ -30,6 +30,55 @@ static void test_evaluate_value(const char* memaddr, int expected_value) {
   ASSERT_NUM_EQUALS(ret, expected_value);
 }
 
+static void test_evaluate_measured_value_with_pause() {
+  rc_value_t* self;
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  char buffer[2048];
+  const char* memaddr = "P:0xH0003=hAB_M:0xH0002!=d0xH0002";
+  int ret;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  ret = rc_value_size(memaddr);
+  ASSERT_NUM_GREATER_EQUALS(ret, 0);
+
+  self = rc_parse_value(buffer, memaddr, NULL, 0);
+  ASSERT_PTR_NOT_NULL(self);
+
+  /* should initially be paused, no hits captured */
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+
+  /* pause should prevent hitcount */
+  ram[2]++;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+
+  /* unpause should not report the change that occurred while paused */
+  ram[3] = 0;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+
+  /* hitcount should be captured */
+  ram[2]++;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+
+  /* pause should return current hitcount */
+  ram[3] = 0xAB;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+
+  /* pause should prevent hitcount */
+  ram[2]++;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+
+  /* unpause should not report the change that occurred while paused */
+  ram[3] = 0;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+
+  /* additional hitcount should be captured */
+  ram[2]++;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 2);
+}
+
 void test_value(void) {
   TEST_SUITE_BEGIN();
 
@@ -66,7 +115,10 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "I:0xH0000_M:0xH0002", 0x34);
 
   /* delta should initially be 0, so a hit will be tallied */
-  TEST_PARAMS2(test_evaluate_value, "M:0xH0002!=0xd0xH0002", 1);
+  TEST_PARAMS2(test_evaluate_value, "M:0xH0002!=d0xH0002", 1);
+
+  /* pause affects hit count */
+  TEST(test_evaluate_measured_value_with_pause);
 
   /* overflow - 145406052 * 86 = 125049208332 -> 0x1D1D837E0C, leading 0x1D is truncated off */
   TEST_PARAMS2(test_evaluate_value, "0xX0001*0xH0004", 0x1D837E0C);

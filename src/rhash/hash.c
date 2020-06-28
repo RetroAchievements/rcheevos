@@ -1567,7 +1567,8 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_NINTENDO_DS;
         }
-        else if (rc_path_compare_extension(ext, "n64"))
+        else if (rc_path_compare_extension(ext, "n64") ||
+                 rc_path_compare_extension(ext, "ndd"))
         {
           iterator->consoles[0] = RC_CONSOLE_NINTENDO_64;
         }
