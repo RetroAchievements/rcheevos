@@ -6,13 +6,15 @@ Keep in mind that **rcheevos** does *not* provide HTTP network connections or JS
 
 Not all structures defined by **rcheevos** can be created via the public API, but are exposed to allow interactions beyond just creation, destruction, and testing, such as the ones required by UI code that helps to create them.
 
-Finally, **rcheevos** does *not* allocate or manage memory by itself. All structures that can be returned by it have a function to determine the number of bytes needed to hold the structure, and another one that actually builds the structure using a caller-provided buffer to bake it. However, calls to **rcheevos** may allocate and/or free memory as part of the Lua runtime, which is a dependency.
+Finally, **rcheevos** does *not* allocate or manage memory by itself. All structures that can be returned by it have a function to determine the number of bytes needed to hold the structure, and another one that actually builds the structure using a caller-provided buffer to bake it.
 
 ## Lua
 
-RetroAchievements has decided to support achievements written using the [Lua](https://www.lua.org) language. The current expression-based implementation was too limiting already for the Nintendo 64, and was preventing the support of other systems.
+RetroAchievements is considering the use of the [Lua](https://www.lua.org) language to expand the syntax supported for creating achievements. The current expression-based implementation is often limiting on newer systems.
 
-> **rcheevos** does *not* create or maintain a Lua state, you have to create your own state and provide it to **rcheevos** to be used when Lua-coded achievements are found.
+At this point, to enable Lua support, you must compile with an additional compilation flag: `HAVE_LUA`, as neither the backend nor the UI for editing achievements are currently Lua-enabled.
+
+> **rcheevos** does *not* create or maintain a Lua state, you have to create your own state and provide it to **rcheevos** to be used when Lua-coded achievements are found. Calls to **rcheevos** may allocate and/or free additional memory as part of the Lua runtime.
 
 Lua functions used in trigger operands receive two parameters: `peek`, which is used to read from the emulated system's memory, and `userdata`, which must be passed to `peek`. `peek`'s signature is the same as its C counterpart:
 
