@@ -92,7 +92,7 @@ extern "C" {
 
   /* ===================================================== */
 
-  /* opens a track from the specified file. track 0 indicates the first data track should be opened.
+  /* opens a track from the specified file. track 0 indicates the largest data track should be opened.
    * returns a handle to be passed to the other functions, or NULL if the track could not be opened.
    */
   typedef void* (*rc_hash_cdreader_open_track_handler)(const char* path, uint32_t track);

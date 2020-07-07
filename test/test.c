@@ -60,6 +60,7 @@ extern void test_consoleinfo();
 
 extern void test_url();
 
+extern void test_cdreader();
 extern void test_hash();
 
 TEST_FRAMEWORK_DECLARATIONS()
@@ -85,6 +86,7 @@ int main(void) {
 
   test_url();
 
+  test_cdreader();
   test_hash();
 
   TEST_FRAMEWORK_SHUTDOWN();

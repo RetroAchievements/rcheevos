@@ -188,6 +188,8 @@
     <ClCompile Include="rcheevos\test_trigger.c" />
     <ClCompile Include="rcheevos\test_value.c" />
     <ClCompile Include="rhash\data.c" />
+    <ClCompile Include="rhash\mock_filereader.c" />
+    <ClCompile Include="rhash\test_cdreader.c" />
     <ClCompile Include="rhash\test_hash.c" />
     <ClCompile Include="rurl\test_url.c" />
     <ClCompile Include="test.c" />
@@ -201,6 +203,7 @@
     <ClInclude Include="..\src\rhash\md5.h" />
     <ClInclude Include="rcheevos\mock_memory.h" />
     <ClInclude Include="rhash\data.h" />
+    <ClInclude Include="rhash\mock_filereader.h" />
     <ClInclude Include="test_framework.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
