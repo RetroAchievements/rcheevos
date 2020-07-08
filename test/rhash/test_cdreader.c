@@ -291,7 +291,7 @@ static void test_open_cue_track_largest_data_only_audio()
   ASSERT_PTR_NULL(track_handle);
 }
 
-static void test_determine_sector_size_sync(sector_size)
+static void test_determine_sector_size_sync(int sector_size)
 {
   cdrom_t* track_handle;
   const size_t image_size = sector_size * 32;
@@ -315,7 +315,7 @@ static void test_determine_sector_size_sync(sector_size)
   free(image);
 }
 
-static void test_determine_sector_size_sync_primary_volume_descriptor(sector_size)
+static void test_determine_sector_size_sync_primary_volume_descriptor(int sector_size)
 {
   cdrom_t* track_handle;
   const size_t image_size = sector_size * 32;
@@ -340,7 +340,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor(sector_siz
   free(image);
 }
 
-static void test_determine_sector_size_sync_primary_volume_descriptor_index0(sector_size)
+static void test_determine_sector_size_sync_primary_volume_descriptor_index0(int sector_size)
 {
   unsigned char cue[] =
     "FILE \"game.bin\" BINARY\n"
