@@ -144,7 +144,7 @@ static void* _mock_cd_open_track(const char* path, uint32_t track)
     {
       char buffer[256];
 
-      const size_t file_len = strlen(file->data);
+      const size_t file_len = strlen((const char*)file->data);
       memcpy(buffer, file->data, file_len - 4);
       sprintf(&buffer[file_len - 4], "%d%s", track, &file->data[file_len - 4]);
 
