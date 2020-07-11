@@ -67,6 +67,8 @@ OBJ=$(RC_SRC)/alloc.o \
     rcheevos/test_value.o \
     rurl/test_url.o \
     rhash/data.o \
+    rhash/mock_filereader.o \
+    rhash/test_cdreader.o \
     rhash/test_hash.o \
     test.o
 

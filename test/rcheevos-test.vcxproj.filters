@@ -231,6 +231,12 @@
     <ClCompile Include="..\src\rhash\cdreader.c">
       <Filter>src\rhash</Filter>
     </ClCompile>
+    <ClCompile Include="rhash\test_cdreader.c">
+      <Filter>tests\rhash</Filter>
+    </ClCompile>
+    <ClCompile Include="rhash\mock_filereader.c">
+      <Filter>tests\rhash</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rcheevos\internal.h">
@@ -259,6 +265,9 @@
     </ClInclude>
     <ClInclude Include="..\src\rhash\md5.h">
       <Filter>src\rhash</Filter>
+    </ClInclude>
+    <ClInclude Include="rhash\mock_filereader.h">
+      <Filter>tests\rhash</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -132,7 +132,7 @@ void rc_file_close(void* file_handle)
 /* ===================================================== */
 
 static struct rc_hash_cdreader cdreader_funcs;
-static struct rc_hash_cdreader* cdreader = NULL;
+struct rc_hash_cdreader* cdreader = NULL;
 
 void rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader)
 {
@@ -691,17 +691,12 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
-static int rc_hash_pce_cd(char hash[33], const char* path)
+static int rc_hash_pce_track(char hash[33], void* track_handle)
 {
   uint8_t buffer[2048];
-  void* track_handle;
   md5_state_t md5;
   int sector, num_sectors;
   unsigned size;
-
-  track_handle = rc_cd_open_track(path, 0);
-  if (!track_handle)
-    return rc_hash_error("Could not open track");
 
   /* the PC-Engine uses the second sector to specify boot information and program name.
    * the string "PC Engine CD-ROM SYSTEM" should exist at 32 bytes into the sector
@@ -767,13 +762,23 @@ static int rc_hash_pce_cd(char hash[33], const char* path)
   }
   else
   {
-    rc_cd_close_track(track_handle);
     return rc_hash_error("Not a PC Engine CD");
   }
 
-  rc_cd_close_track(track_handle);
-
   return rc_hash_finalize(&md5, hash);
+}
+
+static int rc_hash_pce_cd(char hash[33], const char* path)
+{
+  int result;
+  void* track_handle = rc_cd_open_track(path, 0);
+  if (!track_handle)
+    return rc_hash_error("Could not open track");
+
+  result = rc_hash_pce_track(hash, track_handle);
+
+  rc_cd_close_track(track_handle);
+  return result;
 }
 
 static int rc_hash_pcfx_cd(char hash[33], const char* path)
@@ -783,19 +788,30 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
   md5_state_t md5;
   int sector, num_sectors;
 
+  /* PC-FX executable can be in any track. Assume it's in the largest data track and check there first */
   track_handle = rc_cd_open_track(path, 0);
   if (!track_handle)
     return rc_hash_error("Could not open track");
 
-  /* PC-FX boot header fills the first two sectors of the disc
-   * https://bitbucket.org/trap15/pcfxtools/src/master/pcfx-cdlink.c
-   */
-
   /* PC-FX CD will have a header marker in sector 0 */
   rc_cd_read_sector(track_handle, 0, buffer, 32);
+  if (memcmp("PC-FX:Hu_CD-ROM", &buffer[0], 15) != 0)
+  {
+    rc_cd_close_track(track_handle);
+
+    /* not found in the largest data track, check track 2 */
+    track_handle = rc_cd_open_track(path, 2);
+    if (!track_handle)
+      return rc_hash_error("Could not open track");
+
+    rc_cd_read_sector(track_handle, 0, buffer, 32);
+  }
+
   if (memcmp("PC-FX:Hu_CD-ROM", &buffer[0], 15) == 0)
   {
-    /* the important stuff is the first 128 bytes of the second sector (title being the first 32) */
+    /* PC-FX boot header fills the first two sectors of the disc
+     * https://bitbucket.org/trap15/pcfxtools/src/master/pcfx-cdlink.c
+     * the important stuff is the first 128 bytes of the second sector (title being the first 32) */
     rc_cd_read_sector(track_handle, 1, buffer, 128);
 
     md5_init(&md5);
@@ -833,12 +849,16 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
   }
   else
   {
+    int result = 0;
     rc_cd_read_sector(track_handle, 1, buffer, 128);
-    rc_cd_close_track(track_handle);
 
     /* some PC-FX CDs still identify as PCE CDs */
     if (memcmp("PC Engine CD-ROM SYSTEM", &buffer[32], 23) == 0)
-      return rc_hash_pce_cd(hash, path);
+      result = rc_hash_pce_track(hash, track_handle);
+
+    rc_cd_close_track(track_handle);
+    if (result)
+      return result;
 
     return rc_hash_error("Not a PC-FX CD");
   }
