@@ -58,6 +58,15 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_EVENTS:
       return "Events";
 
+    case RC_CONSOLE_FAIRCHILD_CHANNEL_F:
+      return "Fairchild Channel F";
+
+    case RC_CONSOLE_FM_TOWNS:
+      return "FM Towns";
+
+    case RC_CONSOLE_GAME_AND_WATCH:
+      return "Game & Watch";
+
     case RC_CONSOLE_GAMEBOY:
       return "GameBoy";
 
@@ -79,6 +88,9 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_INTELLIVISION:
       return "Intellivision";
 
+    case RC_CONSOLE_MAGNAVOX_ODYSSEY:
+      return "Magnavox Odyssey";
+
     case RC_CONSOLE_MASTER_SYSTEM:
       return "Master System";
 
@@ -91,6 +103,12 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_MSX:
       return "MSX";
 
+    case RC_CONSOLE_NEO_GEO_CD:
+      return "Neo Geo CD";
+
+    case RC_CONSOLE_NEOGEO_POCKET:
+      return "Neo Geo Pocket";
+
     case RC_CONSOLE_NINTENDO:
       return "Nintendo Entertainment System";
 
@@ -100,8 +118,11 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_NINTENDO_DS:
       return "Nintendo DS";
 
-    case RC_CONSOLE_NEOGEO_POCKET:
-      return "Neo Geo Pocket";
+    case RC_CONSOLE_NINTENDO_3DS:
+      return "Nintendo 3DS";
+
+    case RC_CONSOLE_NOKIA_NGAGE:
+      return "Nokia N-Gage";
 
     case RC_CONSOLE_ORIC:
       return "Oric";
@@ -174,6 +195,9 @@ const char* rc_console_name(int console_id)
 
     case RC_CONSOLE_ZX81:
       return "ZX-81";
+
+    case RC_CONSOLE_ZX_SPECTRUM:
+      return "ZX Spectrum";
 
     default:
       return "Unknown";

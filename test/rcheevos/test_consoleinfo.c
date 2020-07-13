@@ -62,7 +62,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 20, "Wii-U");
   TEST_PARAMS2(test_name, 21, "PlayStation 2");
   TEST_PARAMS2(test_name, 22, "XBOX");
-  TEST_PARAMS2(test_name, 23, "Unknown");
+  TEST_PARAMS2(test_name, 23, "Magnavox Odyssey");
   TEST_PARAMS2(test_name, 24, "Pokemon Mini");
   TEST_PARAMS2(test_name, 25, "Atari 2600");
   TEST_PARAMS2(test_name, 26, "MS-DOS");
@@ -95,7 +95,14 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 53, "WonderSwan");
   TEST_PARAMS2(test_name, 54, "CassetteVision");
   TEST_PARAMS2(test_name, 55, "Super CassetteVision");
-  TEST_PARAMS2(test_name, 56, "Unknown");
+  TEST_PARAMS2(test_name, 56, "Neo Geo CD");
+  TEST_PARAMS2(test_name, 57, "Fairchild Channel F");
+  TEST_PARAMS2(test_name, 58, "FM Towns");
+  TEST_PARAMS2(test_name, 59, "ZX Spectrum");
+  TEST_PARAMS2(test_name, 60, "Game & Watch");
+  TEST_PARAMS2(test_name, 61, "Nokia N-Gage");
+  TEST_PARAMS2(test_name, 62, "Nintendo 3DS");
+  TEST_PARAMS2(test_name, 63, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
