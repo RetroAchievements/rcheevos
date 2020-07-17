@@ -312,7 +312,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
   rc_luapeek_t luapeek;
 #endif /* RC_DISABLE_LUA */
 
-  unsigned value = 0;
+  unsigned value;
 
   /* step 1: read memory */
   switch (self->type) {
@@ -324,8 +324,9 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
       return 0;
 
     case RC_OPERAND_LUA:
-#ifndef RC_DISABLE_LUA
+      value = 0;
 
+#ifndef RC_DISABLE_LUA
       if (eval_state->L != 0) {
         lua_rawgeti(eval_state->L, LUA_REGISTRYINDEX, self->value.luafunc);
         lua_pushcfunction(eval_state->L, rc_luapeek);
@@ -351,9 +352,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
 
       break;
 
-    case RC_OPERAND_ADDRESS:
-    case RC_OPERAND_BCD:
-    case RC_OPERAND_INVERTED:
+    default:
       value = rc_get_indirect_memref(self->value.memref, eval_state)->value;
       break;
 
@@ -412,6 +411,9 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
     case RC_MEMSIZE_BITCOUNT:
       value = rc_bits_set[(value & 0x0F)]
             + rc_bits_set[((value >> 4) & 0x0F)];
+      break;
+
+    default:
       break;
   }
 
