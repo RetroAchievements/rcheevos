@@ -283,7 +283,7 @@ static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
     { 0x00D000U, 0x00DFFFU, 0x00D000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM (bank 1)" },
     { 0x00E000U, 0x00FDFFU, 0x00C000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Echo RAM" },
     { 0x00FE00U, 0x00FE9FU, 0x00FE00U, RC_MEMORY_TYPE_VIDEO_RAM, "Sprite RAM"},
-    { 0x00FEA0U, 0x00FEFFU, 0x00FEA0U, RC_MEMORY_TYPE_READONLY, "Unusable"},
+    { 0x00FEA0U, 0x00FEFFU, 0x00FEA0U, RC_MEMORY_TYPE_UNUSED, ""},
     { 0x00FF00U, 0x00FF7FU, 0x00FF00U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Hardware I/O"},
     { 0x00FF80U, 0x00FFFEU, 0x00FF80U, RC_MEMORY_TYPE_SYSTEM_RAM, "Quick RAM"},
     { 0x00FFFFU, 0x00FFFFU, 0x00FFFFU, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Interrupt enable"},
@@ -373,9 +373,23 @@ static const rc_memory_region_t _rc_memory_regions_nes[] = {
     { 0x2008U, 0x3FFFU, 0x2008U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirrored PPU Register" }, /* repeats every 8 bytes */
     { 0x4000U, 0x4017U, 0x4000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "APU and I/O register" },
     { 0x4018U, 0x401FU, 0x4018U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "APU and I/O test register" },
+
+    /* NOTE: these are for the original NES/Famicom */
     { 0x4020U, 0x5FFFU, 0x4020U, RC_MEMORY_TYPE_READONLY, "Cartridge data"}, /* varies by mapper */
     { 0x6000U, 0x7FFFU, 0x6000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM"},
     { 0x8000U, 0xFFFFU, 0x8000U, RC_MEMORY_TYPE_READONLY, "Cartridge ROM"},
+
+    /* NOTE: these are the correct mappings for FDS: https://fms.komkon.org/EMUL8/NES.html
+     * 0x6000-0xDFFF is RAM on the FDS system and 0xE000-0xFFFF is FDS BIOS.
+     * If the core implements a memory map, we should still be able to translate the addresses
+     * correctly as we only use the classifications when a memory map is not provided
+
+    { 0x4020U, 0x40FFU, 0x4020U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "FDS I/O registers"},
+    { 0x4100U, 0x5FFFU, 0x4100U, RC_MEMORY_TYPE_READONLY, "Cartridge data"}, // varies by mapper
+    { 0x6000U, 0xDFFFU, 0x6000U, RC_MEMORY_TYPE_SYSTEM_RAM, "FDS RAM"},
+    { 0xE000U, 0xFFFFU, 0xE000U, RC_MEMORY_TYPE_READONLY, "FDS BIOS ROM"},
+
+     */
 };
 static const rc_memory_regions_t rc_memory_regions_nes = { _rc_memory_regions_nes, 11 };
 
