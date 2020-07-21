@@ -133,6 +133,8 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
   else {
     rc_parse_legacy_value(self, memaddr, parse);
   }
+
+  self->measured_value = 0;
 }
 
 int rc_value_size(const char* memaddr) {
@@ -156,7 +158,6 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int 
   rc_init_parse_state_memrefs(&parse, &self->memrefs);
 
   rc_parse_value_internal(self, &memaddr, &parse);
-  self->measured_value = 0;
 
   rc_destroy_parse_state(&parse);
   return parse.offset >= 0 ? self : 0;
@@ -225,4 +226,6 @@ void rc_reset_value(rc_value_t* self)
     rc_reset_condset(condset);
     condset = condset->next;
   }
+
+  self->measured_value = 0;
 }

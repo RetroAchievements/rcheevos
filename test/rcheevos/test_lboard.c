@@ -202,6 +202,57 @@ static void test_start_or_conditions() {
   ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
 }
 
+static void test_start_resets_value() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_lboard_t* lboard;
+  char buffer[1024];
+  int value;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_lboard(&lboard, buffer, "STA:0xH01=0::CAN:0xH01=10::SUB:0xH01=18::VAL:M:0xH02!=d0xH02");
+  lboard->state = RC_LBOARD_STATE_ACTIVE;
+
+  /* not started */
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* start condition true - should start */
+  ram[1] = 0;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* tally a couple hits */
+  ram[2]++;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 1);
+
+  ram[2]++;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 2);
+
+  /* canceled, hitcount kept, but ignored */
+  ram[1] = 10;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_CANCELED);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* must wait one frame to switch back to active */
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* restarted, hitcount should be reset */
+  ram[1] = 0;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* tally a hit */
+  ram[2]++;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 1);
+}
+
 static void test_cancel_or_conditions() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -449,6 +500,8 @@ void test_lboard(void) {
 
   TEST(test_start_and_conditions);
   TEST(test_start_or_conditions);
+
+  TEST(test_start_resets_value);
 
   TEST(test_cancel_or_conditions);
 
