@@ -110,6 +110,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
         cond->next = 0;
         *next_clause = RC_ALLOC(rc_condset_t, parse);
         (*next_clause)->has_pause = 0;
+        (*next_clause)->is_paused = 0;
         next = &(*next_clause)->conditions;
         next_clause = &(*next_clause)->next;
         break;
@@ -165,36 +166,63 @@ int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) 
   rc_eval_state_t eval_state;
   rc_condset_t* condset;
   int result = 0;
-
-  memset(&eval_state, 0, sizeof(eval_state));
-  eval_state.peek = peek;
-  eval_state.peek_userdata = ud;
-  eval_state.L = L;
+  int paused = 1;
 
   rc_update_memref_values(self->memrefs, peek, ud);
 
-  rc_test_condset(self->conditions, &eval_state);
+  for (condset = self->conditions; condset != NULL; condset = condset->next) {
+    memset(&eval_state, 0, sizeof(eval_state));
+    eval_state.peek = peek;
+    eval_state.peek_userdata = ud;
+    eval_state.L = L;
 
-  /* when paused, the Measured value will not be captured. if not paused, store the
-   * value so that it's available when paused.
-   */
-  if (!self->conditions->is_paused)
-    self->measured_value = (int)eval_state.measured_value;
-  result = self->measured_value;
-
-  /* multiple condsets are currently only used for the MAX_OF operation, which is only
-   * supported in the legacy format. as the legacy format doesn't support pausing, we
-   * don't have to maintain the previous measured value for each subclause. just evaluate
-   * each subclause and keep it if it's higher than the current highest value.
-   */
-  condset = self->conditions->next;
-  while (condset != NULL) {
     rc_test_condset(condset, &eval_state);
-    if ((int)eval_state.measured_value > result)
-      result = (int)eval_state.measured_value;
 
-    condset = condset->next;
+    if (condset->is_paused)
+      continue;
+
+    if (eval_state.was_reset) {
+      /* if any ResetIf condition was true, reset the hit counts 
+       * NOTE: ResetIf only affects the current condset when used in values!
+       */
+      rc_reset_condset(condset);
+
+      /* if the measured value came from a hit count, reset it too */
+      if (eval_state.measured_from_hits)
+        eval_state.measured_value = 0;
+    }
+
+    if (paused) {
+      /* capture the first valid measurement */
+      result = (int)eval_state.measured_value;
+      paused = 0;
+    }
+    else {
+      /* multiple condsets are currently only used for the MAX_OF operation.
+       * only keep the condset's value if it's higher than the current highest value.
+       */
+      if ((int)eval_state.measured_value > result)
+        result = (int)eval_state.measured_value;
+    }
+  }
+
+  if (!paused) {
+    /* if not paused, store the value so that it's available when paused. */
+    self->measured_value = result;
+  }
+  else {
+    /* when paused, the Measured value will not be captured, use the last captured value. */
+    result = self->measured_value;
   }
 
   return result;
+}
+
+void rc_reset_value(rc_value_t* self)
+{
+  rc_condset_t* condset = self->conditions;
+  while (condset != NULL) {
+    rc_reset_condset(condset);
+    condset = condset->next;
+  }
 }
