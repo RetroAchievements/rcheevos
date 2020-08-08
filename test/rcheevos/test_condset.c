@@ -1108,6 +1108,250 @@ static void test_subsource_mask() {
   assert_hit_count(condset, 1, 2);
 }
 
+static void test_subsource_overflow_comparison_equal() {
+  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memref_value_t* memrefs = NULL;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* ASSERT: "A==B" can be expressed as "-A+B==0" */
+
+  /* - byte(0) + byte(1) = 0 */
+  assert_parse_condset(&condset, &memrefs, buffer, "B:0xH0000_0xH0001=0");
+
+  /* 1 == 0 = false */
+  ram[0] = 1; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 1 == 1 = true */
+  ram[0] = 1; ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 0 == 0 = true */
+  ram[0] = 0; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 0 == 1 = false */
+  ram[0] = 0; ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 0 == 255 = false */
+  ram[0] = 0; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 255 == 255 = true */
+  ram[0] = 255; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 255 == 254 = false */
+  ram[0] = 255; ram[1] = 254;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 255 == 0 = false */
+  ram[0] = 255; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+}
+
+static void test_subsource_overflow_comparison_greater() {
+  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memref_value_t* memrefs = NULL;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* ASSERT: "A>B" can be expressed as "-A+B>M" where M is the largest number that cannot be 
+   * represented by A or B */
+
+  /* - byte(0) + byte(1) > 256 */
+  assert_parse_condset(&condset, &memrefs, buffer, "B:0xH0000_0xH0001>256");
+
+  /* 1 > 0 = true */
+  ram[0] = 1; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 1 > 1 = false */
+  ram[0] = 1; ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 0 > 0 = false */
+  ram[0] = 0; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 0 > 1 = false */
+  ram[0] = 0; ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 0 > 255 = false */
+  ram[0] = 0; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 255 > 255 = false */
+  ram[0] = 255; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 255 > 254 = true */
+  ram[0] = 255; ram[1] = 254;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 255 > 0 = true */
+  ram[0] = 255; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
+static void test_subsource_overflow_comparison_greater_or_equal() {
+  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memref_value_t* memrefs = NULL;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* ASSERT: "A>=B" can be expressed as "-A-1+B>=M" where M is the largest number that cannot be 
+   * represented by A or B */
+
+  /* - byte(0) - 1 + byte(1) > 256 */
+  assert_parse_condset(&condset, &memrefs, buffer, "B:0xH0000_B:1_0xH0001>=256");
+
+  /* 1 >= 0 = true */
+  ram[0] = 1; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 1 >= 1 = true */
+  ram[0] = 1; ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 0 >= 0 = true */
+  ram[0] = 0; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 0 >= 1 = false */
+  ram[0] = 0; ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 0 >= 255 = false */
+  ram[0] = 0; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 255 >= 255 = true */
+  ram[0] = 255; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 255 >= 254 = true */
+  ram[0] = 255; ram[1] = 254;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 255 >= 0 = true */
+  ram[0] = 255; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
+static void test_subsource_overflow_comparison_lesser() {
+  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memref_value_t* memrefs = NULL;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* ASSERT: "A<B" can be expressed as "-A+B+M>M" where M is the largest number that cannot be 
+   * represented by A or B */
+
+  /* - byte(0) + byte(1) + 256 > 256 */
+  assert_parse_condset(&condset, &memrefs, buffer, "B:0xH0000_A:0xH0001_256>256");
+
+  /* 1 < 0 = false */
+  ram[0] = 1; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 1 < 1 = false */
+  ram[0] = 1; ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 0 < 0 = false */
+  ram[0] = 0; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 0 < 1 = true */
+  ram[0] = 0; ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 0 < 255 = true */
+  ram[0] = 0; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 255 < 255 = false */
+  ram[0] = 255; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 254 < 255 = true */
+  ram[0] = 254; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 255 < 0 = false */
+  ram[0] = 255; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+}
+
+static void test_subsource_overflow_comparison_lesser_or_equal() {
+  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memref_value_t* memrefs = NULL;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* ASSERT: "A<B" can be expressed as "-A+B+M>M" where M is the largest number that cannot be 
+   * represented by A or B */
+
+  /* - byte(0) + byte(1) + 256 >= 256 */
+  assert_parse_condset(&condset, &memrefs, buffer, "B:0xH0000_A:0xH0001_256>=256");
+
+  /* 1 <= 0 = false */
+  ram[0] = 1; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 1 <= 1 = true */
+  ram[0] = 1; ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 0 <= 0 = true */
+  ram[0] = 0; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 0 <= 1 = true */
+  ram[0] = 0; ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 0 <= 255 = true */
+  ram[0] = 0; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 255 <= 255 = true */
+  ram[0] = 255; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 254 <= 255 = true */
+  ram[0] = 254; ram[1] = 255;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 255 <= 0 = false */
+  ram[0] = 255; ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+}
+
 static void test_addhits() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -1951,7 +2195,7 @@ static void test_addaddress_indirect_pointer() {
   /* byte(0x0002 + byte(0xh0000)) == 22 */
   assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000_0xH0002=22");
 
-  /* initially, byte(0x0002 + 1) == 22, false */
+  /* initially, byte(0x0001 + 1) == 22, false */
   assert_evaluate_condset(condset, memrefs, &memory, 0);
 
   /* non-offset value is correct */
@@ -1976,6 +2220,47 @@ static void test_addaddress_indirect_pointer() {
 
   /* new pointed-at value is correct */
   ram[2] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
+static void test_addaddress_indirect_pointer_negative() {
+  unsigned char ram[] = {0x02, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memref_value_t* memrefs = NULL;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(byte(0xh0000) - 1) == 22 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000_0xHFFFFFFFF=22");
+
+  /* initially, byte(0x0002 - 1) == 22, false */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* non-offset value is correct */
+  ram[2] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* pointed-at value is correct */
+  ram[1] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* point to new value */
+  ram[0] = 4;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* new pointed-at value is correct */
+  ram[3] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* point to invalid address */
+  ram[0] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* point to already correct value */
+  ram[0] = 2;
   assert_evaluate_condset(condset, memrefs, &memory, 1);
 }
 
@@ -2274,6 +2559,11 @@ void test_condset(void) {
   TEST(test_subsource_divide);
   TEST(test_addsource_mask);
   TEST(test_subsource_mask);
+  TEST(test_subsource_overflow_comparison_equal);
+  TEST(test_subsource_overflow_comparison_greater);
+  TEST(test_subsource_overflow_comparison_greater_or_equal);
+  TEST(test_subsource_overflow_comparison_lesser);
+  TEST(test_subsource_overflow_comparison_lesser_or_equal);
 
   /* addhits */
   TEST(test_addhits);
@@ -2299,6 +2589,7 @@ void test_condset(void) {
   /* addaddress */
   TEST(test_addaddress_direct_pointer);
   TEST(test_addaddress_indirect_pointer);
+  TEST(test_addaddress_indirect_pointer_negative);
   TEST(test_addaddress_indirect_pointer_out_of_range);
   TEST(test_addaddress_indirect_pointer_multiple);
   TEST(test_addaddress_pointer_data_size_differs_from_pointer_size);
