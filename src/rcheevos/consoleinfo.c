@@ -88,8 +88,8 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_INTELLIVISION:
       return "Intellivision";
 
-    case RC_CONSOLE_MAGNAVOX_ODYSSEY:
-      return "Magnavox Odyssey";
+    case RC_CONSOLE_MAGNAVOX_ODYSSEY2:
+      return "Magnavox Odyssey 2";
 
     case RC_CONSOLE_MASTER_SYSTEM:
       return "Master System";
@@ -325,6 +325,12 @@ static const rc_memory_region_t _rc_memory_regions_intellivision[] = {
     { 0x004000U, 0x00FFFFU, 0x004000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM" },
 };
 static const rc_memory_regions_t rc_memory_regions_intellivision = { _rc_memory_regions_intellivision, 9 };
+
+/* ===== Magnavox Odyssey 2 ===== */
+static const rc_memory_region_t _rc_memory_regions_magnavox_odyssey_2[] = {
+    { 0x000000U, 0x00003FU, 0x000040U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_magnavox_odyssey_2 = { _rc_memory_regions_magnavox_odyssey_2, 1 };
 
 /* ===== Master System ===== */
 /* http://www.smspower.org/Development/MemoryMap */
@@ -575,6 +581,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_INTELLIVISION:
       return &rc_memory_regions_intellivision;
+
+    case RC_CONSOLE_MAGNAVOX_ODYSSEY2:
+      return &rc_memory_regions_magnavox_odyssey_2;
 
     case RC_CONSOLE_MASTER_SYSTEM:
       return &rc_memory_regions_master_system;
