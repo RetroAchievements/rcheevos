@@ -795,6 +795,9 @@ void test_hash(void) {
   /* Intellivision */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_INTELLIVISION, "test.bin", 8192, "ce1127f881b40ce6a67ecefba50e2835");
 
+  /* Magnavox Odyssey 2 */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MAGNAVOX_ODYSSEY2, "test.bin", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
+
   /* Master System */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MASTER_SYSTEM, "test.sms", 131072, "a0f425b23200568132ba76b2405e3933");
 

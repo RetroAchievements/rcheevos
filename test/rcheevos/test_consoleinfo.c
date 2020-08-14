@@ -62,7 +62,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 20, "Wii-U");
   TEST_PARAMS2(test_name, 21, "PlayStation 2");
   TEST_PARAMS2(test_name, 22, "XBOX");
-  TEST_PARAMS2(test_name, 23, "Magnavox Odyssey");
+  TEST_PARAMS2(test_name, 23, "Magnavox Odyssey 2");
   TEST_PARAMS2(test_name, 24, "Pokemon Mini");
   TEST_PARAMS2(test_name, 25, "Atari 2600");
   TEST_PARAMS2(test_name, 26, "MS-DOS");
@@ -121,6 +121,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAMEBOY_ADVANCE, 0x048000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAME_GEAR, 0x002000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_INTELLIVISION, 0x010000);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_MAGNAVOX_ODYSSEY2, 0x000040);
   TEST_PARAMS2(test_memory, RC_CONSOLE_MASTER_SYSTEM, 0x002000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_MEGA_DRIVE, 0x020000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_MSX, 0x080000);
