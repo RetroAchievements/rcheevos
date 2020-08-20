@@ -546,13 +546,16 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
     while (*ptr != '\n' && ptr < end)
     {
       ++ptr;
+      if (*ptr == '\n')
+      {
+        ++ptr;
+        break;
+      }
     }
 
     /* begins looping inside content*/
     while (ptr < end)
     {
-      ++ptr;
-
       ptr2 = ptr;
 
       while ((*ptr2 >= 97 && *ptr2 <= 122) || (*ptr2 >= 65 && *ptr2 <= 90) ||
@@ -576,8 +579,10 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
       }
 
       /* skip newlines */
-      while (*ptr == '\r')
-        ++ptr;
+      while ((*ptr == '\n' && ptr < end) || (*ptr == '\r' && ptr < end))
+      {
+          ++ptr;
+      }
     }
     if (done)
       break;
