@@ -868,6 +868,32 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
+static int rc_hash_dreamcast(char hash[33], const char* path)
+{
+  uint8_t buffer[256];
+  void* track_handle;
+
+  track_handle = rc_cd_open_track(path, 1);
+  if (!track_handle)
+    return rc_hash_error("Could not open track");
+
+  // first sector from the first track should always have a IP0000.BIN structure that stores unique meta information.
+  // "The structure described below is repeated in the 16 first sectors of the first Mode-1 track on the disc".
+  // https://mc.pp.se/dc/ip0000.bin.html
+  rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
+
+  if (verbose_message_callback)
+  {
+    char message[300];
+    snprintf(message, sizeof(message), "Meta information:\n%.256s", &buffer[0x00]);
+    verbose_message_callback(message);
+  }
+
+  rc_cd_close_track(track_handle);
+
+  return rc_hash_buffer(hash, buffer, sizeof(buffer));
+}
+
 static int rc_hash_psx(char hash[33], const char* path)
 {
   uint8_t buffer[2048];
@@ -1402,6 +1428,12 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
         return rc_hash_generate_from_playlist(hash, console_id, path);
 
       return rc_hash_psx(hash, path);
+
+    case RC_CONSOLE_DREAMCAST:
+      if (rc_path_compare_extension(path, "m3u"))
+        return rc_hash_generate_from_playlist(hash, console_id, path);
+
+      return rc_hash_dreamcast(hash, path);
 
     case RC_CONSOLE_SEGA_CD:
     case RC_CONSOLE_SATURN:
