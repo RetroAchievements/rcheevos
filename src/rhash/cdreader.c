@@ -518,7 +518,6 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
   int current_track = 0;
   char* ptr, * ptr2, * end;
 
-  int ignored_track_count = 0;
   int offset = 0;
   int done = 0;
   size_t num_read = 0;
@@ -541,21 +540,21 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
     else
       end = buffer + num_read;
 
-    for (ptr = buffer; ptr < end; ++ptr)
+    ptr = buffer;
+
+    /* removes first line, as it always have a track counter */
+    while (*ptr != '\n' && ptr < end)
     {
-      if (ignored_track_count == 0)
-      {
-        // remove track counter until reach a newline
-        while (*ptr != '\r')
-        {
-          ++ptr;
-        }
-        ignored_track_count = 1;
-      }
+      ++ptr;
+    }
+
+    /* begins looping inside content*/
+    while (ptr < end)
+    {
+      ++ptr;
 
       ptr2 = ptr;
 
-      // if it finds content
       while ((*ptr2 >= 97 && *ptr2 <= 122) || (*ptr2 >= 65 && *ptr2 <= 90) ||
         (*ptr2 >= 48 && *ptr2 <= 57) || (*ptr2 == 32) || (*ptr2 == '.' || (*ptr2 == ' ')))
       {
@@ -564,7 +563,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
 
       if (ptr2 - ptr != 0)
       {
-        memcpy(track_data, ptr, ptr2 - ptr);  // operation to get track data
+        memcpy(track_data, ptr, ptr2 - ptr);  /* operation to get track data */
         track_data[ptr2 - ptr] = '\0';
         sscanf(track_data, "%d %*d %*d %s %s %*d", &current_track, &mode, &file);
         ptr = ptr2;
@@ -576,7 +575,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
         }
       }
 
-      // skip newlines
+      /* skip newlines */
       while (*ptr == '\r')
         ++ptr;
     }
