@@ -583,10 +583,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
           ++ptr;
       }
     }
-    if (done)
-      break;
-
-  } while (1);
+  } while (!done);
 
   uint8_t file_len = strlen(file);
 
