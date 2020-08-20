@@ -558,8 +558,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
     {
       ptr2 = ptr;
 
-      while ((*ptr2 >= 97 && *ptr2 <= 122) || (*ptr2 >= 65 && *ptr2 <= 90) ||
-        (*ptr2 >= 48 && *ptr2 <= 57) || (*ptr2 == 32) || (*ptr2 == '.' || (*ptr2 == ' ')))
+      while ((*ptr2 != '\n') && (*ptr2 != '\r'))
       {
         ++ptr2;
       }
