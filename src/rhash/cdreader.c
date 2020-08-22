@@ -580,7 +580,8 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
             /*2nd attempt to get file if it has failed before, now without double quotes*/
             sscanf(track_data, "%*d %*s %*s %*s %s %*s", file);
 
-          for (int i = 0; i < strlen(sector_size); i++)
+          size_t i;
+          for (i = 0; i < strlen(sector_size); i++)
             if (sector_size[i] != '\"')
               strncat(mode, &sector_size[i], 1);
 
@@ -612,7 +613,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
 
   bin_path = cdreader_get_bin_path(path, file);
 
-  if (cdreader_open_bin(cdrom, bin_path, mode)) // gives your cd rom
+  if (cdreader_open_bin(cdrom, bin_path, mode)) /*gives your cd rom*/
   {
     if (verbose_message_callback)
     {

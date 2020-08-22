@@ -882,10 +882,17 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
     https://mc.pp.se/dc/ip0000.bin.html */
   rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
 
+  if (memcmp(&buffer[0], "SEGA SEGAKATANA ", 16) != 0) 
+  {
+    rc_cd_close_track(track_handle);
+    return rc_hash_error("Not a Dreamcast CD");
+  }
+
   if (verbose_message_callback)
   {
-    char message[300];
-    snprintf(message, sizeof(message), "Meta information:\n%.256s", &buffer[0x00]);
+    char message[256];
+    snprintf(message, sizeof(message), "Meta information:\nSoftware Name = %.127s\nProduct Number = %.9s\nProduct Version = %.5s\n",
+                                        &buffer[0x80], &buffer[0x40], &buffer[0x4A]);
     verbose_message_callback(message);
   }
 
