@@ -511,7 +511,9 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
 static void* cdreader_open_gdi_track(const char* path, uint32_t track)
 {
   void* file_handle;
-  char buffer[1024], mode[16];
+  char buffer[1024];
+  char mode[16] = "MODE1/";
+  char sector_size[16];
   char file[256];
   char* bin_path = "";
   char track_data[256];
@@ -519,7 +521,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
   char* ptr, * ptr2, * end;
 
   int offset = 0;
-  int done = 0;
+  int found = 0;
   size_t num_read = 0;
   struct cdrom_t* cdrom = NULL;
 
@@ -567,14 +569,26 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
       {
         memcpy(track_data, ptr, ptr2 - ptr);  /* operation to get track data */
         track_data[ptr2 - ptr] = '\0';
-        sscanf(track_data, "%d %*d %*d %s %s %*d", &current_track, &mode, &file);
+
+        /* 1st try to get file if it have double quotes*/
+        sscanf(track_data, "%d %*s %*s %s \"%[^\"]\" %*s", &current_track, sector_size, file);
         ptr = ptr2;
 
         if (current_track == (int)track)
         {
-          done = 1;
+          if (strlen(file) == 0)
+            /*2nd attempt to get file if it has failed before, now without double quotes*/
+            sscanf(track_data, "%*d %*s %*s %*s %s %*s", file);
+
+          for (int i = 0; i < strlen(sector_size); i++)
+            if (sector_size[i] != '\"')
+              strncat(mode, &sector_size[i], 1);
+
+          found = 1;
           break;
         }
+
+        file[0] = '\0';
       }
 
       /* skip newlines */
@@ -583,44 +597,40 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
           ++ptr;
       }
     }
-  } while (!done);
+  } while (!found);
 
-  uint8_t file_len = strlen(file);
 
-  if (file_len)
+  cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
+  if (!cdrom)
   {
-    cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
-    if (!cdrom)
+    snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", (unsigned)sizeof(*cdrom));
+    rc_hash_error((const char*)buffer);
+    return NULL;
+  }
+
+  cdrom->first_sector_offset = offset;
+
+  bin_path = cdreader_get_bin_path(path, file);
+
+  if (cdreader_open_bin(cdrom, bin_path, mode)) // gives your cd rom
+  {
+    if (verbose_message_callback)
     {
-      snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", (unsigned)sizeof(*cdrom));
-      rc_hash_error((const char*)buffer);
-      return NULL;
+      if (cdrom->first_sector_offset)
+        snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d, track starts at %d)", track, cdrom->sector_size, cdrom->first_sector_offset);
+      else
+        snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d)", track, cdrom->sector_size);
+
+      verbose_message_callback((const char*)buffer);
     }
+  }
+  else
+  {
+    snprintf((char*)buffer, sizeof(buffer), "Could not open %s", bin_path);
+    rc_hash_error((const char*)buffer);
 
-    cdrom->first_sector_offset = offset;
-
-    bin_path = cdreader_get_bin_path(path, file);
-
-    if (cdreader_open_bin(cdrom, bin_path, mode)) // gives your cd rom
-    {
-      if (verbose_message_callback)
-      {
-        if (cdrom->first_sector_offset)
-          snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d, track starts at %d)", track, cdrom->sector_size, cdrom->first_sector_offset);
-        else
-          snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d)", track, cdrom->sector_size);
-
-        verbose_message_callback((const char*)buffer);
-      }
-    }
-    else
-    {
-      snprintf((char*)buffer, sizeof(buffer), "Could not open %s", bin_path);
-      rc_hash_error((const char*)buffer);
-
-      free(cdrom);
-      cdrom = NULL;
-    }
+    free(cdrom);
+    cdrom = NULL;
   }
   return cdrom;
 }

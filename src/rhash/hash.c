@@ -877,9 +877,9 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   if (!track_handle)
     return rc_hash_error("Could not open track");
 
-  // first sector from the first track should always have a IP0000.BIN structure that stores unique meta information.
-  // "The structure described below is repeated in the 16 first sectors of the first Mode-1 track on the disc".
-  // https://mc.pp.se/dc/ip0000.bin.html
+  /*first sector from the first track should always have a IP0000.BIN structure that stores unique meta information.
+    "The structure described below is repeated in the 16 first sectors of the first Mode-1 track on the disc".
+    https://mc.pp.se/dc/ip0000.bin.html */
   rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
 
   if (verbose_message_callback)
