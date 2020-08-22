@@ -576,11 +576,12 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
 
         if (current_track == (int)track)
         {
+          size_t i;
+
           if (strlen(file) == 0)
             /*2nd attempt to get file if it has failed before, now without double quotes*/
             sscanf(track_data, "%*d %*s %*s %*s %s %*s", file);
 
-          size_t i;
           for (i = 0; i < strlen(sector_size); i++)
             if (sector_size[i] != '\"')
               strncat(mode, &sector_size[i], 1);
