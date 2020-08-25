@@ -129,30 +129,46 @@ static int rc_json_parse_object(const char* json, rc_json_field_t* fields, size_
   return RC_OK;
 }
 
-int rc_json_parse_response(const char* json, rc_json_field_t* fields, size_t field_count)
+int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_json_field_t* fields, size_t field_count)
 {
+#ifndef NDEBUG
+  if (field_count < 2)
+    return RC_INVALID_STATE;
+  if (strcmp(fields[0].name, "Success") != 0)
+    return RC_INVALID_STATE;
+  if (strcmp(fields[1].name, "Error") != 0)
+    return RC_INVALID_STATE;
+#endif
+
   if (*json == '{')
-    return rc_json_parse_object(json, fields, field_count);
+  {
+    int result = rc_json_parse_object(json, fields, field_count);
+
+    rc_json_get_string(&response->error_message, &response->buffer, &fields[1], "Error");
+    rc_json_get_bool(&response->succeeded, &fields[0], "Success");
+
+    return result;
+  }
 
   if (*json) {
-    size_t i;
-    for (i = 0; i < field_count; ++i) {
-      if (strcmp(fields[i].name, "Error") == 0) {
-        const char* end = json;
-        fields[i].value_start = json;
+    const char* end = json;
+    while (*end && *end != '\n' && end - json < 200)
+      ++end;
 
-        while (*end && *end != '\n' && end - json < 200)
-          ++end;
+    if (end > json && end[-1] == '\r')
+      --end;
 
-        if (end > json && end[-1] == '\r')
-          --end;
-
-        fields[i].value_end = end;
-        break;
-      }
+    if (end > json) {
+      char* dst = rc_buf_reserve(&response->buffer, (end - json) + 1);
+      response->error_message = dst;
+      memcpy(dst, json, end - json);
+      dst += (end - json);
+      *dst++ = '\0';
+      rc_buf_consume(&response->buffer, response->error_message, dst);
     }
   }
 
+  response->succeeded = 0;
   return RC_INVALID_JSON;
 }
 
@@ -324,7 +340,7 @@ int rc_json_get_required_bool(int* out, rc_api_response_t* response, const rc_js
 
 void rc_api_destroy_request(rc_api_request_t* request)
 {
-    rc_buf_destroy(&request->buffer);
+  rc_buf_destroy(&request->buffer);
 }
 
 void rc_buf_init(rc_api_buffer_t* buffer)
@@ -352,10 +368,13 @@ char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount)
   size_t remaining;
   do {
     remaining = buffer->end - buffer->write;
-    if (remaining > amount)
+    if (remaining >= amount)
       return buffer->write;
 
     if (!buffer->next) {
+      /* allocate a chunk of memory that is a multiple of 256-bytes. casting it to an rc_api_buffer_t will
+       * effectively unbound the data field, so use write and end pointers to track how data is being used.
+       */
       const size_t buffer_prefix_size = sizeof(rc_api_buffer_t) - sizeof(buffer->data);
       const size_t alloc_size = (amount + buffer_prefix_size + 0xFF) & ~0xFF;
       buffer->next = (rc_api_buffer_t*)malloc(alloc_size);
@@ -517,7 +536,7 @@ void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* 
 {
   if (rc_url_builder_append_param_equals(builder, param) == RC_OK) {
     char num[16];
-    int chars = sprintf(num, "%u", value) + 1;
+    int chars = sprintf(num, "%u", value);
     rc_url_builder_append(builder, num, chars);
   }
 }

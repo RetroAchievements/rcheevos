@@ -30,7 +30,7 @@ typedef struct rc_json_field_t {
 }
 rc_json_field_t;
 
-int rc_json_parse_response(const char* json, rc_json_field_t* fields, size_t field_count);
+int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_json_field_t* fields, size_t field_count);
 int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_num(int* out, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_bool(int* out, const rc_json_field_t* field, const char* field_name);

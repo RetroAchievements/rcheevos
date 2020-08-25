@@ -127,7 +127,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\rapi\rapi_common.c" />
-    <ClCompile Include="..\src\rapi\user.c" />
+    <ClCompile Include="..\src\rapi\rapi_runtime.c" />
+    <ClCompile Include="..\src\rapi\rapi_user.c" />
     <ClCompile Include="..\src\rcheevos\alloc.c" />
     <ClCompile Include="..\src\rcheevos\compat.c" />
     <ClCompile Include="..\src\rcheevos\condition.c" />
@@ -179,7 +180,8 @@
     <ClCompile Include="lua\src\lutf8lib.c" />
     <ClCompile Include="lua\src\lvm.c" />
     <ClCompile Include="lua\src\lzio.c" />
-    <ClCompile Include="rapi\test_user.c" />
+    <ClCompile Include="rapi\test_rapi_runtime.c" />
+    <ClCompile Include="rapi\test_rapi_user.c" />
     <ClCompile Include="rcheevos\test_condition.c" />
     <ClCompile Include="rcheevos\test_condset.c" />
     <ClCompile Include="rcheevos\test_consoleinfo.c" />

@@ -216,7 +216,7 @@ static void test_process_login_response_null_score()
   rc_api_destroy_login_response(&login_response);
 }
 
-void test_user_api(void) {
+void test_rapi_user(void) {
   TEST_SUITE_BEGIN();
 
   /* login */

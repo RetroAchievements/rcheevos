@@ -62,7 +62,8 @@ extern void test_url();
 extern void test_cdreader();
 extern void test_hash();
 
-extern void test_user_api();
+extern void test_rapi_user();
+extern void test_rapi_runtime();
 
 TEST_FRAMEWORK_DECLARATIONS()
 
@@ -90,7 +91,8 @@ int main(void) {
   test_cdreader();
   test_hash();
 
-  test_user_api();
+  test_rapi_user();
+  test_rapi_runtime();
 
   TEST_FRAMEWORK_SHUTDOWN();
 

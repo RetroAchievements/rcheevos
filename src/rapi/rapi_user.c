@@ -3,23 +3,23 @@
 
 #include <string.h>
 
-int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_request_t* login)
+int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_request_t* api_params)
 {
   rc_api_url_builder_t builder;
 
   rc_buf_init(&request->buffer);
-  rc_api_url_build_dorequest(&builder, &request->buffer, "login", login->username);
+  rc_api_url_build_dorequest(&builder, &request->buffer, "login", api_params->username);
   request->url = rc_url_builder_finalize(&builder);
 
   if (builder.result != RC_OK)
     return builder.result;
 
-  rc_url_builder_init(&builder, &request->buffer, 64);
+  rc_url_builder_init(&builder, &request->buffer, 48);
 
-  if (login->password && login->password[0])
-    rc_url_builder_append_str_param(&builder, "p", login->password);
+  if (api_params->password && api_params->password[0])
+    rc_url_builder_append_str_param(&builder, "p", api_params->password);
   else
-    rc_url_builder_append_str_param(&builder, "t", login->api_token);
+    rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
 
   request->post_data = rc_url_builder_finalize(&builder);
 
@@ -41,13 +41,9 @@ int rc_api_process_login_response(rc_api_login_response_t* response, const char*
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(server_response, fields, sizeof(fields) / sizeof(fields[0]));
-  if (rc_json_get_string(&response->response.error_message, &response->response.buffer, &fields[1], "Error"))
+  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  if (result != RC_OK || !response->response.succeeded)
     return result;
-  if (result != RC_OK)
-    return result;
-  if (rc_json_get_bool(&response->response.succeeded, &fields[0], "Success") && !response->response.succeeded)
-    return RC_OK;
 
   if (!rc_json_get_required_string(&response->username, &response->response, &fields[2], "User"))
     return RC_MISSING_VALUE;

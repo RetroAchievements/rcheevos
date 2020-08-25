@@ -33,7 +33,8 @@ rc_api_response_t;
 
 void rc_api_destroy_request(rc_api_request_t* request);
 
-/* === Login === */
+/* ===== User Functions ===== */
+/* --- Login --- */
 
 typedef struct rc_api_login_request_t {
   const char* username;
@@ -52,9 +53,35 @@ typedef struct rc_api_login_response_t {
 }
 rc_api_login_response_t;
 
-int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_request_t* login);
+int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_request_t* api_params);
 int rc_api_process_login_response(rc_api_login_response_t* response, const char* server_response);
 void rc_api_destroy_login_response(rc_api_login_response_t* response);
+
+/* ===== Runtime Functions ===== */
+/* --- Award Achievement --- */
+
+typedef struct rc_api_award_achievement_request_t
+{
+  const char* username;
+  const char* api_token;
+  unsigned achievement_id;
+  int hardcore;
+  const char* game_hash;
+}
+rc_api_award_achievement_request_t;
+
+typedef struct rc_api_award_achievement_response_t
+{
+  unsigned awarded_achievement_id;
+  unsigned new_player_score;
+
+  rc_api_response_t response;
+}
+rc_api_award_achievement_response_t;
+
+int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_api_award_achievement_request_t* api_params);
+int rc_api_process_award_achievement_response(rc_api_award_achievement_response_t* response, const char* server_response);
+void rc_api_destroy_award_achievement_response(rc_api_award_achievement_response_t* response);
 
 #ifdef __cplusplus
 }

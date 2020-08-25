@@ -246,10 +246,16 @@
     <ClCompile Include="..\src\rapi\rapi_common.c">
       <Filter>src\rapi</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\rapi\user.c">
+    <ClCompile Include="..\src\rapi\rapi_runtime.c">
       <Filter>src\rapi</Filter>
     </ClCompile>
-    <ClCompile Include="rapi\test_user.c">
+    <ClCompile Include="..\src\rapi\rapi_user.c">
+      <Filter>src\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="rapi\test_rapi_user.c">
+      <Filter>tests\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="rapi\test_rapi_runtime.c">
       <Filter>tests\rapi</Filter>
     </ClCompile>
   </ItemGroup>
