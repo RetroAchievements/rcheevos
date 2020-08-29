@@ -27,10 +27,6 @@ struct cdrom_t
 };
 
 
-static uint32_t cdreader_get_lba(struct cdrom_t* cdrom)
-{
-  return (uint32_t)cdrom->lba;
-}
 
 static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
 {
@@ -713,6 +709,14 @@ static void cdreader_close_track(void* track_handle)
 
     free(track_handle);
   }
+}
+
+static uint32_t cdreader_get_lba(struct cdrom_t* track_handle)
+{
+  struct cdrom_t* cdrom = (struct cdrom_t*)track_handle;
+  if (!cdrom)
+    return 0;
+  return cdrom->lba;
 }
 
 void rc_hash_init_default_cdreader()
