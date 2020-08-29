@@ -105,7 +105,7 @@ extern "C" {
   /* closes the track handle */
   typedef void (*rc_hash_cdreader_close_track_handler)(void* track_handle);
 
-  typedef int (*rc_hash_cdreader_get_lba_handler)(void* track_handle);
+  typedef uint32_t(*rc_hash_cdreader_get_lba_handler)(void* track_handle);
 
   struct rc_hash_cdreader
   {

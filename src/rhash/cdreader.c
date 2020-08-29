@@ -23,13 +23,13 @@ struct cdrom_t
   int sector_size;
   int sector_header_size;
   int first_sector_offset;
-  int lba;
+  uint32_t lba;
 };
 
 
-static int cdreader_get_lba(struct cdrom_t* cdrom)
+static uint32_t cdreader_get_lba(struct cdrom_t* cdrom)
 {
-  return cdrom->lba;
+  return (uint32_t)cdrom->lba;
 }
 
 static void cdreader_determine_sector_size(struct cdrom_t* cdrom)

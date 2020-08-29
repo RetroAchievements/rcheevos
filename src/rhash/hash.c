@@ -169,7 +169,7 @@ static void rc_cd_close_track(void* track_handle)
   rc_hash_error("no hook registered for cdreader_close_track");
 }
 
-static int rc_cd_get_lba(void* track_handle)
+static uint32_t rc_cd_get_lba(void* track_handle)
 {
   if (cdreader && cdreader->get_lba)
   {
