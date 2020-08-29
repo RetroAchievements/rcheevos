@@ -23,7 +23,14 @@ struct cdrom_t
   int sector_size;
   int sector_header_size;
   int first_sector_offset;
+  int lba;
 };
+
+
+static int cdreader_get_lba(struct cdrom_t* cdrom)
+{
+  return cdrom->lba;
+}
 
 static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
 {
@@ -260,6 +267,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
   char largest_track_mode[16];
   char largest_track_file[256];
   int offset = 0;
+  int lba = 0;
   int done = 0;
   size_t num_read = 0;
   struct cdrom_t* cdrom = NULL;
@@ -475,6 +483,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
     }
 
     cdrom->first_sector_offset = offset;
+    cdrom->lba = lba;
 
     /* verify existance of bin file */
     bin_filename = cdreader_get_bin_path(path, file);
@@ -521,6 +530,10 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
   char* ptr, * ptr2, * end;
 
   int offset = 0;
+  int lba = 0;
+  int highest_lba = 0;
+  int highest_track = 0;
+
   int found = 0;
   size_t num_read = 0;
   struct cdrom_t* cdrom = NULL;
@@ -560,27 +573,33 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
     {
       ptr2 = ptr;
 
-      while ((*ptr2 != '\n') && (*ptr2 != '\r'))
+      while ((*ptr2 != '\n') && (*ptr2 != '\r') && (ptr2 < end))
       {
         ++ptr2;
       }
 
       if (ptr2 - ptr != 0)
       {
-        memcpy(track_data, ptr, ptr2 - ptr);  /* operation to get track data */
-        track_data[ptr2 - ptr] = '\0';
+        *ptr2++ = '\0'; /* null terminate and advance */
 
         /* 1st try to get file if it have double quotes*/
-        sscanf(track_data, "%d %*s %*s %s \"%[^\"]\" %*s", &current_track, sector_size, file);
-        ptr = ptr2;
+        sscanf(ptr, "%d %d %*s %s \"%[^\"]\" %*s", &current_track, &lba, sector_size, file);
+
+        /* if track 0 is specified, then search for the one with highest LBA */
+        if ((int)track == 0)
+          if (lba > highest_lba)
+          {
+            highest_lba = lba;
+            highest_track = current_track;
+          }
 
         if (current_track == (int)track)
         {
-          size_t i;
+          uint8_t i;
 
           if (strlen(file) == 0)
             /*2nd attempt to get file if it has failed before, now without double quotes*/
-            sscanf(track_data, "%*d %*s %*s %*s %s %*s", file);
+            sscanf(ptr, "%*d %*d %*s %*s %s %*s", file);
 
           for (i = 0; i < strlen(sector_size); i++)
             if (sector_size[i] != '\"')
@@ -589,6 +608,8 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
           found = 1;
           break;
         }
+
+        ptr = ptr2; 
 
         file[0] = '\0';
       }
@@ -601,6 +622,8 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
     }
   } while (!found);
 
+  if (highest_track != 0)
+    return cdreader_open_gdi_track(path, highest_track);
 
   cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
   if (!cdrom)
@@ -610,6 +633,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
     return NULL;
   }
 
+  cdrom->lba = lba;
   cdrom->first_sector_offset = offset;
 
   bin_path = cdreader_get_bin_path(path, file);
@@ -699,6 +723,7 @@ void rc_hash_init_default_cdreader()
   cdreader.open_track = cdreader_open_track;
   cdreader.read_sector = cdreader_read_sector;
   cdreader.close_track = cdreader_close_track;
+  cdreader.get_lba =     cdreader_get_lba;
 
   rc_hash_init_custom_cdreader(&cdreader);
 }
