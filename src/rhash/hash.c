@@ -171,13 +171,13 @@ static void rc_cd_close_track(void* track_handle)
 
 static int rc_cd_get_lba(void* track_handle)
 {
-    if (cdreader && cdreader->get_lba)
-    {
-        cdreader->get_lba(track_handle);
-        return;
-    }
+  if (cdreader && cdreader->get_lba)
+  {
+    return cdreader->get_lba(track_handle);
+  }
 
-    rc_hash_error("no hook registered for cdreader_close_track");
+  rc_hash_error("no hook registered for cdreader_get_lba");
+  return 0;
 }
 
 static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, unsigned* size, unsigned sector_offset)

@@ -525,7 +525,6 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
   char sector_size[16];
   char file[256];
   char* bin_path = "";
-  char track_data[256];
   int current_track = 0;
   char* ptr, * ptr2, * end;
 
