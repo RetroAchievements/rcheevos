@@ -887,7 +887,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   void* last_track_handle;
   char exe_file[64] = "";
   unsigned size;
-  size_t num_read;
+  size_t num_read = 0;
   uint32_t sector;
   uint32_t last_track_lba;
   int result = 0;
@@ -912,7 +912,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   if (verbose_message_callback)
   {
     char message[256];
-    snprintf(message, sizeof(message), "Hashing Meta information:\nSoftware Name = %.127s\nProduct Number = %.9s\nProduct Version = %.5s\n",
+    snprintf(message, sizeof(message), "Hashing meta information:\nSoftware Name = %.127s\nProduct Number = %.9s\nProduct Version = %.5s\n",
                                         &buffer[0x80], &buffer[0x40], &buffer[0x4A]);
     verbose_message_callback(message);
   }
