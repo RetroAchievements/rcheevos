@@ -711,12 +711,14 @@ static void cdreader_close_track(void* track_handle)
   }
 }
 
-static uint32_t cdreader_get_lba(struct cdrom_t* track_handle)
+static uint32_t cdreader_get_lba(void* track_handle)
 {
+  uint32_t lba;
   struct cdrom_t* cdrom = (struct cdrom_t*)track_handle;
   if (!cdrom)
     return 0;
-  return cdrom->lba;
+  lba = (uint32_t)cdrom->lba;
+  return lba;
 }
 
 void rc_hash_init_default_cdreader()
@@ -726,7 +728,7 @@ void rc_hash_init_default_cdreader()
   cdreader.open_track = cdreader_open_track;
   cdreader.read_sector = cdreader_read_sector;
   cdreader.close_track = cdreader_close_track;
-  cdreader.get_lba =     cdreader_get_lba;
+  cdreader.get_lba = cdreader_get_lba;
 
   rc_hash_init_custom_cdreader(&cdreader);
 }
