@@ -249,7 +249,6 @@ static int cdreader_cue_num_tracks(const char* path)
 
   size_t num_read = 0;
   size_t file_offset = 0;
-  int done = 0;
 
   file_handle = rc_file_open(path);
   if (!file_handle)
