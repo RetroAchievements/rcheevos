@@ -26,8 +26,6 @@ struct cdrom_t
   uint32_t lba;
 };
 
-
-
 static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
 {
   /* Attempt to determine the sector and header sizes. The CUE file may be lying.
@@ -240,6 +238,114 @@ static size_t cdreader_get_bin_size(const char* cue_path, const char* bin_name)
   }
 
   return size;
+}
+
+static int cdreader_cue_num_tracks(const char* path)
+{
+  void* file_handle;
+  char buffer[1024];
+  char* ptr, * end;
+  int current_track = 0;
+
+  size_t num_read = 0;
+  size_t file_offset = 0;
+  int done = 0;
+
+  file_handle = rc_file_open(path);
+  if (!file_handle)
+    return 0;
+
+  do
+  {
+    num_read = rc_file_read(file_handle, buffer, sizeof(buffer) - 1);
+    if (num_read == 0)
+      break;
+
+    buffer[num_read] = 0;
+    if (num_read == sizeof(buffer) - 1)
+      end = buffer + sizeof(buffer) * 3 / 4;
+    else
+      end = buffer + num_read;
+
+    for (ptr = buffer; ptr < end; ++ptr)
+    {
+      if (strncasecmp(ptr, "TRACK ", 6) == 0)
+      {
+        ptr += 6;
+        current_track = atoi(ptr);
+
+        while (*ptr != ' ')
+          ++ptr;
+        while (*ptr == ' ')
+          ++ptr;
+      }
+
+      else if (strncasecmp(ptr, "FILE ", 5) == 0)
+      {
+        ptr += 5;
+        if (*ptr == '"')
+        {
+          ++ptr;
+          do
+          {
+            ++ptr;
+          } while (*ptr && *ptr != '\n' && *ptr != '"');
+        }
+        else
+        {
+          do
+          {
+            ++ptr;
+          } while (*ptr && *ptr != '\n' && *ptr != ' ');
+        }
+
+      }
+    }
+
+    file_offset += (ptr - buffer);
+    rc_file_seek(file_handle, file_offset, SEEK_SET);
+
+  } while (1);
+
+  if (verbose_message_callback)
+  {
+      char message[128];
+      snprintf(message, sizeof(message), "Found %d tracks", current_track);
+      verbose_message_callback(message);
+  }
+
+  rc_file_close(file_handle);
+  return current_track;
+}
+
+static int cdreader_gdi_num_tracks(const char* path)
+{
+  void* file_handle;
+  char buffer[16];
+  int num_tracks = 0;
+
+  size_t num_read = 0;
+
+  file_handle = rc_file_open(path);
+  if (!file_handle)
+      return 0;
+
+  num_read = rc_file_read(file_handle, buffer, sizeof(buffer) - 1);
+  if (num_read == 0)
+      return 0;
+
+  /* first chars on gdi sheet is tracks count*/
+  sscanf(buffer, "%d", &num_tracks);
+
+  if (verbose_message_callback)
+  {
+    char message[128];
+    snprintf(message, sizeof(message), "Found %d tracks", num_tracks);
+    verbose_message_callback(message);
+  }
+
+  rc_file_close(file_handle);
+  return num_tracks;
 }
 
 static void* cdreader_open_cue_track(const char* path, uint32_t track)
@@ -721,6 +827,15 @@ static uint32_t cdreader_get_lba(void* track_handle)
   return lba;
 }
 
+static int cdreader_num_tracks(const char* path)
+{
+  if (rc_path_compare_extension(path, "cue"))
+    return cdreader_cue_num_tracks(path);
+  if (rc_path_compare_extension(path, "gdi"))
+    return cdreader_gdi_num_tracks(path);
+  return 0;
+}
+
 void rc_hash_init_default_cdreader()
 {
   struct rc_hash_cdreader cdreader;
@@ -728,6 +843,7 @@ void rc_hash_init_default_cdreader()
   cdreader.open_track = cdreader_open_track;
   cdreader.read_sector = cdreader_read_sector;
   cdreader.close_track = cdreader_close_track;
+  cdreader.num_tracks = cdreader_num_tracks;
   cdreader.get_lba = cdreader_get_lba;
 
   rc_hash_init_custom_cdreader(&cdreader);

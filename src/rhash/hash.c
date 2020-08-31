@@ -169,6 +169,17 @@ static void rc_cd_close_track(void* track_handle)
   rc_hash_error("no hook registered for cdreader_close_track");
 }
 
+static int rc_cd_num_tracks(const char* path)
+{
+  if (cdreader && cdreader->num_tracks)
+  {
+    return cdreader->num_tracks(path);
+  }
+
+  rc_hash_error("no hook registered for cdreader_num_tracks");
+  return 0;
+}
+
 static uint32_t rc_cd_get_lba(void* track_handle)
 {
   if (cdreader && cdreader->get_lba)
@@ -933,25 +944,18 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
     return rc_hash_error("Boot executable not specified on IP.BIN");
   }
   
-  /* last track contains the boot executable */
-  last_track_handle = rc_cd_open_track(path, 0);
-  last_track_lba = rc_cd_get_lba(last_track_handle);
-
-  /* its offset being 45000 means it is track 03.
-     if so, start finding executable from here. */
-  if (last_track_lba == 45000)
-    sector = rc_cd_find_file_sector(last_track_handle, exe_file, &size, last_track_lba);
-  else
-    sector = rc_cd_find_file_sector(track_handle, exe_file, &size, rc_cd_get_lba(track_handle));
-  
+  sector = rc_cd_find_file_sector(track_handle, exe_file, &size, rc_cd_get_lba(track_handle));
   rc_cd_close_track(track_handle);
 
-  /* subtract it by its LBA to get the true sector location on the file */
+  if (sector == 0)
+    return rc_hash_error("Could not locate boot executable");
+
+  /* last track contains the boot executable */
+  last_track_handle = rc_cd_open_track(path, rc_cd_num_tracks(path));
+  last_track_lba = rc_cd_get_lba(last_track_handle);
   sector -= last_track_lba;
 
-  if (!sector)
-    rc_hash_error("Could not locate boot executable");
-  else if ((num_read = rc_cd_read_sector(last_track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
+  if ((num_read = rc_cd_read_sector(last_track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
     rc_hash_error("Could not read boot executable");
 
   if (size > MAX_BUFFER_SIZE)

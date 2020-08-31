@@ -105,14 +105,17 @@ extern "C" {
   /* closes the track handle */
   typedef void (*rc_hash_cdreader_close_track_handler)(void* track_handle);
 
+  typedef int (*rc_hash_cdreader_num_tracks_track_handler)(const char* path);
+
   typedef uint32_t(*rc_hash_cdreader_get_lba_handler)(void* track_handle);
 
   struct rc_hash_cdreader
   {
-    rc_hash_cdreader_open_track_handler      open_track;
-    rc_hash_cdreader_read_sector_handler     read_sector;
-    rc_hash_cdreader_close_track_handler     close_track;
-    rc_hash_cdreader_get_lba_handler         get_lba;
+    rc_hash_cdreader_open_track_handler           open_track;
+    rc_hash_cdreader_read_sector_handler          read_sector;
+    rc_hash_cdreader_close_track_handler          close_track;
+    rc_hash_cdreader_num_tracks_track_handler     num_tracks;
+    rc_hash_cdreader_get_lba_handler              get_lba;
   };
 
   void rc_hash_init_default_cdreader();
