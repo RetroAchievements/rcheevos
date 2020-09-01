@@ -10,6 +10,7 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
 
   do
   {
+    parse->measured_target = 0; /* passing is_value=1 should prevent any conflicts, but clear it out anyway */
     *next_clause = rc_parse_condset(memaddr, parse, 1);
     if (parse->offset < 0) {
       return;

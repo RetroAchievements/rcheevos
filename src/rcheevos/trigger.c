@@ -10,6 +10,8 @@ void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_pars
   aux = *memaddr;
   next = &self->alternative;
 
+  parse->measured_target = 0; /* reset in case multiple triggers are parsed by the same parse_state */
+
   if (*aux == 's' || *aux == 'S') {
     self->requirement = 0;
   }
