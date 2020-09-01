@@ -277,6 +277,9 @@ typedef struct {
 
   /* The memory references required by the value. */
   rc_memref_value_t* memrefs;
+
+  /* The current state of the MEASURED condition. */
+  int measured_value;
 }
 rc_value_t;
 

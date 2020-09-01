@@ -26,6 +26,9 @@ void rc_runtime_destroy(rc_runtime_t* self) {
   }
 
   if (self->lboards) {
+    for (i = 0; i < self->lboard_count; ++i)
+      free(self->lboards[i].buffer);
+
     free(self->lboards);
     self->lboards = NULL;
 
