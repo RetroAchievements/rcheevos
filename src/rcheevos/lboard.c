@@ -27,6 +27,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
 
       found |= RC_LBOARD_START;
       memaddr += 4;
+      parse->measured_target = 0;
       rc_parse_trigger_internal(&self->start, &memaddr, parse);
       self->start.memrefs = 0;
 
@@ -44,6 +45,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
 
       found |= RC_LBOARD_CANCEL;
       memaddr += 4;
+      parse->measured_target = 0;
       rc_parse_trigger_internal(&self->cancel, &memaddr, parse);
       self->cancel.memrefs = 0;
 
@@ -61,6 +63,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
 
       found |= RC_LBOARD_SUBMIT;
       memaddr += 4;
+      parse->measured_target = 0;
       rc_parse_trigger_internal(&self->submit, &memaddr, parse);
       self->submit.memrefs = 0;
 
@@ -78,6 +81,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
 
       found |= RC_LBOARD_VALUE;
       memaddr += 4;
+      parse->measured_target = 0;
       rc_parse_value_internal(&self->value, &memaddr, parse);
       self->value.memrefs = 0;
 
@@ -97,6 +101,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
       memaddr += 4;
 
       self->progress = RC_ALLOC(rc_value_t, parse);
+      parse->measured_target = 0;
       rc_parse_value_internal(self->progress, &memaddr, parse);
       self->progress->memrefs = 0;
 

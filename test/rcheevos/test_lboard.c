@@ -508,6 +508,15 @@ static void test_maximum_value_from_conditions() {
   ASSERT_NUM_EQUALS(value, 0);
 }
 
+static void test_measured_value_and_condition()
+{
+    rc_lboard_t* lboard;
+    char buffer[1024];
+
+    /* a Measured is irrelevant in the STA/CAN/SUB conditions, but if present, allow them to be unique */
+    assert_parse_lboard(&lboard, buffer, "STA:M:0xH00=0::CAN:M:0xH00=2::SUB:M:0xH00=3::VAL:M:0xH04");
+}
+
 static void test_unparsable_lboard(const char* memaddr, int expected_error) {
   ASSERT_NUM_EQUALS(rc_lboard_size(memaddr), expected_error);
 }
@@ -553,6 +562,7 @@ void test_lboard(void) {
   TEST(test_value_from_hitcount);
   TEST(test_value_from_addhits);
   TEST(test_maximum_value_from_conditions);
+  TEST(test_measured_value_and_condition);
 
   test_unparsable_strings();
 
