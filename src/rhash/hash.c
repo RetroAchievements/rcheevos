@@ -961,6 +961,13 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   if (size > MAX_BUFFER_SIZE)
     size = MAX_BUFFER_SIZE;
 
+  if (verbose_message_callback)
+  {
+    char message[128];
+    snprintf(message, sizeof(message), "Hashing %s title (%u bytes) and contents (%u bytes) ", exe_file, (unsigned)strlen(exe_file), size);
+    verbose_message_callback(message);
+  }
+
   do
   {
     md5_append(&md5, buffer, (int)num_read);
