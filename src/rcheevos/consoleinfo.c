@@ -13,9 +13,6 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_AMIGA:
       return "Amiga";
 
-    case RC_CONSOLE_AMIGA_ST:
-      return "Amiga ST";
-
     case RC_CONSOLE_AMSTRAD_PC:
       return "Amstrad CPC";
 
@@ -39,6 +36,9 @@ const char* rc_console_name(int console_id)
 
     case RC_CONSOLE_ATARI_LYNX:
       return "Atari Lynx";
+
+    case RC_CONSOLE_ATARI_ST:
+        return "Atari ST";
 
     case RC_CONSOLE_CASSETTEVISION:
       return "CassetteVision";

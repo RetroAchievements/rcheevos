@@ -75,7 +75,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 33, "SG-1000");
   TEST_PARAMS2(test_name, 34, "VIC-20");
   TEST_PARAMS2(test_name, 35, "Amiga");
-  TEST_PARAMS2(test_name, 36, "Amiga ST");
+  TEST_PARAMS2(test_name, 36, "Atari ST");
   TEST_PARAMS2(test_name, 37, "Amstrad CPC");
   TEST_PARAMS2(test_name, 38, "Apple II");
   TEST_PARAMS2(test_name, 39, "Sega Saturn");
