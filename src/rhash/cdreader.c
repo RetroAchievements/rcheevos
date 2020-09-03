@@ -23,7 +23,6 @@ struct cdrom_t
   int sector_size;
   int sector_header_size;
   int first_sector_offset;
-  uint32_t lba;
 };
 
 static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
@@ -306,6 +305,8 @@ static int cdreader_cue_num_tracks(const char* path)
 
   } while (1);
 
+  rc_file_close(file_handle);
+
   if (verbose_message_callback)
   {
       char message[128];
@@ -313,7 +314,6 @@ static int cdreader_cue_num_tracks(const char* path)
       verbose_message_callback(message);
   }
 
-  rc_file_close(file_handle);
   return current_track;
 }
 
@@ -333,8 +333,9 @@ static int cdreader_gdi_num_tracks(const char* path)
   if (num_read == 0)
       return 0;
 
-  /* first chars on gdi sheet is tracks count*/
+  /* first chars on gdi sheet is total tracks */
   sscanf(buffer, "%d", &num_tracks);
+  rc_file_close(file_handle);
 
   if (verbose_message_callback)
   {
@@ -343,7 +344,6 @@ static int cdreader_gdi_num_tracks(const char* path)
     verbose_message_callback(message);
   }
 
-  rc_file_close(file_handle);
   return num_tracks;
 }
 
@@ -368,7 +368,6 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
   char largest_track_mode[16];
   char largest_track_file[256];
   int offset = 0;
-  int lba = 0;
   int done = 0;
   size_t num_read = 0;
   struct cdrom_t* cdrom = NULL;
@@ -584,7 +583,6 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
     }
 
     cdrom->first_sector_offset = offset;
-    cdrom->lba = lba;
 
     /* verify existance of bin file */
     bin_filename = cdreader_get_bin_path(path, file);
@@ -631,7 +629,6 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
   int current_track = 0;
   char* ptr, * ptr2, * end;
 
-  int offset = 0;
   int lba = 0;
   int largest_track = 0;
   size_t largest_track_size = 0;
@@ -748,17 +745,15 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
     return NULL;
   }
 
-  cdrom->lba = lba;
-  cdrom->first_sector_offset = offset;
-
   bin_path = cdreader_get_bin_path(path, file);
 
   if (cdreader_open_bin(cdrom, bin_path, mode)) /*gives your cd rom*/
   {
+    cdrom->first_sector_offset = -(lba * cdrom->sector_size);
     if (verbose_message_callback)
     {
       if (cdrom->first_sector_offset)
-        snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d, track starts at %d)", track, cdrom->sector_size, cdrom->first_sector_offset);
+        snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d, track starts at %d)", track, cdrom->sector_size, lba * cdrom->sector_size);
       else
         snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d)", track, cdrom->sector_size);
 
@@ -831,16 +826,6 @@ static void cdreader_close_track(void* track_handle)
   }
 }
 
-static uint32_t cdreader_get_lba(void* track_handle)
-{
-  uint32_t lba;
-  struct cdrom_t* cdrom = (struct cdrom_t*)track_handle;
-  if (!cdrom)
-    return 0;
-  lba = (uint32_t)cdrom->lba;
-  return lba;
-}
-
 static int cdreader_num_tracks(const char* path)
 {
   if (rc_path_compare_extension(path, "cue"))
@@ -858,7 +843,6 @@ void rc_hash_init_default_cdreader()
   cdreader.read_sector = cdreader_read_sector;
   cdreader.close_track = cdreader_close_track;
   cdreader.num_tracks = cdreader_num_tracks;
-  cdreader.get_lba = cdreader_get_lba;
 
   rc_hash_init_custom_cdreader(&cdreader);
 }

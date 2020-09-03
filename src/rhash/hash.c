@@ -180,18 +180,7 @@ static int rc_cd_num_tracks(const char* path)
   return 0;
 }
 
-static uint32_t rc_cd_get_lba(void* track_handle)
-{
-  if (cdreader && cdreader->get_lba)
-  {
-    return cdreader->get_lba(track_handle);
-  }
-
-  rc_hash_error("no hook registered for cdreader_get_lba");
-  return 0;
-}
-
-static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, unsigned* size, unsigned sector_offset)
+static uint32_t rc_cd_find_file_sector_toc(void* track_handle, const char* path, unsigned* size, unsigned toc_sector)
 {
   uint8_t buffer[2048], *tmp;
   int sector;
@@ -209,7 +198,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
     memcpy(buffer, path, slash - path);
     buffer[slash - path] = '\0';
 
-    sector = rc_cd_find_file_sector(track_handle, (const char *)buffer, NULL, 0);
+    sector = rc_cd_find_file_sector_toc(track_handle, (const char *)buffer, NULL, toc_sector);
     if (!sector)
       return 0;
 
@@ -219,15 +208,14 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
   }
   else
   {
-    /* find the cd information (always 16 frames in) */
-    if (!rc_cd_read_sector(track_handle, 16, buffer, 256))
+    /* find the cd information */
+    if (!rc_cd_read_sector(track_handle, toc_sector, buffer, 256))
       return 0;
 
     /* the directory_record starts at 156, the sector containing the table of contents is 2 bytes into that.
      * https://www.cdroller.com/htm/readdata.html
      */
     sector = buffer[156 + 2] | (buffer[156 + 3] << 8) | (buffer[156 + 4] << 16);
-    sector -= sector_offset;
   }
 
   /* fetch and process the directory record */
@@ -263,6 +251,12 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
   }
 
   return 0;
+}
+
+static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, unsigned* size)
+{
+  /* the cd information is usually 16 frames in */
+  return rc_cd_find_file_sector_toc(track_handle, path, size, 16);
 }
 
 /* ===================================================== */
@@ -765,7 +759,7 @@ static int rc_hash_pce_track(char hash[33], void* track_handle)
     }
   }
   /* GameExpress CDs use a standard Joliet filesystem - locate and hash the BOOT.BIN */
-  else if ((sector = rc_cd_find_file_sector(track_handle, "BOOT.BIN", &size, 0)) != 0 && size < MAX_BUFFER_SIZE)
+  else if ((sector = rc_cd_find_file_sector(track_handle, "BOOT.BIN", &size)) != 0 && size < MAX_BUFFER_SIZE)
   {
     md5_init(&md5);
     while (size > sizeof(buffer))
@@ -900,19 +894,18 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   unsigned size;
   size_t num_read = 0;
   uint32_t sector;
-  uint32_t last_track_lba;
   int result = 0;
   md5_state_t md5;
   int i = 0;
 
-  /* track 03 is the data track that contains the directory record and IP.BIN */
+  /* track 03 is the data track that contains the TOC and IP.BIN */
   track_handle = rc_cd_open_track(path, 3);
   if (!track_handle)
     return rc_hash_error("Could not open track");
 
   /* first 256 bytes from first sector should have IP.BIN structure that stores game meta information 
     https://mc.pp.se/dc/ip.bin.html */
-  rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
+  rc_cd_read_sector(track_handle, 45000, buffer, sizeof(buffer));
 
   if (memcmp(&buffer[0], "SEGA SEGAKATANA ", 16) != 0) 
   {
@@ -944,7 +937,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
     return rc_hash_error("Boot executable not specified on IP.BIN");
   }
   
-  sector = rc_cd_find_file_sector(track_handle, exe_file, &size, rc_cd_get_lba(track_handle));
+  sector = rc_cd_find_file_sector_toc(track_handle, exe_file, &size, 45016);
   rc_cd_close_track(track_handle);
 
   if (sector == 0)
@@ -952,8 +945,6 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
 
   /* last track contains the boot executable */
   last_track_handle = rc_cd_open_track(path, rc_cd_num_tracks(path));
-  last_track_lba = rc_cd_get_lba(last_track_handle);
-  sector -= last_track_lba;
 
   if ((num_read = rc_cd_read_sector(last_track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
     rc_hash_error("Could not read boot executable");
@@ -964,7 +955,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   if (verbose_message_callback)
   {
     char message[128];
-    snprintf(message, sizeof(message), "Hashing %s title (%u bytes) and contents (%u bytes) ", exe_file, (unsigned)strlen(exe_file), size);
+    snprintf(message, sizeof(message), "Hashing %s contents (%u bytes)", exe_file, size);
     verbose_message_callback(message);
   }
 
@@ -1007,10 +998,10 @@ static int rc_hash_psx(char hash[33], const char* path)
   if (!track_handle)
     return rc_hash_error("Could not open track");
 
-  sector = rc_cd_find_file_sector(track_handle, "SYSTEM.CNF", NULL, 0);
+  sector = rc_cd_find_file_sector(track_handle, "SYSTEM.CNF", NULL);
   if (!sector)
   {
-    sector = rc_cd_find_file_sector(track_handle, "PSX.EXE", &size, 0);
+    sector = rc_cd_find_file_sector(track_handle, "PSX.EXE", &size);
     if (sector)
       strcpy(exe_name, "PSX.EXE");
   }
@@ -1055,7 +1046,7 @@ static int rc_hash_psx(char hash[33], const char* path)
             verbose_message_callback((const char*)buffer);
           }
 
-          sector = rc_cd_find_file_sector(track_handle, exe_name, &size, 0);
+          sector = rc_cd_find_file_sector(track_handle, exe_name, &size);
           break;
         }
       }
