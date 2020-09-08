@@ -26,7 +26,7 @@ typedef struct rc_json_field_t {
   const char* name;
   const char* value_start;
   const char* value_end;
-  size_t array_size;
+  unsigned array_size;
 }
 rc_json_field_t;
 
@@ -40,14 +40,19 @@ void rc_json_get_optional_bool(int* out, const rc_json_field_t* field, const cha
 int rc_json_get_required_string(const char** out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_num(int* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_bool(int* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
+int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_api_response_t* response, rc_json_field_t* field, const char* field_name);
+int rc_json_get_required_array(int* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
+int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, rc_json_field_t* iterator);
 
 void rc_buf_init(rc_api_buffer_t* buffer);
 void rc_buf_destroy(rc_api_buffer_t* buffer);
 char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount);
 void rc_buf_consume(rc_api_buffer_t* buffer, const char* start, char* end);
+void* rc_buf_alloc(rc_api_buffer_t* buffer, size_t amount);
 
 void rc_url_builder_append_encoded_str(rc_api_url_builder_t* builder, const char* str);
 void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, unsigned value);
+void rc_url_builder_append_signed_num_param(rc_api_url_builder_t* builder, const char* param, int value);
 void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* param, const char* value);
 
 void rc_api_url_build_dorequest(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, const char* api, const char* username);

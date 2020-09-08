@@ -83,6 +83,44 @@ int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_ap
 int rc_api_process_award_achievement_response(rc_api_award_achievement_response_t* response, const char* server_response);
 void rc_api_destroy_award_achievement_response(rc_api_award_achievement_response_t* response);
 
+/* --- Submit Leaderboard Entry --- */
+
+typedef struct rc_api_submit_lboard_entry_request_t
+{
+  const char* username;
+  const char* api_token;
+  unsigned leaderboard_id;
+  int score;
+  const char* game_hash;
+}
+rc_api_submit_lboard_entry_request_t;
+
+typedef struct rc_api_lboard_entry_t
+{
+  const char* username;
+  unsigned rank;
+  int score;
+}
+rc_api_lboard_entry_t;
+
+typedef struct rc_api_submit_lboard_entry_response_t
+{
+  int submitted_score;
+  int best_score;
+  unsigned new_rank;
+  unsigned num_entries;
+
+  rc_api_lboard_entry_t* top_entries;
+  unsigned num_top_entries;
+
+  rc_api_response_t response;
+}
+rc_api_submit_lboard_entry_response_t;
+
+int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_api_submit_lboard_entry_request_t* api_params);
+int rc_api_process_submit_lboard_entry_response(rc_api_submit_lboard_entry_response_t* response, const char* server_response);
+void rc_api_destroy_submit_lboard_entry_response(rc_api_submit_lboard_entry_response_t* response);
+
 #ifdef __cplusplus
 }
 #endif

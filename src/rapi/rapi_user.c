@@ -35,7 +35,7 @@ int rc_api_process_login_response(rc_api_login_response_t* response, const char*
     {"User"},
     {"Token"},
     {"Score"},
-    {"Messages"},
+    {"Messages"}
   };
 
   memset(response, 0, sizeof(*response));
