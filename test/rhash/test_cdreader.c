@@ -15,6 +15,7 @@ typedef struct cdrom_t
   int sector_size;
   int sector_header_size;
   int first_sector_offset;
+  int first_sector;
 } cdrom_t;
 
 static const unsigned char sync_pattern[] = {
@@ -112,7 +113,7 @@ static void test_open_cue_track_2()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, sizeof(cue_single_bin_multiple_data));
+  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 2);
@@ -131,7 +132,7 @@ static void test_open_cue_track_12()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, sizeof(cue_single_bin_multiple_data));
+  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 12);
@@ -150,7 +151,7 @@ static void test_open_cue_track_14()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, sizeof(cue_single_bin_multiple_data));
+  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
   mock_empty_file(1, "game.bin", 718310208);
 
   /* only 13 tracks */
@@ -162,7 +163,7 @@ static void test_open_cue_track_missing_bin()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, sizeof(cue_single_bin_multiple_data));
+  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 2);
   ASSERT_PTR_NULL(track_handle);
@@ -172,7 +173,7 @@ static void test_open_gdi_track_3()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.gdi", gdi_three_tracks, sizeof(gdi_three_tracks));
+  mock_file(0, "game.gdi", gdi_three_tracks, strlen(gdi_three_tracks));
   mock_empty_file(1, "track03.bin", 1185760800);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 3);
@@ -180,7 +181,8 @@ static void test_open_gdi_track_3()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track03.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, -45000 * 2352);
+  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM_EQUALS(track_handle->first_sector, 45000);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -197,7 +199,7 @@ static void test_open_gdi_track_3_quoted()
 
   cdrom_t* track_handle;
 
-  mock_file(0, "game.gdi", gdi_contents, sizeof(gdi_contents));
+  mock_file(0, "game.gdi", gdi_contents, strlen(gdi_contents));
   mock_empty_file(1, "track 03.bin", 1185760800);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 3);
@@ -205,7 +207,8 @@ static void test_open_gdi_track_3_quoted()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track 03.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, -45000 * 2352);
+  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM_EQUALS(track_handle->first_sector, 45000);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -216,15 +219,16 @@ static void test_open_gdi_track_last()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.gdi", gdi_many_tracks, sizeof(gdi_many_tracks));
+  mock_file(0, "game.gdi", gdi_many_tracks, strlen(gdi_many_tracks));
   mock_empty_file(1, "track26.bin", 2457600);
 
-  track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 26);
+  track_handle = (cdrom_t*)cdreader->open_track("game.gdi", RC_HASH_CDTRACK_LAST);
   ASSERT_PTR_NOT_NULL(track_handle);
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track26.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, -548106 * 2352);
+  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM_EQUALS(track_handle->first_sector, 548106);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -247,7 +251,7 @@ static void test_open_cue_track_largest_data()
 {
   cdrom_t* track_handle;
 	
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, sizeof(cue_single_bin_multiple_data));
+  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 0);
@@ -279,7 +283,7 @@ static void test_open_cue_track_largest_data_last_track()
 	  "  TRACK 05 MODE1/2352\n"
 	  "    INDEX 01 13:48:56\n";
 
-  mock_file(0, "game.cue", cue, sizeof(cue));
+  mock_file(0, "game.cue", cue, strlen(cue));
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 0);
@@ -308,7 +312,7 @@ static void test_open_cue_track_largest_data_index0s()
 	  "    INDEX 00 01:19:52\n"
 	  "    INDEX 01 01:21:52\n";
 
-  mock_file(0, "game.cue", cue, sizeof(cue));
+  mock_file(0, "game.cue", cue, strlen(cue));
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 0);
@@ -335,7 +339,7 @@ static void test_open_cue_track_largest_data_index2()
 	  "    INDEX 01 00:02:00\n"
 	  "    INDEX 02 00:08:64\n";
 
-  mock_file(0, "game.cue", cue, sizeof(cue));
+  mock_file(0, "game.cue", cue, strlen(cue));
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 0);
@@ -354,7 +358,7 @@ static void test_open_cue_track_largest_data_multiple_bins()
 {
   cdrom_t* track_handle;
 	
-  mock_file(0, "game.cue", cue_multiple_bin_multiple_data, sizeof(cue_multiple_bin_multiple_data));
+  mock_file(0, "game.cue", cue_multiple_bin_multiple_data, strlen(cue_multiple_bin_multiple_data));
   mock_empty_file(1, "track1.bin", 4132464);
   mock_empty_file(2, "track2.bin", 30080102);
   mock_empty_file(3, "track3.bin", 40343152);
@@ -391,7 +395,7 @@ static void test_open_cue_track_largest_data_only_audio()
     "    INDEX 00 00:00:00\n";
   cdrom_t* track_handle;
 
-  mock_file(0, "game.cue", cue, sizeof(cue));
+  mock_file(0, "game.cue", cue, strlen(cue));
   mock_empty_file(1, "track1.bin", 4132464);
   mock_empty_file(2, "track2.bin", 30080102);
   mock_empty_file(3, "track3.bin", 40343152);
@@ -406,7 +410,7 @@ static void test_determine_sector_size_sync(int sector_size)
   cdrom_t* track_handle;
   const size_t image_size = sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue_single_track, sizeof(cue_single_track));
+  mock_file(0, "game.cue", cue_single_track, strlen(cue_single_track));
   mock_file(1, "game.bin", image, image_size);
 
   memset(image, 0, image_size);
@@ -430,7 +434,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor(int sector
   cdrom_t* track_handle;
   const size_t image_size = sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue_single_track, sizeof(cue_single_track));
+  mock_file(0, "game.cue", cue_single_track, strlen(cue_single_track));
   mock_file(1, "game.bin", image, image_size);
 
   memset(image, 0, image_size);
@@ -461,7 +465,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0(int
   cdrom_t* track_handle;
   const size_t image_size = sector_size * 200;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue, sizeof(cue));
+  mock_file(0, "game.cue", cue, strlen(cue));
   mock_file(1, "game.bin", image, image_size);
 
   char sector_size_str[16];
@@ -491,7 +495,7 @@ static void test_determine_sector_size_sync_2048()
   const int sector_size = 2048;
   const size_t image_size = sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue_single_track, sizeof(cue_single_track));
+  mock_file(0, "game.cue", cue_single_track, strlen(cue_single_track));
   mock_file(1, "game.bin", image, image_size);
 
   memset(image, 0, image_size);
@@ -516,7 +520,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_2048()
   const int sector_size = 2048;
   const size_t image_size = sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue_single_track, sizeof(cue_single_track));
+  mock_file(0, "game.cue", cue_single_track, strlen(cue_single_track));
   mock_file(1, "game.bin", image, image_size);
 
   memset(image, 0, image_size);
@@ -547,7 +551,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0_204
   const int sector_size = 2048;
   const size_t image_size = sector_size * 200;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue, sizeof(cue));
+  mock_file(0, "game.cue", cue, strlen(cue));
   mock_file(1, "game.bin", image, image_size);
 
   char sector_size_str[16];
@@ -578,7 +582,7 @@ static void test_read_sector()
   unsigned char* image = (unsigned char*)malloc(image_size);
   int offset, i;
 
-  mock_file(0, "game.cue", cue_single_track, sizeof(cue_single_track));
+  mock_file(0, "game.cue", cue_single_track, strlen(cue_single_track));
   mock_file(1, "game.bin", image, image_size);
 
   memset(image, 0, image_size);

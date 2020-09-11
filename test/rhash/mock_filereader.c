@@ -9,7 +9,7 @@ typedef struct mock_file_data
   const uint8_t* data;
   size_t size;
   size_t pos;
-  int offset;
+  int first_sector;
 } mock_file_data;
 
 static mock_file_data mock_file_instance[16];
@@ -36,7 +36,7 @@ static void _mock_file_seek(void* file_handle, size_t offset, int origin)
   switch (origin)
   {
   case SEEK_SET:
-    file->pos = offset + file->offset;
+    file->pos = offset;
     break;
   case SEEK_CUR:
     file->pos += offset;
@@ -114,12 +114,12 @@ void mock_file(int index, const char* filename, const uint8_t* buffer, size_t bu
   mock_file_instance[index].data = buffer;
   mock_file_instance[index].size = buffer_size;
   mock_file_instance[index].pos = 0;
-  mock_file_instance[index].offset = 0;
+  mock_file_instance[index].first_sector = 0;
 }
 
-void mock_file_offset(int index, int offset)
+void mock_file_first_sector(int index, int first_sector)
 {
-  mock_file_instance[index].offset = offset;
+  mock_file_instance[index].first_sector = first_sector;
 }
 
 void mock_file_size(int index, size_t mock_size)
@@ -134,7 +134,10 @@ void mock_empty_file(int index, const char* filename, size_t mock_size)
 
 static void* _mock_cd_open_track(const char* path, uint32_t track)
 {
-  if (track < 2) /* 0 = first data track, 1 = primary track */
+  if (track == RC_HASH_CDTRACK_LAST)
+    track = mock_cd_tracks;
+
+  if (track == 1 || track == RC_HASH_CDTRACK_FIRST_DATA || track == RC_HASH_CDTRACK_LARGEST)
   {
     if (strstr(path, ".cue")) 
     {
@@ -186,6 +189,12 @@ static int _mock_cd_num_tracks(const char* path)
   return mock_cd_tracks;
 }
 
+static int _mock_cd_absolute_sector_to_track_sector(void* track_handle, uint32_t sector)
+{
+  mock_file_data* file = (mock_file_data*)track_handle;
+  return sector - file->first_sector;
+}
+
 void mock_cd_num_tracks(int num_tracks)
 {
   mock_cd_tracks = num_tracks;
@@ -199,6 +208,7 @@ void init_mock_cdreader()
   cdreader.close_track = _mock_file_close;
   cdreader.read_sector = _mock_cd_read_sector;
   cdreader.num_tracks = _mock_cd_num_tracks;
+  cdreader.absolute_sector_to_track_sector = _mock_cd_absolute_sector_to_track_sector;
 
   rc_hash_init_custom_cdreader(&cdreader);
 

@@ -306,7 +306,7 @@ static void test_hash_dreamcast_single_bin()
   const char* expected_md5 = "2a550500caee9f06e5d061fe10a46f6e";
 
   mock_file(0, "track03.bin", image, image_size);
-  mock_file_offset(0, -45000 * 2048);
+  mock_file_first_sector(0, 45000);
   mock_file(1, "game.gdi", (uint8_t*)"game.bin", 8);
   mock_cd_num_tracks(3);
 
@@ -341,9 +341,9 @@ static void test_hash_dreamcast_split_bin()
 
   mock_file(0, "game.gdi", (uint8_t*)"game.bin", 8);
   mock_file(1, "track03.bin", image, image_size);
-  mock_file_offset(1, -45000 * 2048);
+  mock_file_first_sector(1, 45000);
   mock_file(2, "track26.bin", image, image_size);
-  mock_file_offset(2, -548106 * 2048);
+  mock_file_first_sector(2, 548106);
   mock_cd_num_tracks(26);
 
   /* test file hash */
