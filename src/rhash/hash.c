@@ -172,9 +172,7 @@ static void rc_cd_close_track(void* track_handle)
 static int rc_cd_num_tracks(const char* path)
 {
   if (cdreader && cdreader->num_tracks)
-  {
     return cdreader->num_tracks(path);
-  }
 
   rc_hash_error("no hook registered for cdreader_num_tracks");
   return 0;
@@ -890,7 +888,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   uint8_t buffer[2048];
   void* track_handle;
   void* last_track_handle;
-  char exe_file[64] = "";
+  char exe_file[32] = "";
   unsigned size;
   size_t num_read = 0;
   uint32_t sector;
@@ -904,7 +902,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
     return rc_hash_error("Could not open track");
 
   /* first 256 bytes from first sector should have IP.BIN structure that stores game meta information 
-    https://mc.pp.se/dc/ip.bin.html */
+   * https://mc.pp.se/dc/ip.bin.html */
   rc_cd_read_sector(track_handle, 45000, buffer, sizeof(buffer));
 
   if (memcmp(&buffer[0], "SEGA SEGAKATANA ", 16) != 0) 
@@ -913,29 +911,36 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
     return rc_hash_error("Not a Dreamcast CD");
   }
 
-  if (verbose_message_callback)
-  {
-    char message[256];
-    snprintf(message, sizeof(message), "Hashing meta information:\nSoftware Name = %.127s\nProduct Number = %.9s\nProduct Version = %.5s\n",
-                                        &buffer[0x80], &buffer[0x40], &buffer[0x4A]);
-    verbose_message_callback(message);
-  }
-
   md5_init(&md5);
   md5_append(&md5, (md5_byte_t*)buffer, 256);
 
-  /* remove whitespace from bootfile*/
-  for (i = 0; i < 16; i++)
-    if (!isspace(buffer[96 + i]))
-      exe_file[i] = buffer[96 + i];
+  if (verbose_message_callback)
+  {
+    char message[256];
+    char* ptr = &buffer[0xFF];
+    while (ptr > & buffer[0x80] && ptr[-1] == ' ')
+      --ptr;
+    *ptr = '\0';
+
+    snprintf(message, sizeof(message), "Found Dreamcast title: %s (%.16s)", &buffer[0x80], &buffer[0x40]);
+    verbose_message_callback(message);
+  }
+
+  /* remove whitespace from bootfile */
+  i = 0;
+  while (!isspace(buffer[96 + i]) && i < 16)
+    ++i;
 
   /* sometimes boot file isn't present on meta information.
-     nothing can be done, as even the core doesn't run the game in this case. */
-  if (!strlen(exe_file))
+   * nothing can be done, as even the core doesn't run the game in this case. */
+  if (i == 0)
   {
     rc_cd_close_track(track_handle);
     return rc_hash_error("Boot executable not specified on IP.BIN");
   }
+
+  memcpy(exe_file, &buffer[96], i);
+  exe_file[i] = '\0';
   
   sector = rc_cd_find_file_sector_toc(track_handle, exe_file, &size, 45016);
   rc_cd_close_track(track_handle);
@@ -1666,7 +1671,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         break;
 
       case 'c':
-        if (rc_path_compare_extension(ext, "cue") || rc_path_compare_extension(ext, "chd"))
+        if (rc_path_compare_extension(ext, "cue"))
         {
           iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
           iterator->consoles[1] = RC_CONSOLE_PC_ENGINE;
@@ -1675,6 +1680,17 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           /* SEGA CD hash doesn't have any logic to ensure it's being used against a SEGA CD, so it should always be last */
           iterator->consoles[4] = RC_CONSOLE_SEGA_CD;
           need_path = 1;
+        }
+        else if (rc_path_compare_extension(ext, "chd"))
+        {
+            iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
+            iterator->consoles[1] = RC_CONSOLE_DREAMCAST;
+            iterator->consoles[2] = RC_CONSOLE_PC_ENGINE;
+            iterator->consoles[3] = RC_CONSOLE_3DO;
+            iterator->consoles[4] = RC_CONSOLE_PCFX;
+            /* SEGA CD hash doesn't have any logic to ensure it's being used against a SEGA CD, so it should always be last */
+            iterator->consoles[5] = RC_CONSOLE_SEGA_CD;
+            need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "col"))
         {
@@ -1724,6 +1740,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         else if (rc_path_compare_extension(ext, "gg"))
         {
           iterator->consoles[0] = RC_CONSOLE_GAME_GEAR;
+        }
+        else if (rc_path_compare_extension(ext, "gdi"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_DREAMCAST;
         }
         break;
 

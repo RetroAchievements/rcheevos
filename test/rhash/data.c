@@ -244,6 +244,69 @@ uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size,
   return image;
 }
 
+uint8_t* generate_dreamcast_bin(unsigned track_first_sector, unsigned binary_size, size_t* image_size)
+{
+  /* https://mc.pp.se/dc/ip0000.bin.html */
+  const uint8_t volume_header[] =
+    "SEGA SEGAKATANA "
+    "SEGA ENTERPRISES"
+    "5966 GD-ROM1/1  " /* device info */
+    " U      918FA01 " /* region and peripherals */
+    "X-1234N   V1.001" /* product number and version */
+    "20200910        " /* release date */
+    "1ST_READ.BIN    " /* boot file */
+    "RETROACHIEVEMENT" /* company name */
+    "UNIT TEST       " /* product name */
+    "                "
+    "                "
+    "                "
+    "                "
+    "                "
+    "                "
+    "                ";
+
+  const uint8_t directory_data[] = {
+    0x30, /* length of directory record */
+    0x00, /* extended attribute record length */
+    0xD9, 0xAF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* first logical block of file */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* length in bytes */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* date/time */
+    0x00, 0x00, 0x00, /* flags, unit size, gap size */
+    0x00, 0x00, 0x00, 0x00, /* sequence number*/
+    0x0E, /* length of file identifier */
+    '1', 'S', 'T', '_', 'R', 'E', 'A', 'D', '.', 'B', 'I', 'N', ';', '1', /* file identifier */
+  };
+
+  const size_t binary_sectors = (binary_size + 2047) / 2048;
+  const size_t size_needed = (binary_sectors + 18) * 2048;
+  uint8_t* image = (uint8_t*)calloc(size_needed, 1);
+
+  /* volume header goes in sector 0 */
+  memcpy(&image[0], volume_header, sizeof(volume_header));
+
+  /* directory information goes in sectors 16 and 17 */
+  memcpy(&image[2048 * 16], "1CD001", 6);
+  image[2048 * 16 + 156 + 2] = 45017 & 0xFF;
+  image[2048 * 16 + 156 + 3] = (45017 >> 8) & 0xFF;
+  image[2048 * 16 + 156 + 4] = (45017 >> 16) & 0xFF;
+  memcpy(&image[2048 * 17], directory_data, sizeof(directory_data));
+
+  track_first_sector += 18;
+  image[2048 * 17 + 2] = (track_first_sector & 0xFF);
+  image[2048 * 17 + 3] = ((track_first_sector >> 8) & 0xFF);
+  image[2048 * 17 + 4] = ((track_first_sector >> 16) & 0xFF);
+  image[2048 * 17 + 10] = (binary_size & 0xFF);
+  image[2048 * 17 + 11] = ((binary_size >> 8) & 0xFF);
+  image[2048 * 17 + 12] = ((binary_size >> 16) & 0xFF);
+  image[2048 * 17 + 13] = ((binary_size >> 24) & 0xFF);
+
+  /* binary data */
+  fill_image(&image[2048 * 18], binary_sectors * 2048);
+
+  *image_size = size_needed;
+  return image;
+}
+
 uint8_t* generate_pce_cd_bin(unsigned binary_sectors, size_t* image_size)
 {
   const uint8_t volume_header[] = {

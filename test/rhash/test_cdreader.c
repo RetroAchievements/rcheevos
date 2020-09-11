@@ -73,6 +73,41 @@ static unsigned char cue_multiple_bin_multiple_data[] =
   "  TRACK 04 AUDIO\n"
   "    INDEX 00 00:00:00\n";
 
+static unsigned char gdi_three_tracks[] =
+  "3\n"
+  "1 0 4 2352 track01.bin 0\n"
+  "2 600 0 2352 track02.raw 0\n"
+  "3 45000 4 2352 track03.bin 0";
+
+static unsigned char gdi_many_tracks[] =
+  "26\n"
+  "1 0 4 2352 track01.bin 0\n"
+  "2 450 0 2352 track02.raw 0\n"
+  "3 45000 4 2352 track03.bin 0\n"
+  "4 370673 0 2352 track04.raw 0\n"
+  "5 371347 0 2352 track05.raw 0\n"
+  "6 372014 0 2352 track06.raw 0\n"
+  "7 372915 0 2352 track07.raw 0\n"
+  "8 373626 0 2352 track08.raw 0\n"
+  "9 379011 0 2352 track09.raw 0\n"
+  "10 384738 0 2352 track10.raw 0\n"
+  "11 390481 0 2352 track11.raw 0\n"
+  "12 395473 0 2352 track12.raw 0\n"
+  "13 398926 0 2352 track13.raw 0\n"
+  "14 404448 0 2352 track14.raw 0\n"
+  "15 425246 0 2352 track15.raw 0\n"
+  "16 445520 0 2352 track16.raw 0\n"
+  "17 466032 0 2352 track17.raw 0\n"
+  "18 474231 0 2352 track18.raw 0\n"
+  "19 485598 0 2352 track19.raw 0\n"
+  "20 486386 0 2352 track20.raw 0\n"
+  "21 487098 0 2352 track21.raw 0\n"
+  "22 487822 0 2352 track22.raw 0\n"
+  "23 498356 0 2352 track23.raw 0\n"
+  "24 508297 0 2352 track24.raw 0\n"
+  "25 527383 0 2352 track25.raw 0\n"
+  "26 548106 4 2352 track26.bin 0\n";
+
 static void test_open_cue_track_2()
 {
   cdrom_t* track_handle;
@@ -131,6 +166,81 @@ static void test_open_cue_track_missing_bin()
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 2);
   ASSERT_PTR_NULL(track_handle);
+}
+
+static void test_open_gdi_track_3()
+{
+  cdrom_t* track_handle;
+
+  mock_file(0, "game.gdi", gdi_three_tracks, sizeof(gdi_three_tracks));
+  mock_empty_file(1, "track03.bin", 1185760800);
+
+  track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 3);
+  ASSERT_PTR_NOT_NULL(track_handle);
+
+  ASSERT_PTR_NOT_NULL(track_handle->file_handle);
+  ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track03.bin");
+  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, -45000 * 2352);
+  ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
+  ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+
+  cdreader->close_track(track_handle);
+}
+
+static void test_open_gdi_track_3_quoted()
+{
+  unsigned char gdi_contents[] =
+	"3\n"
+	"1 0 4 2352 \"track 01.bin\" 0\n"
+	"2 600 0 2352 \"track 02.raw\" 0\n"
+	"3 45000 4 2352 \"track 03.bin\" 0";
+
+  cdrom_t* track_handle;
+
+  mock_file(0, "game.gdi", gdi_contents, sizeof(gdi_contents));
+  mock_empty_file(1, "track 03.bin", 1185760800);
+
+  track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 3);
+  ASSERT_PTR_NOT_NULL(track_handle);
+
+  ASSERT_PTR_NOT_NULL(track_handle->file_handle);
+  ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track 03.bin");
+  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, -45000 * 2352);
+  ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
+  ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+
+  cdreader->close_track(track_handle);
+}
+
+static void test_open_gdi_track_last()
+{
+  cdrom_t* track_handle;
+
+  mock_file(0, "game.gdi", gdi_many_tracks, sizeof(gdi_many_tracks));
+  mock_empty_file(1, "track26.bin", 2457600);
+
+  track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 26);
+  ASSERT_PTR_NOT_NULL(track_handle);
+
+  ASSERT_PTR_NOT_NULL(track_handle->file_handle);
+  ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track26.bin");
+  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, -548106 * 2352);
+  ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
+  ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+
+  cdreader->close_track(track_handle);
+}
+
+static void test_num_tracks_cue(const uint8_t* cue_contents, int expected_tracks)
+{
+	mock_file(0, "game.cue", cue_contents, strlen(cue_contents));
+	ASSERT_NUM_EQUALS(cdreader->num_tracks("game.cue"), expected_tracks);
+}
+
+static void test_num_tracks_gdi(const uint8_t* gdi_contents, int expected_tracks)
+{
+	mock_file(0, "game.gdi", gdi_contents, strlen(gdi_contents));
+	ASSERT_NUM_EQUALS(cdreader->num_tracks("game.gdi"), expected_tracks);
 }
 
 static void test_open_cue_track_largest_data()
@@ -525,6 +635,17 @@ void test_cdreader(void) {
   TEST(test_open_cue_track_12);
   TEST(test_open_cue_track_14);
   TEST(test_open_cue_track_missing_bin);
+
+  TEST(test_open_gdi_track_3);
+  TEST(test_open_gdi_track_3_quoted);
+  TEST(test_open_gdi_track_last);
+
+  TEST_PARAMS2(test_num_tracks_cue, cue_single_track, 1);
+  TEST_PARAMS2(test_num_tracks_cue, cue_single_bin_multiple_data, 13);
+  TEST_PARAMS2(test_num_tracks_cue, cue_multiple_bin_multiple_data, 4);
+
+  TEST_PARAMS2(test_num_tracks_gdi, gdi_three_tracks, 3);
+  TEST_PARAMS2(test_num_tracks_gdi, gdi_many_tracks, 26);
 
   TEST(test_open_cue_track_largest_data);
   TEST(test_open_cue_track_largest_data_last_track);

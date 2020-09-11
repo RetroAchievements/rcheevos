@@ -243,8 +243,9 @@ static int cdreader_cue_num_tracks(const char* path)
 {
   void* file_handle;
   char buffer[1024];
-  char* ptr, * end;
-  int current_track = 0;
+  char* ptr;
+  char* end;
+  int last_track = 0;
 
   size_t num_read = 0;
   size_t file_offset = 0;
@@ -270,33 +271,12 @@ static int cdreader_cue_num_tracks(const char* path)
       if (strncasecmp(ptr, "TRACK ", 6) == 0)
       {
         ptr += 6;
-        current_track = atoi(ptr);
+        last_track = atoi(ptr);
 
         while (*ptr != ' ')
           ++ptr;
         while (*ptr == ' ')
           ++ptr;
-      }
-
-      else if (strncasecmp(ptr, "FILE ", 5) == 0)
-      {
-        ptr += 5;
-        if (*ptr == '"')
-        {
-          ++ptr;
-          do
-          {
-            ++ptr;
-          } while (*ptr && *ptr != '\n' && *ptr != '"');
-        }
-        else
-        {
-          do
-          {
-            ++ptr;
-          } while (*ptr && *ptr != '\n' && *ptr != ' ');
-        }
-
       }
     }
 
@@ -309,12 +289,12 @@ static int cdreader_cue_num_tracks(const char* path)
 
   if (verbose_message_callback)
   {
-      char message[128];
-      snprintf(message, sizeof(message), "Found %d tracks", current_track);
-      verbose_message_callback(message);
+    char message[64];
+    snprintf(message, sizeof(message), "Found %d tracks", last_track);
+    verbose_message_callback(message);
   }
 
-  return current_track;
+  return last_track;
 }
 
 static int cdreader_gdi_num_tracks(const char* path)
@@ -668,15 +648,13 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
       }
     }
 
-    /* begins looping inside content*/
+    /* begins looping inside content */
     while (ptr < end)
     {
       ptr2 = ptr;
 
       while ((*ptr2 != '\n') && (*ptr2 != '\r') && (ptr2 < end))
-      {
         ++ptr2;
-      }
 
       if (ptr2 - ptr != 0)
       {
@@ -715,16 +693,15 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
           break;
         }
 
+        /* continue search from next line */
         ptr = ptr2; 
 
         file[0] = '\0';
       }
 
       /* skip newlines */
-      while ((*ptr == '\n' && ptr < end) || (*ptr == '\r' && ptr < end))
-      {
+      while ((*ptr == '\n'|| *ptr == '\r') && ptr < end)
         ++ptr;
-      }
     }
 
     file_offset += (ptr - buffer);
@@ -747,8 +724,10 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
 
   bin_path = cdreader_get_bin_path(path, file);
 
-  if (cdreader_open_bin(cdrom, bin_path, mode)) /*gives your cd rom*/
+  if (cdreader_open_bin(cdrom, bin_path, mode))
   {
+    /* GDI files use absolute sectors in the TOC, so adjust the offset to first sector of the
+     * file by the first absolute sector for the track */
     cdrom->first_sector_offset = -(lba * cdrom->sector_size);
     if (verbose_message_callback)
     {
@@ -768,6 +747,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
     free(cdrom);
     cdrom = NULL;
   }
+
   return cdrom;
 }
 
