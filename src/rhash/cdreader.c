@@ -528,7 +528,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
   size_t track_size;
   int track_type;
   char* bin_path = "";
-  int current_track = 0;
+  uint32_t current_track = 0;
   char* ptr, *ptr2, *end;
   int lba = 0;
 
@@ -578,7 +578,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
         ++ptr;
 
       /* line format: [trackid] [lba] [type] [sectorsize] [file] [?] */
-      current_track = atoi(ptr);
+      current_track = (uint32_t)atoi(ptr);
       if (track && current_track != track)
         continue;
 
