@@ -917,7 +917,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
       --ptr;
     *ptr = '\0';
 
-    snprintf(message, sizeof(message), "Found Dreamcast title: %.128s (%.16s)", (const char*)&buffer[0x80], (const char*)&buffer[0x40]);
+    snprintf(message, sizeof(message), "Found Dreamcast CD: %.128s (%.16s)", (const char*)&buffer[0x80], (const char*)&buffer[0x40]);
     verbose_message_callback(message);
   }
 
