@@ -205,8 +205,10 @@ int rc_evaluate_lboard(rc_lboard_t* self, int* value, rc_peek_t peek, void* peek
           self->state = RC_LBOARD_STATE_STARTED;
 
           /* reset any hit counts in the value */
-          if (self->value.conditions)
-            rc_reset_condset(self->value.conditions);
+          if (self->progress)
+            rc_reset_value(self->progress);
+
+          rc_reset_value(&self->value);
         }
       }
       break;
@@ -251,4 +253,9 @@ void rc_reset_lboard(rc_lboard_t* self) {
   rc_reset_trigger(&self->start);
   rc_reset_trigger(&self->submit);
   rc_reset_trigger(&self->cancel);
+
+  if (self->progress)
+    rc_reset_value(self->progress);
+
+  rc_reset_value(&self->value);
 }

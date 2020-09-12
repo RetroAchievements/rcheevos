@@ -26,6 +26,9 @@ void rc_runtime_destroy(rc_runtime_t* self) {
   }
 
   if (self->lboards) {
+    for (i = 0; i < self->lboard_count; ++i)
+      free(self->lboards[i].buffer);
+
     free(self->lboards);
     self->lboards = NULL;
 
@@ -166,6 +169,12 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
       self->triggers = (rc_runtime_trigger_t*)malloc(self->trigger_capacity * sizeof(rc_runtime_trigger_t));
     else
       self->triggers = (rc_runtime_trigger_t*)realloc(self->triggers, self->trigger_capacity * sizeof(rc_runtime_trigger_t));
+
+    if (!self->triggers) {
+      free(trigger_buffer);
+      *self->next_memref = NULL; /* disassociate any memrefs allocated by the failed parse */
+      return RC_OUT_OF_MEMORY;
+    }
   }
 
   /* assign the new trigger */
@@ -304,6 +313,12 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
       self->lboards = (rc_runtime_lboard_t*)malloc(self->lboard_capacity * sizeof(rc_runtime_lboard_t));
     else
       self->lboards = (rc_runtime_lboard_t*)realloc(self->lboards, self->lboard_capacity * sizeof(rc_runtime_lboard_t));
+
+    if (!self->lboards) {
+      free(lboard_buffer);
+      *self->next_memref = NULL; /* disassociate any memrefs allocated by the failed parse */
+      return RC_OUT_OF_MEMORY;
+    }
   }
 
   /* assign the new lboard */

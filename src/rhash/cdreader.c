@@ -240,94 +240,6 @@ static size_t cdreader_get_bin_size(const char* cue_path, const char* bin_name)
   return size;
 }
 
-static int cdreader_cue_num_tracks(const char* path)
-{
-  void* file_handle;
-  char buffer[1024];
-  char* ptr;
-  char* end;
-  int last_track = 0;
-
-  size_t num_read = 0;
-  size_t file_offset = 0;
-
-  file_handle = rc_file_open(path);
-  if (!file_handle)
-    return 0;
-
-  do
-  {
-    num_read = rc_file_read(file_handle, buffer, sizeof(buffer) - 1);
-    if (num_read == 0)
-      break;
-
-    buffer[num_read] = 0;
-    if (num_read == sizeof(buffer) - 1)
-      end = buffer + sizeof(buffer) * 3 / 4;
-    else
-      end = buffer + num_read;
-
-    for (ptr = buffer; ptr < end; ++ptr)
-    {
-      if (strncasecmp(ptr, "TRACK ", 6) == 0)
-      {
-        ptr += 6;
-        last_track = atoi(ptr);
-
-        while (*ptr != ' ')
-          ++ptr;
-        while (*ptr == ' ')
-          ++ptr;
-      }
-    }
-
-    file_offset += (ptr - buffer);
-    rc_file_seek(file_handle, file_offset, SEEK_SET);
-
-  } while (1);
-
-  rc_file_close(file_handle);
-
-  if (verbose_message_callback)
-  {
-    char message[64];
-    snprintf(message, sizeof(message), "Found %d tracks", last_track);
-    verbose_message_callback(message);
-  }
-
-  return last_track;
-}
-
-static int cdreader_gdi_num_tracks(const char* path)
-{
-  void* file_handle;
-  char buffer[16];
-  int num_tracks = 0;
-
-  size_t num_read = 0;
-
-  file_handle = rc_file_open(path);
-  if (!file_handle)
-      return 0;
-
-  num_read = rc_file_read(file_handle, buffer, sizeof(buffer) - 1);
-  if (num_read == 0)
-      return 0;
-
-  /* first chars on gdi sheet is total tracks */
-  sscanf(buffer, "%d", &num_tracks);
-  rc_file_close(file_handle);
-
-  if (verbose_message_callback)
-  {
-    char message[128];
-    snprintf(message, sizeof(message), "Found %d tracks", num_tracks);
-    verbose_message_callback(message);
-  }
-
-  return num_tracks;
-}
-
 static void* cdreader_open_cue_track(const char* path, uint32_t track)
 {
   void* file_handle;
@@ -830,15 +742,6 @@ static void cdreader_close_track(void* track_handle)
   }
 }
 
-static int cdreader_num_tracks(const char* path)
-{
-  if (rc_path_compare_extension(path, "cue"))
-    return cdreader_cue_num_tracks(path);
-  if (rc_path_compare_extension(path, "gdi"))
-    return cdreader_gdi_num_tracks(path);
-  return 0;
-}
-
 static uint32_t cdreader_absolute_sector_to_track_sector(void* track_handle, uint32_t sector)
 {
   struct cdrom_t* cdrom = (struct cdrom_t*)track_handle;
@@ -855,7 +758,6 @@ void rc_hash_init_default_cdreader()
   cdreader.open_track = cdreader_open_track;
   cdreader.read_sector = cdreader_read_sector;
   cdreader.close_track = cdreader_close_track;
-  cdreader.num_tracks = cdreader_num_tracks;
   cdreader.absolute_sector_to_track_sector = cdreader_absolute_sector_to_track_sector;
 
   rc_hash_init_custom_cdreader(&cdreader);

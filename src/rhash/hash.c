@@ -178,15 +178,6 @@ static void rc_cd_close_track(void* track_handle)
   rc_hash_error("no hook registered for cdreader_close_track");
 }
 
-static int rc_cd_num_tracks(const char* path)
-{
-  if (cdreader && cdreader->num_tracks)
-    return cdreader->num_tracks(path);
-
-  rc_hash_error("no hook registered for cdreader_num_tracks");
-  return 0;
-}
-
 static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, unsigned* size)
 {
   uint8_t buffer[2048], *tmp;
@@ -947,6 +938,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   exe_file[i] = '\0';
   
   sector = rc_cd_find_file_sector(track_handle, exe_file, &size);
+
   rc_cd_close_track(track_handle);
 
   if (sector == 0)
@@ -1813,7 +1805,8 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_NINTENDO_DS;
         }
-        else if (rc_path_compare_extension(ext, "n64"))
+        else if (rc_path_compare_extension(ext, "n64") ||
+                 rc_path_compare_extension(ext, "ndd"))
         {
           iterator->consoles[0] = RC_CONSOLE_NINTENDO_64;
         }

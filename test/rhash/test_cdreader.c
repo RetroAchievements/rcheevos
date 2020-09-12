@@ -235,18 +235,6 @@ static void test_open_gdi_track_last()
   cdreader->close_track(track_handle);
 }
 
-static void test_num_tracks_cue(const uint8_t* cue_contents, int expected_tracks)
-{
-	mock_file(0, "game.cue", cue_contents, strlen(cue_contents));
-	ASSERT_NUM_EQUALS(cdreader->num_tracks("game.cue"), expected_tracks);
-}
-
-static void test_num_tracks_gdi(const uint8_t* gdi_contents, int expected_tracks)
-{
-	mock_file(0, "game.gdi", gdi_contents, strlen(gdi_contents));
-	ASSERT_NUM_EQUALS(cdreader->num_tracks("game.gdi"), expected_tracks);
-}
-
 static void test_open_cue_track_largest_data()
 {
   cdrom_t* track_handle;
@@ -643,13 +631,6 @@ void test_cdreader(void) {
   TEST(test_open_gdi_track_3);
   TEST(test_open_gdi_track_3_quoted);
   TEST(test_open_gdi_track_last);
-
-  TEST_PARAMS2(test_num_tracks_cue, cue_single_track, 1);
-  TEST_PARAMS2(test_num_tracks_cue, cue_single_bin_multiple_data, 13);
-  TEST_PARAMS2(test_num_tracks_cue, cue_multiple_bin_multiple_data, 4);
-
-  TEST_PARAMS2(test_num_tracks_gdi, gdi_three_tracks, 3);
-  TEST_PARAMS2(test_num_tracks_gdi, gdi_many_tracks, 26);
 
   TEST(test_open_cue_track_largest_data);
   TEST(test_open_cue_track_largest_data_last_track);

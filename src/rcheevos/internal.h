@@ -91,7 +91,7 @@ rc_memref_value_t* rc_get_indirect_memref(rc_memref_value_t* memref, rc_eval_sta
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 
-rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse);
+rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, int is_value);
 int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state);
 void rc_reset_condset(rc_condset_t* self);
 
@@ -103,6 +103,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
 unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state);
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
+void rc_reset_value(rc_value_t* self);
 
 void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_state_t* parse);
 

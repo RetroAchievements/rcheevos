@@ -263,7 +263,7 @@ static void validate_patchdata_file(const char* patchdata_file) {
 }
 
 #ifdef _CRT_SECURE_NO_WARNINGS
-static void validate_pathdata_directory(const char* patchdata_directory) {
+static void validate_patchdata_directory(const char* patchdata_directory) {
   WIN32_FIND_DATA fdFile;
   HANDLE hFind = NULL;
 
@@ -359,7 +359,7 @@ int main(int argc, char* argv[]) {
 
     case 'd':
       printf("Directory: %s: ", argv[2]);
-      validate_pathdata_directory(argv[2]);
+      validate_patchdata_directory(argv[2]);
       break;
 
     default:

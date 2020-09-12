@@ -207,7 +207,6 @@ void init_mock_cdreader()
   cdreader.open_track = _mock_cd_open_track;
   cdreader.close_track = _mock_file_close;
   cdreader.read_sector = _mock_cd_read_sector;
-  cdreader.num_tracks = _mock_cd_num_tracks;
   cdreader.absolute_sector_to_track_sector = _mock_cd_absolute_sector_to_track_sector;
 
   rc_hash_init_custom_cdreader(&cdreader);

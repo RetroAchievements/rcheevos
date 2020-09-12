@@ -4,75 +4,36 @@
 #include <ctype.h> /* isdigit */
 
 static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
-  rc_condition_t** next;
-  int has_measured;
-  int in_add_address;
+  rc_condset_t** next_clause;
 
-  has_measured = 0;
-  in_add_address = 0;
+  next_clause = &self->conditions;
 
-  /* this largely duplicates rc_parse_condset, but we cannot call it directly, as we need to check the
-   * type of each condition as we go */
-  self->conditions = RC_ALLOC(rc_condset_t, parse);
-  self->conditions->has_pause = 0;
-
-  next = &self->conditions->conditions;
-  for (;;) {
-    *next = rc_parse_condition(memaddr, parse, in_add_address);
-
+  do
+  {
+    parse->measured_target = 0; /* passing is_value=1 should prevent any conflicts, but clear it out anyway */
+    *next_clause = rc_parse_condset(memaddr, parse, 1);
     if (parse->offset < 0) {
       return;
     }
 
-    in_add_address = (*next)->type == RC_CONDITION_ADD_ADDRESS;
-
-    switch ((*next)->type) {
-      case RC_CONDITION_ADD_HITS:
-      case RC_CONDITION_ADD_SOURCE:
-      case RC_CONDITION_SUB_SOURCE:
-      case RC_CONDITION_AND_NEXT:
-      case RC_CONDITION_ADD_ADDRESS:
-        /* combining flags are allowed */
-        break;
-
-      case RC_CONDITION_RESET_IF:
-        /* ResetIf is allowed (primarily for rich presense - leaderboard will typically cancel instead of resetting) */
-        break;
-
-      case RC_CONDITION_MEASURED:
-        if (has_measured) {
-          parse->offset = RC_MULTIPLE_MEASURED;
-          return;
-        }
-        has_measured = 1;
-        if ((*next)->required_hits == 0 && (*next)->oper != RC_OPERATOR_NONE)
-          (*next)->required_hits = (unsigned)-1;
-        break;
-
-      default:
-        /* non-combinding flags and PauseIf are not allowed */
-        parse->offset = RC_INVALID_VALUE_FLAG;
-        return;
+    if (**memaddr == 'S' || **memaddr == 's') {
+      /* alt groups not supported */
+      parse->offset = RC_INVALID_VALUE_FLAG;
+    }
+    else if (parse->measured_target == 0) {
+      parse->offset = RC_MISSING_VALUE_MEASURED;
+    }
+    else if (**memaddr == '$') {
+      /* maximum of */
+      ++(*memaddr);
+      next_clause = &(*next_clause)->next;
+      continue;
     }
 
-    (*next)->pause = 0;
-    next = &(*next)->next;
+    break;
+  } while (1);
 
-    if (**memaddr != '_') {
-      break;
-    }
-
-    (*memaddr)++;
-  }
-
-  if (!has_measured) {
-    parse->offset = RC_MISSING_VALUE_MEASURED;
-  }
-
-  if (parse->buffer) {
-    *next = 0;
-    self->conditions->next = 0;
-  }
+  (*next_clause)->next = 0;
 }
 
 void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
@@ -87,6 +48,8 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
   /* convert legacy format into condset */
   self->conditions = RC_ALLOC(rc_condset_t, parse);
   self->conditions->has_pause = 0;
+  self->conditions->is_paused = 0;
+  self->measured_value = 0;
 
   next = &self->conditions->conditions;
   next_clause = &self->conditions->next;
@@ -162,6 +125,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
         cond->next = 0;
         *next_clause = RC_ALLOC(rc_condset_t, parse);
         (*next_clause)->has_pause = 0;
+        (*next_clause)->is_paused = 0;
         next = &(*next_clause)->conditions;
         next_clause = &(*next_clause)->next;
         break;
@@ -184,6 +148,8 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
   else {
     rc_parse_legacy_value(self, memaddr, parse);
   }
+
+  self->measured_value = 0;
 }
 
 int rc_value_size(const char* memaddr) {
@@ -216,25 +182,65 @@ int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) 
   rc_eval_state_t eval_state;
   rc_condset_t* condset;
   int result = 0;
-
-  memset(&eval_state, 0, sizeof(eval_state));
-  eval_state.peek = peek;
-  eval_state.peek_userdata = ud;
-  eval_state.L = L;
+  int paused = 1;
 
   rc_update_memref_values(self->memrefs, peek, ud);
 
-  rc_test_condset(self->conditions, &eval_state);
-  result = (int)eval_state.measured_value;
+  for (condset = self->conditions; condset != NULL; condset = condset->next) {
+    memset(&eval_state, 0, sizeof(eval_state));
+    eval_state.peek = peek;
+    eval_state.peek_userdata = ud;
+    eval_state.L = L;
 
-  condset = self->conditions->next;
-  while (condset != NULL) {
     rc_test_condset(condset, &eval_state);
-    if ((int)eval_state.measured_value > result)
-      result = (int)eval_state.measured_value;
 
-    condset = condset->next;
+    if (condset->is_paused)
+      continue;
+
+    if (eval_state.was_reset) {
+      /* if any ResetIf condition was true, reset the hit counts 
+       * NOTE: ResetIf only affects the current condset when used in values!
+       */
+      rc_reset_condset(condset);
+
+      /* if the measured value came from a hit count, reset it too */
+      if (eval_state.measured_from_hits)
+        eval_state.measured_value = 0;
+    }
+
+    if (paused) {
+      /* capture the first valid measurement */
+      result = (int)eval_state.measured_value;
+      paused = 0;
+    }
+    else {
+      /* multiple condsets are currently only used for the MAX_OF operation.
+       * only keep the condset's value if it's higher than the current highest value.
+       */
+      if ((int)eval_state.measured_value > result)
+        result = (int)eval_state.measured_value;
+    }
+  }
+
+  if (!paused) {
+    /* if not paused, store the value so that it's available when paused. */
+    self->measured_value = result;
+  }
+  else {
+    /* when paused, the Measured value will not be captured, use the last captured value. */
+    result = self->measured_value;
   }
 
   return result;
+}
+
+void rc_reset_value(rc_value_t* self)
+{
+  rc_condset_t* condset = self->conditions;
+  while (condset != NULL) {
+    rc_reset_condset(condset);
+    condset = condset->next;
+  }
+
+  self->measured_value = 0;
 }

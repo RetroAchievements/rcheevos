@@ -109,9 +109,6 @@ extern "C" {
   /* closes the track handle */
   typedef void (*rc_hash_cdreader_close_track_handler)(void* track_handle);
 
-  /* get number of tracks */
-  typedef int (*rc_hash_cdreader_num_tracks_handler)(const char* path);
-
   /* convert absolute sector to track sector */
   typedef uint32_t(*rc_hash_cdreader_absolute_sector_to_track_sector)(void* track_handle, uint32_t sector);
 
@@ -120,7 +117,6 @@ extern "C" {
     rc_hash_cdreader_open_track_handler              open_track;
     rc_hash_cdreader_read_sector_handler             read_sector;
     rc_hash_cdreader_close_track_handler             close_track;
-    rc_hash_cdreader_num_tracks_handler              num_tracks;
     rc_hash_cdreader_absolute_sector_to_track_sector absolute_sector_to_track_sector;
   };
 
