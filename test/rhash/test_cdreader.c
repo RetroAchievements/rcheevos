@@ -22,12 +22,12 @@ static const unsigned char sync_pattern[] = {
   0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00
 };
 
-static unsigned char cue_single_track[] =
+static char cue_single_track[] =
   "FILE \"game.bin\" BINARY\n"
   "  TRACK 01 MODE2/2352\n"
   "    INDEX 01 00:00:00\n";
 
-static unsigned char cue_single_bin_multiple_data[] =
+static char cue_single_bin_multiple_data[] =
   "FILE \"game.bin\" BINARY\n"
   "  TRACK 01 AUDIO\n"
   "    INDEX 01 00:00:00\n"
@@ -58,7 +58,7 @@ static unsigned char cue_single_bin_multiple_data[] =
   "    PREGAP 00:02:00\n"
   "    INDEX 01 66:24:37\n";
 
-static unsigned char cue_multiple_bin_multiple_data[] =
+static char cue_multiple_bin_multiple_data[] =
   "FILE \"track1.bin\" BINARY\n"
   "  TRACK 01 AUDIO\n"
   "    INDEX 01 00:00:00\n"
@@ -74,13 +74,13 @@ static unsigned char cue_multiple_bin_multiple_data[] =
   "  TRACK 04 AUDIO\n"
   "    INDEX 00 00:00:00\n";
 
-static unsigned char gdi_three_tracks[] =
+static char gdi_three_tracks[] =
   "3\n"
   "1 0 4 2352 track01.bin 0\n"
   "2 600 0 2352 track02.raw 0\n"
   "3 45000 4 2352 track03.bin 0";
 
-static unsigned char gdi_many_tracks[] =
+static char gdi_many_tracks[] =
   "26\n"
   "1 0 4 2352 track01.bin 0\n"
   "2 450 0 2352 track02.raw 0\n"
@@ -113,7 +113,7 @@ static void test_open_cue_track_2()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
+  mock_file_text(0, "game.cue", cue_single_bin_multiple_data);
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 2);
@@ -132,7 +132,7 @@ static void test_open_cue_track_12()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
+  mock_file_text(0, "game.cue", cue_single_bin_multiple_data);
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 12);
@@ -151,7 +151,7 @@ static void test_open_cue_track_14()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
+  mock_file_text(0, "game.cue", cue_single_bin_multiple_data);
   mock_empty_file(1, "game.bin", 718310208);
 
   /* only 13 tracks */
@@ -163,7 +163,7 @@ static void test_open_cue_track_missing_bin()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
+  mock_file_text(0, "game.cue", cue_single_bin_multiple_data);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 2);
   ASSERT_PTR_NULL(track_handle);
@@ -173,7 +173,7 @@ static void test_open_gdi_track_3()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.gdi", gdi_three_tracks, strlen(gdi_three_tracks));
+  mock_file_text(0, "game.gdi", gdi_three_tracks);
   mock_empty_file(1, "track03.bin", 1185760800);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 3);
@@ -191,7 +191,7 @@ static void test_open_gdi_track_3()
 
 static void test_open_gdi_track_3_quoted()
 {
-  unsigned char gdi_contents[] =
+  const char gdi_contents[] =
 	"3\n"
 	"1 0 4 2352 \"track 01.bin\" 0\n"
 	"2 600 0 2352 \"track 02.raw\" 0\n"
@@ -199,7 +199,7 @@ static void test_open_gdi_track_3_quoted()
 
   cdrom_t* track_handle;
 
-  mock_file(0, "game.gdi", gdi_contents, strlen(gdi_contents));
+  mock_file_text(0, "game.gdi", gdi_contents);
   mock_empty_file(1, "track 03.bin", 1185760800);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 3);
@@ -219,7 +219,7 @@ static void test_open_gdi_track_last()
 {
   cdrom_t* track_handle;
 
-  mock_file(0, "game.gdi", gdi_many_tracks, strlen(gdi_many_tracks));
+  mock_file_text(0, "game.gdi", gdi_many_tracks);
   mock_empty_file(1, "track26.bin", 2457600);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.gdi", RC_HASH_CDTRACK_LAST);
@@ -239,7 +239,7 @@ static void test_open_cue_track_largest_data()
 {
   cdrom_t* track_handle;
 	
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
+  mock_file_text(0, "game.cue", cue_single_bin_multiple_data);
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", RC_HASH_CDTRACK_LARGEST);
@@ -258,7 +258,7 @@ static void test_open_cue_track_largest_data_backwards_compatibility()
 {
   cdrom_t* track_handle;
 	
-  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
+  mock_file_text(0, "game.cue", cue_single_bin_multiple_data);
   mock_empty_file(1, "game.bin", 718310208);
 
   /* before defining the enum, 0 meant largest */
@@ -277,7 +277,7 @@ static void test_open_cue_track_largest_data_backwards_compatibility()
 static void test_open_cue_track_largest_data_last_track()
 {
   cdrom_t* track_handle;
-  const unsigned char cue[] =
+  const char cue[] =
 	  "FILE \"game.bin\" BINARY\n"
 	  "  TRACK 01 AUDIO\n"
 	  "    INDEX 01 00:00:00\n"
@@ -291,7 +291,7 @@ static void test_open_cue_track_largest_data_last_track()
 	  "  TRACK 05 MODE1/2352\n"
 	  "    INDEX 01 13:48:56\n";
 
-  mock_file(0, "game.cue", cue, strlen(cue));
+  mock_file_text(0, "game.cue", cue);
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", RC_HASH_CDTRACK_LARGEST);
@@ -309,7 +309,7 @@ static void test_open_cue_track_largest_data_last_track()
 static void test_open_cue_track_largest_data_index0s()
 {
   cdrom_t* track_handle;
-  const unsigned char cue[] =
+  const char cue[] =
 	  "FILE \"game.bin\" BINARY\n"
 	  "  TRACK 01 AUDIO\n"
 	  "    INDEX 01 00:00:00\n"
@@ -320,7 +320,7 @@ static void test_open_cue_track_largest_data_index0s()
 	  "    INDEX 00 01:19:52\n"
 	  "    INDEX 01 01:21:52\n";
 
-  mock_file(0, "game.cue", cue, strlen(cue));
+  mock_file_text(0, "game.cue", cue);
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", RC_HASH_CDTRACK_LARGEST);
@@ -338,7 +338,7 @@ static void test_open_cue_track_largest_data_index0s()
 static void test_open_cue_track_largest_data_index2()
 {
   cdrom_t* track_handle;
-  const unsigned char cue[] =
+  const char cue[] =
 	  "FILE \"game.bin\" BINARY\n"
 	  "  TRACK 01 AUDIO\n"
 	  "    INDEX 01 00:00:00\n"
@@ -347,7 +347,7 @@ static void test_open_cue_track_largest_data_index2()
 	  "    INDEX 01 00:02:00\n"
 	  "    INDEX 02 00:08:64\n";
 
-  mock_file(0, "game.cue", cue, strlen(cue));
+  mock_file_text(0, "game.cue", cue);
   mock_empty_file(1, "game.bin", 718310208);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", RC_HASH_CDTRACK_LARGEST);
@@ -366,7 +366,7 @@ static void test_open_cue_track_largest_data_multiple_bins()
 {
   cdrom_t* track_handle;
 	
-  mock_file(0, "game.cue", cue_multiple_bin_multiple_data, strlen(cue_multiple_bin_multiple_data));
+  mock_file_text(0, "game.cue", cue_multiple_bin_multiple_data);
   mock_empty_file(1, "track1.bin", 4132464);
   mock_empty_file(2, "track2.bin", 30080102);
   mock_empty_file(3, "track3.bin", 40343152);
@@ -386,7 +386,7 @@ static void test_open_cue_track_largest_data_multiple_bins()
 
 static void test_open_cue_track_largest_data_only_audio()
 {
-  unsigned char cue[] =
+  const char cue[] =
     "FILE \"track1.bin\" BINARY\n"
     "  TRACK 01 AUDIO\n"
     "    INDEX 01 00:00:00\n"
@@ -403,7 +403,7 @@ static void test_open_cue_track_largest_data_only_audio()
     "    INDEX 00 00:00:00\n";
   cdrom_t* track_handle;
 
-  mock_file(0, "game.cue", cue, strlen(cue));
+  mock_file_text(0, "game.cue", cue);
   mock_empty_file(1, "track1.bin", 4132464);
   mock_empty_file(2, "track2.bin", 30080102);
   mock_empty_file(3, "track3.bin", 40343152);
@@ -418,7 +418,7 @@ static void test_determine_sector_size_sync(int sector_size)
   cdrom_t* track_handle;
   const size_t image_size = sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue_single_track, strlen(cue_single_track));
+  mock_file_text(0, "game.cue", cue_single_track);
   mock_file(1, "game.bin", image, image_size);
 
   memset(image, 0, image_size);
@@ -442,7 +442,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor(int sector
   cdrom_t* track_handle;
   const size_t image_size = sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue_single_track, strlen(cue_single_track));
+  mock_file_text(0, "game.cue", cue_single_track);
   mock_file(1, "game.bin", image, image_size);
 
   memset(image, 0, image_size);
@@ -464,7 +464,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor(int sector
 
 static void test_determine_sector_size_sync_primary_volume_descriptor_index0(int sector_size)
 {
-  unsigned char cue[] =
+  char cue[] =
     "FILE \"game.bin\" BINARY\n"
     "  TRACK 01 MODE2/2352\n"
     "    INDEX 00 00:00:00\n"
@@ -473,7 +473,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0(int
   cdrom_t* track_handle;
   const size_t image_size = sector_size * 200;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue, strlen(cue));
+  mock_file_text(0, "game.cue", cue);
   mock_file(1, "game.bin", image, image_size);
 
   char sector_size_str[16];
@@ -503,7 +503,7 @@ static void test_determine_sector_size_sync_2048()
   const int sector_size = 2048;
   const size_t image_size = sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue_single_track, strlen(cue_single_track));
+  mock_file_text(0, "game.cue", cue_single_track);
   mock_file(1, "game.bin", image, image_size);
 
   memset(image, 0, image_size);
@@ -528,7 +528,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_2048()
   const int sector_size = 2048;
   const size_t image_size = sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue_single_track, strlen(cue_single_track));
+  mock_file_text(0, "game.cue", cue_single_track);
   mock_file(1, "game.bin", image, image_size);
 
   memset(image, 0, image_size);
@@ -549,7 +549,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_2048()
 
 static void test_determine_sector_size_sync_primary_volume_descriptor_index0_2048()
 {
-  unsigned char cue[] =
+  char cue[] =
     "FILE \"game.bin\" BINARY\n"
     "  TRACK 01 MODE1/2048\n"
     "    INDEX 00 00:00:00\n"
@@ -559,7 +559,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0_204
   const int sector_size = 2048;
   const size_t image_size = sector_size * 200;
   unsigned char* image = (unsigned char*)malloc(image_size);
-  mock_file(0, "game.cue", cue, strlen(cue));
+  mock_file_text(0, "game.cue", cue);
   mock_file(1, "game.bin", image, image_size);
 
   char sector_size_str[16];
@@ -584,7 +584,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0_204
 
 static void test_absolute_sector_to_track_sector_cue_pregap()
 {
-  unsigned char cue[] =
+  const char cue[] =
     "FILE \"game1.bin\" BINARY\n"
     "  TRACK 01 MODE2/2352\n"
     "    INDEX 00 00:00:00\n"    /* 150 non-existant sectors */
@@ -598,7 +598,7 @@ static void test_absolute_sector_to_track_sector_cue_pregap()
   const size_t image_size = 60 * 200;
   unsigned char* image = (unsigned char*)malloc(image_size);
 
-  mock_file(0, "game.cue", cue, strlen(cue));
+  mock_file_text(0, "game.cue", cue);
   mock_file(1, "game1.bin", NULL, 1176000);
   mock_file(2, "game2.bin", image, image_size);
 
@@ -618,7 +618,7 @@ static void test_absolute_sector_to_track_sector_cue_pregap()
 static void test_absolute_sector_to_track_sector_gdi()
 {
   cdrom_t* track_handle;
-  mock_file(0, "game.gdi", gdi_many_tracks, strlen(gdi_many_tracks));
+  mock_file_text(0, "game.gdi", gdi_many_tracks);
   mock_file(1, "track26.bin", NULL, 1234567);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 26);
@@ -641,7 +641,7 @@ static void test_read_sector()
   unsigned char* image = (unsigned char*)malloc(image_size);
   int offset, i;
 
-  mock_file(0, "game.cue", cue_single_track, strlen(cue_single_track));
+  mock_file_text(0, "game.cue", cue_single_track);
   mock_file(1, "game.bin", image, image_size);
 
   memset(image, 0, image_size);

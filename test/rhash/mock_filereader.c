@@ -117,6 +117,11 @@ void mock_file(int index, const char* filename, const uint8_t* buffer, size_t bu
   mock_file_instance[index].first_sector = 0;
 }
 
+void mock_file_text(int index, const char* filename, const char* contents)
+{
+    mock_file(index, filename, (const uint8_t*)contents, strlen(contents));
+}
+
 void mock_file_first_sector(int index, int first_sector)
 {
   mock_file_instance[index].first_sector = first_sector;
@@ -184,12 +189,7 @@ static size_t _mock_cd_read_sector(void* track_handle, uint32_t sector, void* bu
   return _mock_file_read(track_handle, buffer, requested_bytes);
 }
 
-static int _mock_cd_num_tracks(const char* path)
-{
-  return mock_cd_tracks;
-}
-
-static int _mock_cd_absolute_sector_to_track_sector(void* track_handle, uint32_t sector)
+static uint32_t _mock_cd_absolute_sector_to_track_sector(void* track_handle, uint32_t sector)
 {
   mock_file_data* file = (mock_file_data*)track_handle;
   return sector - file->first_sector;

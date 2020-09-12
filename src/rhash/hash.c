@@ -912,12 +912,12 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   if (verbose_message_callback)
   {
     char message[256];
-    char* ptr = &buffer[0xFF];
-    while (ptr > & buffer[0x80] && ptr[-1] == ' ')
+    uint8_t* ptr = &buffer[0xFF];
+    while (ptr > &buffer[0x80] && ptr[-1] == ' ')
       --ptr;
     *ptr = '\0';
 
-    snprintf(message, sizeof(message), "Found Dreamcast title: %s (%.16s)", &buffer[0x80], &buffer[0x40]);
+    snprintf(message, sizeof(message), "Found Dreamcast title: %s (%.16s)", (const char*)&buffer[0x80], (const char*)&buffer[0x40]);
     verbose_message_callback(message);
   }
 
