@@ -1664,7 +1664,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "bs"))
         {
-           iterator->consoles[0] = RC_CONSOLE_SUPER_NINTENDO;
+          iterator->consoles[0] = RC_CONSOLE_SUPER_NINTENDO;
         }
         break;
 
@@ -1681,14 +1681,14 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "chd"))
         {
-            iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
-            iterator->consoles[1] = RC_CONSOLE_DREAMCAST;
-            iterator->consoles[2] = RC_CONSOLE_PC_ENGINE;
-            iterator->consoles[3] = RC_CONSOLE_3DO;
-            iterator->consoles[4] = RC_CONSOLE_PCFX;
-            /* SEGA CD hash doesn't have any logic to ensure it's being used against a SEGA CD, so it should always be last */
-            iterator->consoles[5] = RC_CONSOLE_SEGA_CD;
-            need_path = 1;
+          iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
+          iterator->consoles[1] = RC_CONSOLE_DREAMCAST;
+          iterator->consoles[2] = RC_CONSOLE_PC_ENGINE;
+          iterator->consoles[3] = RC_CONSOLE_3DO;
+          iterator->consoles[4] = RC_CONSOLE_PCFX;
+          /* SEGA CD hash doesn't have any logic to ensure it's being used against a SEGA CD, so it should always be last */
+          iterator->consoles[5] = RC_CONSOLE_SEGA_CD;
+          need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "col"))
         {

@@ -242,6 +242,26 @@ static void test_open_cue_track_largest_data()
   mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
   mock_empty_file(1, "game.bin", 718310208);
 
+  track_handle = (cdrom_t*)cdreader->open_track("game.cue", RC_HASH_CDTRACK_LARGEST);
+  ASSERT_PTR_NOT_NULL(track_handle);
+
+  ASSERT_PTR_NOT_NULL(track_handle->file_handle);
+  ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
+  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 146190912); /* track 5: 0x8B6B240 */
+  ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
+  ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+
+  cdreader->close_track(track_handle);
+}
+
+static void test_open_cue_track_largest_data_backwards_compatibility()
+{
+  cdrom_t* track_handle;
+	
+  mock_file(0, "game.cue", cue_single_bin_multiple_data, strlen(cue_single_bin_multiple_data));
+  mock_empty_file(1, "game.bin", 718310208);
+
+  /* before defining the enum, 0 meant largest */
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 0);
   ASSERT_PTR_NOT_NULL(track_handle);
 
@@ -274,7 +294,7 @@ static void test_open_cue_track_largest_data_last_track()
   mock_file(0, "game.cue", cue, strlen(cue));
   mock_empty_file(1, "game.bin", 718310208);
 
-  track_handle = (cdrom_t*)cdreader->open_track("game.cue", 0);
+  track_handle = (cdrom_t*)cdreader->open_track("game.cue", RC_HASH_CDTRACK_LARGEST);
   ASSERT_PTR_NOT_NULL(track_handle);
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
@@ -303,7 +323,7 @@ static void test_open_cue_track_largest_data_index0s()
   mock_file(0, "game.cue", cue, strlen(cue));
   mock_empty_file(1, "game.bin", 718310208);
 
-  track_handle = (cdrom_t*)cdreader->open_track("game.cue", 0);
+  track_handle = (cdrom_t*)cdreader->open_track("game.cue", RC_HASH_CDTRACK_LARGEST);
   ASSERT_PTR_NOT_NULL(track_handle);
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
@@ -330,7 +350,7 @@ static void test_open_cue_track_largest_data_index2()
   mock_file(0, "game.cue", cue, strlen(cue));
   mock_empty_file(1, "game.bin", 718310208);
 
-  track_handle = (cdrom_t*)cdreader->open_track("game.cue", 0);
+  track_handle = (cdrom_t*)cdreader->open_track("game.cue", RC_HASH_CDTRACK_LARGEST);
   ASSERT_PTR_NOT_NULL(track_handle);
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
@@ -562,6 +582,57 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0_204
   free(image);
 }
 
+static void test_absolute_sector_to_track_sector_cue_pregap()
+{
+  unsigned char cue[] =
+    "FILE \"game1.bin\" BINARY\n"
+    "  TRACK 01 MODE2/2352\n"
+    "    INDEX 00 00:00:00\n"    /* 150 non-existant sectors */
+    "    INDEX 01 00:02:00\n"    /* 500 sectors of data [1176000 bytes] */
+    "FILE \"game2.bin\" BINARY\n"
+	"  TRACK 02 MODE2/2352\n"
+	"    INDEX 00 00:00:00\n"    /* 150 non-existant sectors */
+	"    INDEX 01 00:02:00\n";
+
+  cdrom_t* track_handle;
+  const size_t image_size = 60 * 200;
+  unsigned char* image = (unsigned char*)malloc(image_size);
+
+  mock_file(0, "game.cue", cue, strlen(cue));
+  mock_file(1, "game1.bin", NULL, 1176000);
+  mock_file(2, "game2.bin", image, image_size);
+
+  track_handle = (cdrom_t*)cdreader->open_track("game.cue", 2);
+  ASSERT_PTR_NOT_NULL(track_handle);
+
+  ASSERT_PTR_NOT_NULL(track_handle->file_handle);
+  ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game2.bin");
+  ASSERT_NUM_EQUALS(track_handle->first_sector, 800); /* 150 + 500 + 150 */
+
+  ASSERT_NUM_EQUALS(cdreader->absolute_sector_to_track_sector(track_handle, 818), 18);
+
+  cdreader->close_track(track_handle);
+  free(image);
+}
+
+static void test_absolute_sector_to_track_sector_gdi()
+{
+  cdrom_t* track_handle;
+  mock_file(0, "game.gdi", gdi_many_tracks, strlen(gdi_many_tracks));
+  mock_file(1, "track26.bin", NULL, 1234567);
+
+  track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 26);
+  ASSERT_PTR_NOT_NULL(track_handle);
+
+  ASSERT_PTR_NOT_NULL(track_handle->file_handle);
+  ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track26.bin");
+  ASSERT_NUM_EQUALS(track_handle->first_sector, 548106);
+
+  ASSERT_NUM_EQUALS(cdreader->absolute_sector_to_track_sector(track_handle, 548106 + 46), 46);
+
+  cdreader->close_track(track_handle);
+}
+
 static void test_read_sector()
 {
   char buffer[4096];
@@ -633,6 +704,7 @@ void test_cdreader(void) {
   TEST(test_open_gdi_track_last);
 
   TEST(test_open_cue_track_largest_data);
+  TEST(test_open_cue_track_largest_data_backwards_compatibility);
   TEST(test_open_cue_track_largest_data_last_track);
   TEST(test_open_cue_track_largest_data_index0s);
   TEST(test_open_cue_track_largest_data_index2);
@@ -650,6 +722,9 @@ void test_cdreader(void) {
   TEST(test_determine_sector_size_sync_2048);
   TEST(test_determine_sector_size_sync_primary_volume_descriptor_2048);
   TEST(test_determine_sector_size_sync_primary_volume_descriptor_index0_2048);
+
+  TEST(test_absolute_sector_to_track_sector_cue_pregap);
+  TEST(test_absolute_sector_to_track_sector_gdi);
 
   TEST(test_read_sector);
 

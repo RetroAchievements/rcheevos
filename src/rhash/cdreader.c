@@ -445,7 +445,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
 
   rc_file_close(file_handle);
 
-  if (track == 0)
+  if (track == RC_HASH_CDTRACK_LARGEST)
   {
     previous_track_is_data = (memcmp(mode, "MODE", 4) == 0);
     if (previous_track_is_data)
@@ -697,6 +697,10 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
 
 static void* cdreader_open_track(const char* path, uint32_t track)
 {
+  /* backwards compatibility - 0 used to mean largest */
+  if (track == 0)
+    track = RC_HASH_CDTRACK_LARGEST;
+
   if (rc_path_compare_extension(path, "cue"))
     return cdreader_open_cue_track(path, track);
   if (rc_path_compare_extension(path, "gdi"))
