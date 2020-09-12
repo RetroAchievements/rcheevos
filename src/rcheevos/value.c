@@ -4,21 +4,36 @@
 #include <ctype.h> /* isdigit */
 
 static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
-  self->conditions = rc_parse_condset(memaddr, parse, 1);
-  if (parse->offset < 0) {
-    return;
-  }
+  rc_condset_t** next_clause;
 
-  if (**memaddr == 'S' || **memaddr == 's') {
-    /* alt groups not supported */
-    parse->offset = RC_INVALID_VALUE_FLAG;
-  }
-  else if (parse->measured_target == 0) {
-    parse->offset = RC_MISSING_VALUE_MEASURED;
-  }
-  else {
-    self->conditions->next = 0;
-  }
+  next_clause = &self->conditions;
+
+  do
+  {
+    parse->measured_target = 0; /* passing is_value=1 should prevent any conflicts, but clear it out anyway */
+    *next_clause = rc_parse_condset(memaddr, parse, 1);
+    if (parse->offset < 0) {
+      return;
+    }
+
+    if (**memaddr == 'S' || **memaddr == 's') {
+      /* alt groups not supported */
+      parse->offset = RC_INVALID_VALUE_FLAG;
+    }
+    else if (parse->measured_target == 0) {
+      parse->offset = RC_MISSING_VALUE_MEASURED;
+    }
+    else if (**memaddr == '$') {
+      /* maximum of */
+      ++(*memaddr);
+      next_clause = &(*next_clause)->next;
+      continue;
+    }
+
+    break;
+  } while (1);
+
+  (*next_clause)->next = 0;
 }
 
 void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {

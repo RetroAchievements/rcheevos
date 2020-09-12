@@ -470,6 +470,53 @@ static void test_value_from_addhits() {
   ASSERT_NUM_EQUALS(value, 1);
 }
 
+static void test_maximum_value_from_conditions() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_lboard_t* lboard;
+  char buffer[1024];
+  int value;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_lboard(&lboard, buffer, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:Q:0xH01=1_M:0x 02$Q:0xH01=2_M:0x 03");
+  lboard->state = RC_LBOARD_STATE_ACTIVE;
+
+  /* started, neither value is active */
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* first value is active */
+  ram[1] = 1;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 0xAB34);
+
+  /* second value is active */
+  ram[1] = 2;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 0x56AB);
+
+  /* value updated */
+  ram[3] = 0x12;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 0x5612);
+
+  /* neither value is active */
+  ram[1] = 3;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 0);
+}
+
+static void test_measured_value_and_condition()
+{
+    rc_lboard_t* lboard;
+    char buffer[1024];
+
+    /* a Measured is irrelevant in the STA/CAN/SUB conditions, but if present, allow them to be unique */
+    assert_parse_lboard(&lboard, buffer, "STA:M:0xH00=0::CAN:M:0xH00=2::SUB:M:0xH00=3::VAL:M:0xH04");
+}
+
 static void test_unparsable_lboard(const char* memaddr, int expected_error) {
   ASSERT_NUM_EQUALS(rc_lboard_size(memaddr), expected_error);
 }
@@ -489,6 +536,8 @@ static void test_unparsable_strings() {
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH01=1_T:0xH01=2", RC_INVALID_VALUE_FLAG);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1_0xH01=2", RC_INVALID_VALUE_FLAG);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1", RC_MISSING_VALUE_MEASURED);
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1$M:0xH03", RC_MISSING_VALUE_MEASURED);
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH02SM:0xH03", RC_INVALID_VALUE_FLAG);
 }
 
 void test_lboard(void) {
@@ -512,6 +561,8 @@ void test_lboard(void) {
 
   TEST(test_value_from_hitcount);
   TEST(test_value_from_addhits);
+  TEST(test_maximum_value_from_conditions);
+  TEST(test_measured_value_and_condition);
 
   test_unparsable_strings();
 

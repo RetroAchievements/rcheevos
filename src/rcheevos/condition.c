@@ -98,6 +98,8 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     case '_':
     case ')':
     case '\0':
+    case 'S':
+    case '$':
       self->oper = RC_OPERATOR_NONE;
       self->operand2.type = RC_OPERAND_CONST;
       self->operand2.value.num = 1;

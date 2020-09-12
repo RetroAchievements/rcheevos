@@ -464,6 +464,7 @@ static const rc_memory_region_t _rc_memory_regions_pokemini[] = {
 static const rc_memory_regions_t rc_memory_regions_pokemini = { _rc_memory_regions_pokemini, 2 };
 
 /* ===== Sega CD ===== */
+/* https://en.wikibooks.org/wiki/Genesis_Programming */
 static const rc_memory_region_t _rc_memory_regions_segacd[] = {
     { 0x000000U, 0x00FFFFU, 0x00FF0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "68000 RAM" },
     { 0x010000U, 0x08FFFFU, 0x80020000U, RC_MEMORY_TYPE_SAVE_RAM, "CD PRG RAM" } /* normally banked into $020000-$03FFFF */
