@@ -532,7 +532,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
   char* ptr, *ptr2, *end;
   int lba = 0;
 
-  int largest_track = 0;
+  uint32_t largest_track = 0;
   size_t largest_track_size = 0;
   char largest_track_file[256];
   char largest_track_sector_size[16];
