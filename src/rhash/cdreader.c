@@ -250,6 +250,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
   char *ptr, *ptr2, *end;
   int current_track = 0;
   int sector_size = 0;
+  int track_first_sector = 0;
   int previous_sector_size = 0;
   int previous_index_sector_offset = 0;
   int previous_track_is_data = 0;
@@ -305,8 +306,11 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
         sector_offset = ((m * 60) + s) * 75 + f;
         sector_offset -= previous_index_sector_offset;
 
+        if (index == 1)
+          track_first_sector += sector_offset;
+
         /* if looking for the largest data track, determine previous track size */
-        if (index == 1 && track == 0 && previous_track_is_data)
+        if (index == 1 && track == RC_HASH_CDTRACK_LARGEST && previous_track_is_data)
         {
           if (sector_offset > largest_track_sector_count)
           {
@@ -373,19 +377,23 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
       }
       else if (strncasecmp(ptr, "FILE ", 5) == 0)
       {
-        /* if looking for the largest data track, determine previous track size */
-        if (track == 0 && previous_track_is_data)
+        if (previous_sector_size > 0)
         {
+          /* determine previous track size */
           int sector_count = (int)cdreader_get_bin_size(path, file) / previous_sector_size;
-          sector_count -= previous_index_sector_offset;
+          track_first_sector += sector_count;
 
-          if (sector_count > largest_track_sector_count)
+          /* if looking for the largest data track, check to see if this one is larger */
+          if (track == RC_HASH_CDTRACK_LARGEST && previous_track_is_data)
           {
-            largest_track_sector_count = sector_count;
-            largest_track_offset = previous_track_sector_offset;
-            largest_track = current_track - 1;
-            memcpy(largest_track_mode, previous_track_mode, sizeof(largest_track_mode));
-            strcpy(largest_track_file, file);
+            if (sector_count > largest_track_sector_count)
+            {
+              largest_track_sector_count = sector_count;
+              largest_track_offset = previous_track_sector_offset;
+              largest_track = current_track - 1;
+              memcpy(largest_track_mode, previous_track_mode, sizeof(largest_track_mode));
+              strcpy(largest_track_file, file);
+            }
           }
         }
 
@@ -476,7 +484,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
     }
 
     cdrom->first_sector_offset = offset;
-    cdrom->first_sector = 0; /* TODO: calculate total sector_offset for track */
+    cdrom->first_sector = track_first_sector;
 
     /* verify existance of bin file */
     bin_filename = cdreader_get_bin_path(path, file);
