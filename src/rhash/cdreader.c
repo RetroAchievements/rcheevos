@@ -331,7 +331,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
         {
           char message[128];
           char* scan = mode;
-          while (!isspace(*scan))
+          while (*scan && !isspace(*scan))
             ++scan;
           *scan = '\0';
 
