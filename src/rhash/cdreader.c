@@ -390,7 +390,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
             {
               largest_track_sector_count = sector_count;
               largest_track_offset = previous_track_sector_offset;
-              largest_track = current_track - 1;
+              largest_track = current_track;
               memcpy(largest_track_mode, previous_track_mode, sizeof(largest_track_mode));
               strcpy(largest_track_file, file);
             }
