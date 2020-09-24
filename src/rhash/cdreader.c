@@ -100,9 +100,8 @@ static void* cdreader_open_bin_track(const char* path, uint32_t track)
   if (!file_handle)
     return NULL;
 
-  cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
+  cdrom = (struct cdrom_t*)calloc(1, sizeof(*cdrom));
   cdrom->file_handle = file_handle;
-  cdrom->first_sector_offset = 0;
 
   cdreader_determine_sector_size(cdrom);
 
@@ -482,7 +481,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
 
   if (current_track == (int)track)
   {
-    cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
+    cdrom = (struct cdrom_t*)calloc(1, sizeof(*cdrom));
     if (!cdrom)
     {
       snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", (unsigned)sizeof(*cdrom));
@@ -653,7 +652,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
 
   rc_file_close(file_handle);
 
-  cdrom = (struct cdrom_t*)malloc(sizeof(*cdrom));
+  cdrom = (struct cdrom_t*)calloc(1, sizeof(*cdrom));
   if (!cdrom)
   {
     snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", (unsigned)sizeof(*cdrom));
