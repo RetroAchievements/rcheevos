@@ -781,13 +781,14 @@ static int rc_hash_pce_track(char hash[33], void* track_handle)
 static int rc_hash_pce_cd(char hash[33], const char* path)
 {
   int result;
-  void* track_handle = rc_cd_open_track(path, RC_HASH_CDTRACK_LARGEST);
+  void* track_handle = rc_cd_open_track(path, RC_HASH_CDTRACK_FIRST_DATA);
   if (!track_handle)
     return rc_hash_error("Could not open track");
 
   result = rc_hash_pce_track(hash, track_handle);
 
   rc_cd_close_track(track_handle);
+
   return result;
 }
 

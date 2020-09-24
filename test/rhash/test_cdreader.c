@@ -238,7 +238,7 @@ static void test_open_gdi_track_last()
 static void test_open_cue_track_largest_data()
 {
   cdrom_t* track_handle;
-	
+
   mock_file_text(0, "game.cue", cue_single_bin_multiple_data);
   mock_empty_file(1, "game.bin", 718310208);
 
@@ -319,7 +319,7 @@ static void test_open_cue_track_largest_data_last_track()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 146190912); /* track 5: 0x8B6B240 */
+  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 146190912); /* track 5: 0x8B6B240 (13:48:56) */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -431,6 +431,25 @@ static void test_open_cue_track_largest_data_only_audio()
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 0);
   ASSERT_PTR_NULL(track_handle);
+}
+
+static void test_open_cue_track_first_data()
+{
+  cdrom_t* track_handle;
+
+  mock_file_text(0, "game.cue", cue_single_bin_multiple_data);
+  mock_empty_file(1, "game.bin", 718310208);
+
+  track_handle = (cdrom_t*)cdreader->open_track("game.cue", RC_HASH_CDTRACK_FIRST_DATA);
+  ASSERT_PTR_NOT_NULL(track_handle);
+
+  ASSERT_PTR_NOT_NULL(track_handle->file_handle);
+  ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
+  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 9807840); /* track 2: 0x0095a7e0 (00:55:45) */
+  ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
+  ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+
+  cdreader->close_track(track_handle);
 }
 
 static void test_determine_sector_size_sync(int sector_size)
@@ -731,6 +750,8 @@ void test_cdreader(void) {
   TEST(test_open_cue_track_largest_data_index2);
   TEST(test_open_cue_track_largest_data_multiple_bins);
   TEST(test_open_cue_track_largest_data_only_audio);
+
+  TEST(test_open_cue_track_first_data);
 
   TEST_PARAMS1(test_determine_sector_size_sync, 2352);
   TEST_PARAMS1(test_determine_sector_size_sync_primary_volume_descriptor, 2352);

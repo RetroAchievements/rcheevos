@@ -327,20 +327,20 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
         previous_sector_size = sector_size;
         previous_index_sector_offset += sector_offset;
 
-        if (verbose_message_callback)
-        {
-          char message[128];
-          char* scan = mode;
-          while (*scan && !isspace(*scan))
-            ++scan;
-          *scan = '\0';
-
-          snprintf(message, sizeof(message), "Found %s track %d (sector size %d, track starts at %d)", mode, current_track, sector_size, offset);
-          verbose_message_callback(message);
-        }
-
         if (index == 1)
         {
+          if (verbose_message_callback)
+          {
+            char message[128];
+            char* scan = mode;
+            while (*scan && !isspace(*scan))
+              ++scan;
+            *scan = '\0';
+
+            snprintf(message, sizeof(message), "Found %s track %d (sector size %d, track starts at %d)", mode, current_track, sector_size, offset);
+            verbose_message_callback(message);
+          }
+
           if (current_track == (int)track)
           {
             done = 1;
@@ -350,6 +350,13 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
           memcpy(previous_track_mode, mode, sizeof(previous_track_mode));
           previous_track_is_data = (memcmp(mode, "MODE", 4) == 0);
           previous_track_sector_offset = offset;
+
+          if (previous_track_is_data && track == RC_HASH_CDTRACK_FIRST_DATA)
+          {
+            track = current_track;
+            done = 1;
+            break;
+          }
         }
       }
       else if (strncasecmp(ptr, "TRACK ", 6) == 0)
