@@ -9,9 +9,11 @@ typedef struct mock_file_data
   const uint8_t* data;
   size_t size;
   size_t pos;
+  int first_sector;
 } mock_file_data;
 
 static mock_file_data mock_file_instance[16];
+static int mock_cd_tracks;
 
 static void* _mock_file_open(const char* path)
 {
@@ -85,6 +87,8 @@ static void reset_mock_files()
   memset(&mock_file_instance, 0, sizeof(mock_file_instance));
   for (i = 0; i < sizeof(mock_file_instance) / sizeof(mock_file_instance[0]); ++i)
     mock_file_instance[i].path = "";
+
+  mock_cd_tracks = 0;
 }
 
 void init_mock_filereader()
@@ -110,6 +114,17 @@ void mock_file(int index, const char* filename, const uint8_t* buffer, size_t bu
   mock_file_instance[index].data = buffer;
   mock_file_instance[index].size = buffer_size;
   mock_file_instance[index].pos = 0;
+  mock_file_instance[index].first_sector = 0;
+}
+
+void mock_file_text(int index, const char* filename, const char* contents)
+{
+    mock_file(index, filename, (const uint8_t*)contents, strlen(contents));
+}
+
+void mock_file_first_sector(int index, int first_sector)
+{
+  mock_file_instance[index].first_sector = first_sector;
 }
 
 void mock_file_size(int index, size_t mock_size)
@@ -124,7 +139,10 @@ void mock_empty_file(int index, const char* filename, size_t mock_size)
 
 static void* _mock_cd_open_track(const char* path, uint32_t track)
 {
-  if (track < 2) /* 0 = first data track, 1 = primary track */
+  if (track == RC_HASH_CDTRACK_LAST)
+    track = mock_cd_tracks;
+
+  if (track == 1 || track == RC_HASH_CDTRACK_FIRST_DATA || track == RC_HASH_CDTRACK_LARGEST)
   {
     if (strstr(path, ".cue")) 
     {
@@ -151,6 +169,16 @@ static void* _mock_cd_open_track(const char* path, uint32_t track)
       return _mock_file_open(buffer);
     }
   }
+  else if (strstr(path, ".gdi"))
+  {
+    mock_file_data* file = (mock_file_data*)_mock_file_open(path);
+    if (file)
+    {
+      char buffer[32];
+      sprintf(buffer, "track%02d.bin", track);
+      return _mock_file_open(buffer);
+    }
+  }
 
   return NULL;
 }
@@ -161,14 +189,29 @@ static size_t _mock_cd_read_sector(void* track_handle, uint32_t sector, void* bu
   return _mock_file_read(track_handle, buffer, requested_bytes);
 }
 
+static uint32_t _mock_cd_absolute_sector_to_track_sector(void* track_handle, uint32_t sector)
+{
+  mock_file_data* file = (mock_file_data*)track_handle;
+  return sector - file->first_sector;
+}
+
+void mock_cd_num_tracks(int num_tracks)
+{
+  mock_cd_tracks = num_tracks;
+}
+
 void init_mock_cdreader()
 {
   struct rc_hash_cdreader cdreader;
+  memset(&cdreader, 0, sizeof(cdreader));
   cdreader.open_track = _mock_cd_open_track;
   cdreader.close_track = _mock_file_close;
   cdreader.read_sector = _mock_cd_read_sector;
+  cdreader.absolute_sector_to_track_sector = _mock_cd_absolute_sector_to_track_sector;
 
   rc_hash_init_custom_cdreader(&cdreader);
+
+  mock_cd_tracks = 0;
 }
 
 const char* get_mock_filename(void* file_handle)

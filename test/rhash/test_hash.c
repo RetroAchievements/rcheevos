@@ -298,6 +298,78 @@ static void test_hash_3do_long_directory()
 
 /* ========================================================================= */
 
+static void test_hash_dreamcast_single_bin()
+{
+  size_t image_size;
+  uint8_t* image = generate_dreamcast_bin(45000, 1458208, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "2a550500caee9f06e5d061fe10a46f6e";
+
+  mock_file(0, "track03.bin", image, image_size);
+  mock_file_first_sector(0, 45000);
+  mock_file(1, "game.gdi", (uint8_t*)"game.bin", 8);
+  mock_cd_num_tracks(3);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_DREAMCAST, "game.gdi");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.gdi", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_dreamcast_split_bin()
+{
+  size_t image_size;
+  uint8_t* image = generate_dreamcast_bin(548106, 1830912, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "771e56aff169230ede4505013a4bcf9f";
+
+  mock_file(0, "game.gdi", (uint8_t*)"game.bin", 8);
+  mock_file(1, "track03.bin", image, image_size);
+  mock_file_first_sector(1, 45000);
+  mock_file(2, "track26.bin", image, image_size);
+  mock_file_first_sector(2, 548106);
+  mock_cd_num_tracks(26);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_DREAMCAST, "game.gdi");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.gdi", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+/* ========================================================================= */
+
 static void test_hash_nes_32k()
 {
   size_t image_size;
@@ -779,6 +851,10 @@ void test_hash(void) {
 
   /* Colecovision */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_COLECOVISION, "test.col", 16384, "455f07d8500f3fabc54906737866167f");
+
+  /* Dreamcast */
+  TEST(test_hash_dreamcast_single_bin);
+  TEST(test_hash_dreamcast_split_bin);
 
   /* Gameboy */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_GAMEBOY, "test.gb", 131072, "a0f425b23200568132ba76b2405e3933");

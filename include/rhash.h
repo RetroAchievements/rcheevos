@@ -92,6 +92,10 @@ extern "C" {
 
   /* ===================================================== */
 
+  #define RC_HASH_CDTRACK_FIRST_DATA ((uint32_t)-1)
+  #define RC_HASH_CDTRACK_LAST ((uint32_t)-2)
+  #define RC_HASH_CDTRACK_LARGEST ((uint32_t)-3)
+
   /* opens a track from the specified file. track 0 indicates the largest data track should be opened.
    * returns a handle to be passed to the other functions, or NULL if the track could not be opened.
    */
@@ -105,15 +109,15 @@ extern "C" {
   /* closes the track handle */
   typedef void (*rc_hash_cdreader_close_track_handler)(void* track_handle);
 
-  /* get number of tracks */
-  typedef int (*rc_hash_cdreader_num_tracks_handler)(const char* path);
+  /* convert absolute sector to track sector */
+  typedef uint32_t(*rc_hash_cdreader_absolute_sector_to_track_sector)(void* track_handle, uint32_t sector);
 
   struct rc_hash_cdreader
   {
-    rc_hash_cdreader_open_track_handler           open_track;
-    rc_hash_cdreader_read_sector_handler          read_sector;
-    rc_hash_cdreader_close_track_handler          close_track;
-    rc_hash_cdreader_num_tracks_handler           num_tracks;
+    rc_hash_cdreader_open_track_handler              open_track;
+    rc_hash_cdreader_read_sector_handler             read_sector;
+    rc_hash_cdreader_close_track_handler             close_track;
+    rc_hash_cdreader_absolute_sector_to_track_sector absolute_sector_to_track_sector;
   };
 
   void rc_hash_init_default_cdreader();
