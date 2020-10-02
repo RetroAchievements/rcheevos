@@ -83,6 +83,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       case 'q': case 'Q': self->type = RC_CONDITION_MEASURED_IF; break;
       case 'i': case 'I': self->type = RC_CONDITION_ADD_ADDRESS; can_modify = 1; break;
       case 't': case 'T': self->type = RC_CONDITION_TRIGGER; break;
+      case 'z': case 'Z': self->type = RC_CONDITION_RESET_NEXT; break;
       default: parse->offset = RC_INVALID_CONDITION_TYPE; return 0;
     }
 
