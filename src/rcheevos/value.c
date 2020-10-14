@@ -155,7 +155,9 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
 int rc_value_size(const char* memaddr) {
   rc_value_t* self;
   rc_parse_state_t parse;
+  rc_memref_value_t* first_memref;
   rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &first_memref);
 
   self = RC_ALLOC(rc_value_t, &parse);
   rc_parse_value_internal(self, &memaddr, &parse);
@@ -198,7 +200,7 @@ int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) 
       continue;
 
     if (eval_state.was_reset) {
-      /* if any ResetIf condition was true, reset the hit counts 
+      /* if any ResetIf condition was true, reset the hit counts
        * NOTE: ResetIf only affects the current condset when used in values!
        */
       rc_reset_condset(condset);

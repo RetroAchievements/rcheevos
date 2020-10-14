@@ -5,70 +5,11 @@
 
 #define MEMREF_PLACEHOLDER_ADDRESS 0xFFFFFFFF
 
-static rc_memref_value_t* rc_alloc_memref_value_sizing_mode(rc_parse_state_t* parse, unsigned address, char size, char is_indirect) {
-  rc_memref_t* memref;
-  int i;
-
-  /* indirect address always creates two new entries; don't bother tracking them */
-  if (is_indirect) {
-    RC_ALLOC(rc_memref_value_t, parse);
-    return RC_ALLOC(rc_memref_value_t, parse);
-  }
-
-  memref = NULL;
-
-  /* have to track unique address/size/bcd combinations - use scratch.memref for sizing mode */
-  for (i = 0; i < parse->scratch.memref_count; ++i) {
-    memref = &parse->scratch.memref[i];
-    if (memref->address == address && memref->size == size) {
-      return &parse->scratch.obj.memref_value;
-    }
-  }
-
-  /* no match found - resize unique tracking buffer if necessary */
-  if (parse->scratch.memref_count == parse->scratch.memref_size) {
-    if (parse->scratch.memref == parse->scratch.memref_buffer) {
-      parse->scratch.memref_size += 16;
-      memref = (rc_memref_t*)malloc(parse->scratch.memref_size * sizeof(parse->scratch.memref_buffer[0]));
-      if (memref) {
-        parse->scratch.memref = memref;
-        memcpy(memref, parse->scratch.memref_buffer, parse->scratch.memref_count * sizeof(parse->scratch.memref_buffer[0]));
-      }
-      else {
-        parse->offset = RC_OUT_OF_MEMORY;
-        return 0;
-      }
-    } 
-    else {
-      parse->scratch.memref_size += 32;
-      memref = (rc_memref_t*)realloc(parse->scratch.memref, parse->scratch.memref_size * sizeof(parse->scratch.memref_buffer[0]));
-      if (memref) {
-        parse->scratch.memref = memref;
-      }
-      else {
-        parse->offset = RC_OUT_OF_MEMORY;
-        return 0;
-      }
-    }
-  }
-
-  /* add new unique tracking entry */
-  if (parse->scratch.memref) {
-    memref = &parse->scratch.memref[parse->scratch.memref_count++];
-    memref->address = address;
-    memref->size = size;
-    memref->is_indirect = is_indirect;
-  }
-  
-  /* allocate memory but don't actually populate, as it might overwrite the self object referencing the rc_memref_value_t */
-  return RC_ALLOC(rc_memref_value_t, parse);
-}
-
-static rc_memref_value_t* rc_alloc_memref_value_constuct_mode(rc_parse_state_t* parse, unsigned address, char size, char is_indirect) {
+rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned address, char size, char is_indirect) {
   rc_memref_value_t** next_memref_value;
   rc_memref_value_t* memref_value;
   rc_memref_value_t* indirect_memref_value;
-  
+
   if (!is_indirect) {
     /* attempt to find an existing rc_memref_value_t */
     next_memref_value = parse->first_memref;
@@ -83,8 +24,16 @@ static rc_memref_value_t* rc_alloc_memref_value_constuct_mode(rc_parse_state_t* 
     }
   }
   else {
-    /* indirect address always creates two new entries - one for the original address, and one for 
-       the indirect dereference - just skip ahead to the end of the list */
+    /* indirect address always creates two new entries - one for the original address, and one for
+       the indirect dereference */
+    if (!parse->buffer) {
+      /* in sizing mode, only allocate space for the two entries, but don't add them to the chain */
+      memref_value = RC_ALLOC(rc_memref_value_t, parse);
+      indirect_memref_value = RC_ALLOC(rc_memref_value_t, parse);
+      return memref_value;
+    }
+
+    /* non-sizing mode - just skip ahead to the end of the list so we can append the new entries */
     next_memref_value = parse->first_memref;
     while (*next_memref_value) {
       next_memref_value = &(*next_memref_value)->next;
@@ -92,7 +41,7 @@ static rc_memref_value_t* rc_alloc_memref_value_constuct_mode(rc_parse_state_t* 
   }
 
   /* no match found, create a new entry */
-  memref_value = RC_ALLOC(rc_memref_value_t, parse);
+  memref_value = RC_ALLOC_SCRATCH(rc_memref_value_t, parse);
   memref_value->memref.address = address;
   memref_value->memref.size = size;
   memref_value->memref.is_indirect = is_indirect;
@@ -118,13 +67,6 @@ static rc_memref_value_t* rc_alloc_memref_value_constuct_mode(rc_parse_state_t* 
   }
 
   return memref_value;
-}
-
-rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned address, char size, char is_indirect) {
-  if (!parse->first_memref)
-    return rc_alloc_memref_value_sizing_mode(parse, address, size, is_indirect);
-
-  return rc_alloc_memref_value_constuct_mode(parse, address, size, is_indirect);
 }
 
 static unsigned rc_memref_get_value(rc_memref_t* self, rc_peek_t peek, void* ud) {

@@ -382,7 +382,9 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
 int rc_richpresence_size(const char* script) {
   rc_richpresence_t* self;
   rc_parse_state_t parse;
+  rc_memref_value_t* first_memref;
   rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &first_memref);
 
   self = RC_ALLOC(rc_richpresence_t, &parse);
   rc_parse_richpresence_internal(self, script, &parse);
