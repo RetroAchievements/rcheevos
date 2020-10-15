@@ -359,6 +359,26 @@ static void test_macro_lookup_simple() {
   assert_richpresence_output(richpresence, &memory, "At ");
 }
 
+static void test_macro_lookup_with_inline_comment() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:Location\n// Zero\n0=Zero\n// One\n1=One\n//2=Two\n\nDisplay:\nAt @Location(0xH0000)");
+  assert_richpresence_output(richpresence, &memory, "At Zero");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "At One");
+
+  /* no entry - default to empty string */
+  ram[0] = 2;
+  assert_richpresence_output(richpresence, &memory, "At ");
+}
+
 static void test_macro_lookup_hex_keys() {
   unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -855,6 +875,7 @@ void test_richpresence(void) {
 
   /* lookup macros */
   TEST(test_macro_lookup_simple);
+  TEST(test_macro_lookup_with_inline_comment);
   TEST(test_macro_lookup_hex_keys);
   TEST(test_macro_lookup_default);
   TEST(test_macro_lookup_crlf);

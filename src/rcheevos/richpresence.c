@@ -250,9 +250,16 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
     line = nextline;
     nextline = rc_parse_line(line, &endline);
 
-    if (endline - line < 2)
-      break;
+    if (endline - line < 2) {
+      /* ignore full line comments inside a lookup */
+      if (line[0] == '/' && line[1] == '/')
+        continue;
 
+      /* empty line indicates end of lookup */
+      break;
+    }
+
+    /* "*=XXX" specifies default label if lookup does not provide a mapping for the value */
     if (line[0] == '*' && line[1] == '=') {
       line += 2;
       lookup->default_label = rc_alloc_str(parse, line, (int)(endline - line));
@@ -270,10 +277,11 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
     ++label;
 
     do {
-      base = 10;
       if (line[0] == '0' && line[1] == 'x') {
         line += 2;
         base = 16;
+      } else {
+        base = 10;
       }
 
       first = strtoul(line, &endptr, base);
@@ -283,10 +291,11 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
       else {
         line = endptr + 1;
 
-        base = 10;
         if (line[0] == '0' && line[1] == 'x') {
           line += 2;
           base = 16;
+        } else {
+          base = 10;
         }
 
         last = strtoul(line, &endptr, base);
