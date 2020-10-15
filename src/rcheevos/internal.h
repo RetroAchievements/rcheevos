@@ -3,6 +3,13 @@
 
 #include "rcheevos.h"
 
+typedef struct rc_scratch_string {
+  char* value;
+  struct rc_scratch_string* left;
+  struct rc_scratch_string* right;
+}
+rc_scratch_string_t;
+
 #define RC_ALLOW_ALIGN(T) struct __align_ ## T { char ch; T t; };
 RC_ALLOW_ALIGN(rc_condition_t)
 RC_ALLOW_ALIGN(rc_condset_t)
@@ -16,6 +23,7 @@ RC_ALLOW_ALIGN(rc_richpresence_lookup_t)
 RC_ALLOW_ALIGN(rc_richpresence_lookup_item_t)
 RC_ALLOW_ALIGN(rc_trigger_t)
 RC_ALLOW_ALIGN(rc_value_t)
+RC_ALLOW_ALIGN(rc_scratch_string_t)
 RC_ALLOW_ALIGN(char)
 
 #define RC_ALIGNOF(T) (sizeof(struct __align_ ## T) - sizeof(T))
@@ -32,6 +40,7 @@ rc_scratch_buffer_t;
 
 typedef struct {
   rc_scratch_buffer_t buffer;
+  rc_scratch_string_t* strings;
 
   union
   {

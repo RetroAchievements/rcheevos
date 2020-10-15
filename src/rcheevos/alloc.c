@@ -60,13 +60,37 @@ void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t
 }
 
 char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length) {
+  int used = 0;
   char* ptr;
 
-  ptr = (char*)rc_alloc(parse->buffer, &parse->offset, length + 1, RC_ALIGNOF(char), 0);
-  if (ptr) {
-    memcpy(ptr, text, length);
-    ptr[length] = '\0';
+  rc_scratch_string_t** next = &parse->scratch.strings;
+  while (*next) {
+    int diff = strncmp(text, (*next)->value, length);
+    if (diff == 0) {
+      diff = (*next)->value[length];
+      if (diff == 0)
+        return (*next)->value;
+    }
+
+    if (diff < 0)
+      next = &(*next)->left;
+    else
+      next = &(*next)->right;
   }
+
+  *next = rc_alloc_scratch(NULL, &used, sizeof(rc_scratch_string_t), RC_ALIGNOF(rc_scratch_string_t), &parse->scratch);
+  ptr = (char*)rc_alloc_scratch(parse->buffer, &parse->offset, length + 1, RC_ALIGNOF(char), &parse->scratch);
+  if (!ptr || !*next) {
+    parse->offset = RC_OUT_OF_MEMORY;
+    return NULL;
+  }
+
+  memcpy(ptr, text, length);
+  ptr[length] = '\0';
+
+  (*next)->left = NULL;
+  (*next)->right = NULL;
+  (*next)->value = ptr;
 
   return ptr;
 }
@@ -79,6 +103,7 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   parse->buffer = buffer;
   parse->scratch.buffer.offset = 0;
   parse->scratch.buffer.next = NULL;
+  parse->scratch.strings = NULL;
   parse->first_memref = 0;
   parse->measured_target = 0;
 }
