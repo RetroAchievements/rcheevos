@@ -140,7 +140,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
               next = &part->next;
 
               part->text = lookup->name;
-              part->first_lookup_item = lookup->first_item;
+              part->lookup = lookup;
               part->display_type = lookup->format;
 
               in = line;
@@ -195,19 +195,55 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
   return self;
 }
 
-static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup, const char* nextline, rc_parse_state_t* parse)
+static void rc_insert_richpresence_lookup_item(rc_richpresence_lookup_t* lookup,
+    unsigned first, unsigned last, const char* label, int label_len, rc_parse_state_t* parse)
 {
   rc_richpresence_lookup_item_t** next;
   rc_richpresence_lookup_item_t* item;
-  char number[64];
+
+  next = &lookup->root;
+  while ((item = *next) != NULL) {
+    if (first > item->last) {
+      if (first == item->last + 1 &&
+          strncmp(label, item->label, label_len) == 0 && item->label[label_len] == '\0') {
+        item->last = last;
+        return;
+      }
+
+      next = &item->right;
+    }
+    else if (last < item->first) {
+      if (last == item->first - 1 &&
+          strncmp(label, item->label, label_len) == 0 && item->label[label_len] == '\0') {
+        item->first = first;
+        return;
+      }
+
+      next = &item->left;
+    }
+    else {
+      parse->offset = RC_DUPLICATED_VALUE;
+      return;
+    }
+  }
+
+  item = RC_ALLOC_SCRATCH(rc_richpresence_lookup_item_t, parse);
+  item->first = first;
+  item->last = last;
+  item->label = rc_alloc_str(parse, label, label_len);
+  item->left = item->right = NULL;
+
+  *next = item;
+}
+
+static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup, const char* nextline, rc_parse_state_t* parse)
+{
   const char* line;
   const char* endline;
-  const char* defaultlabel = 0;
+  const char* label;
   char* endptr = 0;
-  unsigned key;
-  unsigned chars;
-
-  next = &lookup->first_item;
+  unsigned first, last;
+  int base;
 
   do
   {
@@ -217,47 +253,60 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
     if (endline - line < 2)
       break;
 
-    chars = 0;
-    while (chars < (sizeof(number) - 1) && line + chars < endline && line[chars] != '=') {
-      number[chars] = line[chars];
-      ++chars;
+    if (line[0] == '*' && line[1] == '=') {
+      line += 2;
+      lookup->default_label = rc_alloc_str(parse, line, (int)(endline - line));
+      continue;
     }
-    number[chars] = '\0';
 
-    if (line[chars] == '=') {
-      line += chars + 1;
+    label = line;
+    while (label < endline && *label != '=')
+      ++label;
 
-      if (chars == 1 && number[0] == '*') {
-        defaultlabel = rc_alloc_str(parse, line, (int)(endline - line));
-        continue;
+    if (label == endline) {
+      parse->offset = RC_MISSING_VALUE;
+      break;
+    }
+    ++label;
+
+    do {
+      base = 10;
+      if (line[0] == '0' && line[1] == 'x') {
+        line += 2;
+        base = 16;
       }
 
-      if (number[0] == '0' && number[1] == 'x')
-        key = strtoul(&number[2], &endptr, 16);
-      else
-        key = strtoul(&number[0], &endptr, 10);
+      first = strtoul(line, &endptr, base);
+      if (*endptr != '-') {
+        last = first;
+      }
+      else {
+        line = endptr + 1;
 
-      if (*endptr && !isspace(*endptr)) {
+        base = 10;
+        if (line[0] == '0' && line[1] == 'x') {
+          line += 2;
+          base = 16;
+        }
+
+        last = strtoul(line, &endptr, base);
+      }
+
+      if (*endptr == '=') {
+        rc_insert_richpresence_lookup_item(lookup, first, last, label, (int)(endline - label), parse);
+        break;
+      }
+
+      if (*endptr != ',') {
         parse->offset = RC_INVALID_CONST_OPERAND;
-        return nextline;
+        break;
       }
 
-      item = RC_ALLOC(rc_richpresence_lookup_item_t, parse);
-      item->value = key;
-      item->label = rc_alloc_str(parse, line, (int)(endline - line));
-      *next = item;
-      next = &item->next_item;
-    }
-  } while (1);
+      rc_insert_richpresence_lookup_item(lookup, first, last, label, (int)(endline - label), parse);
+      line = endptr + 1;
+    } while (line < endline);
 
-  if (!defaultlabel)
-    defaultlabel = rc_alloc_str(parse, "", 0);
-
-  item = RC_ALLOC(rc_richpresence_lookup_item_t, parse);
-  item->value = 0;
-  item->label = defaultlabel;
-  item->next_item = 0;
-  *next = item;
+  } while (parse->offset > 0);
 
   return nextline;
 }
@@ -289,6 +338,8 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
       lookup = RC_ALLOC(rc_richpresence_lookup_t, parse);
       lookup->name = rc_alloc_str(parse, line, (int)(endline - line));
       lookup->format = RC_FORMAT_LOOKUP;
+      lookup->root = NULL;
+      lookup->default_label = "";
       *nextlookup = lookup;
       nextlookup = &lookup->next;
 
@@ -301,7 +352,8 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
 
       lookup = RC_ALLOC(rc_richpresence_lookup_t, parse);
       lookup->name = rc_alloc_str(parse, line, (int)(endline - line));
-      lookup->first_item = 0;
+      lookup->root = NULL;
+      lookup->default_label = "";
       *nextlookup = lookup;
       nextlookup = &lookup->next;
 
@@ -433,17 +485,20 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsi
 
           case RC_FORMAT_LOOKUP:
             value = rc_evaluate_value(&part->value, peek, peek_ud, L);
-            item = part->first_lookup_item;
-            if (!item) {
-              text = "";
-              chars = 0;
-            } else {
-              while (item->next_item && item->value != value)
-                item = item->next_item;
-
-              text = item->label;
-              chars = strlen(text);
+            text = part->lookup->default_label;
+            item = part->lookup->root;
+            while (item) {
+              if (item->first > value) {
+                item = item->left;
+              } else if (item->last < value) {
+                item = item->right;
+              } else {
+                text = item->label;
+                break;
+              }
             }
+
+            chars = strlen(text);
             break;
 
           case RC_FORMAT_UNKNOWN_MACRO:

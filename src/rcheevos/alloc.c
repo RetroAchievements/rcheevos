@@ -16,7 +16,7 @@ void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_s
     const int remaining = sizeof(buffer->buffer) - aligned_offset;
 
     if (remaining > size) {
-      *offset += size;
+      *offset += size + (aligned_offset - buffer->offset);
       return rc_alloc(buffer->buffer, &buffer->offset, size, alignment, NULL);
     }
 
