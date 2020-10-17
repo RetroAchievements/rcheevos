@@ -71,7 +71,7 @@ static void test_buffer_boundary() {
   unsigned char ram[] = { 0x00, 0x00, 0x00, 0x01, 0x00 };
   memory_t memory;
   rc_richpresence_t* richpresence;
-  char buffer[1024];
+  char buffer[2048];
 
   memory.ram = ram;
   memory.size = sizeof(ram);

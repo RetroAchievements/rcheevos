@@ -86,6 +86,7 @@ typedef struct {
   rc_scratch_t scratch;
 
   rc_memref_value_t** first_memref;
+  rc_value_t** variables;
 
   unsigned measured_target;
 }
@@ -93,6 +94,7 @@ rc_parse_state_t;
 
 void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx);
 void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_value_t** memrefs);
+void rc_init_parse_state_variables(rc_parse_state_t* parse, rc_value_t** variables);
 void rc_destroy_parse_state(rc_parse_state_t* parse);
 
 void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch);
@@ -119,6 +121,8 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state);
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
 void rc_reset_value(rc_value_t* self);
+rc_value_t* rc_define_unnamed_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse);
+void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L);
 
 void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_state_t* parse);
 

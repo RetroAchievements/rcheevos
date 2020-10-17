@@ -80,6 +80,7 @@ char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length) {
 
   *next = rc_alloc_scratch(NULL, &used, sizeof(rc_scratch_string_t), RC_ALIGNOF(rc_scratch_string_t), &parse->scratch);
   ptr = (char*)rc_alloc_scratch(parse->buffer, &parse->offset, length + 1, RC_ALIGNOF(char), &parse->scratch);
+
   if (!ptr || !*next) {
     parse->offset = RC_OUT_OF_MEMORY;
     return NULL;

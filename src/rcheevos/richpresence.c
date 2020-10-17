@@ -120,7 +120,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
           while (ptr < endline && *ptr != ')')
             ++ptr;
           if (*ptr == ')') {
-            rc_parse_value_internal(&part->value, &line, parse);
+            rc_define_unnamed_variable(line, (int)(ptr-line), parse);
             if (parse->offset < 0)
               return 0;
             ++ptr;
@@ -148,10 +148,11 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
               while (ptr < endline && *ptr != ')')
                 ++ptr;
               if (*ptr == ')') {
-                rc_parse_value_internal(&part->value, &line, parse);
-                part->value.memrefs = 0;
+                rc_value_t* value = rc_define_unnamed_variable(line, (int)(ptr-line), parse);
                 if (parse->offset < 0)
                   return 0;
+
+                part->value = &value->value;
                 ++ptr;
               }
               else {
@@ -533,8 +534,10 @@ int rc_richpresence_size(const char* script) {
   rc_richpresence_t* self;
   rc_parse_state_t parse;
   rc_memref_value_t* first_memref;
+  rc_value_t* variables;
   rc_init_parse_state(&parse, 0, 0, 0);
   rc_init_parse_state_memrefs(&parse, &first_memref);
+  rc_init_parse_state_variables(&parse, &variables);
 
   self = RC_ALLOC(rc_richpresence_t, &parse);
   rc_parse_richpresence_internal(self, script, &parse);
@@ -550,6 +553,7 @@ rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_S
 
   self = RC_ALLOC(rc_richpresence_t, &parse);
   rc_init_parse_state_memrefs(&parse, &self->memrefs);
+  rc_init_parse_state_variables(&parse, &self->variables);
 
   rc_parse_richpresence_internal(self, script, &parse);
 
@@ -568,6 +572,7 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsi
   unsigned value;
 
   rc_update_memref_values(richpresence->memrefs, peek, peek_ud);
+  rc_update_variables(richpresence->variables, peek, peek_ud, L);
 
   ptr = buffer;
   display = richpresence->first_display;
@@ -582,7 +587,7 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsi
             break;
 
           case RC_FORMAT_LOOKUP:
-            value = rc_evaluate_value(&part->value, peek, peek_ud, L);
+            value = part->value->value;
             text = part->lookup->default_label;
             item = part->lookup->root;
             while (item) {
@@ -607,7 +612,7 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsi
             break;
 
           default:
-            value = rc_evaluate_value(&part->value, peek, peek_ud, L);
+            value = part->value->value;
             chars = rc_format_value(tmp, sizeof(tmp), value, part->display_type);
             text = tmp;
             break;

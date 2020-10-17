@@ -295,7 +295,7 @@ static void test_replace_active_trigger(void)
   rc_runtime_destroy(&runtime);
 }
 
-static void test_reset_event(void) 
+static void test_reset_event(void)
 {
   unsigned char ram[] = { 0, 10, 10 };
   memory_t memory;
@@ -358,7 +358,7 @@ static void test_reset_event(void)
   rc_runtime_destroy(&runtime);
 }
 
-static void test_paused_event(void) 
+static void test_paused_event(void)
 {
   unsigned char ram[] = { 0, 10, 10 };
   memory_t memory;
@@ -410,7 +410,7 @@ static void test_paused_event(void)
   rc_runtime_destroy(&runtime);
 }
 
-static void test_primed_event(void) 
+static void test_primed_event(void)
 {
   unsigned char ram[] = { 0, 1, 0, 1, 0 };
   memory_t memory;
@@ -457,7 +457,7 @@ static void test_primed_event(void)
   rc_runtime_destroy(&runtime);
 }
 
-static void test_lboard(void) 
+static void test_lboard(void)
 {
   unsigned char ram[] = { 2, 10, 10 };
   memory_t memory;
@@ -589,7 +589,7 @@ static void test_richpresence_starts_with_macro(void)
   unsigned char ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
-  
+
   memory.ram = ram;
   memory.size = sizeof(ram);
 
@@ -717,15 +717,14 @@ static void test_richpresence_reload_addaddress(void)
   ASSERT_STR_EQUALS(rc_runtime_get_richpresence(&runtime), "2570 Points");
 
   /* reloading should generate display string with current memrefs */
-  /* AddAddress will always generate a new memref for the indirection. */
-  /* because the reset doesn't provide a peek, the indirection can't be resolved, and the value will be 0. */
+  /* the entire AddAddress expression will be a single variable, which will have a current value. */
   ram[2] = 20;
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(I:0xH0000_M:0x 0001) Bananas");
-  ASSERT_STR_EQUALS(rc_runtime_get_richpresence(&runtime), "0 Bananas");
+  ASSERT_STR_EQUALS(rc_runtime_get_richpresence(&runtime), "2570 Bananas");
 
-  /* AddAddress always generates a new memrefs for the indirection. */
-  ASSERT_NUM_EQUALS(runtime.richpresence->owns_memrefs, 1);
+  /* the AddAddress expression will be owned by the previous script. */
+  ASSERT_NUM_EQUALS(runtime.richpresence->owns_memrefs, 0);
   ASSERT_PTR_NOT_NULL(runtime.richpresence->previous);
 
   /* first frame after reloading should update display string */

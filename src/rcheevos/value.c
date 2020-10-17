@@ -49,7 +49,6 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
   self->conditions = RC_ALLOC(rc_condset_t, parse);
   self->conditions->has_pause = 0;
   self->conditions->is_paused = 0;
-  self->measured_value = 0;
 
   next = &self->conditions->conditions;
   next_clause = &self->conditions->next;
@@ -149,7 +148,8 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
     rc_parse_legacy_value(self, memaddr, parse);
   }
 
-  self->measured_value = 0;
+  self->name = "(unnamed)";
+  self->value.value = self->value.previous = self->value.prior = 0;
 }
 
 int rc_value_size(const char* memaddr) {
@@ -226,23 +226,65 @@ int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) 
 
   if (!paused) {
     /* if not paused, store the value so that it's available when paused. */
-    self->measured_value = result;
+    self->value.previous = self->value.value;
+    self->value.value = result;
+    if (self->value.value != self->value.previous)
+      self->value.prior = self->value.previous;
   }
   else {
     /* when paused, the Measured value will not be captured, use the last captured value. */
-    result = self->measured_value;
+    result = self->value.value;
   }
 
   return result;
 }
 
-void rc_reset_value(rc_value_t* self)
-{
+void rc_reset_value(rc_value_t* self) {
   rc_condset_t* condset = self->conditions;
   while (condset != NULL) {
     rc_reset_condset(condset);
     condset = condset->next;
   }
 
-  self->measured_value = 0;
+  self->value.value = self->value.previous = self->value.prior = 0;
+}
+
+void rc_init_parse_state_variables(rc_parse_state_t* parse, rc_value_t** variables) {
+  parse->variables = variables;
+  *variables = 0;
+}
+
+rc_value_t* rc_define_unnamed_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
+  rc_value_t** variables = parse->variables;
+  rc_value_t* value;
+  const char* name;
+
+  while ((value = *variables) != NULL) {
+    if (strncmp(value->name, memaddr, memaddr_len) == 0 && value->name[memaddr_len] == 0)
+      return value;
+
+    variables = (rc_value_t**)&value->value.next;
+  }
+
+  value = RC_ALLOC_SCRATCH(rc_value_t, parse);
+  memset(&value->value, 0, sizeof(value->value));
+  value->memrefs = NULL;
+
+  /* capture name before calling parse as parse will update memaddr pointer */
+  name = rc_alloc_str(parse, memaddr, memaddr_len);
+
+  rc_parse_value_internal(value, &memaddr, parse);
+
+  /* store name after calling parse as parse will set name to (unnamed) */
+  value->name = name;
+
+  *variables = value;
+  return value;
+}
+
+void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L) {
+  while (variable) {
+    rc_evaluate_value(variable, peek, ud, L);
+    variable = (rc_value_t*)variable->value.next;
+  }
 }
