@@ -42,26 +42,20 @@ rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned addre
 
   /* no match found, create a new entry */
   memref_value = RC_ALLOC_SCRATCH(rc_memref_value_t, parse);
+  memset(memref_value, 0, sizeof(*memref_value));
   memref_value->memref.address = address;
   memref_value->memref.size = size;
   memref_value->memref.is_indirect = is_indirect;
-  memref_value->value = 0;
-  memref_value->previous = 0;
-  memref_value->prior = 0;
-  memref_value->next = 0;
 
   *next_memref_value = memref_value;
 
   /* also create the indirect deference entry for indirect references */
   if (is_indirect) {
     indirect_memref_value = RC_ALLOC(rc_memref_value_t, parse);
+    memset(indirect_memref_value, 0, sizeof(*indirect_memref_value));
     indirect_memref_value->memref.address = MEMREF_PLACEHOLDER_ADDRESS;
     indirect_memref_value->memref.size = size;
     indirect_memref_value->memref.is_indirect = 1;
-    indirect_memref_value->value = 0;
-    indirect_memref_value->previous = 0;
-    indirect_memref_value->prior = 0;
-    indirect_memref_value->next = 0;
 
     memref_value->next = indirect_memref_value;
   }

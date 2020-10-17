@@ -121,7 +121,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state);
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
 void rc_reset_value(rc_value_t* self);
-rc_value_t* rc_define_unnamed_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse);
+rc_memref_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse);
 void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L);
 
 void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_state_t* parse);

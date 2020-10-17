@@ -120,7 +120,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
           while (ptr < endline && *ptr != ')')
             ++ptr;
           if (*ptr == ')') {
-            rc_define_unnamed_variable(line, (int)(ptr-line), parse);
+            rc_alloc_helper_variable(line, (int)(ptr-line), parse);
             if (parse->offset < 0)
               return 0;
             ++ptr;
@@ -148,11 +148,9 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
               while (ptr < endline && *ptr != ')')
                 ++ptr;
               if (*ptr == ')') {
-                rc_value_t* value = rc_define_unnamed_variable(line, (int)(ptr-line), parse);
+                part->value = rc_alloc_helper_variable(line, (int)(ptr-line), parse);
                 if (parse->offset < 0)
                   return 0;
-
-                part->value = &value->value;
                 ++ptr;
               }
               else {

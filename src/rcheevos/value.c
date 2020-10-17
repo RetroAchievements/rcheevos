@@ -254,20 +254,51 @@ void rc_init_parse_state_variables(rc_parse_state_t* parse, rc_value_t** variabl
   *variables = 0;
 }
 
-rc_value_t* rc_define_unnamed_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
+rc_memref_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
   rc_value_t** variables = parse->variables;
   rc_value_t* value;
   const char* name;
 
+  /* single memory reference lookups without a modifier flag can be handled without a variable */
+  if (memaddr_len <= 12 &&  /* d0xH00000000 */
+      memaddr[0] == '0' && memaddr[1] == 'x') { /* only direct address lookups can be represented without a variable */
+    int is_memref = 1;
+    int i;
+
+    /* already validated no flag because memaddr[1] is not ':' (X:) */
+    /* look for operators (=,<,>,!,*,/). if none are found, it's just a memory reference */
+    for (i = 2; i < memaddr_len; ++i) {
+      if (!isalnum(memaddr[i]) && memaddr[i] != ' ') {
+        is_memref = 0;
+        break;
+      }
+    }
+
+    if (is_memref) {
+      rc_operand_t operand;
+      const char *memaddr2 = memaddr;
+      const int result = rc_parse_operand(&operand, &memaddr2, 0, 0, parse);
+      if (result < 0) {
+        parse->offset = result;
+        return NULL;
+      }
+
+      /* only direct address lookups can be represented without a variable */
+      if (operand.type == RC_OPERAND_ADDRESS)
+        return operand.value.memref;
+    }
+  }
+
   while ((value = *variables) != NULL) {
     if (strncmp(value->name, memaddr, memaddr_len) == 0 && value->name[memaddr_len] == 0)
-      return value;
+      return &value->value;
 
     variables = (rc_value_t**)&value->value.next;
   }
 
   value = RC_ALLOC_SCRATCH(rc_value_t, parse);
   memset(&value->value, 0, sizeof(value->value));
+  value->value.memref.is_variable = 1;
   value->memrefs = NULL;
 
   /* capture name before calling parse as parse will update memaddr pointer */
@@ -279,7 +310,7 @@ rc_value_t* rc_define_unnamed_variable(const char* memaddr, int memaddr_len, rc_
   value->name = name;
 
   *variables = value;
-  return value;
+  return &value->value;
 }
 
 void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L) {

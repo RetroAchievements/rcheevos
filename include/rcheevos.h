@@ -83,6 +83,8 @@ typedef struct {
   char size;
   /* True if the reference will be used in indirection */
   char is_indirect;
+  /* True if the reference is a variable */
+  char is_variable;
 } rc_memref_t;
 
 typedef struct rc_memref_value_t rc_memref_value_t;
