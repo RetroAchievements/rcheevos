@@ -323,6 +323,25 @@ static void test_macro_value_from_indirect() {
   assert_richpresence_output(richpresence, &memory, "Pointing at 52");
 }
 
+static void test_macro_value_divide_by_zero() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Format:Value\nFormatType=VALUE\n\nDisplay:\nResult is @Value(0xH02/0xH00)");
+  assert_richpresence_output(richpresence, &memory, "Result is 0");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "Result is 52");
+
+  ram[0] = 2;
+  assert_richpresence_output(richpresence, &memory, "Result is 26");
+}
+
 static void test_macro_frames() {
   unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -869,6 +888,7 @@ void test_richpresence(void) {
   TEST(test_macro_value_from_formula);
   TEST(test_macro_value_from_hits);
   TEST(test_macro_value_from_indirect);
+  TEST(test_macro_value_divide_by_zero);
 
   /* frames macros */
   TEST(test_macro_frames);

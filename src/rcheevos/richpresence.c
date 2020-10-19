@@ -390,6 +390,9 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
         last = strtoul(line, &endptr, base);
       }
 
+      while (*endptr == ' ')
+        ++endptr;
+
       if (*endptr == '=') {
         rc_insert_richpresence_lookup_item(lookup, first, last, label, (int)(endline - label), parse);
         break;
