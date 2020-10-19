@@ -12,9 +12,11 @@ void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_s
     return rc_alloc(pointer, offset, size, alignment, NULL);
 
   /* update how much space will be required in the real buffer */
-  const int aligned_offset = (*offset + alignment - 1) & ~(alignment - 1);
-  *offset += (aligned_offset - *offset);
-  *offset += size;
+  {
+    const int aligned_offset = (*offset + alignment - 1) & ~(alignment - 1);
+    *offset += (aligned_offset - *offset);
+    *offset += size;
+  }
 
   /* find a scratch buffer to hold the temporary data */
   buffer = &scratch->buffer;
