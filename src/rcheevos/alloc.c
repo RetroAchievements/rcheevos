@@ -36,7 +36,7 @@ void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_s
   } while (1);
 
   /* make sure the caller isn't asking for more than we can provide */
-  if (size > sizeof(buffer->buffer)) {
+  if (size > (int)sizeof(buffer->buffer)) {
     *offset = RC_INVALID_STATE;
     return NULL;
   }
