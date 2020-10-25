@@ -50,12 +50,6 @@ static void rc_hash_verbose(const char* message)
 static struct rc_hash_filereader filereader_funcs;
 static struct rc_hash_filereader* filereader = NULL;
 
-void rc_hash_init_custom_filereader(struct rc_hash_filereader* reader)
-{
-  memcpy(&filereader_funcs, reader, sizeof(filereader_funcs));
-  filereader = &filereader_funcs;
-}
-
 static void* filereader_open(const char* path)
 {
   return fopen(path, "rb");
@@ -81,20 +75,42 @@ static void filereader_close(void* file_handle)
   fclose((FILE*)file_handle);
 }
 
+void rc_hash_init_custom_filereader(struct rc_hash_filereader* reader)
+{
+  /* initialize with defaults first */
+  filereader_funcs.open = filereader_open;
+  filereader_funcs.seek = filereader_seek;
+  filereader_funcs.tell = filereader_tell;
+  filereader_funcs.read = filereader_read;
+  filereader_funcs.close = filereader_close;
+
+  /* hook up any provided custom handlers */
+  if (reader) {
+    if (reader->open)
+      filereader_funcs.open = reader->open;
+
+    if (reader->seek)
+      filereader_funcs.seek = reader->seek;
+
+    if (reader->tell)
+      filereader_funcs.tell = reader->tell;
+
+    if (reader->read)
+      filereader_funcs.read = reader->read;
+
+    if (reader->close)
+      filereader_funcs.close = reader->close;
+  }
+
+  filereader = &filereader_funcs;
+}
+
 void* rc_file_open(const char* path)
 {
   void* handle;
 
   if (!filereader)
-  {
-    filereader_funcs.open = filereader_open;
-    filereader_funcs.seek = filereader_seek;
-    filereader_funcs.tell = filereader_tell;
-    filereader_funcs.read = filereader_read;
-    filereader_funcs.close = filereader_close;
-
-    filereader = &filereader_funcs;
-  }
+    rc_hash_init_custom_filereader(NULL);
 
   handle = filereader->open(path);
   if (handle && verbose_message_callback)
@@ -136,8 +152,15 @@ struct rc_hash_cdreader* cdreader = NULL;
 
 void rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader)
 {
-  memcpy(&cdreader_funcs, reader, sizeof(cdreader_funcs));
-  cdreader = &cdreader_funcs;
+  if (reader)
+  {
+    memcpy(&cdreader_funcs, reader, sizeof(cdreader_funcs));
+    cdreader = &cdreader_funcs;
+  }
+  else
+  {
+    cdreader = NULL;
+  }
 }
 
 static void* rc_cd_open_track(const char* path, uint32_t track)
@@ -385,7 +408,7 @@ static int rc_hash_3do(char hash[33], const char* path)
     /* the block size is at offset 0x4C (assume 0x4C is always 0) */
     block_size = buffer[0x4D] * 65536 + buffer[0x4E] * 256 + buffer[0x4F];
 
-    /* the root directory block location is at offset 0x64 (and duplicated several 
+    /* the root directory block location is at offset 0x64 (and duplicated several
      * times, but we just look at the primary record) (assume 0x64 is always 0)*/
     block_location = buffer[0x65] * 65536 + buffer[0x66] * 256 + buffer[0x67];
 
@@ -897,11 +920,11 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   if (!track_handle)
     return rc_hash_error("Could not open track");
 
-  /* first 256 bytes from first sector should have IP.BIN structure that stores game meta information 
+  /* first 256 bytes from first sector should have IP.BIN structure that stores game meta information
    * https://mc.pp.se/dc/ip.bin.html */
   rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
 
-  if (memcmp(&buffer[0], "SEGA SEGAKATANA ", 16) != 0) 
+  if (memcmp(&buffer[0], "SEGA SEGAKATANA ", 16) != 0)
   {
     rc_cd_close_track(track_handle);
     return rc_hash_error("Not a Dreamcast CD");
@@ -937,7 +960,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
 
   memcpy(exe_file, &buffer[96], i);
   exe_file[i] = '\0';
-  
+
   sector = rc_cd_find_file_sector(track_handle, exe_file, &size);
 
   rc_cd_close_track(track_handle);

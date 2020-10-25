@@ -411,6 +411,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   self->richpresence->owns_memrefs = rc_runtime_allocated_memrefs(self);
 
   richpresence->memrefs = NULL;
+  richpresence->variables = NULL;
   self->richpresence_update_timer = 0;
 
   if (!richpresence->first_display || !richpresence->first_display->display) {

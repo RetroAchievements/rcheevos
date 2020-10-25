@@ -365,6 +365,7 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
     ++label;
 
     do {
+      /* get the value for the mapping */
       if (line[0] == '0' && line[1] == 'x') {
         line += 2;
         base = 16;
@@ -373,10 +374,14 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
       }
 
       first = strtoul(line, &endptr, base);
+
+      /* check for a range */
       if (*endptr != '-') {
+        /* no range, just set last to first */
         last = first;
       }
       else {
+        /* range, get last value */
         line = endptr + 1;
 
         if (line[0] == '0' && line[1] == 'x') {
@@ -389,16 +394,19 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
         last = strtoul(line, &endptr, base);
       }
 
+      /* if we've found the equal sign, this is the last item */
       if (*endptr == '=') {
         rc_insert_richpresence_lookup_item(lookup, first, last, label, (int)(endline - label), parse);
         break;
       }
 
+      /* otherwise, if it's not a comma, it's an error */
       if (*endptr != ',') {
         parse->offset = RC_INVALID_CONST_OPERAND;
         break;
       }
 
+      /* insert the current item and continue scanning the next one */
       rc_insert_richpresence_lookup_item(lookup, first, last, label, (int)(endline - label), parse);
       line = endptr + 1;
     } while (line < endline);

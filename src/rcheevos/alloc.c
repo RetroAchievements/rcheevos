@@ -7,16 +7,25 @@ void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_s
 {
   rc_scratch_buffer_t* buffer;
 
+  /* if we have a real buffer, then allocate the data there */
   if (pointer)
     return rc_alloc(pointer, offset, size, alignment, NULL);
 
+  /* update how much space will be required in the real buffer */
+  {
+    const int aligned_offset = (*offset + alignment - 1) & ~(alignment - 1);
+    *offset += (aligned_offset - *offset);
+    *offset += size;
+  }
+
+  /* find a scratch buffer to hold the temporary data */
   buffer = &scratch->buffer;
   do {
-    const int aligned_offset = (buffer->offset + alignment - 1) & ~(alignment - 1);
-    const int remaining = sizeof(buffer->buffer) - aligned_offset;
+    const int aligned_buffer_offset = (buffer->offset + alignment - 1) & ~(alignment - 1);
+    const int remaining = sizeof(buffer->buffer) - aligned_buffer_offset;
 
     if (remaining >= size) {
-      *offset += size + (aligned_offset - buffer->offset);
+      /* claim the required space from an existing buffer */
       return rc_alloc(buffer->buffer, &buffer->offset, size, alignment, NULL);
     }
 
@@ -26,6 +35,13 @@ void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_s
     buffer = buffer->next;
   } while (1);
 
+  /* make sure the caller isn't asking for more than we can provide */
+  if (size > (int)sizeof(buffer->buffer)) {
+    *offset = RC_INVALID_STATE;
+    return NULL;
+  }
+
+  /* not enough space in any existing buffer, allocate more */
   buffer->next = (rc_scratch_buffer_t*)malloc(sizeof(rc_scratch_buffer_t));
   if (!buffer->next) {
     *offset = RC_OUT_OF_MEMORY;
@@ -36,7 +52,7 @@ void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_s
   buffer->offset = 0;
   buffer->next = NULL;
 
-  *offset += size;
+  /* claim the required space from the new buffer */
   return rc_alloc(buffer->buffer, &buffer->offset, size, alignment, NULL);
 }
 
@@ -82,7 +98,9 @@ char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length) {
   ptr = (char*)rc_alloc_scratch(parse->buffer, &parse->offset, length + 1, RC_ALIGNOF(char), &parse->scratch);
 
   if (!ptr || !*next) {
-    parse->offset = RC_OUT_OF_MEMORY;
+    if (parse->offset >= 0)
+      parse->offset = RC_OUT_OF_MEMORY;
+
     return NULL;
   }
 
