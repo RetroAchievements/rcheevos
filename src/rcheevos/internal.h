@@ -3,6 +3,13 @@
 
 #include "rcheevos.h"
 
+typedef struct rc_scratch_string {
+  char* value;
+  struct rc_scratch_string* left;
+  struct rc_scratch_string* right;
+}
+rc_scratch_string_t;
+
 #define RC_ALLOW_ALIGN(T) struct __align_ ## T { char ch; T t; };
 RC_ALLOW_ALIGN(rc_condition_t)
 RC_ALLOW_ALIGN(rc_condset_t)
@@ -16,17 +23,24 @@ RC_ALLOW_ALIGN(rc_richpresence_lookup_t)
 RC_ALLOW_ALIGN(rc_richpresence_lookup_item_t)
 RC_ALLOW_ALIGN(rc_trigger_t)
 RC_ALLOW_ALIGN(rc_value_t)
+RC_ALLOW_ALIGN(rc_scratch_string_t)
 RC_ALLOW_ALIGN(char)
 
 #define RC_ALIGNOF(T) (sizeof(struct __align_ ## T) - sizeof(T))
 
 #define RC_ALLOC(t, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch))
+#define RC_ALLOC_SCRATCH(t, p) ((t*)rc_alloc_scratch((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch))
+
+typedef struct rc_scratch_buffer {
+  struct rc_scratch_buffer* next;
+  int offset;
+  unsigned char buffer[512 - 16];
+}
+rc_scratch_buffer_t;
 
 typedef struct {
-  rc_memref_t memref_buffer[16];
-  rc_memref_t *memref;
-  int memref_count;
-  int memref_size;
+  rc_scratch_buffer_t buffer;
+  rc_scratch_string_t* strings;
 
   union
   {
@@ -82,6 +96,7 @@ void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_value_t** me
 void rc_destroy_parse_state(rc_parse_state_t* parse);
 
 void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch);
+void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch);
 char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length);
 
 rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned address, char size, char is_indirect);

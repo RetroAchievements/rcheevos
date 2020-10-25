@@ -46,7 +46,7 @@ static void validate_trigger(const char* trigger) {
     return;
   }
 
-  printf("OK");
+  printf("%d OK", ret);
   free(buffer);
 }
 
@@ -76,7 +76,7 @@ static void validate_leaderboard(const char* leaderboard)
     return;
   }
 
-  printf("OK");
+  printf("%d OK", ret);
   free(buffer);
 }
 
@@ -106,7 +106,7 @@ static void validate_richpresence(const char* script)
     return;
   }
 
-  printf("OK");
+  printf("%d OK", ret);
   free(buffer);
 }
 

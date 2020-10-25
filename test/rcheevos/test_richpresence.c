@@ -323,6 +323,25 @@ static void test_macro_value_from_indirect() {
   assert_richpresence_output(richpresence, &memory, "Pointing at 52");
 }
 
+static void test_macro_value_divide_by_zero() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Format:Value\nFormatType=VALUE\n\nDisplay:\nResult is @Value(0xH02/0xH00)");
+  assert_richpresence_output(richpresence, &memory, "Result is 0");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "Result is 52");
+
+  ram[0] = 2;
+  assert_richpresence_output(richpresence, &memory, "Result is 26");
+}
+
 static void test_macro_frames() {
   unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -349,6 +368,26 @@ static void test_macro_lookup_simple() {
   memory.size = sizeof(ram);
 
   assert_parse_richpresence(&richpresence, buffer, "Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
+  assert_richpresence_output(richpresence, &memory, "At Zero");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "At One");
+
+  /* no entry - default to empty string */
+  ram[0] = 2;
+  assert_richpresence_output(richpresence, &memory, "At ");
+}
+
+static void test_macro_lookup_with_inline_comment() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:Location\n// Zero\n0=Zero\n// One\n1=One\n//2=Two\n\nDisplay:\nAt @Location(0xH0000)");
   assert_richpresence_output(richpresence, &memory, "At Zero");
 
   ram[0] = 1;
@@ -558,9 +597,105 @@ static void test_macro_lookup_value_with_whitespace() {
   assert_richpresence_output(richpresence, &memory, "At '' ");
 }
 
+static void test_macro_lookup_mapping_repeated() {
+  unsigned char ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* same lookup can be used for the same address */
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:OddOrEven\n0=Even\n1=Odd\n2=Even\n3=Odd\n4=Even\n5=Odd\n\nDisplay:\nFirst:@OddOrEven(0xH0000), Second:@OddOrEven(0xH0001)");
+  assert_richpresence_output(richpresence, &memory, "First:Even, Second:Even");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "First:Odd, Second:Even");
+
+  ram[0] = 2;
+  ram[1] = 3;
+  assert_richpresence_output(richpresence, &memory, "First:Even, Second:Odd");
+}
+
+static void test_macro_lookup_mapping_repeated_csv() {
+  unsigned char ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* same lookup can be used for the same address */
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:OddOrEven\n0,2,4=Even\n1,3,5=Odd\n\nDisplay:\nFirst:@OddOrEven(0xH0000), Second:@OddOrEven(0xH0001)");
+  assert_richpresence_output(richpresence, &memory, "First:Even, Second:Even");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "First:Odd, Second:Even");
+
+  ram[0] = 2;
+  ram[1] = 3;
+  assert_richpresence_output(richpresence, &memory, "First:Even, Second:Odd");
+}
+
+static void test_macro_lookup_mapping_merged() {
+  unsigned char ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* same lookup can be used for the same address */
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:Place\n0=First\n1=First\n2=First\n3=Second\n4=Second\n5=Second\n\nDisplay:\nFirst:@Place(0xH0000), Second:@Place(0xH0001)");
+  assert_richpresence_output(richpresence, &memory, "First:First, Second:Second");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "First:First, Second:Second");
+
+  ram[0] = 5;
+  ram[1] = 2;
+  assert_richpresence_output(richpresence, &memory, "First:Second, Second:First");
+
+  ASSERT_NUM_EQUALS(richpresence->first_lookup->root->first, 0);
+  ASSERT_NUM_EQUALS(richpresence->first_lookup->root->last, 2);
+  ASSERT_NUM_EQUALS(richpresence->first_lookup->root->right->first, 3);
+  ASSERT_NUM_EQUALS(richpresence->first_lookup->root->right->last, 5);
+  ASSERT_PTR_NULL(richpresence->first_lookup->root->right->right);
+}
+
+static void test_macro_lookup_mapping_range() {
+  unsigned char ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* same lookup can be used for the same address */
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:Place\n0-2=First\n5,3-4=Second\n\nDisplay:\nFirst:@Place(0xH0000), Second:@Place(0xH0001)");
+  assert_richpresence_output(richpresence, &memory, "First:First, Second:Second");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "First:First, Second:Second");
+
+  ram[0] = 5;
+  ram[1] = 2;
+  assert_richpresence_output(richpresence, &memory, "First:Second, Second:First");
+
+  ASSERT_NUM_EQUALS(richpresence->first_lookup->root->first, 0);
+  ASSERT_NUM_EQUALS(richpresence->first_lookup->root->last, 2);
+  ASSERT_NUM_EQUALS(richpresence->first_lookup->root->right->first, 3);
+  ASSERT_NUM_EQUALS(richpresence->first_lookup->root->right->last, 5);
+  ASSERT_PTR_NULL(richpresence->first_lookup->root->right->right);
+}
+
 static void test_macro_lookup_invalid() {
   int result;
-    
+
   /* lookup value starts with Ox instead of 0x */
   result = rc_richpresence_size("Lookup:Location\nOx0=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
   ASSERT_NUM_EQUALS(result, RC_INVALID_CONST_OPERAND);
@@ -611,7 +746,7 @@ static void test_macro_undefined_at_end_of_line() {
   memory.size = sizeof(ram);
 
   /* adding [Unknown macro] to the output effectively makes the script larger than it started.
-   * since we don't detect unknown macros in `rc_richpresence_size`, this was causing a 
+   * since we don't detect unknown macros in `rc_richpresence_size`, this was causing a
    * write-past-end-of-buffer memory corruption error. this test recreated that error. */
   assert_parse_richpresence(&richpresence, buffer, "Display:\n@Points(0x 0001)");
   assert_richpresence_output(richpresence, &memory, "[Unknown macro]Points(0x 0001)");
@@ -631,7 +766,7 @@ static void test_macro_unterminated() {
   assert_richpresence_output(richpresence, &memory, "@Points(0x 0001");
 
   /* adding [Unknown macro] to the output effectively makes the script larger than it started.
-  * since we don't detect unknown macros in `rc_richpresence_size`, this was causing a 
+  * since we don't detect unknown macros in `rc_richpresence_size`, this was causing a
   * write-past-end-of-buffer memory corruption error. this test recreated that error. */
   assert_parse_richpresence(&richpresence, buffer, "Display:\n@Points(0x 0001");
   assert_richpresence_output(richpresence, &memory, "[Unknown macro]Points(0x 0001");
@@ -649,7 +784,7 @@ static void test_macro_without_parameter() {
 
 static void test_macro_without_parameter_conditional_display() {
   int result;
-      
+
   result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n?0x0h0001=1?@Points Points\nDefault");
   ASSERT_NUM_EQUALS(result, RC_MISSING_VALUE);
 
@@ -753,12 +888,14 @@ void test_richpresence(void) {
   TEST(test_macro_value_from_formula);
   TEST(test_macro_value_from_hits);
   TEST(test_macro_value_from_indirect);
+  TEST(test_macro_value_divide_by_zero);
 
   /* frames macros */
   TEST(test_macro_frames);
 
   /* lookup macros */
   TEST(test_macro_lookup_simple);
+  TEST(test_macro_lookup_with_inline_comment);
   TEST(test_macro_lookup_hex_keys);
   TEST(test_macro_lookup_default);
   TEST(test_macro_lookup_crlf);
@@ -769,6 +906,10 @@ void test_richpresence(void) {
   TEST(test_macro_lookup_multiple);
   TEST(test_macro_lookup_and_value);
   TEST(test_macro_lookup_value_with_whitespace);
+  TEST(test_macro_lookup_mapping_repeated);
+  TEST(test_macro_lookup_mapping_repeated_csv);
+  TEST(test_macro_lookup_mapping_merged);
+  TEST(test_macro_lookup_mapping_range);
   TEST(test_macro_lookup_invalid);
 
   /* escaped macro */

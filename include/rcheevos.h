@@ -343,17 +343,20 @@ int rc_format_value(char* buffer, int size, int value, int format);
 typedef struct rc_richpresence_lookup_item_t rc_richpresence_lookup_item_t;
 
 struct rc_richpresence_lookup_item_t {
-  unsigned value;
-  rc_richpresence_lookup_item_t* next_item;
+  unsigned first;
+  unsigned last;
+  rc_richpresence_lookup_item_t* left;
+  rc_richpresence_lookup_item_t* right;
   const char* label;
 };
 
 typedef struct rc_richpresence_lookup_t rc_richpresence_lookup_t;
 
 struct rc_richpresence_lookup_t {
-  rc_richpresence_lookup_item_t* first_item;
+  rc_richpresence_lookup_item_t* root;
   rc_richpresence_lookup_t* next;
   const char* name;
+  const char* default_label;
   unsigned short format;
 };
 
@@ -362,7 +365,7 @@ typedef struct rc_richpresence_display_part_t rc_richpresence_display_part_t;
 struct rc_richpresence_display_part_t {
   rc_richpresence_display_part_t* next;
   const char* text;
-  rc_richpresence_lookup_item_t* first_lookup_item;
+  rc_richpresence_lookup_t* lookup;
   rc_value_t value;
   unsigned short display_type;
 };
