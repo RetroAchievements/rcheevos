@@ -701,15 +701,17 @@ static void test_hash_m3u_buffered()
   const char* m3u_filename = "test.m3u";
   const char* filename = "test.d88";
   const char* expected_md5 = "a0f425b23200568132ba76b2405e3933";
+  uint8_t* m3u_contents = (uint8_t*)filename;
+  const size_t m3u_size = strlen(filename);
 
   mock_file(0, filename, image, size);
-  mock_file(1, m3u_filename, (uint8_t*)filename, strlen(filename));
+  mock_file(1, m3u_filename, m3u_contents, m3u_size);
 
   /* test file identification from iterator */
   int result_iterator;
   struct rc_hash_iterator iterator;
 
-  rc_hash_initialize_iterator(&iterator, m3u_filename, filename, strlen(filename));
+  rc_hash_initialize_iterator(&iterator, m3u_filename, m3u_contents, m3u_size);
   result_iterator = rc_hash_iterate(hash_iterator, &iterator);
   rc_hash_destroy_iterator(&iterator);
 
