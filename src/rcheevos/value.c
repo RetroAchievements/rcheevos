@@ -303,6 +303,8 @@ rc_memref_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len
 
   /* capture name before calling parse as parse will update memaddr pointer */
   name = rc_alloc_str(parse, memaddr, memaddr_len);
+  if (!name)
+    return NULL;
 
   rc_parse_value_internal(value, &memaddr, parse);
 

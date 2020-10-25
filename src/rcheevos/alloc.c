@@ -35,14 +35,20 @@ void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_s
     buffer = buffer->next;
   } while (1);
 
-  /* make sure the caller isn't asking for more than we can provide */
+  /* not enough space in any existing buffer, allocate more */
   if (size > (int)sizeof(buffer->buffer)) {
-    *offset = RC_INVALID_STATE;
-    return NULL;
+    /* caller is asking for more than we can fit in a standard rc_scratch_buffer_t.
+     * leverage the fact that the buffer is the last field and extend its size.
+     * this chunk will be exactly large enough to hold the needed data, and since offset
+     * will exceed sizeof(buffer->buffer), it will never be eligible to hold anything else.
+     */
+    const int needed = sizeof(rc_scratch_buffer_t) - sizeof(buffer->buffer) + size;
+    buffer->next = (rc_scratch_buffer_t*)malloc(needed);
+  }
+  else {
+    buffer->next = (rc_scratch_buffer_t*)malloc(sizeof(rc_scratch_buffer_t));
   }
 
-  /* not enough space in any existing buffer, allocate more */
-  buffer->next = (rc_scratch_buffer_t*)malloc(sizeof(rc_scratch_buffer_t));
   if (!buffer->next) {
     *offset = RC_OUT_OF_MEMORY;
     return NULL;
