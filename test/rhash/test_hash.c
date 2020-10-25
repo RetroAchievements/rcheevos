@@ -88,25 +88,25 @@ static void test_hash_m3u(int console_id, const char* filename, size_t size, con
 
 static void test_hash_filename(int console_id, const char* path, const char* expected_md5)
 {
-    char hash_file[33], hash_iterator[33];
+  char hash_file[33], hash_iterator[33];
 
-    /* test file hash */
-    int result_file = rc_hash_generate_from_file(hash_file, console_id, path);
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, console_id, path);
 
-    /* test file identification from iterator */
-    int result_iterator;
-    struct rc_hash_iterator iterator;
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
 
-    rc_hash_initialize_iterator(&iterator, path, NULL, 0);
-    result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-    rc_hash_destroy_iterator(&iterator);
+  rc_hash_initialize_iterator(&iterator, path, NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
 
-    /* validation */
-    ASSERT_NUM_EQUALS(result_file, 1);
-    ASSERT_STR_EQUALS(hash_file, expected_md5);
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
 
-    ASSERT_NUM_EQUALS(result_iterator, 1);
-    ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
 /* ========================================================================= */
@@ -693,6 +693,34 @@ static void assert_valid_m3u(const char* disc_filename, const char* m3u_filename
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
+static void test_hash_m3u_buffered()
+{
+  const size_t size = 131072;
+  uint8_t* image = generate_generic_file(size);
+  char hash_iterator[33];
+  const char* m3u_filename = "test.m3u";
+  const char* filename = "test.d88";
+  const char* expected_md5 = "a0f425b23200568132ba76b2405e3933";
+
+  mock_file(0, filename, image, size);
+  mock_file(1, m3u_filename, (uint8_t*)filename, strlen(filename));
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, m3u_filename, filename, strlen(filename));
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
 static void test_hash_m3u_with_comments()
 {
   assert_valid_m3u("test.d88", "test.m3u", 
@@ -937,6 +965,7 @@ void test_hash(void) {
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.wsc", 4194304, "a247ec8a8c42e18fcb80702dfadac14b");
 
   /* m3u support */
+  TEST(test_hash_m3u_buffered);
   TEST(test_hash_m3u_with_comments);
   TEST(test_hash_m3u_empty);
   TEST(test_hash_m3u_trailing_whitespace);
