@@ -6,7 +6,7 @@
 static void _assert_parse_operand(rc_operand_t* self, const char** memaddr) {
   rc_parse_state_t parse;
   char buffer[256];
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
   int ret;
 
   rc_init_parse_state(&parse, buffer, 0, 0);
@@ -26,7 +26,7 @@ static void _assert_operand(rc_operand_t* self, char expected_type, char expecte
     case RC_OPERAND_DELTA:
     case RC_OPERAND_PRIOR:
       ASSERT_NUM_EQUALS(expected_size, self->size);
-      ASSERT_UNUM_EQUALS(expected_address, self->value.memref->memref.address);
+      ASSERT_UNUM_EQUALS(expected_address, self->value.memref->address);
       break;
 
     case RC_OPERAND_CONST:
@@ -62,7 +62,7 @@ static void test_parse_error_operand(const char* memaddr, int valid_chars, int e
   rc_parse_state_t parse;
   int ret;
   const char* begin = memaddr;
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
 
   rc_init_parse_state(&parse, 0, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
@@ -73,7 +73,7 @@ static void test_parse_error_operand(const char* memaddr, int valid_chars, int e
   ASSERT_NUM_EQUALS(memaddr - begin, valid_chars);
 }
 
-static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_value_t* memrefs)
+static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_t* memrefs)
 {
   rc_eval_state_t eval_state;
 
@@ -88,7 +88,7 @@ static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_v
 static void test_evaluate_operand(const char* memaddr, memory_t* memory, unsigned expected_value) {
   rc_operand_t self;
   rc_parse_state_t parse;
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
   char buffer[512];
   unsigned value;
 
@@ -384,7 +384,7 @@ static void test_evaluate_delta_memory_reference() {
   const char* memaddr;
   rc_parse_state_t parse;
   char buffer[256];
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -422,7 +422,7 @@ void test_evaluate_prior_memory_reference() {
   const char* memaddr;
   rc_parse_state_t parse;
   char buffer[256];
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
 
   memory.ram = ram;
   memory.size = sizeof(ram);

@@ -14,7 +14,7 @@ rc_scratch_string_t;
 RC_ALLOW_ALIGN(rc_condition_t)
 RC_ALLOW_ALIGN(rc_condset_t)
 RC_ALLOW_ALIGN(rc_lboard_t)
-RC_ALLOW_ALIGN(rc_memref_value_t)
+RC_ALLOW_ALIGN(rc_memref_t)
 RC_ALLOW_ALIGN(rc_operand_t)
 RC_ALLOW_ALIGN(rc_richpresence_t)
 RC_ALLOW_ALIGN(rc_richpresence_display_t)
@@ -85,7 +85,7 @@ typedef struct {
   void* buffer;
   rc_scratch_t scratch;
 
-  rc_memref_value_t** first_memref;
+  rc_memref_t** first_memref;
   rc_value_t** variables;
 
   unsigned measured_target;
@@ -93,7 +93,7 @@ typedef struct {
 rc_parse_state_t;
 
 void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx);
-void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_value_t** memrefs);
+void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_t** memrefs);
 void rc_init_parse_state_variables(rc_parse_state_t* parse, rc_value_t** variables);
 void rc_destroy_parse_state(rc_parse_state_t* parse);
 
@@ -101,10 +101,10 @@ void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t
 void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch);
 char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length);
 
-rc_memref_value_t* rc_alloc_memref_value(rc_parse_state_t* parse, unsigned address, char size, char is_indirect);
-void rc_update_memref_values(rc_memref_value_t* memref, rc_peek_t peek, void* ud);
-void rc_update_memref_value(rc_memref_value_t* memref, rc_peek_t peek, void* ud);
-rc_memref_value_t* rc_get_indirect_memref(rc_memref_value_t* memref, rc_eval_state_t* eval_state);
+rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, unsigned address, char size, char is_indirect);
+void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);
+void rc_update_memref_value(rc_memref_t* memref, rc_peek_t peek, void* ud);
+rc_memref_value_t* rc_get_indirect_memref(rc_memref_t* memref, rc_eval_state_t* eval_state);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 

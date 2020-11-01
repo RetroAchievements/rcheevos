@@ -150,12 +150,13 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
 
   self->name = "(unnamed)";
   self->value.value = self->value.previous = self->value.prior = 0;
+  self->next = 0;
 }
 
 int rc_value_size(const char* memaddr) {
   rc_value_t* self;
   rc_parse_state_t parse;
-  rc_memref_value_t* first_memref;
+  rc_memref_t* first_memref;
   rc_init_parse_state(&parse, 0, 0, 0);
   rc_init_parse_state_memrefs(&parse, &first_memref);
 
@@ -285,7 +286,7 @@ rc_memref_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len
 
       /* only direct address lookups can be represented without a variable */
       if (operand.type == RC_OPERAND_ADDRESS)
-        return operand.value.memref;
+        return &operand.value.memref->value;
     }
   }
 
@@ -293,12 +294,12 @@ rc_memref_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len
     if (strncmp(value->name, memaddr, memaddr_len) == 0 && value->name[memaddr_len] == 0)
       return &value->value;
 
-    variables = (rc_value_t**)&value->value.next;
+    variables = &value->next;
   }
 
   value = RC_ALLOC_SCRATCH(rc_value_t, parse);
   memset(&value->value, 0, sizeof(value->value));
-  value->value.memref.is_variable = 1;
+  value->value.size = RC_MEMSIZE_VARIABLE;
   value->memrefs = NULL;
 
   /* capture name before calling parse as parse will update memaddr pointer */
@@ -318,6 +319,6 @@ rc_memref_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len
 void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L) {
   while (variable) {
     rc_evaluate_value(variable, peek, ud, L);
-    variable = (rc_value_t*)variable->value.next;
+    variable = variable->next;
   }
 }

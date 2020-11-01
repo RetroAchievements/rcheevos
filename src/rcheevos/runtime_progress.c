@@ -105,20 +105,20 @@ static void rc_runtime_progress_init(rc_runtime_progress_t* progress, rc_runtime
 
 static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
 {
-  rc_memref_value_t* memref = progress->runtime->memrefs;
+  rc_memref_t* memref = progress->runtime->memrefs;
   unsigned int flags = 0;
 
   rc_runtime_progress_start_chunk(progress, RC_RUNTIME_CHUNK_MEMREFS);
 
   while (memref) {
-    flags = memref->memref.size;
-    if (memref->previous == memref->prior)
+    flags = memref->value.size;
+    if (memref->value.previous == memref->value.prior)
       flags |= RC_MEMREF_FLAG_PREV_IS_PRIOR;
 
-    rc_runtime_progress_write_uint(progress, memref->memref.address);
+    rc_runtime_progress_write_uint(progress, memref->address);
     rc_runtime_progress_write_uint(progress, flags);
-    rc_runtime_progress_write_uint(progress, memref->value);
-    rc_runtime_progress_write_uint(progress, memref->prior);
+    rc_runtime_progress_write_uint(progress, memref->value.value);
+    rc_runtime_progress_write_uint(progress, memref->value.prior);
 
     memref = memref->next;
   }
@@ -132,7 +132,7 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
   unsigned entries;
   unsigned address, flags, value, prior;
   char size;
-  rc_memref_value_t* memref;
+  rc_memref_t* memref;
 
   /* re-read the chunk size to determine how many memrefs are present */
   progress->offset -= 4;
@@ -148,10 +148,10 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
 
     memref = progress->runtime->memrefs;
     while (memref) {
-      if (memref->memref.address == address && memref->memref.size == size) {
-        memref->value = value;
-        memref->previous = (flags & RC_MEMREF_FLAG_PREV_IS_PRIOR) ? prior : value;
-        memref->prior = prior;
+      if (memref->address == address && memref->value.size == size) {
+        memref->value.value = value;
+        memref->value.previous = (flags & RC_MEMREF_FLAG_PREV_IS_PRIOR) ? prior : value;
+        memref->value.prior = prior;
       }
 
       memref = memref->next;

@@ -77,7 +77,7 @@ static char rc_runtime_allocated_memrefs(rc_runtime_t* self) {
     owns_memref = 1;
     /* advance through the new variables so we're ready for the next allocation */
     do {
-      self->next_variable = (rc_value_t**)&(*self->next_variable)->value.next;
+      self->next_variable = &(*self->next_variable)->next;
     } while (*self->next_variable != NULL);
   }
 
@@ -605,6 +605,6 @@ void rc_runtime_reset(rc_runtime_t* self) {
     }
   }
 
-  for (variable = self->variables; variable; variable = (rc_value_t*)variable->value.next)
+  for (variable = self->variables; variable; variable = variable->next)
     rc_reset_value(variable);
 }
