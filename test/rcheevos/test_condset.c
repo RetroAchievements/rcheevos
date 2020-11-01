@@ -1209,7 +1209,7 @@ static void test_subsource_overflow_comparison_greater_or_equal() {
   unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
-  rc_memref_value_t* memrefs = NULL;
+  rc_memref_t* memrefs = NULL;
   char buffer[2048];
 
   memory.ram = ram;
