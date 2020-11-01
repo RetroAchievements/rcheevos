@@ -358,7 +358,7 @@ int main(int argc, char* argv[]) {
       break;
 
     case 'd':
-      printf("Directory: %s: ", argv[2]);
+      printf("Directory: %s:\n", argv[2]);
       validate_patchdata_directory(argv[2]);
       break;
 

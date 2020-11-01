@@ -10,6 +10,7 @@
 void rc_runtime_init(rc_runtime_t* self) {
   memset(self, 0, sizeof(rc_runtime_t));
   self->next_memref = &self->memrefs;
+  self->next_variable = &self->variables;
 }
 
 void rc_runtime_destroy(rc_runtime_t* self) {
@@ -59,6 +60,30 @@ static void rc_runtime_checksum(const char* memaddr, unsigned char* md5) {
   md5_finish(&state, md5);
 }
 
+static char rc_runtime_allocated_memrefs(rc_runtime_t* self) {
+  char owns_memref = 0;
+
+  /* if at least one memref was allocated within the object, we can't free the buffer when the object is deactivated */
+  if (*self->next_memref != NULL) {
+    owns_memref = 1;
+    /* advance through the new memrefs so we're ready for the next allocation */
+    do {
+      self->next_memref = &(*self->next_memref)->next;
+    } while (*self->next_memref != NULL);
+  }
+
+  /* if at least one variable was allocated within the object, we can't free the buffer when the object is deactivated */
+  if (*self->next_variable != NULL) {
+    owns_memref = 1;
+    /* advance through the new variables so we're ready for the next allocation */
+    do {
+      self->next_variable = (rc_value_t**)&(*self->next_variable)->value.next;
+    } while (*self->next_variable != NULL);
+  }
+
+  return owns_memref;
+}
+
 static void rc_runtime_deactivate_trigger_by_index(rc_runtime_t* self, unsigned index) {
   if (self->triggers[index].owns_memrefs) {
     /* if the trigger has one or more memrefs in its buffer, we can't free the buffer.
@@ -91,7 +116,6 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
   rc_parse_state_t parse;
   unsigned char md5[16];
   int size;
-  char owns_memref;
   unsigned i;
 
   if (memaddr == NULL)
@@ -153,15 +177,6 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
     return parse.offset;
   }
 
-  /* if at least one memref was allocated within the trigger, we can't free the buffer when the trigger is deactivated */
-  owns_memref = (*self->next_memref != NULL);
-  if (owns_memref) {
-    /* advance through the new memrefs so we're ready for the next allocation */
-    do {
-      self->next_memref = &(*self->next_memref)->next;
-    } while (*self->next_memref != NULL);
-  }
-
   /* grow the trigger buffer if necessary */
   if (self->trigger_count == self->trigger_capacity) {
     self->trigger_capacity += 32;
@@ -182,7 +197,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
   self->triggers[self->trigger_count].trigger = trigger;
   self->triggers[self->trigger_count].buffer = trigger_buffer;
   memcpy(self->triggers[self->trigger_count].md5, md5, 16);
-  self->triggers[self->trigger_count].owns_memrefs = owns_memref;
+  self->triggers[self->trigger_count].owns_memrefs = rc_runtime_allocated_memrefs(self);
   ++self->trigger_count;
 
   /* reset it, and return it */
@@ -235,7 +250,6 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   rc_lboard_t* lboard;
   rc_parse_state_t parse;
   int size;
-  char owns_memref;
   unsigned i;
 
   if (memaddr == 0)
@@ -297,15 +311,6 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
     return parse.offset;
   }
 
-  /* if at least one memref was allocated within the trigger, we can't free the buffer when the trigger is deactivated */
-  owns_memref = (*self->next_memref != NULL);
-  if (owns_memref) {
-    /* advance through the new memrefs so we're ready for the next allocation */
-    do {
-      self->next_memref = &(*self->next_memref)->next;
-    } while (*self->next_memref != NULL);
-  }
-
   /* grow the lboard buffer if necessary */
   if (self->lboard_count == self->lboard_capacity) {
     self->lboard_capacity += 16;
@@ -327,7 +332,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   self->lboards[self->lboard_count].lboard = lboard;
   self->lboards[self->lboard_count].buffer = lboard_buffer;
   memcpy(self->lboards[self->lboard_count].md5, md5, 16);
-  self->lboards[self->lboard_count].owns_memrefs = owns_memref;
+  self->lboards[self->lboard_count].owns_memrefs = rc_runtime_allocated_memrefs(self);
   ++self->lboard_count;
 
   /* reset it, and return it */
@@ -391,6 +396,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   rc_init_parse_state(&parse, self->richpresence->buffer, L, funcs_idx);
   self->richpresence->richpresence = richpresence = RC_ALLOC(rc_richpresence_t, &parse);
   parse.first_memref = &self->memrefs;
+  parse.variables = &self->variables;
   rc_parse_richpresence_internal(richpresence, script, &parse);
   rc_destroy_parse_state(&parse);
 
@@ -402,16 +408,10 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
     return parse.offset;
   }
 
-  /* if at least one memref was allocated within the rich presence, we can't free the buffer when the rich presence is deactivated */
-  self->richpresence->owns_memrefs = (*self->next_memref != NULL);
-  if (self->richpresence->owns_memrefs) {
-      /* advance through the new memrefs so we're ready for the next allocation */
-      do {
-          self->next_memref = &(*self->next_memref)->next;
-      } while (*self->next_memref != NULL);
-  }
+  self->richpresence->owns_memrefs = rc_runtime_allocated_memrefs(self);
 
   richpresence->memrefs = NULL;
+  richpresence->variables = NULL;
   self->richpresence_update_timer = 0;
 
   if (!richpresence->first_display || !richpresence->first_display->display) {
@@ -421,7 +421,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   }
   else if (richpresence->first_display->next || /* has conditional display strings */
       richpresence->first_display->display->next || /* has macros */
-      richpresence->first_display->display->value.conditions) { /* is only a macro */
+      richpresence->first_display->display->value) { /* is only a macro */
     /* dynamic rich presence - reset all of the conditions */
     display = richpresence->first_display;
     while (display != NULL) {
@@ -429,6 +429,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
       display = display->next;
     }
 
+    /* evaluate using the *current* memref values - may be 0 for newly allocated memrefs */
     rc_evaluate_richpresence(self->richpresence->richpresence, self->richpresence_display_buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1, NULL, NULL, L);
   }
   else {
@@ -462,6 +463,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
   runtime_event.value = 0;
 
   rc_update_memref_values(self->memrefs, peek, ud);
+  rc_update_variables(self->variables, peek, ud, L);
 
   for (i = 0; i < self->trigger_count; ++i) {
     rc_trigger_t* trigger = self->triggers[i].trigger;
@@ -582,6 +584,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 }
 
 void rc_runtime_reset(rc_runtime_t* self) {
+  rc_value_t* variable;
   unsigned i;
 
   for (i = 0; i < self->trigger_count; ++i) {
@@ -601,4 +604,7 @@ void rc_runtime_reset(rc_runtime_t* self) {
       display = display->next;
     }
   }
+
+  for (variable = self->variables; variable; variable = (rc_value_t*)variable->value.next)
+    rc_reset_value(variable);
 }

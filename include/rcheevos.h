@@ -83,6 +83,8 @@ typedef struct {
   char size;
   /* True if the reference will be used in indirection */
   char is_indirect;
+  /* True if the reference is a variable */
+  char is_variable;
 } rc_memref_t;
 
 typedef struct rc_memref_value_t rc_memref_value_t;
@@ -278,8 +280,11 @@ typedef struct {
   /* The memory references required by the value. */
   rc_memref_value_t* memrefs;
 
-  /* The current state of the MEASURED condition. */
-  int measured_value;
+  /* The current value of the variable. */
+  rc_memref_value_t value;
+
+  /* The name of the variable */
+  const char* name;
 }
 rc_value_t;
 
@@ -366,7 +371,7 @@ struct rc_richpresence_display_part_t {
   rc_richpresence_display_part_t* next;
   const char* text;
   rc_richpresence_lookup_t* lookup;
-  rc_value_t value;
+  rc_memref_value_t *value;
   unsigned short display_type;
 };
 
@@ -382,6 +387,7 @@ typedef struct {
   rc_richpresence_display_t* first_display;
   rc_richpresence_lookup_t* first_lookup;
   rc_memref_value_t* memrefs;
+  rc_value_t* variables;
 }
 rc_richpresence_t;
 
@@ -435,6 +441,9 @@ typedef struct rc_runtime_t {
 
   rc_memref_value_t* memrefs;
   rc_memref_value_t** next_memref;
+
+  rc_value_t* variables;
+  rc_value_t** next_variable;
 }
 rc_runtime_t;
 
