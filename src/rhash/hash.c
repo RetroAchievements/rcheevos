@@ -1799,6 +1799,8 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           if (!disc_path) /* did not find a disc */
             return;
 
+          iterator->buffer = NULL; /* ignore buffer; assume it's the m3u contents */
+
           path = iterator->path = disc_path;
           continue; /* retry with disc_path */
         }
