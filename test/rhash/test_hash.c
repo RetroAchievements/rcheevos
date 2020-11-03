@@ -938,6 +938,10 @@ void test_hash(void) {
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC8800, "test.d88", 348288, "8cca4121bf87200f45e91b905a9f5afd");
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_PC8800, "test.d88", 348288, "8cca4121bf87200f45e91b905a9f5afd");
 
+  /* PC Engine */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC_ENGINE, "test.pce", 524288, "68f0f13b598e0b66461bc578375c3888");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC_ENGINE, "test.pce", 524288 + 512, "258c93ebaca1c3f488ab48218e5e8d38");
+
   /* PC Engine CD */
   TEST(test_hash_pce_cd);
   TEST(test_hash_pce_cd_invalid_header);
@@ -955,6 +959,10 @@ void test_hash(void) {
 
   /* SG-1000 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SG1000, "test.sg", 32768, "6a2305a2b6675a97ff792709be1ca857");
+
+  /* SNES */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_NINTENDO, "test.smc", 524288, "68f0f13b598e0b66461bc578375c3888");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_NINTENDO, "test.smc", 524288 + 512, "258c93ebaca1c3f488ab48218e5e8d38");
 
   /* Vectrex */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SG1000, "test.vec", 4096, "572686c3a073162e4ec6eff86e6f6e3a");

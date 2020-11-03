@@ -724,6 +724,21 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
+static int rc_hash_pce(char hash[33], uint8_t* buffer, size_t buffer_size)
+{
+  /* if the file contains a header, ignore it (expect ROM data to be multiple of 128KB) */
+  uint32_t calc_size = ((uint32_t)buffer_size / 0x20000) * 0x20000;
+  if (buffer_size - calc_size == 512)
+  {
+    rc_hash_verbose("Ignoring PCE header");
+
+    buffer += 512;
+    buffer_size -= 512;
+  }
+
+  return rc_hash_buffer(hash, buffer, buffer_size);
+}
+
 static int rc_hash_pce_track(char hash[33], void* track_handle)
 {
   uint8_t buffer[2048];
@@ -1215,7 +1230,6 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
     case RC_CONSOLE_NEOGEO_POCKET:
     case RC_CONSOLE_NINTENDO_64:
     case RC_CONSOLE_ORIC:
-    case RC_CONSOLE_PC_ENGINE: /* NOTE: does not support PCEngine CD */
     case RC_CONSOLE_PC8800:
     case RC_CONSOLE_POKEMON_MINI:
     case RC_CONSOLE_SEGA_32X:
@@ -1230,6 +1244,9 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
 
     case RC_CONSOLE_NINTENDO:
       return rc_hash_nes(hash, buffer, buffer_size);
+
+    case RC_CONSOLE_PC_ENGINE: /* NOTE: does not support PCEngine CD */
+      return rc_hash_pce(hash, buffer, buffer_size);
 
     case RC_CONSOLE_SUPER_NINTENDO:
       return rc_hash_snes(hash, buffer, buffer_size);
@@ -1529,7 +1546,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
       if (rc_path_compare_extension(path, "m3u"))
         return rc_hash_generate_from_playlist(hash, console_id, path);
 
-      return rc_hash_whole_file(hash, console_id, path);
+      return rc_hash_buffered_file(hash, console_id, path);
 
     case RC_CONSOLE_PCFX:
       if (rc_path_compare_extension(path, "m3u"))
