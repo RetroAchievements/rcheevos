@@ -55,8 +55,16 @@ static void _assert_sized_memref(rc_runtime_t* runtime, unsigned address, char s
     if (memref->address == address && memref->value.size == size)
     {
       ASSERT_NUM_EQUALS(memref->value.value, value);
-      ASSERT_NUM_EQUALS(memref->value.previous, prev);
       ASSERT_NUM_EQUALS(memref->value.prior, prior);
+
+      if (value == prior)
+      {
+        ASSERT_NUM_EQUALS(memref->value.changed, 0);
+      }
+      else
+      {
+        ASSERT_NUM_EQUALS(memref->value.changed, (prev == prior) ? 1 : 0);
+      }
       return;
     }
 
@@ -151,7 +159,7 @@ static void reset_runtime(rc_runtime_t* runtime)
   while (memref)
   {
     memref->value.value = 0xFF;
-    memref->value.previous = 0xFF;
+    memref->value.changed = 0;
     memref->value.prior = 0xFF;
 
     memref = memref->next;

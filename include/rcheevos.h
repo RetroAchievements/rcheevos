@@ -78,19 +78,19 @@ enum {
 };
 
 typedef struct rc_memref_value_t {
-  /* The value of this memory reference. */
+  /* The current value of this memory reference. */
   unsigned value;
-  /* The previous value of this memory reference. */
-  unsigned previous;
   /* The last differing value of this memory reference. */
   unsigned prior;
 
-  /* The size of the variable. */
+  /* The size of the value. */
   char size;
-  /* True if the reference will be used in indirection. */
+  /* True if the value changed this frame. */
+  char changed;
+  /* True if the reference will be used in indirection.
+   * NOTE: This is actually a property of the rc_memref_t, but we put it here to save space */
   char is_indirect;
 } rc_memref_value_t;
-
 
 typedef struct rc_memref_t rc_memref_t;
 

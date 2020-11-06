@@ -1152,7 +1152,7 @@ static void test_evaluate_trigger_inactive() {
 
   /* memrefs should be updated while inactive */
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.value.memref->value.value, 24U);
-  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.value.memref->value.previous, 24U);
+  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.value.memref->value.changed, 0);
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.value.memref->value.prior, 52U);
 
   /* reset should be ignored while inactive */
@@ -1263,7 +1263,7 @@ static void test_evaluate_trigger_triggered() {
 
   /* triggered trigger does not update deltas */
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.value.memref->value.value, 18U);
-  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.value.memref->value.previous, 0U);
+  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.value.memref->value.changed, 1U);
 }
 
 static void test_evaluate_trigger_paused() {

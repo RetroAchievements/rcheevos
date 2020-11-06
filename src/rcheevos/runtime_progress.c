@@ -24,7 +24,7 @@ typedef struct rc_runtime_progress_t {
 
 #define RC_TRIGGER_STATE_UNUPDATED 0x7F
 
-#define RC_MEMREF_FLAG_PREV_IS_PRIOR 0x00010000
+#define RC_MEMREF_FLAG_CHANGED_THIS_FRAME 0x00010000
 
 static void rc_runtime_progress_write_uint(rc_runtime_progress_t* progress, unsigned value)
 {
@@ -112,8 +112,8 @@ static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
 
   while (memref) {
     flags = memref->value.size;
-    if (memref->value.previous == memref->value.prior)
-      flags |= RC_MEMREF_FLAG_PREV_IS_PRIOR;
+    if (memref->value.changed)
+      flags |= RC_MEMREF_FLAG_CHANGED_THIS_FRAME;
 
     rc_runtime_progress_write_uint(progress, memref->address);
     rc_runtime_progress_write_uint(progress, flags);
@@ -150,7 +150,7 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
     while (memref) {
       if (memref->address == address && memref->value.size == size) {
         memref->value.value = value;
-        memref->value.previous = (flags & RC_MEMREF_FLAG_PREV_IS_PRIOR) ? prior : value;
+        memref->value.changed = (flags & RC_MEMREF_FLAG_CHANGED_THIS_FRAME) ? 1 : 0;
         memref->value.prior = prior;
       }
 

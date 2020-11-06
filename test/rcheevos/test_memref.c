@@ -67,7 +67,7 @@ static void test_allocate_shared_address2() {
   ASSERT_NUM_EQUALS(memref1->value.size, RC_MEMSIZE_8_BITS);
   ASSERT_NUM_EQUALS(memref1->value.is_indirect, 0);
   ASSERT_NUM_EQUALS(memref1->value.value, 0);
-  ASSERT_NUM_EQUALS(memref1->value.previous, 0);
+  ASSERT_NUM_EQUALS(memref1->value.changed, 0);
   ASSERT_NUM_EQUALS(memref1->value.prior, 0);
   ASSERT_PTR_EQUALS(memref1->next, 0);
 
@@ -146,40 +146,40 @@ static void test_update_memref_values() {
   rc_update_memref_values(memrefs, peek, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 0x12);
-  ASSERT_NUM_EQUALS(memref1->value.previous, 0);
+  ASSERT_NUM_EQUALS(memref1->value.changed, 1);
   ASSERT_NUM_EQUALS(memref1->value.prior, 0);
   ASSERT_NUM_EQUALS(memref2->value.value, 0x34);
-  ASSERT_NUM_EQUALS(memref2->value.previous, 0);
+  ASSERT_NUM_EQUALS(memref2->value.changed, 1);
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[1] = 3;
   rc_update_memref_values(memrefs, peek, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 3);
-  ASSERT_NUM_EQUALS(memref1->value.previous, 0x12);
+  ASSERT_NUM_EQUALS(memref1->value.changed, 1);
   ASSERT_NUM_EQUALS(memref1->value.prior, 0x12);
   ASSERT_NUM_EQUALS(memref2->value.value, 0x34);
-  ASSERT_NUM_EQUALS(memref2->value.previous, 0x34);
+  ASSERT_NUM_EQUALS(memref2->value.changed, 0);
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[1] = 5;
   rc_update_memref_values(memrefs, peek, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 5);
-  ASSERT_NUM_EQUALS(memref1->value.previous, 3);
+  ASSERT_NUM_EQUALS(memref1->value.changed, 1);
   ASSERT_NUM_EQUALS(memref1->value.prior, 3);
   ASSERT_NUM_EQUALS(memref2->value.value, 0x34);
-  ASSERT_NUM_EQUALS(memref2->value.previous, 0x34);
+  ASSERT_NUM_EQUALS(memref2->value.changed, 0);
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[2] = 7;
   rc_update_memref_values(memrefs, peek, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 5);
-  ASSERT_NUM_EQUALS(memref1->value.previous, 5);
+  ASSERT_NUM_EQUALS(memref1->value.changed, 0);
   ASSERT_NUM_EQUALS(memref1->value.prior, 3);
   ASSERT_NUM_EQUALS(memref2->value.value, 7);
-  ASSERT_NUM_EQUALS(memref2->value.previous, 0x34);
+  ASSERT_NUM_EQUALS(memref2->value.changed, 1);
   ASSERT_NUM_EQUALS(memref2->value.prior, 0x34);
 
   rc_destroy_parse_state(&parse);

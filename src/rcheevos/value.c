@@ -149,7 +149,8 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
   }
 
   self->name = "(unnamed)";
-  self->value.value = self->value.previous = self->value.prior = 0;
+  self->value.value = self->value.prior = 0;
+  self->value.changed = 0;
   self->next = 0;
 }
 
@@ -227,10 +228,7 @@ int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) 
 
   if (!paused) {
     /* if not paused, store the value so that it's available when paused. */
-    self->value.previous = self->value.value;
-    self->value.value = result;
-    if (self->value.value != self->value.previous)
-      self->value.prior = self->value.previous;
+    rc_update_memref_value(&self->value, result);
   }
   else {
     /* when paused, the Measured value will not be captured, use the last captured value. */
@@ -247,7 +245,8 @@ void rc_reset_value(rc_value_t* self) {
     condset = condset->next;
   }
 
-  self->value.value = self->value.previous = self->value.prior = 0;
+  self->value.value = self->value.prior = 0;
+  self->value.changed = 0;
 }
 
 void rc_init_parse_state_variables(rc_parse_state_t* parse, rc_value_t** variables) {
