@@ -48,7 +48,7 @@ void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_pars
 int rc_trigger_size(const char* memaddr) {
   rc_trigger_t* self;
   rc_parse_state_t parse;
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
   rc_init_parse_state(&parse, 0, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 

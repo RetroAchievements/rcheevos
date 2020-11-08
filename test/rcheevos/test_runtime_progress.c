@@ -49,14 +49,14 @@ static void _assert_deserialize(rc_runtime_t* runtime, unsigned char* buffer)
 
 static void _assert_sized_memref(rc_runtime_t* runtime, unsigned address, char size, unsigned value, unsigned prev, unsigned prior)
 {
-  rc_memref_value_t* memref = runtime->memrefs;
+  rc_memref_t* memref = runtime->memrefs;
   while (memref)
   {
-    if (memref->memref.address == address && memref->memref.size == size)
+    if (memref->address == address && memref->value.size == size)
     {
-      ASSERT_NUM_EQUALS(memref->value, value);
-      ASSERT_NUM_EQUALS(memref->previous, prev);
-      ASSERT_NUM_EQUALS(memref->prior, prior);
+      ASSERT_NUM_EQUALS(memref->value.value, value);
+      ASSERT_NUM_EQUALS(memref->value.previous, prev);
+      ASSERT_NUM_EQUALS(memref->value.prior, prior);
       return;
     }
 
@@ -141,7 +141,7 @@ static void update_md5(unsigned char* buffer)
 
 static void reset_runtime(rc_runtime_t* runtime)
 {
-  rc_memref_value_t* memref;
+  rc_memref_t* memref;
   rc_trigger_t* trigger;
   rc_condition_t* cond;
   rc_condset_t* condset;
@@ -150,9 +150,9 @@ static void reset_runtime(rc_runtime_t* runtime)
   memref = runtime->memrefs;
   while (memref)
   {
-    memref->value = 0xFF;
-    memref->previous = 0xFF;
-    memref->prior = 0xFF;
+    memref->value.value = 0xFF;
+    memref->value.previous = 0xFF;
+    memref->value.prior = 0xFF;
 
     memref = memref->next;
   }

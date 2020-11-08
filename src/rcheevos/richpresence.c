@@ -523,7 +523,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
 int rc_richpresence_size(const char* script) {
   rc_richpresence_t* self;
   rc_parse_state_t parse;
-  rc_memref_value_t* first_memref;
+  rc_memref_t* first_memref;
   rc_value_t* variables;
   rc_init_parse_state(&parse, 0, 0, 0);
   rc_init_parse_state_memrefs(&parse, &first_memref);

@@ -182,8 +182,8 @@ static void test_shared_memref(void)
   unsigned char ram[] = { 0, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
-  rc_memref_value_t* memref1;
-  rc_memref_value_t* memref2;
+  rc_memref_t* memref1;
+  rc_memref_t* memref2;
 
   memory.ram = ram;
   memory.size = sizeof(ram);

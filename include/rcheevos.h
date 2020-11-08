@@ -73,23 +73,11 @@ enum {
   RC_MEMSIZE_BIT_5,
   RC_MEMSIZE_BIT_6,
   RC_MEMSIZE_BIT_7,
-  RC_MEMSIZE_BITCOUNT
+  RC_MEMSIZE_BITCOUNT,
+  RC_MEMSIZE_VARIABLE
 };
 
-typedef struct {
-  /* The memory address of this variable. */
-  unsigned address;
-  /* The size of the variable. */
-  char size;
-  /* True if the reference will be used in indirection */
-  char is_indirect;
-  /* True if the reference is a variable */
-  char is_variable;
-} rc_memref_t;
-
-typedef struct rc_memref_value_t rc_memref_value_t;
-
-struct rc_memref_value_t {
+typedef struct rc_memref_value_t {
   /* The value of this memory reference. */
   unsigned value;
   /* The previous value of this memory reference. */
@@ -97,12 +85,26 @@ struct rc_memref_value_t {
   /* The last differing value of this memory reference. */
   unsigned prior;
 
-  /* The referenced memory */
-  rc_memref_t memref;
+  /* The size of the variable. */
+  char size;
+  /* True if the reference will be used in indirection. */
+  char is_indirect;
+} rc_memref_value_t;
 
-  /* The next memory reference in the chain */
-  rc_memref_value_t* next;
+
+typedef struct rc_memref_t rc_memref_t;
+
+struct rc_memref_t {
+  /* The current value at the specified memory address. */
+  rc_memref_value_t value;
+
+  /* The memory address of this variable. */
+  unsigned address;
+
+  /* The next memory reference in the chain. */
+  rc_memref_t* next;
 };
+
 
 /*****************************************************************************\
 | Operands                                                                    |
@@ -123,7 +125,7 @@ enum {
 typedef struct {
   union {
     /* A value read from memory. */
-    rc_memref_value_t* memref;
+    rc_memref_t* memref;
 
     /* An integer value. */
     unsigned num;
@@ -247,7 +249,7 @@ typedef struct {
   rc_condset_t* alternative;
 
   /* The memory references required by the trigger. */
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
 
   /* The current state of the MEASURED condition. */
   unsigned measured_value;
@@ -273,20 +275,24 @@ void rc_reset_trigger(rc_trigger_t* self);
 | Values                                                                      |
 \*****************************************************************************/
 
-typedef struct {
+typedef struct rc_value_t rc_value_t;
+
+struct rc_value_t {
   /* The list of conditions to evaluate. */
   rc_condset_t* conditions;
 
   /* The memory references required by the value. */
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
+
+  /* The name of the variable. */
+  const char* name;
 
   /* The current value of the variable. */
   rc_memref_value_t value;
 
-  /* The name of the variable */
-  const char* name;
-}
-rc_value_t;
+  /* The next variable in the chain. */
+  rc_value_t* next;
+};
 
 int rc_value_size(const char* memaddr);
 rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
@@ -312,7 +318,7 @@ typedef struct {
   rc_trigger_t cancel;
   rc_value_t value;
   rc_value_t* progress;
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
 
   char state;
 }
@@ -386,7 +392,7 @@ struct rc_richpresence_display_t {
 typedef struct {
   rc_richpresence_display_t* first_display;
   rc_richpresence_lookup_t* first_lookup;
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
   rc_value_t* variables;
 }
 rc_richpresence_t;
@@ -439,8 +445,8 @@ typedef struct rc_runtime_t {
   char* richpresence_display_buffer;
   char  richpresence_update_timer;
 
-  rc_memref_value_t* memrefs;
-  rc_memref_value_t** next_memref;
+  rc_memref_t* memrefs;
+  rc_memref_t** next_memref;
 
   rc_value_t* variables;
   rc_value_t** next_variable;

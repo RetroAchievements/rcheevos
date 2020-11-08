@@ -1151,9 +1151,9 @@ static void test_evaluate_trigger_inactive() {
   assert_hit_count(trigger, 0, 1, 0U);
 
   /* memrefs should be updated while inactive */
-  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.value.memref->value, 24U);
-  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.value.memref->previous, 24U);
-  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.value.memref->prior, 52U);
+  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.value.memref->value.value, 24U);
+  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.value.memref->value.previous, 24U);
+  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.value.memref->value.prior, 52U);
 
   /* reset should be ignored while inactive */
   ram[4] = 4;
@@ -1262,8 +1262,8 @@ static void test_evaluate_trigger_triggered() {
   assert_hit_count(trigger, 0, 1, 1U);
 
   /* triggered trigger does not update deltas */
-  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.value.memref->value, 18U);
-  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.value.memref->previous, 0U);
+  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.value.memref->value.value, 18U);
+  ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.value.memref->value.previous, 0U);
 }
 
 static void test_evaluate_trigger_paused() {
@@ -1449,8 +1449,8 @@ static void test_prev_prior_share_memref() {
 
   assert_parse_trigger(&trigger, buffer, "0xH0001=d0xH0001_0xH0001!=p0xH0001");
 
-  ASSERT_NUM_EQUALS(trigger->memrefs->memref.address, 1U);
-  ASSERT_NUM_EQUALS(trigger->memrefs->memref.size, RC_MEMSIZE_8_BITS);
+  ASSERT_NUM_EQUALS(trigger->memrefs->address, 1U);
+  ASSERT_NUM_EQUALS(trigger->memrefs->value.size, RC_MEMSIZE_8_BITS);
   ASSERT_PTR_NULL(trigger->memrefs->next);
 
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.type, RC_OPERAND_ADDRESS);
@@ -1465,8 +1465,8 @@ static void test_bit_lookups_share_memref() {
 
   assert_parse_trigger(&trigger, buffer, "0xM0001=1_0xN0x0001=0_0xO0x0001=1");
 
-  ASSERT_NUM_EQUALS(trigger->memrefs->memref.address, 1U);
-  ASSERT_NUM_EQUALS(trigger->memrefs->memref.size, RC_MEMSIZE_8_BITS);
+  ASSERT_NUM_EQUALS(trigger->memrefs->address, 1U);
+  ASSERT_NUM_EQUALS(trigger->memrefs->value.size, RC_MEMSIZE_8_BITS);
   ASSERT_PTR_NULL(trigger->memrefs->next);
 
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.size, RC_MEMSIZE_BIT_0);
@@ -1480,8 +1480,8 @@ static void test_bitcount_shares_memref() {
 
   assert_parse_trigger(&trigger, buffer, "0xH0001>5_0xK0001!=3");
 
-  ASSERT_NUM_EQUALS(trigger->memrefs->memref.address, 1U);
-  ASSERT_NUM_EQUALS(trigger->memrefs->memref.size, RC_MEMSIZE_8_BITS);
+  ASSERT_NUM_EQUALS(trigger->memrefs->address, 1U);
+  ASSERT_NUM_EQUALS(trigger->memrefs->value.size, RC_MEMSIZE_8_BITS);
   ASSERT_PTR_NULL(trigger->memrefs->next);
 
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.type, RC_OPERAND_ADDRESS);
@@ -1497,12 +1497,12 @@ static void test_large_memref_not_shared() {
   assert_parse_trigger(&trigger, buffer, "0xH1234=1_0xX1234>d0xX1234");
 
   /* this could be shared, but isn't currently */
-  ASSERT_NUM_EQUALS(trigger->memrefs->memref.address, 0x1234);
-  ASSERT_NUM_EQUALS(trigger->memrefs->memref.size, RC_MEMSIZE_8_BITS);
+  ASSERT_NUM_EQUALS(trigger->memrefs->address, 0x1234);
+  ASSERT_NUM_EQUALS(trigger->memrefs->value.size, RC_MEMSIZE_8_BITS);
   ASSERT_PTR_NOT_NULL(trigger->memrefs->next);
 
-  ASSERT_NUM_EQUALS(trigger->memrefs->next->memref.address, 0x1234);
-  ASSERT_NUM_EQUALS(trigger->memrefs->next->memref.size, RC_MEMSIZE_32_BITS);
+  ASSERT_NUM_EQUALS(trigger->memrefs->next->address, 0x1234);
+  ASSERT_NUM_EQUALS(trigger->memrefs->next->value.size, RC_MEMSIZE_32_BITS);
   ASSERT_PTR_NULL(trigger->memrefs->next->next);
 }
 

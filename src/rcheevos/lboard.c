@@ -139,7 +139,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
 int rc_lboard_size(const char* memaddr) {
   rc_lboard_t* self;
   rc_parse_state_t parse;
-  rc_memref_value_t* first_memref;
+  rc_memref_t* first_memref;
   rc_init_parse_state(&parse, 0, 0, 0);
   rc_init_parse_state_memrefs(&parse, &first_memref);
 

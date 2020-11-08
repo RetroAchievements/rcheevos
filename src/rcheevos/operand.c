@@ -145,7 +145,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
     address = 0xffffffffU;
   }
 
-  self->value.memref = rc_alloc_memref_value(parse, address, size, is_indirect);
+  self->value.memref = rc_alloc_memref(parse, address, size, is_indirect);
   if (parse->offset < 0)
     return parse->offset;
 
@@ -445,6 +445,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
           break;
 
         case RC_MEMSIZE_32_BITS:
+        case RC_MEMSIZE_VARIABLE:
           value = ((value >> 28) & 0x0f) * 10000000
                 + ((value >> 24) & 0x0f) * 1000000
                 + ((value >> 20) & 0x0f) * 100000
@@ -481,6 +482,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
           break;
 
         case RC_MEMSIZE_32_BITS:
+        case RC_MEMSIZE_VARIABLE:
           value ^= 0xffffffff;
           break;
 

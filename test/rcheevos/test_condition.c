@@ -11,7 +11,7 @@ static void _assert_operand(rc_operand_t* self, char expected_type, char expecte
     case RC_OPERAND_DELTA:
     case RC_OPERAND_PRIOR:
       ASSERT_NUM_EQUALS(self->size, expected_size);
-      ASSERT_NUM_EQUALS(self->value.memref->memref.address, expected_address);
+      ASSERT_NUM_EQUALS(self->value.memref->address, expected_address);
       break;
 
     case RC_OPERAND_CONST:
@@ -30,7 +30,7 @@ static void _assert_parse_condition(
 ) {
     rc_condition_t* self;
     rc_parse_state_t parse;
-    rc_memref_value_t* memrefs;
+    rc_memref_t* memrefs;
     char buffer[512];
 
     rc_init_parse_state(&parse, buffer, 0, 0);
@@ -106,7 +106,7 @@ static void test_parse_condition_error(const char* memaddr, int expected_error) 
   }
 }
 
-static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_value_t* memrefs) {
+static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_t* memrefs) {
   rc_eval_state_t eval_state;
 
   memset(&eval_state, 0, sizeof(eval_state));
@@ -121,7 +121,7 @@ static void test_evaluate_condition(const char* memaddr, int expected_result) {
   rc_condition_t* self;
   rc_parse_state_t parse;
   char buffer[512];
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
   int ret;
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -152,7 +152,7 @@ static void test_condition_compare_delta() {
   rc_condition_t* cond;
   rc_parse_state_t parse;
   char buffer[512];
-  rc_memref_value_t* memrefs;
+  rc_memref_t* memrefs;
 
   const char* cond_str = "0xH0001>d0xH0001";
   rc_init_parse_state(&parse, buffer, 0, 0);
