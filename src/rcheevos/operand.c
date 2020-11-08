@@ -204,9 +204,10 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
       break;
 
     case 'v': case 'V': /* signed integer constant */
-      negative = 0;
       ++aux;
-
+      /* fallthrough */
+    case '+': case '-': /* signed integer constant */
+      negative = 0;
       if (*aux == '-')
       {
         negative = 1;
@@ -238,7 +239,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
       break;
 
     case '0':
-      if (aux[1] == 'x' || aux[1] == 'X') {
+      if (aux[1] == 'x' || aux[1] == 'X') { /* hex integer constant */
         /* fall through */
     default:
         ret = rc_parse_operand_memory(self, &aux, parse, is_indirect);
@@ -251,8 +252,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
       }
 
       /* fall through for case '0' where not '0x' */
-    case '+': case '-':
-    case '1': case '2': case '3': case '4': case '5':
+    case '1': case '2': case '3': case '4': case '5': /* unsigned integer constant */
     case '6': case '7': case '8': case '9':
       value = strtoul(aux, &end, 10);
 
