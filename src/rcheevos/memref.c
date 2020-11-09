@@ -155,11 +155,11 @@ unsigned rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_stat
 
     case RC_OPERAND_DELTA:
       if (!memref->value.changed) {
-        // fallthrough
+        /* fallthrough */
     default:
         return memref->value.value;
       }
-      // fallthrough
+      /* fallthrough */
     case RC_OPERAND_PRIOR:
       return memref->value.prior;
   }
