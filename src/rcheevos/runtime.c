@@ -147,7 +147,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
     if (self->triggers[i].id == id && memcmp(self->triggers[i].md5, md5, 16) == 0) {
       /* retrieve the trigger pointer from the buffer */
       size = 0;
-      trigger = (rc_trigger_t*)rc_alloc(self->triggers[i].buffer, &size, sizeof(rc_trigger_t), RC_ALIGNOF(rc_trigger_t), 0);
+      trigger = (rc_trigger_t*)rc_alloc(self->triggers[i].buffer, &size, sizeof(rc_trigger_t), RC_ALIGNOF(rc_trigger_t), NULL, -1);
       self->triggers[i].trigger = trigger;
 
       rc_reset_trigger(trigger);
@@ -281,7 +281,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
     if (self->lboards[i].id == id && memcmp(self->lboards[i].md5, md5, 16) == 0) {
       /* retrieve the lboard pointer from the buffer */
       size = 0;
-      lboard = (rc_lboard_t*)rc_alloc(self->lboards[i].buffer, &size, sizeof(rc_lboard_t), RC_ALIGNOF(rc_lboard_t), 0);
+      lboard = (rc_lboard_t*)rc_alloc(self->lboards[i].buffer, &size, sizeof(rc_lboard_t), RC_ALIGNOF(rc_lboard_t), NULL, -1);
       self->lboards[i].lboard = lboard;
 
       rc_reset_lboard(lboard);

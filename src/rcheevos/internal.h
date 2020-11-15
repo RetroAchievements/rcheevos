@@ -21,15 +21,16 @@ RC_ALLOW_ALIGN(rc_richpresence_display_t)
 RC_ALLOW_ALIGN(rc_richpresence_display_part_t)
 RC_ALLOW_ALIGN(rc_richpresence_lookup_t)
 RC_ALLOW_ALIGN(rc_richpresence_lookup_item_t)
+RC_ALLOW_ALIGN(rc_scratch_string_t)
 RC_ALLOW_ALIGN(rc_trigger_t)
 RC_ALLOW_ALIGN(rc_value_t)
-RC_ALLOW_ALIGN(rc_scratch_string_t)
 RC_ALLOW_ALIGN(char)
 
 #define RC_ALIGNOF(T) (sizeof(struct __align_ ## T) - sizeof(T))
+#define RC_OFFSETOF(o, t) ((long)&(o.t) - (long)&(o))
 
-#define RC_ALLOC(t, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch))
-#define RC_ALLOC_SCRATCH(t, p) ((t*)rc_alloc_scratch((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch))
+#define RC_ALLOC(t, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
+#define RC_ALLOC_SCRATCH(t, p) ((t*)rc_alloc_scratch((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
 
 typedef struct rc_scratch_buffer {
   struct rc_scratch_buffer* next;
@@ -42,20 +43,21 @@ typedef struct {
   rc_scratch_buffer_t buffer;
   rc_scratch_string_t* strings;
 
-  union
-  {
-    rc_operand_t operand;
-    rc_condition_t condition;
-    rc_condset_t condset;
-    rc_trigger_t trigger;
-    rc_lboard_t lboard;
-    rc_memref_value_t memref_value;
-    rc_richpresence_t richpresence;
-    rc_richpresence_display_t richpresence_display;
-    rc_richpresence_display_part_t richpresence_part;
-    rc_richpresence_lookup_t richpresence_lookup;
-    rc_richpresence_lookup_item_t richpresence_lookup_item;
-  } obj;
+  struct objs {
+    rc_condition_t* __rc_condition_t;
+    rc_condset_t* __rc_condset_t;
+    rc_lboard_t* __rc_lboard_t;
+    rc_memref_t* __rc_memref_t;
+    rc_operand_t* __rc_operand_t;
+    rc_richpresence_t* __rc_richpresence_t;
+    rc_richpresence_display_t* __rc_richpresence_display_t;
+    rc_richpresence_display_part_t* __rc_richpresence_display_part_t;
+    rc_richpresence_lookup_t* __rc_richpresence_lookup_t;
+    rc_richpresence_lookup_item_t* __rc_richpresence_lookup_item_t;
+    rc_scratch_string_t __rc_scratch_string_t;
+    rc_trigger_t* __rc_trigger_t;
+    rc_value_t* __rc_value_t;
+  } objs;
 }
 rc_scratch_t;
 
@@ -97,14 +99,15 @@ void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_t** memrefs)
 void rc_init_parse_state_variables(rc_parse_state_t* parse, rc_value_t** variables);
 void rc_destroy_parse_state(rc_parse_state_t* parse);
 
-void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch);
-void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch);
+void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch, int scratch_object_pointer_offset);
+void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch, int scratch_object_pointer_offset);
 char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length);
 
 rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, unsigned address, char size, char is_indirect);
 void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);
 void rc_update_memref_value(rc_memref_value_t* memref, unsigned value);
 unsigned rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state);
+unsigned rc_get_memref_value_value(rc_memref_value_t* memref, int operand_type);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 
@@ -118,10 +121,12 @@ int rc_evaluate_condition_value(rc_condition_t* self, rc_eval_state_t* eval_stat
 
 int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, int is_indirect, rc_parse_state_t* parse);
 unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state);
+char rc_parse_operator(const char** memaddr);
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
 void rc_reset_value(rc_value_t* self);
-rc_memref_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse);
+rc_memref_value_t* rc_alloc_helper_variable_memref(const char* memaddr, int memaddr_len, rc_parse_state_t* parse);
+rc_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse);
 void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L);
 
 void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_state_t* parse);

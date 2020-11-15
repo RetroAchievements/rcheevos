@@ -11,6 +11,46 @@ enum {
   RC_FORMAT_UNKNOWN_MACRO = 103
 };
 
+static rc_memref_value_t* rc_alloc_helper_variable_memref_value(const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
+  rc_value_t* variable;
+
+  /* single memory reference lookups without a modifier flag can be handled without a variable */
+  if (memaddr_len <= 12 &&  /* d0xH00000000 */
+      memaddr[0] == '0' && memaddr[1] == 'x') { /* only direct address lookups can be represented without a variable */
+    int is_memref = 1;
+    int i;
+
+    /* already validated no flag because memaddr[1] is not ':' (X:) */
+    /* look for operators (=,<,>,!,*,/). if none are found, it's just a memory reference */
+    for (i = 2; i < memaddr_len; ++i) {
+      if (!isalnum(memaddr[i]) && memaddr[i] != ' ') {
+        is_memref = 0;
+        break;
+      }
+    }
+
+    if (is_memref) {
+      rc_operand_t operand;
+      const char *memaddr2 = memaddr;
+      const int result = rc_parse_operand(&operand, &memaddr2, 0, 0, parse);
+      if (result < 0) {
+        parse->offset = result;
+        return NULL;
+      }
+
+      /* only direct address lookups can be represented without a variable */
+      if (operand.type == RC_OPERAND_ADDRESS)
+        return &operand.value.memref->value;
+    }
+  }
+
+  variable = rc_alloc_helper_variable(memaddr, memaddr_len, parse);
+  if (!variable)
+    return NULL;
+
+  return &variable->value;
+}
+
 static const char* rc_parse_line(const char* line, const char** end) {
   const char* nextline;
   const char* endline;
@@ -128,7 +168,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
             while (ptr < endline && *ptr != ')')
               ++ptr;
             if (*ptr == ')') {
-              part->value = rc_alloc_helper_variable(line, (int)(ptr-line), parse);
+              part->value = rc_alloc_helper_variable_memref_value(line, (int)(ptr-line), parse);
               if (parse->offset < 0)
                 return 0;
               ++ptr;

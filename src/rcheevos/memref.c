@@ -146,21 +146,25 @@ unsigned rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_stat
     rc_update_memref_value(&memref->value, rc_peek_value(new_address, memref->value.size, eval_state->peek, eval_state->peek_userdata));
   }
 
+  return rc_get_memref_value_value(&memref->value, operand_type);
+}
+
+unsigned rc_get_memref_value_value(rc_memref_value_t* memref, int operand_type) {
   switch (operand_type)
   {
     /* most common case explicitly first, even though it could be handled by default case.
      * this helps the compiler to optimize if it turns the switch into a series of if/elses */
     case RC_OPERAND_ADDRESS:
-      return memref->value.value;
+      return memref->value;
 
     case RC_OPERAND_DELTA:
-      if (!memref->value.changed) {
+      if (!memref->changed) {
         /* fallthrough */
     default:
-        return memref->value.value;
+        return memref->value;
       }
       /* fallthrough */
     case RC_OPERAND_PRIOR:
-      return memref->value.prior;
+      return memref->prior;
   }
 }
