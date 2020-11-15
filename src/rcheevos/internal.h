@@ -103,8 +103,8 @@ char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length);
 
 rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, unsigned address, char size, char is_indirect);
 void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);
-void rc_update_memref_value(rc_memref_t* memref, rc_peek_t peek, void* ud);
-rc_memref_value_t* rc_get_indirect_memref(rc_memref_t* memref, rc_eval_state_t* eval_state);
+void rc_update_memref_value(rc_memref_value_t* memref, unsigned value);
+unsigned rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 

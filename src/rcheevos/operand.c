@@ -353,15 +353,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
       break;
 
     default:
-      value = rc_get_indirect_memref(self->value.memref, eval_state)->value;
-      break;
-
-    case RC_OPERAND_DELTA:
-      value = rc_get_indirect_memref(self->value.memref, eval_state)->previous;
-      break;
-
-    case RC_OPERAND_PRIOR:
-      value = rc_get_indirect_memref(self->value.memref, eval_state)->prior;
+      value = rc_get_memref_value(self->value.memref, self->type, eval_state);
       break;
   }
 
