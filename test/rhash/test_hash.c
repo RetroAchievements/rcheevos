@@ -55,6 +55,29 @@ static void test_hash_full_file(int console_id, const char* filename, size_t siz
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
+static void test_hash_unknown_format(int console_id, const char* path)
+{
+  char hash_file[33] = "", hash_iterator[33] = "";
+
+  /* test file hash (won't match) */
+  int result_file = rc_hash_generate_from_file(hash_file, console_id, path);
+
+  /* test file identification from iterator (won't match) */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, path, NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 0);
+  ASSERT_STR_EQUALS(hash_file, "");
+
+  ASSERT_NUM_EQUALS(result_iterator, 0);
+  ASSERT_STR_EQUALS(hash_iterator, "");
+}
+
 static void test_hash_m3u(int console_id, const char* filename, size_t size, const char* expected_md5)
 {
   uint8_t* image = generate_generic_file(size);
@@ -528,8 +551,6 @@ static void test_hash_pce_cd_invalid_header()
 {
   size_t image_size;
   uint8_t* image = generate_pce_cd_bin(72, &image_size);
-  char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "bf619eac0cdf3f68d496ea9344137e8b"; /* Sega CD hash */
 
   mock_file(0, "game.bin", image, image_size);
   mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
@@ -537,25 +558,9 @@ static void test_hash_pce_cd_invalid_header()
   /* make the header not match */
   image[2048 + 0x24] = 0x34;
 
-  /* test file hash (won't match) */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PC_ENGINE, "game.cue");
+  test_hash_unknown_format(RC_CONSOLE_PC_ENGINE, "game.cue");
 
-  /* test file identification from iterator (won't match PC-FX; will fallback to Sega CD) */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* cleanup */
   free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 0);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
 /* ========================================================================= */
@@ -596,8 +601,6 @@ static void test_hash_pcfx_invalid_header()
 {
   size_t image_size;
   uint8_t* image = generate_pcfx_bin(72, &image_size);
-  char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "ae2af724fcd27ffca04ed2dd4ac83e28"; /* Sega CD hash */
 
   mock_file(0, "game.bin", image, image_size);
   mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
@@ -605,25 +608,9 @@ static void test_hash_pcfx_invalid_header()
   /* make the header not match */
   image[12] = 0x34;
 
-  /* test file hash (won't match) */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PC_ENGINE, "game.cue");
+  test_hash_unknown_format(RC_CONSOLE_PC_ENGINE, "game.cue");
 
-  /* test file identification from iterator (won't match PC-FX; will fallback to Sega CD) */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* cleanup */
   free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 0);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
 static void test_hash_pcfx_pce_cd()
@@ -659,6 +646,103 @@ static void test_hash_pcfx_pce_cd()
   ASSERT_NUM_EQUALS(result_iterator, 1);
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
+
+static void test_hash_sega_cd()
+{
+  /* the first 512 bytes of sector 0 are a volume header and ROM header. 
+   * generate a generic block and add the Sega CD marker */
+  size_t image_size = 512;
+  uint8_t* image = generate_generic_file(image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "574498e1453cb8934df60c4ab906e783";
+  memcpy(image, "SEGADISCSYSTEM  ", 16);
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_SEGA_CD, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_sega_cd_invalid_header()
+{
+  size_t image_size = 512;
+  uint8_t* image = generate_generic_file(image_size);
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  test_hash_unknown_format(RC_CONSOLE_SEGA_CD, "game.cue");
+
+  free(image);
+}
+
+static void test_hash_saturn()
+{
+  /* the first 512 bytes of sector 0 are a volume header and ROM header. 
+   * generate a generic block and add the Sega CD marker */
+  size_t image_size = 512;
+  uint8_t* image = generate_generic_file(image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "4cd9c8e41cd8d137be15bbe6a93ae1d8";
+  memcpy(image, "SEGA SEGASATURN ", 16);
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_SATURN, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_saturn_invalid_header()
+{
+  size_t image_size = 512;
+  uint8_t* image = generate_generic_file(image_size);
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  test_hash_unknown_format(RC_CONSOLE_SATURN, "game.cue");
+
+  free(image);
+}
+
 /* ========================================================================= */
 
 static void assert_valid_m3u(const char* disc_filename, const char* m3u_filename, const char* m3u_contents)
@@ -954,8 +1038,16 @@ void test_hash(void) {
   /* Pokemon Mini */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_POKEMON_MINI, "test.min", 524288, "68f0f13b598e0b66461bc578375c3888");
 
+  /* Sega CD */
+  TEST(test_hash_sega_cd);
+  TEST(test_hash_sega_cd_invalid_header);
+
   /* Sega 32X */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SEGA_32X, "test.bin", 3145728, "07d733f252896ec41b4fd521fe610e2c");
+
+  /* Sega Saturn */
+  TEST(test_hash_saturn);
+  TEST(test_hash_saturn_invalid_header);
 
   /* SG-1000 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SG1000, "test.sg", 32768, "6a2305a2b6675a97ff792709be1ca857");
