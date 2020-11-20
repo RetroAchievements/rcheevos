@@ -1185,8 +1185,8 @@ static int rc_hash_sega_cd(char hash[33], const char* path)
   rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
   rc_cd_close_track(track_handle);
 
-  if (memcmp(buffer, "SEGADISCSYSTEM  ", 16) != 0 && // Sega CD
-      memcmp(buffer, "SEGA SEGASATURN ", 16) != 0)   // Sega Saturn
+  if (memcmp(buffer, "SEGADISCSYSTEM  ", 16) != 0 && /* Sega CD */
+      memcmp(buffer, "SEGA SEGASATURN ", 16) != 0)   /* Sega Saturn */
   {
     return rc_hash_error("Not a Sega CD");
   }
