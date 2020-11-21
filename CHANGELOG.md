@@ -8,6 +8,7 @@
 * reset to default cd reader if NULL is passed to rc_hash_init_custom_cdreader
 * add hash support for RC_CONSOLE_DREAMCAST
 * ignore headers for RC_CONSOLE_PC_ENGINE
+* look for unique identifier in RC_CONSOLE_SEGA_CD and RC_CONSOLE_SATURN discs
 * rename RC_CONSOLE_MAGNAVOX_ODYSSEY -> RC_CONSOLE_MAGNAVOX_ODYSSEY2
 * rename RC_CONSOLE_AMIGA_ST -> RC_CONSOLE_ATARI_ST
 * fix error identifying largest track when track has multiple bins
