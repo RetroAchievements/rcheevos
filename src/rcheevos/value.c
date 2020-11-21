@@ -254,44 +254,16 @@ void rc_init_parse_state_variables(rc_parse_state_t* parse, rc_value_t** variabl
   *variables = 0;
 }
 
-rc_memref_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
+rc_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse)
+{
   rc_value_t** variables = parse->variables;
   rc_value_t* value;
   const char* name;
-
-  /* single memory reference lookups without a modifier flag can be handled without a variable */
-  if (memaddr_len <= 12 &&  /* d0xH00000000 */
-      memaddr[0] == '0' && memaddr[1] == 'x') { /* only direct address lookups can be represented without a variable */
-    int is_memref = 1;
-    int i;
-
-    /* already validated no flag because memaddr[1] is not ':' (X:) */
-    /* look for operators (=,<,>,!,*,/). if none are found, it's just a memory reference */
-    for (i = 2; i < memaddr_len; ++i) {
-      if (!isalnum(memaddr[i]) && memaddr[i] != ' ') {
-        is_memref = 0;
-        break;
-      }
-    }
-
-    if (is_memref) {
-      rc_operand_t operand;
-      const char *memaddr2 = memaddr;
-      const int result = rc_parse_operand(&operand, &memaddr2, 0, 0, parse);
-      if (result < 0) {
-        parse->offset = result;
-        return NULL;
-      }
-
-      /* only direct address lookups can be represented without a variable */
-      if (operand.type == RC_OPERAND_ADDRESS)
-        return &operand.value.memref->value;
-    }
-  }
+  unsigned measured_target;
 
   while ((value = *variables) != NULL) {
     if (strncmp(value->name, memaddr, memaddr_len) == 0 && value->name[memaddr_len] == 0)
-      return &value->value;
+      return value;
 
     variables = &value->next;
   }
@@ -306,13 +278,28 @@ rc_memref_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len
   if (!name)
     return NULL;
 
+  /* the helper variable likely has a Measured condition. capture the current measured_target so we can restore it
+   * after generating the variable so the variable's Measured target doesn't conflict with the rest of the trigger. */
+  measured_target = parse->measured_target;
+
+  /* disable variable resolution when defining a variable to prevent infinite recursion */
+  variables = parse->variables;
+  parse->variables = NULL;
   rc_parse_value_internal(value, &memaddr, parse);
+  parse->variables = variables;
+
+  /* restore the measured target */
+  parse->measured_target = measured_target;
 
   /* store name after calling parse as parse will set name to (unnamed) */
   value->name = name;
 
+  /* append the new variable to the end of the list (have to re-evaluate in case any others were added) */
+  while (*variables != NULL)
+    variables = &(*variables)->next;
   *variables = value;
-  return &value->value;
+
+  return value;
 }
 
 void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L) {

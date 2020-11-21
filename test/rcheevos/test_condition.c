@@ -234,15 +234,15 @@ void test_condition(void) {
   /* shorthard for modifier conditions */
   TEST_PARAMS2(test_parse_modifier_shorthand, "A:0xH1234", RC_CONDITION_ADD_SOURCE);
   TEST_PARAMS2(test_parse_modifier_shorthand, "B:0xH1234", RC_CONDITION_SUB_SOURCE);
-  TEST_PARAMS2(test_parse_modifier_shorthand, "C:0xH1234", RC_CONDITION_ADD_HITS);
-  TEST_PARAMS2(test_parse_modifier_shorthand, "N:0xH1234", RC_CONDITION_AND_NEXT);
-  TEST_PARAMS2(test_parse_modifier_shorthand, "O:0xH1234", RC_CONDITION_OR_NEXT);
   TEST_PARAMS2(test_parse_modifier_shorthand, "I:0xH1234", RC_CONDITION_ADD_ADDRESS);
 
   /* parse errors */
   TEST_PARAMS2(test_parse_condition_error, "0xH1234==0", RC_OK);
   TEST_PARAMS2(test_parse_condition_error, "H0x1234==0", RC_INVALID_CONST_OPERAND);
   TEST_PARAMS2(test_parse_condition_error, "0x1234", RC_INVALID_OPERATOR);
+  TEST_PARAMS2(test_parse_condition_error, "C:0x1234", RC_INVALID_OPERATOR); /* shorthand only valid on modifier conditions */
+  TEST_PARAMS2(test_parse_condition_error, "N:0x1234", RC_INVALID_OPERATOR);
+  TEST_PARAMS2(test_parse_condition_error, "O:0x1234", RC_INVALID_OPERATOR);
   TEST_PARAMS2(test_parse_condition_error, "P:0x1234", RC_INVALID_OPERATOR);
   TEST_PARAMS2(test_parse_condition_error, "R:0x1234", RC_INVALID_OPERATOR);
   TEST_PARAMS2(test_parse_condition_error, "M:0x1234", RC_INVALID_OPERATOR);

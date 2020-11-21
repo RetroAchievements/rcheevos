@@ -30,6 +30,27 @@ static void test_evaluate_value(const char* memaddr, int expected_value) {
   ASSERT_NUM_EQUALS(ret, expected_value);
 }
 
+static void test_measured_value_target(const char* memaddr, int expected_target) {
+  rc_value_t* self;
+  char buffer[2048];
+  unsigned* overflow;
+  int ret;
+
+  ret = rc_value_size(memaddr);
+  ASSERT_NUM_GREATER_EQUALS(ret, 0);
+
+  overflow = (unsigned*)(((char*)buffer) + ret);
+  *overflow = 0xCDCDCDCD;
+
+  self = rc_parse_value(buffer, memaddr, NULL, 0);
+  ASSERT_PTR_NOT_NULL(self);
+  if (*overflow != 0xCDCDCDCD) {
+    ASSERT_FAIL("write past end of buffer");
+  }
+
+  ASSERT_NUM_EQUALS(self->conditions->conditions->required_hits, expected_target);
+}
+
 static void test_evaluate_measured_value_with_pause() {
   rc_value_t* self;
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
@@ -158,6 +179,13 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "B0xH01", 12);
   TEST_PARAMS2(test_evaluate_value, "B0x00001", 3412);
   TEST_PARAMS2(test_evaluate_value, "B0xH03", 111); /* 0xAB not really BCD */
+
+  /* non-comparison measured values just return the value at the address and have no target */
+  TEST_PARAMS2(test_measured_value_target, "M:0xH0002", 0);
+
+  /* hitcount based measured values always have unbounded targets, even if one is specified */
+  TEST_PARAMS2(test_measured_value_target, "M:0xH0002!=d0xH0002", (unsigned)-1);
+  TEST_PARAMS2(test_measured_value_target, "M:0xH0002!=d0xH0002.99.", (unsigned)-1);
 
   /* measured format - supports hit counts, AddSource, SubSource, and AddAddress */
   TEST_PARAMS2(test_evaluate_value, "A:0xH0001_M:0xH0002", 0x12 + 0x34);

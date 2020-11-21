@@ -546,6 +546,46 @@ static void test_measured_addhits() {
   ASSERT_NUM_EQUALS(trigger->measured_target, 5U);
 }
 
+static void test_measured_indirect() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[256];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* measured(repeated(3, byte(byte(0) + 2) == 52)) */
+  assert_parse_trigger(&trigger, buffer, "I:0xH0000_M:0xH0002=52(3)");
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* condition is no longer true - hit count should not be incremented */
+  ram[0] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* condition is true - hit count should be incremented */
+  ram[0] = 0;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* condition is no longer true - hit count should not be incremented */
+  ram[2] = 30;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+}
+
 static void test_measured_multiple() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -1530,6 +1570,7 @@ void test_trigger(void) {
   TEST(test_measured);
   TEST(test_measured_comparison);
   TEST(test_measured_addhits);
+  TEST(test_measured_indirect);
   TEST(test_measured_multiple);
   TEST(test_measured_multiple_with_hitcount_in_core);
   TEST(test_measured_while_paused);

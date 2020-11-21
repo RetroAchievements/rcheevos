@@ -118,8 +118,8 @@ enum {
   RC_OPERAND_FP,             /* A floating point value. */
   RC_OPERAND_LUA,            /* A Lua function that provides the value. */
   RC_OPERAND_PRIOR,          /* The last differing value at this address. */
-  RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM */
-  RC_OPERAND_INVERTED        /* The twos-complement value of a live address in RAM */
+  RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM. */
+  RC_OPERAND_INVERTED        /* The twos-complement value of a live address in RAM. */
 };
 
 typedef struct {
@@ -278,6 +278,9 @@ void rc_reset_trigger(rc_trigger_t* self);
 typedef struct rc_value_t rc_value_t;
 
 struct rc_value_t {
+  /* The current value of the variable. */
+  rc_memref_value_t value;
+
   /* The list of conditions to evaluate. */
   rc_condset_t* conditions;
 
@@ -286,9 +289,6 @@ struct rc_value_t {
 
   /* The name of the variable. */
   const char* name;
-
-  /* The current value of the variable. */
-  rc_memref_value_t value;
 
   /* The next variable in the chain. */
   rc_value_t* next;

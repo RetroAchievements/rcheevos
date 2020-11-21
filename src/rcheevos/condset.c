@@ -130,7 +130,6 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
 
   *next = 0;
 
-
   if (parse->buffer != 0) {
     in_pause = 0;
     rc_update_condition_pause(self->conditions, &in_pause);

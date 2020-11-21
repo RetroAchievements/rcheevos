@@ -252,6 +252,63 @@ static void test_macro_value() {
   assert_richpresence_output(richpresence, &memory, "13332 Points");
 }
 
+static void test_conditional_display_indirect() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Display:\n?I:0xH0000_0xH0002=h01?True\nFalse\n");
+  assert_richpresence_output(richpresence, &memory, "False");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "False");
+
+  ram[3] = 1;
+  assert_richpresence_output(richpresence, &memory, "True");
+}
+
+static void test_conditional_display_unnecessary_measured() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Display:\n?M:0xH0000=0?Zero\n?0xH0000=1?One\nOther");
+  assert_richpresence_output(richpresence, &memory, "Zero");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "One");
+
+  ram[0] = 2;
+  assert_richpresence_output(richpresence, &memory, "Other");
+}
+
+static void test_conditional_display_unnecessary_measured_indirect() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Display:\n?I:0xH0000_M:0xH0002=h01?True\nFalse\n");
+  assert_richpresence_output(richpresence, &memory, "False");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "False");
+
+  ram[3] = 1;
+  assert_richpresence_output(richpresence, &memory, "True");
+}
+
 static void test_macro_value_adjusted_negative() {
   unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -495,6 +552,25 @@ static void test_macro_lookup_from_formula() {
 
   ram[0] = 2;
   assert_richpresence_output(richpresence, &memory, "At One");
+}
+
+static void test_macro_lookup_from_indirect() {
+  unsigned char ram[] = { 0x00, 0x00, 0x01, 0x00, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:Location\n0=Zero\n1=One\n\nDisplay:\nAt @Location(I:0xH0000=0_M:0xH0001)");
+  assert_richpresence_output(richpresence, &memory, "At Zero");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "At One");
+
+  ram[0] = 2;
+  assert_richpresence_output(richpresence, &memory, "At Zero");
 }
 
 static void test_macro_lookup_repeated() {
@@ -881,6 +957,9 @@ void test_richpresence(void) {
   TEST(test_conditional_display_duplicated_condition);
   TEST(test_conditional_display_invalid_condition_logic);
   TEST(test_conditional_display_whitespace_text);
+  TEST(test_conditional_display_indirect);
+  TEST(test_conditional_display_unnecessary_measured);
+  TEST(test_conditional_display_unnecessary_measured_indirect);
 
   /* value macros */
   TEST(test_macro_value);
@@ -901,6 +980,7 @@ void test_richpresence(void) {
   TEST(test_macro_lookup_crlf);
   TEST(test_macro_lookup_after_display);
   TEST(test_macro_lookup_from_formula);
+  TEST(test_macro_lookup_from_indirect);
   TEST(test_macro_lookup_repeated);
   TEST(test_macro_lookup_shared);
   TEST(test_macro_lookup_multiple);
