@@ -1183,6 +1183,13 @@ static int rc_hash_sega_cd(char hash[33], const char* path)
    * that our players aren't modifying anything else on the disc.
    */
   rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
+  rc_cd_close_track(track_handle);
+
+  if (memcmp(buffer, "SEGADISCSYSTEM  ", 16) != 0 && /* Sega CD */
+      memcmp(buffer, "SEGA SEGASATURN ", 16) != 0)   /* Sega Saturn */
+  {
+    return rc_hash_error("Not a Sega CD");
+  }
 
   return rc_hash_buffer(hash, buffer, sizeof(buffer));
 }
@@ -1688,11 +1695,9 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
                  {
                     iterator->consoles[0] = RC_CONSOLE_3DO; /* 4DO supports directly opening the bin file */
                     iterator->consoles[1] = RC_CONSOLE_PLAYSTATION; /* PCSX ReARMed supports directly opening the bin file*/
-
-                    /* SEGA CD hash doesn't have any logic to ensure it's being used against a SEGA CD, so it should always be last */
                     iterator->consoles[2] = RC_CONSOLE_SEGA_CD; /* Genesis Plus GX supports directly opening the bin file*/
 
-                    /* fallback to megadrive - will only be checked if SEGA CD hash does not match */
+                    /* fallback to megadrive which just does a full hash */
                     iterator->consoles[3] = RC_CONSOLE_MEGA_DRIVE;
                     break;
                  }
@@ -1716,8 +1721,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           iterator->consoles[1] = RC_CONSOLE_PC_ENGINE;
           iterator->consoles[2] = RC_CONSOLE_3DO;
           iterator->consoles[3] = RC_CONSOLE_PCFX;
-          /* SEGA CD hash doesn't have any logic to ensure it's being used against a SEGA CD, so it should always be last */
-          iterator->consoles[4] = RC_CONSOLE_SEGA_CD;
+          iterator->consoles[4] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
           need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "chd"))
@@ -1727,8 +1731,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           iterator->consoles[2] = RC_CONSOLE_PC_ENGINE;
           iterator->consoles[3] = RC_CONSOLE_3DO;
           iterator->consoles[4] = RC_CONSOLE_PCFX;
-          /* SEGA CD hash doesn't have any logic to ensure it's being used against a SEGA CD, so it should always be last */
-          iterator->consoles[5] = RC_CONSOLE_SEGA_CD;
+          iterator->consoles[5] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
           need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "col"))
@@ -1790,7 +1793,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         if (rc_path_compare_extension(ext, "iso"))
         {
           iterator->consoles[0] = RC_CONSOLE_3DO;
-          iterator->consoles[1] = RC_CONSOLE_SEGA_CD;
+          iterator->consoles[1] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
           need_path = 1;
         }
         break;
