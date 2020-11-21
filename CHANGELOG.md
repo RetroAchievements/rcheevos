@@ -1,3 +1,39 @@
+# v9.3.0
+
+* allow ranges in rich presence lookups
+* support MAXOF($) for leaderboard values using trigger syntax
+* allow RC_CONDITION_PAUSE_IF and RC_CONDITION_RESET_IF in leaderboard value expression
+* changed track parameter of rc_hash_cdreader_open_track_handler to support three virtual tracks:
+  RC_HASH_CDTRACK_FIRST_DATA, RC_HASH_CDTRACK_LAST and RC_HASH_CDTRACK_LARGEST.
+* reset to default cd reader if NULL is passed to rc_hash_init_custom_cdreader
+* add hash support for RC_CONSOLE_DREAMCAST
+* ignore headers for RC_CONSOLE_PC_ENGINE
+* rename RC_CONSOLE_MAGNAVOX_ODYSSEY -> RC_CONSOLE_MAGNAVOX_ODYSSEY2
+* rename RC_CONSOLE_AMIGA_ST -> RC_CONSOLE_ATARI_ST
+* fix error identifying largest track when track has multiple bins
+* fix memory corruption error when cue track has more than 6 INDEXs
+* several improvements to data storage for conditions (rc_memref_t and rc_memref_value_t structures have been modified)
+
+# v9.2.0
+
+* fix issue identifying some PC-FX titles where the boot code is not in the first data track
+* add enums and labels for RC_CONSOLE_MAGNAVOX_ODYSSEY, RC_CONSOLE_SUPER_CASSETTEVISION, RC_CONSOLE_NEO_GEO_CD,
+  RC_CONSOLE_FAIRCHILD_CHANNEL_F, RC_CONSOLE_FM_TOWNS, RC_CONSOLE_ZX_SPECTRUM, RC_CONSOLE_GAME_AND_WATCH,
+  RC_CONSOLE_NOKIA_NGAGE, RC_CONSOLE_NINTENDO_3DS
+
+# v9.1.0
+
+* add hash support and memory map for RC_CONSOLE_MSX
+* add hash support and memory map for RC_CONSOLE_PCFX
+* include parent directory when hashing non-arcade titles in arcade mode
+* support absolute paths in m3u
+* make cue scanning case-insensitive
+* expand SRAM mapping for RC_CONSOLE_WONDERSWAN
+* fix display of measured value when another group has an unmeasured hit count
+* fix memory read error when hashing file with no extension
+* fix possible divide by zero when using RC_CONDITION_ADD_SOURCE/RC_CONDITION_SUB_SOURCE
+* fix classification of secondary RC_CONSOLE_SATURN memory region
+
 # v9.0.0
 
 * new size: RC_MEMSIZE_BITCOUNT
