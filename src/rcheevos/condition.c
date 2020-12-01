@@ -165,7 +165,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
   if (self->oper == RC_OPERATOR_NONE) {
     /* if operator is none, explicitly clear out the right side */
-    self->operand2.type = RC_INVALID_CONST_OPERAND;
+    self->operand2.type = RC_OPERAND_CONST;
     self->operand2.value.num = 0;
   }
 

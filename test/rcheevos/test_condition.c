@@ -55,7 +55,7 @@ static void test_parse_condition(const char* memaddr, int expected_type, int exp
     assert_parse_condition(memaddr, expected_type,
       expected_left_type, RC_MEMSIZE_8_BITS, 0x1234U,
       expected_operator,
-      RC_INVALID_CONST_OPERAND, RC_MEMSIZE_8_BITS, 0U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0U,
       expected_required_hits
     );
   }
