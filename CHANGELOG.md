@@ -1,7 +1,7 @@
 # v9.3.0
 
 * allow ranges in rich presence lookups
-* add RC_CONDITION_RESET_NEXT
+* add RC_CONDITION_RESET_NEXT_IF
 * support MAXOF($) for leaderboard values using trigger syntax
 * allow RC_CONDITION_PAUSE_IF and RC_CONDITION_RESET_IF in leaderboard value expression
 * changed track parameter of rc_hash_cdreader_open_track_handler to support three virtual tracks:

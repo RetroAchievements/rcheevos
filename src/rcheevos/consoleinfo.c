@@ -503,7 +503,7 @@ static const rc_memory_region_t _rc_memory_regions_scv[] = {
 static const rc_memory_regions_t rc_memory_regions_scv = { _rc_memory_regions_scv, 7 };
 
 /* ===== Super Nintendo ===== */
-/* https://segaretro.org/Sega_Saturn_hardware_notes_(2004-04-27) */
+/* https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_memory_map#LoROM */
 static const rc_memory_region_t _rc_memory_regions_snes[] = {
     { 0x000000U, 0x01FFFFU, 0x7E0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
     { 0x020000U, 0x03FFFFU, 0xFE0000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }

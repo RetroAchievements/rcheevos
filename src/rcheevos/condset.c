@@ -197,7 +197,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     or_next = 0;
 
     if (reset_next) {
-      /* previous ResetNext resets the hit count on this condition and prevents it from being true */
+      /* previous ResetNextIf resets the hit count on this condition and prevents it from being true */
       if (condition->current_hits)
         eval_state->was_cond_reset = 1;
 
@@ -231,6 +231,11 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     switch (condition->type) {
       case RC_CONDITION_ADD_HITS:
         eval_state->add_hits += condition->current_hits;
+        reset_next = 0; /* ResetNextIf was applied to this AddHits condition; don't apply it to future conditions */
+        continue;
+
+      case RC_CONDITION_RESET_NEXT_IF:
+        reset_next = cond_valid;
         continue;
 
       case RC_CONDITION_AND_NEXT:
@@ -245,28 +250,24 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         break;
     }
 
+    /* reset logic flags for next condition */
+    reset_next = 0;
+
     /* STEP 4: calculate total hits */
-    if (reset_next) {
-      reset_next = 0;
-      eval_state->add_hits = 0;
-      total_hits = 0;
-    }
-    else {
-      total_hits = condition->current_hits;
+    total_hits = condition->current_hits;
 
-      if (eval_state->add_hits) {
-        if (condition->required_hits != 0) {
-          /* if the condition has a target hit count, we have to recalculate cond_valid including the AddHits counter */
-          total_hits = condition->current_hits + eval_state->add_hits;
-          cond_valid = (total_hits >= condition->required_hits);
-        }
-        else {
-          /* no target hit count. we can't tell if the add_hits value is from this frame or not, so ignore it.
-             complex condition will only be true if the current condition is true */
-        }
-
-        eval_state->add_hits = 0;
+    if (eval_state->add_hits) {
+      if (condition->required_hits != 0) {
+        /* if the condition has a target hit count, we have to recalculate cond_valid including the AddHits counter */
+        total_hits = condition->current_hits + eval_state->add_hits;
+        cond_valid = (total_hits >= condition->required_hits);
       }
+      else {
+        /* no target hit count. we can't tell if the add_hits value is from this frame or not, so ignore it.
+           complex condition will only be true if the current condition is true */
+      }
+
+      eval_state->add_hits = 0;
     }
 
     /* STEP 5: handle special flags */
@@ -296,10 +297,6 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
           eval_state->was_reset = 1; /* let caller know to reset all hit counts */
           set_valid = 0; /* cannot be valid if we've hit a reset condition */
         }
-        continue;
-
-      case RC_CONDITION_RESET_NEXT:
-        reset_next = cond_valid;
         continue;
 
       case RC_CONDITION_MEASURED:
