@@ -759,6 +759,138 @@ static void test_richpresence_static(void)
   rc_runtime_destroy(&runtime);
 }
 
+typedef struct {
+  memory_t memory;
+  rc_runtime_t* runtime;
+  unsigned invalid_address;
+}
+memory_invalid_t;
+
+static unsigned peek_invalid(unsigned address, unsigned num_bytes, void* ud)
+{
+  memory_invalid_t* memory = (memory_invalid_t*)ud;
+  if (memory->invalid_address != address)
+    return peek(address, num_bytes, &memory->memory);
+
+  rc_runtime_invalidate_address(memory->runtime, address);
+  return 0;
+}
+
+static void assert_do_frame_invalid(rc_runtime_t* runtime, memory_invalid_t* memory, unsigned invalid_address)
+{
+  event_count = 0;
+  memory->runtime = runtime;
+  memory->invalid_address = invalid_address;
+  rc_runtime_do_frame(runtime, event_handler, peek_invalid, memory, NULL);
+}
+
+static void test_invalidate_address(void)
+{
+  unsigned char ram[] = { 0, 10, 10 };
+  memory_invalid_t memory;
+  rc_runtime_t runtime;
+
+  memory.memory.ram = ram;
+  memory.memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+  event_count = 0;
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=10");
+  assert_activate_achievement(&runtime, 2, "0xH0002=10");
+
+  /* achievements should start in waiting state */
+  assert_do_frame_invalid(&runtime, &memory, 0);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_WAITING);
+
+  /* nothing depends on address 3 */
+  assert_do_frame_invalid(&runtime, &memory, 3);
+  ASSERT_NUM_EQUALS(event_count, 0);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_WAITING);
+
+  /* second achievement depends on address 2 */
+  assert_do_frame_invalid(&runtime, &memory, 2);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_DISABLED);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_DISABLED, 2, 2);
+
+  /* second achievement already disabled, don't raise event again */
+  assert_do_frame_invalid(&runtime, &memory, 2);
+  ASSERT_NUM_EQUALS(event_count, 0);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_DISABLED);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_invalidate_address_shared_memref(void)
+{
+  unsigned char ram[] = { 0, 10, 10 };
+  memory_invalid_t memory;
+  rc_runtime_t runtime;
+
+  memory.memory.ram = ram;
+  memory.memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+  event_count = 0;
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=10");
+  assert_activate_achievement(&runtime, 2, "0xH0002=10");
+  assert_activate_achievement(&runtime, 3, "0xH0001=10S0xH0002=10S0xH0003=10");
+
+  /* achievements should start in waiting state */
+  assert_do_frame_invalid(&runtime, &memory, 0);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[2].trigger->state, RC_TRIGGER_STATE_WAITING);
+
+  /* second and third achievements depend on address 2 */
+  assert_do_frame_invalid(&runtime, &memory, 2);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_DISABLED);
+  ASSERT_NUM_EQUALS(runtime.triggers[2].trigger->state, RC_TRIGGER_STATE_DISABLED);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_DISABLED, 2, 2);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_DISABLED, 3, 2);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_invalidate_address_leaderboard(void)
+{
+  unsigned char ram[] = { 0, 10, 10 };
+  memory_invalid_t memory;
+  rc_runtime_t runtime;
+
+  memory.memory.ram = ram;
+  memory.memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+  event_count = 0;
+
+  assert_activate_lboard(&runtime, 1, "STA:0xH0001=10::SUB:0xH0001=11::CAN:0xH0001=12::VAL:0xH0001");
+  assert_activate_lboard(&runtime, 2, "STA:0xH0002=10::SUB:0xH0002=11::CAN:0xH0002=12::VAL:0xH0002*2");
+
+  /* leaderboards should start in waiting state */
+  assert_do_frame_invalid(&runtime, &memory, 0);
+  ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_WAITING);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* second leaderboard depends on address 2 */
+  assert_do_frame_invalid(&runtime, &memory, 2);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_DISABLED);
+  assert_event(RC_RUNTIME_EVENT_LBOARD_DISABLED, 2, 2);
+
+  rc_runtime_destroy(&runtime);
+}
+
 void test_runtime(void) {
   TEST_SUITE_BEGIN();
 
@@ -785,6 +917,11 @@ void test_runtime(void) {
   TEST(test_richpresence_reload);
   TEST(test_richpresence_reload_addaddress);
   TEST(test_richpresence_static);
+
+  /* invalidate address */
+  TEST(test_invalidate_address);
+  TEST(test_invalidate_address_shared_memref);
+  TEST(test_invalidate_address_leaderboard);
 
   TEST_SUITE_END();
 }

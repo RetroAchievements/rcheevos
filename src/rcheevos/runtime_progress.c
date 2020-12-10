@@ -264,10 +264,11 @@ static int rc_runtime_progress_write_achievements(rc_runtime_progress_t* progres
 
     switch (runtime_trigger->trigger->state)
     {
+      case RC_TRIGGER_STATE_DISABLED:
       case RC_TRIGGER_STATE_INACTIVE:
       case RC_TRIGGER_STATE_TRIGGERED:
         /* don't store state for inactive or triggered achievements */
-        break;
+        continue;
 
       default:
         break;
@@ -384,6 +385,7 @@ int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const unsigned char* 
     if (runtime_trigger->trigger) {
       switch (runtime_trigger->trigger->state)
       {
+        case RC_TRIGGER_STATE_DISABLED:
         case RC_TRIGGER_STATE_INACTIVE:
         case RC_TRIGGER_STATE_TRIGGERED:
           /* don't update state for inactive or triggered achievements */

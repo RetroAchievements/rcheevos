@@ -169,7 +169,7 @@ int rc_evaluate_lboard(rc_lboard_t* self, int* value, rc_peek_t peek, void* peek
 
   rc_update_memref_values(self->memrefs, peek, peek_ud);
 
-  if (self->state == RC_LBOARD_STATE_INACTIVE)
+  if (self->state == RC_LBOARD_STATE_INACTIVE || self->state == RC_LBOARD_STATE_DISABLED)
     return RC_LBOARD_STATE_INACTIVE;
 
   /* these are always tested once every frame, to ensure hit counts work properly */
