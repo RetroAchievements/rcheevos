@@ -598,7 +598,7 @@ void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, voi
   rc_update_variables(richpresence->variables, peek, peek_ud, L);
 
   for (display = richpresence->first_display; display; display = display->next) {
-    if (display->trigger.has_hits)
+    if (display->trigger.has_required_hits)
       rc_test_trigger(&display->trigger, peek, peek_ud, L);
   }
 }
@@ -681,8 +681,8 @@ int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* bu
     if (!display->next)
       return rc_evaluate_richpresence_display(display->display, buffer, buffersize);
 
-    /* triggers with hits will be updated in rc_update_richpresence */
-    if (!display->trigger.has_hits)
+    /* triggers with required hits will be updated in rc_update_richpresence */
+    if (!display->trigger.has_required_hits)
       rc_test_trigger(&display->trigger, peek, peek_ud, L);
 
     /* if we've found a valid condition, process it */

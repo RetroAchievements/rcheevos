@@ -44,11 +44,6 @@ void rc_runtime_destroy(rc_runtime_t* self) {
     self->richpresence = previous;
   }
 
-  if (self->richpresence_display_buffer) {
-    free(self->richpresence_display_buffer);
-    self->richpresence_display_buffer = NULL;
-  }
-
   self->next_memref = 0;
   self->memrefs = 0;
 }
@@ -367,13 +362,6 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   if (size < 0)
     return size;
 
-  if (!self->richpresence_display_buffer) {
-    self->richpresence_display_buffer = (char*)malloc(RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE * sizeof(char));
-    if (!self->richpresence_display_buffer)
-      return RC_OUT_OF_MEMORY;
-  }
-  self->richpresence_display_buffer[0] = '\0';
-
   previous = self->richpresence;
   if (previous) {
     if (!previous->owns_memrefs) {
@@ -412,48 +400,29 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
 
   richpresence->memrefs = NULL;
   richpresence->variables = NULL;
-  self->richpresence_update_timer = 0;
 
   if (!richpresence->first_display || !richpresence->first_display->display) {
-    /* non-existant rich presence, treat like static empty string */
-    *self->richpresence_display_buffer = '\0';
+    /* non-existant rich presence */
     self->richpresence->richpresence = NULL;
   }
-  else if (richpresence->first_display->next || /* has conditional display strings */
-      richpresence->first_display->display->next || /* has macros */
-      richpresence->first_display->display->value) { /* is only a macro */
-    /* dynamic rich presence - reset all of the conditions */
+  else {
+    /* reset all of the conditions */
     display = richpresence->first_display;
     while (display != NULL) {
       rc_reset_trigger(&display->trigger);
       display = display->next;
     }
-
-    /* evaluate using the *current* memref values - may be 0 for newly allocated memrefs */
-    rc_evaluate_richpresence(self->richpresence->richpresence, self->richpresence_display_buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1, NULL, NULL, L);
-  }
-  else {
-    /* static rich presence - copy the static string */
-    const char* src = richpresence->first_display->display->text;
-    char* dst = self->richpresence_display_buffer;
-    const char* end = dst + RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1;
-    while (*src && dst < end)
-      *dst++ = *src++;
-    *dst = '\0';
-
-    /* by setting self->richpresence to null, it won't be evaluated in do_frame() */
-    self->richpresence = NULL;
   }
 
   return RC_OK;
 }
 
-const char* rc_runtime_get_richpresence(const rc_runtime_t* self)
-{
-  if (self->richpresence_display_buffer)
-    return self->richpresence_display_buffer;
+int rc_runtime_get_richpresence(const rc_runtime_t* self, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
+  if (self->richpresence && self->richpresence->richpresence)
+    return rc_get_richpresence_display_string(self->richpresence->richpresence, buffer, buffersize, peek, peek_ud, L);
 
-  return "";
+  *buffer = '\0';
+  return 0;
 }
 
 void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_handler, rc_peek_t peek, void* ud, lua_State* L) {
@@ -559,28 +528,8 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     }
   }
 
-  if (self->richpresence && self->richpresence->richpresence) {
-    if (self->richpresence_update_timer == 0) {
-      /* generate into a temporary buffer so we don't get a partially updated string if it's read while its being updated */
-      char buffer[RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE];
-      int len = rc_evaluate_richpresence(self->richpresence->richpresence, buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1, peek, ud, L);
-
-      /* copy into the real buffer - write the 0 terminator first to ensure reads don't overflow the buffer */
-      if (len > 0) {
-        buffer[RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE - 1] = '\0';
-        memcpy(self->richpresence_display_buffer, buffer, RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE);
-      }
-
-      /* schedule the next update for 60 frames later - most systems use a 60 fps framerate (some use more 50 or 75)
-       * since we're only sending to the server every two minutes, that's only every 7200 frames while active, which
-       * is evenly divisible by 50, 60, and 75.
-       */
-      self->richpresence_update_timer = 59;
-    }
-    else {
-      self->richpresence_update_timer--;
-    }
-  }
+  if (self->richpresence && self->richpresence->richpresence)
+    rc_update_richpresence(self->richpresence->richpresence, peek, ud, L);
 }
 
 void rc_runtime_reset(rc_runtime_t* self) {
