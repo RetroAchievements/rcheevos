@@ -560,7 +560,6 @@ static void test_richpresence(void)
   unsigned char ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
-  int frame_count = 0;
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -633,7 +632,6 @@ static void test_richpresence_conditional(void)
   unsigned char ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
-  int frame_count = 0;
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -663,7 +661,6 @@ static void test_richpresence_conditional_with_hits(void)
   unsigned char ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
-  int frame_count = 0;
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -712,7 +709,6 @@ static void test_richpresence_conditional_with_hits_after_match(void)
   unsigned char ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
-  int frame_count = 0;
 
   memory.ram = ram;
   memory.size = sizeof(ram);
