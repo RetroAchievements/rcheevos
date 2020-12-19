@@ -140,7 +140,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
 
 static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc_eval_state_t* eval_state) {
   rc_condition_t* condition;
-  int set_valid, cond_valid, and_next, or_next;
+  int set_valid, cond_valid, and_next, or_next, reset_next;
   unsigned measured_value = 0;
   unsigned total_hits = 0;
   int can_measure = 1, measured_from_hits = 0;
@@ -149,6 +149,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
   set_valid = 1;
   and_next = 1;
   or_next = 0;
+  reset_next = 0;
   eval_state->add_value = eval_state->add_hits = eval_state->add_address = 0;
 
   for (condition = self->conditions; condition != 0; condition = condition->next) {
@@ -195,8 +196,16 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     and_next = 1;
     or_next = 0;
 
-    /* true conditions should update hit count */
-    if (cond_valid) {
+    if (reset_next) {
+      /* previous ResetNextIf resets the hit count on this condition and prevents it from being true */
+      if (condition->current_hits)
+        eval_state->was_cond_reset = 1;
+
+      condition->current_hits = 0;
+      cond_valid = 0;
+    }
+    else if (cond_valid) {
+      /* true conditions should update hit count */
       eval_state->has_hits = 1;
 
       if (condition->required_hits == 0) {
@@ -222,6 +231,11 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     switch (condition->type) {
       case RC_CONDITION_ADD_HITS:
         eval_state->add_hits += condition->current_hits;
+        reset_next = 0; /* ResetNextIf was applied to this AddHits condition; don't apply it to future conditions */
+        continue;
+
+      case RC_CONDITION_RESET_NEXT_IF:
+        reset_next = cond_valid;
         continue;
 
       case RC_CONDITION_AND_NEXT:
@@ -235,6 +249,9 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       default:
         break;
     }
+
+    /* reset logic flags for next condition */
+    reset_next = 0;
 
     /* STEP 4: calculate total hits */
     total_hits = condition->current_hits;

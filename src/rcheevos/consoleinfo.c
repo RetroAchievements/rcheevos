@@ -430,6 +430,7 @@ static const rc_memory_region_t _rc_memory_regions_pc8800[] = {
 static const rc_memory_regions_t rc_memory_regions_pc8800 = { _rc_memory_regions_pc8800, 2 };
 
 /* ===== PC Engine ===== */
+/* http://www.archaicpixels.com/Memory_Map */
 static const rc_memory_region_t _rc_memory_regions_pcengine[] = {
     { 0x000000U, 0x001FFFU, 0x1F0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
     { 0x002000U, 0x011FFFU, 0x100000U, RC_MEMORY_TYPE_SYSTEM_RAM, "CD RAM" },
@@ -464,7 +465,7 @@ static const rc_memory_region_t _rc_memory_regions_pokemini[] = {
 static const rc_memory_regions_t rc_memory_regions_pokemini = { _rc_memory_regions_pokemini, 2 };
 
 /* ===== Sega CD ===== */
-/* https://en.wikibooks.org/wiki/Genesis_Programming */
+/* https://en.wikibooks.org/wiki/Genesis_Programming#MegaCD_Changes */
 static const rc_memory_region_t _rc_memory_regions_segacd[] = {
     { 0x000000U, 0x00FFFFU, 0x00FF0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "68000 RAM" },
     { 0x010000U, 0x08FFFFU, 0x80020000U, RC_MEMORY_TYPE_SAVE_RAM, "CD PRG RAM" } /* normally banked into $020000-$03FFFF */
@@ -502,7 +503,7 @@ static const rc_memory_region_t _rc_memory_regions_scv[] = {
 static const rc_memory_regions_t rc_memory_regions_scv = { _rc_memory_regions_scv, 7 };
 
 /* ===== Super Nintendo ===== */
-/* https://segaretro.org/Sega_Saturn_hardware_notes_(2004-04-27) */
+/* https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_memory_map#LoROM */
 static const rc_memory_region_t _rc_memory_regions_snes[] = {
     { 0x000000U, 0x01FFFFU, 0x7E0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
     { 0x020000U, 0x03FFFFU, 0xFE0000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }

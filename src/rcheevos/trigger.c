@@ -192,6 +192,11 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
     self->state = RC_TRIGGER_STATE_ACTIVE;
   }
 
+  /* if an individual condition was reset, notify the caller */
+  if (eval_state.was_cond_reset)
+    return RC_TRIGGER_STATE_RESET;
+
+  /* otherwise, just return the current state */
   return self->state;
 }
 

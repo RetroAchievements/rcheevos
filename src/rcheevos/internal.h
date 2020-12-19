@@ -75,6 +75,7 @@ typedef struct {
   char has_hits;            /* one of more hit counts is non-zero */
   char primed;              /* true if all non-Trigger conditions are true */
   char measured_from_hits;  /* true if the measured_value came from a condition's hit count */
+  char was_cond_reset;      /* ResetNextIf triggered */
 }
 rc_eval_state_t;
 
