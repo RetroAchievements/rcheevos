@@ -92,6 +92,8 @@ typedef struct {
   rc_value_t** variables;
 
   unsigned measured_target;
+
+  char has_required_hits;
 }
 rc_parse_state_t;
 

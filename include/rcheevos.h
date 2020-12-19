@@ -263,6 +263,9 @@ typedef struct {
 
   /* True if at least one condition has a non-zero hit count */
   char has_hits;
+
+  /* True if at least one condition has a non-zero required hit count */
+  char has_required_hits;
 }
 rc_trigger_t;
 
@@ -401,6 +404,8 @@ rc_richpresence_t;
 int rc_richpresence_size(const char* script);
 rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_State* L, int funcs_ndx);
 int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
+void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, lua_State* L);
+int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
 
 /*****************************************************************************\
 | Runtime                                                                     |
@@ -443,8 +448,6 @@ typedef struct rc_runtime_t {
   unsigned lboard_capacity;
 
   rc_runtime_richpresence_t* richpresence;
-  char* richpresence_display_buffer;
-  char  richpresence_update_timer;
 
   rc_memref_t* memrefs;
   rc_memref_t** next_memref;
@@ -466,7 +469,7 @@ void rc_runtime_deactivate_lboard(rc_runtime_t* runtime, unsigned id);
 rc_lboard_t* rc_runtime_get_lboard(const rc_runtime_t* runtime, unsigned id);
 
 int rc_runtime_activate_richpresence(rc_runtime_t* runtime, const char* script, lua_State* L, int funcs_idx);
-const char* rc_runtime_get_richpresence(const rc_runtime_t* runtime);
+int rc_runtime_get_richpresence(const rc_runtime_t* self, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
 
 enum {
   RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, /* from WAITING, PAUSED, or PRIMED to ACTIVE */

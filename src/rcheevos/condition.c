@@ -183,6 +183,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       return 0;
     }
 
+    parse->has_required_hits = 1;
     aux = end + 1;
   }
   else if (*aux == '.') {
@@ -194,6 +195,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       return 0;
     }
 
+    parse->has_required_hits = 1;
     aux = end + 1;
   }
   else {
