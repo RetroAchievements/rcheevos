@@ -176,7 +176,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h" />
-    <ClInclude Include="..\src\rcheevos\internal.h" />
+    <ClInclude Include="..\src\rcheevos\rc_internal.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

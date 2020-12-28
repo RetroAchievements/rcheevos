@@ -1,4 +1,4 @@
-#include "internal.h"
+#include "rc_internal.h"
 
 #include <stdlib.h>
 #include <ctype.h>
