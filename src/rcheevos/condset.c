@@ -1,4 +1,4 @@
-#include "internal.h"
+#include "rc_internal.h"
 
 static void rc_update_condition_pause(rc_condition_t* condition, int* in_pause) {
   if (condition->next != 0) {

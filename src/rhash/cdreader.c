@@ -1,6 +1,6 @@
-#include "rhash.h"
+#include "rc_hash.h"
 
-#include "../rcheevos/compat.h"
+#include "../rcheevos/rc_compat.h"
 
 #include <ctype.h>
 #include <string.h>

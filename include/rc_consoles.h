@@ -1,5 +1,5 @@
-#ifndef RCONSOLES_H
-#define RCONSOLES_H
+#ifndef RC_CONSOLES_H
+#define RC_CONSOLES_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,4 +83,4 @@ const char* rc_console_name(int console_id);
 }
 #endif
 
-#endif /* RCONSOLES_H */
+#endif /* RC_CONSOLES_H */
