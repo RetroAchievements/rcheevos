@@ -448,8 +448,8 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
       runtime_event.id = self->triggers[i].id;
       runtime_event.value = self->triggers[i].invalid_memref->address;
 
-      self->triggers[i].invalid_memref = NULL;
       trigger->state = RC_TRIGGER_STATE_DISABLED;
+      self->triggers[i].invalid_memref = NULL;
 
       event_handler(&runtime_event);
 
@@ -510,8 +510,8 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
       runtime_event.id = self->lboards[i].id;
       runtime_event.value = self->lboards[i].invalid_memref->address;
 
-      self->lboards[i].invalid_memref = NULL;
       lboard->state = RC_LBOARD_STATE_DISABLED;
+      self->lboards[i].invalid_memref = NULL;
 
       event_handler(&runtime_event);
       continue;
@@ -631,6 +631,9 @@ void rc_runtime_invalidate_address(rc_runtime_t* self, unsigned address) {
   unsigned i;
   rc_memref_t* memref;
   rc_memref_t** last_memref;
+
+  if (!self->memrefs)
+    return;
 
   /* remove the invalid memref from the chain so we don't try to evaluate it in the future.
    * it's still there, so anything referencing it will continue to fetch 0.

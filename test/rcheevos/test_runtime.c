@@ -917,6 +917,17 @@ static void test_invalidate_address(void)
   rc_runtime_destroy(&runtime);
 }
 
+static void test_invalidate_address_no_memrefs(void)
+{
+  rc_runtime_t runtime;
+  rc_runtime_init(&runtime);
+
+  /* simple test to ensure a null reference doesn't occur when no memrefs are present */
+  rc_runtime_invalidate_address(&runtime, 0);
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_invalidate_address_shared_memref(void)
 {
   unsigned char ram[] = { 0, 10, 10 };
@@ -1013,6 +1024,7 @@ void test_runtime(void) {
 
   /* invalidate address */
   TEST(test_invalidate_address);
+  TEST(test_invalidate_address_no_memrefs);
   TEST(test_invalidate_address_shared_memref);
   TEST(test_invalidate_address_leaderboard);
 
