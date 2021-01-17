@@ -233,14 +233,14 @@ struct rc_condset_t {
 \*****************************************************************************/
 
 enum {
-  RC_TRIGGER_STATE_INACTIVE,       /* achievement is not being processed */
-  RC_TRIGGER_STATE_WAITING,        /* achievement cannot trigger until it has been false for at least one frame */
-  RC_TRIGGER_STATE_ACTIVE,         /* achievement is active and may trigger */
-  RC_TRIGGER_STATE_PAUSED,         /* achievement is currently paused and will not trigger */
-  RC_TRIGGER_STATE_RESET,          /* achievement hit counts were reset */
-  RC_TRIGGER_STATE_TRIGGERED,      /* achievement has triggered */
-  RC_TRIGGER_STATE_PRIMED,         /* all non-Trigger conditions are true */
-  RC_TRIGGER_STATE_DISABLED        /* achievement cannot be processed at this time */
+  RC_TRIGGER_STATE_INACTIVE,   /* achievement is not being processed */
+  RC_TRIGGER_STATE_WAITING,    /* achievement cannot trigger until it has been false for at least one frame */
+  RC_TRIGGER_STATE_ACTIVE,     /* achievement is active and may trigger */
+  RC_TRIGGER_STATE_PAUSED,     /* achievement is currently paused and will not trigger */
+  RC_TRIGGER_STATE_RESET,      /* achievement hit counts were reset */
+  RC_TRIGGER_STATE_TRIGGERED,  /* achievement has triggered */
+  RC_TRIGGER_STATE_PRIMED,     /* all non-Trigger conditions are true */
+  RC_TRIGGER_STATE_DISABLED    /* achievement cannot be processed at this time */
 };
 
 typedef struct {
@@ -309,13 +309,13 @@ int rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L)
 
 /* Return values for rc_evaluate_lboard. */
 enum {
-  RC_LBOARD_STATE_INACTIVE,       /* leaderboard is not being processed */
-  RC_LBOARD_STATE_WAITING,        /* leaderboard cannot activate until the start condition has been false for at least one frame */
-  RC_LBOARD_STATE_ACTIVE,         /* leaderboard is active and may start */
-  RC_LBOARD_STATE_STARTED,        /* leaderboard attempt in progress */
-  RC_LBOARD_STATE_CANCELED,       /* leaderboard attempt canceled */
-  RC_LBOARD_STATE_TRIGGERED,      /* leaderboard attempt complete, value should be submitted */
-  RC_LBOARD_STATE_DISABLED        /* leaderboard cannot be processed at this time */
+  RC_LBOARD_STATE_INACTIVE,  /* leaderboard is not being processed */
+  RC_LBOARD_STATE_WAITING,   /* leaderboard cannot activate until the start condition has been false for at least one frame */
+  RC_LBOARD_STATE_ACTIVE,    /* leaderboard is active and may start */
+  RC_LBOARD_STATE_STARTED,   /* leaderboard attempt in progress */
+  RC_LBOARD_STATE_CANCELED,  /* leaderboard attempt canceled */
+  RC_LBOARD_STATE_TRIGGERED, /* leaderboard attempt complete, value should be submitted */
+  RC_LBOARD_STATE_DISABLED   /* leaderboard cannot be processed at this time */
 };
 
 typedef struct {

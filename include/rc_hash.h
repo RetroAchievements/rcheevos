@@ -1,11 +1,11 @@
-#ifndef RHASH_H
-#define RHASH_H
+#ifndef RC_HASH_H
+#define RC_HASH_H
 
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
 
-#include "rconsoles.h"
+#include "rc_consoles.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -129,4 +129,4 @@ extern "C" {
 }
 #endif
 
-#endif /* RHASH_H */
+#endif /* RC_HASH_H */

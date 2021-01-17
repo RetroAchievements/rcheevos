@@ -198,10 +198,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h" />
-    <ClInclude Include="..\include\rconsoles.h" />
-    <ClInclude Include="..\include\rhash.h" />
-    <ClInclude Include="..\src\rcheevos\compat.h" />
-    <ClInclude Include="..\src\rcheevos\internal.h" />
+    <ClInclude Include="..\include\rc_consoles.h" />
+    <ClInclude Include="..\include\rc_hash.h" />
+    <ClInclude Include="..\include\rc_url.h" />
+    <ClInclude Include="..\src\rcheevos\rc_compat.h" />
+    <ClInclude Include="..\src\rcheevos\rc_internal.h" />
     <ClInclude Include="..\src\rhash\md5.h" />
     <ClInclude Include="rcheevos\mock_memory.h" />
     <ClInclude Include="rhash\data.h" />

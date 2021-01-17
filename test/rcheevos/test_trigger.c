@@ -1,4 +1,4 @@
-#include "internal.h"
+#include "rc_internal.h"
 
 #include "../test_framework.h"
 #include "mock_memory.h"

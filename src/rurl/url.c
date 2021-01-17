@@ -1,6 +1,6 @@
-#include "rurl.h"
+#include "rc_url.h"
 
-#include "../rcheevos/compat.h"
+#include "../rcheevos/rc_compat.h"
 #include "../rhash/md5.h"
 
 #include <stdio.h>

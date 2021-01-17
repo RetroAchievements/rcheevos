@@ -1,4 +1,4 @@
-#include "rhash.h"
+#include "rc_hash.h"
 
 #include "../test_framework.h"
 #include "data.h"

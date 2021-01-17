@@ -1,5 +1,5 @@
-#include "internal.h"
-#include "rurl.h"
+#include "rc_internal.h"
+#include "rc_url.h"
 
 #include <stdio.h>
 #include <stddef.h>

@@ -1,4 +1,4 @@
-#include "internal.h"
+#include "rc_internal.h"
 
 #include <stddef.h>
 #include <string.h> /* memset */

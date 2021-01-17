@@ -156,10 +156,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\rcheevos\internal.h">
+    <ClInclude Include="..\include\rcheevos.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\rcheevos.h">
+    <ClInclude Include="..\src\rcheevos\rc_internal.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
   </ItemGroup>

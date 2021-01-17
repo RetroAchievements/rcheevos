@@ -239,9 +239,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\rcheevos\internal.h">
-      <Filter>src\rcheevos</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\rcheevos.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
@@ -254,20 +251,26 @@
     <ClInclude Include="rhash\data.h">
       <Filter>tests\rhash</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\rhash.h">
-      <Filter>src\rhash</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\rcheevos\compat.h">
-      <Filter>src\rcheevos</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\rconsoles.h">
-      <Filter>src\rcheevos</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\rhash\md5.h">
       <Filter>src\rhash</Filter>
     </ClInclude>
     <ClInclude Include="rhash\mock_filereader.h">
       <Filter>tests\rhash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_hash.h">
+      <Filter>src\rhash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_consoles.h">
+      <Filter>src\rcheevos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_url.h">
+      <Filter>src\rurl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rcheevos\rc_internal.h">
+      <Filter>src\rcheevos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rcheevos\rc_compat.h">
+      <Filter>src\rcheevos</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

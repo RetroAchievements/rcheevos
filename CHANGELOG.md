@@ -1,5 +1,6 @@
-# v9.3.0
+# v10.0.0
 
+* renamed `rhash.h` to eliminate conflict with system headers, renamed `rconsoles.h` and `rurl.h` for consistency
 * allow ranges in rich presence lookups
 * add RC_CONDITION_RESET_NEXT_IF
 * support MAXOF($) for leaderboard values using trigger syntax
