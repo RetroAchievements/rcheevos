@@ -142,6 +142,7 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   parse->first_memref = 0;
   parse->variables = 0;
   parse->measured_target = 0;
+  parse->has_required_hits = 0;
 }
 
 void rc_destroy_parse_state(rc_parse_state_t* parse)

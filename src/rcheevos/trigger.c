@@ -10,7 +10,9 @@ void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_pars
   aux = *memaddr;
   next = &self->alternative;
 
-  parse->measured_target = 0; /* reset in case multiple triggers are parsed by the same parse_state */
+  /* reset in case multiple triggers are parsed by the same parse_state */
+  parse->measured_target = 0;
+  parse->has_required_hits = 0;
 
   if (*aux == 's' || *aux == 'S') {
     self->requirement = 0;
@@ -43,6 +45,7 @@ void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_pars
   self->measured_target = parse->measured_target;
   self->state = RC_TRIGGER_STATE_WAITING;
   self->has_hits = 0;
+  self->has_required_hits = parse->has_required_hits;
 }
 
 int rc_trigger_size(const char* memaddr) {
@@ -197,6 +200,11 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
     self->state = RC_TRIGGER_STATE_ACTIVE;
   }
 
+  /* if an individual condition was reset, notify the caller */
+  if (eval_state.was_cond_reset)
+    return RC_TRIGGER_STATE_RESET;
+
+  /* otherwise, just return the current state */
   return self->state;
 }
 

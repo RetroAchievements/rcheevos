@@ -591,87 +591,110 @@ rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_S
   return parse.offset >= 0 ? self : 0;
 }
 
-int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
+void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, lua_State* L) {
   rc_richpresence_display_t* display;
-  rc_richpresence_display_part_t* part;
-  rc_richpresence_lookup_item_t* item;
-  char tmp[256];
-  char* ptr;
-  const char* text;
-  size_t chars;
-  unsigned value;
 
   rc_update_memref_values(richpresence->memrefs, peek, peek_ud);
   rc_update_variables(richpresence->variables, peek, peek_ud, L);
 
-  ptr = buffer;
-  display = richpresence->first_display;
-  while (display) {
-    if (!display->next || rc_test_trigger(&display->trigger, peek, peek_ud, L)) {
-      part = display->display;
-      while (part) {
-        switch (part->display_type) {
-          case RC_FORMAT_STRING:
-            text = part->text;
-            chars = strlen(text);
-            break;
+  for (display = richpresence->first_display; display; display = display->next) {
+    if (display->trigger.has_required_hits)
+      rc_test_trigger(&display->trigger, peek, peek_ud, L);
+  }
+}
 
-          case RC_FORMAT_LOOKUP:
-            value = part->value->value;
-            text = part->lookup->default_label;
-            item = part->lookup->root;
-            while (item) {
-              if (value > item->last) {
-                item = item->right;
-              }
-              else if (value < item->first) {
-                item = item->left;
-              }
-              else {
-                text = item->label;
-                break;
-              }
-            }
+static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part, char* buffer, unsigned buffersize)
+{
+  rc_richpresence_lookup_item_t* item;
+  char tmp[256];
+  char* ptr = buffer;
+  const char* text;
+  size_t chars;
+  unsigned value;
 
-            chars = strlen(text);
-            break;
+  *ptr = '\0';
+  while (part) {
+    switch (part->display_type) {
+      case RC_FORMAT_STRING:
+        text = part->text;
+        chars = strlen(text);
+        break;
 
-          case RC_FORMAT_UNKNOWN_MACRO:
-            chars = snprintf(tmp, sizeof(tmp), "[Unknown macro]%s", part->text);
-            text = tmp;
-            break;
-
-          default:
-            value = part->value->value;
-            chars = rc_format_value(tmp, sizeof(tmp), value, part->display_type);
-            text = tmp;
-            break;
-        }
-
-        if (chars > 0 && buffersize > 0) {
-          if ((unsigned)chars >= buffersize) {
-            /* prevent write past end of buffer */
-            memcpy(ptr, text, buffersize - 1);
-            ptr[buffersize - 1] = '\0';
-            buffersize = 0;
+      case RC_FORMAT_LOOKUP:
+        value = part->value->value;
+        text = part->lookup->default_label;
+        item = part->lookup->root;
+        while (item) {
+          if (value > item->last) {
+            item = item->right;
+          }
+          else if (value < item->first) {
+            item = item->left;
           }
           else {
-            memcpy(ptr, text, chars);
-            ptr[chars] = '\0';
-            buffersize -= (unsigned)chars;
+            text = item->label;
+            break;
           }
         }
 
-        ptr += chars;
-        part = part->next;
-      }
+        chars = strlen(text);
+        break;
 
-      return (int)(ptr - buffer);
+      case RC_FORMAT_UNKNOWN_MACRO:
+        chars = snprintf(tmp, sizeof(tmp), "[Unknown macro]%s", part->text);
+        text = tmp;
+        break;
+
+      default:
+        value = part->value->value;
+        chars = rc_format_value(tmp, sizeof(tmp), value, part->display_type);
+        text = tmp;
+        break;
     }
 
-    display = display->next;
+    if (chars > 0 && buffersize > 0) {
+      if ((unsigned)chars >= buffersize) {
+        /* prevent write past end of buffer */
+        memcpy(ptr, text, buffersize - 1);
+        ptr[buffersize - 1] = '\0';
+        buffersize = 0;
+      }
+      else {
+        memcpy(ptr, text, chars);
+        ptr[chars] = '\0';
+        buffersize -= (unsigned)chars;
+      }
+    }
+
+    ptr += chars;
+    part = part->next;
+  }
+
+  return (int)(ptr - buffer);
+}
+
+int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
+  rc_richpresence_display_t* display;
+
+  for (display = richpresence->first_display; display; display = display->next) {
+    /* if we've reached the end of the condition list, process it */
+    if (!display->next)
+      return rc_evaluate_richpresence_display(display->display, buffer, buffersize);
+
+    /* triggers with required hits will be updated in rc_update_richpresence */
+    if (!display->trigger.has_required_hits)
+      rc_test_trigger(&display->trigger, peek, peek_ud, L);
+
+    /* if we've found a valid condition, process it */
+    if (display->trigger.state == RC_TRIGGER_STATE_TRIGGERED)
+      return rc_evaluate_richpresence_display(display->display, buffer, buffersize);
   }
 
   buffer[0] = '\0';
   return 0;
+}
+
+int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
+  rc_update_richpresence(richpresence, peek, peek_ud, L);
+  return rc_get_richpresence_display_string(richpresence, buffer, buffersize, peek, peek_ud, L);
 }

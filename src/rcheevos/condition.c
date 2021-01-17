@@ -83,6 +83,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       case 'q': case 'Q': self->type = RC_CONDITION_MEASURED_IF; break;
       case 'i': case 'I': self->type = RC_CONDITION_ADD_ADDRESS; can_modify = 1; break;
       case 't': case 'T': self->type = RC_CONDITION_TRIGGER; break;
+      case 'z': case 'Z': self->type = RC_CONDITION_RESET_NEXT_IF; break;
       default: parse->offset = RC_INVALID_CONDITION_TYPE; return 0;
     }
 
@@ -164,7 +165,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
   if (self->oper == RC_OPERATOR_NONE) {
     /* if operator is none, explicitly clear out the right side */
-    self->operand2.type = RC_INVALID_CONST_OPERAND;
+    self->operand2.type = RC_OPERAND_CONST;
     self->operand2.value.num = 0;
   }
 
@@ -182,6 +183,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       return 0;
     }
 
+    parse->has_required_hits = 1;
     aux = end + 1;
   }
   else if (*aux == '.') {
@@ -193,6 +195,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       return 0;
     }
 
+    parse->has_required_hits = 1;
     aux = end + 1;
   }
   else {

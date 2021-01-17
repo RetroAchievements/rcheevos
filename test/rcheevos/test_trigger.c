@@ -1270,6 +1270,61 @@ static void test_evaluate_trigger_reset() {
   ASSERT_FALSE(trigger->has_hits);
 }
 
+static void test_evaluate_trigger_reset_next() {
+  unsigned char ram[] = {0x00, 0x05, 0x10, 0xAB, 0x09};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_trigger(&trigger, buffer, "Z:0xL0004=4_0xH0001=5.2._0xH0003=3");
+  trigger->state = RC_TRIGGER_STATE_ACTIVE;
+
+  /* generate a hit count */
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_TRUE(trigger->has_hits);
+
+  /* ResetNext that resets hits returns RESET, but doesn't change the state */
+  ram[4] = 4;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_RESET);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_TRUE(trigger->has_hits); /* ResetNext will have a hit */
+
+  /* ResetNext that doesn't resets hits doesn't return RESET */
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_TRUE(trigger->has_hits); /* ResetNext will have a hit */
+
+  /* Secondary hit should still be tallied, ResetNext that doesn't reset hits doesn't return RESET */
+  ram[3] = 3;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_TRUE(trigger->has_hits);
+
+  /* ResetNext no longer true, tally hit */
+  ram[4] = 5;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_TRUE(trigger->has_hits);
+
+  /* ResetNext that resets hits returns RESET, but doesn't reset the secondary hits */
+  ram[4] = 4;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_RESET);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_TRUE(trigger->has_hits);
+
+  /* ResetNext no longer true, tally hit */
+  ram[4] = 5;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_TRUE(trigger->has_hits);
+
+  /* tally second hit to trigger */
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_TRIGGERED);
+}
+
 static void test_evaluate_trigger_triggered() {
   unsigned char ram[] = {0x00, 0x05, 0x10, 0xAB, 0x09};
   memory_t memory;
@@ -1604,6 +1659,7 @@ void test_trigger(void) {
   TEST(test_evaluate_trigger_inactive);
   TEST(test_evaluate_trigger_waiting);
   TEST(test_evaluate_trigger_reset);
+  TEST(test_evaluate_trigger_reset_next);
   TEST(test_evaluate_trigger_triggered);
   TEST(test_evaluate_trigger_paused);
   TEST(test_evaluate_trigger_primed);

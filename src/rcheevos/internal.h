@@ -27,7 +27,7 @@ RC_ALLOW_ALIGN(rc_value_t)
 RC_ALLOW_ALIGN(char)
 
 #define RC_ALIGNOF(T) (sizeof(struct __align_ ## T) - sizeof(T))
-#define RC_OFFSETOF(o, t) (int)((long long)&(o.t) - (long long)&(o))
+#define RC_OFFSETOF(o, t) (int)((char*)&(o.t) - (char*)&(o))
 
 #define RC_ALLOC(t, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
 #define RC_ALLOC_SCRATCH(t, p) ((t*)rc_alloc_scratch((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
@@ -75,6 +75,7 @@ typedef struct {
   char has_hits;            /* one of more hit counts is non-zero */
   char primed;              /* true if all non-Trigger conditions are true */
   char measured_from_hits;  /* true if the measured_value came from a condition's hit count */
+  char was_cond_reset;      /* ResetNextIf triggered */
 }
 rc_eval_state_t;
 
@@ -91,6 +92,8 @@ typedef struct {
   rc_value_t** variables;
 
   unsigned measured_target;
+
+  char has_required_hits;
 }
 rc_parse_state_t;
 

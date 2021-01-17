@@ -55,7 +55,7 @@ static void test_parse_condition(const char* memaddr, int expected_type, int exp
     assert_parse_condition(memaddr, expected_type,
       expected_left_type, RC_MEMSIZE_8_BITS, 0x1234U,
       expected_operator,
-      RC_INVALID_CONST_OPERAND, RC_MEMSIZE_8_BITS, 0U,
+      RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0U,
       expected_required_hits
     );
   }
@@ -207,6 +207,7 @@ void test_condition(void) {
   TEST_PARAMS5(test_parse_condition, "Q:0xH1234=8", RC_CONDITION_MEASURED_IF, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
   TEST_PARAMS5(test_parse_condition, "I:0xH1234=8", RC_CONDITION_ADD_ADDRESS, RC_OPERAND_ADDRESS, RC_OPERATOR_NONE, 0);
   TEST_PARAMS5(test_parse_condition, "T:0xH1234=8", RC_CONDITION_TRIGGER, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
+  TEST_PARAMS5(test_parse_condition, "Z:0xH1234=8", RC_CONDITION_RESET_NEXT_IF, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
 
   /* modifiers (only valid with some flags, use A:) */
   TEST_PARAMS5(test_parse_condition, "A:0xH1234*8", RC_CONDITION_ADD_SOURCE, RC_OPERAND_ADDRESS, RC_OPERATOR_MULT, 0);
@@ -246,7 +247,7 @@ void test_condition(void) {
   TEST_PARAMS2(test_parse_condition_error, "P:0x1234", RC_INVALID_OPERATOR);
   TEST_PARAMS2(test_parse_condition_error, "R:0x1234", RC_INVALID_OPERATOR);
   TEST_PARAMS2(test_parse_condition_error, "M:0x1234", RC_INVALID_OPERATOR);
-  TEST_PARAMS2(test_parse_condition_error, "Z:0x1234", RC_INVALID_CONDITION_TYPE);
+  TEST_PARAMS2(test_parse_condition_error, "Y:0x1234", RC_INVALID_CONDITION_TYPE);
   TEST_PARAMS2(test_parse_condition_error, "0x1234=1.2", RC_INVALID_REQUIRED_HITS);
   TEST_PARAMS2(test_parse_condition_error, "0.1234==0", RC_INVALID_OPERATOR); /* period is assumed to be operator */
   TEST_PARAMS2(test_parse_condition_error, "0==0.1234", RC_INVALID_REQUIRED_HITS); /* period is assumed to be start of hit target, no end marker */
