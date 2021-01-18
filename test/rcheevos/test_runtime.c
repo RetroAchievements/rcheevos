@@ -304,6 +304,56 @@ static void test_replace_active_trigger(void)
   rc_runtime_destroy(&runtime);
 }
 
+static rc_runtime_t* discarding_event_handler_runtime = NULL;
+static void discarding_event_handler(const rc_runtime_event_t* e)
+{
+    event_handler(e);
+    rc_runtime_deactivate_achievement(discarding_event_handler_runtime, e->id);
+}
+
+static void test_trigger_deactivation(void)
+{
+  unsigned char ram[] = { 0, 9, 10 };
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  /* three identical achievements that should trigger when $1 changes from 9 to 10 */
+  assert_activate_achievement(&runtime, 1, "0xH0001=10_d0xH0001=9");
+  assert_activate_achievement(&runtime, 2, "0xH0001=10_d0xH0001=9");
+  assert_activate_achievement(&runtime, 3, "0xH0001=10_d0xH0001=9");
+
+  /* prep the delta and make sure the achievements are active */
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.trigger_count, 3);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(runtime.triggers[2].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+
+  /* trigger all three */
+  ram[1] = 10;
+  event_count = 0;
+  discarding_event_handler_runtime = &runtime;
+  rc_runtime_do_frame(&runtime, discarding_event_handler, peek, &memory, NULL);
+  discarding_event_handler_runtime = NULL;
+
+  ASSERT_NUM_EQUALS(event_count, 3);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 2, 0);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 3, 0);
+
+  /* triggers 2 and 3 should have been removed from the runtime since they don't have memrefs,
+   * and trigger 1 should be nulled out. */
+  ASSERT_NUM_EQUALS(runtime.trigger_count, 1);
+  ASSERT_PTR_NULL(runtime.triggers[0].trigger);
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_reset_event(void)
 {
   unsigned char ram[] = { 0, 10, 10 };
@@ -859,6 +909,7 @@ void test_runtime(void) {
 
   TEST(test_shared_memref);
   TEST(test_replace_active_trigger);
+  TEST(test_trigger_deactivation);
 
   /* achievement events */
   TEST(test_reset_event);

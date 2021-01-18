@@ -427,14 +427,14 @@ int rc_runtime_get_richpresence(const rc_runtime_t* self, char* buffer, unsigned
 
 void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_handler, rc_peek_t peek, void* ud, lua_State* L) {
   rc_runtime_event_t runtime_event;
-  unsigned i;
+  int i;
 
   runtime_event.value = 0;
 
   rc_update_memref_values(self->memrefs, peek, ud);
   rc_update_variables(self->variables, peek, ud, L);
 
-  for (i = 0; i < self->trigger_count; ++i) {
+  for (i = self->trigger_count - 1; i >= 0; --i) {
     rc_trigger_t* trigger = self->triggers[i].trigger;
     int trigger_state;
 
@@ -483,7 +483,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     }
   }
 
-  for (i = 0; i < self->lboard_count; ++i) {
+  for (i = self->lboard_count - 1; i >= 0; --i) {
     rc_lboard_t* lboard = self->lboards[i].lboard;
     int lboard_state;
 
