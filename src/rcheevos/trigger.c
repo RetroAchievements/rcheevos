@@ -98,13 +98,18 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   char is_paused;
   char is_primed;
 
-  /* previously triggered, do nothing - return INACTIVE so caller doesn't report a repeated trigger */
+  /* previously triggered, do nothing - return INACTIVE so caller doesn't think it triggered again */
   if (self->state == RC_TRIGGER_STATE_TRIGGERED)
     return RC_TRIGGER_STATE_INACTIVE;
 
+  /* unsupported, do nothing - return INACTIVE */
+  if (self->state == RC_TRIGGER_STATE_DISABLED)
+    return RC_TRIGGER_STATE_INACTIVE;
+
+  /* update the memory references */
   rc_update_memref_values(self->memrefs, peek, ud);
 
-  /* not yet active, only update the memrefs - so deltas are correct when it becomes active */
+  /* not yet active, only update the memrefs so deltas are correct when it becomes active */
   if (self->state == RC_TRIGGER_STATE_INACTIVE)
     return RC_TRIGGER_STATE_INACTIVE;
 

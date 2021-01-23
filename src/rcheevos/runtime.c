@@ -191,6 +191,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
   self->triggers[self->trigger_count].id = id;
   self->triggers[self->trigger_count].trigger = trigger;
   self->triggers[self->trigger_count].buffer = trigger_buffer;
+  self->triggers[self->trigger_count].invalid_memref = NULL;
   memcpy(self->triggers[self->trigger_count].md5, md5, 16);
   self->triggers[self->trigger_count].owns_memrefs = rc_runtime_allocated_memrefs(self);
   ++self->trigger_count;
@@ -326,6 +327,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   self->lboards[self->lboard_count].value = 0;
   self->lboards[self->lboard_count].lboard = lboard;
   self->lboards[self->lboard_count].buffer = lboard_buffer;
+  self->lboards[self->lboard_count].invalid_memref = NULL;
   memcpy(self->lboards[self->lboard_count].md5, md5, 16);
   self->lboards[self->lboard_count].owns_memrefs = rc_runtime_allocated_memrefs(self);
   ++self->lboard_count;
@@ -441,8 +443,21 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     if (!trigger)
       continue;
 
-    trigger_state = trigger->state;
+    if (self->triggers[i].invalid_memref) {
+      runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_DISABLED;
+      runtime_event.id = self->triggers[i].id;
+      runtime_event.value = self->triggers[i].invalid_memref->address;
 
+      trigger->state = RC_TRIGGER_STATE_DISABLED;
+      self->triggers[i].invalid_memref = NULL;
+
+      event_handler(&runtime_event);
+
+      runtime_event.value = 0; /* achievement loop expects this to stay at 0 */
+      continue;
+    }
+
+    trigger_state = trigger->state;
     switch (rc_evaluate_trigger(trigger, peek, ud, L))
     {
       case RC_TRIGGER_STATE_RESET:
@@ -489,6 +504,18 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 
     if (!lboard)
       continue;
+
+    if (self->lboards[i].invalid_memref) {
+      runtime_event.type = RC_RUNTIME_EVENT_LBOARD_DISABLED;
+      runtime_event.id = self->lboards[i].id;
+      runtime_event.value = self->lboards[i].invalid_memref->address;
+
+      lboard->state = RC_LBOARD_STATE_DISABLED;
+      self->lboards[i].invalid_memref = NULL;
+
+      event_handler(&runtime_event);
+      continue;
+    }
 
     lboard_state = lboard->state;
     switch (rc_evaluate_lboard(lboard, &runtime_event.value, peek, ud, L))
@@ -556,4 +583,106 @@ void rc_runtime_reset(rc_runtime_t* self) {
 
   for (variable = self->variables; variable; variable = variable->next)
     rc_reset_value(variable);
+}
+
+static int rc_condset_contains_memref(const rc_condset_t* condset, const rc_memref_t* memref) {
+  rc_condition_t* cond;
+  if (!condset)
+    return 0;
+
+  for (cond = condset->conditions; cond; cond = cond->next) {
+    if (cond->operand1.value.memref == memref || cond->operand2.value.memref == memref)
+      return 1;
+  }
+
+  return 0;
+}
+
+static int rc_value_contains_memref(const rc_value_t* value, const rc_memref_t* memref) {
+  rc_condset_t* condset;
+  if (!value)
+    return 0;
+
+  for (condset = value->conditions; condset; condset = condset->next) {
+    if (rc_condset_contains_memref(condset, memref))
+      return 1;
+  }
+
+  return 0;
+}
+
+static int rc_trigger_contains_memref(const rc_trigger_t* trigger, const rc_memref_t* memref) {
+  rc_condset_t* condset;
+  if (!trigger)
+    return 0;
+
+  if (rc_condset_contains_memref(trigger->requirement, memref))
+    return 1;
+
+  for (condset = trigger->alternative; condset; condset = condset->next) {
+    if (rc_condset_contains_memref(condset, memref))
+      return 1;
+  }
+
+  return 0;
+}
+
+void rc_runtime_invalidate_address(rc_runtime_t* self, unsigned address) {
+  unsigned i;
+  rc_memref_t* memref;
+  rc_memref_t** last_memref;
+
+  if (!self->memrefs)
+    return;
+
+  /* remove the invalid memref from the chain so we don't try to evaluate it in the future.
+   * it's still there, so anything referencing it will continue to fetch 0.
+   */
+  last_memref = &self->memrefs;
+  memref = *last_memref;
+  do {
+    if (memref->address == address && !memref->value.is_indirect) {
+      *last_memref = memref->next;
+      break;
+    }
+
+    last_memref = &memref->next;
+    memref = *last_memref;
+  } while (memref);
+
+  /* if the address is only used indirectly, don't disable anything dependent on it */
+  if (!memref)
+    return;
+
+  /* disable any achievements dependent on the address */
+  for (i = 0; i < self->trigger_count; ++i) {
+    if (!self->triggers[i].invalid_memref && rc_trigger_contains_memref(self->triggers[i].trigger, memref))
+      self->triggers[i].invalid_memref = memref;
+  }
+
+  /* disable any leaderboards dependent on the address */
+  for (i = 0; i < self->lboard_count; ++i) {
+    if (!self->lboards[i].invalid_memref) {
+      rc_lboard_t* lboard = self->lboards[i].lboard;
+      if (lboard) {
+        if (rc_trigger_contains_memref(&lboard->start, memref)) {
+          lboard->start.state = RC_TRIGGER_STATE_DISABLED;
+          self->lboards[i].invalid_memref = memref;
+        }
+
+        if (rc_trigger_contains_memref(&lboard->cancel, memref)) {
+          lboard->cancel.state = RC_TRIGGER_STATE_DISABLED;
+          self->lboards[i].invalid_memref = memref;
+        }
+
+        if (rc_trigger_contains_memref(&lboard->submit, memref)) {
+          lboard->submit.state = RC_TRIGGER_STATE_DISABLED;
+          self->lboards[i].invalid_memref = memref;
+        }
+
+        if (rc_value_contains_memref(&lboard->value, memref))
+          self->lboards[i].invalid_memref = memref;
+      }
+    }
+  }
 }

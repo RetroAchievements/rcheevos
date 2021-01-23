@@ -3,6 +3,10 @@
 
 #include "rcheevos.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct rc_scratch_string {
   char* value;
   struct rc_scratch_string* left;
@@ -128,12 +132,15 @@ char rc_parse_operator(const char** memaddr);
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
 void rc_reset_value(rc_value_t* self);
-rc_memref_value_t* rc_alloc_helper_variable_memref(const char* memaddr, int memaddr_len, rc_parse_state_t* parse);
 rc_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse);
 void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L);
 
 void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_state_t* parse);
 
 void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script, rc_parse_state_t* parse);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INTERNAL_H */

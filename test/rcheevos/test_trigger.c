@@ -1538,6 +1538,23 @@ static void test_evaluate_trigger_primed_one_alt() {
   ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_TRIGGERED);
 }
 
+static void test_evaluate_trigger_disabled() {
+  unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_trigger(&trigger, buffer, "0xH0000=1ST:0xH0001=1S0xH0002=1");
+  trigger->state = RC_TRIGGER_STATE_DISABLED;
+
+  /* state stays DISABLED, but evaluate returns INACTIVE */
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_INACTIVE);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_DISABLED);
+}
+
 static void test_prev_prior_share_memref() {
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1648,6 +1665,7 @@ void test_trigger(void) {
   TEST(test_evaluate_trigger_primed);
   TEST(test_evaluate_trigger_primed_in_alts);
   TEST(test_evaluate_trigger_primed_one_alt);
+  TEST(test_evaluate_trigger_disabled);
 
   /* memref sharing */
   TEST(test_prev_prior_share_memref);

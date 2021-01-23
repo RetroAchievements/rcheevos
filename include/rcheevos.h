@@ -239,7 +239,8 @@ enum {
   RC_TRIGGER_STATE_PAUSED,     /* achievement is currently paused and will not trigger */
   RC_TRIGGER_STATE_RESET,      /* achievement hit counts were reset */
   RC_TRIGGER_STATE_TRIGGERED,  /* achievement has triggered */
-  RC_TRIGGER_STATE_PRIMED      /* all non-Trigger conditions are true */
+  RC_TRIGGER_STATE_PRIMED,     /* all non-Trigger conditions are true */
+  RC_TRIGGER_STATE_DISABLED    /* achievement cannot be processed at this time */
 };
 
 typedef struct {
@@ -313,7 +314,8 @@ enum {
   RC_LBOARD_STATE_ACTIVE,    /* leaderboard is active and may start */
   RC_LBOARD_STATE_STARTED,   /* leaderboard attempt in progress */
   RC_LBOARD_STATE_CANCELED,  /* leaderboard attempt canceled */
-  RC_LBOARD_STATE_TRIGGERED  /* leaderboard attempt complete, value should be submitted */
+  RC_LBOARD_STATE_TRIGGERED, /* leaderboard attempt complete, value should be submitted */
+  RC_LBOARD_STATE_DISABLED   /* leaderboard cannot be processed at this time */
 };
 
 typedef struct {
@@ -415,6 +417,7 @@ typedef struct rc_runtime_trigger_t {
   unsigned id;
   rc_trigger_t* trigger;
   void* buffer;
+  rc_memref_t* invalid_memref;
   unsigned char md5[16];
   char owns_memrefs;
 }
@@ -425,6 +428,7 @@ typedef struct rc_runtime_lboard_t {
   int value;
   rc_lboard_t* lboard;
   void* buffer;
+  rc_memref_t* invalid_memref;
   unsigned char md5[16];
   char owns_memrefs;
 }
@@ -480,7 +484,9 @@ enum {
   RC_RUNTIME_EVENT_LBOARD_STARTED,
   RC_RUNTIME_EVENT_LBOARD_CANCELED,
   RC_RUNTIME_EVENT_LBOARD_UPDATED,
-  RC_RUNTIME_EVENT_LBOARD_TRIGGERED
+  RC_RUNTIME_EVENT_LBOARD_TRIGGERED,
+  RC_RUNTIME_EVENT_ACHIEVEMENT_DISABLED,
+  RC_RUNTIME_EVENT_LBOARD_DISABLED
 };
 
 typedef struct rc_runtime_event_t {
@@ -494,6 +500,7 @@ typedef void (*rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_eve
 
 void rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_peek_t peek, void* ud, lua_State* L);
 void rc_runtime_reset(rc_runtime_t* runtime);
+void rc_runtime_invalidate_address(rc_runtime_t* runtime, unsigned address);
 
 int rc_runtime_progress_size(const rc_runtime_t* runtime, lua_State* L);
 int rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua_State* L);
