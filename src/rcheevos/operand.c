@@ -68,88 +68,66 @@ static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, rc_par
 
 static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse, int is_indirect) {
   const char* aux = *memaddr;
-  char* end;
-  unsigned long address;
+  unsigned address;
   char size;
+  int ret;
 
-  switch (*aux++) {
+  switch (*aux) {
     case 'd': case 'D':
       self->type = RC_OPERAND_DELTA;
+      ++aux;
       break;
 
     case 'p': case 'P':
       self->type = RC_OPERAND_PRIOR;
+      ++aux;
       break;
 
     case 'b': case 'B':
       self->type = RC_OPERAND_BCD;
+      ++aux;
       break;
 
     case '~':
       self->type = RC_OPERAND_INVERTED;
+      ++aux;
       break;
 
     default:
       self->type = RC_OPERAND_ADDRESS;
-      aux--;
       break;
   }
 
-  if (*aux++ != '0') {
-    return RC_INVALID_MEMORY_OPERAND;
-  }
+  ret = rc_parse_memref(&aux, &self->size, &address);
+  if (ret != RC_OK)
+    return ret;
 
-  if (*aux != 'x' && *aux != 'X') {
-    return RC_INVALID_MEMORY_OPERAND;
-  }
-
-  aux++;
-
-  switch (*aux++) {
-    case 'm': case 'M': self->size = RC_MEMSIZE_BIT_0; size = RC_MEMSIZE_8_BITS; break;
-    case 'n': case 'N': self->size = RC_MEMSIZE_BIT_1; size = RC_MEMSIZE_8_BITS; break;
-    case 'o': case 'O': self->size = RC_MEMSIZE_BIT_2; size = RC_MEMSIZE_8_BITS; break;
-    case 'p': case 'P': self->size = RC_MEMSIZE_BIT_3; size = RC_MEMSIZE_8_BITS; break;
-    case 'q': case 'Q': self->size = RC_MEMSIZE_BIT_4; size = RC_MEMSIZE_8_BITS; break;
-    case 'r': case 'R': self->size = RC_MEMSIZE_BIT_5; size = RC_MEMSIZE_8_BITS; break;
-    case 's': case 'S': self->size = RC_MEMSIZE_BIT_6; size = RC_MEMSIZE_8_BITS; break;
-    case 't': case 'T': self->size = RC_MEMSIZE_BIT_7; size = RC_MEMSIZE_8_BITS; break;
-    case 'l': case 'L': self->size = RC_MEMSIZE_LOW; size = RC_MEMSIZE_8_BITS; break;
-    case 'u': case 'U': self->size = RC_MEMSIZE_HIGH; size = RC_MEMSIZE_8_BITS; break;
-    case 'k': case 'K': self->size = RC_MEMSIZE_BITCOUNT; size = RC_MEMSIZE_8_BITS; break;
-    case 'h': case 'H': self->size = size = RC_MEMSIZE_8_BITS; break;
-    case 'w': case 'W': self->size = size = RC_MEMSIZE_24_BITS; break;
-    case 'x': case 'X': self->size = size = RC_MEMSIZE_32_BITS; break;
-
-    case '0': case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-    case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
-    case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
-      aux--;
-      /* fallthrough */
-    case ' ':
-      self->size = size = RC_MEMSIZE_16_BITS;
+  switch (self->size) {
+    case RC_MEMSIZE_BIT_0:
+    case RC_MEMSIZE_BIT_1:
+    case RC_MEMSIZE_BIT_2:
+    case RC_MEMSIZE_BIT_3:
+    case RC_MEMSIZE_BIT_4:
+    case RC_MEMSIZE_BIT_5:
+    case RC_MEMSIZE_BIT_6:
+    case RC_MEMSIZE_BIT_7:
+    case RC_MEMSIZE_LOW:
+    case RC_MEMSIZE_HIGH:
+    case RC_MEMSIZE_BITCOUNT:
+      /* these can all share an 8-bit memref and just mask off the appropriate data in rc_evaluate_operand */
+      size = RC_MEMSIZE_8_BITS;
       break;
 
     default:
-      return RC_INVALID_MEMORY_OPERAND;
-  }
-
-  address = strtoul(aux, &end, 16);
-
-  if (end == aux) {
-    return RC_INVALID_MEMORY_OPERAND;
-  }
-
-  if (address > 0xffffffffU) {
-    address = 0xffffffffU;
+      size = self->size;
+      break;
   }
 
   self->value.memref = rc_alloc_memref(parse, address, size, is_indirect);
   if (parse->offset < 0)
     return parse->offset;
 
-  *memaddr = end;
+  *memaddr = aux;
   return RC_OK;
 }
 

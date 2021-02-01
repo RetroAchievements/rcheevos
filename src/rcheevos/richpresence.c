@@ -12,38 +12,22 @@ enum {
 };
 
 static rc_memref_value_t* rc_alloc_helper_variable_memref_value(const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
+  const char* end;
   rc_value_t* variable;
+  unsigned address;
+  char size;
 
   /* single memory reference lookups without a modifier flag can be handled without a variable */
-  if (memaddr_len <= 12 &&  /* d0xH00000000 */
-      memaddr[0] == '0' && memaddr[1] == 'x') { /* only direct address lookups can be represented without a variable */
-    int is_memref = 1;
-    int i;
-
-    /* already validated no flag because memaddr[1] is not ':' (X:) */
-    /* look for operators (=,<,>,!,*,/). if none are found, it's just a memory reference */
-    for (i = 2; i < memaddr_len; ++i) {
-      if (!isalnum(memaddr[i]) && memaddr[i] != ' ') {
-        is_memref = 0;
-        break;
-      }
-    }
-
-    if (is_memref) {
-      rc_operand_t operand;
-      const char *memaddr2 = memaddr;
-      const int result = rc_parse_operand(&operand, &memaddr2, 0, 0, parse);
-      if (result < 0) {
-        parse->offset = result;
-        return NULL;
-      }
-
-      /* only direct address lookups can be represented without a variable */
-      if (operand.type == RC_OPERAND_ADDRESS)
-        return &operand.value.memref->value;
+  end = memaddr;
+  if (rc_parse_memref(&end, &size, &address) == RC_OK) {
+    /* make sure the entire memaddr was consumed. if not, there's an operator and it's a comparison, not a memory reference */
+    if (end == &memaddr[memaddr_len]) {
+      /* just a memory reference, allocate it */
+      return &rc_alloc_memref(parse, address, size, 0)->value;
     }
   }
 
+  /* not a simple memory reference, need to create a variable */
   variable = rc_alloc_helper_variable(memaddr, memaddr_len, parse);
   if (!variable)
     return NULL;

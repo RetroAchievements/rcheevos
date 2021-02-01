@@ -252,6 +252,43 @@ static void test_macro_value() {
   assert_richpresence_output(richpresence, &memory, "13332 Points");
 }
 
+static void test_macro_value_nibble() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* nibble first, see if byte overwrites */
+  assert_parse_richpresence(&richpresence, buffer, "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0xL0001)@Points(0xH0001) Points");
+  assert_richpresence_output(richpresence, &memory, "218 Points");
+
+  ram[1] = 20;
+  assert_richpresence_output(richpresence, &memory, "420 Points");
+
+  /* put byte first, see if nibble overwrites */
+  assert_parse_richpresence(&richpresence, buffer, "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0xH0001)@Points(0xL0001) Points");
+  assert_richpresence_output(richpresence, &memory, "204 Points");
+}
+
+static void test_macro_value_bcd() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(b0xH0001) Points");
+  assert_richpresence_output(richpresence, &memory, "12 Points");
+
+  ram[1] = 20;
+  assert_richpresence_output(richpresence, &memory, "14 Points");
+}
+
 static void test_conditional_display_indirect() {
   unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -963,6 +1000,8 @@ void test_richpresence(void) {
 
   /* value macros */
   TEST(test_macro_value);
+  TEST(test_macro_value_nibble);
+  TEST(test_macro_value_bcd);
   TEST(test_macro_value_adjusted_negative);
   TEST(test_macro_value_from_formula);
   TEST(test_macro_value_from_hits);
