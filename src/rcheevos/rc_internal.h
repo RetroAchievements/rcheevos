@@ -111,6 +111,7 @@ void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_s
 char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length);
 
 rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, unsigned address, char size, char is_indirect);
+int rc_parse_memref(const char** memaddr, char* size, unsigned* address);
 void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);
 void rc_update_memref_value(rc_memref_value_t* memref, unsigned value);
 unsigned rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state);
