@@ -2180,6 +2180,111 @@ static void test_addhits_with_addsource() {
   assert_hit_count(condset, 2, 1);
 }
 
+static void test_subhits() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* repeated(4, low(4) == 6, deducting = repeated(2, byte(1) == 16)) */
+  /* NOTE: cannot have SubHits without AddHits as there's no way to reach the final hit target 
+   *       if hits are subtracted but not added */
+  assert_parse_condset(&condset, &memrefs, buffer, "D:0xH0001=16(2)_C:0xL0004=6_0=1(4)");
+
+  /* second condition true */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 2);
+
+  /* both conditions true 1+3 == 4, not -1+3 != 4, no trigger */
+  ram[1] = 16;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 3);
+
+  /* -2+4 != 4 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 4);
+
+  /* first condition target met, -2+5 != 4 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 5);
+
+  /* total met */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 6);
+}
+
+static void test_subhits_below_zero() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* repeated(4, low(4) == 6, deducting = repeated(2, byte(1) == 16)) */
+  /* NOTE: cannot have SubHits without AddHits as there's no way to reach the final hit target 
+   *       if hits are subtracted but not added */
+  assert_parse_condset(&condset, &memrefs, buffer, "D:0xH0001=18(2)_C:0xL0002=6_0=1(4)");
+
+  /* first condition true. -1 less than 0. target hit count is unsigned.
+     make sure comparison doesn't treat -1 as unsigned */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 0);
+
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 0);
+
+  /* first condition target met */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 0);
+
+  /* both conditions true. takes 6 counts on second condition to reach hit target because 
+     first condition is currently -2 */
+  ram[2] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 1);
+
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 2);
+
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 3);
+
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 4);
+
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 5);
+
+  /* total met */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 6);
+}
+
 static void test_andnext() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3266,11 +3371,13 @@ void test_condset(void) {
   TEST(test_subsource_overflow_comparison_lesser);
   TEST(test_subsource_overflow_comparison_lesser_or_equal);
 
-  /* addhits */
+  /* addhits/subhits */
   TEST(test_addhits);
   TEST(test_addhits_no_target);
   TEST(test_addhits_with_addsource);
   TEST(test_addhits_multiple);
+  TEST(test_subhits);
+  TEST(test_subhits_below_zero);
 
   /* andnext */
   TEST(test_andnext);

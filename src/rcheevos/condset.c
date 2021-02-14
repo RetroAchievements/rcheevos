@@ -13,6 +13,7 @@ static void rc_update_condition_pause(rc_condition_t* condition, int* in_pause) 
     case RC_CONDITION_ADD_SOURCE:
     case RC_CONDITION_SUB_SOURCE:
     case RC_CONDITION_ADD_HITS:
+    case RC_CONDITION_SUB_HITS:
     case RC_CONDITION_AND_NEXT:
     case RC_CONDITION_OR_NEXT:
     case RC_CONDITION_ADD_ADDRESS:
@@ -54,6 +55,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
       switch ((*next)->type) {
         case RC_CONDITION_ADD_ADDRESS:
         case RC_CONDITION_ADD_HITS:
+        case RC_CONDITION_SUB_HITS:
         case RC_CONDITION_ADD_SOURCE:
         case RC_CONDITION_SUB_SOURCE:
         case RC_CONDITION_AND_NEXT:
@@ -234,6 +236,11 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         reset_next = 0; /* ResetNextIf was applied to this AddHits condition; don't apply it to future conditions */
         continue;
 
+      case RC_CONDITION_SUB_HITS:
+        eval_state->add_hits -= condition->current_hits;
+        reset_next = 0; /* ResetNextIf was applied to this AddHits condition; don't apply it to future conditions */
+        continue;
+
       case RC_CONDITION_RESET_NEXT_IF:
         reset_next = cond_valid;
         continue;
@@ -259,7 +266,8 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     if (eval_state->add_hits) {
       if (condition->required_hits != 0) {
         /* if the condition has a target hit count, we have to recalculate cond_valid including the AddHits counter */
-        total_hits = condition->current_hits + eval_state->add_hits;
+        const int signed_hits = (int)condition->current_hits + eval_state->add_hits;
+        total_hits = (signed_hits >= 0) ? (unsigned)signed_hits : 0;
         cond_valid = (total_hits >= condition->required_hits);
       }
       else {
