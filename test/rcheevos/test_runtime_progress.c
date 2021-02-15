@@ -105,23 +105,55 @@ static rc_condset_t* find_condset(rc_runtime_t* runtime, unsigned ach_id, unsign
   return condset;
 }
 
-static void _assert_hitcount(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
+static rc_condition_t* find_cond(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx)
 {
   rc_condition_t* cond;
 
   rc_condset_t* condset = find_condset(runtime, ach_id, group_idx);
-  ASSERT_PTR_NOT_NULL(condset);
+  if (!condset)
+    return NULL;
 
   cond = condset->conditions;
   while (cond && cond_idx > 0) {
     --cond_idx;
     cond = cond->next;
   }
+
+  return cond;
+}
+
+static void _assert_hitcount(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
+{
+  rc_condition_t* cond = find_cond(runtime, ach_id, group_idx, cond_idx);
   ASSERT_PTR_NOT_NULL(cond);
 
   ASSERT_NUM_EQUALS(cond->current_hits, expected_hits);
 }
 #define assert_hitcount(runtime, ach_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_hitcount(runtime, ach_id, group_idx, cond_idx, expected_hits), "assert_hitcount")
+
+static void _assert_cond_memref(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_value, unsigned expected_prior, char expected_changed)
+{
+  rc_condition_t* cond = find_cond(runtime, ach_id, group_idx, cond_idx);
+  ASSERT_PTR_NOT_NULL(cond);
+
+  ASSERT_NUM_EQUALS(cond->operand1.value.memref->value.value, expected_value);
+  ASSERT_NUM_EQUALS(cond->operand1.value.memref->value.prior, expected_prior);
+  ASSERT_NUM_EQUALS(cond->operand1.value.memref->value.changed, expected_changed);
+}
+#define assert_cond_memref(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed) \
+ ASSERT_HELPER(_assert_cond_memref(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed), "assert_cond_memref")
+
+static void _assert_cond_memref2(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_value, unsigned expected_prior, char expected_changed)
+{
+    rc_condition_t* cond = find_cond(runtime, ach_id, group_idx, cond_idx);
+    ASSERT_PTR_NOT_NULL(cond);
+
+    ASSERT_NUM_EQUALS(cond->operand2.value.memref->value.value, expected_value);
+    ASSERT_NUM_EQUALS(cond->operand2.value.memref->value.prior, expected_prior);
+    ASSERT_NUM_EQUALS(cond->operand2.value.memref->value.changed, expected_changed);
+}
+#define assert_cond_memref2(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed) \
+ ASSERT_HELPER(_assert_cond_memref2(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed), "assert_cond_memref2")
 
 static void _assert_achievement_state(rc_runtime_t* runtime, unsigned ach_id, int state)
 {
@@ -617,6 +649,127 @@ static void test_memref_shared_address()
   rc_runtime_destroy(&runtime);
 }
 
+static void test_memref_indirect()
+{
+  unsigned char ram[] = { 1, 2, 3, 4, 5 };
+  unsigned char buffer1[512];
+  unsigned char buffer2[512];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  /* byte(byte(2) + 1) == 5 - third condition just prevents the achievement from triggering*/
+  assert_activate_achievement(&runtime, 1, "I:0xH0002_0xH0001=3_0xH0004=99");
+  assert_do_frame(&runtime, &memory); /* $2 = 3, $(3+1) = 5 */
+  ram[1] = 3;
+  ram[2] = 0;
+  assert_do_frame(&runtime, &memory); /* $2 = 0, $(0+1) = 3 */
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 4);
+  assert_cond_memref(&runtime, 1, 0, 0, 0, 3, 0);
+  assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
+
+  assert_serialize(&runtime, buffer1, sizeof(buffer1));
+
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 6;
+  ram[2] = 1;
+  assert_do_frame(&runtime, &memory); /* $2 = 1, $(1+1) = 1 */
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 5);
+  assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 1);
+  assert_cond_memref(&runtime, 1, 0, 1, 1, 3, 1);
+
+  assert_serialize(&runtime, buffer2, sizeof(buffer2));
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer1);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 4);
+  assert_cond_memref(&runtime, 1, 0, 0, 0, 3, 0);
+  assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer2);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 5);
+  assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 1);
+  assert_cond_memref(&runtime, 1, 0, 1, 1, 3, 1);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_memref_double_indirect()
+{
+  unsigned char ram[] = { 1, 2, 3, 4, 5 };
+  unsigned char buffer1[512];
+  unsigned char buffer2[512];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  /* byte(byte(2) + 1) == byte(byte(2)) - third condition just prevents the achievement from triggering*/
+  assert_activate_achievement(&runtime, 1, "I:0xH0002_0xH0001=0xH0000_0xH0004=99");
+  assert_do_frame(&runtime, &memory); /* $2 = 3, $(3+1) = 5, $(3+0) = 4 */
+  ram[0] = 3;
+  ram[1] = 3;
+  ram[2] = 0;
+  assert_do_frame(&runtime, &memory); /* $2 = 0, $(0+1) = 3, $(0+0) = 3 */
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 4);
+  assert_cond_memref(&runtime, 1, 0, 0, 0, 3, 0);
+  assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
+  assert_cond_memref2(&runtime, 1, 0, 1, 3, 4, 0);
+
+  assert_serialize(&runtime, buffer1, sizeof(buffer1));
+
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 6;
+  ram[2] = 1;
+  assert_do_frame(&runtime, &memory); /* $2 = 1, $(1+1) = 1, $(1+0) = 6 */
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 5);
+  assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 1);
+  assert_cond_memref(&runtime, 1, 0, 1, 1, 3, 1);
+  assert_cond_memref2(&runtime, 1, 0, 1, 6, 3, 1);
+
+  assert_serialize(&runtime, buffer2, sizeof(buffer2));
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer1);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 4);
+  assert_cond_memref(&runtime, 1, 0, 0, 0, 3, 0);
+  assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
+  assert_cond_memref2(&runtime, 1, 0, 1, 3, 4, 0);
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer2);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 5);
+  assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 1);
+  assert_cond_memref(&runtime, 1, 0, 1, 1, 3, 1);
+  assert_cond_memref2(&runtime, 1, 0, 1, 6, 3, 1);
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_multiple_achievements()
 {
   unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
@@ -957,6 +1110,8 @@ void test_runtime_progress(void) {
 
   TEST(test_no_core_group);
   TEST(test_memref_shared_address);
+  TEST(test_memref_indirect);
+  TEST(test_memref_double_indirect);
 
   TEST(test_multiple_achievements);
   TEST(test_multiple_achievements_ignore_triggered_and_inactive);
