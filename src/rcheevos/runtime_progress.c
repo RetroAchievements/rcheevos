@@ -322,7 +322,7 @@ static int rc_runtime_progress_read_trigger(rc_runtime_progress_t* progress, rc_
 static int rc_runtime_progress_write_achievements(rc_runtime_progress_t* progress)
 {
   unsigned i;
-  int offset;
+  int offset = 0;
   int result;
 
   for (i = 0; i < progress->runtime->trigger_count; ++i) {
