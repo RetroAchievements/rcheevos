@@ -8,20 +8,6 @@ Not all structures defined by **rcheevos** can be created via the public API, bu
 
 Finally, **rcheevos** does *not* allocate or manage memory by itself. All structures that can be returned by it have a function to determine the number of bytes needed to hold the structure, and another one that actually builds the structure using a caller-provided buffer to bake it.
 
-## Lua
-
-RetroAchievements is considering the use of the [Lua](https://www.lua.org) language to expand the syntax supported for creating achievements. The current expression-based implementation is often limiting on newer systems.
-
-At this point, to enable Lua support, you must compile with an additional compilation flag: `HAVE_LUA`, as neither the backend nor the UI for editing achievements are currently Lua-enabled.
-
-> **rcheevos** does *not* create or maintain a Lua state, you have to create your own state and provide it to **rcheevos** to be used when Lua-coded achievements are found. Calls to **rcheevos** may allocate and/or free additional memory as part of the Lua runtime.
-
-Lua functions used in trigger operands receive two parameters: `peek`, which is used to read from the emulated system's memory, and `userdata`, which must be passed to `peek`. `peek`'s signature is the same as its C counterpart:
-
-```lua
-function peek(address, num_bytes, userdata)
-```
-
 ## API
 
 > An understanding about how achievements are developed may be useful, you can read more about it [here](http://docs.retroachievements.org/Developer-docs/).
