@@ -483,12 +483,17 @@ static const rc_memory_regions_t rc_memory_regions_saturn = { _rc_memory_regions
 /* ===== SG-1000 ===== */
 /* http://www.smspower.org/Development/MemoryMap */
 static const rc_memory_region_t _rc_memory_regions_sg1000[] = {
-    { 0x000000U, 0x0003FFU, 0xC000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
-    /* TODO: should cartridge memory be exposed ($0000-$BFFF)? it's usually just ROM data, but may contain on-cartridge RAM
-     * This not is also concerning: http://www.smspower.org/Development/MemoryMap
-     *   Cartridges may disable the system RAM and thus take over the full 64KB address space. */
+    { 0x000000U, 0x0003FFU, 0xC000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    /* https://github.com/libretro/FBNeo/blob/697801c6262be6ca91615cf905444d3e039bc06f/src/burn/drv/sg1000/d_sg1000.cpp#L210-L237 */
+    /* Expansion mode B exposes 8KB at $C000. The first 2KB hides the System RAM, but since the address matches,
+       we'll leverage that definition and expand it another 6KB */
+    { 0x000400U, 0x001FFFU, 0xC400U, RC_MEMORY_TYPE_SYSTEM_RAM, "Extended RAM" },
+    /* Expansion mode A exposes 8KB at $2000 */
+    { 0x002000U, 0x003FFFU, 0x2000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Extended RAM" },
+    /* Othello exposes 2KB at $8000, and The Castle exposes 8KB at $8000 */
+    { 0x004000U, 0x005FFFU, 0x8000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Extended RAM" }
 };
-static const rc_memory_regions_t rc_memory_regions_sg1000 = { _rc_memory_regions_sg1000, 1 };
+static const rc_memory_regions_t rc_memory_regions_sg1000 = { _rc_memory_regions_sg1000, 4 };
 
 /* ===== Super Cassette Vision ===== */
 static const rc_memory_region_t _rc_memory_regions_scv[] = {
