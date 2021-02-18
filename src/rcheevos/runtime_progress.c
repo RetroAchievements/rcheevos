@@ -147,6 +147,7 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
   unsigned address, flags, value, prior;
   char size;
   rc_memref_t* memref;
+  rc_memref_t* first_unmatched_memref = progress->runtime->memrefs;
 
   /* re-read the chunk size to determine how many memrefs are present */
   progress->offset -= 4;
@@ -160,12 +161,17 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
 
     size = flags & 0xFF;
 
-    memref = progress->runtime->memrefs;
+    memref = first_unmatched_memref;
     while (memref) {
       if (memref->address == address && memref->value.size == size) {
         memref->value.value = value;
         memref->value.changed = (flags & RC_MEMREF_FLAG_CHANGED_THIS_FRAME) ? 1 : 0;
         memref->value.prior = prior;
+
+        if (memref == first_unmatched_memref)
+          first_unmatched_memref = memref->next;
+
+        break;
       }
 
       memref = memref->next;
