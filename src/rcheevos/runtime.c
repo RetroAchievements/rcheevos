@@ -108,6 +108,7 @@ void rc_runtime_deactivate_achievement(rc_runtime_t* self, unsigned id) {
 int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char* memaddr, lua_State* L, int funcs_idx) {
   void* trigger_buffer;
   rc_trigger_t* trigger;
+  rc_runtime_trigger_t* runtime_trigger;
   rc_parse_state_t parse;
   unsigned char md5[16];
   int size;
@@ -188,12 +189,14 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, unsigned id, const char*
   }
 
   /* assign the new trigger */
-  self->triggers[self->trigger_count].id = id;
-  self->triggers[self->trigger_count].trigger = trigger;
-  self->triggers[self->trigger_count].buffer = trigger_buffer;
-  self->triggers[self->trigger_count].invalid_memref = NULL;
-  memcpy(self->triggers[self->trigger_count].md5, md5, 16);
-  self->triggers[self->trigger_count].owns_memrefs = rc_runtime_allocated_memrefs(self);
+  runtime_trigger = &self->triggers[self->trigger_count];
+  runtime_trigger->id = id;
+  runtime_trigger->trigger = trigger;
+  runtime_trigger->buffer = trigger_buffer;
+  runtime_trigger->invalid_memref = NULL;
+  memcpy(runtime_trigger->md5, md5, 16);
+  runtime_trigger->serialized_size = 0;
+  runtime_trigger->owns_memrefs = rc_runtime_allocated_memrefs(self);
   ++self->trigger_count;
 
   /* reset it, and return it */
