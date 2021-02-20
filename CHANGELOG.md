@@ -3,6 +3,7 @@
 * renamed `rhash.h` to eliminate conflict with system headers, renamed `rconsoles.h` and `rurl.h` for consistency
 * allow ranges in rich presence lookups
 * add RC_CONDITION_RESET_NEXT_IF
+* add RC_CONDITION_SUB_HITS
 * support MAXOF($) for leaderboard values using trigger syntax
 * allow RC_CONDITION_PAUSE_IF and RC_CONDITION_RESET_IF in leaderboard value expression
 * changed track parameter of rc_hash_cdreader_open_track_handler to support three virtual tracks:

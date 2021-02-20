@@ -67,7 +67,7 @@ rc_scratch_t;
 
 typedef struct {
   unsigned add_value;       /* AddSource/SubSource */
-  unsigned add_hits;        /* AddHits */
+  int add_hits;             /* AddHits */
   unsigned add_address;     /* AddAddress */
 
   rc_peek_t peek;
