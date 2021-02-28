@@ -377,6 +377,44 @@ static void test_pauseif_delta_updated() {
   assert_hit_count(condset, 1, 1);
 }
 
+static void test_pauseif_indirect_delta_updated() {
+  unsigned char ram[] = {0x00, 0x00, 0x34, 0x3C, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_condset(&condset, &memrefs, buffer, "P:0xH0001=1_I:0xH0000_d0xH0002=60");
+
+  /* upaused, delta = 0, current = 52 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 2, 0);
+
+  /* paused, delta = 52, current = 44 */
+  ram[1] = 1;
+  ram[2] = 44;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 2, 0);
+
+  /* paused, delta = 44, current = 60 */
+  ram[0] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 2, 0);
+
+  /* unpaused, delta = 60, current = 97 */
+  ram[1] = 0;
+  ram[3] = 97;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 2, 1);
+}
+
 static void test_pauseif_short_circuit() {
   unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
   memory_t memory;
@@ -3326,6 +3364,7 @@ void test_condset(void) {
   TEST(test_pauseif_hitcount_with_reset);
   TEST(test_pauseif_does_not_increment_hits);
   TEST(test_pauseif_delta_updated);
+  TEST(test_pauseif_indirect_delta_updated);
   TEST(test_pauseif_short_circuit);
 
   /* resetif */

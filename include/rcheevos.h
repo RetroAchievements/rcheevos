@@ -227,6 +227,9 @@ struct rc_condset_t {
 
   /* True if the set is currently paused. */
   char is_paused;
+
+  /* True if the set has indirect memory references. */
+  char has_indirect_memrefs;
 };
 
 /*****************************************************************************\
