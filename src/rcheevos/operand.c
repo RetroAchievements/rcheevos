@@ -283,8 +283,6 @@ static int rc_luapeek(lua_State* L) {
 
 #endif /* RC_DISABLE_LUA */
 
-static const unsigned char rc_bits_set[16] = { 0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4 };
-
 int rc_operand_is_memref(rc_operand_t* self) {
   switch (self->type) {
     case RC_OPERAND_CONST:
@@ -296,6 +294,8 @@ int rc_operand_is_memref(rc_operand_t* self) {
       return 1;
   }
 }
+
+static const unsigned char rc_bits_set[16] = { 0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4 };
 
 unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
 #ifndef RC_DISABLE_LUA
