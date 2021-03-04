@@ -11,7 +11,7 @@ typedef struct rc_api_buffer_t {
   char* write;
   char* end;
   struct rc_api_buffer_t* next;
-  char data[256];
+  char data[256]; /* actual size of data[] may be larger than 256 bytes for buffers allocated in the next chain */
 }
 rc_api_buffer_t;
 
@@ -32,6 +32,9 @@ typedef struct rc_api_response_t {
 rc_api_response_t;
 
 void rc_api_destroy_request(rc_api_request_t* request);
+
+/* ===== General Functions ===== */
+void rc_api_set_host(const char* hostname);
 
 /* ===== User Functions ===== */
 /* --- Login --- */

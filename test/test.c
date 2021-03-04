@@ -62,6 +62,7 @@ extern void test_url();
 extern void test_cdreader();
 extern void test_hash();
 
+extern void test_rapi_common();
 extern void test_rapi_user();
 extern void test_rapi_runtime();
 
@@ -91,6 +92,7 @@ int main(void) {
   test_cdreader();
   test_hash();
 
+  test_rapi_common();
   test_rapi_user();
   test_rapi_runtime();
 

@@ -180,6 +180,7 @@
     <ClCompile Include="lua\src\lutf8lib.c" />
     <ClCompile Include="lua\src\lvm.c" />
     <ClCompile Include="lua\src\lzio.c" />
+    <ClCompile Include="rapi\test_rc_api_common.c" />
     <ClCompile Include="rapi\test_rc_api_runtime.c" />
     <ClCompile Include="rapi\test_rc_api_user.c" />
     <ClCompile Include="rcheevos\test_condition.c" />

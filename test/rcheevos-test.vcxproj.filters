@@ -258,6 +258,9 @@
     <ClCompile Include="rapi\test_rc_api_user.c">
       <Filter>tests\rapi</Filter>
     </ClCompile>
+    <ClCompile Include="rapi\test_rc_api_common.c">
+      <Filter>tests\rapi</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">

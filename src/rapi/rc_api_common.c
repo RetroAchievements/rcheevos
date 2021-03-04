@@ -1,10 +1,15 @@
 #include "rc_api.h"
 #include "rc_api_common.h"
 
+#include "rc_compat.h"
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define RETROACHIEVEMENTS_HOST "https://retroachievements.org"
+static char* g_host = NULL;
 
 static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count);
 static int rc_json_parse_array(const char** json_ptr, rc_json_field_t* field);
@@ -481,6 +486,7 @@ char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount)
 
       buffer->next->write = buffer->next->data;
       buffer->next->end = buffer->next->write + (alloc_size - buffer_prefix_size);
+      buffer->next->next = NULL;
     }
 
     buffer = buffer->next;
@@ -534,6 +540,8 @@ static int rc_url_builder_reserve(rc_api_url_builder_t* builder, size_t amount) 
     if (remaining < amount) {
       const size_t used = builder->write - builder->start;
       const size_t current_size = builder->end - builder->start;
+      const size_t buffer_prefix_size = sizeof(rc_api_buffer_t) - sizeof(builder->buffer->data);
+      char* new_start;
       size_t new_size = (current_size < 256) ? 256 : current_size * 2;
       do {
         remaining = new_size - used;
@@ -543,7 +551,11 @@ static int rc_url_builder_reserve(rc_api_url_builder_t* builder, size_t amount) 
         new_size *= 2;
       } while (1);
 
-      char* new_start = rc_buf_reserve(builder->buffer, new_size);
+      /* rc_buf_reserve will align to 256 bytes after including the buffer prefix. attempt to account for that */
+      if ((remaining - amount) > buffer_prefix_size)
+        new_size -= buffer_prefix_size;
+
+      new_start = rc_buf_reserve(builder->buffer, new_size);
       if (!new_start) {
         builder->result = RC_OUT_OF_MEMORY;
         return RC_OUT_OF_MEMORY;
@@ -563,7 +575,7 @@ static int rc_url_builder_reserve(rc_api_url_builder_t* builder, size_t amount) 
 }
 
 void rc_url_builder_append_encoded_str(rc_api_url_builder_t* builder, const char* str) {
-  const char hex[] = "0123456789abcdef";
+  static const char hex[] = "0123456789abcdef";
   const char* start = str;
   size_t len = 0;
   for (;;) {
@@ -661,14 +673,50 @@ void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* 
   rc_url_builder_append_encoded_str(builder, value);
 }
 
+void rc_api_set_host(const char* hostname)
+{
+  if (g_host != NULL)
+    free(g_host);
+
+  if (hostname != NULL)
+  {
+    if (strstr(hostname, "://"))
+    {
+      g_host = strdup(hostname);
+    }
+    else
+    {
+      const size_t hostname_len = strlen(hostname);
+      g_host = (char*)malloc(hostname_len + 7 + 1);
+      memcpy(g_host, "http://", 7);
+      memcpy(&g_host[7], hostname, hostname_len + 1);
+    }
+  }
+  else
+  {
+    g_host = NULL;
+  }
+}
+
 void rc_api_url_build_dorequest(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, const char* api, const char* username)
 {
-  const char* base_url = "http://retroachievements.org/dorequest.php";
-  const size_t base_url_len = strlen(base_url);
+  #define DOREQUEST_ENDPOINT "/dorequest.php"
+  const size_t endpoint_len = sizeof(DOREQUEST_ENDPOINT) - 1;
+  const size_t host_len = (g_host ? strlen(g_host) : sizeof(RETROACHIEVEMENTS_HOST) - 1);
+  const size_t base_url_len = host_len + endpoint_len;
 
   rc_url_builder_init(builder, buffer, base_url_len + 32);
-  rc_url_builder_append(builder, base_url, base_url_len);
+
+  if (g_host)
+    rc_url_builder_append(builder, g_host, host_len);
+  else
+    rc_url_builder_append(builder, RETROACHIEVEMENTS_HOST, host_len);
+
+  rc_url_builder_append(builder, DOREQUEST_ENDPOINT, endpoint_len);
+
   *builder->write++ = '?';
   rc_url_builder_append_str_param(builder, "r", api);
   rc_url_builder_append_str_param(builder, "u", username);
+
+  #undef DOREQUEST_ENDPOINT
 }

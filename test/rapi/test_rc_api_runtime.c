@@ -2,7 +2,7 @@
 
 #include "../test_framework.h"
 
-#define DOREQUEST_URL "http://retroachievements.org/dorequest.php"
+#define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
 
 static void test_init_award_achievement_request_hardcore()
 {

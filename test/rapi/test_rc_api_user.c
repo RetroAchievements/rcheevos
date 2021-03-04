@@ -2,7 +2,7 @@
 
 #include "../test_framework.h"
 
-#define DOREQUEST_URL "http://retroachievements.org/dorequest.php"
+#define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
 
 static void test_init_login_request_password()
 {
@@ -20,6 +20,31 @@ static void test_init_login_request_password()
   rc_api_destroy_request(&request);
 }
 
+static void test_init_login_request_password_long()
+{
+  char buffer[1024], *ptr;
+  rc_api_login_request_t login_request;
+  rc_api_request_t request;
+  int i;
+
+  /* this generates a password that's 830 characters long */
+  buffer[0] = 'p';
+  buffer[1] = '=';
+  ptr = &buffer[2];
+  for (i = 0; i < 30; i++)
+	ptr += snprintf(ptr, sizeof(buffer) - (ptr - buffer), "%dABCDEFGHIJKLMNOPQRSTUVWXYZ", i);
+
+  memset(&login_request, 0, sizeof(login_request));
+  login_request.username = "ThisUsernameIsAlsoReallyLongAtRoughlyFiftyCharacters";
+  login_request.password = &buffer[2];
+
+  ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=login&u=ThisUsernameIsAlsoReallyLongAtRoughlyFiftyCharacters");
+  ASSERT_STR_EQUALS(request.post_data, buffer);
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_init_login_request_token()
 {
   rc_api_login_request_t login_request;
@@ -33,6 +58,24 @@ static void test_init_login_request_token()
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=login&u=Username");
   ASSERT_STR_EQUALS(request.post_data, "t=ABCDEFGHIJKLMNOP");
 
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_login_request_alternate_host()
+{
+  rc_api_login_request_t login_request;
+  rc_api_request_t request;
+
+  memset(&login_request, 0, sizeof(login_request));
+  login_request.username = "Username";
+  login_request.password = "Pa$$w0rd!";
+
+  rc_api_set_host("localhost");
+  ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, "http://localhost/dorequest.php?r=login&u=Username");
+  ASSERT_STR_EQUALS(request.post_data, "p=Pa%24%24w0rd%21");
+
+  rc_api_set_host(NULL);
   rc_api_destroy_request(&request);
 }
 
@@ -221,7 +264,9 @@ void test_rapi_user(void) {
 
   /* login */
   TEST(test_init_login_request_password);
+  TEST(test_init_login_request_password_long);
   TEST(test_init_login_request_token);
+  TEST(test_init_login_request_alternate_host);
 
   TEST(test_process_login_response_success);
   TEST(test_process_login_response_error);
