@@ -243,19 +243,19 @@
     <ClCompile Include="rhash\mock_filereader.c">
       <Filter>tests\rhash</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\rapi\rapi_common.c">
+    <ClCompile Include="..\src\rapi\rc_api_common.c">
       <Filter>src\rapi</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\rapi\rapi_runtime.c">
+    <ClCompile Include="..\src\rapi\rc_api_runtime.c">
       <Filter>src\rapi</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\rapi\rapi_user.c">
+    <ClCompile Include="..\src\rapi\rc_api_user.c">
       <Filter>src\rapi</Filter>
     </ClCompile>
-    <ClCompile Include="rapi\test_rapi_user.c">
+    <ClCompile Include="rapi\test_rc_api_runtime.c">
       <Filter>tests\rapi</Filter>
     </ClCompile>
-    <ClCompile Include="rapi\test_rapi_runtime.c">
+    <ClCompile Include="rapi\test_rc_api_user.c">
       <Filter>tests\rapi</Filter>
     </ClCompile>
   </ItemGroup>
@@ -293,13 +293,13 @@
     <ClInclude Include="..\src\rcheevos\rc_compat.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\rapi.h">
-      <Filter>src\rapi</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\rerror.h">
+    <ClInclude Include="..\include\rc_error.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\rapi\rapi_common.h">
+    <ClInclude Include="..\include\rc_api.h">
+      <Filter>src\rapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rapi\rc_api_common.h">
       <Filter>src\rapi</Filter>
     </ClInclude>
   </ItemGroup>

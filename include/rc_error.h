@@ -1,5 +1,5 @@
-#ifndef RERROR_H
-#define RERROR_H
+#ifndef RC_ERROR_H
+#define RC_ERROR_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,4 +45,4 @@ const char* rc_error_str(int ret);
 }
 #endif
 
-#endif /* RERROR_H */
+#endif /* RC_ERROR_H */

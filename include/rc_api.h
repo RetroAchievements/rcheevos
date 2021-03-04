@@ -1,7 +1,7 @@
-#ifndef RAPI_H
-#define RAPI_H
+#ifndef RC_API_H
+#define RC_API_H
 
-#include "rerror.h"
+#include "rc_error.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -125,4 +125,4 @@ void rc_api_destroy_submit_lboard_entry_response(rc_api_submit_lboard_entry_resp
 }
 #endif
 
-#endif /* RAPI_H */
+#endif /* RC_API_H */

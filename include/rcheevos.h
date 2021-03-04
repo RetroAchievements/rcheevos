@@ -7,7 +7,7 @@ extern "C" {
 
 typedef struct lua_State lua_State;
 
-#include "rerror.h"
+#include "rc_error.h"
 
 /*****************************************************************************\
 | Callbacks                                                                   |

@@ -1,7 +1,7 @@
-#ifndef RAPI_COMMON_H
-#define RAPI_COMMON_H
+#ifndef RC_API_COMMON_H
+#define RC_API_COMMON_H
 
-#include "rapi.h"
+#include "rc_api.h"
 
 #include <stddef.h>
 
@@ -61,4 +61,4 @@ void rc_api_url_build_dorequest(rc_api_url_builder_t* builder, rc_api_buffer_t* 
 }
 #endif
 
-#endif /* RAPI_COMMON_H */
+#endif /* RC_API_COMMON_H */

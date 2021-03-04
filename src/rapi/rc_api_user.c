@@ -1,5 +1,5 @@
-#include "rapi.h"
-#include "rapi_common.h"
+#include "rc_api.h"
+#include "rc_api_common.h"
 
 #include <string.h>
 
