@@ -145,6 +145,8 @@ typedef struct {
 }
 rc_operand_t;
 
+int rc_operand_is_memref(rc_operand_t* operand);
+
 /*****************************************************************************\
 | Conditions                                                                  |
 \*****************************************************************************/
@@ -227,6 +229,9 @@ struct rc_condset_t {
 
   /* True if the set is currently paused. */
   char is_paused;
+
+  /* True if the set has indirect memory references. */
+  char has_indirect_memrefs;
 };
 
 /*****************************************************************************\
