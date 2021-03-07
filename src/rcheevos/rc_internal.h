@@ -96,6 +96,7 @@ typedef struct {
   rc_value_t** variables;
 
   unsigned measured_target;
+  int lines_read;
 
   char has_required_hits;
 }

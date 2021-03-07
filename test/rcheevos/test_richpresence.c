@@ -34,8 +34,10 @@ static void _assert_richpresence_output(rc_richpresence_t* richpresence, memory_
 #define assert_richpresence_output(richpresence, memory, expected_display_string) ASSERT_HELPER(_assert_richpresence_output(richpresence, memory, expected_display_string), "assert_richpresence_output")
 
 static void test_empty_script() {
-  int result = rc_richpresence_size("");
+  int lines;
+  int result = rc_richpresence_size_lines("", &lines);
   ASSERT_NUM_EQUALS(result, RC_MISSING_DISPLAY_STRING);
+  ASSERT_NUM_EQUALS(lines, 1);
 }
 
 static void test_simple_richpresence(const char* script, const char* expected_display_string) {
@@ -151,8 +153,10 @@ static void test_conditional_display_after_default() {
 }
 
 static void test_conditional_display_no_default() {
-  int result = rc_richpresence_size("Display:\n?0xH0000=0?Zero");
+  int lines;
+  int result = rc_richpresence_size_lines("Display:\n?0xH0000=0?Zero", &lines);
   ASSERT_NUM_EQUALS(result, RC_MISSING_DISPLAY_STRING);
+  ASSERT_NUM_EQUALS(lines, 3);
 }
 
 static void test_conditional_display_common_condition() {
@@ -213,8 +217,10 @@ static void test_conditional_display_duplicated_condition() {
 }
 
 static void test_conditional_display_invalid_condition_logic() {
-  int result = rc_richpresence_size("Display:\n?BANANA?Zero\nDefault");
+  int lines;
+  int result = rc_richpresence_size_lines("Display:\n?BANANA?Zero\nDefault", &lines);
   ASSERT_NUM_EQUALS(result, RC_INVALID_MEMORY_OPERAND);
+  ASSERT_NUM_EQUALS(lines, 2);
 }
 
 static void test_conditional_display_whitespace_text() {
@@ -434,6 +440,32 @@ static void test_macro_value_divide_by_zero() {
 
   ram[0] = 2;
   assert_richpresence_output(richpresence, &memory, "Result is 26");
+}
+
+static void test_macro_value_divide_by_self() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* sneaky trick to turn any non-zero value into 1 */
+  assert_parse_richpresence(&richpresence, buffer, "Format:Value\nFormatType=VALUE\n\nDisplay:\nResult is @Value(0xH02/0xH02)");
+  assert_richpresence_output(richpresence, &memory, "Result is 1");
+
+  ram[2] = 1;
+  assert_richpresence_output(richpresence, &memory, "Result is 1");
+
+  ram[2] = 32;
+  assert_richpresence_output(richpresence, &memory, "Result is 1");
+
+  ram[2] = 255;
+  assert_richpresence_output(richpresence, &memory, "Result is 1");
+
+  ram[2] = 0;
+  assert_richpresence_output(richpresence, &memory, "Result is 0");
 }
 
 static void test_macro_frames() {
@@ -808,18 +840,22 @@ static void test_macro_lookup_mapping_range() {
 
 static void test_macro_lookup_invalid() {
   int result;
+  int lines;
 
   /* lookup value starts with Ox instead of 0x */
-  result = rc_richpresence_size("Lookup:Location\nOx0=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
+  result = rc_richpresence_size_lines("Lookup:Location\nOx0=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)", &lines);
   ASSERT_NUM_EQUALS(result, RC_INVALID_CONST_OPERAND);
+  ASSERT_NUM_EQUALS(lines, 2);
 
   /* lookup value contains invalid hex character */
-  result = rc_richpresence_size("Lookup:Location\n0xO=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
+  result = rc_richpresence_size_lines("Lookup:Location\n0xO=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)", &lines);
   ASSERT_NUM_EQUALS(result, RC_INVALID_CONST_OPERAND);
+  ASSERT_NUM_EQUALS(lines, 2);
 
   /* lookup value is not numeric */
-  result = rc_richpresence_size("Lookup:Location\nZero=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)");
+  result = rc_richpresence_size_lines("Lookup:Location\nZero=Zero\n1=One\n\nDisplay:\nAt @Location(0xH0000)", &lines);
   ASSERT_NUM_EQUALS(result, RC_INVALID_CONST_OPERAND);
+  ASSERT_NUM_EQUALS(lines, 2);
 }
 
 static void test_macro_escaped() {
@@ -887,27 +923,35 @@ static void test_macro_unterminated() {
 
 static void test_macro_without_parameter() {
   int result;
+  int lines;
 
-  result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points Points");
+  result = rc_richpresence_size_lines("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points Points", &lines);
   ASSERT_NUM_EQUALS(result, RC_MISSING_VALUE);
+  ASSERT_NUM_EQUALS(lines, 5);
 
-  result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points() Points");
+  result = rc_richpresence_size_lines("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points() Points", &lines);
   ASSERT_NUM_EQUALS(result, RC_INVALID_MEMORY_OPERAND);
+  ASSERT_NUM_EQUALS(lines, 5);
 }
 
 static void test_macro_without_parameter_conditional_display() {
   int result;
+  int lines;
 
-  result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n?0x0h0001=1?@Points Points\nDefault");
+  result = rc_richpresence_size_lines("Format:Points\nFormatType=VALUE\n\nDisplay:\n?0x0h0001=1?@Points Points\nDefault", &lines);
   ASSERT_NUM_EQUALS(result, RC_MISSING_VALUE);
+  ASSERT_NUM_EQUALS(lines, 5);
 
-  result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n?0x0h0001=1?@Points() Points\nDefault");
+  result = rc_richpresence_size_lines("Format:Points\nFormatType=VALUE\n\nDisplay:\n?0x0h0001=1?@Points() Points\nDefault", &lines);
   ASSERT_NUM_EQUALS(result, RC_INVALID_MEMORY_OPERAND);
+  ASSERT_NUM_EQUALS(lines, 5);
 }
 
 static void test_macro_non_numeric_parameter() {
-  int result = rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(Zero) Points");
+  int lines;
+  int result = rc_richpresence_size_lines("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(Zero) Points", &lines);
   ASSERT_NUM_EQUALS(result, RC_INVALID_MEMORY_OPERAND);
+  ASSERT_NUM_EQUALS(lines, 5);
 }
 
 static void test_random_text_between_sections() {
@@ -1007,6 +1051,7 @@ void test_richpresence(void) {
   TEST(test_macro_value_from_hits);
   TEST(test_macro_value_from_indirect);
   TEST(test_macro_value_divide_by_zero);
+  TEST(test_macro_value_divide_by_self);
 
   /* frames macros */
   TEST(test_macro_frames);
