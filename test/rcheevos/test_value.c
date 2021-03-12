@@ -30,6 +30,11 @@ static void test_evaluate_value(const char* memaddr, int expected_value) {
   ASSERT_NUM_EQUALS(ret, expected_value);
 }
 
+static void test_invalid_value(const char* memaddr, int expected_error) {
+  int ret = rc_value_size(memaddr);
+  ASSERT_NUM_EQUALS(ret, expected_error);
+}
+
 static void test_measured_value_target(const char* memaddr, int expected_target) {
   rc_value_t* self;
   char buffer[2048];
@@ -186,10 +191,30 @@ void test_value(void) {
   /* hitcount based measured values always have unbounded targets, even if one is specified */
   TEST_PARAMS2(test_measured_value_target, "M:0xH0002!=d0xH0002", (unsigned)-1);
   TEST_PARAMS2(test_measured_value_target, "M:0xH0002!=d0xH0002.99.", (unsigned)-1);
+  /* measured values always assumed to be hitcount based - they do not stop/trigger when the condition is met */
+  TEST_PARAMS2(test_measured_value_target, "M:0xH0002<100", (unsigned)-1);
 
-  /* measured format - supports hit counts, AddSource, SubSource, and AddAddress */
+  /* measured format - supports hit counts and combining flags
+   * (AddSource, SubSource, AddHits, SubHits, AndNext, OrNext, and AddAddress) */
   TEST_PARAMS2(test_evaluate_value, "A:0xH0001_M:0xH0002", 0x12 + 0x34);
+  TEST_PARAMS2(test_evaluate_value, "B:0xH0001_M:0xH0002", 0x34 - 0x12);
+  TEST_PARAMS2(test_evaluate_value, "C:0xH0000=0_M:0xH0002=52", 2);
+  TEST_PARAMS2(test_evaluate_value, "C:0xH0000=0_D:0xH0001=18_M:0xH0002=52", 1);
+  TEST_PARAMS2(test_evaluate_value, "N:0xH0000=0_M:0xH0002=52", 1);
+  TEST_PARAMS2(test_evaluate_value, "O:0xH0000=0_M:0xH0002=0", 1);
   TEST_PARAMS2(test_evaluate_value, "I:0xH0000_M:0xH0002", 0x34);
+
+  /* measured format does not support alt groups */
+  TEST_PARAMS2(test_invalid_value, "M:0xH0002=6SM:0xH0003=6", RC_INVALID_VALUE_FLAG);
+  /* does not start with X:, so legacy parser says it's an invalid memory accessor */
+  TEST_PARAMS2(test_invalid_value, "SM:0xH0002=6SM:0xH0003=6", RC_INVALID_MEMORY_OPERAND);
+
+  /* measured format does not support trigger flag */
+  TEST_PARAMS2(test_invalid_value, "T:0xH0002=6", RC_INVALID_VALUE_FLAG);
+
+  /* measured format requires a measured condition */
+  TEST_PARAMS2(test_invalid_value, "A:0xH0002_0xH0003>10.99.", RC_INVALID_VALUE_FLAG); /* no flag on condition 2 */
+  TEST_PARAMS2(test_invalid_value, "A:0xH0002_A:0xH0003", RC_MISSING_VALUE_MEASURED);
 
   /* delta should initially be 0, so a hit will be tallied */
   TEST_PARAMS2(test_evaluate_value, "M:0xH0002!=d0xH0002", 1);
