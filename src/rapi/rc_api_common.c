@@ -136,6 +136,11 @@ static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, 
     return RC_INVALID_JSON;
   ++json;
 
+  if (*json == '}') {
+    *json_ptr = ++json;
+    return RC_OK;
+  }
+
   do
   {
     while (isspace(*json))
@@ -206,11 +211,13 @@ int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_jso
   {
     int result = rc_json_parse_object(&json, fields, field_count);
 
-    rc_json_get_string(&response->error_message, &response->buffer, &fields[1], "Error");
-    rc_json_get_bool(&response->succeeded, &fields[0], "Success");
+    rc_json_get_optional_string(&response->error_message, response, &fields[1], "Error", NULL);
+    rc_json_get_optional_bool(&response->succeeded, &fields[0], "Success", 1);
 
     return result;
   }
+
+  response->error_message = NULL;
 
   if (*json) {
     const char* end = json;
@@ -316,8 +323,27 @@ int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_
   if (*src == '\"') {
     ++src;
     while (*src != '\"') {
-      if (*src == '\\')
+      if (*src == '\\') {
         ++src;
+        if (*src == 'n') {
+          ++src;
+          *dst++ = '\n';
+          continue;
+        }
+
+        if (*src == 'r') {
+          ++src;
+          *dst++ = '\r';
+          continue;
+        }
+
+        if (*src == 'u') {
+          /* TODO */
+          continue;
+        }
+
+        /* just an escaped character, fallthrough to normal copy */
+      }
 
       *dst++ = *src++;
     }
@@ -361,7 +387,7 @@ int rc_json_get_num(int* out, const rc_json_field_t* field, const char* field_na
     return 0;
   }
 
-  /* assert: string is valid number per rc_json_parse_field */
+  /* assert: string contains only numerals and an optional sign per rc_json_parse_field */
   if (*src == '-') {
     negative = 1;
     ++src;
@@ -415,12 +441,12 @@ int rc_json_get_unum(unsigned* out, const rc_json_field_t* field, const char* fi
     return 0;
   }
 
-  /* assert: string is valid number per rc_json_parse_field */
   if (*src < '0' || *src > '9') {
     *out = 0;
     return 0;
   }
 
+  /* assert: string contains only numerals per rc_json_parse_field */
   while (src < field->value_end && *src != '.') {
     value *= 10;
     value += *src - '0';
@@ -456,10 +482,10 @@ int rc_json_get_bool(int* out, const rc_json_field_t* field, const char* field_n
 
   if (src) {
     const size_t len = field->value_end - field->value_start;
-    if (len == 4 && memcmp(src, "true", 4) == 0) {
+    if (len == 4 && strncasecmp(src, "true", 4) == 0) {
       *out = 1;
       return 1;
-    } else if (len == 5 && memcmp(src, "false", 5) == 0) {
+    } else if (len == 5 && strncasecmp(src, "false", 5) == 0) {
       *out = 0;
       return 1;
     } else if (len == 1) {

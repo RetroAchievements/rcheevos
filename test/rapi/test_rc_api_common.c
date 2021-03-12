@@ -1,6 +1,327 @@
 #include "../rapi/rc_api_common.h"
 
+#include "rc_compat.h"
+
 #include "../test_framework.h"
+
+static void _assert_json_parse_response(rc_api_response_t* response, rc_json_field_t* field, const char* json, int expected_result) {
+  int result;
+  rc_json_field_t fields[] = {
+    {"Success"},
+    {"Error"},
+    {"Test"}
+  };
+  rc_buf_init(&response->buffer);
+
+  result = rc_json_parse_response(response, json, fields, sizeof(fields)/sizeof(fields[0]));
+  ASSERT_NUM_EQUALS(result, expected_result);
+
+  ASSERT_NUM_EQUALS(response->succeeded, 1);
+  ASSERT_PTR_NULL(response->error_message);
+
+  memcpy(field, &fields[2], sizeof(fields[2]));
+}
+#define assert_json_parse_response(response, field, json, expected_result) ASSERT_HELPER(_assert_json_parse_response(response, field, json, expected_result), "assert_json_parse_operand")
+
+static void _assert_field_value(rc_json_field_t* field, const char* expected_value) {
+  char buffer[256];
+
+  ASSERT_PTR_NOT_NULL(field->value_start);
+  ASSERT_PTR_NOT_NULL(field->value_end);
+  ASSERT_NUM_LESS(field->value_end - field->value_start, sizeof(buffer));
+
+  memcpy(buffer, field->value_start, field->value_end - field->value_start);
+  buffer[field->value_end - field->value_start] = '\0';
+  ASSERT_STR_EQUALS(buffer, expected_value);
+}
+#define assert_field_value(field, expected_value) ASSERT_HELPER(_assert_field_value(field, expected_value), "assert_field_value")
+
+static void test_json_parse_response_empty() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+
+  assert_json_parse_response(&response, &field, "{}", RC_OK);
+
+  ASSERT_STR_EQUALS(field.name, "Test");
+  ASSERT_PTR_NULL(field.value_start);
+  ASSERT_PTR_NULL(field.value_end);
+}
+
+static void test_json_parse_response_field(const char* json, const char* value) {
+  rc_api_response_t response;
+  rc_json_field_t field;
+
+  assert_json_parse_response(&response, &field, json, RC_OK);
+
+  ASSERT_STR_EQUALS(field.name, "Test");
+  assert_field_value(&field, value);
+}
+
+static void test_json_parse_response_non_json() {
+  int result;
+  rc_api_response_t response;
+  rc_json_field_t fields[] = {
+    {"Success"},
+    {"Error"},
+    {"Test"}
+  };
+  rc_buf_init(&response.buffer);
+
+  result = rc_json_parse_response(&response, "This is an error.", fields, sizeof(fields)/sizeof(fields[0]));
+  ASSERT_NUM_EQUALS(result, RC_INVALID_JSON);
+
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "This is an error.");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
+static void test_json_parse_response_error_from_server() {
+  int result;
+  rc_api_response_t response;
+  rc_json_field_t fields[] = {
+    {"Success"},
+    {"Error"},
+    {"Test"}
+  };
+  rc_buf_init(&response.buffer);
+
+  result = rc_json_parse_response(&response, "{\"Success\":false,\"Error\":\"Oops\"}", fields, sizeof(fields)/sizeof(fields[0]));
+  ASSERT_NUM_EQUALS(result, RC_OK);
+
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "Oops");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
+static void test_json_get_string(const char* escaped, const char* expected) {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  char buffer[256];
+  const char *value = NULL;
+  snprintf(buffer, sizeof(buffer), "{\"Test\":\"%s\"}", escaped);
+
+  assert_json_parse_response(&response, &field, buffer, RC_OK);
+
+  ASSERT_TRUE(rc_json_get_string(&value, &response.buffer, &field, "Test"));
+  ASSERT_PTR_NOT_NULL(value);
+  ASSERT_STR_EQUALS(value, expected);
+}
+
+static void test_json_get_optional_string() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  const char *value = NULL;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":\"Value\"}", RC_OK);
+
+  rc_json_get_optional_string(&value, &response, &field, "Test", "Default");
+  ASSERT_PTR_NOT_NULL(value);
+  ASSERT_STR_EQUALS(value, "Value");
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":\"Value\"}", RC_OK);
+
+  rc_json_get_optional_string(&value, &response, &field, "Test", "Default");
+  ASSERT_PTR_NOT_NULL(value);
+  ASSERT_STR_EQUALS(value, "Default");
+}
+
+static void test_json_get_required_string() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  const char *value = NULL;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":\"Value\"}", RC_OK);
+
+  ASSERT_TRUE(rc_json_get_required_string(&value, &response, &field, "Test"));
+  ASSERT_PTR_NOT_NULL(value);
+  ASSERT_STR_EQUALS(value, "Value");
+
+  ASSERT_PTR_NULL(response.error_message);
+  ASSERT_NUM_EQUALS(response.succeeded, 1);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":\"Value\"}", RC_OK);
+
+  ASSERT_FALSE(rc_json_get_required_string(&value, &response, &field, "Test"));
+  ASSERT_PTR_NULL(value);
+
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "Test not found in response");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
+static void test_json_get_num(const char* input, int expected) {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  char buffer[64];
+  int value = 0;
+  snprintf(buffer, sizeof(buffer), "{\"Test\":%s}", input);
+
+  assert_json_parse_response(&response, &field, buffer, RC_OK);
+
+  if (expected) {
+    ASSERT_TRUE(rc_json_get_num(&value, &field, "Test"));
+  }
+  else {
+    ASSERT_FALSE(rc_json_get_num(&value, &field, "Test"));
+  }
+
+  ASSERT_NUM_EQUALS(value, expected);
+}
+
+static void test_json_get_optional_num() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  int value = 0;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":12345678}", RC_OK);
+
+  rc_json_get_optional_num(&value, &field, "Test", 9999);
+  ASSERT_NUM_EQUALS(value, 12345678);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":12345678}", RC_OK);
+
+  rc_json_get_optional_num(&value, &field, "Test", 9999);
+  ASSERT_NUM_EQUALS(value, 9999);
+}
+
+static void test_json_get_required_num() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  int value = 0;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":12345678}", RC_OK);
+
+  ASSERT_TRUE(rc_json_get_required_num(&value, &response, &field, "Test"));
+  ASSERT_NUM_EQUALS(value, 12345678);
+
+  ASSERT_PTR_NULL(response.error_message);
+  ASSERT_NUM_EQUALS(response.succeeded, 1);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":12345678}", RC_OK);
+
+  ASSERT_FALSE(rc_json_get_required_num(&value, &response, &field, "Test"));
+  ASSERT_NUM_EQUALS(value, 0);
+
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "Test not found in response");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
+static void test_json_get_unum(const char* input, unsigned expected) {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  char buffer[64];
+  unsigned value = 0;
+  snprintf(buffer, sizeof(buffer), "{\"Test\":%s}", input);
+
+  assert_json_parse_response(&response, &field, buffer, RC_OK);
+
+  if (expected) {
+    ASSERT_TRUE(rc_json_get_unum(&value, &field, "Test"));
+  }
+  else {
+    ASSERT_FALSE(rc_json_get_unum(&value, &field, "Test"));
+  }
+
+  ASSERT_NUM_EQUALS(value, expected);
+}
+
+static void test_json_get_optional_unum() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  unsigned value = 0;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":12345678}", RC_OK);
+
+  rc_json_get_optional_unum(&value, &field, "Test", 9999);
+  ASSERT_NUM_EQUALS(value, 12345678);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":12345678}", RC_OK);
+
+  rc_json_get_optional_unum(&value, &field, "Test", 9999);
+  ASSERT_NUM_EQUALS(value, 9999);
+}
+
+static void test_json_get_required_unum() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  unsigned value = 0;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":12345678}", RC_OK);
+
+  ASSERT_TRUE(rc_json_get_required_unum(&value, &response, &field, "Test"));
+  ASSERT_NUM_EQUALS(value, 12345678);
+
+  ASSERT_PTR_NULL(response.error_message);
+  ASSERT_NUM_EQUALS(response.succeeded, 1);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":12345678}", RC_OK);
+
+  ASSERT_FALSE(rc_json_get_required_unum(&value, &response, &field, "Test"));
+  ASSERT_NUM_EQUALS(value, 0);
+
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "Test not found in response");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
+static void test_json_get_bool(const char* input, int expected) {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  char buffer[64];
+  int value = 2;
+  snprintf(buffer, sizeof(buffer), "{\"Test\":%s}", input);
+
+  assert_json_parse_response(&response, &field, buffer, RC_OK);
+
+  if (expected != -1) {
+    ASSERT_TRUE(rc_json_get_bool(&value, &field, "Test"));
+    ASSERT_NUM_EQUALS(value, expected);
+  }
+  else {
+    ASSERT_FALSE(rc_json_get_bool(&value, &field, "Test"));
+    ASSERT_NUM_EQUALS(value, 0);
+  }
+}
+
+static void test_json_get_optional_bool() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  int value = 3;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":true}", RC_OK);
+
+  rc_json_get_optional_bool(&value, &field, "Test", 2);
+  ASSERT_NUM_EQUALS(value, 1);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":true}", RC_OK);
+
+  rc_json_get_optional_bool(&value, &field, "Test", 2);
+  ASSERT_NUM_EQUALS(value, 2);
+}
+
+static void test_json_get_required_bool() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  int value = 3;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":true}", RC_OK);
+
+  ASSERT_TRUE(rc_json_get_required_bool(&value, &response, &field, "Test"));
+  ASSERT_NUM_EQUALS(value, 1);
+
+  ASSERT_PTR_NULL(response.error_message);
+  ASSERT_NUM_EQUALS(response.succeeded, 1);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":True}", RC_OK);
+
+  ASSERT_FALSE(rc_json_get_required_bool(&value, &response, &field, "Test"));
+  ASSERT_NUM_EQUALS(value, 0);
+
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "Test not found in response");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
 
 static void test_url_build_dorequest_default_host() {
   rc_api_url_builder_t builder;
@@ -118,6 +439,65 @@ static void test_url_builder_append_signed_num_param() {
 
 void test_rapi_common(void) {
   TEST_SUITE_BEGIN();
+
+  /* rc_json_parse_response */
+  TEST(test_json_parse_response_empty);
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":\"Test\"}", "\"Test\""); /* string */
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":\"Te\\\"st\"}", "\"Te\\\"st\""); /* escaped string */
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":12345678}", "12345678"); /* integer */
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":+12345678}", "+12345678"); /* positive integer */
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":-12345678}", "-12345678"); /* negatvie integer */
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":1234.5678}", "1234.5678"); /* decimal */
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":+1234.5678}", "+1234.5678"); /* positive decimal */
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":-1234.5678}", "-1234.5678"); /* negatvie decimal */
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":[1,2,3]}", "[1,2,3]"); /* array */
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":{\"Foo\":1}}", "{\"Foo\":1}"); /* object */
+  TEST_PARAMS2(test_json_parse_response_field, "{\"Test\":null}", "null"); /* null */
+  TEST_PARAMS2(test_json_parse_response_field, "{ \"Test\" : 0 }", "0"); /* ignore whitespace */
+  TEST_PARAMS2(test_json_parse_response_field, "{ \"Other\" : 1, \"Test\" : 2 }", "2"); /* preceding field */
+  TEST_PARAMS2(test_json_parse_response_field, "{ \"Test\" : 1, \"Other\" : 2 }", "1"); /* trailing field */
+  TEST(test_json_parse_response_non_json);
+  TEST(test_json_parse_response_error_from_server);
+
+  /* rc_json_get_string */
+  TEST_PARAMS2(test_json_get_string, "", "");
+  TEST_PARAMS2(test_json_get_string, "Banana", "Banana");
+  TEST_PARAMS2(test_json_get_string, "A \\\"Quoted\\\" String", "A \"Quoted\" String");
+  TEST_PARAMS2(test_json_get_string, "This\\r\\nThat", "This\r\nThat");
+  TEST_PARAMS2(test_json_get_string, "This\\/That", "This/That");
+  TEST(test_json_get_optional_string);
+  TEST(test_json_get_required_string);
+
+  /* rc_json_get_num */
+  TEST_PARAMS2(test_json_get_num, "Banana", 0);
+  TEST_PARAMS2(test_json_get_num, "True", 0);
+  TEST_PARAMS2(test_json_get_num, "2468", 2468);
+  TEST_PARAMS2(test_json_get_num, "+55", 55);
+  TEST_PARAMS2(test_json_get_num, "-16", -16);
+  TEST_PARAMS2(test_json_get_num, "3.14159", 3);
+  TEST(test_json_get_optional_num);
+  TEST(test_json_get_required_num);
+
+  /* rc_json_get_unum */
+  TEST_PARAMS2(test_json_get_unum, "Banana", 0);
+  TEST_PARAMS2(test_json_get_unum, "True", 0);
+  TEST_PARAMS2(test_json_get_unum, "2468", 2468);
+  TEST_PARAMS2(test_json_get_unum, "+55", 0);
+  TEST_PARAMS2(test_json_get_unum, "-16", 0);
+  TEST_PARAMS2(test_json_get_unum, "3.14159", 3);
+  TEST(test_json_get_optional_unum);
+  TEST(test_json_get_required_unum);
+
+  /* rc_json_get_bool */
+  TEST_PARAMS2(test_json_get_bool, "true", 1);
+  TEST_PARAMS2(test_json_get_bool, "false", 0);
+  TEST_PARAMS2(test_json_get_bool, "TRUE", 1);
+  TEST_PARAMS2(test_json_get_bool, "True", 1);
+  TEST_PARAMS2(test_json_get_bool, "Banana", -1);
+  TEST_PARAMS2(test_json_get_bool, "1", 1);
+  TEST_PARAMS2(test_json_get_bool, "0", 0);
+  TEST(test_json_get_optional_bool);
+  TEST(test_json_get_required_bool);
 
   /* rc_api_url_build_dorequest / rc_api_set_host */
   TEST(test_url_build_dorequest_default_host);
