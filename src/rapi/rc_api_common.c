@@ -264,7 +264,7 @@ int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_
   return (rc_json_parse_object(&json, fields, field_count) == RC_OK);
 }
 
-int rc_json_get_required_array(int* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
+int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
 {
   if (!field->value_start || *field->value_start != '[')
     return rc_json_missing_field(response, field);
@@ -395,6 +395,51 @@ void rc_json_get_optional_num(int* out, const rc_json_field_t* field, const char
 int rc_json_get_required_num(int* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
 {
   if (rc_json_get_num(out, field, field_name))
+    return 1;
+
+  return rc_json_missing_field(response, field);
+}
+
+int rc_json_get_unum(unsigned* out, const rc_json_field_t* field, const char* field_name)
+{
+  const char* src = field->value_start;
+  int value = 0;
+
+#ifndef NDEBUG
+  if (strcmp(field->name, field_name) != 0)
+    return 0;
+#endif
+
+  if (!src) {
+    *out = 0;
+    return 0;
+  }
+
+  /* assert: string is valid number per rc_json_parse_field */
+  if (*src < '0' || *src > '9') {
+    *out = 0;
+    return 0;
+  }
+
+  while (src < field->value_end && *src != '.') {
+    value *= 10;
+    value += *src - '0';
+    ++src;
+  }
+
+  *out = value;
+  return 1;
+}
+
+void rc_json_get_optional_unum(unsigned* out, const rc_json_field_t* field, const char* field_name, int default_value)
+{
+  if (!rc_json_get_unum(out, field, field_name))
+    *out = default_value;
+}
+
+int rc_json_get_required_unum(unsigned* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
+{
+  if (rc_json_get_unum(out, field, field_name))
     return 1;
 
   return rc_json_missing_field(response, field);
@@ -634,7 +679,6 @@ static int rc_url_builder_append_param_equals(rc_api_url_builder_t* builder, con
 {
   size_t param_len = strlen(param);
 
-  size_t remaining = (builder->end - builder->write);
   if (rc_url_builder_reserve(builder, param_len + 2) == RC_OK) {
     if (builder->write > builder->start) {
       if (builder->write[-1] != '?')

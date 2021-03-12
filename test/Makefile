@@ -7,6 +7,7 @@
 RC_SRC=../src/rcheevos
 RC_URL_SRC=../src/rurl
 RC_HASH_SRC=../src/rhash
+RC_API_SRC=../src/rapi
 LUA_SRC=lua/src
 
 # default parameter values
@@ -53,6 +54,9 @@ OBJ=$(RC_SRC)/alloc.o \
     $(RC_HASH_SRC)/hash.o \
     $(RC_HASH_SRC)/md5.o \
     $(RC_URL_SRC)/url.o \
+    $(RC_API_SRC)/rc_api_common.o \
+    $(RC_API_SRC)/rc_api_runtime.o \
+    $(RC_API_SRC)/rc_api_user.o \
     rcheevos/test_condition.o \
     rcheevos/test_condset.o \
     rcheevos/test_consoleinfo.o \
@@ -70,6 +74,9 @@ OBJ=$(RC_SRC)/alloc.o \
     rhash/mock_filereader.o \
     rhash/test_cdreader.o \
     rhash/test_hash.o \
+    rapi/test_rc_api_common.o \
+    rapi/test_rc_api_runtime.o \
+    rapi/test_rc_api_user.o \
     test.o
 
 # compile flags

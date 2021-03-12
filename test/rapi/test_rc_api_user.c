@@ -1,6 +1,7 @@
 #include "rc_api.h"
 
 #include "../test_framework.h"
+#include "rc_compat.h"
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
 

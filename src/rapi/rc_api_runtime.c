@@ -1,6 +1,7 @@
 #include "rc_api.h"
 #include "rc_api_common.h"
 
+#include "../rcheevos/rc_compat.h"
 #include "../rhash/md5.h"
 
 #include <stdlib.h>
@@ -61,8 +62,8 @@ int rc_api_process_award_achievement_response(rc_api_award_achievement_response_
     }
   }
 
-  rc_json_get_optional_num(&response->new_player_score, &fields[2], "Score", 0);
-  rc_json_get_optional_num(&response->awarded_achievement_id, &fields[3], "AchievementID", 0);
+  rc_json_get_optional_unum(&response->new_player_score, &fields[2], "Score", 0);
+  rc_json_get_optional_unum(&response->awarded_achievement_id, &fields[3], "AchievementID", 0);
 
   return RC_OK;
 }
@@ -130,9 +131,9 @@ int rc_api_process_submit_lboard_entry_response(rc_api_submit_lboard_entry_respo
       {"RankInfo"}, /* nested object */
       {"TopEntries"} /* array */
       /* unused fields
-      {"LBData"}, /* array * /
+      {"LBData"}, / * array * /
       {"ScoreFormatted"},
-      {"TopEntriesFriends"}, /* array * /
+      {"TopEntriesFriends"}, / * array * /
        * unused fields */
     };
 
@@ -180,7 +181,7 @@ int rc_api_process_submit_lboard_entry_response(rc_api_submit_lboard_entry_respo
 
     if (!rc_json_get_required_object(rank_info_fields, sizeof(rank_info_fields) / sizeof(rank_info_fields[0]), &response->response, &response_fields[2], "RankInfo"))
       return RC_MISSING_VALUE;
-    if (!rc_json_get_required_num(&response->new_rank, &response->response, &rank_info_fields[0], "Rank"))
+    if (!rc_json_get_required_unum(&response->new_rank, &response->response, &rank_info_fields[0], "Rank"))
       return RC_MISSING_VALUE;
     if (!rc_json_get_required_string(&str, &response->response, &rank_info_fields[1], "NumEntries"))
       return RC_MISSING_VALUE;
@@ -199,7 +200,7 @@ int rc_api_process_submit_lboard_entry_response(rc_api_submit_lboard_entry_respo
         if (!rc_json_get_required_string(&entry->username, &response->response, &entry_fields[0], "User"))
           return RC_MISSING_VALUE;
 
-        if (!rc_json_get_required_num(&entry->rank, &response->response, &entry_fields[1], "Rank"))
+        if (!rc_json_get_required_unum(&entry->rank, &response->response, &entry_fields[1], "Rank"))
           return RC_MISSING_VALUE;
 
         if (!rc_json_get_required_num(&entry->score, &response->response, &entry_fields[2], "Score"))

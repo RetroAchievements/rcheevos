@@ -50,8 +50,8 @@ int rc_api_process_login_response(rc_api_login_response_t* response, const char*
   if (!rc_json_get_required_string(&response->api_token, &response->response, &fields[3], "Token"))
     return RC_MISSING_VALUE;
 
-  rc_json_get_optional_num(&response->score, &fields[4], "Score", 0);
-  rc_json_get_optional_num(&response->num_unread_messages, &fields[5], "Messages", 0);
+  rc_json_get_optional_unum(&response->score, &fields[4], "Score", 0);
+  rc_json_get_optional_unum(&response->num_unread_messages, &fields[5], "Messages", 0);
 
   return RC_OK;
 }
