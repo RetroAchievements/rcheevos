@@ -62,8 +62,8 @@ int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_ap
 
   rc_buf_init(&request->buffer);
   rc_api_url_build_dorequest(&builder, &request->buffer, "awardachievement", api_params->username);
-  rc_url_builder_append_num_param(&builder, "a", api_params->achievement_id);
-  rc_url_builder_append_num_param(&builder, "h", api_params->hardcore ? 1 : 0);
+  rc_url_builder_append_unum_param(&builder, "a", api_params->achievement_id);
+  rc_url_builder_append_unum_param(&builder, "h", api_params->hardcore ? 1 : 0);
   if (api_params->game_hash && *api_params->game_hash)
     rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
   request->url = rc_url_builder_finalize(&builder);
@@ -131,8 +131,8 @@ int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_
 
     rc_buf_init(&request->buffer);
     rc_api_url_build_dorequest(&builder, &request->buffer, "submitlbentry", api_params->username);
-    rc_url_builder_append_num_param(&builder, "i", api_params->leaderboard_id);
-    rc_url_builder_append_signed_num_param(&builder, "s", api_params->score);
+    rc_url_builder_append_unum_param(&builder, "i", api_params->leaderboard_id);
+    rc_url_builder_append_num_param(&builder, "s", api_params->score);
     if (api_params->game_hash && *api_params->game_hash)
       rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
     request->url = rc_url_builder_finalize(&builder);

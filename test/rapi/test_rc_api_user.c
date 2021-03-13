@@ -5,6 +5,37 @@
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
 
+static void test_init_start_session()
+{
+  rc_api_start_session_request_t start_session_request;
+  rc_api_request_t request;
+
+  memset(&start_session_request, 0, sizeof(start_session_request));
+  start_session_request.username = "Username";
+  start_session_request.api_token = "API_TOKEN";
+  start_session_request.game_id = 1234;
+
+  ASSERT_NUM_EQUALS(rc_api_init_start_session_request(&request, &start_session_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=postactivity&u=Username&a=3&m=1234");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_process_start_session_response()
+{
+  rc_api_start_session_response_t start_session_response;
+  const char* server_response = "{\"Success\":true}";
+
+  memset(&start_session_response, 0, sizeof(start_session_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_start_session_response(&start_session_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(start_session_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(start_session_response.response.error_message);
+
+  rc_api_destroy_start_session_response(&start_session_response);
+}
+
 static void test_init_login_request_password()
 {
   rc_api_login_request_t login_request;
@@ -262,6 +293,11 @@ static void test_process_login_response_null_score()
 
 void test_rapi_user(void) {
   TEST_SUITE_BEGIN();
+
+  /* start session */
+  TEST(test_init_start_session);
+
+  TEST(test_process_start_session_response);
 
   /* login */
   TEST(test_init_login_request_password);

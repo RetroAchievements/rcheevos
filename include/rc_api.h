@@ -60,6 +60,26 @@ int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_requ
 int rc_api_process_login_response(rc_api_login_response_t* response, const char* server_response);
 void rc_api_destroy_login_response(rc_api_login_response_t* response);
 
+/* --- Start Session --- */
+
+typedef struct rc_api_start_session_request_t
+{
+  const char* username;
+  const char* api_token;
+  unsigned game_id;
+}
+rc_api_start_session_request_t;
+
+typedef struct rc_api_start_session_response_t
+{
+  rc_api_response_t response;
+}
+rc_api_start_session_response_t;
+
+int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_start_session_request_t* api_params);
+int rc_api_process_start_session_response(rc_api_start_session_response_t* response, const char* server_response);
+void rc_api_destroy_start_session_response(rc_api_start_session_response_t* response);
+
 /* ===== Runtime Functions ===== */
 /* --- Resolve Hash --- */
 

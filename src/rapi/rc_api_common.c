@@ -719,7 +719,7 @@ static int rc_url_builder_append_param_equals(rc_api_url_builder_t* builder, con
   return builder->result;
 }
 
-void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, unsigned value)
+void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char* param, unsigned value)
 {
   if (rc_url_builder_append_param_equals(builder, param) == RC_OK) {
     char num[16];
@@ -728,7 +728,7 @@ void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* 
   }
 }
 
-void rc_url_builder_append_signed_num_param(rc_api_url_builder_t* builder, const char* param, int value)
+void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, int value)
 {
   if (rc_url_builder_append_param_equals(builder, param) == RC_OK) {
     char num[16];

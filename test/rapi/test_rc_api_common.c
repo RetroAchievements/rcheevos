@@ -403,6 +403,23 @@ static void test_url_builder_append_str_param() {
   rc_buf_destroy(&buffer);
 }
 
+static void test_url_builder_append_unum_param() {
+  rc_api_url_builder_t builder;
+  rc_api_buffer_t buffer;
+  const char* output;
+
+  rc_buf_init(&buffer);
+  rc_url_builder_init(&builder, &buffer, 32);
+  rc_url_builder_append_unum_param(&builder, "a", 0);
+  rc_url_builder_append_unum_param(&builder, "b", 123456);
+  rc_url_builder_append_unum_param(&builder, "t", (unsigned)-1);
+  output = rc_url_builder_finalize(&builder);
+
+  ASSERT_STR_EQUALS(output, "a=0&b=123456&t=4294967295");
+
+  rc_buf_destroy(&buffer);
+}
+
 static void test_url_builder_append_num_param() {
   rc_api_url_builder_t builder;
   rc_api_buffer_t buffer;
@@ -412,24 +429,7 @@ static void test_url_builder_append_num_param() {
   rc_url_builder_init(&builder, &buffer, 32);
   rc_url_builder_append_num_param(&builder, "a", 0);
   rc_url_builder_append_num_param(&builder, "b", 123456);
-  rc_url_builder_append_num_param(&builder, "t", (unsigned)-1);
-  output = rc_url_builder_finalize(&builder);
-
-  ASSERT_STR_EQUALS(output, "a=0&b=123456&t=4294967295");
-
-  rc_buf_destroy(&buffer);
-}
-
-static void test_url_builder_append_signed_num_param() {
-  rc_api_url_builder_t builder;
-  rc_api_buffer_t buffer;
-  const char* output;
-
-  rc_buf_init(&buffer);
-  rc_url_builder_init(&builder, &buffer, 32);
-  rc_url_builder_append_signed_num_param(&builder, "a", 0);
-  rc_url_builder_append_signed_num_param(&builder, "b", 123456);
-  rc_url_builder_append_signed_num_param(&builder, "t", -1);
+  rc_url_builder_append_num_param(&builder, "t", -1);
   output = rc_url_builder_finalize(&builder);
 
   ASSERT_STR_EQUALS(output, "a=0&b=123456&t=-1");
@@ -517,7 +517,7 @@ void test_rapi_common(void) {
   /* rc_api_url_builder_append_param */
   TEST(test_url_builder_append_str_param);
   TEST(test_url_builder_append_num_param);
-  TEST(test_url_builder_append_signed_num_param);
+  TEST(test_url_builder_append_unum_param);
 
   TEST_SUITE_END();
 }

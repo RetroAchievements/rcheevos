@@ -54,8 +54,8 @@ void rc_buf_consume(rc_api_buffer_t* buffer, const char* start, char* end);
 void* rc_buf_alloc(rc_api_buffer_t* buffer, size_t amount);
 
 void rc_url_builder_append_encoded_str(rc_api_url_builder_t* builder, const char* str);
-void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, unsigned value);
-void rc_url_builder_append_signed_num_param(rc_api_url_builder_t* builder, const char* param, int value);
+void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, int value);
+void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char* param, unsigned value);
 void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* param, const char* value);
 
 void rc_api_url_build_dorequest(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, const char* api, const char* username);
