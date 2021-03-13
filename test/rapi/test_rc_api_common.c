@@ -323,6 +323,31 @@ static void test_json_get_required_bool() {
   ASSERT_NUM_EQUALS(response.succeeded, 0);
 }
 
+static void test_json_get_unum_array(const char* input, unsigned expected_count, int expected_result) {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  int result;
+  unsigned count;
+  unsigned *values;
+  char buffer[128];
+
+  snprintf(buffer, sizeof(buffer), "{\"Test\":%s}", input);
+  assert_json_parse_response(&response, &field, buffer, RC_OK);
+
+  result = rc_json_get_required_unum_array(&values, &count, &response, &field, "Test");
+  ASSERT_NUM_EQUALS(result, expected_result);
+  ASSERT_NUM_EQUALS(count, expected_count);
+
+  rc_buf_destroy(&response.buffer);
+}
+
+static void test_json_get_unum_array_trailing_comma() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":[1,2,3,]}", RC_INVALID_JSON);
+}
+
 static void test_url_build_dorequest_default_host() {
   rc_api_url_builder_t builder;
   rc_api_buffer_t buffer;
@@ -498,6 +523,17 @@ void test_rapi_common(void) {
   TEST_PARAMS2(test_json_get_bool, "0", 0);
   TEST(test_json_get_optional_bool);
   TEST(test_json_get_required_bool);
+
+  /* rc_json_get_unum_array */
+  TEST_PARAMS3(test_json_get_unum_array, "[]", 0, RC_OK);
+  TEST_PARAMS3(test_json_get_unum_array, "1", 0, RC_MISSING_VALUE);
+  TEST_PARAMS3(test_json_get_unum_array, "[1]", 1, RC_OK);
+  TEST_PARAMS3(test_json_get_unum_array, "[ 1 ]", 1, RC_OK);
+  TEST_PARAMS3(test_json_get_unum_array, "[1,2,3,4]", 4, RC_OK);
+  TEST_PARAMS3(test_json_get_unum_array, "[ 1 , 2 ]", 2, RC_OK);
+  TEST_PARAMS3(test_json_get_unum_array, "[1,1,1]", 3, RC_OK);
+  TEST_PARAMS3(test_json_get_unum_array, "[A,B,C]", 3, RC_MISSING_VALUE);
+  TEST(test_json_get_unum_array_trailing_comma);
 
   /* rc_api_url_build_dorequest / rc_api_set_host */
   TEST(test_url_build_dorequest_default_host);

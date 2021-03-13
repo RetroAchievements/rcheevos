@@ -5,7 +5,7 @@
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
 
-static void test_init_start_session()
+static void test_init_start_session_request()
 {
   rc_api_start_session_request_t start_session_request;
   rc_api_request_t request;
@@ -291,11 +291,97 @@ static void test_process_login_response_null_score()
   rc_api_destroy_login_response(&login_response);
 }
 
+static void test_init_fetch_user_unlocks_request_non_hardcore()
+{
+  rc_api_fetch_user_unlocks_request_t fetch_user_unlocks_request;
+  rc_api_request_t request;
+
+  memset(&fetch_user_unlocks_request, 0, sizeof(fetch_user_unlocks_request));
+  fetch_user_unlocks_request.username = "Username";
+  fetch_user_unlocks_request.api_token = "API_TOKEN";
+  fetch_user_unlocks_request.game_id = 1234;
+  fetch_user_unlocks_request.hardcore = 0;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_user_unlocks_request(&request, &fetch_user_unlocks_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=unlocks&u=Username&g=1234&h=0");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_user_unlocks_request_hardcore()
+{
+  rc_api_fetch_user_unlocks_request_t fetch_user_unlocks_request;
+  rc_api_request_t request;
+
+  memset(&fetch_user_unlocks_request, 0, sizeof(fetch_user_unlocks_request));
+  fetch_user_unlocks_request.username = "Username";
+  fetch_user_unlocks_request.api_token = "API_TOKEN";
+  fetch_user_unlocks_request.game_id = 2345;
+  fetch_user_unlocks_request.hardcore = 1;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_user_unlocks_request(&request, &fetch_user_unlocks_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=unlocks&u=Username&g=2345&h=1");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_user_unlocks_response_empty_array()
+{
+  rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
+  const char* server_response = "{\"Success\":true,\"UserUnlocks\":[],\"GameID\":11277,\"HardcoreMode\":false}";
+  memset(&fetch_user_unlocks_response, 0, sizeof(fetch_user_unlocks_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_user_unlocks_response(&fetch_user_unlocks_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_user_unlocks_response.response.error_message);
+  ASSERT_PTR_NULL(fetch_user_unlocks_response.achievement_ids);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.num_achievement_ids, 0);
+
+  rc_api_destroy_fetch_user_unlocks_response(&fetch_user_unlocks_response);
+}
+
+static void test_init_fetch_user_unlocks_response_one_item()
+{
+  rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
+  const char* server_response = "{\"Success\":true,\"UserUnlocks\":[1234],\"GameID\":11277,\"HardcoreMode\":false}";
+  memset(&fetch_user_unlocks_response, 0, sizeof(fetch_user_unlocks_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_user_unlocks_response(&fetch_user_unlocks_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_user_unlocks_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.num_achievement_ids, 1);
+  ASSERT_PTR_NOT_NULL(fetch_user_unlocks_response.achievement_ids);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.achievement_ids[0], 1234);
+
+  rc_api_destroy_fetch_user_unlocks_response(&fetch_user_unlocks_response);
+}
+
+static void test_init_fetch_user_unlocks_response_several_items()
+{
+  rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
+  const char* server_response = "{\"Success\":true,\"UserUnlocks\":[1,2,3,4],\"GameID\":11277,\"HardcoreMode\":false}";
+  memset(&fetch_user_unlocks_response, 0, sizeof(fetch_user_unlocks_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_user_unlocks_response(&fetch_user_unlocks_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_user_unlocks_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.num_achievement_ids, 4);
+  ASSERT_PTR_NOT_NULL(fetch_user_unlocks_response.achievement_ids);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.achievement_ids[0], 1);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.achievement_ids[1], 2);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.achievement_ids[2], 3);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.achievement_ids[3], 4);
+
+  rc_api_destroy_fetch_user_unlocks_response(&fetch_user_unlocks_response);
+}
+
 void test_rapi_user(void) {
   TEST_SUITE_BEGIN();
 
-  /* start session */
-  TEST(test_init_start_session);
+  /* postactivity */
+  TEST(test_init_start_session_request);
 
   TEST(test_process_start_session_response);
 
@@ -315,6 +401,14 @@ void test_rapi_user(void) {
   TEST(test_process_login_response_no_token);
   TEST(test_process_login_response_no_optional_fields);
   TEST(test_process_login_response_null_score);
+
+  /* unlocks */
+  TEST(test_init_fetch_user_unlocks_request_non_hardcore);
+  TEST(test_init_fetch_user_unlocks_request_hardcore);
+
+  TEST(test_init_fetch_user_unlocks_response_empty_array);
+  TEST(test_init_fetch_user_unlocks_response_one_item);
+  TEST(test_init_fetch_user_unlocks_response_several_items);
 
   TEST_SUITE_END();
 }

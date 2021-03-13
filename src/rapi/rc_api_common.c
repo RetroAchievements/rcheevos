@@ -271,6 +271,56 @@ int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_
   return (rc_json_parse_object(&json, fields, field_count) == RC_OK);
 }
 
+static int rc_json_get_array_entry_value(rc_json_field_t* field, rc_json_field_t* iterator)
+{
+  if (!iterator->array_size)
+    return 0;
+
+  while (isspace(*iterator->value_start))
+    ++iterator->value_start;
+
+  rc_json_parse_field(&iterator->value_start, field);
+
+  while (isspace(*iterator->value_start))
+    ++iterator->value_start;
+
+  ++iterator->value_start; /* skip , or ] */
+
+  --iterator->array_size;
+  return 1;
+}
+
+int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
+{
+  rc_json_field_t iterator;
+  rc_json_field_t value;
+  unsigned* entry;
+
+  if (!rc_json_get_required_array(num_entries, &iterator, response, field, field_name))
+    return RC_MISSING_VALUE;
+
+  if (*num_entries) {
+    *entries = (unsigned*)rc_buf_alloc(&response->buffer, *num_entries * sizeof(unsigned));
+    if (!*entries)
+      return RC_OUT_OF_MEMORY;
+
+    value.name = field_name;
+
+    entry = *entries;
+    while (rc_json_get_array_entry_value(&value, &iterator)) {
+      if (!rc_json_get_unum(entry, &value, field_name))
+        return RC_MISSING_VALUE;
+
+      ++entry;
+    }
+  }
+  else {
+    *entries = NULL;
+  }
+
+  return RC_OK;
+}
+
 int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
 {
   if (!field->value_start || *field->value_start != '[')

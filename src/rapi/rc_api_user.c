@@ -97,7 +97,7 @@ int rc_api_process_start_session_response(rc_api_start_session_response_t* respo
 {
   rc_json_field_t fields[] = {
     {"Success"},
-    {"Error"},
+    {"Error"}
   };
 
   memset(response, 0, sizeof(*response));
@@ -107,6 +107,57 @@ int rc_api_process_start_session_response(rc_api_start_session_response_t* respo
 }
 
 void rc_api_destroy_start_session_response(rc_api_start_session_response_t* response)
+{
+  rc_buf_destroy(&response->response.buffer);
+}
+
+/* --- Fetch User Unlocks --- */
+
+int rc_api_init_fetch_user_unlocks_request(rc_api_request_t* request, const rc_api_fetch_user_unlocks_request_t* api_params)
+{
+  rc_api_url_builder_t builder;
+
+  rc_buf_init(&request->buffer);
+  rc_api_url_build_dorequest(&builder, &request->buffer, "unlocks", api_params->username);
+  rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
+  rc_url_builder_append_unum_param(&builder, "h", api_params->hardcore ? 1 : 0);
+  request->url = rc_url_builder_finalize(&builder);
+
+  if (builder.result != RC_OK)
+    return builder.result;
+
+  rc_url_builder_init(&builder, &request->buffer, 48);
+  rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
+  request->post_data = rc_url_builder_finalize(&builder);
+
+  return builder.result;
+}
+
+int rc_api_process_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response, const char* server_response)
+{
+  int result;
+  rc_json_field_t fields[] = {
+    {"Success"},
+    {"Error"},
+    {"UserUnlocks"}
+    /* unused fields
+    { "GameID" },
+    { "HardcoreMode" }
+     * unused fields */
+  };
+
+  memset(response, 0, sizeof(*response));
+  rc_buf_init(&response->response.buffer);
+
+  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  if (result != RC_OK)
+    return result;
+
+  result = rc_json_get_required_unum_array(&response->achievement_ids, &response->num_achievement_ids, &response->response, &fields[2], "UserUnlocks");
+  return result;
+}
+
+void rc_api_destroy_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response)
 {
   rc_buf_destroy(&response->response.buffer);
 }
