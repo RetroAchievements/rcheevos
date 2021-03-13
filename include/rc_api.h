@@ -61,6 +61,28 @@ int rc_api_process_login_response(rc_api_login_response_t* response, const char*
 void rc_api_destroy_login_response(rc_api_login_response_t* response);
 
 /* ===== Runtime Functions ===== */
+/* --- Resolve Hash --- */
+
+typedef struct rc_api_resolve_hash_request_t
+{
+  const char* username;
+  const char* api_token;
+  const char* game_hash;
+}
+rc_api_resolve_hash_request_t;
+
+typedef struct rc_api_resolve_hash_response_t
+{
+  unsigned game_id;
+
+  rc_api_response_t response;
+}
+rc_api_resolve_hash_response_t;
+
+int rc_api_init_resolve_hash_request(rc_api_request_t* request, const rc_api_resolve_hash_request_t* api_params);
+int rc_api_process_resolve_hash_response(rc_api_resolve_hash_response_t* response, const char* server_response);
+void rc_api_destroy_resolve_hash_response(rc_api_resolve_hash_response_t* response);
+
 /* --- Award Achievement --- */
 
 typedef struct rc_api_award_achievement_request_t

@@ -4,6 +4,53 @@
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
 
+static void test_init_resolve_hash_request()
+{
+  rc_api_resolve_hash_request_t resolve_hash_request;
+  rc_api_request_t request;
+
+  memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
+  resolve_hash_request.username = "Username";
+  resolve_hash_request.api_token = "API_TOKEN";
+  resolve_hash_request.game_hash = "ABCDEF0123456789";
+
+  ASSERT_NUM_EQUALS(rc_api_init_resolve_hash_request(&request, &resolve_hash_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=gameid&u=Username&m=ABCDEF0123456789");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_process_resolve_hash_response_match()
+{
+  rc_api_resolve_hash_response_t resolve_hash_response;
+  const char* server_response = "{\"Success\":true,\"GameID\":1446}";
+
+  memset(&resolve_hash_response, 0, sizeof(resolve_hash_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_resolve_hash_response(&resolve_hash_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(resolve_hash_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(resolve_hash_response.response.error_message);
+  ASSERT_NUM_EQUALS(resolve_hash_response.game_id, 1446);
+
+  rc_api_destroy_resolve_hash_response(&resolve_hash_response);
+}
+
+static void test_process_resolve_hash_response_no_match()
+{
+  rc_api_resolve_hash_response_t resolve_hash_response;
+  const char* server_response = "{\"Success\":true,\"GameID\":0}";
+
+  memset(&resolve_hash_response, 0, sizeof(resolve_hash_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_resolve_hash_response(&resolve_hash_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(resolve_hash_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(resolve_hash_response.response.error_message);
+  ASSERT_NUM_EQUALS(resolve_hash_response.game_id, 0);
+
+  rc_api_destroy_resolve_hash_response(&resolve_hash_response);
+}
+
 static void test_init_award_achievement_request_hardcore()
 {
   rc_api_award_achievement_request_t award_achievement_request;
@@ -282,6 +329,12 @@ static void test_process_submit_lb_entry_response_entries_not_array()
 
 void test_rapi_runtime(void) {
   TEST_SUITE_BEGIN();
+
+  /* gameid */
+  TEST(test_init_resolve_hash_request);
+
+  TEST(test_process_resolve_hash_response_match);
+  TEST(test_process_resolve_hash_response_no_match);
 
   /* awardachievement */
   TEST(test_init_award_achievement_request_hardcore);
