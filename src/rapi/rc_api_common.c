@@ -9,13 +9,16 @@
 #include <string.h>
 
 #define RETROACHIEVEMENTS_HOST "https://retroachievements.org"
+#define RETROACHIEVEMENTS_IMAGE_HOST "http://i.retroachievements.org"
 static char* g_host = NULL;
+static char* g_imagehost = NULL;
+
+/* --- rc_json --- */
 
 static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count);
 static int rc_json_parse_array(const char** json_ptr, rc_json_field_t* field);
 
-static int rc_json_parse_field(const char** json_ptr, rc_json_field_t* field)
-{
+static int rc_json_parse_field(const char** json_ptr, rc_json_field_t* field) {
   int result;
 
   field->value_start = *json_ptr;
@@ -80,8 +83,7 @@ static int rc_json_parse_field(const char** json_ptr, rc_json_field_t* field)
   return RC_OK;
 }
 
-static int rc_json_parse_array(const char** json_ptr, rc_json_field_t* field)
-{
+static int rc_json_parse_array(const char** json_ptr, rc_json_field_t* field) {
   rc_json_field_t unused_field;
   const char* json = *json_ptr;
   int result;
@@ -120,8 +122,7 @@ static int rc_json_parse_array(const char** json_ptr, rc_json_field_t* field)
   return RC_OK;
 }
 
-static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count)
-{
+static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count) {
   rc_json_field_t non_matching_field;
   rc_json_field_t* field;
   const char* json = *json_ptr;
@@ -196,8 +197,7 @@ static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, 
   return RC_OK;
 }
 
-int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_json_field_t* fields, size_t field_count)
-{
+int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_json_field_t* fields, size_t field_count) {
 #ifndef NDEBUG
   if (field_count < 2)
     return RC_INVALID_STATE;
@@ -207,8 +207,7 @@ int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_jso
     return RC_INVALID_STATE;
 #endif
 
-  if (*json == '{')
-  {
+  if (*json == '{') {
     int result = rc_json_parse_object(&json, fields, field_count);
 
     rc_json_get_optional_string(&response->error_message, response, &fields[1], "Error", NULL);
@@ -241,8 +240,7 @@ int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_jso
   return RC_INVALID_JSON;
 }
 
-static int rc_json_missing_field(rc_api_response_t* response, const rc_json_field_t* field)
-{
+static int rc_json_missing_field(rc_api_response_t* response, const rc_json_field_t* field) {
   const char* not_found = " not found in response";
   const size_t not_found_len = strlen(not_found);
   const size_t field_len = strlen(field->name);
@@ -261,8 +259,7 @@ static int rc_json_missing_field(rc_api_response_t* response, const rc_json_fiel
   return 0;
 }
 
-int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_api_response_t* response, rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_api_response_t* response, rc_json_field_t* field, const char* field_name) {
   const char* json = field->value_start;
 
   if (!json)
@@ -271,8 +268,7 @@ int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_
   return (rc_json_parse_object(&json, fields, field_count) == RC_OK);
 }
 
-static int rc_json_get_array_entry_value(rc_json_field_t* field, rc_json_field_t* iterator)
-{
+static int rc_json_get_array_entry_value(rc_json_field_t* field, rc_json_field_t* iterator) {
   if (!iterator->array_size)
     return 0;
 
@@ -290,8 +286,7 @@ static int rc_json_get_array_entry_value(rc_json_field_t* field, rc_json_field_t
   return 1;
 }
 
-int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
   rc_json_field_t iterator;
   rc_json_field_t value;
   unsigned* entry;
@@ -321,8 +316,7 @@ int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, r
   return RC_OK;
 }
 
-int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
   if (!field->value_start || *field->value_start != '[')
     return rc_json_missing_field(response, field);
 
@@ -333,8 +327,7 @@ int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator,
   return 1;
 }
 
-int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, rc_json_field_t* iterator)
-{
+int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, rc_json_field_t* iterator) {
   if (!iterator->array_size)
     return 0;
 
@@ -352,8 +345,7 @@ int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, 
   return 1;
 }
 
-int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_field_t* field, const char* field_name) {
   const char* src = field->value_start;
   size_t len = field->value_end - field->value_start;
   char* dst;
@@ -407,22 +399,19 @@ int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_
   return 1;
 }
 
-void rc_json_get_optional_string(const char** out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name, const char* default_value)
-{
+void rc_json_get_optional_string(const char** out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name, const char* default_value) {
   if (!rc_json_get_string(out, &response->buffer, field, field_name))
     *out = default_value;
 }
 
-int rc_json_get_required_string(const char** out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_required_string(const char** out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
   if (rc_json_get_string(out, &response->buffer, field, field_name))
     return 1;
 
   return rc_json_missing_field(response, field);
 }
 
-int rc_json_get_num(int* out, const rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_num(int* out, const rc_json_field_t* field, const char* field_name) {
   const char* src = field->value_start;
   int value = 0;
   int negative = 0;
@@ -462,22 +451,19 @@ int rc_json_get_num(int* out, const rc_json_field_t* field, const char* field_na
   return 1;
 }
 
-void rc_json_get_optional_num(int* out, const rc_json_field_t* field, const char* field_name, int default_value)
-{
+void rc_json_get_optional_num(int* out, const rc_json_field_t* field, const char* field_name, int default_value) {
   if (!rc_json_get_num(out, field, field_name))
     *out = default_value;
 }
 
-int rc_json_get_required_num(int* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_required_num(int* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
   if (rc_json_get_num(out, field, field_name))
     return 1;
 
   return rc_json_missing_field(response, field);
 }
 
-int rc_json_get_unum(unsigned* out, const rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_unum(unsigned* out, const rc_json_field_t* field, const char* field_name) {
   const char* src = field->value_start;
   int value = 0;
 
@@ -507,22 +493,19 @@ int rc_json_get_unum(unsigned* out, const rc_json_field_t* field, const char* fi
   return 1;
 }
 
-void rc_json_get_optional_unum(unsigned* out, const rc_json_field_t* field, const char* field_name, int default_value)
-{
+void rc_json_get_optional_unum(unsigned* out, const rc_json_field_t* field, const char* field_name, int default_value) {
   if (!rc_json_get_unum(out, field, field_name))
     *out = default_value;
 }
 
-int rc_json_get_required_unum(unsigned* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_required_unum(unsigned* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
   if (rc_json_get_unum(out, field, field_name))
     return 1;
 
   return rc_json_missing_field(response, field);
 }
 
-int rc_json_get_bool(int* out, const rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_bool(int* out, const rc_json_field_t* field, const char* field_name) {
   const char* src = field->value_start;
 
 #ifndef NDEBUG
@@ -548,34 +531,27 @@ int rc_json_get_bool(int* out, const rc_json_field_t* field, const char* field_n
   return 0;
 }
 
-void rc_json_get_optional_bool(int* out, const rc_json_field_t* field, const char* field_name, int default_value)
-{
+void rc_json_get_optional_bool(int* out, const rc_json_field_t* field, const char* field_name, int default_value) {
   if (!rc_json_get_bool(out, field, field_name))
     *out = default_value;
 }
 
-int rc_json_get_required_bool(int* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name)
-{
+int rc_json_get_required_bool(int* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
   if (rc_json_get_bool(out, field, field_name))
     return 1;
 
   return rc_json_missing_field(response, field);
 }
 
-void rc_api_destroy_request(rc_api_request_t* request)
-{
-  rc_buf_destroy(&request->buffer);
-}
+/* --- rc_buf --- */
 
-void rc_buf_init(rc_api_buffer_t* buffer)
-{
+void rc_buf_init(rc_api_buffer_t* buffer) {
   buffer->write = &buffer->data[0];
   buffer->end = &buffer->data[sizeof(buffer->data)];
   buffer->next = NULL;
 }
 
-void rc_buf_destroy(rc_api_buffer_t* buffer)
-{
+void rc_buf_destroy(rc_api_buffer_t* buffer) {
   /* first buffer is not allocated */
   buffer = buffer->next;
 
@@ -587,8 +563,7 @@ void rc_buf_destroy(rc_api_buffer_t* buffer)
   }
 }
 
-char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount)
-{
+char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount) {
   size_t remaining;
   do {
     remaining = buffer->end - buffer->write;
@@ -614,8 +589,7 @@ char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount)
   } while (1);
 }
 
-void rc_buf_consume(rc_api_buffer_t* buffer, const char* start, char* end)
-{
+void rc_buf_consume(rc_api_buffer_t* buffer, const char* start, char* end) {
   do {
     if (buffer->write == start) {
       size_t offset = (end - buffer->data);
@@ -628,23 +602,26 @@ void rc_buf_consume(rc_api_buffer_t* buffer, const char* start, char* end)
   } while (buffer);
 }
 
-void* rc_buf_alloc(rc_api_buffer_t* buffer, size_t amount)
-{
+void* rc_buf_alloc(rc_api_buffer_t* buffer, size_t amount) {
   char* ptr = rc_buf_reserve(buffer, amount);
   rc_buf_consume(buffer, ptr, ptr + amount);
   return (void*)ptr;
 }
 
-void rc_url_builder_init(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, size_t estimated_size)
-{
+void rc_api_destroy_request(rc_api_request_t* request) {
+  rc_buf_destroy(&request->buffer);
+}
+
+/* --- rc_url_builder --- */
+
+void rc_url_builder_init(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, size_t estimated_size) {
   memset(builder, 0, sizeof(*builder));
   builder->buffer = buffer;
   builder->write = builder->start = rc_buf_reserve(buffer, estimated_size);
   builder->end = builder->start + estimated_size;
 }
 
-const char* rc_url_builder_finalize(rc_api_url_builder_t* builder)
-{
+const char* rc_url_builder_finalize(rc_api_url_builder_t* builder) {
   rc_url_builder_append(builder, "", 1);
 
   if (builder->result != RC_OK)
@@ -655,7 +632,6 @@ const char* rc_url_builder_finalize(rc_api_url_builder_t* builder)
 }
 
 static int rc_url_builder_reserve(rc_api_url_builder_t* builder, size_t amount) {
-
   if (builder->result == RC_OK) {
     size_t remaining = builder->end - builder->write;
     if (remaining < amount) {
@@ -743,16 +719,14 @@ void rc_url_builder_append_encoded_str(rc_api_url_builder_t* builder, const char
   }
 }
 
-void rc_url_builder_append(rc_api_url_builder_t* builder, const char* data, size_t len)
-{
+void rc_url_builder_append(rc_api_url_builder_t* builder, const char* data, size_t len) {
   if (rc_url_builder_reserve(builder, len) == RC_OK) {
     memcpy(builder->write, data, len);
     builder->write += len;
   }
 }
 
-static int rc_url_builder_append_param_equals(rc_api_url_builder_t* builder, const char* param)
-{
+static int rc_url_builder_append_param_equals(rc_api_url_builder_t* builder, const char* param) {
   size_t param_len = strlen(param);
 
   if (rc_url_builder_reserve(builder, param_len + 2) == RC_OK) {
@@ -769,8 +743,7 @@ static int rc_url_builder_append_param_equals(rc_api_url_builder_t* builder, con
   return builder->result;
 }
 
-void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char* param, unsigned value)
-{
+void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char* param, unsigned value) {
   if (rc_url_builder_append_param_equals(builder, param) == RC_OK) {
     char num[16];
     int chars = sprintf(num, "%u", value);
@@ -778,8 +751,7 @@ void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char*
   }
 }
 
-void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, int value)
-{
+void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, int value) {
   if (rc_url_builder_append_param_equals(builder, param) == RC_OK) {
     char num[16];
     int chars = sprintf(num, "%d", value);
@@ -787,35 +759,9 @@ void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* 
   }
 }
 
-void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* param, const char* value)
-{
+void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* param, const char* value) {
   rc_url_builder_append_param_equals(builder, param);
   rc_url_builder_append_encoded_str(builder, value);
-}
-
-void rc_api_set_host(const char* hostname)
-{
-  if (g_host != NULL)
-    free(g_host);
-
-  if (hostname != NULL)
-  {
-    if (strstr(hostname, "://"))
-    {
-      g_host = strdup(hostname);
-    }
-    else
-    {
-      const size_t hostname_len = strlen(hostname);
-      g_host = (char*)malloc(hostname_len + 7 + 1);
-      memcpy(g_host, "http://", 7);
-      memcpy(&g_host[7], hostname, hostname_len + 1);
-    }
-  }
-  else
-  {
-    g_host = NULL;
-  }
 }
 
 void rc_api_url_build_dorequest(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, const char* api, const char* username)
@@ -839,4 +785,89 @@ void rc_api_url_build_dorequest(rc_api_url_builder_t* builder, rc_api_buffer_t* 
   rc_url_builder_append_str_param(builder, "u", username);
 
   #undef DOREQUEST_ENDPOINT
+}
+
+/* --- Set Host --- */
+
+static void rc_api_update_host(char** host, const char* hostname) {
+  if (*host != NULL)
+    free(*host);
+
+  if (hostname != NULL) {
+    if (strstr(hostname, "://")) {
+      *host = strdup(hostname);
+    }
+    else {
+      const size_t hostname_len = strlen(hostname);
+      char* newhost = (char*)malloc(hostname_len + 7 + 1);
+      memcpy(newhost, "http://", 7);
+      memcpy(&newhost[7], hostname, hostname_len + 1);
+      *host = newhost;
+    }
+  }
+  else {
+    *host = NULL;
+  }
+}
+
+void rc_api_set_host(const char* hostname) {
+  rc_api_update_host(&g_host, hostname);
+}
+
+void rc_api_set_image_host(const char* hostname) {
+  rc_api_update_host(&g_imagehost, hostname);
+}
+
+/* --- Fetch Image --- */
+
+int rc_api_init_fetch_image_request(rc_api_request_t* request, const rc_api_fetch_image_request_t* api_params) {
+  rc_api_url_builder_t builder;
+
+  rc_buf_init(&request->buffer);
+  rc_url_builder_init(&builder, &request->buffer, 64);
+
+  if (g_imagehost) {
+    rc_url_builder_append(&builder, g_imagehost, strlen(g_imagehost));
+  }
+  else if (g_host) {
+    rc_url_builder_append(&builder, g_host, strlen(g_host));
+  }
+  else {
+    rc_url_builder_append(&builder, RETROACHIEVEMENTS_IMAGE_HOST, sizeof(RETROACHIEVEMENTS_IMAGE_HOST) - 1);
+  }
+
+  switch (api_params->image_type)
+  {
+    case RC_IMAGE_TYPE_GAME:
+      rc_url_builder_append(&builder, "/Images/", 8);
+      rc_url_builder_append(&builder, api_params->image_name, strlen(api_params->image_name));
+      rc_url_builder_append(&builder, ".png", 4);
+      break;
+
+    case RC_IMAGE_TYPE_ACHIEVEMENT:
+      rc_url_builder_append(&builder, "/Badge/", 7);
+      rc_url_builder_append(&builder, api_params->image_name, strlen(api_params->image_name));
+      rc_url_builder_append(&builder, ".png", 4);
+      break;
+
+    case RC_IMAGE_TYPE_ACHIEVEMENT_LOCKED:
+      rc_url_builder_append(&builder, "/Badge/", 7);
+      rc_url_builder_append(&builder, api_params->image_name, strlen(api_params->image_name));
+      rc_url_builder_append(&builder, "_lock.png", 9);
+      break;
+
+    case RC_IMAGE_TYPE_USER:
+      rc_url_builder_append(&builder, "/UserPic/", 9);
+      rc_url_builder_append(&builder, api_params->image_name, strlen(api_params->image_name));
+      rc_url_builder_append(&builder, ".png", 9);
+      break;
+
+    default:
+      return RC_INVALID_STATE;
+  }
+
+  request->url = rc_url_builder_finalize(&builder);
+  request->post_data = NULL;
+
+  return builder.result;
 }

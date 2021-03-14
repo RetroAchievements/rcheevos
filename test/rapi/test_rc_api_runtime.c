@@ -4,8 +4,7 @@
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
 
-static void test_init_resolve_hash_request()
-{
+static void test_init_resolve_hash_request() {
   rc_api_resolve_hash_request_t resolve_hash_request;
   rc_api_request_t request;
 
@@ -21,8 +20,7 @@ static void test_init_resolve_hash_request()
   rc_api_destroy_request(&request);
 }
 
-static void test_process_resolve_hash_response_match()
-{
+static void test_process_resolve_hash_response_match() {
   rc_api_resolve_hash_response_t resolve_hash_response;
   const char* server_response = "{\"Success\":true,\"GameID\":1446}";
 
@@ -36,8 +34,7 @@ static void test_process_resolve_hash_response_match()
   rc_api_destroy_resolve_hash_response(&resolve_hash_response);
 }
 
-static void test_process_resolve_hash_response_no_match()
-{
+static void test_process_resolve_hash_response_no_match() {
   rc_api_resolve_hash_response_t resolve_hash_response;
   const char* server_response = "{\"Success\":true,\"GameID\":0}";
 
@@ -51,8 +48,7 @@ static void test_process_resolve_hash_response_no_match()
   rc_api_destroy_resolve_hash_response(&resolve_hash_response);
 }
 
-static void test_init_ping_request()
-{
+static void test_init_ping_request() {
   rc_api_ping_request_t ping_request;
   rc_api_request_t request;
 
@@ -68,8 +64,7 @@ static void test_init_ping_request()
   rc_api_destroy_request(&request);
 }
 
-static void test_init_ping_request_rich_presence()
-{
+static void test_init_ping_request_rich_presence() {
   rc_api_ping_request_t ping_request;
   rc_api_request_t request;
 
@@ -86,8 +81,7 @@ static void test_init_ping_request_rich_presence()
   rc_api_destroy_request(&request);
 }
 
-static void test_init_ping_request_rich_presence_unicode()
-{
+static void test_init_ping_request_rich_presence_unicode() {
   rc_api_ping_request_t ping_request;
   rc_api_request_t request;
 
@@ -104,8 +98,7 @@ static void test_init_ping_request_rich_presence_unicode()
   rc_api_destroy_request(&request);
 }
 
-static void test_init_ping_request_rich_presence_empty()
-{
+static void test_init_ping_request_rich_presence_empty() {
   rc_api_ping_request_t ping_request;
   rc_api_request_t request;
 
@@ -122,8 +115,7 @@ static void test_init_ping_request_rich_presence_empty()
   rc_api_destroy_request(&request);
 }
 
-static void test_process_ping_response()
-{
+static void test_process_ping_response() {
   rc_api_ping_response_t ping_response;
   const char* server_response = "{\"Success\":true}";
 
@@ -136,8 +128,7 @@ static void test_process_ping_response()
   rc_api_destroy_ping_response(&ping_response);
 }
 
-static void test_init_award_achievement_request_hardcore()
-{
+static void test_init_award_achievement_request_hardcore() {
   rc_api_award_achievement_request_t award_achievement_request;
   rc_api_request_t request;
 
@@ -155,8 +146,7 @@ static void test_init_award_achievement_request_hardcore()
   rc_api_destroy_request(&request);
 }
 
-static void test_init_award_achievement_request_non_hardcore()
-{
+static void test_init_award_achievement_request_non_hardcore() {
   rc_api_award_achievement_request_t award_achievement_request;
   rc_api_request_t request;
 
@@ -174,8 +164,7 @@ static void test_init_award_achievement_request_non_hardcore()
   rc_api_destroy_request(&request);
 }
 
-static void test_init_award_achievement_request_no_hash()
-{
+static void test_init_award_achievement_request_no_hash() {
   rc_api_award_achievement_request_t award_achievement_request;
   rc_api_request_t request;
 
@@ -192,8 +181,7 @@ static void test_init_award_achievement_request_no_hash()
   rc_api_destroy_request(&request);
 }
 
-static void test_process_award_achievement_response_success()
-{
+static void test_process_award_achievement_response_success() {
   rc_api_award_achievement_response_t award_achievement_response;
   const char* server_response = "{\"Success\":true,\"Score\":119102,\"AchievementID\":56481}";
 
@@ -208,8 +196,7 @@ static void test_process_award_achievement_response_success()
   rc_api_destroy_award_achievement_response(&award_achievement_response);
 }
 
-static void test_process_award_achievement_response_hardcore_already_unlocked()
-{
+static void test_process_award_achievement_response_hardcore_already_unlocked() {
   rc_api_award_achievement_response_t award_achievement_response;
   const char* server_response = "{\"Success\":false,\"Error\":\"User already has hardcore and regular achievements awarded.\",\"Score\":119210,\"AchievementID\":56494}";
 
@@ -224,8 +211,7 @@ static void test_process_award_achievement_response_hardcore_already_unlocked()
   rc_api_destroy_award_achievement_response(&award_achievement_response);
 }
 
-static void test_process_award_achievement_response_non_hardcore_already_unlocked()
-{
+static void test_process_award_achievement_response_non_hardcore_already_unlocked() {
   rc_api_award_achievement_response_t award_achievement_response;
   const char* server_response = "{\"Success\":false,\"Error\":\"User already has this achievement awarded.\",\"Score\":119210,\"AchievementID\":56494}";
 
@@ -240,8 +226,7 @@ static void test_process_award_achievement_response_non_hardcore_already_unlocke
   rc_api_destroy_award_achievement_response(&award_achievement_response);
 }
 
-static void test_process_award_achievement_response_generic_failure()
-{
+static void test_process_award_achievement_response_generic_failure() {
   rc_api_award_achievement_response_t award_achievement_response;
   const char* server_response = "{\"Success\":false}";
 
@@ -256,8 +241,7 @@ static void test_process_award_achievement_response_generic_failure()
   rc_api_destroy_award_achievement_response(&award_achievement_response);
 }
 
-static void test_process_award_achievement_response_empty()
-{
+static void test_process_award_achievement_response_empty() {
   rc_api_award_achievement_response_t award_achievement_response;
   const char* server_response = "";
 
@@ -272,8 +256,7 @@ static void test_process_award_achievement_response_empty()
   rc_api_destroy_award_achievement_response(&award_achievement_response);
 }
 
-static void test_process_award_achievement_response_text()
-{
+static void test_process_award_achievement_response_text() {
   rc_api_award_achievement_response_t award_achievement_response;
   const char* server_response = "You do not have access to that resource";
 
@@ -288,8 +271,7 @@ static void test_process_award_achievement_response_text()
   rc_api_destroy_award_achievement_response(&award_achievement_response);
 }
 
-static void test_process_award_achievement_response_no_fields()
-{
+static void test_process_award_achievement_response_no_fields() {
   rc_api_award_achievement_response_t award_achievement_response;
   const char* server_response = "{\"Success\":true}";
 
@@ -304,8 +286,7 @@ static void test_process_award_achievement_response_no_fields()
   rc_api_destroy_award_achievement_response(&award_achievement_response);
 }
 
-static void test_init_submit_lboard_entry_request()
-{
+static void test_init_submit_lboard_entry_request() {
   rc_api_submit_lboard_entry_request_t submit_lboard_entry_request;
   rc_api_request_t request;
 
@@ -323,8 +304,7 @@ static void test_init_submit_lboard_entry_request()
   rc_api_destroy_request(&request);
 }
 
-static void test_init_submit_lboard_entry_request_negative()
-{
+static void test_init_submit_lboard_entry_request_negative() {
   rc_api_submit_lboard_entry_request_t submit_lboard_entry_request;
   rc_api_request_t request;
 
@@ -342,8 +322,7 @@ static void test_init_submit_lboard_entry_request_negative()
   rc_api_destroy_request(&request);
 }
 
-static void test_process_submit_lb_entry_response_success()
-{
+static void test_process_submit_lb_entry_response_success() {
   rc_api_submit_lboard_entry_response_t submit_lb_entry_response;
   rc_api_lboard_entry_t* entry;
   const char* server_response = "{\"Success\":true,\"Response\":{\"Score\":1234,\"BestScore\":2345,"
@@ -373,8 +352,7 @@ static void test_process_submit_lb_entry_response_success()
   rc_api_destroy_submit_lboard_entry_response(&submit_lb_entry_response);
 }
 
-static void test_process_submit_lb_entry_response_no_entries()
-{
+static void test_process_submit_lb_entry_response_no_entries() {
   rc_api_submit_lboard_entry_response_t submit_lb_entry_response;
   const char* server_response = "{\"Success\":true,\"Response\":{\"Score\":1234,\"BestScore\":2345,"
 	  "\"TopEntries\":[],"
@@ -396,8 +374,7 @@ static void test_process_submit_lb_entry_response_no_entries()
   rc_api_destroy_submit_lboard_entry_response(&submit_lb_entry_response);
 }
 
-static void test_process_submit_lb_entry_response_entries_not_array()
-{
+static void test_process_submit_lb_entry_response_entries_not_array() {
   rc_api_submit_lboard_entry_response_t submit_lb_entry_response;
   const char* server_response = "{\"Success\":true,\"Response\":{\"Score\":1234,\"BestScore\":2345,"
 	  "\"TopEntries\":{\"User\":\"Player1\",\"Score\":8765,\"Rank\":1},"

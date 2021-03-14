@@ -4,6 +4,8 @@
 
 #include "../test_framework.h"
 
+#define IMAGEREQUEST_URL "http://i.retroachievements.org"
+
 static void _assert_json_parse_response(rc_api_response_t* response, rc_json_field_t* field, const char* json, int expected_result) {
   int result;
   rc_json_field_t fields[] = {
@@ -462,6 +464,79 @@ static void test_url_builder_append_num_param() {
   rc_buf_destroy(&buffer);
 }
 
+static void test_init_fetch_image_request_game() {
+  rc_api_fetch_image_request_t fetch_image_request;
+  rc_api_request_t request;
+
+  memset(&fetch_image_request, 0, sizeof(fetch_image_request));
+  fetch_image_request.image_name = "0123324";
+  fetch_image_request.image_type = RC_IMAGE_TYPE_GAME;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, IMAGEREQUEST_URL "/Images/0123324.png");
+  ASSERT_PTR_NULL(request.post_data);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_image_request_achievement() {
+  rc_api_fetch_image_request_t fetch_image_request;
+  rc_api_request_t request;
+
+  memset(&fetch_image_request, 0, sizeof(fetch_image_request));
+  fetch_image_request.image_name = "135764";
+  fetch_image_request.image_type = RC_IMAGE_TYPE_ACHIEVEMENT;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, IMAGEREQUEST_URL "/Badge/135764.png");
+  ASSERT_PTR_NULL(request.post_data);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_image_request_achievement_locked() {
+  rc_api_fetch_image_request_t fetch_image_request;
+  rc_api_request_t request;
+
+  memset(&fetch_image_request, 0, sizeof(fetch_image_request));
+  fetch_image_request.image_name = "135764";
+  fetch_image_request.image_type = RC_IMAGE_TYPE_ACHIEVEMENT_LOCKED;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, IMAGEREQUEST_URL "/Badge/135764_lock.png");
+  ASSERT_PTR_NULL(request.post_data);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_image_request_user() {
+  rc_api_fetch_image_request_t fetch_image_request;
+  rc_api_request_t request;
+
+  memset(&fetch_image_request, 0, sizeof(fetch_image_request));
+  fetch_image_request.image_name = "Username";
+  fetch_image_request.image_type = RC_IMAGE_TYPE_USER;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, IMAGEREQUEST_URL "/UserPic/Username.png");
+  ASSERT_PTR_NULL(request.post_data);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_image_request_unknown() {
+  rc_api_fetch_image_request_t fetch_image_request;
+  rc_api_request_t request;
+
+  memset(&fetch_image_request, 0, sizeof(fetch_image_request));
+  fetch_image_request.image_name = "12345";
+  fetch_image_request.image_type = -1;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
 void test_rapi_common(void) {
   TEST_SUITE_BEGIN();
 
@@ -554,6 +629,14 @@ void test_rapi_common(void) {
   TEST(test_url_builder_append_str_param);
   TEST(test_url_builder_append_num_param);
   TEST(test_url_builder_append_unum_param);
+
+  /* fetch_image */
+  TEST(test_init_fetch_image_request_game);
+  TEST(test_init_fetch_image_request_achievement);
+  TEST(test_init_fetch_image_request_achievement_locked);
+  TEST(test_init_fetch_image_request_user);
+  TEST(test_init_fetch_image_request_unknown);
+
 
   TEST_SUITE_END();
 }
