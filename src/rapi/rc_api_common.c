@@ -557,15 +557,31 @@ void rc_buf_init(rc_api_buffer_t* buffer) {
 }
 
 void rc_buf_destroy(rc_api_buffer_t* buffer) {
+#ifndef NDEBUG
+  int count = 0;
+  int wasted = 0;
+  int total = 0;
+#endif
+
   /* first buffer is not allocated */
   buffer = buffer->next;
 
   /* deallocate any additional buffers */
   while (buffer) {
     rc_api_buffer_t* next = buffer->next;
+#ifndef NDEBUG
+    total += (int)(buffer->end - buffer->data);
+    wasted += (int)(buffer->end - buffer->write);
+    ++count;
+#endif
     free(buffer);
     buffer = next;
   }
+
+#ifndef NDEBUG
+  printf("-- %d allocated buffers (%d/%d used, %d wasted, %0.2f%% efficiency)\n", count,
+         total - wasted, total, wasted, (float)(100.0 - (wasted * 100.0) / total));
+#endif
 }
 
 char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount) {

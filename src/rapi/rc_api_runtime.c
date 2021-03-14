@@ -154,6 +154,20 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
   }
   rc_json_get_optional_string(&response->image_name, &response->response, &patchdata_fields[3], "ImageIcon", "");
 
+  /* estimate the amount of space necessary to store the rich presence script, achievements, and leaderboards.
+     determine how much space each takes as a string in the JSON, then subtract out the non-data (field names, punctuation)
+     and add space for the structures. */
+  len = patchdata_fields[4].value_end - patchdata_fields[4].value_start; /* rich presence */
+
+  len += (patchdata_fields[5].value_end - patchdata_fields[5].value_start) - /* achievements */
+          patchdata_fields[5].array_size * (130 - sizeof(rc_api_achievement_definition_t));
+
+  len += (patchdata_fields[6].value_end - patchdata_fields[6].value_start) - /* leaderboards */
+          patchdata_fields[6].array_size * (60 - sizeof(rc_api_leaderboard_definition_t));
+
+  rc_buf_reserve(&response->response.buffer, len);
+  /* end estimation */
+
   rc_json_get_optional_string(&response->rich_presence_script, &response->response, &patchdata_fields[4], "RichPresencePatch", "");
   if (!response->rich_presence_script)
     response->rich_presence_script = "";
