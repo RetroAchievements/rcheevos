@@ -1,5 +1,7 @@
 #include "rc_api.h"
 
+#include "rcheevos.h"
+
 #include "../test_framework.h"
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
@@ -46,6 +48,230 @@ static void test_process_resolve_hash_response_no_match() {
   ASSERT_NUM_EQUALS(resolve_hash_response.game_id, 0);
 
   rc_api_destroy_resolve_hash_response(&resolve_hash_response);
+}
+
+static void test_init_fetch_game_data_request() {
+  rc_api_fetch_game_data_request_t fetch_game_data_request;
+  rc_api_request_t request;
+
+  memset(&fetch_game_data_request, 0, sizeof(fetch_game_data_request));
+  fetch_game_data_request.username = "Username";
+  fetch_game_data_request.api_token = "API_TOKEN";
+  fetch_game_data_request.game_id = 1234;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=patch&u=Username&g=1234");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_process_fetch_game_data_response_empty() {
+  rc_api_fetch_game_data_response_t fetch_game_data_response;
+  const char* server_response = "{\"Success\":true,\"PatchData\":{"
+      "\"ID\":177,\"Title\":\"My Game\",\"ConsoleID\":23,\"ImageIcon\":\"/Images/012345.png\","
+      "\"Achievements\":[],\"Leaderboards\":[]"
+      "}}";
+
+  memset(&fetch_game_data_response, 0, sizeof(fetch_game_data_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_data_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.id, 177);
+  ASSERT_STR_EQUALS(fetch_game_data_response.title, "My Game");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.console_id, 23);
+  ASSERT_STR_EQUALS(fetch_game_data_response.image_name, "012345");
+  ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 0);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 0);
+
+  rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
+}
+
+static void test_process_fetch_game_data_response_achievements() {
+  rc_api_fetch_game_data_response_t fetch_game_data_response;
+  const char* server_response = "{\"Success\":true,\"PatchData\":{"
+      "\"ID\":20,\"Title\":\"Another Amazing Game\",\"ConsoleID\":19,\"ImageIcon\":\"/Images/112233.png\","
+      "\"Achievements\":["
+       "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+        "\"MemAddr\":\"0=1\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+        "\"Created\":1367266583,\"Modified\":1376929305},"
+       "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
+        "\"MemAddr\":\"0=2\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
+        "\"Created\":1376970283,\"Modified\":1376970283},"
+       "{\"ID\":5503,\"Title\":\"Ach3\",\"Description\":\"Desc3\",\"Flags\":5,\"Points\":0,"
+        "\"MemAddr\":\"0=3\",\"Author\":\"User2\",\"BadgeName\":\"00236\","
+        "\"Created\":1376969412,\"Modified\":1376969412},"
+       "{\"ID\":5504,\"Title\":\"Ach4\",\"Description\":\"Desc4\",\"Flags\":3,\"Points\":10,"
+        "\"MemAddr\":\"0=4\",\"Author\":\"User1\",\"BadgeName\":\"00236\","
+        "\"Created\":1504474554,\"Modified\":1504474554}"
+      "],\"Leaderboards\":[]"
+      "}}";
+  rc_api_achievement_definition_t* achievement;
+
+  memset(&fetch_game_data_response, 0, sizeof(fetch_game_data_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_data_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.id, 20);
+  ASSERT_STR_EQUALS(fetch_game_data_response.title, "Another Amazing Game");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.console_id, 19);
+  ASSERT_STR_EQUALS(fetch_game_data_response.image_name, "112233");
+  ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 4);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 0);
+
+  ASSERT_PTR_NOT_NULL(fetch_game_data_response.achievements);
+  achievement = fetch_game_data_response.achievements;
+
+  ASSERT_NUM_EQUALS(achievement->id, 5501);
+  ASSERT_STR_EQUALS(achievement->title, "Ach1");
+  ASSERT_STR_EQUALS(achievement->description, "Desc1");
+  ASSERT_NUM_EQUALS(achievement->category, RC_ACHIEVEMENT_CATEGORY_CORE);
+  ASSERT_NUM_EQUALS(achievement->points, 5);
+  ASSERT_STR_EQUALS(achievement->definition, "0=1");
+  ASSERT_STR_EQUALS(achievement->author, "User1");
+  ASSERT_STR_EQUALS(achievement->badge_name, "00234");
+  ASSERT_NUM_EQUALS(achievement->created, 1367266583);
+  ASSERT_NUM_EQUALS(achievement->updated, 1376929305);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5502);
+  ASSERT_STR_EQUALS(achievement->title, "Ach2");
+  ASSERT_STR_EQUALS(achievement->description, "Desc2");
+  ASSERT_NUM_EQUALS(achievement->category, RC_ACHIEVEMENT_CATEGORY_CORE);
+  ASSERT_NUM_EQUALS(achievement->points, 2);
+  ASSERT_STR_EQUALS(achievement->definition, "0=2");
+  ASSERT_STR_EQUALS(achievement->author, "User1");
+  ASSERT_STR_EQUALS(achievement->badge_name, "00235");
+  ASSERT_NUM_EQUALS(achievement->created, 1376970283);
+  ASSERT_NUM_EQUALS(achievement->updated, 1376970283);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5503);
+  ASSERT_STR_EQUALS(achievement->title, "Ach3");
+  ASSERT_STR_EQUALS(achievement->description, "Desc3");
+  ASSERT_NUM_EQUALS(achievement->category, RC_ACHIEVEMENT_CATEGORY_UNOFFICIAL);
+  ASSERT_NUM_EQUALS(achievement->points, 0);
+  ASSERT_STR_EQUALS(achievement->definition, "0=3");
+  ASSERT_STR_EQUALS(achievement->author, "User2");
+  ASSERT_STR_EQUALS(achievement->badge_name, "00236");
+  ASSERT_NUM_EQUALS(achievement->created, 1376969412);
+  ASSERT_NUM_EQUALS(achievement->updated, 1376969412);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5504);
+  ASSERT_STR_EQUALS(achievement->title, "Ach4");
+  ASSERT_STR_EQUALS(achievement->description, "Desc4");
+  ASSERT_NUM_EQUALS(achievement->category, RC_ACHIEVEMENT_CATEGORY_CORE);
+  ASSERT_NUM_EQUALS(achievement->points, 10);
+  ASSERT_STR_EQUALS(achievement->definition, "0=4");
+  ASSERT_STR_EQUALS(achievement->author, "User1");
+  ASSERT_STR_EQUALS(achievement->badge_name, "00236");
+  ASSERT_NUM_EQUALS(achievement->created, 1504474554);
+  ASSERT_NUM_EQUALS(achievement->updated, 1504474554);
+
+  rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
+}
+
+static void test_process_fetch_game_data_response_leaderboards() {
+  rc_api_fetch_game_data_response_t fetch_game_data_response;
+  const char* server_response = "{\"Success\":true,\"PatchData\":{"
+      "\"ID\":177,\"Title\":\"Another Amazing Game\",\"ConsoleID\":19,\"ImageIcon\":\"/Images/112233.png\","
+      "\"Achievements\":[],\"Leaderboards\":["
+       "{\"ID\":4401,\"Title\":\"Leaderboard1\",\"Description\":\"Desc1\","
+        "\"Mem\":\"0=1\",\"Format\":\"SCORE\"},"
+       "{\"ID\":4402,\"Title\":\"Leaderboard2\",\"Description\":\"Desc2\","
+        "\"Mem\":\"0=1\",\"Format\":\"SECS\"},"
+       "{\"ID\":4403,\"Title\":\"Leaderboard3\",\"Description\":\"Desc3\","
+        "\"Mem\":\"0=1\",\"Format\":\"UNKNOWN\"}"
+      "]}}";
+  rc_api_leaderboard_definition_t* leaderboard;
+
+  memset(&fetch_game_data_response, 0, sizeof(fetch_game_data_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_data_response.response.error_message);
+  ASSERT_STR_EQUALS(fetch_game_data_response.title, "Another Amazing Game");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.console_id, 19);
+  ASSERT_STR_EQUALS(fetch_game_data_response.image_name, "112233");
+  ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 0);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 3);
+
+  ASSERT_PTR_NOT_NULL(fetch_game_data_response.leaderboards);
+  leaderboard = fetch_game_data_response.leaderboards;
+
+  ASSERT_NUM_EQUALS(leaderboard->id, 4401);
+  ASSERT_STR_EQUALS(leaderboard->title, "Leaderboard1");
+  ASSERT_STR_EQUALS(leaderboard->description, "Desc1");
+  ASSERT_STR_EQUALS(leaderboard->definition, "0=1");
+  ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
+
+  ++leaderboard;
+  ASSERT_NUM_EQUALS(leaderboard->id, 4402);
+  ASSERT_STR_EQUALS(leaderboard->title, "Leaderboard2");
+  ASSERT_STR_EQUALS(leaderboard->description, "Desc2");
+  ASSERT_STR_EQUALS(leaderboard->definition, "0=1");
+  ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SECONDS);
+
+  ++leaderboard;
+  ASSERT_NUM_EQUALS(leaderboard->id, 4403);
+  ASSERT_STR_EQUALS(leaderboard->title, "Leaderboard3");
+  ASSERT_STR_EQUALS(leaderboard->description, "Desc3");
+  ASSERT_STR_EQUALS(leaderboard->definition, "0=1");
+  ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_VALUE);
+
+  rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
+}
+
+static void test_process_fetch_game_data_response_rich_presence() {
+  rc_api_fetch_game_data_response_t fetch_game_data_response;
+  const char* server_response = "{\"Success\":true,\"PatchData\":{"
+      "\"ID\":177,\"Title\":\"Some Other Game\",\"ConsoleID\":2,\"ImageIcon\":\"/Images/000001.png\","
+      "\"Achievements\":[],\"Leaderboards\":[],"
+      "\"RichPresencePatch\":\"Display:\\r\\nTest\\r\\n\""
+      "}}";
+
+  memset(&fetch_game_data_response, 0, sizeof(fetch_game_data_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_data_response.response.error_message);
+  ASSERT_STR_EQUALS(fetch_game_data_response.title, "Some Other Game");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.console_id, 2);
+  ASSERT_STR_EQUALS(fetch_game_data_response.image_name, "000001");
+  ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "Display:\r\nTest\r\n");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 0);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 0);
+
+  rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
+}
+
+static void test_process_fetch_game_data_response_rich_presence_null() {
+  rc_api_fetch_game_data_response_t fetch_game_data_response;
+  const char* server_response = "{\"Success\":true,\"PatchData\":{"
+      "\"ID\":177,\"Title\":\"Some Other Game\",\"ConsoleID\":2,\"ImageIcon\":\"/Images/000001.png\","
+      "\"Achievements\":[],\"Leaderboards\":[],"
+      "\"RichPresencePatch\":null"
+      "}}";
+
+  memset(&fetch_game_data_response, 0, sizeof(fetch_game_data_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_data_response.response.error_message);
+  ASSERT_STR_EQUALS(fetch_game_data_response.title, "Some Other Game");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.console_id, 2);
+  ASSERT_STR_EQUALS(fetch_game_data_response.image_name, "000001");
+  ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 0);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 0);
+
+  rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
 }
 
 static void test_init_ping_request() {
@@ -397,6 +623,15 @@ void test_rapi_runtime(void) {
 
   TEST(test_process_resolve_hash_response_match);
   TEST(test_process_resolve_hash_response_no_match);
+
+  /* patch */
+  TEST(test_init_fetch_game_data_request);
+
+  TEST(test_process_fetch_game_data_response_empty);
+  TEST(test_process_fetch_game_data_response_achievements);
+  TEST(test_process_fetch_game_data_response_leaderboards);
+  TEST(test_process_fetch_game_data_response_rich_presence);
+  TEST(test_process_fetch_game_data_response_rich_presence_null);
 
   /* ping */
   TEST(test_init_ping_request);

@@ -3,6 +3,8 @@
 
 #include "rc_error.h"
 
+#include <time.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -135,6 +137,62 @@ rc_api_resolve_hash_response_t;
 int rc_api_init_resolve_hash_request(rc_api_request_t* request, const rc_api_resolve_hash_request_t* api_params);
 int rc_api_process_resolve_hash_response(rc_api_resolve_hash_response_t* response, const char* server_response);
 void rc_api_destroy_resolve_hash_response(rc_api_resolve_hash_response_t* response);
+
+/* --- Fetch Game Data --- */
+
+typedef struct rc_api_fetch_game_data_request_t {
+  const char* username;
+  const char* api_token;
+  unsigned game_id;
+}
+rc_api_fetch_game_data_request_t;
+
+typedef struct rc_api_leaderboard_definition_t {
+  unsigned id;
+  int format;
+  const char* title;
+  const char* description;
+  const char* definition;
+}
+rc_api_leaderboard_definition_t;
+
+typedef struct rc_api_achievement_definition_t {
+  unsigned id;
+  unsigned points;
+  unsigned category;
+  const char* title;
+  const char* description;
+  const char* definition;
+  const char* author;
+  const char* badge_name;
+  time_t created;
+  time_t updated;
+}
+rc_api_achievement_definition_t;
+
+#define RC_ACHIEVEMENT_CATEGORY_CORE 3
+#define RC_ACHIEVEMENT_CATEGORY_UNOFFICIAL 5
+
+typedef struct rc_api_fetch_game_data_response_t {
+  unsigned id;
+  unsigned console_id;
+  const char* title;
+  const char* image_name;
+  const char* rich_presence_script;
+
+  rc_api_achievement_definition_t* achievements;
+  unsigned num_achievements;
+
+  rc_api_leaderboard_definition_t* leaderboards;
+  unsigned num_leaderboards;
+
+  rc_api_response_t response;
+}
+rc_api_fetch_game_data_response_t;
+
+int rc_api_init_fetch_game_data_request(rc_api_request_t* request, const rc_api_fetch_game_data_request_t* api_params);
+int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* response, const char* server_response);
+void rc_api_destroy_fetch_game_data_response(rc_api_fetch_game_data_response_t* response);
 
 /* --- Ping --- */
 

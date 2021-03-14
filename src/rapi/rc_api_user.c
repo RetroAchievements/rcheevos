@@ -5,8 +5,7 @@
 
 /* --- Login --- */
 
-int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_request_t* api_params)
-{
+int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_request_t* api_params) {
   rc_api_url_builder_t builder;
 
   rc_buf_init(&request->buffer);
@@ -28,8 +27,7 @@ int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_requ
   return builder.result;
 }
 
-int rc_api_process_login_response(rc_api_login_response_t* response, const char* server_response)
-{
+int rc_api_process_login_response(rc_api_login_response_t* response, const char* server_response) {
   int result;
   rc_json_field_t fields[] = {
     {"Success"},
@@ -58,15 +56,13 @@ int rc_api_process_login_response(rc_api_login_response_t* response, const char*
   return RC_OK;
 }
 
-void rc_api_destroy_login_response(rc_api_login_response_t* response)
-{
+void rc_api_destroy_login_response(rc_api_login_response_t* response) {
   rc_buf_destroy(&response->response.buffer);
 }
 
 /* --- Start Session --- */
 
-int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_start_session_request_t* api_params)
-{
+int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_start_session_request_t* api_params) {
   rc_api_url_builder_t builder;
 
   rc_buf_init(&request->buffer);
@@ -93,8 +89,7 @@ int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_st
   return builder.result;
 }
 
-int rc_api_process_start_session_response(rc_api_start_session_response_t* response, const char* server_response)
-{
+int rc_api_process_start_session_response(rc_api_start_session_response_t* response, const char* server_response) {
   rc_json_field_t fields[] = {
     {"Success"},
     {"Error"}
@@ -106,15 +101,13 @@ int rc_api_process_start_session_response(rc_api_start_session_response_t* respo
   return rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
 }
 
-void rc_api_destroy_start_session_response(rc_api_start_session_response_t* response)
-{
+void rc_api_destroy_start_session_response(rc_api_start_session_response_t* response) {
   rc_buf_destroy(&response->response.buffer);
 }
 
 /* --- Fetch User Unlocks --- */
 
-int rc_api_init_fetch_user_unlocks_request(rc_api_request_t* request, const rc_api_fetch_user_unlocks_request_t* api_params)
-{
+int rc_api_init_fetch_user_unlocks_request(rc_api_request_t* request, const rc_api_fetch_user_unlocks_request_t* api_params) {
   rc_api_url_builder_t builder;
 
   rc_buf_init(&request->buffer);
@@ -133,8 +126,7 @@ int rc_api_init_fetch_user_unlocks_request(rc_api_request_t* request, const rc_a
   return builder.result;
 }
 
-int rc_api_process_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response, const char* server_response)
-{
+int rc_api_process_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response, const char* server_response) {
   int result;
   rc_json_field_t fields[] = {
     {"Success"},
@@ -157,7 +149,6 @@ int rc_api_process_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_respons
   return result;
 }
 
-void rc_api_destroy_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response)
-{
+void rc_api_destroy_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response) {
   rc_buf_destroy(&response->response.buffer);
 }

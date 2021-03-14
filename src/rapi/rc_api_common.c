@@ -360,6 +360,11 @@ int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_
     return 0;
   }
 
+  if (len == 4 && memcmp(field->value_start, "null", 4) == 0) {
+    *out = NULL;
+    return 1;
+  }
+
   *out = dst = rc_buf_reserve(buffer, len);
 
   if (*src == '\"') {
