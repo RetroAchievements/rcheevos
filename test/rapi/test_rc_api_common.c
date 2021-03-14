@@ -565,6 +565,12 @@ void test_rapi_common(void) {
   TEST_PARAMS2(test_json_get_string, "A \\\"Quoted\\\" String", "A \"Quoted\" String");
   TEST_PARAMS2(test_json_get_string, "This\\r\\nThat", "This\r\nThat");
   TEST_PARAMS2(test_json_get_string, "This\\/That", "This/That");
+  TEST_PARAMS2(test_json_get_string, "\\u0065", "e");
+  TEST_PARAMS2(test_json_get_string, "\\u00a9", "\xc2\xa9");
+  TEST_PARAMS2(test_json_get_string, "\\u2260", "\xe2\x89\xa0");
+  TEST_PARAMS2(test_json_get_string, "\\ud83d\\udeb6", "\xf0\x9f\x9a\xb6"); /* surrogate pair */
+  TEST_PARAMS2(test_json_get_string, "\\ud83d", "\xef\xbf\xbd"); /* surrogate lead with no tail */
+  TEST_PARAMS2(test_json_get_string, "\\udeb6", "\xef\xbf\xbd"); /* surrogate tail with no lead */
   TEST(test_json_get_optional_string);
   TEST(test_json_get_required_string);
 

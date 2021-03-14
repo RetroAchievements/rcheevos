@@ -345,6 +345,60 @@ int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, 
   return 1;
 }
 
+static unsigned rc_json_decode_hex4(const char* input) {
+  char hex[5];
+
+  memcpy(hex, input, 4);
+  hex[4] = '\0';
+
+  return strtol(hex, NULL, 16);
+}
+
+static int rc_json_ucs32_to_utf8(unsigned char* dst, unsigned ucs32_char) {
+  if (ucs32_char < 0x80) {
+    dst[0] = (ucs32_char & 0x7F);
+    return 1;
+  }
+
+  if (ucs32_char < 0x0800) {
+    dst[1] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+    dst[0] = 0xC0 | (ucs32_char & 0x1F);
+    return 2;
+  }
+
+  if (ucs32_char < 0x010000) {
+    dst[2] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+    dst[1] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+    dst[0] = 0xE0 | (ucs32_char & 0x0F);
+    return 3;
+  }
+
+  if (ucs32_char < 0x200000) {
+    dst[3] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+    dst[2] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+    dst[1] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+    dst[0] = 0xF0 | (ucs32_char & 0x07);
+    return 4;
+  }
+
+  if (ucs32_char < 0x04000000) {
+    dst[4] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+    dst[3] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+    dst[2] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+    dst[1] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+    dst[0] = 0xF8 | (ucs32_char & 0x03);
+    return 5;
+  }
+
+  dst[5] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+  dst[4] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+  dst[3] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+  dst[2] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+  dst[1] = 0x80 | (ucs32_char & 0x3F); ucs32_char >>= 6;
+  dst[0] = 0xFC | (ucs32_char & 0x01);
+  return 6;
+}
+
 int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_field_t* field, const char* field_name) {
   const char* src = field->value_start;
   size_t len = field->value_end - field->value_start;
@@ -385,7 +439,28 @@ int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_
         }
 
         if (*src == 'u') {
-          /* TODO */
+          unsigned ucs32_char = rc_json_decode_hex4(src + 1);
+          src += 5;
+
+          if (ucs32_char >= 0xD800 && ucs32_char < 0xE000) {
+            /* surrogate lead - look for surrogate tail */
+            if (ucs32_char < 0xDC00 && src[0] == '\\' && src[1] == 'u') {
+              const unsigned surrogate = rc_json_decode_hex4(src + 2);
+              src += 6;
+
+              if (surrogate >= 0xDC00 && surrogate < 0xE000) {
+                /* found a surrogate tail, merge them */
+                ucs32_char = (((ucs32_char - 0xD800) << 10) | (surrogate - 0xDC00)) + 0x10000;
+              }
+            }
+
+            if (!(ucs32_char & 0xFFFF0000)) {
+              /* invalid surrogate pair, fallback to replacement char */
+              ucs32_char = 0xFFFD;
+            }
+          }
+
+          dst += rc_json_ucs32_to_utf8((unsigned char*)dst, ucs32_char);
           continue;
         }
 
