@@ -732,7 +732,7 @@ void rc_url_builder_append_encoded_str(rc_api_url_builder_t* builder, const char
           *builder->write++ = '+';
         } else {
           *builder->write++ = '%';
-          *builder->write++ = hex[c >> 4];
+          *builder->write++ = hex[((unsigned char)c) >> 4];
           *builder->write++ = hex[c & 0x0F];
         }
         break;

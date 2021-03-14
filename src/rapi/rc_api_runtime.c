@@ -54,6 +54,50 @@ void rc_api_destroy_resolve_hash_response(rc_api_resolve_hash_response_t* respon
   rc_buf_destroy(&response->response.buffer);
 }
 
+/* --- Ping --- */
+
+int rc_api_init_ping_request(rc_api_request_t* request, const rc_api_ping_request_t* api_params)
+{
+  rc_api_url_builder_t builder;
+
+  rc_buf_init(&request->buffer);
+  rc_api_url_build_dorequest(&builder, &request->buffer, "ping", api_params->username);
+  rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
+
+  request->url = rc_url_builder_finalize(&builder);
+
+  if (builder.result != RC_OK)
+    return builder.result;
+
+  rc_url_builder_init(&builder, &request->buffer, 48);
+  rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
+
+  if (api_params->rich_presence && *api_params->rich_presence)
+    rc_url_builder_append_str_param(&builder, "m", api_params->rich_presence);
+
+  request->post_data = rc_url_builder_finalize(&builder);
+
+  return builder.result;
+}
+
+int rc_api_process_ping_response(rc_api_ping_response_t* response, const char* server_response)
+{
+  rc_json_field_t fields[] = {
+    {"Success"},
+    {"Error"}
+  };
+
+  memset(response, 0, sizeof(*response));
+  rc_buf_init(&response->response.buffer);
+
+  return rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+}
+
+void rc_api_destroy_ping_response(rc_api_ping_response_t* response)
+{
+  rc_buf_destroy(&response->response.buffer);
+}
+
 /* --- Award Achievement --- */
 
 int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_api_award_achievement_request_t* api_params)
