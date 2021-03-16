@@ -329,7 +329,7 @@ static void test_json_get_unum_array(const char* input, unsigned expected_count,
   rc_api_response_t response;
   rc_json_field_t field;
   int result;
-  unsigned count;
+  unsigned count = 0xFFFFFFFF;
   unsigned *values;
   char buffer[128];
 

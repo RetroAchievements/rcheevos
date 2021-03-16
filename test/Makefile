@@ -163,5 +163,8 @@ test: $(OBJ)
 runtests: test
 	@./test$(EXE)
 
+valgrind: test
+	@valgrind --leak-check=full ./test$(EXE)
+
 clean:
 	rm -f test$(EXE) $(OBJ)

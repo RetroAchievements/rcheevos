@@ -317,8 +317,10 @@ int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, r
 }
 
 int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
-  if (!field->value_start || *field->value_start != '[')
+  if (!field->value_start || *field->value_start != '[') {
+    *num_entries = 0;
     return rc_json_missing_field(response, field);
+  }
 
   memcpy(iterator, field, sizeof(*iterator));
   ++iterator->value_start; /* skip [ */

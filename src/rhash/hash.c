@@ -759,7 +759,10 @@ static int rc_hash_pce_track(char hash[33], void* track_handle)
    * the string "PC Engine CD-ROM SYSTEM" should exist at 32 bytes into the sector
    * http://shu.sheldows.com/shu/download/pcedocs/pce_cdrom.html
    */
-  rc_cd_read_sector(track_handle, 1, buffer, 128);
+  if (rc_cd_read_sector(track_handle, 1, buffer, 128) < 128)
+  {
+    return rc_hash_error("Not a PC Engine CD");
+  }
 
   /* normal PC Engine CD will have a header block in sector 1 */
   if (memcmp("PC Engine CD-ROM SYSTEM", &buffer[32], 23) == 0)
