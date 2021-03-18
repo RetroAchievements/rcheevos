@@ -959,7 +959,7 @@ void test_hash(void) {
 
   /* Atari 7800 - includes 128-byte header */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_7800, "test.a78", 16384, "455f07d8500f3fabc54906737866167f");
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_7800, "test.a78", 16384 + 128, "6473a1bb6573ca5a33017bf2ddd6bc70");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_7800, "test.a78", 16384 + 128, "f063cca169b2e49afc339a253a9abadb");
 
   /* Atari Jaguar */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_JAGUAR, "test.jag", 0x400000, "a247ec8a8c42e18fcb80702dfadac14b");

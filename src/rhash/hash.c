@@ -502,9 +502,8 @@ static int rc_hash_3do(char hash[33], const char* path)
 
 static int rc_hash_7800(char hash[33], uint8_t* buffer, size_t buffer_size)
 {
-  /* if the file contains a header, ignore it (expect ROM data to be multiple of 4KB) */
-  uint32_t calc_size = ((uint32_t)buffer_size / 0x1000) * 0x1000;
-  if (buffer_size - calc_size == 128)
+  /* if the file contains a header, ignore it */
+  if (memcmp(&buffer[1], "ATARI7800", 9) == 0)
   {
     rc_hash_verbose("Ignoring 7800 header");
 
