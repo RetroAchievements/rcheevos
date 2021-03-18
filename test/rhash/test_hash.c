@@ -321,6 +321,35 @@ static void test_hash_3do_long_directory()
 
 /* ========================================================================= */
 
+static void test_hash_atari_7800()
+{
+  size_t image_size;
+  uint8_t* image = generate_atari_7800_file(16, 0, &image_size);
+  char hash[33];
+  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_ATARI_7800, image, image_size);
+  free(image);
+
+  ASSERT_NUM_EQUALS(result, 1);
+  ASSERT_STR_EQUALS(hash, "455f07d8500f3fabc54906737866167f");
+  ASSERT_NUM_EQUALS(image_size, 16384);
+}
+
+static void test_hash_atari_7800_with_header()
+{
+  size_t image_size;
+  uint8_t* image = generate_atari_7800_file(16, 1, &image_size);
+  char hash[33];
+  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_ATARI_7800, image, image_size);
+  free(image);
+
+  /* NOTE: expectation is that this hash matches the hash in test_hash_atari_7800 */
+  ASSERT_NUM_EQUALS(result, 1);
+  ASSERT_STR_EQUALS(hash, "455f07d8500f3fabc54906737866167f");
+  ASSERT_NUM_EQUALS(image_size, 16384 + 128);
+}
+
+/* ========================================================================= */
+
 static void test_hash_dreamcast_single_bin()
 {
   size_t image_size;
@@ -957,9 +986,9 @@ void test_hash(void) {
   /* Atari 2600 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_2600, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");
 
-  /* Atari 7800 - includes 128-byte header */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_7800, "test.a78", 16384, "455f07d8500f3fabc54906737866167f");
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_7800, "test.a78", 16384 + 128, "f063cca169b2e49afc339a253a9abadb");
+  /* Atari 7800 */
+  TEST(test_hash_atari_7800);
+  TEST(test_hash_atari_7800_with_header);
 
   /* Atari Jaguar */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_JAGUAR, "test.jag", 0x400000, "a247ec8a8c42e18fcb80702dfadac14b");
