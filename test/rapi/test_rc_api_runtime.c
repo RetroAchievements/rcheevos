@@ -367,7 +367,7 @@ static void test_init_award_achievement_request_hardcore() {
 
   ASSERT_NUM_EQUALS(rc_api_init_award_achievement_request(&request, &award_achievement_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=awardachievement&u=Username&a=1234&h=1&m=ABCDEF0123456789");
-  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=b8aefaad6f9659e2164bc60da0c3b64d");
 
   rc_api_destroy_request(&request);
 }
@@ -379,13 +379,13 @@ static void test_init_award_achievement_request_non_hardcore() {
   memset(&award_achievement_request, 0, sizeof(award_achievement_request));
   award_achievement_request.username = "Username";
   award_achievement_request.api_token = "API_TOKEN";
-  award_achievement_request.achievement_id = 5432;
+  award_achievement_request.achievement_id = 1234;
   award_achievement_request.hardcore = 0;
   award_achievement_request.game_hash = "ABABCBCBDEDEFFFF";
 
   ASSERT_NUM_EQUALS(rc_api_init_award_achievement_request(&request, &award_achievement_request), RC_OK);
-  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=awardachievement&u=Username&a=5432&h=0&m=ABABCBCBDEDEFFFF");
-  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=awardachievement&u=Username&a=1234&h=0&m=ABABCBCBDEDEFFFF");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=ed81d6ecf825f8cbe3ae1edace098892");
 
   rc_api_destroy_request(&request);
 }
@@ -397,12 +397,12 @@ static void test_init_award_achievement_request_no_hash() {
   memset(&award_achievement_request, 0, sizeof(award_achievement_request));
   award_achievement_request.username = "Username";
   award_achievement_request.api_token = "API_TOKEN";
-  award_achievement_request.achievement_id = 1234;
+  award_achievement_request.achievement_id = 5432;
   award_achievement_request.hardcore = 1;
 
   ASSERT_NUM_EQUALS(rc_api_init_award_achievement_request(&request, &award_achievement_request), RC_OK);
-  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=awardachievement&u=Username&a=1234&h=1");
-  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=awardachievement&u=Username&a=5432&h=1");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=31048257ab1788386e71ab0c222aa5c8");
 
   rc_api_destroy_request(&request);
 }

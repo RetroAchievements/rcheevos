@@ -3,7 +3,6 @@
 
 #include "rcheevos.h"
 #include "../rcheevos/rc_compat.h"
-#include "../rhash/md5.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -307,6 +306,8 @@ void rc_api_destroy_ping_response(rc_api_ping_response_t* response) {
 
 int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_api_award_achievement_request_t* api_params) {
   rc_api_url_builder_t builder;
+  char signature[96];
+  char checksum[33];
 
   rc_buf_init(&request->buffer);
   rc_api_url_build_dorequest(&builder, &request->buffer, "awardachievement", api_params->username);
@@ -319,8 +320,13 @@ int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_ap
   if (builder.result != RC_OK)
     return builder.result;
 
+  /* Evaluate the signature. */
+  snprintf(signature, sizeof(signature), "%u%s%u", api_params->achievement_id, api_params->username, api_params->hardcore ? 1 : 0);
+  rc_api_generate_checksum(checksum, signature);
+
   rc_url_builder_init(&builder, &request->buffer, 48);
   rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
+  rc_url_builder_append_str_param(&builder, "v", checksum);
   request->post_data = rc_url_builder_finalize(&builder);
 
   return builder.result;
@@ -371,8 +377,6 @@ int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_
   rc_api_url_builder_t builder;
   char signature[96];
   char checksum[33];
-  md5_state_t md5;
-  md5_byte_t digest[16];
 
   rc_buf_init(&request->buffer);
   rc_api_url_build_dorequest(&builder, &request->buffer, "submitlbentry", api_params->username);
@@ -387,13 +391,7 @@ int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_
 
   /* Evaluate the signature. */
   snprintf(signature, sizeof(signature), "%u%s%u", api_params->leaderboard_id, api_params->username, api_params->leaderboard_id);
-  md5_init(&md5);
-  md5_append(&md5, (unsigned char*)signature, (int)strlen(signature));
-  md5_finish(&md5, digest);
-  snprintf(checksum, sizeof(checksum), "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-    digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],
-    digest[8], digest[9], digest[10], digest[11], digest[12], digest[13], digest[14], digest[15]
-  );
+  rc_api_generate_checksum(checksum, signature);
 
   rc_url_builder_init(&builder, &request->buffer, 48);
   rc_url_builder_append_str_param(&builder, "t", api_params->api_token);

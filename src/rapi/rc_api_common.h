@@ -60,7 +60,7 @@ void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char*
 void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* param, const char* value);
 
 void rc_api_url_build_dorequest(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, const char* api, const char* username);
-void rc_api_url_get_image_host(rc_api_url_builder_t* builder);
+void rc_api_generate_checksum(char checksum[33], const char* data);
 
 #ifdef __cplusplus
 }

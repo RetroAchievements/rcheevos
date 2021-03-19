@@ -3,6 +3,8 @@
 
 #include "rc_compat.h"
 
+#include "../rhash/md5.h"
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -708,6 +710,19 @@ void* rc_buf_alloc(rc_api_buffer_t* buffer, size_t amount) {
 
 void rc_api_destroy_request(rc_api_request_t* request) {
   rc_buf_destroy(&request->buffer);
+}
+
+void rc_api_generate_checksum(char checksum[33], const char* data) {
+  md5_state_t md5;
+  md5_byte_t digest[16];
+
+  md5_init(&md5);
+  md5_append(&md5, (unsigned char*)data, (int)strlen(data));
+  md5_finish(&md5, digest);
+  snprintf(checksum, 33, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+      digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],
+      digest[8], digest[9], digest[10], digest[11], digest[12], digest[13], digest[14], digest[15]
+  );
 }
 
 /* --- rc_url_builder --- */
