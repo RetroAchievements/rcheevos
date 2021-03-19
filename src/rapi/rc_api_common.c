@@ -15,6 +15,8 @@
 static char* g_host = NULL;
 static char* g_imagehost = NULL;
 
+#undef DEBUG_BUFFERS
+
 /* --- rc_json --- */
 
 static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count);
@@ -423,26 +425,36 @@ int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_
     return 1;
   }
 
-  *out = dst = rc_buf_reserve(buffer, len);
-
   if (*src == '\"') {
     ++src;
-    while (*src != '\"') {
+
+    if (*src == '\"') {
+      /* simple optimization for empty string - don't allocate space */
+      *out = "";
+      return 1;
+    }
+
+    *out = dst = rc_buf_reserve(buffer, len - 1); /* -2 for quotes, +1 for null terminator */
+
+    do {
       if (*src == '\\') {
         ++src;
         if (*src == 'n') {
+          /* newline */
           ++src;
           *dst++ = '\n';
           continue;
         }
 
         if (*src == 'r') {
+          /* carriage return */
           ++src;
           *dst++ = '\r';
           continue;
         }
 
         if (*src == 'u') {
+          /* unicode character */
           unsigned ucs32_char = rc_json_decode_hex4(src + 1);
           src += 5;
 
@@ -472,8 +484,10 @@ int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_
       }
 
       *dst++ = *src++;
-    }
+    } while (*src != '\"');
+
   } else {
+    *out = dst = rc_buf_reserve(buffer, len + 1); /* +1 for null terminator */
     memcpy(dst, src, len);
     dst += len;
   }
@@ -636,7 +650,7 @@ void rc_buf_init(rc_api_buffer_t* buffer) {
 }
 
 void rc_buf_destroy(rc_api_buffer_t* buffer) {
-#ifndef NDEBUG
+#ifdef DEBUG_BUFFERS
   int count = 0;
   int wasted = 0;
   int total = 0;
@@ -648,7 +662,7 @@ void rc_buf_destroy(rc_api_buffer_t* buffer) {
   /* deallocate any additional buffers */
   while (buffer) {
     rc_api_buffer_t* next = buffer->next;
-#ifndef NDEBUG
+#ifdef DEBUG_BUFFERS
     total += (int)(buffer->end - buffer->data);
     wasted += (int)(buffer->end - buffer->write);
     ++count;
@@ -657,7 +671,7 @@ void rc_buf_destroy(rc_api_buffer_t* buffer) {
     buffer = next;
   }
 
-#ifndef NDEBUG
+#ifdef DEBUG_BUFFERS
   printf("-- %d allocated buffers (%d/%d used, %d wasted, %0.2f%% efficiency)\n", count,
          total - wasted, total, wasted, (float)(100.0 - (wasted * 100.0) / total));
 #endif
@@ -695,6 +709,9 @@ void rc_buf_consume(rc_api_buffer_t* buffer, const char* start, char* end) {
       size_t offset = (end - buffer->data);
       offset = (offset + 7) & ~7;
       buffer->write = &buffer->data[offset];
+
+      if (buffer->write > buffer->end)
+        buffer->write = buffer->end;
       break;
     }
 

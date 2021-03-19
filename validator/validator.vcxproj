@@ -126,6 +126,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\rapi\rc_api_common.c" />
+    <ClCompile Include="..\src\rapi\rc_api_runtime.c" />
     <ClCompile Include="..\src\rcheevos\alloc.c" />
     <ClCompile Include="..\src\rcheevos\compat.c" />
     <ClCompile Include="..\src\rcheevos\condition.c" />

@@ -13,6 +13,9 @@
     <Filter Include="src\rhash">
       <UniqueIdentifier>{efdc689a-471b-432e-8ecb-dde3a3202949}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\rapi">
+      <UniqueIdentifier>{8570c19e-e882-409f-84d8-b87887371c26}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\rcheevos\format.c">
@@ -153,6 +156,12 @@
     </ClCompile>
     <ClCompile Include="..\src\rcheevos\compat.c">
       <Filter>src\rcheevos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rapi\rc_api_runtime.c">
+      <Filter>src\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rapi\rc_api_common.c">
+      <Filter>src\rapi</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

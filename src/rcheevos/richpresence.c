@@ -55,7 +55,7 @@ static const char* rc_parse_line(const char* line, const char** end, rc_parse_st
       --endline;
   } else {
     /* remove trailing whitespace before the comment marker */
-    while (endline > line && isspace(endline[-1]))
+    while (endline > line && isspace((int)((unsigned char*)endline)[-1]))
       --endline;
   }
 

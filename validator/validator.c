@@ -144,7 +144,7 @@ static void validate_patchdata_file(const char* patchdata_file) {
   FILE* file;
   rc_api_fetch_game_data_response_t fetch_game_data_response;
   int result;
-  int i;
+  size_t i;
 
   file = fopen(patchdata_file, "rb");
   if (!file) {
