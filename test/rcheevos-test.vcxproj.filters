@@ -299,10 +299,16 @@
     <ClInclude Include="..\include\rc_error.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\rc_api.h">
+    <ClInclude Include="..\src\rapi\rc_api_common.h">
       <Filter>src\rapi</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\rapi\rc_api_common.h">
+    <ClInclude Include="..\include\rc_api_user.h">
+      <Filter>src\rapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_api_request.h">
+      <Filter>src\rapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_api_runtime.h">
       <Filter>src\rapi</Filter>
     </ClInclude>
   </ItemGroup>

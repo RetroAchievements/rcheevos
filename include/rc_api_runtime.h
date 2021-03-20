@@ -1,42 +1,13 @@
-#ifndef RC_API_H
-#define RC_API_H
+#ifndef RC_API_RUNTIME_H
+#define RC_API_RUNTIME_H
 
-#include "rc_error.h"
+#include "rc_api_request.h"
 
 #include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct rc_api_buffer_t {
-  char* write;
-  char* end;
-  struct rc_api_buffer_t* next;
-  char data[256]; /* actual size of data[] may be larger than 256 bytes for buffers allocated in the next chain */
-}
-rc_api_buffer_t;
-
-typedef struct rc_api_request_t {
-  const char* url;
-  const char* post_data;
-
-  rc_api_buffer_t buffer;
-}
-rc_api_request_t;
-
-typedef struct rc_api_response_t {
-  int succeeded;
-  const char* error_message;
-
-  rc_api_buffer_t buffer;
-}
-rc_api_response_t;
-
-void rc_api_destroy_request(rc_api_request_t* request);
-
-/* ===== General Functions ===== */
-void rc_api_set_host(const char* hostname);
 
 /* --- Fetch Image --- */
 
@@ -53,71 +24,6 @@ rc_api_fetch_image_request_t;
 
 int rc_api_init_fetch_image_request(rc_api_request_t* request, const rc_api_fetch_image_request_t* api_params);
 
-/* ===== User Functions ===== */
-/* --- Login --- */
-
-typedef struct rc_api_login_request_t {
-  const char* username;
-  const char* api_token;
-  const char* password;
-}
-rc_api_login_request_t;
-
-typedef struct rc_api_login_response_t {
-  const char* username;
-  const char* api_token;
-  unsigned score;
-  unsigned num_unread_messages;
-
-  rc_api_response_t response;
-}
-rc_api_login_response_t;
-
-int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_request_t* api_params);
-int rc_api_process_login_response(rc_api_login_response_t* response, const char* server_response);
-void rc_api_destroy_login_response(rc_api_login_response_t* response);
-
-/* --- Start Session --- */
-
-typedef struct rc_api_start_session_request_t {
-  const char* username;
-  const char* api_token;
-  unsigned game_id;
-}
-rc_api_start_session_request_t;
-
-typedef struct rc_api_start_session_response_t {
-  rc_api_response_t response;
-}
-rc_api_start_session_response_t;
-
-int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_start_session_request_t* api_params);
-int rc_api_process_start_session_response(rc_api_start_session_response_t* response, const char* server_response);
-void rc_api_destroy_start_session_response(rc_api_start_session_response_t* response);
-
-/* --- Fetch User Unlocks --- */
-
-typedef struct rc_api_fetch_user_unlocks_request_t {
-  const char* username;
-  const char* api_token;
-  unsigned game_id;
-  int hardcore;
-}
-rc_api_fetch_user_unlocks_request_t;
-
-typedef struct rc_api_fetch_user_unlocks_response_t {
-  unsigned* achievement_ids;
-  unsigned num_achievement_ids;
-
-  rc_api_response_t response;
-}
-rc_api_fetch_user_unlocks_response_t;
-
-int rc_api_init_fetch_user_unlocks_request(rc_api_request_t* request, const rc_api_fetch_user_unlocks_request_t* api_params);
-int rc_api_process_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response, const char* server_response);
-void rc_api_destroy_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response);
-
-/* ===== Runtime Functions ===== */
 /* --- Resolve Hash --- */
 
 typedef struct rc_api_resolve_hash_request_t {
@@ -275,4 +181,4 @@ void rc_api_destroy_submit_lboard_entry_response(rc_api_submit_lboard_entry_resp
 }
 #endif
 
-#endif /* RC_API_H */
+#endif /* RC_API_RUNTIME_H */

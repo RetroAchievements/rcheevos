@@ -1,4 +1,4 @@
-#include "rc_api.h"
+#include "rc_api_user.h"
 
 #include "../test_framework.h"
 #include "rc_compat.h"

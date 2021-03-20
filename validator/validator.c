@@ -1,6 +1,6 @@
 #include "rc_internal.h"
 #include "rc_url.h"
-#include "rc_api.h"
+#include "rc_api_runtime.h"
 
 #include <stdio.h>
 #include <stddef.h>

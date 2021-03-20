@@ -1,4 +1,4 @@
-#include "rc_api.h"
+#include "rc_api_runtime.h"
 
 #include "rcheevos.h"
 

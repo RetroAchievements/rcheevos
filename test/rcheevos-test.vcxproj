@@ -201,8 +201,10 @@
     <ClCompile Include="rhash\test_hash.c" />
     <ClCompile Include="rurl\test_url.c" />
     <ClCompile Include="test.c" />
-    <ClInclude Include="..\include\rc_api.h" />
     <ClInclude Include="..\include\rcheevos.h" />
+    <ClInclude Include="..\include\rc_api_request.h" />
+    <ClInclude Include="..\include\rc_api_runtime.h" />
+    <ClInclude Include="..\include\rc_api_user.h" />
     <ClInclude Include="..\include\rc_consoles.h" />
     <ClInclude Include="..\include\rc_hash.h" />
     <ClInclude Include="..\include\rc_url.h" />
