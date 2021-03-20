@@ -500,6 +500,20 @@ static int rc_hash_3do(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
+static int rc_hash_7800(char hash[33], uint8_t* buffer, size_t buffer_size)
+{
+  /* if the file contains a header, ignore it */
+  if (memcmp(&buffer[1], "ATARI7800", 9) == 0)
+  {
+    rc_hash_verbose("Ignoring 7800 header");
+
+    buffer += 128;
+    buffer_size -= 128;
+  }
+
+  return rc_hash_buffer(hash, buffer, buffer_size);
+}
+
 static int rc_hash_arcade(char hash[33], const char* path)
 {
   /* arcade hash is just the hash of the filename (no extension) - the cores are pretty stringent about having the right ROM data */
@@ -1217,7 +1231,6 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
 
     case RC_CONSOLE_APPLE_II:
     case RC_CONSOLE_ATARI_2600:
-    case RC_CONSOLE_ATARI_7800:
     case RC_CONSOLE_ATARI_JAGUAR:
     case RC_CONSOLE_COLECOVISION:
     case RC_CONSOLE_GAMEBOY:
@@ -1240,6 +1253,9 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WONDERSWAN:
       return rc_hash_buffer(hash, buffer, buffer_size);
+
+    case RC_CONSOLE_ATARI_7800:
+      return rc_hash_7800(hash, buffer, buffer_size);
 
     case RC_CONSOLE_ATARI_LYNX:
       return rc_hash_lynx(hash, buffer, buffer_size);
@@ -1492,7 +1508,6 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
 
     case RC_CONSOLE_APPLE_II:
     case RC_CONSOLE_ATARI_2600:
-    case RC_CONSOLE_ATARI_7800:
     case RC_CONSOLE_ATARI_JAGUAR:
     case RC_CONSOLE_COLECOVISION:
     case RC_CONSOLE_GAMEBOY:
@@ -1523,6 +1538,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
 
       return rc_hash_whole_file(hash, console_id, path);
 
+    case RC_CONSOLE_ATARI_7800:
     case RC_CONSOLE_ATARI_LYNX:
     case RC_CONSOLE_NINTENDO:
     case RC_CONSOLE_SUPER_NINTENDO:

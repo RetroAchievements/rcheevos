@@ -134,6 +134,44 @@ uint8_t* generate_fds_file(size_t sides, int with_header, size_t* image_size)
   return image;
 }
 
+uint8_t* generate_atari_7800_file(size_t kb, int with_header, size_t* image_size)
+{
+  uint8_t* image;
+  size_t size_needed = kb * 1024;
+  if (with_header)
+    size_needed += 128;
+
+  image = (uint8_t*)calloc(size_needed, 1);
+  if (image != NULL)
+  {
+    if (with_header)
+    {
+      const uint8_t header[128] = {
+        3, 'A', 'T', 'A', 'R', 'I', '7', '8', '0', '0', 0, 0, 0, 0, 0, 0, /* version + magic text */
+        0, 'G', 'a', 'm', 'e', 'N', 'a', 'm', 'e', 0, 0, 0, 0, 0, 0, 0,   /* game name */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                   /* game name (cont'd) */
+        0, 0, 2, 0, 0, 0, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0,                   /* attributes */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                   /* unused */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                   /* unused */
+        0, 0, 0, 0, 'A', 'C', 'T', 'U', 'A', 'L', ' ', 'C', 'A', 'R', 'T',/* magic text*/
+        'D', 'A', 'T', 'A', ' ', 'S', 'T', 'A', 'R', 'T', 'S', ' ', 'H', 'E', 'R', 'E' /* magic text */
+      };
+      memcpy(image, header, sizeof(header));
+      image[50] = (uint8_t)(kb / 4); /* 4-byte value starting at address 49 is the ROM size without header */
+
+      fill_image(image + 128, size_needed - 128);
+    }
+    else
+    {
+      fill_image(image, size_needed);
+    }
+  }
+
+  if (image_size)
+    *image_size = size_needed;
+  return image;
+}
+
 uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size, size_t* image_size)
 {
   const uint8_t volume_header[] = {
