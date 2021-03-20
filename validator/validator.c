@@ -84,10 +84,11 @@ static void validate_richpresence(const char* script)
 {
   char* buffer;
   rc_richpresence_t* compiled;
+  int lines;
 
-  int ret = rc_richpresence_size(script);
+  int ret = rc_richpresence_size_lines(script, &lines);
   if (ret < 0) {
-    printf("%s", rc_error_str(ret));
+    printf("Line %d: %s", lines, rc_error_str(ret));
     return;
   }
 

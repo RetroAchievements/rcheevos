@@ -410,6 +410,7 @@ typedef struct {
 rc_richpresence_t;
 
 int rc_richpresence_size(const char* script);
+int rc_richpresence_size_lines(const char* script, int* lines_read);
 rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_State* L, int funcs_ndx);
 int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
 void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, lua_State* L);
