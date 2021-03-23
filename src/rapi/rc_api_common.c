@@ -2,7 +2,7 @@
 #include "rc_api_request.h"
 #include "rc_api_runtime.h"
 
-#include "rc_compat.h"
+#include "../rcheevos/rc_compat.h"
 
 #include "../rhash/md5.h"
 
@@ -680,7 +680,7 @@ void rc_buf_destroy(rc_api_buffer_t* buffer) {
 
 char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount) {
   size_t remaining;
-  do {
+  while (buffer) {
     remaining = buffer->end - buffer->write;
     if (remaining >= amount)
       return buffer->write;
@@ -693,7 +693,7 @@ char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount) {
       const size_t alloc_size = (amount + buffer_prefix_size + 0xFF) & ~0xFF;
       buffer->next = (rc_api_buffer_t*)malloc(alloc_size);
       if (!buffer->next)
-        return NULL;
+        break;
 
       buffer->next->write = buffer->next->data;
       buffer->next->end = buffer->next->write + (alloc_size - buffer_prefix_size);
@@ -701,7 +701,9 @@ char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount) {
     }
 
     buffer = buffer->next;
-  } while (1);
+  }
+
+  return NULL;
 }
 
 void rc_buf_consume(rc_api_buffer_t* buffer, const char* start, char* end) {
@@ -746,10 +748,17 @@ void rc_api_generate_checksum(char checksum[33], const char* data) {
 /* --- rc_url_builder --- */
 
 void rc_url_builder_init(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, size_t estimated_size) {
+  rc_api_buffer_t* used_buffer;
+
   memset(builder, 0, sizeof(*builder));
   builder->buffer = buffer;
   builder->write = builder->start = rc_buf_reserve(buffer, estimated_size);
-  builder->end = builder->start + estimated_size;
+
+  used_buffer = buffer;
+  while (used_buffer && used_buffer->write != builder->write)
+    used_buffer = used_buffer->next;
+
+  builder->end = (used_buffer) ? used_buffer->end : builder->start + estimated_size;
 }
 
 const char* rc_url_builder_finalize(rc_api_url_builder_t* builder) {
@@ -877,7 +886,7 @@ static int rc_url_builder_append_param_equals(rc_api_url_builder_t* builder, con
 void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char* param, unsigned value) {
   if (rc_url_builder_append_param_equals(builder, param) == RC_OK) {
     char num[16];
-    int chars = sprintf(num, "%u", value);
+    int chars = snprintf(num, sizeof(num), "%u", value);
     rc_url_builder_append(builder, num, chars);
   }
 }
@@ -885,7 +894,7 @@ void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char*
 void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, int value) {
   if (rc_url_builder_append_param_equals(builder, param) == RC_OK) {
     char num[16];
-    int chars = sprintf(num, "%d", value);
+    int chars = snprintf(num, sizeof(num), "%d", value);
     rc_url_builder_append(builder, num, chars);
   }
 }
@@ -930,10 +939,15 @@ static void rc_api_update_host(char** host, const char* hostname) {
     }
     else {
       const size_t hostname_len = strlen(hostname);
-      char* newhost = (char*)malloc(hostname_len + 7 + 1);
-      memcpy(newhost, "http://", 7);
-      memcpy(&newhost[7], hostname, hostname_len + 1);
-      *host = newhost;
+      if (hostname_len == 0) {
+        *host = NULL;
+      }
+      else {
+        char* newhost = (char*)malloc(hostname_len + 7 + 1);
+        memcpy(newhost, "http://", 7);
+        memcpy(&newhost[7], hostname, hostname_len + 1);
+        *host = newhost;
+      }
     }
   }
   else {

@@ -142,14 +142,16 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
     return RC_MISSING_VALUE;
 
   /* ImageIcon will be '/Images/0123456.png' - only return the '0123456' */
-  str = patchdata_fields[3].value_end - 5;
-  if (memcmp(str, ".png\"", 5) == 0) {
-    patchdata_fields[3].value_end -= 5;
+  if (patchdata_fields[3].value_end) {
+    str = patchdata_fields[3].value_end - 5;
+    if (memcmp(str, ".png\"", 5) == 0) {
+      patchdata_fields[3].value_end -= 5;
 
-    while (str > patchdata_fields[3].value_start && str[-1] != '/')
-      --str;
+      while (str > patchdata_fields[3].value_start && str[-1] != '/')
+        --str;
 
-    patchdata_fields[3].value_start = str;
+      patchdata_fields[3].value_start = str;
+    }
   }
   rc_json_get_optional_string(&response->image_name, &response->response, &patchdata_fields[3], "ImageIcon", "");
 
