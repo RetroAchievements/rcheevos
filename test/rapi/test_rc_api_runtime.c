@@ -22,6 +22,33 @@ static void test_init_resolve_hash_request() {
   rc_api_destroy_request(&request);
 }
 
+static void test_init_resolve_hash_request_no_hash() {
+  rc_api_resolve_hash_request_t resolve_hash_request;
+  rc_api_request_t request;
+
+  memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
+  resolve_hash_request.username = "Username";
+  resolve_hash_request.api_token = "API_TOKEN";
+
+  ASSERT_NUM_EQUALS(rc_api_init_resolve_hash_request(&request, &resolve_hash_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_resolve_hash_request_empty_hash() {
+  rc_api_resolve_hash_request_t resolve_hash_request;
+  rc_api_request_t request;
+
+  memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
+  resolve_hash_request.username = "Username";
+  resolve_hash_request.api_token = "API_TOKEN";
+  resolve_hash_request.game_hash = "";
+
+  ASSERT_NUM_EQUALS(rc_api_init_resolve_hash_request(&request, &resolve_hash_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_process_resolve_hash_response_match() {
   rc_api_resolve_hash_response_t resolve_hash_response;
   const char* server_response = "{\"Success\":true,\"GameID\":1446}";
@@ -62,6 +89,19 @@ static void test_init_fetch_game_data_request() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=patch&u=Username&g=1234");
   ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_game_data_request_no_id() {
+  rc_api_fetch_game_data_request_t fetch_game_data_request;
+  rc_api_request_t request;
+
+  memset(&fetch_game_data_request, 0, sizeof(fetch_game_data_request));
+  fetch_game_data_request.username = "Username";
+  fetch_game_data_request.api_token = "API_TOKEN";
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request), RC_INVALID_STATE);
 
   rc_api_destroy_request(&request);
 }
@@ -290,6 +330,19 @@ static void test_init_ping_request() {
   rc_api_destroy_request(&request);
 }
 
+static void test_init_ping_request_no_game_id() {
+  rc_api_ping_request_t ping_request;
+  rc_api_request_t request;
+
+  memset(&ping_request, 0, sizeof(ping_request));
+  ping_request.username = "Username";
+  ping_request.api_token = "API_TOKEN";
+
+  ASSERT_NUM_EQUALS(rc_api_init_ping_request(&request, &ping_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_init_ping_request_rich_presence() {
   rc_api_ping_request_t ping_request;
   rc_api_request_t request;
@@ -403,6 +456,21 @@ static void test_init_award_achievement_request_no_hash() {
   ASSERT_NUM_EQUALS(rc_api_init_award_achievement_request(&request, &award_achievement_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=awardachievement&u=Username&a=5432&h=1");
   ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=31048257ab1788386e71ab0c222aa5c8");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_award_achievement_request_no_achievement_id() {
+  rc_api_award_achievement_request_t award_achievement_request;
+  rc_api_request_t request;
+
+  memset(&award_achievement_request, 0, sizeof(award_achievement_request));
+  award_achievement_request.username = "Username";
+  award_achievement_request.api_token = "API_TOKEN";
+  award_achievement_request.hardcore = 1;
+  award_achievement_request.game_hash = "ABABCBCBDEDEFFFF";
+
+  ASSERT_NUM_EQUALS(rc_api_init_award_achievement_request(&request, &award_achievement_request), RC_INVALID_STATE);
 
   rc_api_destroy_request(&request);
 }
@@ -530,7 +598,25 @@ static void test_init_submit_lboard_entry_request() {
   rc_api_destroy_request(&request);
 }
 
-static void test_init_submit_lboard_entry_request_negative() {
+static void test_init_submit_lboard_entry_request_zero_value() {
+  rc_api_submit_lboard_entry_request_t submit_lboard_entry_request;
+  rc_api_request_t request;
+
+  memset(&submit_lboard_entry_request, 0, sizeof(submit_lboard_entry_request));
+  submit_lboard_entry_request.username = "Username";
+  submit_lboard_entry_request.api_token = "API_TOKEN";
+  submit_lboard_entry_request.leaderboard_id = 1111;
+  submit_lboard_entry_request.score = 0;
+  submit_lboard_entry_request.game_hash = "ABCDEF0123456789";
+
+  ASSERT_NUM_EQUALS(rc_api_init_submit_lboard_entry_request(&request, &submit_lboard_entry_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=submitlbentry&u=Username&i=1111&s=0&m=ABCDEF0123456789");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=e9c5f5fe259db297d9d35b76bb7b99d2");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_submit_lboard_entry_request_negative_value() {
   rc_api_submit_lboard_entry_request_t submit_lboard_entry_request;
   rc_api_request_t request;
 
@@ -544,6 +630,21 @@ static void test_init_submit_lboard_entry_request_negative() {
   ASSERT_NUM_EQUALS(rc_api_init_submit_lboard_entry_request(&request, &submit_lboard_entry_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=submitlbentry&u=Username&i=1111&s=-234781&m=ABCDEF0123456789");
   ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=e9c5f5fe259db297d9d35b76bb7b99d2");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_submit_lboard_entry_request_no_leaderboard_id() {
+  rc_api_submit_lboard_entry_request_t submit_lboard_entry_request;
+  rc_api_request_t request;
+
+  memset(&submit_lboard_entry_request, 0, sizeof(submit_lboard_entry_request));
+  submit_lboard_entry_request.username = "Username";
+  submit_lboard_entry_request.api_token = "API_TOKEN";
+  submit_lboard_entry_request.score = 12345;
+  submit_lboard_entry_request.game_hash = "ABCDEF0123456789";
+
+  ASSERT_NUM_EQUALS(rc_api_init_submit_lboard_entry_request(&request, &submit_lboard_entry_request), RC_INVALID_STATE);
 
   rc_api_destroy_request(&request);
 }
@@ -620,12 +721,15 @@ void test_rapi_runtime(void) {
 
   /* gameid */
   TEST(test_init_resolve_hash_request);
+  TEST(test_init_resolve_hash_request_no_hash);
+  TEST(test_init_resolve_hash_request_empty_hash);
 
   TEST(test_process_resolve_hash_response_match);
   TEST(test_process_resolve_hash_response_no_match);
 
   /* patch */
   TEST(test_init_fetch_game_data_request);
+  TEST(test_init_fetch_game_data_request_no_id);
 
   TEST(test_process_fetch_game_data_response_empty);
   TEST(test_process_fetch_game_data_response_achievements);
@@ -635,6 +739,7 @@ void test_rapi_runtime(void) {
 
   /* ping */
   TEST(test_init_ping_request);
+  TEST(test_init_ping_request_no_game_id);
   TEST(test_init_ping_request_rich_presence);
   TEST(test_init_ping_request_rich_presence_unicode);
   TEST(test_init_ping_request_rich_presence_empty);
@@ -645,6 +750,7 @@ void test_rapi_runtime(void) {
   TEST(test_init_award_achievement_request_hardcore);
   TEST(test_init_award_achievement_request_non_hardcore);
   TEST(test_init_award_achievement_request_no_hash);
+  TEST(test_init_award_achievement_request_no_achievement_id);
 
   TEST(test_process_award_achievement_response_success);
   TEST(test_process_award_achievement_response_hardcore_already_unlocked);
@@ -656,7 +762,9 @@ void test_rapi_runtime(void) {
 
   /* submitlbentry */
   TEST(test_init_submit_lboard_entry_request);
-  TEST(test_init_submit_lboard_entry_request_negative);
+  TEST(test_init_submit_lboard_entry_request_zero_value);
+  TEST(test_init_submit_lboard_entry_request_negative_value);
+  TEST(test_init_submit_lboard_entry_request_no_leaderboard_id);
 
   TEST(test_process_submit_lb_entry_response_success);
   TEST(test_process_submit_lb_entry_response_no_entries);

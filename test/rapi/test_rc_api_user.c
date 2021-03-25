@@ -22,6 +22,20 @@ static void test_init_start_session_request()
   rc_api_destroy_request(&request);
 }
 
+static void test_init_start_session_request_no_game()
+{
+  rc_api_start_session_request_t start_session_request;
+  rc_api_request_t request;
+
+  memset(&start_session_request, 0, sizeof(start_session_request));
+  start_session_request.username = "Username";
+  start_session_request.api_token = "API_TOKEN";
+
+  ASSERT_NUM_EQUALS(rc_api_init_start_session_request(&request, &start_session_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_process_start_session_response()
 {
   rc_api_start_session_response_t start_session_response;
@@ -89,6 +103,36 @@ static void test_init_login_request_token()
   ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=login&u=Username");
   ASSERT_STR_EQUALS(request.post_data, "t=ABCDEFGHIJKLMNOP");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_login_request_password_and_token()
+{
+  rc_api_login_request_t login_request;
+  rc_api_request_t request;
+
+  memset(&login_request, 0, sizeof(login_request));
+  login_request.username = "Username";
+  login_request.password = "Pa$$w0rd!";
+  login_request.api_token = "ABCDEFGHIJKLMNOP";
+
+  ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=login&u=Username");
+  ASSERT_STR_EQUALS(request.post_data, "p=Pa%24%24w0rd%21");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_login_request_no_password_or_token()
+{
+  rc_api_login_request_t login_request;
+  rc_api_request_t request;
+
+  memset(&login_request, 0, sizeof(login_request));
+  login_request.username = "Username";
+
+  ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_INVALID_STATE);
 
   rc_api_destroy_request(&request);
 }
@@ -380,8 +424,9 @@ static void test_init_fetch_user_unlocks_response_several_items()
 void test_rapi_user(void) {
   TEST_SUITE_BEGIN();
 
-  /* postactivity */
+  /* start session */
   TEST(test_init_start_session_request);
+  TEST(test_init_start_session_request_no_game);
 
   TEST(test_process_start_session_response);
 
@@ -389,6 +434,8 @@ void test_rapi_user(void) {
   TEST(test_init_login_request_password);
   TEST(test_init_login_request_password_long);
   TEST(test_init_login_request_token);
+  TEST(test_init_login_request_password_and_token);
+  TEST(test_init_login_request_no_password_or_token);
   TEST(test_init_login_request_alternate_host);
 
   TEST(test_process_login_response_success);

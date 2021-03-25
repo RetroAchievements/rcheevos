@@ -14,6 +14,10 @@ int rc_api_init_resolve_hash_request(rc_api_request_t* request, const rc_api_res
   rc_api_url_builder_t builder;
 
   rc_buf_init(&request->buffer);
+
+  if (!api_params->game_hash || !api_params->game_hash[0])
+    return RC_INVALID_STATE;
+
   rc_api_url_build_dorequest(&builder, &request->buffer, "gameid", api_params->username);
   rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
   request->url = rc_url_builder_finalize(&builder);
@@ -57,6 +61,10 @@ int rc_api_init_fetch_game_data_request(rc_api_request_t* request, const rc_api_
   rc_api_url_builder_t builder;
 
   rc_buf_init(&request->buffer);
+
+  if (api_params->game_id == 0)
+    return RC_INVALID_STATE;
+
   rc_api_url_build_dorequest(&builder, &request->buffer, "patch", api_params->username);
   rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
   request->url = rc_url_builder_finalize(&builder);
@@ -269,6 +277,10 @@ int rc_api_init_ping_request(rc_api_request_t* request, const rc_api_ping_reques
   rc_api_url_builder_t builder;
 
   rc_buf_init(&request->buffer);
+
+  if (api_params->game_id == 0)
+    return RC_INVALID_STATE;
+
   rc_api_url_build_dorequest(&builder, &request->buffer, "ping", api_params->username);
   rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
 
@@ -312,6 +324,10 @@ int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_ap
   char checksum[33];
 
   rc_buf_init(&request->buffer);
+
+  if (api_params->achievement_id == 0)
+    return RC_INVALID_STATE;
+
   rc_api_url_build_dorequest(&builder, &request->buffer, "awardachievement", api_params->username);
   rc_url_builder_append_unum_param(&builder, "a", api_params->achievement_id);
   rc_url_builder_append_unum_param(&builder, "h", api_params->hardcore ? 1 : 0);
@@ -381,6 +397,10 @@ int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_
   char checksum[33];
 
   rc_buf_init(&request->buffer);
+
+  if (api_params->leaderboard_id == 0)
+    return RC_INVALID_STATE;
+
   rc_api_url_build_dorequest(&builder, &request->buffer, "submitlbentry", api_params->username);
   rc_url_builder_append_unum_param(&builder, "i", api_params->leaderboard_id);
   rc_url_builder_append_num_param(&builder, "s", api_params->score);

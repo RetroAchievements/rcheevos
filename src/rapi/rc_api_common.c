@@ -922,7 +922,11 @@ void rc_api_url_build_dorequest(rc_api_url_builder_t* builder, rc_api_buffer_t* 
 
   *builder->write++ = '?';
   rc_url_builder_append_str_param(builder, "r", api);
-  rc_url_builder_append_str_param(builder, "u", username);
+
+  if (username && *username)
+    rc_url_builder_append_str_param(builder, "u", username);
+  else
+    builder->result = RC_INVALID_STATE;
 
   #undef DOREQUEST_ENDPOINT
 }

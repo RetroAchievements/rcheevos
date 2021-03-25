@@ -19,8 +19,10 @@ int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_requ
 
   if (api_params->password && api_params->password[0])
     rc_url_builder_append_str_param(&builder, "p", api_params->password);
-  else
+  else if (api_params->api_token && api_params->api_token[0])
     rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
+  else
+    return RC_INVALID_STATE;
 
   request->post_data = rc_url_builder_finalize(&builder);
 
@@ -66,6 +68,10 @@ int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_st
   rc_api_url_builder_t builder;
 
   rc_buf_init(&request->buffer);
+
+  if (api_params->game_id == 0)
+    return RC_INVALID_STATE;
+
   rc_api_url_build_dorequest(&builder, &request->buffer, "postactivity", api_params->username);
 
   /* activity type enum (only 3 is used )
