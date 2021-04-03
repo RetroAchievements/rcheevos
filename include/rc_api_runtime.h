@@ -203,7 +203,7 @@ typedef struct rc_api_award_achievement_request_t {
 rc_api_award_achievement_request_t;
 
 /**
- * Response data for a start session request.
+ * Response data for an award achievement request.
  */
 typedef struct rc_api_award_achievement_response_t {
   /* The unique identifier of the achievement that was awarded */
