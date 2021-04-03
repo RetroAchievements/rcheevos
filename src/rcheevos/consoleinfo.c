@@ -527,6 +527,22 @@ static const rc_memory_region_t _rc_memory_regions_snes[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_snes = { _rc_memory_regions_snes, 2 };
 
+/* ===== TIC-80 ===== */
+/* https://github.com/nesbox/TIC-80/wiki/RAM */
+static const rc_memory_region_t _rc_memory_regions_tic80[] = {
+    { 0x000000U, 0x003FFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Video RAM" }, /* have to classify this as system RAM because the core exposes it as part of the RETRO_MEMORY_SYSTEM_RAM */
+    { 0x004000U, 0x005FFFU, 0x004000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Tile RAM" },
+    { 0x006000U, 0x007FFFU, 0x006000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Sprite RAM" },
+    { 0x008000U, 0x00FF7FU, 0x008000U, RC_MEMORY_TYPE_SYSTEM_RAM, "MAP RAM" },
+    { 0x00FF80U, 0x00FF8BU, 0x00FF80U, RC_MEMORY_TYPE_SYSTEM_RAM, "Input State" },
+    { 0x00FF8CU, 0x014003U, 0x00FF8CU, RC_MEMORY_TYPE_SYSTEM_RAM, "Sound RAM" },
+    { 0x014004U, 0x014003U, 0x014004U, RC_MEMORY_TYPE_SAVE_RAM, "Persistent Memory" }, /* this is also returned as part of RETRO_MEMORY_SYSTEM_RAM, but can be extrapolated correctly because the pointer starts at the first SYSTEM_RAM region */
+    { 0x014404U, 0x014603U, 0x014404U, RC_MEMORY_TYPE_SYSTEM_RAM, "Sprite Flags" },
+    { 0x014604U, 0x014E03U, 0x014604U, RC_MEMORY_TYPE_SYSTEM_RAM, "System Font" },
+    { 0x014E04U, 0x017FFFU, 0x014E04U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM"}
+};
+static const rc_memory_regions_t rc_memory_regions_tic80 = { _rc_memory_regions_tic80, 10 };
+
 /* ===== Vectrex ===== */
 /* https://roadsidethoughts.com/vectrex/vectrex-memory-map.htm */
 static const rc_memory_region_t _rc_memory_regions_vectrex[] = {
@@ -672,6 +688,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_SUPERVISION:
       return &rc_memory_regions_watara_supervision;
+
+    case RC_CONSOLE_TIC80:
+      return &rc_memory_regions_tic80;
 
     case RC_CONSOLE_VECTREX:
       return &rc_memory_regions_vectrex;
