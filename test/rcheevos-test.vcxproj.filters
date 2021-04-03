@@ -28,6 +28,12 @@
     <Filter Include="tests\rurl">
       <UniqueIdentifier>{b10820d1-368c-422b-a8ef-b3f7e804464e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\rapi">
+      <UniqueIdentifier>{d049182b-0721-46b5-b93e-6f8f7f572b45}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tests\rapi">
+      <UniqueIdentifier>{0b946a47-0089-4118-a5b2-cd57245dc58b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\rcheevos\format.c">
@@ -237,6 +243,24 @@
     <ClCompile Include="rhash\mock_filereader.c">
       <Filter>tests\rhash</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rapi\rc_api_common.c">
+      <Filter>src\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rapi\rc_api_runtime.c">
+      <Filter>src\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rapi\rc_api_user.c">
+      <Filter>src\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="rapi\test_rc_api_runtime.c">
+      <Filter>tests\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="rapi\test_rc_api_user.c">
+      <Filter>tests\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="rapi\test_rc_api_common.c">
+      <Filter>tests\rapi</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">
@@ -271,6 +295,21 @@
     </ClInclude>
     <ClInclude Include="..\src\rcheevos\rc_compat.h">
       <Filter>src\rcheevos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_error.h">
+      <Filter>src\rcheevos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rapi\rc_api_common.h">
+      <Filter>src\rapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_api_user.h">
+      <Filter>src\rapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_api_request.h">
+      <Filter>src\rapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_api_runtime.h">
+      <Filter>src\rapi</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,11 +1,13 @@
 RC_SRC=../src/rcheevos
 RC_HASH_SRC=../src/rhash
+RC_API_SRC=../src/rapi
 LUA_SRC=../test/lua/src
 
 OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/operand.o \
     $(RC_SRC)/value.o $(RC_SRC)/lboard.o $(RC_SRC)/richpresence.o $(RC_SRC)/runtime.o \
-    $(RC_SRC)/alloc.o $(RC_SRC)/memref.o $(RC_SRC)/format.o  \
+    $(RC_SRC)/alloc.o $(RC_SRC)/memref.o $(RC_SRC)/format.o $(RC_SRC)/compat.o  \
     $(RC_HASH_SRC)/md5.o \
+    $(RC_API_SRC)/rc_api_common.o $(RC_API_SRC)/rc_api_runtime.o \
     $(LUA_SRC)/lapi.o $(LUA_SRC)/lcode.o $(LUA_SRC)/lctype.o $(LUA_SRC)/ldebug.o \
     $(LUA_SRC)/ldo.o $(LUA_SRC)/ldump.o $(LUA_SRC)/lfunc.o $(LUA_SRC)/lgc.o $(LUA_SRC)/llex.o \
     $(LUA_SRC)/lmem.o $(LUA_SRC)/lobject.o $(LUA_SRC)/lopcodes.o $(LUA_SRC)/lparser.o \

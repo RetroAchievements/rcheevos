@@ -44,7 +44,8 @@ static void cdreader_determine_sector_size(struct cdrom_t* cdrom)
   cdrom->sector_header_size = 0;
 
   rc_file_seek(cdrom->file_handle, toc_sector * 2352 + cdrom->first_sector_offset, SEEK_SET);
-  rc_file_read(cdrom->file_handle, header, sizeof(header));
+  if (rc_file_read(cdrom->file_handle, header, sizeof(header)) < sizeof(header))
+    return;
 
   if (memcmp(header, sync_pattern, 12) == 0)
   {
@@ -697,6 +698,8 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
     free(cdrom);
     cdrom = NULL;
   }
+
+  free(bin_path);
 
   return cdrom;
 }

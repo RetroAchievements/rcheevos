@@ -1,5 +1,6 @@
 #include "rc_internal.h"
 #include "rc_url.h"
+#include "rc_api_runtime.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -137,64 +138,13 @@ static void validate_richpresence_file(const char* richpresence_file)
   free(file_contents);
 }
 
-static char* get_json_value(char* start, const char* id, char** next)
-{
-  char* ptr = start;
-  char* value;
-  size_t id_len = strlen(id);
-
-  while (*ptr) {
-    if (*ptr == '"' && ptr[id_len + 1] == '"' && memcmp(ptr + 1, id, id_len) == 0) {
-      ptr += id_len + 3; /* skip over id and colon */
-      if (*ptr == '"') {
-        char* copy = ++ptr;
-        value = copy;
-        while (*ptr && *ptr != '"') {
-          if (*ptr != '\\') {
-            *copy++ = *ptr++;
-          } else {
-            ++ptr;
-            switch (*ptr) {
-              case 'r': *copy++ = '\r'; break;
-              case 'n': *copy++ = '\n'; break;
-              case 't': *copy++ = '\t'; break;
-              default: *copy++ = *ptr; break;
-            }
-            ++ptr;
-          }
-        }
-        if (*ptr)
-          *ptr++ = '\0';
-        *copy = '\0';
-      } else if (*ptr == '[') {
-        if (next)
-          *next = ptr;
-        return ptr;
-      } else {
-        value = ptr;
-        while (*ptr && *ptr != ',' && *ptr != '}')
-          ++ptr;
-        if (*ptr)
-          *ptr++ = '\0';
-      }
-
-      if (next)
-        *next = ptr;
-
-      return value;
-    }
-
-    ++ptr;
-  }
-
-  return NULL;
-}
-
 static void validate_patchdata_file(const char* patchdata_file) {
   char* file_contents;
   size_t file_size;
   FILE* file;
-  char* ptr, *value, *lboard_start, *ach_start, *game_id;
+  rc_api_fetch_game_data_response_t fetch_game_data_response;
+  int result;
+  size_t i;
 
   file = fopen(patchdata_file, "rb");
   if (!file) {
@@ -211,56 +161,35 @@ static void validate_patchdata_file(const char* patchdata_file) {
   file_contents[file_size] = '\0';
   fclose(file);
 
-  /* this makes assumptions about the layout of the JSON */
-  game_id = get_json_value(file_contents, "ID", &ptr);
-  if (game_id == NULL) {
-    printf("not a patchdata file");
+  result = rc_api_process_fetch_game_data_response(&fetch_game_data_response, file_contents);
+  if (result != RC_OK) {
+    printf("%s", rc_error_str(result));
     return;
   }
 
-  value = get_json_value(ptr, "Title", &ptr);
-  printf("%s\n", value);
+  free(file_contents);
 
-  value = get_json_value(ptr, "RichPresencePatch", &ptr);
-  if (value && *value && strcmp(value, "null") != 0) {
-    printf(" rich presence %s: ", game_id);
-    validate_richpresence(value);
+  printf("%s\n", fetch_game_data_response.title);
+
+  if (fetch_game_data_response.rich_presence_script && *fetch_game_data_response.rich_presence_script) {
+    printf(" rich presence %d: ", fetch_game_data_response.id);
+    validate_richpresence(fetch_game_data_response.rich_presence_script);
     printf("\n");
   }
 
-  lboard_start = get_json_value(ptr, "Leaderboards", NULL);
-  if (lboard_start)
-    lboard_start[-1] = '\0';
-
-  ach_start = get_json_value(ptr, "Achievements", NULL);
-  if (ach_start) {
-    do {
-      value = get_json_value(ptr, "ID", &ptr);
-      if (!value)
-        break;
-
-      printf(" achievement %s: ", value);
-      value = get_json_value(ptr, "MemAddr", &ptr);
-      validate_trigger(value);
-      printf("\n");
-    } while (1);
+  for (i = 0; i < fetch_game_data_response.num_achievements; ++i) {
+    printf(" achievement %d: ", fetch_game_data_response.achievements[i].id);
+    validate_trigger(fetch_game_data_response.achievements[i].definition);
+    printf("\n");
   }
 
-  if (lboard_start) {
-    ptr = lboard_start;
-    do {
-      value = get_json_value(ptr, "ID", &ptr);
-      if (!value)
-        break;
-
-      printf(" leaderboard %s: ", value);
-      value = get_json_value(ptr, "Mem", &ptr);
-      validate_leaderboard(value);
-      printf("\n");
-    } while (1);
+  for (i = 0; i < fetch_game_data_response.num_leaderboards; ++i) {
+    printf(" leaderboard %d: ", fetch_game_data_response.leaderboards[i].id);
+    validate_leaderboard(fetch_game_data_response.leaderboards[i].definition);
+    printf("\n");
   }
 
-  free(file_contents);
+  rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
 }
 
 #ifdef _CRT_SECURE_NO_WARNINGS
@@ -290,7 +219,7 @@ static void validate_patchdata_directory(const char* patchdata_directory) {
   FindClose(hFind);
 }
 #else
-static void validate_pathdata_directory(const char* patchdata_directory) {
+static void validate_patchdata_directory(const char* patchdata_directory) {
   struct dirent* entry;
   char* filename;
   size_t filename_len;

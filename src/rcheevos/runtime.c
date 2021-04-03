@@ -594,7 +594,9 @@ static int rc_condset_contains_memref(const rc_condset_t* condset, const rc_memr
     return 0;
 
   for (cond = condset->conditions; cond; cond = cond->next) {
-    if (cond->operand1.value.memref == memref || cond->operand2.value.memref == memref)
+    if (rc_operand_is_memref(&cond->operand1) && cond->operand1.value.memref == memref)
+      return 1;
+    if (rc_operand_is_memref(&cond->operand2) && cond->operand2.value.memref == memref)
       return 1;
   }
 
