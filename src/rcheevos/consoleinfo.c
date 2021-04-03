@@ -541,6 +541,15 @@ static const rc_memory_region_t _rc_memory_regions_virtualboy[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_virtualboy = { _rc_memory_regions_virtualboy, 2 };
 
+/* ===== Watara Supervision ===== */
+/* https://github.com/libretro/potator/blob/b5e5ba02914fcdf4a8128072dbc709da28e08832/common/memorymap.c#L231-L259 */
+static const rc_memory_region_t _rc_memory_regions_watara_supervision[] = {
+    { 0x0000U, 0x001FFFU, 0x0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x2000U, 0x003FFFU, 0x2000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Registers" },
+    { 0x4000U, 0x005FFFU, 0x4000U, RC_MEMORY_TYPE_VIDEO_RAM, "Video RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_watara_supervision = { _rc_memory_regions_watara_supervision, 3 };
+
 /* ===== WonderSwan ===== */
 /* http://daifukkat.su/docs/wsman/#ovr_memmap */
 static const rc_memory_region_t _rc_memory_regions_wonderswan[] = {
@@ -661,6 +670,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
     case RC_CONSOLE_SUPER_NINTENDO:
       return &rc_memory_regions_snes;
 
+    case RC_CONSOLE_SUPERVISION:
+      return &rc_memory_regions_watara_supervision;
+
     case RC_CONSOLE_VECTREX:
       return &rc_memory_regions_vectrex;
 
@@ -668,7 +680,7 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
       return &rc_memory_regions_virtualboy;
 
     case RC_CONSOLE_WONDERSWAN:
-        return &rc_memory_regions_wonderswan;
+      return &rc_memory_regions_wonderswan;
 
     default:
       return &rc_memory_regions_none;

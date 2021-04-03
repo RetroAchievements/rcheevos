@@ -1252,6 +1252,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
     case RC_CONSOLE_POKEMON_MINI:
     case RC_CONSOLE_SEGA_32X:
     case RC_CONSOLE_SG1000:
+    case RC_CONSOLE_SUPERVISION:
     case RC_CONSOLE_VECTREX:
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WONDERSWAN:
@@ -1527,6 +1528,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_POKEMON_MINI:
     case RC_CONSOLE_SEGA_32X:
     case RC_CONSOLE_SG1000:
+    case RC_CONSOLE_SUPERVISION:
     case RC_CONSOLE_VECTREX:
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WONDERSWAN:
@@ -1718,8 +1720,8 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
               }
            }
 
-          /* bin is associated with MegaDrive, Sega32X and Atari 2600. Since they all use the same
-           * hashing algorithm, only specify one of them */
+          /* bin is associated with MegaDrive, Sega32X, Atari 2600, and Watara Supervision.
+           * Since they all use the same hashing algorithm, only specify one of them */
           iterator->consoles[0] = RC_CONSOLE_MEGA_DRIVE;
         }
         else if (rc_path_compare_extension(ext, "bs"))
@@ -1908,6 +1910,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         else if (rc_path_compare_extension(ext, "sgx"))
         {
           iterator->consoles[0] = RC_CONSOLE_PC_ENGINE;
+        }
+        else if (rc_path_compare_extension(ext, "sv"))
+        {
+            iterator->consoles[0] = RC_CONSOLE_SUPERVISION;
         }
         break;
 
