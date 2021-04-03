@@ -163,14 +163,23 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_SG1000:
       return "SG-1000";
 
+    case RC_CONSOLE_SHARPX1:
+      return "Sharp X1";
+
     case RC_CONSOLE_SUPER_NINTENDO:
       return "Super Nintendo Entertainment System";
 
     case RC_CONSOLE_SUPER_CASSETTEVISION:
       return "Super CassetteVision";
 
-    case RC_CONSOLE_WONDERSWAN:
-      return "WonderSwan";
+    case RC_CONSOLE_SUPERVISION:
+      return "Watara Supervision";
+
+    case RC_CONSOLE_THOMSONTO8:
+      return "Thomson TO8";
+
+    case RC_CONSOLE_TIC80:
+      return "TIC-80";
 
     case RC_CONSOLE_VECTREX:
       return "Vectrex";
@@ -186,6 +195,9 @@ const char* rc_console_name(int console_id)
 
     case RC_CONSOLE_WII_U:
       return "Wii-U";
+
+    case RC_CONSOLE_WONDERSWAN:
+      return "WonderSwan";
 
     case RC_CONSOLE_X68K:
       return "X68K";
