@@ -543,7 +543,7 @@ static const rc_memory_region_t _rc_memory_regions_tic80[] = {
     { 0x008000U, 0x00FF7FU, 0x008000U, RC_MEMORY_TYPE_SYSTEM_RAM, "MAP RAM" },
     { 0x00FF80U, 0x00FF8BU, 0x00FF80U, RC_MEMORY_TYPE_SYSTEM_RAM, "Input State" },
     { 0x00FF8CU, 0x014003U, 0x00FF8CU, RC_MEMORY_TYPE_SYSTEM_RAM, "Sound RAM" },
-    { 0x014004U, 0x014003U, 0x014004U, RC_MEMORY_TYPE_SAVE_RAM, "Persistent Memory" }, /* this is also returned as part of RETRO_MEMORY_SYSTEM_RAM, but can be extrapolated correctly because the pointer starts at the first SYSTEM_RAM region */
+    { 0x014004U, 0x014403U, 0x014004U, RC_MEMORY_TYPE_SAVE_RAM, "Persistent Memory" }, /* this is also returned as part of RETRO_MEMORY_SYSTEM_RAM, but can be extrapolated correctly because the pointer starts at the first SYSTEM_RAM region */
     { 0x014404U, 0x014603U, 0x014404U, RC_MEMORY_TYPE_SYSTEM_RAM, "Sprite Flags" },
     { 0x014604U, 0x014E03U, 0x014604U, RC_MEMORY_TYPE_SYSTEM_RAM, "System Font" },
     { 0x014E04U, 0x017FFFU, 0x014E04U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM"}

@@ -1086,11 +1086,17 @@ void test_hash(void) {
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_NINTENDO, "test.smc", 524288, "68f0f13b598e0b66461bc578375c3888");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_NINTENDO, "test.smc", 524288 + 512, "258c93ebaca1c3f488ab48218e5e8d38");
 
+  /* TIC-80 */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_TIC80, "test.tic", 67682, "79b96f4ffcedb3ce8210a83b22cd2c69");
+
   /* Vectrex */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SG1000, "test.vec", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
 
   /* VirtualBoy */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SG1000, "test.vb", 524288, "68f0f13b598e0b66461bc578375c3888");
+
+  /* Watara Supervision */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPERVISION, "test.sv", 32768, "6a2305a2b6675a97ff792709be1ca857");
 
   /* WonderSwan */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.ws", 524288, "68f0f13b598e0b66461bc578375c3888");
