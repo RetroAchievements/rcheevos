@@ -412,7 +412,7 @@ int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_
     return builder.result;
 
   /* Evaluate the signature. */
-  snprintf(signature, sizeof(signature), "%u%s%u", api_params->leaderboard_id, api_params->username, api_params->leaderboard_id);
+  snprintf(signature, sizeof(signature), "%u%s%d", api_params->leaderboard_id, api_params->username, api_params->score);
   rc_api_generate_checksum(checksum, signature);
 
   rc_url_builder_init(&builder, &request->buffer, 48);

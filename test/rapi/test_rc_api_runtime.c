@@ -593,7 +593,7 @@ static void test_init_submit_lboard_entry_request() {
 
   ASSERT_NUM_EQUALS(rc_api_init_submit_lboard_entry_request(&request, &submit_lboard_entry_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=submitlbentry&u=Username&i=1234&s=10999&m=ABCDEF0123456789");
-  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=283f610a369757bae8017ecc2a708bcf");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=e13c9132ee651256f9d2ee8f06f75d76");
 
   rc_api_destroy_request(&request);
 }
@@ -611,7 +611,7 @@ static void test_init_submit_lboard_entry_request_zero_value() {
 
   ASSERT_NUM_EQUALS(rc_api_init_submit_lboard_entry_request(&request, &submit_lboard_entry_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=submitlbentry&u=Username&i=1111&s=0&m=ABCDEF0123456789");
-  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=e9c5f5fe259db297d9d35b76bb7b99d2");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=9c2ac665157d68b8a26e83bb71dd8aaf");
 
   rc_api_destroy_request(&request);
 }
@@ -629,7 +629,7 @@ static void test_init_submit_lboard_entry_request_negative_value() {
 
   ASSERT_NUM_EQUALS(rc_api_init_submit_lboard_entry_request(&request, &submit_lboard_entry_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=submitlbentry&u=Username&i=1111&s=-234781&m=ABCDEF0123456789");
-  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=e9c5f5fe259db297d9d35b76bb7b99d2");
+  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN&v=fbe290266f2d121a7a37942e1e90f453");
 
   rc_api_destroy_request(&request);
 }
