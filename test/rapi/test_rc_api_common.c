@@ -352,52 +352,36 @@ static void test_json_get_unum_array_trailing_comma() {
   assert_json_parse_response(&response, &field, "{\"Test\":[1,2,3,]}", RC_INVALID_JSON);
 }
 
-static void test_url_build_dorequest_default_host() {
-  rc_api_url_builder_t builder;
-  rc_api_buffer_t buffer;
-  const char* url;
+static void test_url_build_dorequest_url_default_host() {
+  rc_api_request_t request;
+  rc_api_url_build_dorequest_url(&request);
+  ASSERT_STR_EQUALS(request.url, "https://retroachievements.org/dorequest.php");
 
-  rc_buf_init(&buffer);
-  rc_api_url_build_dorequest(&builder, &buffer, "login", "Username");
-  url = rc_url_builder_finalize(&builder);
-
-  ASSERT_STR_EQUALS(url, "https://retroachievements.org/dorequest.php?r=login&u=Username");
-
-  rc_buf_destroy(&buffer);
+  rc_api_destroy_request(&request);
 }
 
-static void test_url_build_dorequest_custom_host() {
-  rc_api_url_builder_t builder;
-  rc_api_buffer_t buffer;
-  const char* url;
+static void test_url_build_dorequest_url_custom_host() {
+  rc_api_request_t request;
 
   rc_api_set_host("http://localhost");
+  rc_api_url_build_dorequest_url(&request);
 
-  rc_buf_init(&buffer);
-  rc_api_url_build_dorequest(&builder, &buffer, "test", "Guy");
-  url = rc_url_builder_finalize(&builder);
+  ASSERT_STR_EQUALS(request.url, "http://localhost/dorequest.php");
 
-  ASSERT_STR_EQUALS(url, "http://localhost/dorequest.php?r=test&u=Guy");
-
+  rc_api_destroy_request(&request);
   rc_api_set_host(NULL);
-  rc_buf_destroy(&buffer);
 }
 
-static void test_url_build_dorequest_custom_host_no_protocol() {
-  rc_api_url_builder_t builder;
-  rc_api_buffer_t buffer;
-  const char* url;
+static void test_url_build_dorequest_url_custom_host_no_protocol() {
+  rc_api_request_t request;
 
   rc_api_set_host("my.host");
+  rc_api_url_build_dorequest_url(&request);
 
-  rc_buf_init(&buffer);
-  rc_api_url_build_dorequest(&builder, &buffer, "photo", "Dude");
-  url = rc_url_builder_finalize(&builder);
+  ASSERT_STR_EQUALS(request.url, "http://my.host/dorequest.php");
 
-  ASSERT_STR_EQUALS(url, "http://my.host/dorequest.php?r=photo&u=Dude");
-
+  rc_api_destroy_request(&request);
   rc_api_set_host(NULL);
-  rc_buf_destroy(&buffer);
 }
 
 static void test_url_builder_append_encoded_str(const char* input, const char* expected) {
@@ -618,10 +602,10 @@ void test_rapi_common(void) {
   TEST_PARAMS3(test_json_get_unum_array, "[A,B,C]", 3, RC_MISSING_VALUE);
   TEST(test_json_get_unum_array_trailing_comma);
 
-  /* rc_api_url_build_dorequest / rc_api_set_host */
-  TEST(test_url_build_dorequest_default_host);
-  TEST(test_url_build_dorequest_custom_host);
-  TEST(test_url_build_dorequest_custom_host_no_protocol);
+  /* rc_api_url_build_dorequest_url / rc_api_set_host */
+  TEST(test_url_build_dorequest_url_default_host);
+  TEST(test_url_build_dorequest_url_custom_host);
+  TEST(test_url_build_dorequest_url_custom_host_no_protocol);
 
   /* rc_api_url_builder_append_encoded_str */
   TEST_PARAMS2(test_url_builder_append_encoded_str, "", "");
