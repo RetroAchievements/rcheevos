@@ -102,7 +102,11 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 60, "Game & Watch");
   TEST_PARAMS2(test_name, 61, "Nokia N-Gage");
   TEST_PARAMS2(test_name, 62, "Nintendo 3DS");
-  TEST_PARAMS2(test_name, 63, "Unknown");
+  TEST_PARAMS2(test_name, 63, "Watara Supervision");
+  TEST_PARAMS2(test_name, 64, "Sharp X1");
+  TEST_PARAMS2(test_name, 65, "TIC-80");
+  TEST_PARAMS2(test_name, 66, "Thomson TO8");
+  TEST_PARAMS2(test_name, 67, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
