@@ -527,6 +527,13 @@ static const rc_memory_region_t _rc_memory_regions_snes[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_snes = { _rc_memory_regions_snes, 2 };
 
+/* ===== Thomson TO8 ===== */
+/* https://github.com/mamedev/mame/blob/master/src/mame/drivers/thomson.cpp#L1617 */
+static const rc_memory_region_t _rc_memory_regions_thomson_to8[] = {
+    { 0x000000U, 0x07FFFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_thomson_to8 = { _rc_memory_regions_thomson_to8, 1 };
+
 /* ===== TIC-80 ===== */
 /* https://github.com/nesbox/TIC-80/wiki/RAM */
 static const rc_memory_region_t _rc_memory_regions_tic80[] = {
@@ -688,6 +695,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_SUPERVISION:
       return &rc_memory_regions_watara_supervision;
+
+    case RC_CONSOLE_THOMSONTO8:
+      return &rc_memory_regions_thomson_to8;
 
     case RC_CONSOLE_TIC80:
       return &rc_memory_regions_tic80;

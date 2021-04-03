@@ -1678,6 +1678,13 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
     const char* ext = rc_path_get_extension(path);
     switch (tolower(*ext))
     {
+      case '2':
+        if (rc_path_compare_extension(ext, "2d"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_SHARPX1;
+        }
+        break;
+
       case '7':
         if (rc_path_compare_extension(ext, "7z"))
         {
@@ -1770,6 +1777,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         else if (rc_path_compare_extension(ext, "d88"))
         {
           iterator->consoles[0] = RC_CONSOLE_PC8800;
+          iterator->consoles[1] = RC_CONSOLE_SHARPX1;
         }
         break;
 
@@ -1781,6 +1789,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         else if (rc_path_compare_extension(ext, "fds"))
         {
           iterator->consoles[0] = RC_CONSOLE_NINTENDO;
+        }
+        else if (rc_path_compare_extension(ext, "fd"))
+        {
+            iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* disk */
         }
         break;
 
@@ -1823,6 +1835,13 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         break;
 
+      case 'k':
+        if (rc_path_compare_extension(ext, "k7"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* tape */
+        }
+        break;
+
       case 'l':
         if (rc_path_compare_extension(ext, "lnx"))
         {
@@ -1858,6 +1877,14 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_MSX;
         }
+        else if (rc_path_compare_extension(ext, "m5"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* cartridge */
+        }
+        else if (rc_path_compare_extension(ext, "m7"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* cartridge */
+        }
         break;
 
       case 'n':
@@ -1891,6 +1918,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         if (rc_path_compare_extension(ext, "rom"))
         {
           iterator->consoles[0] = RC_CONSOLE_MSX;
+          iterator->consoles[1] = RC_CONSOLE_THOMSONTO8; /* cartridge */
         }
         if (rc_path_compare_extension(ext, "ri"))
         {
@@ -1915,7 +1943,11 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "sv"))
         {
-            iterator->consoles[0] = RC_CONSOLE_SUPERVISION;
+          iterator->consoles[0] = RC_CONSOLE_SUPERVISION;
+        }
+        else if (rc_path_compare_extension(ext, "sap"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* disk */
         }
         break;
 
