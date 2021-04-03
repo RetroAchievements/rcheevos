@@ -145,7 +145,7 @@ static void test_memory_init_from_unmapped_memory_no_save_ram() {
 
 static void test_memory_init_from_unmapped_memory_merge_neighbors() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[16];
+  unsigned char* buffer1 = malloc(0x10000); /* have to malloc to prevent array-bounds compiler warnings */
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = 0x10000;
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
@@ -159,6 +159,8 @@ static void test_memory_init_from_unmapped_memory_merge_neighbors() {
   ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x0102), &buffer1[0x0102]);
   ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0xFFFF), &buffer1[0xFFFF]);
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x10000));
+
+  free(buffer1);
 }
 
 static void test_memory_init_from_unmapped_memory_no_ram() {
@@ -251,7 +253,7 @@ static void test_memory_init_from_memory_map_no_save_ram() {
 
 static void test_memory_init_from_memory_map_merge_neighbors() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[8];
+  unsigned char* buffer1 = malloc(0x10000); /* have to malloc to prevent array-bounds compiler warnings */
   const struct retro_memory_descriptor mmap_desc[] = {
 	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0x0000], 0, 0x0000U, 0, 0, 0xFC00, "RAM" },
 	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0xFC00], 0, 0xFC00U, 0, 0, 0x0400, "Hardware controllers" }
@@ -266,6 +268,8 @@ static void test_memory_init_from_memory_map_merge_neighbors() {
   ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x0102), &buffer1[0x0102]);
   ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0xFFFF), &buffer1[0xFFFF]);
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x10000));
+
+  free(buffer1);
 }
 
 static void test_memory_init_from_memory_map_no_ram() {

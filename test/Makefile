@@ -83,7 +83,7 @@ OBJ=$(RC_SRC)/alloc.o \
 
 # compile flags
 CFLAGS=-Wall -Wno-long-long
-INCLUDES=-I../include -I$(RC_SRC)
+INCLUDES=-I../include -I$(RC_SRC) -I.
 
 ifeq ($(ARCH), x86)
     CFLAGS += -m32
