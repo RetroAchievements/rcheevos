@@ -39,7 +39,16 @@ typedef struct rc_libretro_memory_regions_t
   unsigned count;
 } rc_libretro_memory_regions_t;
 
-int rc_libretro_memory_init(rc_libretro_memory_regions_t* regions, const struct retro_memory_map* mmap, int console_id);
+typedef struct rc_libretro_core_memory_info_t
+{
+  unsigned char* data;
+  size_t size;
+} rc_libretro_core_memory_info_t;
+
+typedef void (*rc_libretro_get_core_memory_info_func)(unsigned id, rc_libretro_core_memory_info_t* info);
+
+int rc_libretro_memory_init(rc_libretro_memory_regions_t* regions, const struct retro_memory_map* mmap,
+                            rc_libretro_get_core_memory_info_func get_core_memory_info, int console_id);
 void rc_libretro_memory_destroy(rc_libretro_memory_regions_t* regions);
 
 unsigned char* rc_libretro_memory_find(const rc_libretro_memory_regions_t* regions, unsigned address);

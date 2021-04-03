@@ -7,12 +7,10 @@
 static void* retro_memory_data[4] = { NULL, NULL, NULL, NULL };
 static size_t retro_memory_size[4] = { 0, 0, 0, 0 };
 
-void* retro_get_memory_data(unsigned id) {
-  return retro_memory_data[id];
-}
-
-size_t retro_get_memory_size(unsigned id) {
-  return retro_memory_size[id];
+static void libretro_get_core_memory_info(unsigned id, rc_libretro_core_memory_info_t* info)
+{
+  info->data = retro_memory_data[id];
+  info->size = retro_memory_size[id];
 }
 
 static void test_allowed_setting(const char* library_name, const char* setting, const char* value) {
@@ -37,7 +35,7 @@ static void test_memory_init_without_regions() {
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = sizeof(buffer2);
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, RC_CONSOLE_HUBS));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_HUBS));
 
   ASSERT_NUM_EQUALS(regions.count, 2);
   ASSERT_NUM_EQUALS(regions.total_size, sizeof(buffer1) + sizeof(buffer2));
@@ -54,7 +52,7 @@ static void test_memory_init_without_regions_system_ram_only() {
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = 0;
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, RC_CONSOLE_HUBS));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_HUBS));
 
   ASSERT_NUM_EQUALS(regions.count, 1);
   ASSERT_NUM_EQUALS(regions.total_size, sizeof(buffer1));
@@ -70,7 +68,7 @@ static void test_memory_init_without_regions_save_ram_only() {
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = sizeof(buffer2);
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, RC_CONSOLE_HUBS));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_HUBS));
 
   ASSERT_NUM_EQUALS(regions.count, 1);
   ASSERT_NUM_EQUALS(regions.total_size, sizeof(buffer2));
@@ -85,7 +83,7 @@ static void test_memory_init_without_regions_no_ram() {
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = 0;
 
-  ASSERT_FALSE(rc_libretro_memory_init(&regions, NULL, RC_CONSOLE_HUBS));
+  ASSERT_FALSE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_HUBS));
 
   ASSERT_NUM_EQUALS(regions.count, 0);
   ASSERT_NUM_EQUALS(regions.total_size, 0);
@@ -100,7 +98,7 @@ static void test_memory_init_from_unmapped_memory() {
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = 0x10000;
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   ASSERT_NUM_EQUALS(regions.count, 2);
   ASSERT_NUM_EQUALS(regions.total_size, 0x20000);
@@ -117,7 +115,7 @@ static void test_memory_init_from_unmapped_memory_null_filler() {
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = sizeof(buffer2);
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   ASSERT_NUM_EQUALS(regions.count, 4); /* two valid regions and two null fillers */
   ASSERT_NUM_EQUALS(regions.total_size, 0x20000);
@@ -136,7 +134,7 @@ static void test_memory_init_from_unmapped_memory_no_save_ram() {
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = 0;
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   ASSERT_NUM_EQUALS(regions.count, 2);
   ASSERT_NUM_EQUALS(regions.total_size, 0x20000);
@@ -153,7 +151,7 @@ static void test_memory_init_from_unmapped_memory_merge_neighbors() {
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = 0;
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, RC_CONSOLE_ATARI_LYNX));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_ATARI_LYNX));
 
   ASSERT_NUM_EQUALS(regions.count, 1); /* all regions are adjacent, so should be merged */
   ASSERT_NUM_EQUALS(regions.total_size, 0x10000);
@@ -171,7 +169,7 @@ static void test_memory_init_from_unmapped_memory_no_ram() {
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = 0;
 
   /* init returns false */
-  ASSERT_FALSE(rc_libretro_memory_init(&regions, NULL, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_FALSE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   /* but one null-filled region is still generated */
   ASSERT_NUM_EQUALS(regions.count, 1);
@@ -189,7 +187,7 @@ static void test_memory_init_from_unmapped_memory_save_ram_first() {
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = 0x8000;
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, RC_CONSOLE_GAMEBOY_ADVANCE));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_GAMEBOY_ADVANCE));
 
   ASSERT_NUM_EQUALS(regions.count, 2);
   ASSERT_NUM_EQUALS(regions.total_size, 0x48000);
@@ -207,7 +205,7 @@ static void test_memory_init_from_memory_map() {
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   ASSERT_NUM_EQUALS(regions.count, 2);
   ASSERT_NUM_EQUALS(regions.total_size, 0x20000);
@@ -225,7 +223,7 @@ static void test_memory_init_from_memory_map_null_filler() {
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   ASSERT_NUM_EQUALS(regions.count, 2);
   ASSERT_NUM_EQUALS(regions.total_size, 0x20000);
@@ -242,7 +240,7 @@ static void test_memory_init_from_memory_map_no_save_ram() {
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   ASSERT_NUM_EQUALS(regions.count, 2);
   ASSERT_NUM_EQUALS(regions.total_size, 0x20000);
@@ -260,7 +258,7 @@ static void test_memory_init_from_memory_map_merge_neighbors() {
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, RC_CONSOLE_ATARI_LYNX));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_ATARI_LYNX));
 
   ASSERT_NUM_EQUALS(regions.count, 1); /* all regions are adjacent, so should be merged */
   ASSERT_NUM_EQUALS(regions.total_size, 0x10000);
@@ -279,7 +277,7 @@ static void test_memory_init_from_memory_map_no_ram() {
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
   /* init returns false */
-  ASSERT_FALSE(rc_libretro_memory_init(&regions, &mmap, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_FALSE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   /* but one null-filled region is still generated */
   ASSERT_NUM_EQUALS(regions.count, 1);
@@ -299,7 +297,7 @@ static void test_memory_init_from_memory_map_splice() {
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   ASSERT_NUM_EQUALS(regions.count, 3);
   ASSERT_NUM_EQUALS(regions.total_size, 0x20000);
@@ -318,7 +316,7 @@ static void test_memory_init_from_memory_map_mirrored() {
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   /* select of 0xFF0000 should mirror the 0x4000 bytes at 0xFF0000 into 0xFF4000, 0xFF8000, and 0xFFC000 */
   ASSERT_NUM_EQUALS(regions.count, 5);
@@ -340,7 +338,7 @@ static void test_memory_init_from_memory_map_out_of_order() {
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
-  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, RC_CONSOLE_MEGA_DRIVE));
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_MEGA_DRIVE));
 
   ASSERT_NUM_EQUALS(regions.count, 2);
   ASSERT_NUM_EQUALS(regions.total_size, 0x20000);

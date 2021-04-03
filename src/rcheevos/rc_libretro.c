@@ -14,7 +14,7 @@
 #include <ctype.h>
 #include <string.h>
 
-static rc_libretro_message_callback verbose_message_callback = NULL;
+static rc_libretro_message_callback rc_libretro_verbose_message_callback = NULL;
 
 /* a value that starts with a comma is a CSV.
  * if it starts with an exclamation point, it's everything but the provided value.
@@ -225,12 +225,12 @@ unsigned char* rc_libretro_memory_find(const rc_libretro_memory_regions_t* regio
 }
 
 void rc_libretro_init_verbose_message_callback(rc_libretro_message_callback callback) {
-  verbose_message_callback = callback;
+  rc_libretro_verbose_message_callback = callback;
 }
 
 static void rc_libretro_verbose(const char* message) {
-  if (verbose_message_callback)
-    verbose_message_callback(message);
+  if (rc_libretro_verbose_message_callback)
+    rc_libretro_verbose_message_callback(message);
 }
 
 static const char* rc_memory_type_str(int type) {
@@ -277,33 +277,29 @@ static void rc_libretro_memory_register_region(rc_libretro_memory_regions_t* reg
 
   regions->total_size += size;
 
-  if (verbose_message_callback) {
+  if (rc_libretro_verbose_message_callback) {
     char message[128];
     snprintf(message, sizeof(message), "Registered 0x%04X bytes of %s at $%06X (%s)", (unsigned)size,
              rc_memory_type_str(type), (unsigned)(regions->total_size - size), description);
-    verbose_message_callback(message);
+    rc_libretro_verbose_message_callback(message);
   }
 }
 
-static void rc_libretro_memory_init_without_regions(rc_libretro_memory_regions_t* regions) {
+static void rc_libretro_memory_init_without_regions(rc_libretro_memory_regions_t* regions,
+                                                    rc_libretro_get_core_memory_info_func get_core_memory_info) {
   /* no regions specified, assume system RAM followed by save RAM */
   char description[64];
-  void* data;
-  size_t size;
+  rc_libretro_core_memory_info_t info;
 
   snprintf(description, sizeof(description), "offset 0x%06x", 0);
 
-  size = retro_get_memory_size(RETRO_MEMORY_SYSTEM_RAM);
-  if (size) {
-    data = retro_get_memory_data(RETRO_MEMORY_SYSTEM_RAM);
-    rc_libretro_memory_register_region(regions, RC_MEMORY_TYPE_SYSTEM_RAM, (unsigned char*)data, size, description);
-  }
+  get_core_memory_info(RETRO_MEMORY_SYSTEM_RAM, &info);
+  if (info.size)
+    rc_libretro_memory_register_region(regions, RC_MEMORY_TYPE_SYSTEM_RAM, info.data, info.size, description);
 
-  size = retro_get_memory_size(RETRO_MEMORY_SAVE_RAM);
-  if (size) {
-    data = retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
-    rc_libretro_memory_register_region(regions, RC_MEMORY_TYPE_SAVE_RAM, (unsigned char*)data, size, description);
-  }
+  get_core_memory_info(RETRO_MEMORY_SAVE_RAM, &info);
+  if (info.size)
+    rc_libretro_memory_register_region(regions, RC_MEMORY_TYPE_SAVE_RAM, info.data, info.size, description);
 }
 
 static const struct retro_memory_descriptor* rc_libretro_memory_get_descriptor(const struct retro_memory_map* mmap, unsigned real_address, size_t* offset)
@@ -354,7 +350,7 @@ static void rc_libretro_memory_init_from_memory_map(rc_libretro_memory_regions_t
     while (console_region_size > 0) {
       const struct retro_memory_descriptor* desc = rc_libretro_memory_get_descriptor(mmap, real_address, &offset);
       if (!desc) {
-        if (verbose_message_callback && console_region->type != RC_MEMORY_TYPE_UNUSED) {
+        if (rc_libretro_verbose_message_callback && console_region->type != RC_MEMORY_TYPE_UNUSED) {
           snprintf(description, sizeof(description), "Could not map region starting at $%06X",
                    real_address - console_region->real_address + console_region->start_address);
           rc_libretro_verbose(description);
@@ -379,7 +375,7 @@ static void rc_libretro_memory_init_from_memory_map(rc_libretro_memory_regions_t
 
       if (console_region_size > desc_size) {
         if (desc_size == 0) {
-          if (verbose_message_callback && console_region->type != RC_MEMORY_TYPE_UNUSED) {
+          if (rc_libretro_verbose_message_callback && console_region->type != RC_MEMORY_TYPE_UNUSED) {
             snprintf(description, sizeof(description), "Could not map region starting at $%06X",
                      real_address - console_region->real_address + console_region->start_address);
             rc_libretro_verbose(description);
@@ -416,11 +412,11 @@ static unsigned rc_libretro_memory_console_region_to_ram_type(int region_type) {
   return RETRO_MEMORY_SYSTEM_RAM;
 }
 
-static void rc_libretro_memory_init_from_unmapped_memory(rc_libretro_memory_regions_t* regions, const rc_memory_regions_t* console_regions) {
+static void rc_libretro_memory_init_from_unmapped_memory(rc_libretro_memory_regions_t* regions,
+    rc_libretro_get_core_memory_info_func get_core_memory_info, const rc_memory_regions_t* console_regions) {
   char description[64];
   unsigned i, j;
-  void* data;
-  size_t size;
+  rc_libretro_core_memory_info_t info;
   size_t offset;
 
   for (i = 0; i < console_regions->num_regions; ++i) {
@@ -438,43 +434,43 @@ static void rc_libretro_memory_init_from_unmapped_memory(rc_libretro_memory_regi
     }
     offset = console_region->start_address - base_address;
 
-    size = retro_get_memory_size(type);
-    data = (size) ? retro_get_memory_data(type) : NULL;
+    get_core_memory_info(type, &info);
 
-    if (offset < size) {
-      size -= offset;
+    if (offset < info.size) {
+      info.size -= offset;
 
-      if (data) {
+      if (info.data) {
         snprintf(description, sizeof(description), "offset 0x%06X", (int)offset);
-        data = (unsigned char*)data + offset;
+        info.data += offset;
       }
       else {
         snprintf(description, sizeof(description), "null filler");
       }
     }
     else {
-      if (verbose_message_callback && console_region->type != RC_MEMORY_TYPE_UNUSED) {
+      if (rc_libretro_verbose_message_callback && console_region->type != RC_MEMORY_TYPE_UNUSED) {
         snprintf(description, sizeof(description), "Could not map region starting at $%06X", console_region->start_address);
         rc_libretro_verbose(description);
       }
 
-      data = NULL;
-      size = 0;
+      info.data = NULL;
+      info.size = 0;
     }
 
-    if (console_region_size > size) {
+    if (console_region_size > info.size) {
       /* want more than what is available, take what we can and null fill the rest */
-      rc_libretro_memory_register_region(regions, console_region->type, (unsigned char*)data, size, description);
-      rc_libretro_memory_register_region(regions, console_region->type, NULL, console_region_size - size, "null filler");
+      rc_libretro_memory_register_region(regions, console_region->type, info.data, info.size, description);
+      rc_libretro_memory_register_region(regions, console_region->type, NULL, console_region_size - info.size, "null filler");
     }
     else {
       /* only take as much as we need */
-      rc_libretro_memory_register_region(regions, console_region->type, (unsigned char*)data, console_region_size, description);
+      rc_libretro_memory_register_region(regions, console_region->type, info.data, console_region_size, description);
     }
   }
 }
 
-int rc_libretro_memory_init(rc_libretro_memory_regions_t* regions, const struct retro_memory_map* mmap, int console_id) {
+int rc_libretro_memory_init(rc_libretro_memory_regions_t* regions, const struct retro_memory_map* mmap,
+                            rc_libretro_get_core_memory_info_func get_core_memory_info, int console_id) {
   const rc_memory_regions_t* console_regions = rc_console_memory_regions(console_id);
   rc_libretro_memory_regions_t new_regions;
   int has_valid_region = 0;
@@ -486,11 +482,11 @@ int rc_libretro_memory_init(rc_libretro_memory_regions_t* regions, const struct 
   memset(&new_regions, 0, sizeof(new_regions));
 
   if (console_regions == NULL || console_regions->num_regions == 0)
-    rc_libretro_memory_init_without_regions(&new_regions);
+    rc_libretro_memory_init_without_regions(&new_regions, get_core_memory_info);
   else if (mmap && mmap->num_descriptors != 0)
     rc_libretro_memory_init_from_memory_map(&new_regions, mmap, console_regions);
   else
-    rc_libretro_memory_init_from_unmapped_memory(&new_regions, console_regions);
+    rc_libretro_memory_init_from_unmapped_memory(&new_regions, get_core_memory_info, console_regions);
 
   /* determine if any valid regions were found */
   for (i = 0; i < new_regions.count; i++) {
