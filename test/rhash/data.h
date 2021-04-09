@@ -15,6 +15,7 @@ uint8_t* generate_dreamcast_bin(unsigned track_first_sector, unsigned binary_siz
 uint8_t* generate_pce_cd_bin(unsigned binary_sectors, size_t* image_size);
 uint8_t* generate_pcfx_bin(unsigned binary_sectors, size_t* image_size);
 uint8_t* generate_psx_bin(const char* binary_name, unsigned binary_size, size_t* image_size);
+uint8_t* generate_ps2_bin(const char* binary_name, unsigned binary_size, size_t* image_size);
 
 uint8_t* generate_atari_7800_file(size_t kb, int with_header, size_t* image_size);
 uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size);

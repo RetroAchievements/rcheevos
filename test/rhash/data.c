@@ -580,6 +580,25 @@ uint8_t* generate_psx_bin(const char* binary_name, unsigned binary_size, size_t*
   return image;
 }
 
+uint8_t* generate_ps2_bin(const char* binary_name, unsigned binary_size, size_t* image_size)
+{
+  const size_t sectors_needed = (((binary_size + 2047) / 2048) + 20);
+  char system_cnf[256];
+  uint8_t* image;
+  uint8_t* exe;
+
+  snprintf(system_cnf, sizeof(system_cnf), "BOOT2 = cdrom0:\\%s;1\nVER = 1.0\nVMODE = NTSC\n", binary_name);
+
+  image = generate_iso9660_bin(sectors_needed, "TEST", image_size);
+  generate_iso9660_file(image, "SYSTEM.CNF", system_cnf, strlen(system_cnf));
+
+  /* binary data */
+  exe = generate_iso9660_file(image, binary_name, NULL, binary_size);
+  memcpy(exe, "\x7f\x45\x4c\x46", 4);
+
+  return image;
+}
+
 uint8_t* generate_generic_file(size_t size)
 {
   uint8_t* image;

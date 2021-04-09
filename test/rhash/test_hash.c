@@ -784,6 +784,37 @@ static void test_hash_psx_cd_exe_in_subfolder()
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
+static void test_hash_ps2_iso()
+{
+  size_t image_size;
+  uint8_t* image = generate_ps2_bin("SLUS_200.64", 0x07D800, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "5417c27a658063c77393102e36aed3a6";
+
+  mock_file(0, "game.iso", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PLAYSTATION_2, "game.iso");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.iso", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
 static void test_hash_sega_cd()
 {
   /* the first 512 bytes of sector 0 are a volume header and ROM header. 
@@ -1177,6 +1208,9 @@ void test_hash(void) {
   TEST(test_hash_psx_cd);
   TEST(test_hash_psx_cd_no_system_cnf);
   TEST(test_hash_psx_cd_exe_in_subfolder);
+
+  /* Playstation 2 */
+  TEST(test_hash_ps2_iso);
 
   /* Pokemon Mini */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_POKEMON_MINI, "test.min", 524288, "68f0f13b598e0b66461bc578375c3888");
