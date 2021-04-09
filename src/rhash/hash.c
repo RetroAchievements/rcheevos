@@ -367,6 +367,50 @@ static int rc_hash_buffer(char hash[33], uint8_t* buffer, size_t buffer_size)
   return rc_hash_finalize(&md5, hash);
 }
 
+static int rc_hash_cd_file(md5_state_t* md5, void* track_handle, uint32_t sector, const char* name, unsigned size, const char* description)
+{
+  uint8_t buffer[2048];
+  size_t num_read;
+
+  if ((num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
+  {
+    char message[128];
+    snprintf(message, sizeof(message), "Could not read %s", description);
+    return rc_hash_error(message);
+  }
+
+  if (size > MAX_BUFFER_SIZE)
+    size = MAX_BUFFER_SIZE;
+
+  if (verbose_message_callback)
+  {
+    char message[128];
+    if (name)
+      snprintf(message, sizeof(message), "Hashing %s title (%u bytes) and contents (%u bytes) ", name, (unsigned)strlen(name), size);
+    else
+      snprintf(message, sizeof(message), "Hashing %s contents (%u bytes)", name, size);
+
+    verbose_message_callback(message);
+  }
+
+  do
+  {
+    md5_append(md5, buffer, (int)num_read);
+
+    size -= (unsigned)num_read;
+    if (size == 0)
+      break;
+
+    ++sector;
+    if (size >= sizeof(buffer))
+      num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+    else
+      num_read = rc_cd_read_sector(track_handle, sector, buffer, size);
+  } while (num_read > 0);
+
+  return 1;
+}
+
 static int rc_hash_3do(char hash[33], const char* path)
 {
   uint8_t buffer[2048];
@@ -931,7 +975,7 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
 
 static int rc_hash_dreamcast(char hash[33], const char* path)
 {
-  uint8_t buffer[2048];
+  uint8_t buffer[256];
   void* track_handle;
   void* last_track_handle;
   char exe_file[32] = "";
@@ -957,6 +1001,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
     return rc_hash_error("Not a Dreamcast CD");
   }
 
+  /* start the hash with the game meta information */
   md5_init(&md5);
   md5_append(&md5, (md5_byte_t*)buffer, 256);
 
@@ -997,50 +1042,87 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
 
   /* last track contains the boot executable */
   last_track_handle = rc_cd_open_track(path, RC_HASH_CDTRACK_LAST);
-
   sector = rc_cd_absolute_sector_to_track_sector(last_track_handle, sector);
 
-  if ((num_read = rc_cd_read_sector(last_track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
-    rc_hash_error("Could not read boot executable");
-
-  if (size > MAX_BUFFER_SIZE)
-    size = MAX_BUFFER_SIZE;
-
-  if (verbose_message_callback)
-  {
-    char message[128];
-    snprintf(message, sizeof(message), "Hashing %s contents (%u bytes)", exe_file, size);
-    verbose_message_callback(message);
-  }
-
-  do
-  {
-    md5_append(&md5, buffer, (int)num_read);
-
-    size -= (unsigned)num_read;
-    if (size == 0)
-      break;
-
-    ++sector;
-    if (size >= sizeof(buffer))
-      num_read = rc_cd_read_sector(last_track_handle, sector, buffer, sizeof(buffer));
-    else
-      num_read = rc_cd_read_sector(last_track_handle, sector, buffer, size);
-  } while (num_read > 0);
+  result = rc_hash_cd_file(&md5, last_track_handle, sector, NULL, size, "boot executable");
 
   rc_cd_close_track(last_track_handle);
 
-  result = rc_hash_finalize(&md5, hash);
-
+  rc_hash_finalize(&md5, hash);
   return result;
+}
+
+static int rc_hash_find_playstation_executable(void* track_handle, const char* boot_key, const char* cdrom_prefix, 
+                                               char exe_name[], unsigned exe_name_size, unsigned* exe_size)
+{
+  uint8_t buffer[2048];
+  unsigned size;
+  char* ptr;
+  char* start;
+  const size_t boot_key_len = strlen(boot_key);
+  const size_t cdrom_prefix_len = strlen(cdrom_prefix);
+  int sector;
+
+  sector = rc_cd_find_file_sector(track_handle, "SYSTEM.CNF", NULL);
+  if (!sector)
+    return 0;
+
+  size = (unsigned)rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer) - 1);
+  buffer[size] = '\0';
+
+  for (ptr = (char*)buffer; *ptr; ++ptr)
+  {
+    if (strncmp(ptr, boot_key, boot_key_len) == 0)
+    {
+      ptr += boot_key_len;
+      while (isspace(*ptr))
+        ++ptr;
+
+      if (*ptr == '=')
+      {
+        ++ptr;
+        while (isspace(*ptr))
+          ++ptr;
+
+        if (strncmp(ptr, cdrom_prefix, cdrom_prefix_len) == 0)
+          ptr += cdrom_prefix_len;
+        if (*ptr == '\\')
+          ++ptr;
+
+        start = ptr;
+        while (!isspace(*ptr) && *ptr != ';')
+          ++ptr;
+
+        size = (unsigned)(ptr - start);
+        if (size >= exe_name_size)
+          size = exe_name_size - 1;
+
+        memcpy(exe_name, start, size);
+        exe_name[size] = '\0';
+
+        if (verbose_message_callback)
+        {
+          snprintf((char*)buffer, sizeof(buffer), "Looking for boot executable: %s", exe_name);
+          verbose_message_callback((const char*)buffer);
+        }
+
+        sector = rc_cd_find_file_sector(track_handle, exe_name, exe_size);
+        break;
+      }
+    }
+
+    /* advance to end of line */
+    while (*ptr && *ptr != '\n')
+      ++ptr;
+  }
+
+  return sector;
 }
 
 static int rc_hash_psx(char hash[33], const char* path)
 {
-  uint8_t buffer[2048];
+  uint8_t buffer[32];
   char exe_name[64] = "";
-  char* ptr;
-  char* start;
   void* track_handle;
   uint32_t sector;
   unsigned size;
@@ -1052,63 +1134,12 @@ static int rc_hash_psx(char hash[33], const char* path)
   if (!track_handle)
     return rc_hash_error("Could not open track");
 
-  sector = rc_cd_find_file_sector(track_handle, "SYSTEM.CNF", NULL);
+  sector = rc_hash_find_playstation_executable(track_handle, "BOOT", "cdrom:", exe_name, sizeof(exe_name), &size);
   if (!sector)
   {
     sector = rc_cd_find_file_sector(track_handle, "PSX.EXE", &size);
     if (sector)
-      strcpy(exe_name, "PSX.EXE");
-  }
-  else
-  {
-    size = (unsigned)rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer) - 1);
-    buffer[size] = '\0';
-
-    for (ptr = (char*)buffer; *ptr; ++ptr)
-    {
-      if (strncmp(ptr, "BOOT", 4) == 0)
-      {
-        ptr += 4;
-        while (isspace(*ptr))
-          ++ptr;
-
-        if (*ptr == '=')
-        {
-          ++ptr;
-          while (isspace(*ptr))
-            ++ptr;
-
-          if (strncmp(ptr, "cdrom:", 6) == 0)
-            ptr += 6;
-          if (*ptr == '\\')
-            ++ptr;
-
-          start = ptr;
-          while (!isspace(*ptr) && *ptr != ';')
-            ++ptr;
-
-          size = (unsigned)(ptr - start);
-          if (size >= sizeof(exe_name))
-            size = sizeof(exe_name) - 1;
-
-          memcpy(exe_name, start, size);
-          exe_name[size] = '\0';
-
-          if (verbose_message_callback)
-          {
-            snprintf((char*)buffer, sizeof(buffer), "Looking for boot executable: %s", exe_name);
-            verbose_message_callback((const char*)buffer);
-          }
-
-          sector = rc_cd_find_file_sector(track_handle, exe_name, &size);
-          break;
-        }
-      }
-
-      /* advance to end of line */
-      while (*ptr && *ptr != '\n')
-        ++ptr;
-    }
+      memcpy(exe_name, "PSX.EXE", 8);
   }
 
   if (!sector)
@@ -1138,38 +1169,55 @@ static int rc_hash_psx(char hash[33], const char* path)
       size = (((uint8_t)buffer[31] << 24) | ((uint8_t)buffer[30] << 16) | ((uint8_t)buffer[29] << 8) | (uint8_t)buffer[28]) + 2048;
     }
 
-    if (size > MAX_BUFFER_SIZE)
-      size = MAX_BUFFER_SIZE;
+    md5_init(&md5);
+    result = rc_hash_cd_file(&md5, track_handle, sector, exe_name, size, "primary executable");
+    rc_hash_finalize(&md5, hash);
+  }
 
-    if (verbose_message_callback)
+  rc_cd_close_track(track_handle);
+
+  return result;
+}
+
+static int rc_hash_ps2(char hash[33], const char* path)
+{
+  uint8_t buffer[4];
+  char exe_name[64] = "";
+  void* track_handle;
+  uint32_t sector;
+  unsigned size;
+  size_t num_read;
+  int result = 0;
+  md5_state_t md5;
+
+  track_handle = rc_cd_open_track(path, 1);
+  if (!track_handle)
+    return rc_hash_error("Could not open track");
+
+  sector = rc_hash_find_playstation_executable(track_handle, "BOOT2", "cdrom0:", exe_name, sizeof(exe_name), &size);
+  if (!sector)
+  {
+    rc_hash_error("Could not locate primary executable");
+  }
+  else if ((num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
+  {
+    rc_hash_error("Could not read primary executable");
+  }
+  else
+  {
+    if (memcmp(buffer, "\x7f\x45\x4c\x46", 4) != 0)
     {
-      char message[128];
-      snprintf(message, sizeof(message), "Hashing %s title (%u bytes) and contents (%u bytes) ", exe_name, (unsigned)strlen(exe_name), size);
-      verbose_message_callback(message);
+      if (verbose_message_callback)
+      {
+        char message[128];
+        snprintf(message, sizeof(message), "%s did not contain ELF marker", exe_name);
+        verbose_message_callback(message);
+      }
     }
 
-    /* there's also a few games that are use a singular engine and only differ via their data files. luckily, they have
-     * unique serial numbers, and use the serial number as the boot file in the standard way. include the boot file in the hash
-     */
     md5_init(&md5);
-    md5_append(&md5, (md5_byte_t*)exe_name, (int)strlen(exe_name));
-
-    do
-    {
-      md5_append(&md5, buffer, (int)num_read);
-
-      size -= (unsigned)num_read;
-      if (size == 0)
-        break;
-
-      ++sector;
-      if (size >= sizeof(buffer))
-        num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
-      else
-        num_read = rc_cd_read_sector(track_handle, sector, buffer, size);
-    } while (num_read > 0);
-
-    result = rc_hash_finalize(&md5, hash);
+    result = rc_hash_cd_file(&md5, track_handle, sector, exe_name, size, "primary executable");
+    rc_hash_finalize(&md5, hash);
   }
 
   rc_cd_close_track(track_handle);
@@ -1580,6 +1628,12 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
         return rc_hash_generate_from_playlist(hash, console_id, path);
 
       return rc_hash_psx(hash, path);
+
+    case RC_CONSOLE_PLAYSTATION_2:
+      if (rc_path_compare_extension(path, "m3u"))
+        return rc_hash_generate_from_playlist(hash, console_id, path);
+
+      return rc_hash_ps2(hash, path);
 
     case RC_CONSOLE_DREAMCAST:
       if (rc_path_compare_extension(path, "m3u"))
