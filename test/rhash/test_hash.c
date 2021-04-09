@@ -681,7 +681,7 @@ static void test_hash_psx_cd()
   size_t image_size;
   uint8_t* image = generate_psx_bin("SLUS_007.45", 0x07D800, &image_size);
   char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "f908d3586285c1e954037b363aa3ca6e";
+  const char* expected_md5 = "db433fb038cde4fb15c144e8c7dea6e3";
 
   mock_file(0, "game.bin", image, image_size);
   mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
@@ -713,7 +713,7 @@ static void test_hash_psx_cd_no_system_cnf()
   size_t image_size;
   uint8_t* image;
   char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "f0f88bd4dca24846ac5236b30c1fa5b8";
+  const char* expected_md5 = "e494c79a7315be0dc3e8571c45df162c";
   size_t binary_size = 0x12000;
   const size_t sectors_needed = (((binary_size + 2047) / 2048) + 20);
   uint8_t* exe;
@@ -757,7 +757,7 @@ static void test_hash_psx_cd_exe_in_subfolder()
   size_t image_size;
   uint8_t* image = generate_psx_bin("bin\\SCES_012.37", 0x07D800, &image_size);
   char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "f908d3586285c1e954037b363aa3ca6e";
+  const char* expected_md5 = "674018e23a4052113665dfb264e9c2fc";
 
   mock_file(0, "game.bin", image, image_size);
   mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
