@@ -75,7 +75,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -88,7 +88,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
@@ -100,7 +100,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -117,7 +117,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -138,6 +138,7 @@
     <ClCompile Include="..\src\rcheevos\lboard.c" />
     <ClCompile Include="..\src\rcheevos\memref.c" />
     <ClCompile Include="..\src\rcheevos\operand.c" />
+    <ClCompile Include="..\src\rcheevos\rc_libretro.c" />
     <ClCompile Include="..\src\rcheevos\richpresence.c" />
     <ClCompile Include="..\src\rcheevos\runtime.c" />
     <ClCompile Include="..\src\rcheevos\runtime_progress.c" />
@@ -190,6 +191,7 @@
     <ClCompile Include="rcheevos\test_lboard.c" />
     <ClCompile Include="rcheevos\test_memref.c" />
     <ClCompile Include="rcheevos\test_operand.c" />
+    <ClCompile Include="rcheevos\test_rc_libretro.c" />
     <ClCompile Include="rcheevos\test_richpresence.c" />
     <ClCompile Include="rcheevos\test_runtime.c" />
     <ClCompile Include="rcheevos\test_runtime_progress.c" />
@@ -212,7 +214,9 @@
     <ClInclude Include="..\src\rcheevos\rc_internal.h" />
     <ClInclude Include="..\include\rc_error.h" />
     <ClInclude Include="..\src\rapi\rc_api_common.h" />
+    <ClInclude Include="..\src\rcheevos\rc_libretro.h" />
     <ClInclude Include="..\src\rhash\md5.h" />
+    <ClInclude Include="libretro.h" />
     <ClInclude Include="rcheevos\mock_memory.h" />
     <ClInclude Include="rhash\data.h" />
     <ClInclude Include="rhash\mock_filereader.h" />
