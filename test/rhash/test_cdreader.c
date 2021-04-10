@@ -14,8 +14,8 @@ typedef struct cdrom_t
   void* file_handle;
   int sector_size;
   int sector_header_size;
-  int first_sector_offset;
   int first_sector;
+  int64_t first_sector_offset;
 } cdrom_t;
 
 static const unsigned char sync_pattern[] = {
@@ -121,7 +121,7 @@ static void test_open_cue_track_2()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 9807840); /* track 2: 0x95A7E0 */
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 9807840); /* track 2: 0x95A7E0 */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -140,7 +140,7 @@ static void test_open_cue_track_12()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 664047216); /* track 12: 0x27948E70 */
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 664047216); /* track 12: 0x27948E70 */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -181,7 +181,7 @@ static void test_open_gdi_track_3()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track03.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->first_sector, 45000);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
@@ -207,7 +207,7 @@ static void test_open_gdi_track_3_quoted()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track 03.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->first_sector, 45000);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
@@ -227,7 +227,7 @@ static void test_open_gdi_track_last()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track26.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->first_sector, 548106);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
@@ -247,7 +247,7 @@ static void test_open_cue_track_largest_data()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 146190912); /* track 5: 0x8B6B240 */
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 146190912); /* track 5: 0x8B6B240 */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -267,7 +267,7 @@ static void test_open_cue_track_largest_data_multiple_bin()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track2.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 529200); /* INDEX 01 00:03:00 */
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 529200); /* INDEX 01 00:03:00 */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -287,7 +287,7 @@ static void test_open_cue_track_largest_data_backwards_compatibility()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 146190912); /* track 5: 0x8B6B240 */
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 146190912); /* track 5: 0x8B6B240 */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -319,7 +319,7 @@ static void test_open_cue_track_largest_data_last_track()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 146190912); /* track 5: 0x8B6B240 (13:48:56) */
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 146190912); /* track 5: 0x8B6B240 (13:48:56) */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -348,7 +348,7 @@ static void test_open_cue_track_largest_data_index0s()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 8443680); /* track 2: 0x80D720 (00:47:65) */
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 8443680); /* track 2: 0x80D720 (00:47:65) */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -375,7 +375,7 @@ static void test_open_cue_track_largest_data_index2()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 352800); /* 00:02:00 = 150 frames in */
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 352800); /* 00:02:00 = 150 frames in */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -397,7 +397,7 @@ static void test_open_cue_track_largest_data_multiple_bins()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track3.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 352800); /* 00:02:00 = 150 frames in */
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 352800); /* 00:02:00 = 150 frames in */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -445,7 +445,7 @@ static void test_open_cue_track_first_data()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 9807840); /* track 2: 0x0095a7e0 (00:55:45) */
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 9807840); /* track 2: 0x0095a7e0 (00:55:45) */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -468,7 +468,7 @@ static void test_determine_sector_size_sync(int sector_size)
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->sector_size, sector_size);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 
@@ -493,7 +493,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor(int sector
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->sector_size, sector_size);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 24);
 
@@ -528,7 +528,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0(int
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, sector_size * 150);
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, sector_size * 150);
   ASSERT_NUM_EQUALS(track_handle->sector_size, sector_size);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 24);
 
@@ -553,7 +553,7 @@ static void test_determine_sector_size_sync_2048()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 24);
 
@@ -578,7 +578,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_2048()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->sector_size, sector_size);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 0);
 
@@ -613,7 +613,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0_204
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, sector_size * 150);
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, sector_size * 150);
   ASSERT_NUM_EQUALS(track_handle->sector_size, sector_size);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 0);
 
@@ -701,7 +701,7 @@ static void test_read_sector()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game.bin");
-  ASSERT_NUM_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
 

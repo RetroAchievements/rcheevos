@@ -50,14 +50,22 @@ static void* filereader_open(const char* path)
   return fopen(path, "rb");
 }
 
-static void filereader_seek(void* file_handle, size_t offset, int origin)
+static void filereader_seek(void* file_handle, int64_t offset, int origin)
 {
-  fseek((FILE*)file_handle, (long)offset, origin);
+#if defined(_WIN32)
+  _fseeki64((FILE*)file_handle, offset, origin);
+#else
+  fseeko64((FILE*)file_handle, offset, origin);
+#endif
 }
 
-static size_t filereader_tell(void* file_handle)
+static int64_t filereader_tell(void* file_handle)
 {
-  return ftell((FILE*)file_handle);
+#if defined(_WIN32)
+  return _ftelli64((FILE*)file_handle);
+#else
+  return ftello64((FILE*)file_handle);
+#endif
 }
 
 static size_t filereader_read(void* file_handle, void* buffer, size_t requested_bytes)
@@ -118,13 +126,13 @@ void* rc_file_open(const char* path)
   return handle;
 }
 
-void rc_file_seek(void* file_handle, size_t offset, int origin)
+void rc_file_seek(void* file_handle, int64_t offset, int origin)
 {
   if (filereader)
     filereader->seek(file_handle, offset, origin);
 }
 
-size_t rc_file_tell(void* file_handle)
+int64_t rc_file_tell(void* file_handle)
 {
   return (filereader) ? filereader->tell(file_handle) : 0;
 }
@@ -672,7 +680,7 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
   uint8_t* hash_buffer;
   unsigned int hash_size, arm9_size, arm9_addr, arm7_size, arm7_addr, icon_addr;
   size_t num_read;
-  int offset = 0;
+  int64_t offset = 0;
   md5_state_t md5;
   void* file_handle;
 
@@ -1331,7 +1339,7 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
 {
   md5_state_t md5;
   uint8_t* buffer;
-  size_t size;
+  int64_t size;
   const size_t buffer_size = 65536;
   void* file_handle;
   int result = 0;
@@ -1386,7 +1394,7 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
 static int rc_hash_buffered_file(char hash[33], int console_id, const char* path)
 {
   uint8_t* buffer;
-  size_t size;
+  int64_t size;
   int result = 0;
   void* file_handle;
 
@@ -1410,13 +1418,13 @@ static int rc_hash_buffered_file(char hash[33], int console_id, const char* path
   if (size > MAX_BUFFER_SIZE)
     size = MAX_BUFFER_SIZE;
 
-  buffer = (uint8_t*)malloc(size);
+  buffer = (uint8_t*)malloc((size_t)size);
   if (buffer)
   {
     rc_file_seek(file_handle, 0, SEEK_SET);
     rc_file_read(file_handle, buffer, (int)size);
 
-    result = rc_hash_generate_from_buffer(hash, console_id, buffer, size);
+    result = rc_hash_generate_from_buffer(hash, console_id, buffer, (size_t)size);
 
     free(buffer);
   }
@@ -1679,7 +1687,7 @@ static void rc_hash_initialize_dsk_iterator(struct rc_hash_iterator* iterator, c
     if (file)
     {
       rc_file_seek(file, 0, SEEK_END);
-      size = rc_file_tell(file);
+      size = (size_t)rc_file_tell(file);
       rc_file_close(file);
     }
   }
@@ -1758,7 +1766,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
               void* file = rc_file_open(path);
               if (file)
               {
-                 size_t size;
+                 int64_t size;
 
                  rc_file_seek(file, 0, SEEK_END);
                  size = rc_file_tell(file);

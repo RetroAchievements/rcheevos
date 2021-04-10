@@ -7,8 +7,8 @@ typedef struct mock_file_data
 {
   const char* path;
   const uint8_t* data;
-  size_t size;
-  size_t pos;
+  int64_t size;
+  int64_t pos;
   int first_sector;
 } mock_file_data;
 
@@ -30,7 +30,7 @@ static void* _mock_file_open(const char* path)
   return NULL;
 }
 
-static void _mock_file_seek(void* file_handle, size_t offset, int origin)
+static void _mock_file_seek(void* file_handle, int64_t offset, int origin)
 {
   mock_file_data* file = (mock_file_data*)file_handle;
   switch (origin)
@@ -50,7 +50,7 @@ static void _mock_file_seek(void* file_handle, size_t offset, int origin)
     file->pos = file->size;
 }
 
-static size_t _mock_file_tell(void* file_handle)
+static int64_t _mock_file_tell(void* file_handle)
 {
   mock_file_data* file = (mock_file_data*)file_handle;
   return file->pos;
@@ -59,7 +59,7 @@ static size_t _mock_file_tell(void* file_handle)
 static size_t _mock_file_read(void* file_handle, void* buffer, size_t count)
 {
   mock_file_data* file = (mock_file_data*)file_handle;
-  size_t remaining = file->size - file->pos;
+  const size_t remaining = (size_t)(file->size - file->pos);
   if (count > remaining)
     count = remaining;
 
