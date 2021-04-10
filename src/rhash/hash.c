@@ -1176,7 +1176,7 @@ static int rc_hash_psx(char hash[33], const char* path)
       size = (((uint8_t)buffer[31] << 24) | ((uint8_t)buffer[30] << 16) | ((uint8_t)buffer[29] << 8) | (uint8_t)buffer[28]) + 2048;
     }
 
-    /* there's also a few games that use a singular engine and only differ via their data files. luckily, they have unique
+    /* there's a few games that use a singular engine and only differ via their data files. luckily, they have unique
      * serial numbers, and use the serial number as the boot file in the standard way. include the boot file name in the hash.
      */
     md5_init(&md5);
@@ -1227,7 +1227,12 @@ static int rc_hash_ps2(char hash[33], const char* path)
       }
     }
 
+    /* there's a few games that use a singular engine and only differ via their data files. luckily, they have unique
+     * serial numbers, and use the serial number as the boot file in the standard way. include the boot file name in the hash.
+     */
     md5_init(&md5);
+    md5_append(&md5, (md5_byte_t*)exe_name, (int)strlen(exe_name));
+
     result = rc_hash_cd_file(&md5, track_handle, sector, exe_name, size, "primary executable");
     rc_hash_finalize(&md5, hash);
   }

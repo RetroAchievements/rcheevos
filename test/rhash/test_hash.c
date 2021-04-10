@@ -789,7 +789,7 @@ static void test_hash_ps2_iso()
   size_t image_size;
   uint8_t* image = generate_ps2_bin("SLUS_200.64", 0x07D800, &image_size);
   char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "5417c27a658063c77393102e36aed3a6";
+  const char* expected_md5 = "01a517e4ad72c6c2654d1b839be7579d";
 
   mock_file(0, "game.iso", image, image_size);
 
