@@ -1252,6 +1252,8 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
     case RC_CONSOLE_POKEMON_MINI:
     case RC_CONSOLE_SEGA_32X:
     case RC_CONSOLE_SG1000:
+    case RC_CONSOLE_SUPERVISION:
+    case RC_CONSOLE_TIC80:
     case RC_CONSOLE_VECTREX:
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WONDERSWAN:
@@ -1527,6 +1529,8 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_POKEMON_MINI:
     case RC_CONSOLE_SEGA_32X:
     case RC_CONSOLE_SG1000:
+    case RC_CONSOLE_SUPERVISION:
+    case RC_CONSOLE_TIC80:
     case RC_CONSOLE_VECTREX:
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WONDERSWAN:
@@ -1674,6 +1678,13 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
     const char* ext = rc_path_get_extension(path);
     switch (tolower(*ext))
     {
+      case '2':
+        if (rc_path_compare_extension(ext, "2d"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_SHARPX1;
+        }
+        break;
+
       case '7':
         if (rc_path_compare_extension(ext, "7z"))
         {
@@ -1718,8 +1729,8 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
               }
            }
 
-          /* bin is associated with MegaDrive, Sega32X and Atari 2600. Since they all use the same
-           * hashing algorithm, only specify one of them */
+          /* bin is associated with MegaDrive, Sega32X, Atari 2600, and Watara Supervision.
+           * Since they all use the same hashing algorithm, only specify one of them */
           iterator->consoles[0] = RC_CONSOLE_MEGA_DRIVE;
         }
         else if (rc_path_compare_extension(ext, "bs"))
@@ -1766,6 +1777,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         else if (rc_path_compare_extension(ext, "d88"))
         {
           iterator->consoles[0] = RC_CONSOLE_PC8800;
+          iterator->consoles[1] = RC_CONSOLE_SHARPX1;
         }
         break;
 
@@ -1777,6 +1789,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         else if (rc_path_compare_extension(ext, "fds"))
         {
           iterator->consoles[0] = RC_CONSOLE_NINTENDO;
+        }
+        else if (rc_path_compare_extension(ext, "fd"))
+        {
+            iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* disk */
         }
         break;
 
@@ -1819,6 +1835,13 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         break;
 
+      case 'k':
+        if (rc_path_compare_extension(ext, "k7"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* tape */
+        }
+        break;
+
       case 'l':
         if (rc_path_compare_extension(ext, "lnx"))
         {
@@ -1854,6 +1877,14 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_MSX;
         }
+        else if (rc_path_compare_extension(ext, "m5"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* cartridge */
+        }
+        else if (rc_path_compare_extension(ext, "m7"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* cartridge */
+        }
         break;
 
       case 'n':
@@ -1887,6 +1918,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         if (rc_path_compare_extension(ext, "rom"))
         {
           iterator->consoles[0] = RC_CONSOLE_MSX;
+          iterator->consoles[1] = RC_CONSOLE_THOMSONTO8; /* cartridge */
         }
         if (rc_path_compare_extension(ext, "ri"))
         {
@@ -1909,12 +1941,24 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_PC_ENGINE;
         }
+        else if (rc_path_compare_extension(ext, "sv"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_SUPERVISION;
+        }
+        else if (rc_path_compare_extension(ext, "sap"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* disk */
+        }
         break;
 
       case 't':
         if (rc_path_compare_extension(ext, "tap"))
         {
           iterator->consoles[0] = RC_CONSOLE_ORIC;
+        }
+        else if (rc_path_compare_extension(ext, "tic"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_TIC80;
         }
         break;
 
