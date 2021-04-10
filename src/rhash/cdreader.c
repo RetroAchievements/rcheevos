@@ -732,7 +732,7 @@ static size_t cdreader_read_sector(void* track_handle, uint32_t sector, void* bu
   if (!cdrom)
     return 0;
 
-  sector_start = sector * cdrom->sector_size + cdrom->sector_header_size + cdrom->first_sector_offset;
+  sector_start = (int64_t)sector * cdrom->sector_size + cdrom->sector_header_size + cdrom->first_sector_offset;
 
   while (requested_bytes > 2048)
   {
