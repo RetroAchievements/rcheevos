@@ -4,6 +4,7 @@
 
 #include "md5.h"
 
+#include <stdio.h>
 #include <ctype.h>
 
 /* arbitrary limit to prevent allocating and hashing large files */
@@ -54,8 +55,11 @@ static void filereader_seek(void* file_handle, int64_t offset, int origin)
 {
 #if defined(_WIN32)
   _fseeki64((FILE*)file_handle, offset, origin);
-#else
+#elif defined(_LARGEFILE64_SOURCE)
   fseeko64((FILE*)file_handle, offset, origin);
+#else
+#pragma message("Using generic fseek may fail for large files")
+  fseek((FILE*)file_handle, offset, origin);
 #endif
 }
 
@@ -63,8 +67,10 @@ static int64_t filereader_tell(void* file_handle)
 {
 #if defined(_WIN32)
   return _ftelli64((FILE*)file_handle);
-#else
+#elif defined(_LARGEFILE64_SOURCE)
   return ftello64((FILE*)file_handle);
+#else
+  return ftell((FILE*)file_handle);
 #endif
 }
 
@@ -396,7 +402,7 @@ static int rc_hash_cd_file(md5_state_t* md5, void* track_handle, uint32_t sector
     if (name)
       snprintf(message, sizeof(message), "Hashing %s title (%u bytes) and contents (%u bytes) ", name, (unsigned)strlen(name), size);
     else
-      snprintf(message, sizeof(message), "Hashing %s contents (%u bytes)", name, size);
+      snprintf(message, sizeof(message), "Hashing %s contents (%u bytes)", description, size);
 
     verbose_message_callback(message);
   }
