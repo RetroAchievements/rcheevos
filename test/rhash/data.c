@@ -430,7 +430,7 @@ uint8_t* generate_iso9660_bin(unsigned num_sectors, const char* volume_label, si
   memcpy(volume_descriptor, identifier, 8);
 
   /* volume label */
-  memcpy(&volume_descriptor[40], volume_label, sizeof(volume_label));
+  memcpy(&volume_descriptor[40], volume_label, strlen(volume_label));
 
   /* number of sectors (little endian, then big endian) */
   volume_descriptor[80] = image[87] = num_sectors & 0xFF;
@@ -565,7 +565,7 @@ uint8_t* generate_psx_bin(const char* binary_name, unsigned binary_size, size_t*
   snprintf(system_cnf, sizeof(system_cnf), "BOOT=cdrom:\\%s;1\nTCB=4\nEVENT=10\nSTACK=801FFFF0\n", binary_name);
 
   image = generate_iso9660_bin(sectors_needed, "TEST", image_size);
-  generate_iso9660_file(image, "SYSTEM.CNF", system_cnf, strlen(system_cnf));
+  generate_iso9660_file(image, "SYSTEM.CNF", (const uint8_t*)system_cnf, strlen(system_cnf));
 
   /* binary data */
   exe = generate_iso9660_file(image, binary_name, NULL, binary_size);
@@ -590,7 +590,7 @@ uint8_t* generate_ps2_bin(const char* binary_name, unsigned binary_size, size_t*
   snprintf(system_cnf, sizeof(system_cnf), "BOOT2 = cdrom0:\\%s;1\nVER = 1.0\nVMODE = NTSC\n", binary_name);
 
   image = generate_iso9660_bin(sectors_needed, "TEST", image_size);
-  generate_iso9660_file(image, "SYSTEM.CNF", system_cnf, strlen(system_cnf));
+  generate_iso9660_file(image, "SYSTEM.CNF", (const uint8_t*)system_cnf, strlen(system_cnf));
 
   /* binary data */
   exe = generate_iso9660_file(image, binary_name, NULL, binary_size);

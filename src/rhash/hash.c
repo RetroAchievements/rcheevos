@@ -988,7 +988,6 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   void* last_track_handle;
   char exe_file[32] = "";
   unsigned size;
-  size_t num_read = 0;
   uint32_t sector;
   int result = 0;
   md5_state_t md5;
@@ -1342,6 +1341,7 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
   int64_t size;
   const size_t buffer_size = 65536;
   void* file_handle;
+  size_t remaining;
   int result = 0;
 
   file_handle = rc_file_open(path);
@@ -1362,7 +1362,9 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
   }
 
   if (size > MAX_BUFFER_SIZE)
-    size = MAX_BUFFER_SIZE;
+    remaining = MAX_BUFFER_SIZE;
+  else
+    remaining = (size_t)size;
 
   md5_init(&md5);
 
@@ -1370,17 +1372,17 @@ static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
   if (buffer)
   {
     rc_file_seek(file_handle, 0, SEEK_SET);
-    while (size >= buffer_size)
+    while (remaining >= buffer_size)
     {
       rc_file_read(file_handle, buffer, (int)buffer_size);
       md5_append(&md5, buffer, (int)buffer_size);
-      size -= buffer_size;
+      remaining -= buffer_size;
     }
 
-    if (size > 0)
+    if (remaining > 0)
     {
-      rc_file_read(file_handle, buffer, (int)size);
-      md5_append(&md5, buffer, (int)size);
+      rc_file_read(file_handle, buffer, (int)remaining);
+      md5_append(&md5, buffer, (int)remaining);
     }
 
     free(buffer);

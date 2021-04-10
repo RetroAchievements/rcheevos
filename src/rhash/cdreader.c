@@ -338,7 +338,9 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
               ++scan;
             *scan = '\0';
 
-            snprintf(message, sizeof(message), "Found %s track %d (sector size %d, track starts at %lld)", mode, current_track, sector_size, offset);
+            /* it's undesirable to truncate offset to 32-bits, but %lld isn't defined in c89. */
+            snprintf(message, sizeof(message), "Found %s track %d (sector size %d, track starts at %d)",
+                     mode, current_track, sector_size, (int)offset);
             verbose_message_callback(message);
           }
 
@@ -503,7 +505,8 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
         if (verbose_message_callback)
         {
           if (cdrom->first_sector_offset)
-            snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d, track starts at %lld)", track, cdrom->sector_size, cdrom->first_sector_offset);
+            snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d, track starts at %d)",
+                     track, cdrom->sector_size, (int)cdrom->first_sector_offset);
           else
             snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d)", track, cdrom->sector_size);
 
