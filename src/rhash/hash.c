@@ -1789,10 +1789,11 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
                  {
                     iterator->consoles[0] = RC_CONSOLE_3DO; /* 4DO supports directly opening the bin file */
                     iterator->consoles[1] = RC_CONSOLE_PLAYSTATION; /* PCSX ReARMed supports directly opening the bin file*/
-                    iterator->consoles[2] = RC_CONSOLE_SEGA_CD; /* Genesis Plus GX supports directly opening the bin file*/
+                    iterator->consoles[2] = RC_CONSOLE_PLAYSTATION_2; /* PCSX2 supports directly opening the bin file*/
+                    iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* Genesis Plus GX supports directly opening the bin file*/
 
                     /* fallback to megadrive which just does a full hash */
-                    iterator->consoles[3] = RC_CONSOLE_MEGA_DRIVE;
+                    iterator->consoles[4] = RC_CONSOLE_MEGA_DRIVE;
                     break;
                  }
               }
@@ -1812,20 +1813,22 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         if (rc_path_compare_extension(ext, "cue"))
         {
           iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
-          iterator->consoles[1] = RC_CONSOLE_PC_ENGINE;
-          iterator->consoles[2] = RC_CONSOLE_3DO;
-          iterator->consoles[3] = RC_CONSOLE_PCFX;
-          iterator->consoles[4] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
+          iterator->consoles[1] = RC_CONSOLE_PLAYSTATION_2;
+          iterator->consoles[2] = RC_CONSOLE_PC_ENGINE;
+          iterator->consoles[3] = RC_CONSOLE_3DO;
+          iterator->consoles[4] = RC_CONSOLE_PCFX;
+          iterator->consoles[5] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
           need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "chd"))
         {
           iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
-          iterator->consoles[1] = RC_CONSOLE_DREAMCAST;
-          iterator->consoles[2] = RC_CONSOLE_PC_ENGINE;
-          iterator->consoles[3] = RC_CONSOLE_3DO;
-          iterator->consoles[4] = RC_CONSOLE_PCFX;
-          iterator->consoles[5] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
+          iterator->consoles[1] = RC_CONSOLE_PLAYSTATION_2;
+          iterator->consoles[2] = RC_CONSOLE_DREAMCAST;
+          iterator->consoles[3] = RC_CONSOLE_PC_ENGINE;
+          iterator->consoles[4] = RC_CONSOLE_3DO;
+          iterator->consoles[5] = RC_CONSOLE_PCFX;
+          iterator->consoles[6] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
           need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "col"))
