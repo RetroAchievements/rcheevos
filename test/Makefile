@@ -45,6 +45,7 @@ OBJ=$(RC_SRC)/alloc.o \
     $(RC_SRC)/lboard.o \
     $(RC_SRC)/memref.o \
     $(RC_SRC)/operand.o \
+    $(RC_SRC)/rc_libretro.o \
     $(RC_SRC)/richpresence.o \
     $(RC_SRC)/runtime.o \
     $(RC_SRC)/runtime_progress.o \
@@ -64,6 +65,7 @@ OBJ=$(RC_SRC)/alloc.o \
     rcheevos/test_lboard.o \
     rcheevos/test_memref.o \
     rcheevos/test_operand.o \
+    rcheevos/test_rc_libretro.o \
     rcheevos/test_richpresence.o \
     rcheevos/test_runtime.o \
     rcheevos/test_runtime_progress.o \
@@ -81,7 +83,7 @@ OBJ=$(RC_SRC)/alloc.o \
 
 # compile flags
 CFLAGS=-Wall -Wno-long-long -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
-INCLUDES=-I../include -I$(RC_SRC)
+INCLUDES=-I../include -I$(RC_SRC) -I.
 
 ifeq ($(ARCH), x86)
     CFLAGS += -m32
