@@ -1,5 +1,7 @@
 #include "data.h"
 
+#include "../src/rcheevos/rc_compat.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -411,6 +413,189 @@ uint8_t* generate_pcfx_bin(unsigned binary_sectors, size_t* image_size)
   fill_image(&image[4096], binary_sectors * 2048);
 
   *image_size = size_needed;
+  return image;
+}
+
+uint8_t* generate_iso9660_bin(unsigned num_sectors, const char* volume_label, size_t* image_size)
+{
+  const uint8_t identifier[] = { 0x01, 'C', 'D', '0', '0', '1', 0x01, 0x00 };
+  uint8_t* volume_descriptor;;
+  uint8_t* image;
+  
+  *image_size = num_sectors * 2048;
+  image = calloc(*image_size, 1);
+  volume_descriptor = &image[16 * 2048];
+
+  /* CD001 identifier */
+  memcpy(volume_descriptor, identifier, 8);
+
+  /* volume label */
+  memcpy(&volume_descriptor[40], volume_label, strlen(volume_label));
+
+  /* number of sectors (little endian, then big endian) */
+  volume_descriptor[80] = image[87] = num_sectors & 0xFF;
+  volume_descriptor[81] = image[86] = (num_sectors >> 8) & 0xFF;
+  volume_descriptor[82] = image[85] = (num_sectors >> 16) & 0xFF;
+  volume_descriptor[83] = image[84] = (num_sectors >> 24) & 0xFF;
+
+  /* size of each sector */
+  volume_descriptor[128] = (2048) & 0xFF;
+  volume_descriptor[129] = (2048 >> 8) & 0xFF;
+
+  /* root directory record location */
+  volume_descriptor[158] = 17;
+
+  /* helper for tracking next free sector - not actually part of iso9660 spec */
+  image[17 * 2048 - 4] = 18;
+
+  return image;
+}
+
+uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8_t* contents, size_t contents_size)
+{
+  const unsigned root_directory_record_offset = 17 * 2048;
+  uint8_t* file_entry_start = &image[root_directory_record_offset];
+  uint8_t* file_contents_start;
+  size_t filename_len;
+  unsigned next_free_sector = image[root_directory_record_offset - 4] |
+      (image[root_directory_record_offset - 3] << 8) | (image[root_directory_record_offset - 2] << 16);
+  const char* separator;
+
+  /* handle subdirectories */
+  do
+  {
+    separator = filename;
+    while (*separator && *separator != '\\')
+      ++separator;
+
+    if (!*separator)
+      break;
+
+    filename_len = separator - filename;
+    int found = 0;
+    while (*file_entry_start)
+    {
+      if (file_entry_start[25] && /* is directory */
+          file_entry_start[33 + filename_len] == '\0' && memcmp(&file_entry_start[33], filename, filename_len) == 0)
+      {
+        const unsigned directory_sector = file_entry_start[2];
+        file_entry_start = &image[directory_sector * 2048];
+        found = 1;
+        break;
+      }
+
+      file_entry_start += *file_entry_start;
+    }
+
+    if (!found)
+    {
+      /* entry size*/
+      file_entry_start[0] = (filename_len & 0xFF) + 48;
+
+      /* directory sector */
+      file_entry_start[2] = next_free_sector & 0xFF;
+      file_entry_start[3] = (next_free_sector >> 8) & 0xFF;
+
+      /* is directory */
+      file_entry_start[25] = 1;
+
+      /* directory name */
+      file_entry_start[32] = filename_len & 0xFF;
+      memcpy(&file_entry_start[33], filename, filename_len);
+      file_entry_start[33 + filename_len] = '\0';
+
+      /* advance to next sector */
+      file_entry_start = &image[next_free_sector * 2048];
+      next_free_sector++;
+    }
+
+    filename = separator + 1;
+  } while (1);
+
+  /* skip over any items already in the directory */
+  while (*file_entry_start)
+    file_entry_start += *file_entry_start;
+
+  /* create the new entry */
+
+  /* entry size*/
+  filename_len = separator - filename;
+  file_entry_start[0] = (filename_len & 0xFF) + 48;
+
+  /* file sector */
+  file_entry_start[2] = next_free_sector & 0xFF;
+  file_entry_start[3] = (next_free_sector >> 8) & 0xFF;
+
+  /* file size */
+  file_entry_start[10] = contents_size & 0xFF;
+  file_entry_start[11] = (contents_size >> 8) & 0xFF;
+  file_entry_start[12] = (contents_size >> 16) & 0xFF;
+
+  /* file name */
+  file_entry_start[32] = (filename_len + 2) & 0xFF;
+  memcpy(&file_entry_start[33], filename, filename_len);
+  file_entry_start[33 + filename_len] = ';';
+  file_entry_start[34 + filename_len] = '1';
+
+  /* contents */
+  file_contents_start = &image[next_free_sector * 2048];
+
+  if (contents)
+    memcpy(file_contents_start, contents, contents_size);
+  else
+    fill_image(file_contents_start, contents_size);
+
+  /* update next free sector */
+  next_free_sector += (contents_size + 2047) / 2048;
+  image[root_directory_record_offset - 4] = (next_free_sector & 0xFF);
+  image[root_directory_record_offset - 3] = (next_free_sector >> 8) & 0xFF;
+  image[root_directory_record_offset - 2] = (next_free_sector >> 16) & 0xFF;
+
+  /* return pointer to contents so caller can modify if desired */
+  return file_contents_start;
+}
+
+uint8_t* generate_psx_bin(const char* binary_name, unsigned binary_size, size_t* image_size)
+{
+  const size_t sectors_needed = (((binary_size + 2047) / 2048) + 20);
+  char system_cnf[256];
+  uint8_t* image;
+  uint8_t* exe;
+
+  snprintf(system_cnf, sizeof(system_cnf), "BOOT=cdrom:\\%s;1\nTCB=4\nEVENT=10\nSTACK=801FFFF0\n", binary_name);
+
+  image = generate_iso9660_bin(sectors_needed, "TEST", image_size);
+  generate_iso9660_file(image, "SYSTEM.CNF", (const uint8_t*)system_cnf, strlen(system_cnf));
+
+  /* binary data */
+  exe = generate_iso9660_file(image, binary_name, NULL, binary_size);
+  memcpy(exe, "PS-X EXE", 8);
+
+  binary_size -= 2048;
+  exe[28] = binary_size & 0xFF;
+  exe[29] = (binary_size >> 8) & 0xFF;
+  exe[30] = (binary_size >> 16) & 0xFF;
+  exe[31] = (binary_size >> 24) & 0xFF;
+
+  return image;
+}
+
+uint8_t* generate_ps2_bin(const char* binary_name, unsigned binary_size, size_t* image_size)
+{
+  const size_t sectors_needed = (((binary_size + 2047) / 2048) + 20);
+  char system_cnf[256];
+  uint8_t* image;
+  uint8_t* exe;
+
+  snprintf(system_cnf, sizeof(system_cnf), "BOOT2 = cdrom0:\\%s;1\nVER = 1.0\nVMODE = NTSC\n", binary_name);
+
+  image = generate_iso9660_bin(sectors_needed, "TEST", image_size);
+  generate_iso9660_file(image, "SYSTEM.CNF", (const uint8_t*)system_cnf, strlen(system_cnf));
+
+  /* binary data */
+  exe = generate_iso9660_file(image, binary_name, NULL, binary_size);
+  memcpy(exe, "\x7f\x45\x4c\x46", 4);
+
   return image;
 }
 

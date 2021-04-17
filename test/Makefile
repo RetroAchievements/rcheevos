@@ -82,7 +82,7 @@ OBJ=$(RC_SRC)/alloc.o \
     test.o
 
 # compile flags
-CFLAGS=-Wall -Wno-long-long
+CFLAGS=-Wall -Wno-long-long -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 INCLUDES=-I../include -I$(RC_SRC) -I.
 
 ifeq ($(ARCH), x86)

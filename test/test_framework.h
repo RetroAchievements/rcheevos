@@ -155,6 +155,9 @@ extern const char* test_framework_basename(const char* path);
 #define ASSERT_NUM_LESS(value, expected)           ASSERT_COMPARE(value, <,  expected, int, "%d")
 #define ASSERT_NUM_LESS_EQUALS(value, expected)    ASSERT_COMPARE(value, <=, expected, int, "%d")
 
+/* TODO: figure out some way to detect c89 so we can use int64_t and %lld on non-c89 builds */
+#define ASSERT_NUM64_EQUALS(value, expected)       ASSERT_COMPARE(value, ==, expected, int, "%d")
+
 #define ASSERT_TRUE(value)                         ASSERT_NUM_NOT_EQUALS(value, 0)
 #define ASSERT_FALSE(value)                        ASSERT_NUM_EQUALS(value, 0)
 

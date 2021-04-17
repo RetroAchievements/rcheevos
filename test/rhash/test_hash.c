@@ -676,6 +676,145 @@ static void test_hash_pcfx_pce_cd()
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
+static void test_hash_psx_cd()
+{
+  size_t image_size;
+  uint8_t* image = generate_psx_bin("SLUS_007.45", 0x07D800, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "db433fb038cde4fb15c144e8c7dea6e3";
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PLAYSTATION, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_psx_cd_no_system_cnf()
+{
+  size_t image_size;
+  uint8_t* image;
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "e494c79a7315be0dc3e8571c45df162c";
+  size_t binary_size = 0x12000;
+  const size_t sectors_needed = (((binary_size + 2047) / 2048) + 20);
+  uint8_t* exe;
+
+  image = generate_iso9660_bin(sectors_needed, "HOMEBREW", &image_size);
+  exe = generate_iso9660_file(image, "PSX.EXE", NULL, binary_size);
+  memcpy(exe, "PS-X EXE", 8);
+    binary_size -= 2048;
+  exe[28] = binary_size & 0xFF;
+  exe[29] = (binary_size >> 8) & 0xFF;
+  exe[30] = (binary_size >> 16) & 0xFF;
+  exe[31] = (binary_size >> 24) & 0xFF;
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PLAYSTATION, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_psx_cd_exe_in_subfolder()
+{
+  size_t image_size;
+  uint8_t* image = generate_psx_bin("bin\\SCES_012.37", 0x07D800, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "674018e23a4052113665dfb264e9c2fc";
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PLAYSTATION, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_ps2_iso()
+{
+  size_t image_size;
+  uint8_t* image = generate_ps2_bin("SLUS_200.64", 0x07D800, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "01a517e4ad72c6c2654d1b839be7579d";
+
+  mock_file(0, "game.iso", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PLAYSTATION_2, "game.iso");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.iso", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
 static void test_hash_sega_cd()
 {
   /* the first 512 bytes of sector 0 are a volume header and ROM header. 
@@ -1064,6 +1203,14 @@ void test_hash(void) {
   TEST(test_hash_pcfx);
   TEST(test_hash_pcfx_invalid_header);
   TEST(test_hash_pcfx_pce_cd);
+
+  /* Playstation */
+  TEST(test_hash_psx_cd);
+  TEST(test_hash_psx_cd_no_system_cnf);
+  TEST(test_hash_psx_cd_exe_in_subfolder);
+
+  /* Playstation 2 */
+  TEST(test_hash_ps2_iso);
 
   /* Pokemon Mini */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_POKEMON_MINI, "test.min", 524288, "68f0f13b598e0b66461bc578375c3888");
