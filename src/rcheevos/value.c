@@ -171,6 +171,10 @@ int rc_value_size(const char* memaddr) {
 rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx) {
   rc_value_t* self;
   rc_parse_state_t parse;
+
+  if (!buffer || !memaddr)
+    return NULL;
+
   rc_init_parse_state(&parse, buffer, L, funcs_ndx);
 
   self = RC_ALLOC(rc_value_t, &parse);
@@ -179,7 +183,7 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int 
   rc_parse_value_internal(self, &memaddr, &parse);
 
   rc_destroy_parse_state(&parse);
-  return parse.offset >= 0 ? self : 0;
+  return (parse.offset >= 0) ? self : NULL;
 }
 
 int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
