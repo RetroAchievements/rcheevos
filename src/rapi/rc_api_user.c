@@ -8,14 +8,14 @@
 int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_request_t* api_params) {
   rc_api_url_builder_t builder;
 
-  rc_buf_init(&request->buffer);
-  rc_api_url_build_dorequest(&builder, &request->buffer, "login", api_params->username);
-  request->url = rc_url_builder_finalize(&builder);
+  rc_api_url_build_dorequest_url(request);
 
-  if (builder.result != RC_OK)
-    return builder.result;
+  if (!api_params->username || !*api_params->username)
+    return RC_INVALID_STATE;
 
   rc_url_builder_init(&builder, &request->buffer, 48);
+  rc_url_builder_append_str_param(&builder, "r", "login");
+  rc_url_builder_append_str_param(&builder, "u", api_params->username);
 
   if (api_params->password && api_params->password[0])
     rc_url_builder_append_str_param(&builder, "p", api_params->password);
@@ -67,30 +67,24 @@ void rc_api_destroy_login_response(rc_api_login_response_t* response) {
 int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_start_session_request_t* api_params) {
   rc_api_url_builder_t builder;
 
-  rc_buf_init(&request->buffer);
+  rc_api_url_build_dorequest_url(request);
 
   if (api_params->game_id == 0)
     return RC_INVALID_STATE;
 
-  rc_api_url_build_dorequest(&builder, &request->buffer, "postactivity", api_params->username);
-
-  /* activity type enum (only 3 is used )
-    *  1 = earned achievement - handled by awardachievement
-    *  2 = logged in - handled by login
-    *  3 = started playing
-    *  4 = uploaded achievement - handled by uploadachievement
-    *  5 = modified achievement - handled by uploadachievement
-    */
-  rc_url_builder_append_unum_param(&builder, "a", 3);
-  rc_url_builder_append_unum_param(&builder, "m", api_params->game_id);
-  request->url = rc_url_builder_finalize(&builder);
-
-  if (builder.result != RC_OK)
-    return builder.result;
-
   rc_url_builder_init(&builder, &request->buffer, 48);
-  rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
-  request->post_data = rc_url_builder_finalize(&builder);
+  if (rc_api_url_build_dorequest(&builder, "postactivity", api_params->username, api_params->api_token)) {
+    /* activity type enum (only 3 is used )
+     *  1 = earned achievement - handled by awardachievement
+     *  2 = logged in - handled by login
+     *  3 = started playing
+     *  4 = uploaded achievement - handled by uploadachievement
+     *  5 = modified achievement - handled by uploadachievement
+     */
+    rc_url_builder_append_unum_param(&builder, "a", 3);
+    rc_url_builder_append_unum_param(&builder, "m", api_params->game_id);
+    request->post_data = rc_url_builder_finalize(&builder);
+  }
 
   return builder.result;
 }
@@ -116,18 +110,14 @@ void rc_api_destroy_start_session_response(rc_api_start_session_response_t* resp
 int rc_api_init_fetch_user_unlocks_request(rc_api_request_t* request, const rc_api_fetch_user_unlocks_request_t* api_params) {
   rc_api_url_builder_t builder;
 
-  rc_buf_init(&request->buffer);
-  rc_api_url_build_dorequest(&builder, &request->buffer, "unlocks", api_params->username);
-  rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
-  rc_url_builder_append_unum_param(&builder, "h", api_params->hardcore ? 1 : 0);
-  request->url = rc_url_builder_finalize(&builder);
-
-  if (builder.result != RC_OK)
-    return builder.result;
+  rc_api_url_build_dorequest_url(request);
 
   rc_url_builder_init(&builder, &request->buffer, 48);
-  rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
-  request->post_data = rc_url_builder_finalize(&builder);
+  if (rc_api_url_build_dorequest(&builder, "unlocks", api_params->username, api_params->api_token)) {
+    rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
+    rc_url_builder_append_unum_param(&builder, "h", api_params->hardcore ? 1 : 0);
+    request->post_data = rc_url_builder_finalize(&builder);
+  }
 
   return builder.result;
 }

@@ -16,8 +16,8 @@ static void test_init_start_session_request()
   start_session_request.game_id = 1234;
 
   ASSERT_NUM_EQUALS(rc_api_init_start_session_request(&request, &start_session_request), RC_OK);
-  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=postactivity&u=Username&a=3&m=1234");
-  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data,  "r=postactivity&u=Username&t=API_TOKEN&a=3&m=1234");
 
   rc_api_destroy_request(&request);
 }
@@ -60,32 +60,30 @@ static void test_init_login_request_password()
   login_request.password = "Pa$$w0rd!";
 
   ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
-  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=login&u=Username");
-  ASSERT_STR_EQUALS(request.post_data, "p=Pa%24%24w0rd%21");
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=login&u=Username&p=Pa%24%24w0rd%21");
 
   rc_api_destroy_request(&request);
 }
 
 static void test_init_login_request_password_long()
 {
-  char buffer[1024], *ptr;
+  char buffer[1024], *ptr, *password_start;
   rc_api_login_request_t login_request;
   rc_api_request_t request;
   int i;
 
   /* this generates a password that's 830 characters long */
-  buffer[0] = 'p';
-  buffer[1] = '=';
-  ptr = &buffer[2];
+  ptr = password_start = buffer + snprintf(buffer, sizeof(buffer), "r=login&u=ThisUsernameIsAlsoReallyLongAtRoughlyFiftyCharacters&p=");
   for (i = 0; i < 30; i++)
 	ptr += snprintf(ptr, sizeof(buffer) - (ptr - buffer), "%dABCDEFGHIJKLMNOPQRSTUVWXYZ", i);
 
   memset(&login_request, 0, sizeof(login_request));
   login_request.username = "ThisUsernameIsAlsoReallyLongAtRoughlyFiftyCharacters";
-  login_request.password = &buffer[2];
+  login_request.password = password_start;
 
   ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
-  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=login&u=ThisUsernameIsAlsoReallyLongAtRoughlyFiftyCharacters");
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, buffer);
 
   rc_api_destroy_request(&request);
@@ -101,8 +99,8 @@ static void test_init_login_request_token()
   login_request.api_token = "ABCDEFGHIJKLMNOP";
 
   ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
-  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=login&u=Username");
-  ASSERT_STR_EQUALS(request.post_data, "t=ABCDEFGHIJKLMNOP");
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=login&u=Username&t=ABCDEFGHIJKLMNOP");
 
   rc_api_destroy_request(&request);
 }
@@ -118,8 +116,8 @@ static void test_init_login_request_password_and_token()
   login_request.api_token = "ABCDEFGHIJKLMNOP";
 
   ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
-  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=login&u=Username");
-  ASSERT_STR_EQUALS(request.post_data, "p=Pa%24%24w0rd%21");
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=login&u=Username&p=Pa%24%24w0rd%21");
 
   rc_api_destroy_request(&request);
 }
@@ -148,8 +146,8 @@ static void test_init_login_request_alternate_host()
 
   rc_api_set_host("localhost");
   ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
-  ASSERT_STR_EQUALS(request.url, "http://localhost/dorequest.php?r=login&u=Username");
-  ASSERT_STR_EQUALS(request.post_data, "p=Pa%24%24w0rd%21");
+  ASSERT_STR_EQUALS(request.url, "http://localhost/dorequest.php");
+  ASSERT_STR_EQUALS(request.post_data, "r=login&u=Username&p=Pa%24%24w0rd%21");
 
   rc_api_set_host(NULL);
   rc_api_destroy_request(&request);
@@ -347,8 +345,8 @@ static void test_init_fetch_user_unlocks_request_non_hardcore()
   fetch_user_unlocks_request.hardcore = 0;
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_user_unlocks_request(&request, &fetch_user_unlocks_request), RC_OK);
-  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=unlocks&u=Username&g=1234&h=0");
-  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=unlocks&u=Username&t=API_TOKEN&g=1234&h=0");
 
   rc_api_destroy_request(&request);
 }
@@ -365,8 +363,8 @@ static void test_init_fetch_user_unlocks_request_hardcore()
   fetch_user_unlocks_request.hardcore = 1;
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_user_unlocks_request(&request, &fetch_user_unlocks_request), RC_OK);
-  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL "?r=unlocks&u=Username&g=2345&h=1");
-  ASSERT_STR_EQUALS(request.post_data, "t=API_TOKEN");
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=unlocks&u=Username&t=API_TOKEN&g=2345&h=1");
 
   rc_api_destroy_request(&request);
 }

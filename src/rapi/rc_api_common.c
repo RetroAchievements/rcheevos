@@ -904,31 +904,39 @@ void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* 
   rc_url_builder_append_encoded_str(builder, value);
 }
 
-void rc_api_url_build_dorequest(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, const char* api, const char* username)
-{
+void rc_api_url_build_dorequest_url(rc_api_request_t* request) {
   #define DOREQUEST_ENDPOINT "/dorequest.php"
-  const size_t endpoint_len = sizeof(DOREQUEST_ENDPOINT) - 1;
-  const size_t host_len = (g_host ? strlen(g_host) : sizeof(RETROACHIEVEMENTS_HOST) - 1);
-  const size_t base_url_len = host_len + endpoint_len;
+  rc_buf_init(&request->buffer);
 
-  rc_url_builder_init(builder, buffer, base_url_len + 32);
+  if (!g_host) {
+    request->url = RETROACHIEVEMENTS_HOST DOREQUEST_ENDPOINT;
+  }
+  else {
+    const size_t endpoint_len = sizeof(DOREQUEST_ENDPOINT);
+    const size_t host_len = strlen(g_host);
+    const size_t url_len = host_len + endpoint_len;
+    char* url = rc_buf_reserve(&request->buffer, url_len);
 
-  if (g_host)
-    rc_url_builder_append(builder, g_host, host_len);
-  else
-    rc_url_builder_append(builder, RETROACHIEVEMENTS_HOST, host_len);
+    memcpy(url, g_host, host_len);
+    memcpy(url + host_len, DOREQUEST_ENDPOINT, endpoint_len);
+    rc_buf_consume(&request->buffer, url, url + url_len);
 
-  rc_url_builder_append(builder, DOREQUEST_ENDPOINT, endpoint_len);
-
-  *builder->write++ = '?';
-  rc_url_builder_append_str_param(builder, "r", api);
-
-  if (username && *username)
-    rc_url_builder_append_str_param(builder, "u", username);
-  else
-    builder->result = RC_INVALID_STATE;
-
+    request->url = url;
+  }
   #undef DOREQUEST_ENDPOINT
+}
+
+int rc_api_url_build_dorequest(rc_api_url_builder_t* builder, const char* api, const char* username, const char* api_token) {
+  if (!username || !*username || !api_token || !*api_token) {
+    builder->result = RC_INVALID_STATE;
+    return 0;
+  }
+
+  rc_url_builder_append_str_param(builder, "r", api);
+  rc_url_builder_append_str_param(builder, "u", username);
+  rc_url_builder_append_str_param(builder, "t", api_token);
+
+  return (builder->result == RC_OK);
 }
 
 /* --- Set Host --- */

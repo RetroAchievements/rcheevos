@@ -78,7 +78,7 @@ rc_api_fetch_game_data_request_t;
 
 /* A leaderboard definition */
 typedef struct rc_api_leaderboard_definition_t {
-  /* The unique identified of the leaderboard */
+  /* The unique identifier of the leaderboard */
   unsigned id;
   /* The format to pass to rc_format_value to format the leaderboard value */
   int format;

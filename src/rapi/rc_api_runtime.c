@@ -13,21 +13,16 @@
 int rc_api_init_resolve_hash_request(rc_api_request_t* request, const rc_api_resolve_hash_request_t* api_params) {
   rc_api_url_builder_t builder;
 
-  rc_buf_init(&request->buffer);
+  rc_api_url_build_dorequest_url(request);
 
-  if (!api_params->game_hash || !api_params->game_hash[0])
+  if (!api_params->game_hash || !*api_params->game_hash)
     return RC_INVALID_STATE;
 
-  rc_api_url_build_dorequest(&builder, &request->buffer, "gameid", api_params->username);
-  rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
-  request->url = rc_url_builder_finalize(&builder);
-
-  if (builder.result != RC_OK)
-    return builder.result;
-
   rc_url_builder_init(&builder, &request->buffer, 48);
-  rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
-  request->post_data = rc_url_builder_finalize(&builder);
+  if (rc_api_url_build_dorequest(&builder, "gameid", api_params->username, api_params->api_token)) {
+    rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
+    request->post_data = rc_url_builder_finalize(&builder);
+  }
 
   return builder.result;
 }
@@ -60,21 +55,16 @@ void rc_api_destroy_resolve_hash_response(rc_api_resolve_hash_response_t* respon
 int rc_api_init_fetch_game_data_request(rc_api_request_t* request, const rc_api_fetch_game_data_request_t* api_params) {
   rc_api_url_builder_t builder;
 
-  rc_buf_init(&request->buffer);
+  rc_api_url_build_dorequest_url(request);
 
   if (api_params->game_id == 0)
     return RC_INVALID_STATE;
 
-  rc_api_url_build_dorequest(&builder, &request->buffer, "patch", api_params->username);
-  rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
-  request->url = rc_url_builder_finalize(&builder);
-
-  if (builder.result != RC_OK)
-    return builder.result;
-
   rc_url_builder_init(&builder, &request->buffer, 48);
-  rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
-  request->post_data = rc_url_builder_finalize(&builder);
+  if (rc_api_url_build_dorequest(&builder, "patch", api_params->username, api_params->api_token)) {
+    rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
+    request->post_data = rc_url_builder_finalize(&builder);
+  }
 
   return builder.result;
 }
@@ -276,26 +266,20 @@ void rc_api_destroy_fetch_game_data_response(rc_api_fetch_game_data_response_t* 
 int rc_api_init_ping_request(rc_api_request_t* request, const rc_api_ping_request_t* api_params) {
   rc_api_url_builder_t builder;
 
-  rc_buf_init(&request->buffer);
+  rc_api_url_build_dorequest_url(request);
 
   if (api_params->game_id == 0)
     return RC_INVALID_STATE;
 
-  rc_api_url_build_dorequest(&builder, &request->buffer, "ping", api_params->username);
-  rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
-
-  request->url = rc_url_builder_finalize(&builder);
-
-  if (builder.result != RC_OK)
-    return builder.result;
-
   rc_url_builder_init(&builder, &request->buffer, 48);
-  rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
+  if (rc_api_url_build_dorequest(&builder, "ping", api_params->username, api_params->api_token)) {
+    rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
 
-  if (api_params->rich_presence && *api_params->rich_presence)
-    rc_url_builder_append_str_param(&builder, "m", api_params->rich_presence);
+    if (api_params->rich_presence && *api_params->rich_presence)
+      rc_url_builder_append_str_param(&builder, "m", api_params->rich_presence);
 
-  request->post_data = rc_url_builder_finalize(&builder);
+    request->post_data = rc_url_builder_finalize(&builder);
+  }
 
   return builder.result;
 }
@@ -320,32 +304,28 @@ void rc_api_destroy_ping_response(rc_api_ping_response_t* response) {
 
 int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_api_award_achievement_request_t* api_params) {
   rc_api_url_builder_t builder;
-  char signature[96];
+  char signature[128];
   char checksum[33];
 
-  rc_buf_init(&request->buffer);
+  rc_api_url_build_dorequest_url(request);
 
   if (api_params->achievement_id == 0)
     return RC_INVALID_STATE;
 
-  rc_api_url_build_dorequest(&builder, &request->buffer, "awardachievement", api_params->username);
-  rc_url_builder_append_unum_param(&builder, "a", api_params->achievement_id);
-  rc_url_builder_append_unum_param(&builder, "h", api_params->hardcore ? 1 : 0);
-  if (api_params->game_hash && *api_params->game_hash)
-    rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
-  request->url = rc_url_builder_finalize(&builder);
+  rc_url_builder_init(&builder, &request->buffer, 96);
+  if (rc_api_url_build_dorequest(&builder, "awardachievement", api_params->username, api_params->api_token)) {
+    rc_url_builder_append_unum_param(&builder, "a", api_params->achievement_id);
+    rc_url_builder_append_unum_param(&builder, "h", api_params->hardcore ? 1 : 0);
+    if (api_params->game_hash && *api_params->game_hash)
+      rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
 
-  if (builder.result != RC_OK)
-    return builder.result;
+    /* Evaluate the signature. */
+    snprintf(signature, sizeof(signature), "%u%s%u", api_params->achievement_id, api_params->username, api_params->hardcore ? 1 : 0);
+    rc_api_generate_checksum(checksum, signature);
+    rc_url_builder_append_str_param(&builder, "v", checksum);
 
-  /* Evaluate the signature. */
-  snprintf(signature, sizeof(signature), "%u%s%u", api_params->achievement_id, api_params->username, api_params->hardcore ? 1 : 0);
-  rc_api_generate_checksum(checksum, signature);
-
-  rc_url_builder_init(&builder, &request->buffer, 48);
-  rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
-  rc_url_builder_append_str_param(&builder, "v", checksum);
-  request->post_data = rc_url_builder_finalize(&builder);
+    request->post_data = rc_url_builder_finalize(&builder);
+  }
 
   return builder.result;
 }
@@ -393,32 +373,29 @@ void rc_api_destroy_award_achievement_response(rc_api_award_achievement_response
 
 int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_api_submit_lboard_entry_request_t* api_params) {
   rc_api_url_builder_t builder;
-  char signature[96];
+  char signature[128];
   char checksum[33];
 
-  rc_buf_init(&request->buffer);
+  rc_api_url_build_dorequest_url(request);
 
   if (api_params->leaderboard_id == 0)
     return RC_INVALID_STATE;
 
-  rc_api_url_build_dorequest(&builder, &request->buffer, "submitlbentry", api_params->username);
-  rc_url_builder_append_unum_param(&builder, "i", api_params->leaderboard_id);
-  rc_url_builder_append_num_param(&builder, "s", api_params->score);
-  if (api_params->game_hash && *api_params->game_hash)
-    rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
-  request->url = rc_url_builder_finalize(&builder);
+  rc_url_builder_init(&builder, &request->buffer, 96);
+  if (rc_api_url_build_dorequest(&builder, "submitlbentry", api_params->username, api_params->api_token)) {
+    rc_url_builder_append_unum_param(&builder, "i", api_params->leaderboard_id);
+    rc_url_builder_append_num_param(&builder, "s", api_params->score);
 
-  if (builder.result != RC_OK)
-    return builder.result;
+    if (api_params->game_hash && *api_params->game_hash)
+      rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
 
-  /* Evaluate the signature. */
-  snprintf(signature, sizeof(signature), "%u%s%d", api_params->leaderboard_id, api_params->username, api_params->score);
-  rc_api_generate_checksum(checksum, signature);
+    /* Evaluate the signature. */
+    snprintf(signature, sizeof(signature), "%u%s%d", api_params->leaderboard_id, api_params->username, api_params->score);
+    rc_api_generate_checksum(checksum, signature);
+    rc_url_builder_append_str_param(&builder, "v", checksum);
 
-  rc_url_builder_init(&builder, &request->buffer, 48);
-  rc_url_builder_append_str_param(&builder, "t", api_params->api_token);
-  rc_url_builder_append_str_param(&builder, "v", checksum);
-  request->post_data = rc_url_builder_finalize(&builder);
+    request->post_data = rc_url_builder_finalize(&builder);
+  }
 
   return builder.result;
 }
