@@ -323,5 +323,11 @@
     <ClInclude Include="libretro.h">
       <Filter>tests\rcheevos</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\rc_runtime.h">
+      <Filter>src\rcheevos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_runtime_types.h">
+      <Filter>src\rcheevos</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

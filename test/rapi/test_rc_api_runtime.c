@@ -1,6 +1,6 @@
 #include "rc_api_runtime.h"
 
-#include "rcheevos.h"
+#include "rc_runtime_types.h"
 
 #include "../test_framework.h"
 
