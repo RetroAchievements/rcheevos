@@ -1,3 +1,4 @@
+#include "rc_runtime.h"
 #include "rc_internal.h"
 
 #include "../rhash/md5.h"
@@ -217,6 +218,35 @@ rc_trigger_t* rc_runtime_get_achievement(const rc_runtime_t* self, unsigned id)
   return NULL;
 }
 
+int rc_runtime_get_achievement_measured(const rc_runtime_t* runtime, unsigned id, unsigned* measured_value, unsigned* measured_target)
+{
+  const rc_trigger_t* trigger = rc_runtime_get_achievement(runtime, id);
+  if (!measured_value || !measured_target)
+    return 0;
+
+  if (!trigger) {
+    *measured_value = *measured_target = 0;
+    return 0;
+  }
+
+  switch (trigger->state)
+  {
+    case RC_TRIGGER_STATE_DISABLED:
+    case RC_TRIGGER_STATE_INACTIVE:
+    case RC_TRIGGER_STATE_TRIGGERED:
+      /* don't report measured information for inactive triggers */
+      *measured_value = *measured_target = 0;
+      break;
+
+    default:
+      *measured_value = trigger->measured_value;
+      *measured_target = trigger->measured_target;
+      break;
+  }
+
+  return 1;
+}
+
 static void rc_runtime_deactivate_lboard_by_index(rc_runtime_t* self, unsigned index) {
   if (self->lboards[index].owns_memrefs) {
     /* if the lboard has one or more memrefs in its buffer, we can't free the buffer.
@@ -351,6 +381,11 @@ rc_lboard_t* rc_runtime_get_lboard(const rc_runtime_t* self, unsigned id)
   }
 
   return NULL;
+}
+
+int rc_runtime_format_lboard_value(char* buffer, int size, int value, int format)
+{
+  return rc_format_value(buffer, size, value, format);
 }
 
 int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua_State* L, int funcs_idx) {

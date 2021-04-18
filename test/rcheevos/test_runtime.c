@@ -187,6 +187,54 @@ static void test_deactivate_achievements(void)
   rc_runtime_destroy(&runtime);
 }
 
+static void test_achievement_measured(void)
+{
+  unsigned char ram[] = { 0, 10, 10 };
+  memory_t memory;
+  rc_runtime_t runtime;
+  unsigned value, target;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=10");
+  assert_activate_achievement(&runtime, 2, "M:0xH0002>=10");
+
+  /* both achievements are true, should remain in waiting state */
+  assert_do_frame(&runtime, &memory);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 10);
+  ASSERT_FALSE(rc_runtime_get_achievement_measured(&runtime, 3, &value, &target));
+
+  /* both achievements are false, should activate */
+  ram[1] = ram[2] = 9;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
+  ASSERT_NUM_EQUALS(value, 9);
+  ASSERT_NUM_EQUALS(target, 10);
+
+  /* second achievement is true, should trigger - triggered achievement is not measurable */
+  ram[2] = 10;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0);
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_shared_memref(void)
 {
   unsigned char ram[] = { 0, 10, 10 };
@@ -604,6 +652,15 @@ static void test_lboard(void)
   assert_event(RC_RUNTIME_EVENT_LBOARD_STARTED, 2, 8);
 
   rc_runtime_destroy(&runtime);
+}
+
+static void test_format_lboard_value(int format, int value, const char* expected) {
+  char buffer[64];
+  int result;
+
+  result = rc_runtime_format_lboard_value(buffer, sizeof(buffer), value, format);
+  ASSERT_STR_EQUALS(buffer, expected);
+  ASSERT_NUM_EQUALS(result, strlen(expected));
 }
 
 static void test_richpresence(void)
@@ -1050,6 +1107,7 @@ void test_runtime(void) {
   /* achievements */
   TEST(test_two_achievements_activate_and_trigger);
   TEST(test_deactivate_achievements);
+  TEST(test_achievement_measured);
 
   TEST(test_shared_memref);
   TEST(test_replace_active_trigger);
@@ -1062,6 +1120,13 @@ void test_runtime(void) {
 
   /* leaderboards */
   TEST(test_lboard);
+  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_VALUE, 12345, "12345");
+  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_VALUE, -12345, "-12345");
+  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_VALUE, 0xFFFFFFFF, "-1");
+  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_SCORE, 12345, "012345");
+  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_SECONDS, 345, "5:45");
+  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_CENTISECS, 12345, "2:03.45");
+  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_FRAMES, 12345, "3:25.75");
 
   /* rich presence */
   TEST(test_richpresence);
