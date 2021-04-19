@@ -5,19 +5,23 @@
 extern "C" {
 #endif
 
-typedef struct lua_State lua_State;
-
 #include "rc_error.h"
 
 /*****************************************************************************\
-| Forward Declarations (in rc_runtime_types.h)                                |
+| Forward Declarations (defined in rc_runtime_types.h)                        |
 \*****************************************************************************/
+
+#ifndef RC_RUNTIME_TYPES_H /* prevents pedantic redefinition error */
+
+typedef struct lua_State lua_State;
 
 typedef struct rc_trigger_t rc_trigger_t;
 typedef struct rc_lboard_t rc_lboard_t;
 typedef struct rc_richpresence_t rc_richpresence_t;
 typedef struct rc_memref_t rc_memref_t;
 typedef struct rc_value_t rc_value_t;
+
+#endif
 
 /*****************************************************************************\
 | Callbacks                                                                   |

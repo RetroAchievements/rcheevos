@@ -7,7 +7,17 @@ extern "C" {
 
 #include "rc_error.h"
 
+#ifndef RC_RUNTIME_H /* prevents pedantic redefiniton error */
+
 typedef struct lua_State lua_State;
+
+typedef struct rc_trigger_t rc_trigger_t;
+typedef struct rc_lboard_t rc_lboard_t;
+typedef struct rc_richpresence_t rc_richpresence_t;
+typedef struct rc_memref_t rc_memref_t;
+typedef struct rc_value_t rc_value_t;
+
+#endif
 
 /*****************************************************************************\
 | Callbacks                                                                   |
@@ -60,8 +70,6 @@ typedef struct rc_memref_value_t {
 }
 rc_memref_value_t;
 
-typedef struct rc_memref_t rc_memref_t;
-
 struct rc_memref_t {
   /* The current value at the specified memory address. */
   rc_memref_value_t value;
@@ -72,7 +80,6 @@ struct rc_memref_t {
   /* The next memory reference in the chain. */
   rc_memref_t* next;
 };
-
 
 /*****************************************************************************\
 | Operands                                                                    |
@@ -217,7 +224,7 @@ enum {
   RC_TRIGGER_STATE_DISABLED    /* achievement cannot be processed at this time */
 };
 
-typedef struct rc_trigger_t {
+struct rc_trigger_t {
   /* The main condition set. */
   rc_condset_t* requirement;
 
@@ -241,8 +248,7 @@ typedef struct rc_trigger_t {
 
   /* True if at least one condition has a non-zero required hit count */
   char has_required_hits;
-}
-rc_trigger_t;
+};
 
 int rc_trigger_size(const char* memaddr);
 rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
@@ -253,8 +259,6 @@ void rc_reset_trigger(rc_trigger_t* self);
 /*****************************************************************************\
 | Values                                                                      |
 \*****************************************************************************/
-
-typedef struct rc_value_t rc_value_t;
 
 struct rc_value_t {
   /* The current value of the variable. */
@@ -292,7 +296,7 @@ enum {
   RC_LBOARD_STATE_DISABLED   /* leaderboard cannot be processed at this time */
 };
 
-typedef struct rc_lboard_t {
+struct rc_lboard_t {
   rc_trigger_t start;
   rc_trigger_t submit;
   rc_trigger_t cancel;
@@ -301,8 +305,7 @@ typedef struct rc_lboard_t {
   rc_memref_t* memrefs;
 
   char state;
-}
-rc_lboard_t;
+};
 
 int rc_lboard_size(const char* memaddr);
 rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
@@ -369,13 +372,12 @@ struct rc_richpresence_display_t {
   rc_richpresence_display_part_t* display;
 };
 
-typedef struct rc_richpresence_t {
+struct rc_richpresence_t {
   rc_richpresence_display_t* first_display;
   rc_richpresence_lookup_t* first_lookup;
   rc_memref_t* memrefs;
   rc_value_t* variables;
-}
-rc_richpresence_t;
+};
 
 int rc_richpresence_size(const char* script);
 int rc_richpresence_size_lines(const char* script, int* lines_read);
