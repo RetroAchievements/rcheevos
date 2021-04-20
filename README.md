@@ -275,7 +275,7 @@ These are in `rc_api_user.h`, `rc_api_runtime.h` and `rc_api_common.h`.
 
 The basic process of making an **rapi** call is to initialize a params object, call a function to convert it to a URL, send that to the server, then pass the response to a function to convert it into a response object, and handle the response values.
 
-An example can be found on the (rc_api_init_login_request)[https://github.com/RetroAchievements/rcheevos/wiki/rc_api_init_login_request#example] page.
+An example can be found on the [rc_api_init_login_request](https://github.com/RetroAchievements/rcheevos/wiki/rc_api_init_login_request#example) page.
 
 ### Functions
 
