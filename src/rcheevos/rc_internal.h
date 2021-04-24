@@ -1,7 +1,7 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
-#include "rcheevos.h"
+#include "rc_runtime_types.h"
 
 #ifdef __cplusplus
 extern "C" {

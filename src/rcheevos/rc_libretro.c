@@ -8,7 +8,7 @@
 
 #include "rc_libretro.h"
 
-#include "rcheevos.h"
+#include "rc_consoles.h"
 #include "rc_compat.h"
 
 #include <ctype.h>

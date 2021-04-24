@@ -1,7 +1,8 @@
 #include "rc_api_runtime.h"
 #include "rc_api_common.h"
 
-#include "rcheevos.h"
+#include "rc_runtime.h"
+#include "rc_runtime_types.h"
 #include "../rcheevos/rc_compat.h"
 
 #include <stdlib.h>
