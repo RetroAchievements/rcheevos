@@ -956,9 +956,14 @@ static void rc_api_update_host(char** host, const char* hostname) {
       }
       else {
         char* newhost = (char*)malloc(hostname_len + 7 + 1);
-        memcpy(newhost, "http://", 7);
-        memcpy(&newhost[7], hostname, hostname_len + 1);
-        *host = newhost;
+        if (newhost) {
+          memcpy(newhost, "http://", 7);
+          memcpy(&newhost[7], hostname, hostname_len + 1);
+          *host = newhost;
+        }
+        else {
+          *host = NULL;
+        }
       }
     }
   }
