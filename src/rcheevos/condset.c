@@ -17,6 +17,7 @@ static void rc_update_condition_pause(rc_condition_t* condition, int* in_pause) 
     case RC_CONDITION_AND_NEXT:
     case RC_CONDITION_OR_NEXT:
     case RC_CONDITION_ADD_ADDRESS:
+    case RC_CONDITION_RESET_NEXT_IF:
       condition->pause = *in_pause;
       break;
 
@@ -54,15 +55,13 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
     if ((*next)->oper == RC_OPERATOR_NONE) {
       switch ((*next)->type) {
         case RC_CONDITION_ADD_ADDRESS:
-        case RC_CONDITION_ADD_HITS:
-        case RC_CONDITION_SUB_HITS:
         case RC_CONDITION_ADD_SOURCE:
         case RC_CONDITION_SUB_SOURCE:
-        case RC_CONDITION_AND_NEXT:
-        case RC_CONDITION_OR_NEXT:
+          /* these conditions don't require a right hand size (implied *1) */
           break;
 
         case RC_CONDITION_MEASURED:
+          /* right hand side is not required when Measured is used in a value */
           if (is_value)
             break;
           /* fallthrough to default */

@@ -128,20 +128,27 @@ int rc_operand_is_memref(rc_operand_t* operand);
 
 /* types */
 enum {
-  RC_CONDITION_STANDARD,
+  /* NOTE: this enum is ordered to optimize the switch statements in rc_test_condset_internal. the values may change between releases */
+
+  /* non-combining conditions (third switch) */
+  RC_CONDITION_STANDARD, /* this should always be 0 */
   RC_CONDITION_PAUSE_IF,
   RC_CONDITION_RESET_IF,
-  RC_CONDITION_ADD_SOURCE,
-  RC_CONDITION_SUB_SOURCE,
-  RC_CONDITION_ADD_HITS,
-  RC_CONDITION_AND_NEXT,
-  RC_CONDITION_MEASURED,
-  RC_CONDITION_ADD_ADDRESS,
-  RC_CONDITION_OR_NEXT,
-  RC_CONDITION_TRIGGER,
   RC_CONDITION_MEASURED_IF,
+  RC_CONDITION_TRIGGER,
+  RC_CONDITION_MEASURED, /* measured also appears in the first switch, so place it at the border between them */
+
+  /* modifiers (first switch) */
+  RC_CONDITION_ADD_SOURCE, /* everything from this point on affects the condition after it */
+  RC_CONDITION_SUB_SOURCE,
+  RC_CONDITION_ADD_ADDRESS,
+
+  /* logic flags (second switch) */
+  RC_CONDITION_ADD_HITS,
+  RC_CONDITION_SUB_HITS,
   RC_CONDITION_RESET_NEXT_IF,
-  RC_CONDITION_SUB_HITS
+  RC_CONDITION_AND_NEXT,
+  RC_CONDITION_OR_NEXT
 };
 
 /* operators */
