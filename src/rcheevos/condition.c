@@ -185,7 +185,12 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       return 0;
     }
 
-    parse->has_required_hits = 1;
+    /* if operator is none, explicitly clear out the required hits */
+    if (self->oper == RC_OPERATOR_NONE)
+      self->required_hits = 0;
+    else
+      parse->has_required_hits = 1;
+
     aux = end + 1;
   }
   else if (*aux == '.') {
@@ -197,7 +202,12 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       return 0;
     }
 
-    parse->has_required_hits = 1;
+    /* if operator is none, explicitly clear out the required hits */
+    if (self->oper == RC_OPERATOR_NONE)
+      self->required_hits = 0;
+    else
+      parse->has_required_hits = 1;
+
     aux = end + 1;
   }
   else {

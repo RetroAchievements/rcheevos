@@ -223,6 +223,10 @@ void test_condition(void) {
   TEST_PARAMS4(test_parse_modifier, "A:0xH1234*-1", RC_OPERATOR_MULT, RC_OPERAND_CONST, -1);
   TEST_PARAMS4(test_parse_modifier, "A:0xH1234*0xH3456", RC_OPERATOR_MULT, RC_OPERAND_ADDRESS, 0x3456);
 
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234=0", RC_OPERATOR_NONE, RC_OPERAND_CONST, 0);
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234=0.60.", RC_OPERATOR_NONE, RC_OPERAND_CONST, 0);
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234=0(60)", RC_OPERATOR_NONE, RC_OPERAND_CONST, 0);
+
   /* hit counts */
   TEST_PARAMS5(test_parse_condition, "0xH1234=8(1)", RC_CONDITION_STANDARD, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 1);
   TEST_PARAMS5(test_parse_condition, "0xH1234=8.1.", RC_CONDITION_STANDARD, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 1); /* legacy format */
