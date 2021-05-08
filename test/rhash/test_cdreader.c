@@ -219,9 +219,9 @@ static void test_open_gdi_track_3_extra_whitespace()
 {
   const char gdi_contents[] =
 	"3\n\n"
-	"1       0   4   2352   \"track 01.bin\"   0\n\n"
-	"2     600   0   2352   \"track 02.raw\"   0\n\n"
-	"3   45000   4   2352   \"track 03.bin\"   0\n\n";
+	"  1       0   4   2352   \"track 01.bin\"   0\n\n"
+	"  2     600   0   2352   \"track 02.raw\"   0\n\n"
+	"  3   45000   4   2352   \"track 03.bin\"   0\n\n";
 
   cdrom_t* track_handle;
 
