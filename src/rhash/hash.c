@@ -995,6 +995,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   char exe_file[32] = "";
   unsigned size;
   uint32_t sector;
+  uint32_t track_sector;
   int result = 0;
   md5_state_t md5;
   int i = 0;
@@ -1030,6 +1031,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
     verbose_message_callback(message);
   }
 
+  /* the boot filename is 96 bytes into the meta information (https://mc.pp.se/dc/ip0000.bin.html) */
   /* remove whitespace from bootfile */
   i = 0;
   while (!isspace(buffer[96 + i]) && i < 16)
@@ -1055,9 +1057,20 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
 
   /* last track contains the boot executable */
   last_track_handle = rc_cd_open_track(path, RC_HASH_CDTRACK_LAST);
-  sector = rc_cd_absolute_sector_to_track_sector(last_track_handle, sector);
+  track_sector = rc_cd_absolute_sector_to_track_sector(last_track_handle, sector);
 
-  result = rc_hash_cd_file(&md5, last_track_handle, sector, NULL, size, "boot executable");
+  if ((int32_t)track_sector < 0)
+  {
+    /* boot executable is not in the last track; try the primary data track.
+     * There's only a handful of games that do this: Q*bert was the first identified. */
+    rc_cd_close_track(last_track_handle);
+
+    rc_hash_verbose("Boot executable not found in last track, trying primary track");
+    last_track_handle = rc_cd_open_track(path, 3);
+    track_sector = rc_cd_absolute_sector_to_track_sector(last_track_handle, sector);
+  }
+
+  result = rc_hash_cd_file(&md5, last_track_handle, track_sector, NULL, size, "boot executable");
 
   rc_cd_close_track(last_track_handle);
 
