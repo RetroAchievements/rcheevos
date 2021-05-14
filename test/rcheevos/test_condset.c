@@ -1326,6 +1326,69 @@ static void test_resetnextif_chain_with_hits() {
   assert_hit_count(condset, 3, 1);
 }
 
+static void test_resetnextif_pause_lock() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* ResetNextIf byte(0x0002)=1
+   * PauseIf     byte(0x0001)=1 (1)
+   */
+  assert_parse_condset(&condset, &memrefs, buffer, "Z:0xH0002=1_P:0xH0001=1(1)");
+
+  /* both conditions false */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 0);
+
+  /* reset next true */
+  ram[2] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 0);
+
+  /* reset next and pause true */
+  ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 0);
+
+  /* only pause true */
+  ram[2] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 1);
+
+  /* both conditions true */
+  ram[2] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 3);
+  assert_hit_count(condset, 1, 0);
+
+  /* only pause true */
+  ram[2] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 3);
+  assert_hit_count(condset, 1, 1);
+
+  /* both conditions false */
+  ram[1] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 3);
+  assert_hit_count(condset, 1, 1);
+
+  /* reset next true */
+  ram[2] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 4);
+  assert_hit_count(condset, 1, 0);
+}
+
 static void test_addsource() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3388,6 +3451,7 @@ void test_condset(void) {
   TEST(test_resetnextif_addaddress);
   TEST(test_resetnextif_chain);
   TEST(test_resetnextif_chain_with_hits);
+  TEST(test_resetnextif_pause_lock);
 
   /* addsource/subsource */
   TEST(test_addsource);
