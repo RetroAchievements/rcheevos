@@ -215,6 +215,32 @@ static void test_open_gdi_track_3_quoted()
   cdreader->close_track(track_handle);
 }
 
+static void test_open_gdi_track_3_extra_whitespace()
+{
+  const char gdi_contents[] =
+	"3\n\n"
+	"  1       0   4   2352   \"track 01.bin\"   0\n\n"
+	"  2     600   0   2352   \"track 02.raw\"   0\n\n"
+	"  3   45000   4   2352   \"track 03.bin\"   0\n\n";
+
+  cdrom_t* track_handle;
+
+  mock_file_text(0, "game.gdi", gdi_contents);
+  mock_empty_file(1, "track 03.bin", 1185760800);
+
+  track_handle = (cdrom_t*)cdreader->open_track("game.gdi", 3);
+  ASSERT_PTR_NOT_NULL(track_handle);
+
+  ASSERT_PTR_NOT_NULL(track_handle->file_handle);
+  ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "track 03.bin");
+  ASSERT_NUM64_EQUALS(track_handle->first_sector_offset, 0);
+  ASSERT_NUM_EQUALS(track_handle->first_sector, 45000);
+  ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
+  ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+
+  cdreader->close_track(track_handle);
+}
+
 static void test_open_gdi_track_last()
 {
   cdrom_t* track_handle;
@@ -740,6 +766,7 @@ void test_cdreader(void) {
 
   TEST(test_open_gdi_track_3);
   TEST(test_open_gdi_track_3_quoted);
+  TEST(test_open_gdi_track_3_extra_whitespace);
   TEST(test_open_gdi_track_last);
 
   TEST(test_open_cue_track_largest_data);

@@ -589,6 +589,9 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
         ++ptr;
 
       /* line format: [trackid] [lba] [type] [sectorsize] [file] [?] */
+      while (isspace(*ptr))
+        ++ptr;
+
       current_track = (uint32_t)atoi(ptr);
       if (track && current_track != track)
         continue;
@@ -597,21 +600,33 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
         ++ptr;
       ++ptr;
 
+      while (isspace(*ptr))
+        ++ptr;
+
       lba = atoi(ptr);
       while (isdigit(*ptr))
         ++ptr;
       ++ptr;
+
+      while (isspace(*ptr))
+        ++ptr;
 
       track_type = atoi(ptr);
       while (isdigit(*ptr))
         ++ptr;
       ++ptr;
 
+      while (isspace(*ptr))
+        ++ptr;
+
       ptr2 = sector_size;
       while (isdigit(*ptr))
         *ptr2++ = *ptr++;
       *ptr2 = '\0';
       ++ptr;
+
+      while (isspace(*ptr))
+        ++ptr;
 
       ptr2 = file;
       if (*ptr == '\"')
