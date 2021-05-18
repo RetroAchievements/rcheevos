@@ -1128,6 +1128,56 @@ static void test_invalidate_address_leaderboard(void)
   rc_runtime_destroy(&runtime);
 }
 
+static int validate_address_handler(unsigned address)
+{
+  return (address & 1) == 0; /* all even addresses are valid */
+}
+
+static void test_validate_addresses(void)
+{
+  unsigned char ram[] = { 0, 10, 10 };
+  memory_invalid_t memory;
+  rc_runtime_t runtime;
+
+  memory.memory.ram = ram;
+  memory.memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+  event_count = 0;
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=10");
+  assert_activate_achievement(&runtime, 2, "0xH0003=10"); /* put two invalid memrefs next to each other */
+  assert_activate_achievement(&runtime, 3, "0xH0002=10");
+  assert_activate_achievement(&runtime, 4, "0xH0001=10"); /* shared reference to invalid memref */
+  assert_activate_lboard(&runtime, 1, "STA:0xH0001=10::SUB:0xH0001=11::CAN:0xH0001=12::VAL:0xH0001");
+  assert_activate_lboard(&runtime, 2, "STA:0xH0002=10::SUB:0xH0002=11::CAN:0xH0002=12::VAL:0xH0002*2");
+
+  /* everything should start in waiting state */
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[2].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[3].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_WAITING);
+
+  /* validate_addresses should immediately disable the achievements and raise the event */
+  rc_runtime_validate_addresses(&runtime, event_handler, validate_address_handler);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_DISABLED);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_DISABLED);
+  ASSERT_NUM_EQUALS(runtime.triggers[2].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[3].trigger->state, RC_TRIGGER_STATE_DISABLED);
+  ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_DISABLED);
+  ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_WAITING);
+
+  ASSERT_NUM_EQUALS(event_count, 4);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_DISABLED, 1, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_DISABLED, 2, 3);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_DISABLED, 4, 1);
+  assert_event(RC_RUNTIME_EVENT_LBOARD_DISABLED, 1, 1);
+
+  rc_runtime_destroy(&runtime);
+}
+
 void test_runtime(void) {
   TEST_SUITE_BEGIN();
 
@@ -1171,6 +1221,8 @@ void test_runtime(void) {
   TEST(test_invalidate_address_no_memrefs);
   TEST(test_invalidate_address_shared_memref);
   TEST(test_invalidate_address_leaderboard);
+
+  TEST(test_validate_addresses);
 
   TEST_SUITE_END();
 }
