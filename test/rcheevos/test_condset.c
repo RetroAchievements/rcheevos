@@ -3396,6 +3396,41 @@ static void test_addaddress_scaled() {
   assert_evaluate_condset(condset, memrefs, &memory, 0);
 }
 
+static void test_addaddress_scaled_negative() {
+  unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x01};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* $($4 * -1 + 2) */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0004*4294967295_0xH0002=22"); // 4294967295 = 0xFFFFFFFF = -1
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* value is correct: $(1 * -1 + 2) = $(1) */
+  ram[1] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* adjust pointer: $(2 * -1 + 2) = $(0) */
+  ram[4] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* new value is correct */
+  ram[0] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* point to original value */
+  ram[4] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* original value no longer correct */
+  ram[1] = 11;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+}
+
 void test_condset(void) {
   TEST_SUITE_BEGIN();
 
@@ -3508,6 +3543,7 @@ void test_condset(void) {
   TEST(test_addaddress_adjust_both_sides);
   TEST(test_addaddress_adjust_both_sides_different_bases);
   TEST(test_addaddress_scaled);
+  TEST(test_addaddress_scaled_negative);
 
   TEST_SUITE_END();
 }
