@@ -338,10 +338,14 @@ static const rc_memory_region_t _rc_memory_regions_intellivision[] = {
 static const rc_memory_regions_t rc_memory_regions_intellivision = { _rc_memory_regions_intellivision, 9 };
 
 /* ===== Magnavox Odyssey 2 ===== */
+/* https://sudonull.com/post/76885-Architecture-and-programming-Philips-Videopac-Magnavox-Odyssey-2 */
 static const rc_memory_region_t _rc_memory_regions_magnavox_odyssey_2[] = {
-    { 0x000000U, 0x00003FU, 0x000040U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+    /* Internal and external RAMs are reachable using unique instructions.
+     * The real addresses provided are virtual and for mapping purposes only. */
+    { 0x000000U, 0x00003FU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Internal RAM" },
+    { 0x000040U, 0x00013FU, 0x000040U, RC_MEMORY_TYPE_SYSTEM_RAM, "External RAM" }
 };
-static const rc_memory_regions_t rc_memory_regions_magnavox_odyssey_2 = { _rc_memory_regions_magnavox_odyssey_2, 1 };
+static const rc_memory_regions_t rc_memory_regions_magnavox_odyssey_2 = { _rc_memory_regions_magnavox_odyssey_2, 2 };
 
 /* ===== Master System ===== */
 /* http://www.smspower.org/Development/MemoryMap */
