@@ -3407,7 +3407,7 @@ static void test_addaddress_scaled_negative() {
   memory.size = sizeof(ram);
 
   /* $($4 * -1 + 2) */
-  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0004*4294967295_0xH0002=22"); // 4294967295 = 0xFFFFFFFF = -1
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0004*4294967295_0xH0002=22"); /* 4294967295 = 0xFFFFFFFF = -1 */
   assert_evaluate_condset(condset, memrefs, &memory, 0);
 
   /* value is correct: $(1 * -1 + 2) = $(1) */
