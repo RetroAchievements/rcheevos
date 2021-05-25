@@ -714,8 +714,8 @@ static void test_hash_psx_cd_no_system_cnf()
   uint8_t* image;
   char hash_file[33], hash_iterator[33];
   const char* expected_md5 = "e494c79a7315be0dc3e8571c45df162c";
-  size_t binary_size = 0x12000;
-  const size_t sectors_needed = (((binary_size + 2047) / 2048) + 20);
+  unsigned binary_size = 0x12000;
+  const unsigned sectors_needed = (((binary_size + 2047) / 2048) + 20);
   uint8_t* exe;
 
   image = generate_iso9660_bin(sectors_needed, "HOMEBREW", &image_size);

@@ -56,7 +56,7 @@ static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)
 static void assert_richpresence_display_string(rc_runtime_t* runtime, memory_t* memory, const char* expected)
 {
   char buffer[512];
-  const int expected_len = strlen(expected);
+  const int expected_len = (int)strlen(expected);
   const int result = rc_runtime_get_richpresence(runtime, buffer, sizeof(buffer), peek, memory, NULL);
   ASSERT_STR_EQUALS(buffer, expected);
   ASSERT_NUM_EQUALS(result, expected_len);

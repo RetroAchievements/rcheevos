@@ -131,7 +131,7 @@ static int rc_libretro_match_value(const char* val, const char* match) {
   if (*match == ',') {
     do {
       const char* ptr = ++match;
-      int size;
+      size_t size;
 
       while (*match && *match != ',')
         ++match;
@@ -218,7 +218,7 @@ unsigned char* rc_libretro_memory_find(const rc_libretro_memory_regions_t* regio
       return &regions->data[i][address];
     }
 
-    address -= size;
+    address -= (unsigned)size;
   }
 
   return NULL;
@@ -387,7 +387,7 @@ static void rc_libretro_memory_init_from_memory_map(rc_libretro_memory_regions_t
         else {
           rc_libretro_memory_register_region(regions, console_region->type, region_start, desc_size, description);
           console_region_size -= desc_size;
-          real_address += desc_size;
+          real_address += (unsigned)desc_size;
         }
       }
       else {

@@ -546,7 +546,7 @@ uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8
     fill_image(file_contents_start, contents_size);
 
   /* update next free sector */
-  next_free_sector += (contents_size + 2047) / 2048;
+  next_free_sector += (unsigned)(contents_size + 2047) / 2048;
   image[root_directory_record_offset - 4] = (next_free_sector & 0xFF);
   image[root_directory_record_offset - 3] = (next_free_sector >> 8) & 0xFF;
   image[root_directory_record_offset - 2] = (next_free_sector >> 16) & 0xFF;
@@ -557,7 +557,7 @@ uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8
 
 uint8_t* generate_psx_bin(const char* binary_name, unsigned binary_size, size_t* image_size)
 {
-  const size_t sectors_needed = (((binary_size + 2047) / 2048) + 20);
+  const unsigned sectors_needed = (((binary_size + 2047) / 2048) + 20);
   char system_cnf[256];
   uint8_t* image;
   uint8_t* exe;
@@ -582,7 +582,7 @@ uint8_t* generate_psx_bin(const char* binary_name, unsigned binary_size, size_t*
 
 uint8_t* generate_ps2_bin(const char* binary_name, unsigned binary_size, size_t* image_size)
 {
-  const size_t sectors_needed = (((binary_size + 2047) / 2048) + 20);
+  const unsigned sectors_needed = (((binary_size + 2047) / 2048) + 20);
   char system_cnf[256];
   uint8_t* image;
   uint8_t* exe;
