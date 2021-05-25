@@ -7,6 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
+  # test
   linux-x86:
     runs-on: ubuntu-latest
     steps:
