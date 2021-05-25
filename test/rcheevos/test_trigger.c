@@ -1164,6 +1164,66 @@ static void test_measured_if_while_paused() {
   ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
 }
 
+static void test_resetnextif_trigger() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* ResetNextIf byte(0x0002)=1
+   *             byte(0x0001)=1 (1)
+   * Trigger     byte(0x0003)=0
+   */
+  assert_parse_trigger(&trigger, buffer, "Z:0xH0002=1_0xH0001=1.1._T:0xH0003=0");
+
+  /* both conditions false */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+
+  /* second condition true */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_PRIMED);
+
+  /* second condition not true */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_PRIMED);
+
+  /* second condition true */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_PRIMED);
+
+  /* first condition true */
+  ram[2] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+
+  /* first condition not true */
+  ram[2] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_PRIMED);
+
+  /* second condition not true */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_PRIMED);
+
+  /* first condition true */
+  ram[2] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+
+  /* first condition not true */
+  ram[2] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+}
+
 static void test_evaluate_trigger_inactive() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -1654,6 +1714,9 @@ void test_trigger(void) {
   TEST(test_measured_if_multiple_measured);
   TEST(test_measured_if_multiple_measured_if);
   TEST(test_measured_if_while_paused);
+
+  /* trigger */
+  TEST(test_resetnextif_trigger);
 
   /* rc_evaluate_trigger */
   TEST(test_evaluate_trigger_inactive);
