@@ -10,12 +10,58 @@ jobs:
   linux-x86:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: dependencies
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Install dependencies
       run: sudo apt-get install gcc-multilib # bits/libc-header-start.h
-    - name: build
+    - name: Build
       run: make ARCH=x86 BUILD=c89 TARGET=tests
       working-directory: test
-    - name: test
+    - name: Run tests
       run: ./test
       working-directory: test
+
+  linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Install dependencies
+      run: sudo apt-get install gcc-multilib # bits/libc-header-start.h
+    - name: Build
+      run: make ARCH=x64 BUILD=c89 TARGET=tests
+      working-directory: test
+    - name: Run tests
+      run: ./test
+      working-directory: test
+      
+  # RetroArch compiles with gcc-8, gnu99, and a different set of warnings.
+  # Attempt to catch issues caused by those discrepencies.
+  linux-x64-retroarch:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Install dependencies
+      run: sudo apt-get install gcc-multilib # bits/libc-header-start.h
+    - name: Build
+      run: make ARCH=x64 BUILD=retroarch TARGET=tests
+      working-directory: test
+    - name: Run tests
+      run: ./test
+      working-directory: test
+      
+  linux-x64-lua:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Install dependencies
+      run: sudo apt-get install gcc-multilib # bits/libc-header-start.h
+    - name: Build
+      run: make ARCH=x64 BUILD=c89 TARGET=tests HAVE_LUA=1
+      working-directory: test
+    - name: Run tests
+      run: ./test
+      working-directory: test
+      
