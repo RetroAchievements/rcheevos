@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: dependencies
+      run: sudo apt-get install gcc-multilib g++-multilib # bits/libc-header-start.h
     - name: make
       run: make ARCH=x86 BUILD=c89 TARGET=runtests
       working-directory: test
