@@ -65,7 +65,7 @@ jobs:
       run: ./test
       working-directory: test
 
-  windows-x64:
+  windows-x64-msbuild:
     runs-on: windows-latest
     steps:
     - name: Checkout
@@ -78,7 +78,7 @@ jobs:
       run: msbuild.exe rcheevos-test.sln -t:rcheevos-test -p:Configuration=Release -p:Platform=x64
       working-directory: test
     - name: Run tests
-      run: rcheevos-test.exe
+      run: ./rcheevos-test.exe
       working-directory: test/x64/Release
 
   windows-x64-mingw:
@@ -86,7 +86,7 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Install dependencies
+    - name: Install MinGW
       uses: egor-tensin/setup-mingw@v2
     - name: Build
       run: make ARCH=x64 BUILD=c89 TARGET=tests
