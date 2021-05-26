@@ -64,4 +64,17 @@ jobs:
     - name: Run tests
       run: ./test
       working-directory: test
-      
+
+  windows-x64-lua:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Install dependencies
+      uses: egor-tensin/setup-mingw@v2
+    - name: Build
+      run: make ARCH=x64 BUILD=c89 TARGET=tests
+      working-directory: test
+    - name: Run tests
+      run: ./test
+      working-directory: test
