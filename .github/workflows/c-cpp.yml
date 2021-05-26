@@ -65,7 +65,7 @@ jobs:
       run: ./test
       working-directory: test
 
-  windows-x64-lua:
+  windows-x64:
     runs-on: windows-latest
     steps:
     - name: Checkout
@@ -76,5 +76,5 @@ jobs:
       run: make ARCH=x64 BUILD=c89 TARGET=tests
       working-directory: test
     - name: Run tests
-      run: ./test
+      run: test.exe
       working-directory: test
