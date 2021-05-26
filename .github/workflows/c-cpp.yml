@@ -76,5 +76,5 @@ jobs:
       run: make ARCH=x64 BUILD=c89 TARGET=tests
       working-directory: test
     - name: Run tests
-      run: test.exe
+      run: ./test.exe
       working-directory: test
