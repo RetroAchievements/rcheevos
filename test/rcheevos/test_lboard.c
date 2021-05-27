@@ -538,6 +538,11 @@ static void test_unparsable_strings() {
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1", RC_MISSING_VALUE_MEASURED);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:R:0xH01=1$M:0xH03", RC_MISSING_VALUE_MEASURED);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH02SM:0xH03", RC_INVALID_VALUE_FLAG);
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=A::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02", RC_INVALID_MEMORY_OPERAND);
+
+  /* "STA:0xH00=1" is valid, but that leaves the read pointer pointing at the "A", which is not "::", so the code
+   * thinks it's completely done with the input. As the CAN logic was never parsed, RC_MISSING_CANCEL is returned. */
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=1A::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02", RC_MISSING_CANCEL);
 }
 
 void test_lboard(void) {
