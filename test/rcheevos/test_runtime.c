@@ -520,7 +520,7 @@ static void test_paused_event(void)
 
 static void test_primed_event(void)
 {
-  unsigned char ram[] = { 0, 1, 0, 1, 0 };
+  unsigned char ram[] = { 0, 1, 0, 1, 0, 0 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -529,8 +529,8 @@ static void test_primed_event(void)
 
   rc_runtime_init(&runtime);
 
-  /* byte(0)==1 && trigger(byte(1)==1) && byte(2)==1 && trigger(byte(3)==1) && byte(4)==1 */
-  assert_activate_achievement(&runtime, 1, "0xH0000=1_T:0xH0001=1_0xH0002=1_T:0xH0003=1_0xH0004=1");
+  /* byte(0)==1 && trigger(byte(1)==1) && byte(2)==1 && trigger(byte(3)==1) && unless(byte(4)==1) && never(byte(5) == 1) */
+  assert_activate_achievement(&runtime, 1, "0xH0000=1_T:0xH0001=1_0xH0002=1_T:0xH0003=1_P:0xH0004=1_R:0xH0005=1");
 
   /* trigger conditions are true, but nothing else */
   assert_do_frame(&runtime, &memory);
@@ -539,7 +539,7 @@ static void test_primed_event(void)
 
   /* primed */
   ram[1] = ram[3] = 0;
-  ram[0] = ram[2] = ram[4] = 1;
+  ram[0] = ram[2] = 1;
   assert_do_frame(&runtime, &memory);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
@@ -548,7 +548,7 @@ static void test_primed_event(void)
   ram[0] = 0;
   assert_do_frame(&runtime, &memory);
   ASSERT_NUM_EQUALS(event_count, 1);
-  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
 
   /* primed */
   ram[0] = 1;
@@ -556,10 +556,37 @@ static void test_primed_event(void)
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
 
+  /* paused */
+  ram[4] = 1;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PAUSED, 1, 0);
+
+  /* unpaused */
+  ram[4] = 0;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
+
+  /* reset */
+  ram[5] = 1;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_RESET, 1, 0);
+
+  /* not reset */
+  ram[5] = 0;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
+
   /* all conditions are true */
   ram[1] = ram[3] = 1;
   assert_do_frame(&runtime, &memory);
-  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
 
   rc_runtime_destroy(&runtime);
