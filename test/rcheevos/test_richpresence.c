@@ -295,6 +295,22 @@ static void test_macro_value_bcd() {
   assert_richpresence_output(richpresence, &memory, "14 Points");
 }
 
+static void test_macro_value_bitcount() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Format:Bits\nFormatType=VALUE\n\nDisplay:\n@Bits(0xK0001) Bits");
+  assert_richpresence_output(richpresence, &memory, "2 Bits");
+
+  ram[1] = 0x76;
+  assert_richpresence_output(richpresence, &memory, "5 Bits");
+}
+
 static void test_conditional_display_indirect() {
   unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -1046,6 +1062,7 @@ void test_richpresence(void) {
   TEST(test_macro_value);
   TEST(test_macro_value_nibble);
   TEST(test_macro_value_bcd);
+  TEST(test_macro_value_bitcount);
   TEST(test_macro_value_adjusted_negative);
   TEST(test_macro_value_from_formula);
   TEST(test_macro_value_from_hits);
