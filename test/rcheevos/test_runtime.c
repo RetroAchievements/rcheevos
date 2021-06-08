@@ -403,6 +403,99 @@ static void test_trigger_deactivation(void)
   rc_runtime_destroy(&runtime);
 }
 
+static void test_trigger_with_resetif() {
+  unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  /* never(byte(3)==1) && once(byte(4)==1) && trigger_when(byte(0)==1) */
+  assert_activate_achievement(&runtime, 1, "R:0xH0003=1_0xH0004=1.1._T:0xH0000=1");
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.trigger_count, 1);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
+
+  /* non-trigger condition is true */
+  ram[4] = 1;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
+
+  /* ResetIf is true */
+  ram[3] = 1;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_RESET, 1, 0);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
+
+  /* ResetIf no longer true */
+  ram[3] = 0;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
+}
+
+static void test_trigger_with_resetnextif() {
+  unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  /* once(byte(4)==1 && never(repeated(2, byte(3)==1 && never(byte(1)==1 || byte(2)==1))) && trigger_when(byte(0)==1) */
+  assert_activate_achievement(&runtime, 1, "O:0xH0001=1_Z:0xH0002=1_Z:0xH0003=1.2._0xH0004=1.1._T:0xH0000=1");
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.trigger_count, 1);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
+
+  /* non-trigger condition is true */
+  ram[4] = 1;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
+
+  /* second ResetNextIf is true */
+  ram[3] = 1;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* OrNext resets second ResetNextIf */
+  ram[1] = 1;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_RESET, 1, 0);
+
+  /* OrNext no longer true */
+  ram[1] = 0;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* second ResetNextIf fires */
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_RESET, 1, 0);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
+}
+
 static void test_reset_event(void)
 {
   unsigned char ram[] = { 0, 10, 10 };
@@ -1139,6 +1232,8 @@ void test_runtime(void) {
   TEST(test_shared_memref);
   TEST(test_replace_active_trigger);
   TEST(test_trigger_deactivation);
+  TEST(test_trigger_with_resetif);
+  TEST(test_trigger_with_resetnextif);
 
   /* achievement events */
   TEST(test_reset_event);
