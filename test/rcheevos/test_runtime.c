@@ -1135,12 +1135,7 @@ static int validate_address_handler(unsigned address)
 
 static void test_validate_addresses(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
-  memory_invalid_t memory;
   rc_runtime_t runtime;
-
-  memory.memory.ram = ram;
-  memory.memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
   event_count = 0;
