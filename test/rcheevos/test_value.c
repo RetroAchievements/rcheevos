@@ -176,6 +176,7 @@ void test_value(void) {
 
   TEST_PARAMS2(test_evaluate_value, "0xH01*4", 0x12 * 4); /* multiply by constant */
   TEST_PARAMS2(test_evaluate_value, "0xH01*0.5", 0x12 / 2); /* multiply by fraction */
+  TEST_PARAMS2(test_evaluate_value, "0xH01/2", 0x12 / 2); /* divide by constant */
   TEST_PARAMS2(test_evaluate_value, "0xH01*0xH02", 0x12 * 0x34); /* multiply by second address */
   TEST_PARAMS2(test_evaluate_value, "0xH01*0xT02", 0); /* multiply by bit */
   TEST_PARAMS2(test_evaluate_value, "0xH01*~0xT02", 0x12); /* multiply by inverse bit */

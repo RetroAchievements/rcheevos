@@ -491,23 +491,32 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 
     old_state = trigger->state;
     new_state = rc_evaluate_trigger(trigger, peek, ud, L);
+
+    /* the trigger state doesn't actually change to RESET, RESET just serves as a notification.
+     * handle the notification, then look at the actual state */
+    if (new_state == RC_TRIGGER_STATE_RESET)
+    {
+      runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_RESET;
+      runtime_event.id = self->triggers[i].id;
+      event_handler(&runtime_event);
+
+      new_state = trigger->state;
+    }
+
+    /* if the state hasn't changed, there won't be any events raised */
     if (new_state == old_state)
       continue;
 
+    /* raise an UNPRIMED event when changing from UNPRIMED to anything else */
     if (old_state == RC_TRIGGER_STATE_PRIMED) {
       runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED;
       runtime_event.id = self->triggers[i].id;
       event_handler(&runtime_event);
     }
 
+    /* raise events for each of the possible new states */
     switch (new_state)
     {
-      case RC_TRIGGER_STATE_RESET:
-        runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_RESET;
-        runtime_event.id = self->triggers[i].id;
-        event_handler(&runtime_event);
-        break;
-
       case RC_TRIGGER_STATE_TRIGGERED:
         runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED;
         runtime_event.id = self->triggers[i].id;
@@ -527,6 +536,8 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
         break;
 
       case RC_TRIGGER_STATE_ACTIVE:
+        /* only raise ACTIVATED event when transitioning from an inactive state.
+         * note that inactive in this case means active but cannot trigger. */
         if (old_state == RC_TRIGGER_STATE_WAITING || old_state == RC_TRIGGER_STATE_PAUSED) {
           runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED;
           runtime_event.id = self->triggers[i].id;

@@ -1615,6 +1615,65 @@ static void test_evaluate_trigger_disabled() {
   ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_DISABLED);
 }
 
+static void test_evaluate_trigger_chained_resetnextif() {
+  unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* once(byte(4)==1 && never(repeated(2, byte(3)==1 && never(byte(1)==1 || byte(2)==1))) && trigger_when(byte(0)==1) */
+  assert_parse_trigger(&trigger, buffer, "O:0xH0001=1_Z:0xH0002=1_Z:0xH0003=1.2._0xH0004=1.1._T:0xH0000=1");
+  trigger->state = RC_TRIGGER_STATE_ACTIVE;
+
+  /* nothing is true */
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_ACTIVE);
+  assert_hit_count(trigger, 0, 0, 0); /* OrNext      0x0001 == 1     */
+  assert_hit_count(trigger, 0, 1, 0); /* ResetNextIf 0x0002 == 1     */
+  assert_hit_count(trigger, 0, 2, 0); /* ResetNextIf 0x0003 == 1 (2) */
+  assert_hit_count(trigger, 0, 3, 0); /*             0x0004 == 1 (1) */
+  assert_hit_count(trigger, 0, 4, 0); /* Trigger     0x0000 == 1     */
+
+  /* non-trigger condition is true */
+  ram[4] = 1;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_PRIMED);
+  assert_hit_count(trigger, 0, 3, 1);
+
+  /* second ResetNextIf is true */
+  ram[3] = 1;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_PRIMED);
+  assert_hit_count(trigger, 0, 2, 1);
+  assert_hit_count(trigger, 0, 3, 1);
+
+  /* OrNext resets second ResetNextIf */
+  ram[1] = 1;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_RESET); /* result is RESET */
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_PRIMED);                    /* state is PRIMED */
+  assert_hit_count(trigger, 0, 0, 1); /* OrNext tallies a hit of its own */
+  assert_hit_count(trigger, 0, 1, 1); /* ResetNextIf gets a hit from the OrNext */
+  assert_hit_count(trigger, 0, 2, 0); /* hit is reset by the ResetNextIf */
+  assert_hit_count(trigger, 0, 3, 1); /* hit is not affected by the reset ResetNextIf */
+
+  /* OrNext no longer true */
+  ram[1] = 0;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_PRIMED);
+  assert_hit_count(trigger, 0, 0, 1);
+  assert_hit_count(trigger, 0, 1, 1);
+  assert_hit_count(trigger, 0, 2, 1);
+  assert_hit_count(trigger, 0, 3, 1);
+
+  /* second ResetNextIf fires */
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_RESET);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  assert_hit_count(trigger, 0, 0, 1);
+  assert_hit_count(trigger, 0, 1, 1);
+  assert_hit_count(trigger, 0, 2, 2);
+  assert_hit_count(trigger, 0, 3, 0);
+}
+
 static void test_prev_prior_share_memref() {
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1729,6 +1788,7 @@ void test_trigger(void) {
   TEST(test_evaluate_trigger_primed_in_alts);
   TEST(test_evaluate_trigger_primed_one_alt);
   TEST(test_evaluate_trigger_disabled);
+  TEST(test_evaluate_trigger_chained_resetnextif);
 
   /* memref sharing */
   TEST(test_prev_prior_share_memref);
