@@ -1,3 +1,11 @@
+# v10.1.0
+
+* add RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED
+* add rc_runtime_validate_addresses
+* add external memory to memory map for Magnavox Odyssey 2
+* fix memory map base address for NeoGeo Pocket
+* fix bitcount always returning 0 when used in rich presence
+
 # v10.0.0
 
 * add rapi sublibrary for communicating with server (eliminates need for client-side JSON parsing; client must still
