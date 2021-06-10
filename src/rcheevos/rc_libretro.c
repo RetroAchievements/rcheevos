@@ -360,8 +360,8 @@ static void rc_libretro_memory_init_from_memory_map(rc_libretro_memory_regions_t
         break;
       }
 
-      snprintf(description, sizeof(description), "descriptor %u, offset 0x%06X",
-               (unsigned)(desc - mmap->descriptors) + 1, (int)offset);
+      snprintf(description, sizeof(description), "descriptor %u, offset 0x%06X%s",
+               (unsigned)(desc - mmap->descriptors) + 1, (int)offset, desc->ptr ? "" : " [no pointer]");
 
       if (desc->ptr) {
         desc_start = (uint8_t*)desc->ptr + desc->offset;
