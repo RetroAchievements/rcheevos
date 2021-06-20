@@ -507,7 +507,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     if (new_state == old_state)
       continue;
 
-    /* raise an UNPRIMED event when changing from UNPRIMED to anything else */
+    /* raise an UNPRIMED event when changing from PRIMED to anything else */
     if (old_state == RC_TRIGGER_STATE_PRIMED) {
       runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED;
       runtime_event.id = self->triggers[i].id;
