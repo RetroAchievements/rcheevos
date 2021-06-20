@@ -9,6 +9,63 @@
 extern "C" {
 #endif
 
+/* --- Fetch Achievement Info --- */
+
+/**
+ * API parameters for a fetch achievement info request.
+ */
+typedef struct rc_api_fetch_achievement_info_request_t {
+  /* The username of the player */
+  const char* username;
+  /* The API token from the login request */
+  const char* api_token;
+  /* The unique identifier of the achievement */
+  unsigned achievement_id;
+  /* The index of the first entry to retrieve  */
+  unsigned first_entry;
+  /* The number of entries to retrieve */
+  unsigned count;
+  /* Non-zero to only return unlocks earned by the user's friends */
+  unsigned friends_only;
+}
+rc_api_fetch_achievement_info_request_t;
+
+/* An achievement awarded entry */
+typedef struct rc_api_achievement_awarded_entry_t {
+  /* The user associated to the entry */
+  const char* username;
+  /* When the achievement was awarded */
+  time_t awarded;
+}
+rc_api_achievement_awarded_entry_t;
+
+/**
+ * Response data for a fetch achievement info request.
+ */
+typedef struct rc_api_fetch_achievement_info_response_t {
+  /* The unique identifier of the achievement */
+  unsigned id;
+  /* The unique identifier of the game to which the leaderboard is associated */
+  unsigned game_id;
+  /* The number of times the achievement has been awarded */
+  unsigned num_awarded;
+  /* The number of players that have earned at least one achievement for the game */
+  unsigned num_players;
+
+  /* An array of recently rewarded entries */
+  rc_api_achievement_awarded_entry_t* recently_awarded;
+  /* The number of items in the recently_awarded array */
+  unsigned num_recently_awarded;
+
+  /* Common server-provided response information */
+  rc_api_response_t response;
+}
+rc_api_fetch_achievement_info_response_t;
+
+int rc_api_init_fetch_achievement_info_request(rc_api_request_t* request, const rc_api_fetch_achievement_info_request_t* api_params);
+int rc_api_process_fetch_achievement_info_response(rc_api_fetch_achievement_info_response_t* response, const char* server_response);
+void rc_api_destroy_fetch_achievement_info_response(rc_api_fetch_achievement_info_response_t* response);
+
 /* --- Fetch Leaderboard Info --- */
 
 /**
