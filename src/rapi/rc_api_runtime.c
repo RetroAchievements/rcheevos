@@ -440,8 +440,8 @@ int rc_api_process_submit_lboard_entry_response(rc_api_submit_lboard_entry_respo
     {"Rank"},
     {"Score"}
     /* unused fields
-    { "DateSumitted" },
-      * unused fields */
+    {"DateSubmitted"},
+     * unused fields */
   };
 
   rc_json_field_t rank_info_fields[] = {

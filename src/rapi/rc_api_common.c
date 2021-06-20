@@ -604,6 +604,40 @@ int rc_json_get_required_unum(unsigned* out, rc_api_response_t* response, const 
   return rc_json_missing_field(response, field);
 }
 
+int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* field_name) {
+  struct tm tm;
+
+#ifndef NDEBUG
+  if (strcmp(field->name, field_name) != 0)
+    return 0;
+#endif
+
+  if (*field->value_start == '\"') {
+    memset(&tm, 0, sizeof(tm));
+    sscanf(field->value_start + 1, "%d-%d-%d %d:%d:%d",
+        &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
+
+    if (tm.tm_year > 1900 && tm.tm_mon > 0) {
+      tm.tm_mon--; /* 0-based */
+      tm.tm_year -= 1900; /* 1900 based */
+      tm.tm_isdst = -1; /* DST info not available */
+
+      *out = mktime(&tm);
+      return 1;
+    }
+  }
+
+  *out = 0;
+  return 0;
+}
+
+int rc_json_get_required_datetime(time_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+  if (rc_json_get_datetime(out, field, field_name))
+    return 1;
+
+  return rc_json_missing_field(response, field);
+}
+
 int rc_json_get_bool(int* out, const rc_json_field_t* field, const char* field_name) {
   const char* src = field->value_start;
 

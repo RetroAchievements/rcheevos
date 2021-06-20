@@ -58,6 +58,7 @@ OBJ=$(RC_SRC)/alloc.o \
     $(RC_API_SRC)/rc_api_common.o \
     $(RC_API_SRC)/rc_api_runtime.o \
     $(RC_API_SRC)/rc_api_user.o \
+    $(RC_API_SRC)/rc_api_info.o \
     rcheevos/test_condition.o \
     rcheevos/test_condset.o \
     rcheevos/test_consoleinfo.o \

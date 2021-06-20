@@ -327,6 +327,25 @@ static void test_json_get_required_bool() {
   ASSERT_NUM_EQUALS(response.succeeded, 0);
 }
 
+static void test_json_get_datetime(const char* input, int expected) {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  char buffer[64];
+  time_t value = 2;
+  snprintf(buffer, sizeof(buffer), "{\"Test\":\"%s\"}", input);
+
+  assert_json_parse_response(&response, &field, buffer, RC_OK);
+
+  if (expected != -1) {
+    ASSERT_TRUE(rc_json_get_datetime(&value, &field, "Test"));
+    ASSERT_NUM_EQUALS(value, (time_t)expected);
+  }
+  else {
+    ASSERT_FALSE(rc_json_get_datetime(&value, &field, "Test"));
+    ASSERT_NUM_EQUALS(value, 0);
+  }
+}
+
 static void test_json_get_unum_array(const char* input, unsigned expected_count, int expected_result) {
   rc_api_response_t response;
   rc_json_field_t field;
@@ -590,6 +609,11 @@ void test_rapi_common(void) {
   TEST_PARAMS2(test_json_get_bool, "0", 0);
   TEST(test_json_get_optional_bool);
   TEST(test_json_get_required_bool);
+
+  /* rc_json_get_datetime */
+  TEST_PARAMS2(test_json_get_datetime, "", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:00", 1420125300);
+  TEST_PARAMS2(test_json_get_datetime, "2016-02-29 20:01:47", 1456801307);
 
   /* rc_json_get_unum_array */
   TEST_PARAMS3(test_json_get_unum_array, "[]", 0, RC_OK);
