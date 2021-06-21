@@ -111,15 +111,13 @@ static void test_init_fetch_leaderboard_info_request() {
   rc_api_request_t request;
 
   memset(&fetch_leaderboard_info_request, 0, sizeof(fetch_leaderboard_info_request));
-  fetch_leaderboard_info_request.username = "Username";
-  fetch_leaderboard_info_request.api_token = "API_TOKEN";
   fetch_leaderboard_info_request.leaderboard_id = 1234;
-  fetch_leaderboard_info_request.first_entry = 100;
+  fetch_leaderboard_info_request.offset = 100;
   fetch_leaderboard_info_request.count = 50;
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_leaderboard_info_request(&request, &fetch_leaderboard_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&u=Username&t=API_TOKEN&i=1234&o=99&c=50");
+  ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&i=1234&o=100&c=50");
 
   rc_api_destroy_request(&request);
 }
@@ -129,32 +127,45 @@ static void test_init_fetch_leaderboard_info_request_no_first() {
   rc_api_request_t request;
 
   memset(&fetch_leaderboard_info_request, 0, sizeof(fetch_leaderboard_info_request));
-  fetch_leaderboard_info_request.username = "Username";
-  fetch_leaderboard_info_request.api_token = "API_TOKEN";
   fetch_leaderboard_info_request.leaderboard_id = 1234;
   fetch_leaderboard_info_request.count = 50;
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_leaderboard_info_request(&request, &fetch_leaderboard_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&u=Username&t=API_TOKEN&i=1234&c=50");
+  ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&i=1234&c=50");
 
   rc_api_destroy_request(&request);
 }
 
-static void test_init_fetch_leaderboard_info_request_one_first() {
+static void test_init_fetch_leaderboard_info_request_for_user() {
   rc_api_fetch_leaderboard_info_request_t fetch_leaderboard_info_request;
   rc_api_request_t request;
 
   memset(&fetch_leaderboard_info_request, 0, sizeof(fetch_leaderboard_info_request));
-  fetch_leaderboard_info_request.username = "Username";
-  fetch_leaderboard_info_request.api_token = "API_TOKEN";
   fetch_leaderboard_info_request.leaderboard_id = 1234;
-  fetch_leaderboard_info_request.first_entry = 1;
-  fetch_leaderboard_info_request.count = 50;
+  fetch_leaderboard_info_request.username = "Username";
+  fetch_leaderboard_info_request.count = 20;
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_leaderboard_info_request(&request, &fetch_leaderboard_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&u=Username&t=API_TOKEN&i=1234&c=50");
+  ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&i=1234&u=Username&c=20");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_leaderboard_info_request_for_user_with_offset() {
+  rc_api_fetch_leaderboard_info_request_t fetch_leaderboard_info_request;
+  rc_api_request_t request;
+
+  memset(&fetch_leaderboard_info_request, 0, sizeof(fetch_leaderboard_info_request));
+  fetch_leaderboard_info_request.leaderboard_id = 1234;
+  fetch_leaderboard_info_request.username = "Username";
+  fetch_leaderboard_info_request.offset = 10; /* should be ignored */
+  fetch_leaderboard_info_request.count = 20;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_leaderboard_info_request(&request, &fetch_leaderboard_info_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&i=1234&u=Username&c=20");
 
   rc_api_destroy_request(&request);
 }
@@ -312,7 +323,8 @@ void test_rapi_info(void) {
   /* leaderboard info */
   TEST(test_init_fetch_leaderboard_info_request);
   TEST(test_init_fetch_leaderboard_info_request_no_first);
-  TEST(test_init_fetch_leaderboard_info_request_one_first);
+  TEST(test_init_fetch_leaderboard_info_request_for_user);
+  TEST(test_init_fetch_leaderboard_info_request_for_user_with_offset);
 
   TEST(test_process_fetch_leaderboard_info_response);
   TEST(test_process_fetch_leaderboard_info_response2);

@@ -72,16 +72,14 @@ void rc_api_destroy_fetch_achievement_info_response(rc_api_fetch_achievement_inf
  * API parameters for a fetch leaderboard info request.
  */
 typedef struct rc_api_fetch_leaderboard_info_request_t {
-  /* The username of the player */
-  const char* username;
-  /* The API token from the login request */
-  const char* api_token;
   /* The unique identifier of the leaderboard */
   unsigned leaderboard_id;
-  /* The index of the first entry to retrieve  */
-  unsigned first_entry;
   /* The number of entries to retrieve */
   unsigned count;
+  /* Specifies how many entries to skip (i.e. 50 items per page, pass 100 for page 2) */
+  unsigned offset;
+  /* The username of the player around whom the entries should be returned */
+  const char* username;
 }
 rc_api_fetch_leaderboard_info_request_t;
 

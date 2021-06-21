@@ -120,15 +120,16 @@ int rc_api_init_fetch_leaderboard_info_request(rc_api_request_t* request, const 
     return RC_INVALID_STATE;
 
   rc_url_builder_init(&builder, &request->buffer, 48);
-  if (rc_api_url_build_dorequest(&builder, "lbinfo", api_params->username, api_params->api_token)) {
-    rc_url_builder_append_unum_param(&builder, "i", api_params->leaderboard_id);
+  rc_url_builder_append_str_param(&builder, "r", "lbinfo");
+  rc_url_builder_append_unum_param(&builder, "i", api_params->leaderboard_id);
 
-    if (api_params->first_entry > 1)
-        rc_url_builder_append_unum_param(&builder, "o", api_params->first_entry - 1); /* number of entries to skip */
-    rc_url_builder_append_unum_param(&builder, "c", api_params->count);
+  if (api_params->username)
+    rc_url_builder_append_str_param(&builder, "u", api_params->username);
+  else if (api_params->offset)
+    rc_url_builder_append_unum_param(&builder, "o", api_params->offset);
 
-    request->post_data = rc_url_builder_finalize(&builder);
-  }
+  rc_url_builder_append_unum_param(&builder, "c", api_params->count);
+  request->post_data = rc_url_builder_finalize(&builder);
 
   return builder.result;
 }
