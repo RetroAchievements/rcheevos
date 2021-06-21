@@ -30,6 +30,13 @@ typedef struct rc_json_field_t {
 }
 rc_json_field_t;
 
+typedef struct rc_json_object_field_iterator_t {
+  rc_json_field_t field;
+  const char* json;
+  size_t name_len;
+}
+rc_json_object_field_iterator_t;
+
 int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_json_field_t* fields, size_t field_count);
 int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_num(int* out, const rc_json_field_t* field, const char* field_name);
@@ -49,6 +56,7 @@ int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_
 int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, rc_json_field_t* iterator);
+int rc_json_get_next_object_field(rc_json_object_field_iterator_t* iterator);
 
 void rc_buf_init(rc_api_buffer_t* buffer);
 void rc_buf_destroy(rc_api_buffer_t* buffer);

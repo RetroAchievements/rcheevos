@@ -3,6 +3,7 @@
 
 #include "rc_runtime_types.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 /* --- Fetch Achievement Info --- */
@@ -249,5 +250,76 @@ int rc_api_process_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info
 }
 
 void rc_api_destroy_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info_response_t* response) {
+  rc_buf_destroy(&response->response.buffer);
+}
+
+/* --- Fetch Games List --- */
+
+int rc_api_init_fetch_games_list_request(rc_api_request_t* request, const rc_api_fetch_games_list_request_t* api_params) {
+  rc_api_url_builder_t builder;
+
+  rc_api_url_build_dorequest_url(request);
+
+  if (api_params->console_id == 0)
+    return RC_INVALID_STATE;
+
+  rc_url_builder_init(&builder, &request->buffer, 48);
+  if (rc_api_url_build_dorequest(&builder, "gameslist", api_params->username, api_params->api_token)) {
+    rc_url_builder_append_unum_param(&builder, "c", api_params->console_id);
+
+    request->post_data = rc_url_builder_finalize(&builder);
+  }
+
+  return builder.result;
+}
+
+int rc_api_process_fetch_games_list_response(rc_api_fetch_games_list_response_t* response, const char* server_response) {
+  rc_api_game_list_entry_t* entry;
+  rc_json_object_field_iterator_t iterator;
+  int result;
+  char* end;
+
+  rc_json_field_t fields[] = {
+    {"Success"},
+    {"Error"},
+    {"Response"}
+  };
+
+  memset(response, 0, sizeof(*response));
+  rc_buf_init(&response->response.buffer);
+
+  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  if (result != RC_OK)
+    return result;
+
+  if (!fields[2].value_start) {
+    /* call rc_json_get_required_object to generate the error message */
+    rc_json_get_required_object(NULL, 0, &response->response, &fields[2], "Response");
+    return RC_MISSING_VALUE;
+  }
+
+  response->num_entries = fields[2].array_size;
+  response->entries = (rc_api_game_list_entry_t*)rc_buf_alloc(&response->response.buffer, response->num_entries * sizeof(rc_api_game_list_entry_t));
+  if (!response->entries)
+    return RC_OUT_OF_MEMORY;
+
+  memset(&iterator, 0, sizeof(iterator));
+  iterator.json = fields[2].value_start;
+
+  entry = response->entries;
+  while (rc_json_get_next_object_field(&iterator)) {
+    entry->id = strtol(iterator.field.name, &end, 10);
+
+    iterator.field.name = "";
+    if (!rc_json_get_string(&entry->name, &response->response.buffer, &iterator.field, ""))
+      return RC_MISSING_VALUE;
+
+    ++entry;
+  }
+
+  return RC_OK;
+}
+
+void rc_api_destroy_fetch_games_list_response(rc_api_fetch_games_list_response_t* response) {
   rc_buf_destroy(&response->response.buffer);
 }

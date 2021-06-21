@@ -137,6 +137,48 @@ int rc_api_init_fetch_leaderboard_info_request(rc_api_request_t* request, const 
 int rc_api_process_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info_response_t* response, const char* server_response);
 void rc_api_destroy_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info_response_t* response);
 
+/* --- Fetch Leaderboard Info --- */
+
+/**
+ * API parameters for a fetch games list request.
+ */
+typedef struct rc_api_fetch_games_list_request_t {
+  /* The username of the player */
+  const char* username;
+  /* The API token from the login request */
+  const char* api_token;
+  /* The unique identifier of the console to query */
+  unsigned console_id;
+}
+rc_api_fetch_games_list_request_t;
+
+/* A game list entry */
+typedef struct rc_api_game_list_entry_t {
+  /* The unique identifier of the game */
+  unsigned id;
+  /* The name of the game */
+  const char* name;
+}
+rc_api_game_list_entry_t;
+
+/**
+ * Response data for a fetch games list request.
+ */
+typedef struct rc_api_fetch_games_list_response_t {
+  /* An array of requested entries */
+  rc_api_game_list_entry_t* entries;
+  /* The number of items in the entries array */
+  unsigned num_entries;
+
+  /* Common server-provided response information */
+  rc_api_response_t response;
+}
+rc_api_fetch_games_list_response_t;
+
+int rc_api_init_fetch_games_list_request(rc_api_request_t* request, const rc_api_fetch_games_list_request_t* api_params);
+int rc_api_process_fetch_games_list_response(rc_api_fetch_games_list_response_t* response, const char* server_response);
+void rc_api_destroy_fetch_games_list_response(rc_api_fetch_games_list_response_t* response);
+
 #ifdef __cplusplus
 }
 #endif

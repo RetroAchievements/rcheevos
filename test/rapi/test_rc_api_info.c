@@ -241,6 +241,63 @@ static void test_process_fetch_leaderboard_info_response2() {
   rc_api_destroy_fetch_leaderboard_info_response(&fetch_leaderboard_info_response);
 }
 
+static void test_init_fetch_games_list_request() {
+	rc_api_fetch_games_list_request_t fetch_games_list_request;
+  rc_api_request_t request;
+
+  memset(&fetch_games_list_request, 0, sizeof(fetch_games_list_request));
+  fetch_games_list_request.username = "Username";
+  fetch_games_list_request.api_token = "API_TOKEN";
+  fetch_games_list_request.console_id = 12;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_games_list_request(&request, &fetch_games_list_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=gameslist&u=Username&t=API_TOKEN&c=12");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_process_fetch_games_list_response() {
+  rc_api_fetch_games_list_response_t fetch_games_list_response;
+  rc_api_game_list_entry_t* entry;
+  const char* server_response = "{\"Success\":true,\"Response\":{"
+	  "\"1234\":\"Game Name 1\","
+	  "\"17\":\"Game Name 2\","
+	  "\"9923\":\"Game Name 3\","
+	  "\"12303\":\"Game Name 4\","
+	  "\"4338\":\"Game Name 5\","
+	  "\"5437\":\"Game Name 6\""
+	  "}}";
+
+  memset(&fetch_games_list_response, 0, sizeof(fetch_games_list_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_games_list_response(&fetch_games_list_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_games_list_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_games_list_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_games_list_response.num_entries, 6);
+
+  entry = &fetch_games_list_response.entries[0];
+  ASSERT_NUM_EQUALS(entry->id, 1234);
+  ASSERT_STR_EQUALS(entry->name, "Game Name 1");
+  entry = &fetch_games_list_response.entries[1];
+  ASSERT_NUM_EQUALS(entry->id, 17);
+  ASSERT_STR_EQUALS(entry->name, "Game Name 2");
+  entry = &fetch_games_list_response.entries[2];
+  ASSERT_NUM_EQUALS(entry->id, 9923);
+  ASSERT_STR_EQUALS(entry->name, "Game Name 3");
+  entry = &fetch_games_list_response.entries[3];
+  ASSERT_NUM_EQUALS(entry->id, 12303);
+  ASSERT_STR_EQUALS(entry->name, "Game Name 4");
+  entry = &fetch_games_list_response.entries[4];
+  ASSERT_NUM_EQUALS(entry->id, 4338);
+  ASSERT_STR_EQUALS(entry->name, "Game Name 5");
+  entry = &fetch_games_list_response.entries[5];
+  ASSERT_NUM_EQUALS(entry->id, 5437);
+  ASSERT_STR_EQUALS(entry->name, "Game Name 6");
+
+  rc_api_destroy_fetch_games_list_response(&fetch_games_list_response);
+}
+
 void test_rapi_info(void) {
   TEST_SUITE_BEGIN();
 
@@ -259,6 +316,11 @@ void test_rapi_info(void) {
 
   TEST(test_process_fetch_leaderboard_info_response);
   TEST(test_process_fetch_leaderboard_info_response2);
+
+  /* games list */
+  TEST(test_init_fetch_games_list_request);
+
+  TEST(test_process_fetch_games_list_response);
 
   TEST_SUITE_END();
 }

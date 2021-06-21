@@ -20,7 +20,7 @@ static char* g_imagehost = NULL;
 
 /* --- rc_json --- */
 
-static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count);
+static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count, unsigned* fields_seen);
 static int rc_json_parse_array(const char** json_ptr, rc_json_field_t* field);
 
 static int rc_json_parse_field(const char** json_ptr, rc_json_field_t* field) {
@@ -68,7 +68,7 @@ static int rc_json_parse_field(const char** json_ptr, rc_json_field_t* field) {
       break;
 
     case '{': /* object */
-      result = rc_json_parse_object(json_ptr, NULL, 0);
+      result = rc_json_parse_object(json_ptr, NULL, 0, &field->array_size);
       if (result != RC_OK)
         return result;
 
@@ -127,13 +127,54 @@ static int rc_json_parse_array(const char** json_ptr, rc_json_field_t* field) {
   return RC_OK;
 }
 
-static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count) {
-  rc_json_field_t non_matching_field;
-  rc_json_field_t* field;
+static int rc_json_get_next_field(rc_json_object_field_iterator_t* iterator) {
+  const char* json = iterator->json;
+
+  while (isspace(*json))
+    ++json;
+
+  if (*json != '"')
+    return RC_INVALID_JSON;
+
+  iterator->field.name = ++json;
+  while (*json != '"') {
+    if (!*json)
+      return RC_INVALID_JSON;
+    ++json;
+  }
+  iterator->name_len = json - iterator->field.name;
+  ++json;
+
+  while (isspace(*json))
+    ++json;
+
+  if (*json != ':')
+    return RC_INVALID_JSON;
+
+  ++json;
+
+  while (isspace(*json))
+    ++json;
+
+  if (rc_json_parse_field(&json, &iterator->field) < 0)
+    return RC_INVALID_JSON;
+
+  while (isspace(*json))
+    ++json;
+
+  iterator->json = json;
+  return RC_OK;
+}
+
+static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count, unsigned* fields_seen) {
+  rc_json_object_field_iterator_t iterator;
   const char* json = *json_ptr;
-  const char* key_start;
-  size_t key_len;
   size_t i;
+  unsigned num_fields = 0;
+  int result;
+
+  if (fields_seen)
+    *fields_seen = 0;
 
   for (i = 0; i < field_count; ++i)
     fields[i].value_start = fields[i].value_end = NULL;
@@ -147,59 +188,48 @@ static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, 
     return RC_OK;
   }
 
+  memset(&iterator, 0, sizeof(iterator));
+  iterator.json = json;
+
   do
   {
-    while (isspace(*json))
-      ++json;
+    result = rc_json_get_next_field(&iterator);
+    if (result != RC_OK)
+      return result;
 
-    if (*json != '"')
-      return RC_INVALID_JSON;
-
-    key_start = ++json;
-    while (*json != '"') {
-      if (!*json)
-        return RC_INVALID_JSON;
-      ++json;
-    }
-    key_len = json - key_start;
-    ++json;
-
-    while (isspace(*json))
-      ++json;
-
-    if (*json != ':')
-      return RC_INVALID_JSON;
-
-    ++json;
-
-    while (isspace(*json))
-      ++json;
-
-    field = &non_matching_field;
     for (i = 0; i < field_count; ++i) {
-      if (!fields[i].value_start && strncmp(fields[i].name, key_start, key_len) == 0 && fields[i].name[key_len] == '\0') {
-        field = &fields[i];
+      if (!fields[i].value_start && strncmp(fields[i].name, iterator.field.name, iterator.name_len) == 0 &&
+          fields[i].name[iterator.name_len] == '\0') {
+        fields[i].value_start = iterator.field.value_start;
+        fields[i].value_end = iterator.field.value_end;
+        fields[i].array_size = iterator.field.array_size;
         break;
       }
     }
 
-    if (rc_json_parse_field(&json, field) < 0)
-      return RC_INVALID_JSON;
-
-    while (isspace(*json))
-      ++json;
-
-    if (*json != ',')
+    ++num_fields;
+    if (*iterator.json != ',')
       break;
 
-    ++json;
+    ++iterator.json;
   } while (1);
 
-  if (*json != '}')
+  if (*iterator.json != '}')
     return RC_INVALID_JSON;
 
-  *json_ptr = ++json;
+  if (fields_seen)
+    *fields_seen = num_fields;
+
+  *json_ptr = ++iterator.json;
   return RC_OK;
+}
+
+int rc_json_get_next_object_field(rc_json_object_field_iterator_t* iterator) {
+  if (*iterator->json != ',' && *iterator->json != '{')
+    return 0;
+
+  ++iterator->json;
+  return (rc_json_get_next_field(iterator) == RC_OK);
 }
 
 int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_json_field_t* fields, size_t field_count) {
@@ -213,7 +243,7 @@ int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_jso
 #endif
 
   if (*json == '{') {
-    int result = rc_json_parse_object(&json, fields, field_count);
+    int result = rc_json_parse_object(&json, fields, field_count, NULL);
 
     rc_json_get_optional_string(&response->error_message, response, &fields[1], "Error", NULL);
     rc_json_get_optional_bool(&response->succeeded, &fields[0], "Success", 1);
@@ -270,7 +300,7 @@ int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_
   if (!json)
     return rc_json_missing_field(response, field);
 
-  return (rc_json_parse_object(&json, fields, field_count) == RC_OK);
+  return (rc_json_parse_object(&json, fields, field_count, &field->array_size) == RC_OK);
 }
 
 static int rc_json_get_array_entry_value(rc_json_field_t* field, rc_json_field_t* iterator) {
@@ -341,7 +371,7 @@ int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, 
   while (isspace(*iterator->value_start))
     ++iterator->value_start;
 
-  rc_json_parse_object(&iterator->value_start, fields, field_count);
+  rc_json_parse_object(&iterator->value_start, fields, field_count, NULL);
 
   while (isspace(*iterator->value_start))
     ++iterator->value_start;
