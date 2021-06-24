@@ -24,6 +24,11 @@ uint8_t* generate_fds_file(size_t sides, int with_header, size_t* image_size);
 uint8_t* generate_iso9660_bin(unsigned binary_sectors, const char* volume_label, size_t* image_size);
 uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8_t* contents, size_t contents_size);
 
+uint8_t test_rom_z64[];
+uint8_t test_rom_n64[];
+uint8_t test_rom_v64[];
+size_t  test_rom_z64_size, test_rom_n64_size, test_rom_v64_size;
+
 #ifdef __cplusplus
 }
 #endif
