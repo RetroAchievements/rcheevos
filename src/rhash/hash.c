@@ -682,28 +682,29 @@ static int rc_hash_nes(char hash[33], uint8_t* buffer, size_t buffer_size)
 
 static void rc_hash_v64_to_z64(uint8_t* buffer, const uint8_t* stop)
 {
-  while (buffer < stop)
+  uint32_t* ptr = (uint32_t*)buffer;
+  const uint32_t* stop32 = (const uint32_t*)stop;
+  while (ptr < stop32)
   {
-    const uint8_t temp = buffer[0];
-    buffer[0] = buffer[1];
-    buffer[1] = temp;
-    buffer += 2;
+    uint32_t temp = *ptr;
+    temp = (temp & 0xFF00FF00) >> 8 |
+           (temp & 0x00FF00FF) << 8;
+    *ptr++ = temp;
   }
 }
 
 static void rc_hash_n64_to_z64(uint8_t* buffer, const uint8_t* stop)
 {
-  while (buffer < stop)
+  uint32_t* ptr = (uint32_t*)buffer;
+  const uint32_t* stop32 = (const uint32_t*)stop;
+  while (ptr < stop32)
   {
-    uint8_t temp = buffer[0];
-    buffer[0] = buffer[3];
-    buffer[3] = temp;
-
-    temp = buffer[1];
-    buffer[1] = buffer[2];
-    buffer[2] = temp;
-
-    buffer += 4;
+    uint32_t temp = *ptr;
+    temp = (temp & 0xFF000000) >> 24 |
+           (temp & 0x00FF0000) >> 8 |
+           (temp & 0x0000FF00) << 8 |
+           (temp & 0x000000FF) << 24;
+    *ptr++ = temp;
   }
 }
 
