@@ -829,6 +829,9 @@ static int rc_hash_n64_file(char hash[33], const char* path)
   }
   else
   {
+    free(buffer);
+    rc_file_close(file_handle);
+
     rc_hash_verbose("Not a Nintendo 64 ROM");
     return 0;
   }
