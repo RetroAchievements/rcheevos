@@ -1217,14 +1217,14 @@ void test_hash(void) {
   TEST(test_hash_nes_iterator_32k);
 
   /* Nintendo 64 */
-  TEST_PARAMS3(test_hash_n64, test_rom_z64, test_rom_z64_size, "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS3(test_hash_n64, test_rom_v64, test_rom_v64_size, "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS3(test_hash_n64, test_rom_n64, test_rom_n64_size, "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS4(test_hash_n64_file, "game.z64", test_rom_z64, test_rom_z64_size, "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS4(test_hash_n64_file, "game.v64", test_rom_v64, test_rom_v64_size, "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_n64, test_rom_n64_size, "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_z64, test_rom_z64_size, "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
-  TEST_PARAMS4(test_hash_n64_file, "game.z64", test_rom_n64, test_rom_n64_size, "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
+  TEST_PARAMS3(test_hash_n64, test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS3(test_hash_n64, test_rom_v64, sizeof(test_rom_v64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS3(test_hash_n64, test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS4(test_hash_n64_file, "game.z64", test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS4(test_hash_n64_file, "game.v64", test_rom_v64, sizeof(test_rom_v64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
+  TEST_PARAMS4(test_hash_n64_file, "game.z64", test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
 
   /* Oric (no fixed file size) */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ORIC, "test.tap", 18119, "953a2baa3232c63286aeae36b2172cef");
