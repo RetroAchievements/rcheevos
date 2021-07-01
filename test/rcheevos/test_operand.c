@@ -242,30 +242,21 @@ static void test_parse_inverted_memory_references() {
   TEST_PARAMS4(test_parse_operand, "~0xT1234", RC_OPERAND_INVERTED, RC_MEMSIZE_BIT_7, 0x1234U);
 }
 
-static void test_parse_values() {
-  /* decimal - values don't actually have size, default is RC_MEMSIZE_8_BITS */
+static void test_parse_unsigned_values() {
+  /* unsigned integers - no prefix */
+  /* values don't actually have size, default is RC_MEMSIZE_8_BITS */
   TEST_PARAMS4(test_parse_operand, "123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 123U);
   TEST_PARAMS4(test_parse_operand, "123456", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 123456U);
   TEST_PARAMS4(test_parse_operand, "0", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0U);
   TEST_PARAMS4(test_parse_operand, "0000000000", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0U);
+  TEST_PARAMS4(test_parse_operand, "0123456", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 123456U);
   TEST_PARAMS4(test_parse_operand, "4294967295", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
 
-  /* hex - 'H' prefix, not '0x'! */
-  TEST_PARAMS4(test_parse_operand, "H123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x123U);
-  TEST_PARAMS4(test_parse_operand, "HABCD", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xABCDU);
-  TEST_PARAMS4(test_parse_operand, "h123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x123U);
-  TEST_PARAMS4(test_parse_operand, "habcd", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xABCDU);
-  TEST_PARAMS4(test_parse_operand, "HFFFFFFFF", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
+  /* more than 32-bits (error), will be constrained to 32-bits */
+  TEST_PARAMS4(test_parse_operand, "4294967296", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
+}
 
-  /* floating point - 'F' prefix */
-  TEST_PARAMS3(test_parse_operand_fp, "f0.5", RC_OPERAND_FP, 0.5);
-  TEST_PARAMS3(test_parse_operand_fp, "F0.5", RC_OPERAND_FP, 0.5);
-  TEST_PARAMS3(test_parse_operand_fp, "f+0.5", RC_OPERAND_FP, 0.5);
-  TEST_PARAMS3(test_parse_operand_fp, "f-0.5", RC_OPERAND_FP, -0.5);
-  TEST_PARAMS3(test_parse_operand_fp, "f1.0", RC_OPERAND_CONST, 1.0);
-  TEST_PARAMS3(test_parse_operand_fp, "f1", RC_OPERAND_CONST, 1.0);
-  TEST_PARAMS3(test_parse_operand_fp, "f0.666666", RC_OPERAND_FP, 0.666666);
-
+static void test_parse_signed_values() {
   /* signed integers - 'V' prefix */
   TEST_PARAMS4(test_parse_operand, "v100", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 100);
   TEST_PARAMS4(test_parse_operand, "V100", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 100);
@@ -275,20 +266,66 @@ static void test_parse_values() {
   TEST_PARAMS4(test_parse_operand, "V9876543210", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x7FFFFFFFU);
   TEST_PARAMS4(test_parse_operand, "V-9876543210", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x80000001U);
 
-  /* NOTE: cannot test floating point without a prefix ("0.5") as the "0" will be parsed successfuly
-   * and the ".5" ignored - this case is handled in the TestParseCondition test */
+  /* no prefix, sign */
+  TEST_PARAMS4(test_parse_operand, "-1", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
+  TEST_PARAMS4(test_parse_operand, "+1", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 1);
+  TEST_PARAMS4(test_parse_operand, "+9876543210", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x7FFFFFFFU);
+  TEST_PARAMS4(test_parse_operand, "-9876543210", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x80000001U);
 
-  /* '0x' is an address */
-  TEST_PARAMS4(test_parse_operand, "0x123", RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x123U);
+  /* prefix, no value */
+  TEST_PARAMS3(test_parse_error_operand, "v", 0, RC_INVALID_CONST_OPERAND);
+
+  /* signed integer prefix, hex value */
+  TEST_PARAMS3(test_parse_error_operand, "vabcd", 0, RC_INVALID_CONST_OPERAND);
+}
+
+static void test_parse_hex_values() {
+  /* hex - 'H' prefix, not '0x'! */
+  TEST_PARAMS4(test_parse_operand, "H123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x123U);
+  TEST_PARAMS4(test_parse_operand, "HABCD", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xABCDU);
+  TEST_PARAMS4(test_parse_operand, "h123", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0x123U);
+  TEST_PARAMS4(test_parse_operand, "habcd", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 0xABCDU);
+  TEST_PARAMS4(test_parse_operand, "HFFFFFFFF", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
 
   /* hex without prefix */
   TEST_PARAMS3(test_parse_error_operand, "ABCD", 0, RC_INVALID_MEMORY_OPERAND);
 
-  /* more than 32-bits (error), will be constrained to 32-bits */
-  TEST_PARAMS4(test_parse_operand, "4294967296", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
+  /* '0x' is an address */
+  TEST_PARAMS4(test_parse_operand, "0x123", RC_OPERAND_ADDRESS, RC_MEMSIZE_16_BITS, 0x123U);
+}
 
-  /* negative value (error), will be "wrapped around": -1 = 0x100000000 - 1 = 0xFFFFFFFF = 4294967295 */
-  TEST_PARAMS4(test_parse_operand, "-1", RC_OPERAND_CONST, RC_MEMSIZE_8_BITS, 4294967295U);
+static void test_parse_float_values() {
+  /* floating point - 'F' prefix */
+  TEST_PARAMS3(test_parse_operand_fp, "f0.5", RC_OPERAND_FP, 0.5);
+  TEST_PARAMS3(test_parse_operand_fp, "F0.5", RC_OPERAND_FP, 0.5);
+  TEST_PARAMS3(test_parse_operand_fp, "f+0.5", RC_OPERAND_FP, 0.5);
+  TEST_PARAMS3(test_parse_operand_fp, "f-0.5", RC_OPERAND_FP, -0.5);
+  TEST_PARAMS3(test_parse_operand_fp, "f1.0", RC_OPERAND_CONST, 1.0);
+  TEST_PARAMS3(test_parse_operand_fp, "f1", RC_OPERAND_CONST, 1.0);
+  TEST_PARAMS3(test_parse_operand_fp, "f0.666666", RC_OPERAND_FP, 0.666666);
+  TEST_PARAMS3(test_parse_operand_fp, "f0.001", RC_OPERAND_FP, 0.001);
+  TEST_PARAMS3(test_parse_operand_fp, "f.12345", RC_OPERAND_FP, 0.12345);
+
+  /* prefix, no value */
+  TEST_PARAMS3(test_parse_error_operand, "f", 0, RC_INVALID_FP_OPERAND);
+
+  /* float prefix, hex value */
+  TEST_PARAMS3(test_parse_error_operand, "fabcd", 0, RC_INVALID_FP_OPERAND);
+
+  /* float prefix, hex value, no period, parser will stop after valid numbers */
+  TEST_PARAMS3(test_parse_error_operand, "f1d", 2, RC_OK);
+
+  /* non-numeric decimal part */
+  TEST_PARAMS3(test_parse_error_operand, "f1.d", 0, RC_INVALID_FP_OPERAND);
+  TEST_PARAMS3(test_parse_error_operand, "f1..0", 0, RC_INVALID_FP_OPERAND);
+
+  /* non-C locale - parser will stop at comma */
+  TEST_PARAMS3(test_parse_error_operand, "f1,23", 2, RC_OK);
+  TEST_PARAMS3(test_parse_error_operand, "f-1,23", 3, RC_OK);
+
+  /* no prefix - parser will stop at period */
+  TEST_PARAMS3(test_parse_error_operand, "0.5", 1, RC_OK);
+  TEST_PARAMS3(test_parse_error_operand, "-0.5", 2, RC_OK);
 }
 
 static void test_evaluate_memory_references() {
@@ -464,7 +501,11 @@ void test_operand(void) {
   test_parse_prior_memory_references();
   test_parse_bcd_memory_references();
   test_parse_inverted_memory_references();
-  test_parse_values();
+
+  test_parse_unsigned_values();
+  test_parse_signed_values();
+  test_parse_hex_values();
+  test_parse_float_values();
 
   test_evaluate_memory_references();
   TEST(test_evaluate_delta_memory_reference);
