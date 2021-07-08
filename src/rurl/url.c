@@ -162,7 +162,7 @@ int rc_url_get_badge_image(char* buffer, size_t size, const char* badge_name) {
   int written = snprintf(
     buffer,
     size,
-    RCHEEVOS_URL_PROTOCOL"i.retroachievements.org/Badge/%s",
+    "http://i.retroachievements.org/Badge/%s",
     badge_name
   );
 
