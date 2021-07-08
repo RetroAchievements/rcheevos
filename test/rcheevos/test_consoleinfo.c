@@ -46,7 +46,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name,  5, "GameBoy Advance");
   TEST_PARAMS2(test_name,  6, "GameBoy Color");
   TEST_PARAMS2(test_name,  7, "Nintendo Entertainment System");
-  TEST_PARAMS2(test_name,  8, "PCEngine");
+  TEST_PARAMS2(test_name,  8, "PC Engine");
   TEST_PARAMS2(test_name,  9, "Sega CD");
   TEST_PARAMS2(test_name, 10, "Sega 32X");
   TEST_PARAMS2(test_name, 11, "Master System");
