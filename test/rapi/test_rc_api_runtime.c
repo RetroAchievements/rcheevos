@@ -11,13 +11,27 @@ static void test_init_resolve_hash_request() {
   rc_api_request_t request;
 
   memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
-  resolve_hash_request.username = "Username";
+  resolve_hash_request.username = "Username"; /* credentials are ignored - turns out server doesn't validate this API */
   resolve_hash_request.api_token = "API_TOKEN";
   resolve_hash_request.game_hash = "ABCDEF0123456789";
 
   ASSERT_NUM_EQUALS(rc_api_init_resolve_hash_request(&request, &resolve_hash_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=gameid&u=Username&t=API_TOKEN&m=ABCDEF0123456789");
+  ASSERT_STR_EQUALS(request.post_data, "r=gameid&m=ABCDEF0123456789");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_resolve_hash_request_no_credentials() {
+  rc_api_resolve_hash_request_t resolve_hash_request;
+  rc_api_request_t request;
+
+  memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
+  resolve_hash_request.game_hash = "ABCDEF0123456789";
+
+  ASSERT_NUM_EQUALS(rc_api_init_resolve_hash_request(&request, &resolve_hash_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=gameid&m=ABCDEF0123456789");
 
   rc_api_destroy_request(&request);
 }
@@ -27,8 +41,6 @@ static void test_init_resolve_hash_request_no_hash() {
   rc_api_request_t request;
 
   memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
-  resolve_hash_request.username = "Username";
-  resolve_hash_request.api_token = "API_TOKEN";
 
   ASSERT_NUM_EQUALS(rc_api_init_resolve_hash_request(&request, &resolve_hash_request), RC_INVALID_STATE);
 
@@ -40,8 +52,6 @@ static void test_init_resolve_hash_request_empty_hash() {
   rc_api_request_t request;
 
   memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
-  resolve_hash_request.username = "Username";
-  resolve_hash_request.api_token = "API_TOKEN";
   resolve_hash_request.game_hash = "";
 
   ASSERT_NUM_EQUALS(rc_api_init_resolve_hash_request(&request, &resolve_hash_request), RC_INVALID_STATE);
@@ -721,6 +731,7 @@ void test_rapi_runtime(void) {
 
   /* gameid */
   TEST(test_init_resolve_hash_request);
+  TEST(test_init_resolve_hash_request_no_credentials);
   TEST(test_init_resolve_hash_request_no_hash);
   TEST(test_init_resolve_hash_request_empty_hash);
 

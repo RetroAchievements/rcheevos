@@ -20,10 +20,9 @@ int rc_api_init_resolve_hash_request(rc_api_request_t* request, const rc_api_res
     return RC_INVALID_STATE;
 
   rc_url_builder_init(&builder, &request->buffer, 48);
-  if (rc_api_url_build_dorequest(&builder, "gameid", api_params->username, api_params->api_token)) {
-    rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
-    request->post_data = rc_url_builder_finalize(&builder);
-  }
+  rc_url_builder_append_str_param(&builder, "r", "gameid");
+  rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
+  request->post_data = rc_url_builder_finalize(&builder);
 
   return builder.result;
 }
