@@ -21,7 +21,7 @@ typedef struct rc_api_fetch_achievement_info_request_t {
   const char* api_token;
   /* The unique identifier of the achievement */
   unsigned achievement_id;
-  /* The index of the first entry to retrieve  */
+  /* The 1-based index of the first entry to retrieve */
   unsigned first_entry;
   /* The number of entries to retrieve */
   unsigned count;
@@ -76,8 +76,8 @@ typedef struct rc_api_fetch_leaderboard_info_request_t {
   unsigned leaderboard_id;
   /* The number of entries to retrieve */
   unsigned count;
-  /* Specifies how many entries to skip (i.e. 50 items per page, pass 100 for page 2) */
-  unsigned offset;
+  /* The 1-based index of the first entry to retrieve */
+  unsigned first_entry;
   /* The username of the player around whom the entries should be returned */
   const char* username;
 }
@@ -89,6 +89,8 @@ typedef struct rc_api_lboard_info_entry_t {
   const char* username;
   /* The rank of the entry */
   unsigned rank;
+  /* The index of the entry */
+  unsigned index;
   /* The value of the entry */
   int score;
   /* When the entry was submitted */
@@ -135,7 +137,7 @@ int rc_api_init_fetch_leaderboard_info_request(rc_api_request_t* request, const 
 int rc_api_process_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info_response_t* response, const char* server_response);
 void rc_api_destroy_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info_response_t* response);
 
-/* --- Fetch Leaderboard Info --- */
+/* --- Fetch Games List --- */
 
 /**
  * API parameters for a fetch games list request.

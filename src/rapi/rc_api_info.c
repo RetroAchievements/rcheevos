@@ -125,8 +125,8 @@ int rc_api_init_fetch_leaderboard_info_request(rc_api_request_t* request, const 
 
   if (api_params->username)
     rc_url_builder_append_str_param(&builder, "u", api_params->username);
-  else if (api_params->offset)
-    rc_url_builder_append_unum_param(&builder, "o", api_params->offset);
+  else if (api_params->first_entry > 1)
+    rc_url_builder_append_unum_param(&builder, "o", api_params->first_entry - 1); /* number of entries to skip */
 
   rc_url_builder_append_unum_param(&builder, "c", api_params->count);
   request->post_data = rc_url_builder_finalize(&builder);
@@ -172,11 +172,9 @@ int rc_api_process_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info
   rc_json_field_t entry_fields[] = {
     {"User"},
     {"Rank"},
+    {"Index"},
     {"Score"},
     {"DateSubmitted"}
-    /* unused fields
-    {"UserRank"},
-     * unused fields */
   };
 
   memset(response, 0, sizeof(*response));
@@ -236,10 +234,13 @@ int rc_api_process_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info
       if (!rc_json_get_required_unum(&entry->rank, &response->response, &entry_fields[1], "Rank"))
         return RC_MISSING_VALUE;
 
-      if (!rc_json_get_required_num(&entry->score, &response->response, &entry_fields[2], "Score"))
+      if (!rc_json_get_required_unum(&entry->index, &response->response, &entry_fields[2], "Index"))
         return RC_MISSING_VALUE;
 
-      if (!rc_json_get_required_unum(&timet, &response->response, &entry_fields[3], "DateSubmitted"))
+      if (!rc_json_get_required_num(&entry->score, &response->response, &entry_fields[3], "Score"))
+        return RC_MISSING_VALUE;
+
+      if (!rc_json_get_required_unum(&timet, &response->response, &entry_fields[4], "DateSubmitted"))
         return RC_MISSING_VALUE;
       entry->submitted = (time_t)timet;
 
@@ -299,6 +300,8 @@ int rc_api_process_fetch_games_list_response(rc_api_fetch_games_list_response_t*
   }
 
   response->num_entries = fields[2].array_size;
+  rc_buf_reserve(&response->response.buffer, response->num_entries * (32 + sizeof(rc_api_game_list_entry_t)));
+
   response->entries = (rc_api_game_list_entry_t*)rc_buf_alloc(&response->response.buffer, response->num_entries * sizeof(rc_api_game_list_entry_t));
   if (!response->entries)
     return RC_OUT_OF_MEMORY;

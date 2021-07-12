@@ -644,10 +644,8 @@ int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* 
 
   if (*field->value_start == '\"') {
     memset(&tm, 0, sizeof(tm));
-    sscanf(field->value_start + 1, "%d-%d-%d %d:%d:%d",
-        &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
-
-    if (tm.tm_year > 1900 && tm.tm_mon > 0) {
+    if (sscanf(field->value_start + 1, "%d-%d-%d %d:%d:%d",
+        &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6) {
       tm.tm_mon--; /* 0-based */
       tm.tm_year -= 1900; /* 1900 based */
       tm.tm_isdst = -1; /* DST info not available */

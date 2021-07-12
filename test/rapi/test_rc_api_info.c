@@ -112,7 +112,7 @@ static void test_init_fetch_leaderboard_info_request() {
 
   memset(&fetch_leaderboard_info_request, 0, sizeof(fetch_leaderboard_info_request));
   fetch_leaderboard_info_request.leaderboard_id = 1234;
-  fetch_leaderboard_info_request.offset = 100;
+  fetch_leaderboard_info_request.first_entry = 101;
   fetch_leaderboard_info_request.count = 50;
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_leaderboard_info_request(&request, &fetch_leaderboard_info_request), RC_OK);
@@ -160,7 +160,7 @@ static void test_init_fetch_leaderboard_info_request_for_user_with_offset() {
   memset(&fetch_leaderboard_info_request, 0, sizeof(fetch_leaderboard_info_request));
   fetch_leaderboard_info_request.leaderboard_id = 1234;
   fetch_leaderboard_info_request.username = "Username";
-  fetch_leaderboard_info_request.offset = 10; /* should be ignored */
+  fetch_leaderboard_info_request.first_entry = 11; /* should be ignored */
   fetch_leaderboard_info_request.count = 20;
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_leaderboard_info_request(&request, &fetch_leaderboard_info_request), RC_OK);
@@ -177,8 +177,8 @@ static void test_process_fetch_leaderboard_info_response() {
 	  "\"LowerIsBetter\":1,\"LBTitle\":\"Title\",\"LBDesc\":\"Description\",\"LBFormat\":\"TIME\","
 	  "\"LBMem\":\"STA:0xH0000=1::CAN:1=1::SUB:0xH0000=2::VAL:b0x 0004\",\"LBAuthor\":null,"
 	  "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
-	  "\"Entries\":[{\"User\":\"Player1\",\"Score\":8765,\"Rank\":1,\"DateSubmitted\":1615654895},"
-                   "{\"User\":\"Player2\",\"Score\":7654,\"Rank\":2,\"DateSubmitted\":1600604303}]"
+	  "\"Entries\":[{\"User\":\"Player1\",\"Score\":8765,\"Rank\":1,\"Index\":5,\"DateSubmitted\":1615654895},"
+                   "{\"User\":\"Player2\",\"Score\":7654,\"Rank\":2,\"Index\":6,\"DateSubmitted\":1600604303}]"
 	  "}}";
 
   memset(&fetch_leaderboard_info_response, 0, sizeof(fetch_leaderboard_info_response));
@@ -199,11 +199,13 @@ static void test_process_fetch_leaderboard_info_response() {
 
   entry = &fetch_leaderboard_info_response.entries[0];
   ASSERT_NUM_EQUALS(entry->rank, 1);
+  ASSERT_NUM_EQUALS(entry->index, 5);
   ASSERT_STR_EQUALS(entry->username, "Player1");
   ASSERT_NUM_EQUALS(entry->score, 8765);
   ASSERT_NUM_EQUALS(entry->submitted, 1615654895);
   entry = &fetch_leaderboard_info_response.entries[1];
   ASSERT_NUM_EQUALS(entry->rank, 2);
+  ASSERT_NUM_EQUALS(entry->index, 6);
   ASSERT_STR_EQUALS(entry->username, "Player2");
   ASSERT_NUM_EQUALS(entry->score, 7654);
   ASSERT_NUM_EQUALS(entry->submitted, 1600604303);
@@ -218,8 +220,8 @@ static void test_process_fetch_leaderboard_info_response2() {
 	  "\"LowerIsBetter\":0,\"LBTitle\":\"Title2\",\"LBDesc\":\"Description2\",\"LBFormat\":\"SCORE\","
 	  "\"LBMem\":\"STA:0xH0000=1::CAN:1=1::SUB:0xH0000=2::VAL:b0x 0004\",\"LBAuthor\":\"AuthorName\","
 	  "\"LBCreated\":\"2021-06-18 15:32:16\",\"LBUpdated\":\"2021-06-18 15:32:16\","
-	  "\"Entries\":[{\"User\":\"Player1\",\"Score\":1013580,\"Rank\":1,\"DateSubmitted\":1624055310},"
-                   "{\"User\":\"Player2\",\"Score\":133340,\"Rank\":2,\"DateSubmitted\":1624166772}]"
+	  "\"Entries\":[{\"User\":\"Player1\",\"Score\":1013580,\"Rank\":1,\"Index\":5,\"DateSubmitted\":1624055310},"
+                   "{\"User\":\"Player2\",\"Score\":133340,\"Rank\":1,\"Index\":6,\"DateSubmitted\":1624166772}]"
 	  "}}";
 
   memset(&fetch_leaderboard_info_response, 0, sizeof(fetch_leaderboard_info_response));
@@ -240,11 +242,13 @@ static void test_process_fetch_leaderboard_info_response2() {
 
   entry = &fetch_leaderboard_info_response.entries[0];
   ASSERT_NUM_EQUALS(entry->rank, 1);
+  ASSERT_NUM_EQUALS(entry->index, 5);
   ASSERT_STR_EQUALS(entry->username, "Player1");
   ASSERT_NUM_EQUALS(entry->score, 1013580);
   ASSERT_NUM_EQUALS(entry->submitted, 1624055310);
   entry = &fetch_leaderboard_info_response.entries[1];
-  ASSERT_NUM_EQUALS(entry->rank, 2);
+  ASSERT_NUM_EQUALS(entry->rank, 1);
+  ASSERT_NUM_EQUALS(entry->index, 6);
   ASSERT_STR_EQUALS(entry->username, "Player2");
   ASSERT_NUM_EQUALS(entry->score, 133340);
   ASSERT_NUM_EQUALS(entry->submitted, 1624166772);
