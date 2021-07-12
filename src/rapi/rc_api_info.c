@@ -265,11 +265,10 @@ int rc_api_init_fetch_games_list_request(rc_api_request_t* request, const rc_api
     return RC_INVALID_STATE;
 
   rc_url_builder_init(&builder, &request->buffer, 48);
-  if (rc_api_url_build_dorequest(&builder, "gameslist", api_params->username, api_params->api_token)) {
-    rc_url_builder_append_unum_param(&builder, "c", api_params->console_id);
+  rc_url_builder_append_str_param(&builder, "r", "gameslist");
+  rc_url_builder_append_unum_param(&builder, "c", api_params->console_id);
 
-    request->post_data = rc_url_builder_finalize(&builder);
-  }
+  request->post_data = rc_url_builder_finalize(&builder);
 
   return builder.result;
 }

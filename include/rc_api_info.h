@@ -141,10 +141,6 @@ void rc_api_destroy_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_inf
  * API parameters for a fetch games list request.
  */
 typedef struct rc_api_fetch_games_list_request_t {
-  /* The username of the player */
-  const char* username;
-  /* The API token from the login request */
-  const char* api_token;
   /* The unique identifier of the console to query */
   unsigned console_id;
 }

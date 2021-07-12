@@ -257,13 +257,11 @@ static void test_init_fetch_games_list_request() {
   rc_api_request_t request;
 
   memset(&fetch_games_list_request, 0, sizeof(fetch_games_list_request));
-  fetch_games_list_request.username = "Username";
-  fetch_games_list_request.api_token = "API_TOKEN";
   fetch_games_list_request.console_id = 12;
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_games_list_request(&request, &fetch_games_list_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=gameslist&u=Username&t=API_TOKEN&c=12");
+  ASSERT_STR_EQUALS(request.post_data, "r=gameslist&c=12");
 
   rc_api_destroy_request(&request);
 }
