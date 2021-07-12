@@ -301,9 +301,12 @@ static void test_parse_float_values() {
   TEST_PARAMS3(test_parse_operand_fp, "f+0.5", RC_OPERAND_FP, 0.5);
   TEST_PARAMS3(test_parse_operand_fp, "f-0.5", RC_OPERAND_FP, -0.5);
   TEST_PARAMS3(test_parse_operand_fp, "f1.0", RC_OPERAND_CONST, 1.0);
+  TEST_PARAMS3(test_parse_operand_fp, "f1.000000", RC_OPERAND_CONST, 1.0);
+  TEST_PARAMS3(test_parse_operand_fp, "f1.000001", RC_OPERAND_FP, 1.000001);
   TEST_PARAMS3(test_parse_operand_fp, "f1", RC_OPERAND_CONST, 1.0);
   TEST_PARAMS3(test_parse_operand_fp, "f0.666666", RC_OPERAND_FP, 0.666666);
   TEST_PARAMS3(test_parse_operand_fp, "f0.001", RC_OPERAND_FP, 0.001);
+  TEST_PARAMS3(test_parse_operand_fp, "f0.100", RC_OPERAND_FP, 0.1);
   TEST_PARAMS3(test_parse_operand_fp, "f.12345", RC_OPERAND_FP, 0.12345);
 
   /* prefix, no value */
