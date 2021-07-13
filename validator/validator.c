@@ -1,6 +1,7 @@
 #include "rc_internal.h"
 #include "rc_url.h"
 #include "rc_api_runtime.h"
+#include "rc_consoles.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -22,9 +23,25 @@
  * grep -v ": OK" results.txt  | grep -v "File: " | grep .
  */
 
-static int validate_trigger(const char* trigger, char result[], const size_t result_size) {
+static int validate_memrefs(rc_memref_t* memref, char result[], const size_t result_size, unsigned max_address) {
+  if (max_address < 0xFFFFFFFF) {
+    while (memref) {
+      if (memref->address > max_address) {
+        snprintf(result, result_size, "address %04X out of range (max %04X)", memref->address, max_address);
+        return 0;
+      }
+
+      memref = memref->next;
+    }
+  }
+
+  return 1;
+}
+
+static int validate_trigger(const char* trigger, char result[], const size_t result_size, unsigned max_address) {
   char* buffer;
   rc_trigger_t* compiled;
+  int success = 0;
 
   int ret = rc_trigger_size(trigger);
   if (ret < 0) {
@@ -37,25 +54,26 @@ static int validate_trigger(const char* trigger, char result[], const size_t res
   compiled = rc_parse_trigger(buffer, trigger, NULL, 0);
   if (compiled == NULL) {
     snprintf(result, result_size, "parse failed");
-    free(buffer);
-    return 0;
   }
-
-  if (*(unsigned*)&buffer[ret] != 0xCDCDCDCD) {
+  else if (*(unsigned*)&buffer[ret] != 0xCDCDCDCD) {
     snprintf(result, result_size, "write past end of buffer");
-    free(buffer);
-    return 0;
+  }
+  else {
+    success = validate_memrefs(compiled->memrefs, result, result_size, max_address);
   }
 
-  snprintf(result, result_size, "%d OK", ret);
+  if (success)
+    snprintf(result, result_size, "%d OK", ret);
+
   free(buffer);
-  return 1;
+  return success;
 }
 
-static int validate_leaderboard(const char* leaderboard, char result[], const size_t result_size)
+static int validate_leaderboard(const char* leaderboard, char result[], const size_t result_size, unsigned max_address)
 {
   char* buffer;
   rc_lboard_t* compiled;
+  int success = 0;
 
   int ret = rc_lboard_size(leaderboard);
   if (ret < 0) {
@@ -68,26 +86,27 @@ static int validate_leaderboard(const char* leaderboard, char result[], const si
   compiled = rc_parse_lboard(buffer, leaderboard, NULL, 0);
   if (compiled == NULL) {
     snprintf(result, result_size, "parse failed");
-    free(buffer);
-    return 0;
   }
-
-  if (*(unsigned*)&buffer[ret] != 0xCDCDCDCD) {
+  else if (*(unsigned*)&buffer[ret] != 0xCDCDCDCD) {
     snprintf(result, result_size, "write past end of buffer");
-    free(buffer);
-    return 0;
+  }
+  else {
+    success = validate_memrefs(compiled->memrefs, result, result_size, max_address);
   }
 
-  snprintf(result, result_size, "%d OK", ret);
+  if (success)
+    snprintf(result, result_size, "%d OK", ret);
+
   free(buffer);
-  return 1;
+  return success;
 }
 
-static int validate_richpresence(const char* script, char result[], const size_t result_size)
+static int validate_richpresence(const char* script, char result[], const size_t result_size, unsigned max_address)
 {
   char* buffer;
   rc_richpresence_t* compiled;
   int lines;
+  int success = 0;
 
   int ret = rc_richpresence_size_lines(script, &lines);
   if (ret < 0) {
@@ -100,19 +119,19 @@ static int validate_richpresence(const char* script, char result[], const size_t
   compiled = rc_parse_richpresence(buffer, script, NULL, 0);
   if (compiled == NULL) {
     snprintf(result, result_size, "parse failed");
-    free(buffer);
-    return 0;
   }
-
-  if (*(unsigned*)&buffer[ret] != 0xCDCDCDCD) {
+  else if (*(unsigned*)&buffer[ret] != 0xCDCDCDCD) {
     snprintf(result, result_size, "write past end of buffer");
-    free(buffer);
-    return 0;
+  }
+  else {
+    success = validate_memrefs(compiled->memrefs, result, result_size, max_address);
   }
 
-  snprintf(result, result_size, "%d OK", ret);
+  if (success)
+    snprintf(result, result_size, "%d OK", ret);
+
   free(buffer);
-  return 1;
+  return success;
 }
 
 static void validate_richpresence_file(const char* richpresence_file, char result[], const size_t result_size)
@@ -136,7 +155,7 @@ static void validate_richpresence_file(const char* richpresence_file, char resul
   file_contents[file_size] = '\0';
   fclose(file);
 
-  validate_richpresence(file_contents, result, sizeof(result));
+  validate_richpresence(file_contents, result, sizeof(result), 0xFFFFFFFF);
 
   free(file_contents);
 }
@@ -146,11 +165,13 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
   size_t file_size;
   FILE* file;
   rc_api_fetch_game_data_response_t fetch_game_data_response;
+  const rc_memory_regions_t* memory_regions;
   int result;
   size_t i;
   char file_title[256];
   char buffer[256];
   int success = 1;
+  unsigned max_address = 0xFFFFFFFF;
 
   file = fopen(patchdata_file, "rb");
   if (!file) {
@@ -177,8 +198,13 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
 
   snprintf(file_title, sizeof(file_title), "File: %s: %s\n", filename, fetch_game_data_response.title);
 
+  memory_regions = rc_console_memory_regions(fetch_game_data_response.console_id);
+  if (memory_regions && memory_regions->num_regions > 0)
+    max_address = memory_regions->region[memory_regions->num_regions - 1].end_address;
+
   if (fetch_game_data_response.rich_presence_script && *fetch_game_data_response.rich_presence_script) {
-    result = validate_richpresence(fetch_game_data_response.rich_presence_script, buffer, sizeof(buffer));
+    result = validate_richpresence(fetch_game_data_response.rich_presence_script, 
+                                   buffer, sizeof(buffer), max_address);
     success &= result;
 
     if (!result || !errors_only) {
@@ -190,7 +216,8 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
   }
 
   for (i = 0; i < fetch_game_data_response.num_achievements; ++i) {
-    result = validate_trigger(fetch_game_data_response.achievements[i].definition, buffer, sizeof(buffer));
+    result = validate_trigger(fetch_game_data_response.achievements[i].definition, 
+                              buffer, sizeof(buffer), max_address);
     success &= result;
 
     if (!result || !errors_only) {
@@ -204,7 +231,8 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
   }
 
   for (i = 0; i < fetch_game_data_response.num_leaderboards; ++i) {
-    result = validate_leaderboard(fetch_game_data_response.leaderboards[i].definition, buffer, sizeof(buffer));
+    result = validate_leaderboard(fetch_game_data_response.leaderboards[i].definition, 
+                                  buffer, sizeof(buffer), max_address);
     success &= result;
 
     if (!result || !errors_only) {
@@ -308,12 +336,12 @@ int main(int argc, char* argv[]) {
   switch (argv[1][0])
   {
     case 'a':
-      validate_trigger(argv[2], buffer, sizeof(buffer));
+      validate_trigger(argv[2], buffer, sizeof(buffer), 0xFFFFFFFF);
       printf("Achievement: %s\n", buffer);
       break;
 
     case 'l':
-      validate_leaderboard(argv[2], buffer, sizeof(buffer));
+      validate_leaderboard(argv[2], buffer, sizeof(buffer), 0xFFFFFFFF);
       printf("Leaderboard: %s\n", buffer);
       break;
 

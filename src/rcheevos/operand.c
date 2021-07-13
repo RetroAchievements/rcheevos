@@ -117,6 +117,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
   int ret;
   unsigned long value;
   int negative;
+  int allow_decimal = 0;
 
   self->size = RC_MEMSIZE_32_BITS;
 
@@ -128,14 +129,11 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
       }
 
       value = strtoul(++aux, &end, 16);
-
-      if (end == aux) {
+      if (end == aux)
         return RC_INVALID_CONST_OPERAND;
-      }
 
-      if (value > 0xffffffffU) {
+      if (value > 0xffffffffU)
         value = 0xffffffffU;
-      }
 
       self->type = RC_OPERAND_CONST;
       self->value.num = (unsigned)value;
@@ -144,47 +142,61 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
       break;
 
     case 'f': case 'F': /* floating point constant */
-      self->value.dbl = strtod(++aux, &end);
-
-      if (end == aux) {
-        return RC_INVALID_FP_OPERAND;
-      }
-
-      if (floor(self->value.dbl) == self->value.dbl) {
-        self->type = RC_OPERAND_CONST;
-        self->value.num = (unsigned)floor(self->value.dbl);
-      }
-      else {
-        self->type = RC_OPERAND_FP;
-      }
-
-      aux = end;
-      break;
-
+      allow_decimal = 1;
+      /* fall through */
     case 'v': case 'V': /* signed integer constant */
       ++aux;
-      /* fallthrough */
+      /* fall through */
     case '+': case '-': /* signed integer constant */
       negative = 0;
-      if (*aux == '-')
-      {
+      if (*aux == '-') {
         negative = 1;
         ++aux;
       }
-      else if (*aux == '+')
-      {
+      else if (*aux == '+') {
         ++aux;
       }
 
       value = strtoul(aux, &end, 10);
 
-      if (end == aux) {
-        return RC_INVALID_CONST_OPERAND;
+      if (*end == '.' && allow_decimal) {
+        /* custom parser for decimal values to ignore locale */
+        unsigned long shift = 1;
+        unsigned long fraction = 0;
+
+        aux = end + 1;
+        if (*aux < '0' || *aux > '9')
+          return RC_INVALID_FP_OPERAND;
+
+        do {
+          fraction *= 10;
+          fraction += (*aux - '0');
+          shift *= 10;
+          ++aux;
+        } while (*aux >= '0' && *aux <= '9');
+
+        /* if fractional part is 0, convert to an integer constant */
+        if (fraction != 0) {
+          /* non-zero fractional part, convert to double and merge in integer portion */
+          const double dbl_fraction = ((double)fraction) / ((double)shift);
+          if (negative)
+            self->value.dbl = ((double)(-((long)value))) - dbl_fraction;
+          else
+            self->value.dbl = (double)value + dbl_fraction;
+
+          self->type = RC_OPERAND_FP;
+          break;
+        }
+      } else {
+        /* not a floating point value, make sure something was read and advance the read pointer */
+        if (end == aux)
+          return allow_decimal ? RC_INVALID_FP_OPERAND : RC_INVALID_CONST_OPERAND;
+
+        aux = end;
       }
 
-      if (value > 0x7fffffffU) {
+      if (value > 0x7fffffffU)
         value = 0x7fffffffU;
-      }
 
       self->type = RC_OPERAND_CONST;
 
@@ -193,7 +205,6 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
       else
         self->value.num = (unsigned)value;
 
-      aux = end;
       break;
 
     case '0':
@@ -202,9 +213,8 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
     default:
         ret = rc_parse_operand_memory(self, &aux, parse, is_indirect);
 
-        if (ret < 0) {
+        if (ret < 0)
           return ret;
-        }
 
         break;
       }
@@ -213,14 +223,11 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
     case '1': case '2': case '3': case '4': case '5': /* unsigned integer constant */
     case '6': case '7': case '8': case '9':
       value = strtoul(aux, &end, 10);
-
-      if (end == aux) {
+      if (end == aux)
         return RC_INVALID_CONST_OPERAND;
-      }
 
-      if (value > 0xffffffffU) {
+      if (value > 0xffffffffU)
         value = 0xffffffffU;
-      }
 
       self->type = RC_OPERAND_CONST;
       self->value.num = (unsigned)value;
@@ -231,9 +238,8 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, i
     case '@':
       ret = rc_parse_operand_lua(self, &aux, parse);
 
-      if (ret < 0) {
+      if (ret < 0)
         return ret;
-      }
 
       break;
   }

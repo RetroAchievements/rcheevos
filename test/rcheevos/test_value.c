@@ -173,6 +173,8 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "0xH001_V-20", 0x12 - 20);
   TEST_PARAMS2(test_evaluate_value, "0xH0001_H10", 0x12 + 0x10);
   TEST_PARAMS2(test_evaluate_value, "0xh0000*-1_99_0xh0001*-100_5900", 4199);
+  TEST_PARAMS2(test_evaluate_value, "v5900_0xh0000*-1.0_0xh0001*-100.0", 4100);
+  TEST_PARAMS2(test_evaluate_value, "v5900_0xh0000*v-1_0xh0001*v-100", 4100);
 
   TEST_PARAMS2(test_evaluate_value, "0xH01*4", 0x12 * 4); /* multiply by constant */
   TEST_PARAMS2(test_evaluate_value, "0xH01*0.5", 0x12 / 2); /* multiply by fraction */

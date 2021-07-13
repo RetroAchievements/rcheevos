@@ -680,6 +680,212 @@ static int rc_hash_nes(char hash[33], uint8_t* buffer, size_t buffer_size)
   return rc_hash_buffer(hash, buffer, buffer_size);
 }
 
+static void rc_hash_v64_to_z64(uint8_t* buffer, const uint8_t* stop)
+{
+  uint32_t* ptr = (uint32_t*)buffer;
+  const uint32_t* stop32 = (const uint32_t*)stop;
+  while (ptr < stop32)
+  {
+    uint32_t temp = *ptr;
+    temp = (temp & 0xFF00FF00) >> 8 |
+           (temp & 0x00FF00FF) << 8;
+    *ptr++ = temp;
+  }
+}
+
+static void rc_hash_n64_to_z64(uint8_t* buffer, const uint8_t* stop)
+{
+  uint32_t* ptr = (uint32_t*)buffer;
+  const uint32_t* stop32 = (const uint32_t*)stop;
+  while (ptr < stop32)
+  {
+    uint32_t temp = *ptr;
+    temp = (temp & 0xFF000000) >> 24 |
+           (temp & 0x00FF0000) >> 8 |
+           (temp & 0x0000FF00) << 8 |
+           (temp & 0x000000FF) << 24;
+    *ptr++ = temp;
+  }
+}
+
+static int rc_hash_n64(char hash[33], uint8_t* buffer, size_t buffer_size)
+{
+  uint8_t* swapbuffer;
+  uint8_t* stop;
+  const size_t swapbuffer_size = 65536;
+  md5_state_t md5;
+  size_t remaining;
+  int is_v64;
+
+  if (buffer[0] == 0x80) /* z64 format (big endian [native]) */
+  {
+    return rc_hash_buffer(hash, buffer, buffer_size);
+  }
+  else if (buffer[0] == 0x37) /* v64 format (byteswapped) */
+  {
+    rc_hash_verbose("converting v64 to z64");
+    is_v64 = 1;
+  }
+  else if (buffer[0] == 0x40) /* n64 format (little endian) */
+  {
+    rc_hash_verbose("converting n64 to z64");
+    is_v64 = 0;
+  }
+  else
+  {
+    rc_hash_verbose("Not a Nintendo 64 ROM");
+    return 0;
+  }
+
+  swapbuffer = (uint8_t*)malloc(swapbuffer_size);
+  if (!swapbuffer)
+    return rc_hash_error("Could not allocate temporary buffer");
+  stop = swapbuffer + swapbuffer_size;
+
+  md5_init(&md5);
+
+  if (buffer_size > MAX_BUFFER_SIZE)
+    remaining = MAX_BUFFER_SIZE;
+  else
+    remaining = (size_t)buffer_size;
+
+  if (verbose_message_callback)
+  {
+    char message[64];
+    snprintf(message, sizeof(message), "Hashing %u bytes", (unsigned)remaining);
+    verbose_message_callback(message);
+  }
+
+  while (remaining >= swapbuffer_size)
+  {
+    memcpy(swapbuffer, buffer, swapbuffer_size);
+
+    if (is_v64)
+      rc_hash_v64_to_z64(swapbuffer, stop);
+    else
+      rc_hash_n64_to_z64(swapbuffer, stop);
+
+    md5_append(&md5, swapbuffer, (int)swapbuffer_size);
+    buffer += swapbuffer_size;
+    remaining -= swapbuffer_size;
+  }
+
+  if (remaining > 0)
+  {
+    memcpy(swapbuffer, buffer, remaining);
+
+    stop = swapbuffer + remaining;
+    if (is_v64)
+      rc_hash_v64_to_z64(swapbuffer, stop);
+    else
+      rc_hash_n64_to_z64(swapbuffer, stop);
+
+    md5_append(&md5, swapbuffer, (int)remaining);
+  }
+
+  free(swapbuffer);
+  return rc_hash_finalize(&md5, hash);
+}
+
+static int rc_hash_n64_file(char hash[33], const char* path)
+{
+  uint8_t* buffer;
+  uint8_t* stop;
+  const size_t buffer_size = 65536;
+  md5_state_t md5;
+  size_t remaining;
+  void* file_handle;
+  int is_v64 = 0;
+  int is_n64 = 0;
+
+  file_handle = rc_file_open(path);
+  if (!file_handle)
+    return rc_hash_error("Could not open file");
+
+  buffer = (uint8_t*)malloc(buffer_size);
+  if (!buffer)
+  {
+    rc_file_close(file_handle);
+    return rc_hash_error("Could not allocate temporary buffer");
+  }
+  stop = buffer + buffer_size;
+
+  /* read first byte so we can detect endianness */
+  rc_file_seek(file_handle, 0, SEEK_SET);
+  rc_file_read(file_handle, buffer, 1);
+
+  if (buffer[0] == 0x80) /* z64 format (big endian [native]) */
+  {
+  }
+  else if (buffer[0] == 0x37) /* v64 format (byteswapped) */
+  {
+    rc_hash_verbose("converting v64 to z64");
+    is_v64 = 1;
+  }
+  else if (buffer[0] == 0x40) /* n64 format (little endian) */
+  {
+    rc_hash_verbose("converting n64 to z64");
+    is_n64 = 1;
+  }
+  else
+  {
+    free(buffer);
+    rc_file_close(file_handle);
+
+    rc_hash_verbose("Not a Nintendo 64 ROM");
+    return 0;
+  }
+
+  /* calculate total file size */
+  rc_file_seek(file_handle, 0, SEEK_END);
+  remaining = (size_t)rc_file_tell(file_handle);
+  if (remaining > MAX_BUFFER_SIZE)
+    remaining = MAX_BUFFER_SIZE;
+
+  if (verbose_message_callback)
+  {
+    char message[64];
+    snprintf(message, sizeof(message), "Hashing %u bytes", (unsigned)remaining);
+    verbose_message_callback(message);
+  }
+
+  /* begin hashing */
+  md5_init(&md5);
+
+  rc_file_seek(file_handle, 0, SEEK_SET);
+  while (remaining >= buffer_size)
+  {
+    rc_file_read(file_handle, buffer, (int)buffer_size);
+
+    if (is_v64)
+      rc_hash_v64_to_z64(buffer, stop);
+    else if (is_n64)
+      rc_hash_n64_to_z64(buffer, stop);
+
+    md5_append(&md5, buffer, (int)buffer_size);
+    remaining -= buffer_size;
+  }
+
+  if (remaining > 0)
+  {
+    rc_file_read(file_handle, buffer, (int)remaining);
+
+    stop = buffer + remaining;
+    if (is_v64)
+      rc_hash_v64_to_z64(buffer, stop);
+    else if (is_n64)
+      rc_hash_n64_to_z64(buffer, stop);
+
+    md5_append(&md5, buffer, (int)remaining);
+  }
+
+  /* cleanup */
+  rc_file_close(file_handle);
+  free(buffer);
+
+  return rc_hash_finalize(&md5, hash);
+}
+
 static int rc_hash_nintendo_ds(char hash[33], const char* path)
 {
   uint8_t header[512];
@@ -1330,7 +1536,6 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
     case RC_CONSOLE_MEGA_DRIVE:
     case RC_CONSOLE_MSX:
     case RC_CONSOLE_NEOGEO_POCKET:
-    case RC_CONSOLE_NINTENDO_64:
     case RC_CONSOLE_ORIC:
     case RC_CONSOLE_PC8800:
     case RC_CONSOLE_POKEMON_MINI:
@@ -1351,6 +1556,9 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
 
     case RC_CONSOLE_NINTENDO:
       return rc_hash_nes(hash, buffer, buffer_size);
+
+    case RC_CONSOLE_NINTENDO_64:
+      return rc_hash_n64(hash, buffer, buffer_size);
 
     case RC_CONSOLE_PC_ENGINE: /* NOTE: does not support PCEngine CD */
       return rc_hash_pce(hash, buffer, buffer_size);
@@ -1611,7 +1819,6 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_MASTER_SYSTEM:
     case RC_CONSOLE_MEGA_DRIVE:
     case RC_CONSOLE_NEOGEO_POCKET:
-    case RC_CONSOLE_NINTENDO_64:
     case RC_CONSOLE_ORIC:
     case RC_CONSOLE_POKEMON_MINI:
     case RC_CONSOLE_SEGA_32X:
@@ -1647,6 +1854,9 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
 
     case RC_CONSOLE_ARCADE:
       return rc_hash_arcade(hash, path);
+
+    case RC_CONSOLE_NINTENDO_64:
+      return rc_hash_n64_file(hash, path);
 
     case RC_CONSOLE_NINTENDO_DS:
       return rc_hash_nintendo_ds(hash, path);
@@ -2064,6 +2274,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_VIRTUAL_BOY;
         }
+        else if (rc_path_compare_extension(ext, "v64"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_NINTENDO_64;
+        }
         break;
 
       case 'w':
@@ -2083,6 +2297,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           /* decompressing zip file not supported */
           iterator->consoles[0] = RC_CONSOLE_ARCADE;
           need_path = 1;
+        }
+        else if (rc_path_compare_extension(ext, "z64"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_NINTENDO_64;
         }
         break;
     }
