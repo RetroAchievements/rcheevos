@@ -635,7 +635,6 @@ int rc_json_get_required_unum(unsigned* out, rc_api_response_t* response, const 
 }
 
 int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* field_name) {
-  static time_t tz_offset = -1;
   struct tm tm;
 
 #ifndef NDEBUG
@@ -649,22 +648,18 @@ int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* 
         &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6) {
       tm.tm_mon--; /* 0-based */
       tm.tm_year -= 1900; /* 1900 based */
-      tm.tm_isdst = -1; /* DST info not available */
 
       /* mktime converts a struct tm to a time_t using the local timezone.
-       * the input string is UTC. since gmtime is not universally cross-platform,
-       * figure out the offset between UTC and local time and manually remove it
-       * from the mktime result */
-      if (tz_offset == -1)
+       * the input string is UTC. since timegm is not universally cross-platform,
+       * figure out the offset between UTC and local time by applying the
+       * timezone conversion twice and manually removing the difference */
       {
-         time_t gmt_now, local_now;
-
-         time(&local_now);
-         gmt_now = mktime(gmtime(&local_now));
-
-         tz_offset = local_now - gmt_now;
+         time_t local_timet = mktime(&tm);
+         struct tm* gmt_tm = gmtime(&local_timet);
+         time_t skewed_timet = mktime(gmt_tm); /* applies local time adjustment second time */
+         time_t tz_offset = skewed_timet - local_timet;
+         *out = local_timet - tz_offset;
       }
-      *out = mktime(&tm) + tz_offset;
 
       return 1;
     }
