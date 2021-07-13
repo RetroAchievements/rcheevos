@@ -132,6 +132,7 @@
     <ClCompile Include="..\src\rcheevos\compat.c" />
     <ClCompile Include="..\src\rcheevos\condition.c" />
     <ClCompile Include="..\src\rcheevos\condset.c" />
+    <ClCompile Include="..\src\rcheevos\consoleinfo.c" />
     <ClCompile Include="..\src\rcheevos\format.c" />
     <ClCompile Include="..\src\rcheevos\lboard.c" />
     <ClCompile Include="..\src\rcheevos\memref.c" />
