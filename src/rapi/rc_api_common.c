@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #define RETROACHIEVEMENTS_HOST "https://retroachievements.org"
 #define RETROACHIEVEMENTS_IMAGE_HOST "http://i.retroachievements.org"

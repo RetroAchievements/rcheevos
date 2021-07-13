@@ -4,6 +4,7 @@
 #include "rc_api_request.h"
 
 #include <stddef.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
