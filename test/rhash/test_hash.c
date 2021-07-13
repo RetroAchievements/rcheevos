@@ -544,6 +544,41 @@ static void test_hash_nes_file_iterator_32k()
 
 /* ========================================================================= */
 
+static void test_hash_n64(uint8_t* buffer, size_t buffer_size, const char* expected_hash)
+{
+  char hash[33];
+  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_NINTENDO_64, buffer, buffer_size);
+
+  ASSERT_NUM_EQUALS(result, 1);
+  ASSERT_STR_EQUALS(hash, expected_hash);
+}
+
+static void test_hash_n64_file(const char* filename, uint8_t* buffer, size_t buffer_size, const char* expected_hash)
+{
+  char hash_file[33], hash_iterator[33];
+  mock_file(0, filename, buffer, buffer_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO_64, filename);
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, filename, NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_hash);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
+}
+
+/* ========================================================================= */
+
 static void test_hash_pce_cd()
 {
   size_t image_size;
@@ -1182,7 +1217,14 @@ void test_hash(void) {
   TEST(test_hash_nes_iterator_32k);
 
   /* Nintendo 64 */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_NINTENDO_64, "test.n64", 16777216, "d7a0af7f7e89aca1ca75d9c07ce1860f");
+  TEST_PARAMS3(test_hash_n64, test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS3(test_hash_n64, test_rom_v64, sizeof(test_rom_v64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS3(test_hash_n64, test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS4(test_hash_n64_file, "game.z64", test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS4(test_hash_n64_file, "game.v64", test_rom_v64, sizeof(test_rom_v64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91");
+  TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
+  TEST_PARAMS4(test_hash_n64_file, "game.z64", test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
 
   /* Oric (no fixed file size) */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ORIC, "test.tap", 18119, "953a2baa3232c63286aeae36b2172cef");
