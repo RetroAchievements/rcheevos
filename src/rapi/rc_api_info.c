@@ -189,7 +189,7 @@ int rc_api_process_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info
 
   if (!rc_json_get_required_unum(&response->id, &response->response, &leaderboarddata_fields[0], "LBID"))
     return RC_MISSING_VALUE;
-  if (!rc_json_get_required_unum(&response->lower_is_better, &response->response, &leaderboarddata_fields[2], "LowerIsBetter"))
+  if (!rc_json_get_required_num(&response->lower_is_better, &response->response, &leaderboarddata_fields[2], "LowerIsBetter"))
     return RC_MISSING_VALUE;
   if (!rc_json_get_required_string(&response->title, &response->response, &leaderboarddata_fields[3], "LBTitle"))
     return RC_MISSING_VALUE;
