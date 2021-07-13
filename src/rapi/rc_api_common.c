@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define RETROACHIEVEMENTS_HOST "https://retroachievements.org"
 #define RETROACHIEVEMENTS_IMAGE_HOST "http://i.retroachievements.org"
@@ -635,6 +636,7 @@ int rc_json_get_required_unum(unsigned* out, rc_api_response_t* response, const 
 }
 
 int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* field_name) {
+  static time_t tz_offset = -1;
   struct tm tm;
 
 #ifndef NDEBUG
@@ -650,7 +652,21 @@ int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* 
       tm.tm_year -= 1900; /* 1900 based */
       tm.tm_isdst = -1; /* DST info not available */
 
-      *out = mktime(&tm);
+      /* mktime converts a struct tm to a time_t using the local timezone.
+       * the input string is UTC. since gmtime is not universally cross-platform,
+       * figure out the offset between UTC and local time and manually remove it
+       * from the mktime result */
+      if (tz_offset == -1)
+      {
+         time_t gmt_now, local_now;
+
+         time(&local_now);
+         gmt_now = mktime(gmtime(&local_now));
+
+         tz_offset = local_now - gmt_now;
+      }
+      *out = mktime(&tm) + tz_offset;
+
       return 1;
     }
   }

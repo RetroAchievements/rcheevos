@@ -612,8 +612,8 @@ void test_rapi_common(void) {
 
   /* rc_json_get_datetime */
   TEST_PARAMS2(test_json_get_datetime, "", -1);
-  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:00", 1420125300);
-  TEST_PARAMS2(test_json_get_datetime, "2016-02-29 20:01:47", 1456801307);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:00", 1420100100);
+  TEST_PARAMS2(test_json_get_datetime, "2016-02-29 20:01:47", 1456776107);
 
   /* rc_json_get_unum_array */
   TEST_PARAMS3(test_json_get_unum_array, "[]", 0, RC_OK);
