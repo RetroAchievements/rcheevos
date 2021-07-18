@@ -6,7 +6,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifndef RCHEEVOS_URL_PROTOCOL
+#if RCHEEVOS_URL_SSL
+#define RCHEEVOS_URL_PROTOCOL "https"
+#else
 #define RCHEEVOS_URL_PROTOCOL "http"
 #endif
 
@@ -375,3 +377,5 @@ int rc_url_ping(char* url_buffer, size_t url_buffer_size, char* post_buffer, siz
 
   return failure;
 }
+
+#undef RCHEEVOS_URL_PROTOCOL
