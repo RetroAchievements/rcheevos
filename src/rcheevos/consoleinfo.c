@@ -323,17 +323,30 @@ static const rc_memory_region_t _rc_memory_regions_game_gear[] = {
 static const rc_memory_regions_t rc_memory_regions_game_gear = { _rc_memory_regions_game_gear, 1 };
 
 /* ===== Intellivision ===== */
-/* http://wiki.intellivision.us/index.php%3Ftitle%3DMemory_Map */
+/* http://wiki.intellivision.us/index.php/Memory_Map */
+/* NOTE: Intellivision memory addresses point at 16-bit values. FreeIntv exposes them as little-endian
+ *       32-bit values. As such, the addresses are off by a factor of 4 _and_ the data is only where we
+ *       expect it on little-endian systems.
+ */
 static const rc_memory_region_t _rc_memory_regions_intellivision[] = {
-    { 0x000000U, 0x00007FU, 0x000000U, RC_MEMORY_TYPE_VIDEO_RAM, "STIC Registers" },
-    { 0x000080U, 0x0000FFU, 0x000080U, RC_MEMORY_TYPE_UNUSED, "" },
-    { 0x000100U, 0x00035FU, 0x000100U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
-    { 0x000360U, 0x0003FFU, 0x000360U, RC_MEMORY_TYPE_UNUSED, "" },
-    { 0x000400U, 0x000FFFU, 0x000400U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM" },
-    { 0x001000U, 0x001FFFU, 0x001000U, RC_MEMORY_TYPE_UNUSED, "" },
-    { 0x002000U, 0x002FFFU, 0x002000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM" },
-    { 0x003000U, 0x003FFFU, 0x003000U, RC_MEMORY_TYPE_VIDEO_RAM, "Video RAM" },
-    { 0x004000U, 0x00FFFFU, 0x004000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM" },
+    /* $0000-$007F: STIC registers, $0040-$007F are readonly */
+    { 0x000000U, 0x0001FFU, 0x000000U, RC_MEMORY_TYPE_VIDEO_RAM, "STIC Registers" },
+    /* $0080-$00FF: unused */
+    { 0x000200U, 0x0003FFU, 0x000080U, RC_MEMORY_TYPE_UNUSED, "" },
+    /* $0100-$035F: system RAM, $0100-$01EF is scratch memory and only 8-bits per address */
+    { 0x000400U, 0x000D7FU, 0x000100U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    /* $0360-$03FF: unused */
+    { 0x000D80U, 0x000FFFU, 0x000360U, RC_MEMORY_TYPE_UNUSED, "" },
+    /* $0400-$0FFF: cartridge RAM */
+    { 0x001000U, 0x003FFFU, 0x000400U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM" },
+    /* $1000-$1FFF: unused */
+    { 0x004000U, 0x007FFFU, 0x001000U, RC_MEMORY_TYPE_UNUSED, "" },
+    /* $2000-$2FFF: cartridge RAM */
+    { 0x008000U, 0x00BFFFU, 0x002000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM" },
+    /* $3000-$3FFF: video RAM */
+    { 0x00C000U, 0x00FFFFU, 0x003000U, RC_MEMORY_TYPE_VIDEO_RAM, "Video RAM" },
+    /* $4000-$FFFF: cartridge RAM */
+    { 0x010000U, 0x03FFFFU, 0x004000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM" },
 };
 static const rc_memory_regions_t rc_memory_regions_intellivision = { _rc_memory_regions_intellivision, 9 };
 
