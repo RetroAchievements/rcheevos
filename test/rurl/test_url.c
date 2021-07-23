@@ -69,6 +69,27 @@ static void test_ping_post_buffer(size_t buffer_size)
   }
 }
 
+static void test_lbinfo() {
+  char url_buffer[256];
+
+  ASSERT_NUM_EQUALS(rc_url_get_lboard_entries(url_buffer, sizeof(url_buffer), 1234, 401, 100), 0);
+  ASSERT_STR_EQUALS(url_buffer, "http://retroachievements.org/dorequest.php?r=lbinfo&i=1234&o=400&c=100");
+}
+
+static void test_lbinfo_no_first() {
+  char url_buffer[256];
+
+  ASSERT_NUM_EQUALS(rc_url_get_lboard_entries(url_buffer, sizeof(url_buffer), 1234, 0, 50), 0);
+  ASSERT_STR_EQUALS(url_buffer, "http://retroachievements.org/dorequest.php?r=lbinfo&i=1234&c=50");
+}
+
+static void test_lbinfo_near_user() {
+  char url_buffer[256];
+
+  ASSERT_NUM_EQUALS(rc_url_get_lboard_entries_near_user(url_buffer, sizeof(url_buffer), 1234, "User", 11), 0);
+  ASSERT_STR_EQUALS(url_buffer, "http://retroachievements.org/dorequest.php?r=lbinfo&i=1234&u=User&c=11");
+}
+
 void test_url(void) {
   TEST_SUITE_BEGIN();
 
@@ -95,6 +116,11 @@ void test_url(void) {
   TEST_PARAMS1(test_ping_post_buffer, 27); /* this is the threshold */
   TEST_PARAMS1(test_ping_post_buffer, 28);
   TEST_PARAMS1(test_ping_post_buffer, 50);
+
+  /* rc_url_lbinfo */
+  TEST(test_lbinfo);
+  TEST(test_lbinfo_no_first);
+  TEST(test_lbinfo_near_user);
 
   TEST_SUITE_END();
 }

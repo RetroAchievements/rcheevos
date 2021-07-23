@@ -267,6 +267,12 @@
     <ClCompile Include="rcheevos\test_rc_libretro.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rapi\rc_api_info.c">
+      <Filter>src\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="rapi\test_rc_api_info.c">
+      <Filter>tests\rapi</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">
@@ -328,6 +334,9 @@
     </ClInclude>
     <ClInclude Include="..\include\rc_runtime_types.h">
       <Filter>src\rcheevos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_api_info.h">
+      <Filter>src\rapi</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

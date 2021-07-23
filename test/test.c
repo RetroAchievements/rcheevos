@@ -66,6 +66,7 @@ extern void test_hash();
 extern void test_rapi_common();
 extern void test_rapi_user();
 extern void test_rapi_runtime();
+extern void test_rapi_info();
 
 TEST_FRAMEWORK_DECLARATIONS()
 
@@ -97,6 +98,7 @@ int main(void) {
   test_rapi_common();
   test_rapi_user();
   test_rapi_runtime();
+  test_rapi_info();
 
   TEST_FRAMEWORK_SHUTDOWN();
 

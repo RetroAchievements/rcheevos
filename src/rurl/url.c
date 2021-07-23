@@ -306,8 +306,7 @@ static int rc_url_append_unum(char* buffer, size_t buffer_size, size_t* buffer_o
     char num[16];
     int chars = snprintf(num, sizeof(num), "%u", value);
 
-    if (chars + written < (int)buffer_size)
-    {
+    if (chars + written < (int)buffer_size) {
       memcpy(&buffer[written], num, chars + 1);
       *buffer_offset = written + chars;
       return 0;
@@ -320,13 +319,11 @@ static int rc_url_append_unum(char* buffer, size_t buffer_size, size_t* buffer_o
 static int rc_url_append_str(char* buffer, size_t buffer_size, size_t* buffer_offset, const char* param, const char* value)
 {
   int written = rc_url_append_param_equals(buffer, buffer_size, *buffer_offset, param);
-  if (written > 0)
-  {
+  if (written > 0) {
     buffer += written;
     buffer_size -= written;
 
-    if (rc_url_encode(buffer, buffer_size, value) == 0)
-    {
+    if (rc_url_encode(buffer, buffer_size, value) == 0) {
       written += (int)strlen(buffer);
       *buffer_offset = written;
       return 0;
@@ -349,7 +346,8 @@ static int rc_url_build_dorequest(char* url_buffer, size_t url_buffer_size, size
   url_buffer[written++] = '?';
 
   failure |= rc_url_append_str(url_buffer, url_buffer_size, &written, "r", api);
-  failure |= rc_url_append_str(url_buffer, url_buffer_size, &written, "u", user_name);
+  if (user_name)
+    failure |= rc_url_append_str(url_buffer, url_buffer_size, &written, "u", user_name);
 
   *buffer_offset += written;
   return failure;
@@ -374,6 +372,29 @@ int rc_url_ping(char* url_buffer, size_t url_buffer_size, char* post_buffer, siz
     if (post_buffer_size)
       post_buffer[0] = '\0';
   }
+
+  return failure;
+}
+
+int rc_url_get_lboard_entries(char* buffer, size_t size, unsigned lboard_id, unsigned first_index, unsigned count)
+{
+  size_t written = 0;
+  int failure = rc_url_build_dorequest(buffer, size, &written, "lbinfo", NULL);
+  failure |= rc_url_append_unum(buffer, size, &written, "i", lboard_id);
+  if (first_index > 1)
+    failure |= rc_url_append_unum(buffer, size, &written, "o", first_index - 1);
+  failure |= rc_url_append_unum(buffer, size, &written, "c", count);
+
+  return failure;
+}
+
+int rc_url_get_lboard_entries_near_user(char* buffer, size_t size, unsigned lboard_id, const char* user_name, unsigned count)
+{
+  size_t written = 0;
+  int failure = rc_url_build_dorequest(buffer, size, &written, "lbinfo", NULL);
+  failure |= rc_url_append_unum(buffer, size, &written, "i", lboard_id);
+  failure |= rc_url_append_str(buffer, size, &written, "u", user_name);
+  failure |= rc_url_append_unum(buffer, size, &written, "c", count);
 
   return failure;
 }

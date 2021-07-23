@@ -127,6 +127,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\rapi\rc_api_common.c" />
+    <ClCompile Include="..\src\rapi\rc_api_info.c" />
     <ClCompile Include="..\src\rapi\rc_api_runtime.c" />
     <ClCompile Include="..\src\rapi\rc_api_user.c" />
     <ClCompile Include="..\src\rcheevos\alloc.c" />
@@ -182,6 +183,7 @@
     <ClCompile Include="lua\src\lvm.c" />
     <ClCompile Include="lua\src\lzio.c" />
     <ClCompile Include="rapi\test_rc_api_common.c" />
+    <ClCompile Include="rapi\test_rc_api_info.c" />
     <ClCompile Include="rapi\test_rc_api_runtime.c" />
     <ClCompile Include="rapi\test_rc_api_user.c" />
     <ClCompile Include="rcheevos\test_condition.c" />
@@ -204,6 +206,7 @@
     <ClCompile Include="rurl\test_url.c" />
     <ClCompile Include="test.c" />
     <ClInclude Include="..\include\rcheevos.h" />
+    <ClInclude Include="..\include\rc_api_info.h" />
     <ClInclude Include="..\include\rc_api_request.h" />
     <ClInclude Include="..\include\rc_api_runtime.h" />
     <ClInclude Include="..\include\rc_api_user.h" />

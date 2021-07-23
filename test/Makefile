@@ -56,6 +56,7 @@ OBJ=$(RC_SRC)/alloc.o \
     $(RC_HASH_SRC)/md5.o \
     $(RC_URL_SRC)/url.o \
     $(RC_API_SRC)/rc_api_common.o \
+    $(RC_API_SRC)/rc_api_info.o \
     $(RC_API_SRC)/rc_api_runtime.o \
     $(RC_API_SRC)/rc_api_user.o \
     rcheevos/test_condition.o \
@@ -77,6 +78,7 @@ OBJ=$(RC_SRC)/alloc.o \
     rhash/test_cdreader.o \
     rhash/test_hash.o \
     rapi/test_rc_api_common.o \
+    rapi/test_rc_api_info.o \
     rapi/test_rc_api_runtime.o \
     rapi/test_rc_api_user.o \
     test.o
