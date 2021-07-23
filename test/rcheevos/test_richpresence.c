@@ -738,6 +738,29 @@ static void test_macro_lookup_and_value() {
   assert_richpresence_output(richpresence, &memory, "At One, Near 1");
 }
 
+static void test_macro_lookup_negative_value() {
+  unsigned char ram[] = { 0x00, 0x00, 0x00, 0x00, 0x00 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* lookup keys are signed 32-bit values. the -1 will become 0xFFFFFFFF */
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:Diff\n0=Zero\n1=One\n-1=Negative One\n\nDisplay:\nDiff=@Diff(B:0xH0000_M:0xH0001)");
+  assert_richpresence_output(richpresence, &memory, "Diff=Zero");
+
+  ram[1] = 1;
+  assert_richpresence_output(richpresence, &memory, "Diff=One");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "Diff=Zero");
+
+  ram[1] = 0;
+  assert_richpresence_output(richpresence, &memory, "Diff=Negative One");
+}
+
 static void test_macro_lookup_value_with_whitespace() {
   unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -1086,6 +1109,7 @@ void test_richpresence(void) {
   TEST(test_macro_lookup_shared);
   TEST(test_macro_lookup_multiple);
   TEST(test_macro_lookup_and_value);
+  TEST(test_macro_lookup_negative_value);
   TEST(test_macro_lookup_value_with_whitespace);
   TEST(test_macro_lookup_mapping_repeated);
   TEST(test_macro_lookup_mapping_repeated_csv);
