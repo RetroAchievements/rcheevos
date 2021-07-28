@@ -92,7 +92,12 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
 
     buffer_ptr = buffer;
     cond = rc_parse_condition(&buffer_ptr, parse, 0);
-    if (parse->offset < 0) {
+    if (parse->offset < 0)
+      return;
+
+    if (*buffer_ptr) {
+      /* whatever we copied as a single condition was not fully consumed */
+      parse->offset = RC_INVALID_COMPARISON;
       return;
     }
 
