@@ -1302,6 +1302,7 @@ static int rc_hash_find_playstation_executable(void* track_handle, const char* b
   size = (unsigned)rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer) - 1);
   buffer[size] = '\0';
 
+  sector = 0;
   for (ptr = (char*)buffer; *ptr; ++ptr)
   {
     if (strncmp(ptr, boot_key, boot_key_len) == 0)
