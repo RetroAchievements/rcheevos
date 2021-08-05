@@ -346,6 +346,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
           break;
 
         case RC_MEMSIZE_16_BITS:
+        case RC_MEMSIZE_16_BITS_BE:
           value = ((value >> 12) & 0x0f) * 1000
                 + ((value >> 8) & 0x0f) * 100
                 + ((value >> 4) & 0x0f) * 10
@@ -362,6 +363,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
           break;
 
         case RC_MEMSIZE_32_BITS:
+        case RC_MEMSIZE_32_BITS_BE:
         case RC_MEMSIZE_VARIABLE:
           value = ((value >> 28) & 0x0f) * 10000000
                 + ((value >> 24) & 0x0f) * 1000000
@@ -391,6 +393,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
           break;
 
         case RC_MEMSIZE_16_BITS:
+        case RC_MEMSIZE_16_BITS_BE:
           value ^= 0xffff;
           break;
 
@@ -399,6 +402,7 @@ unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state) {
           break;
 
         case RC_MEMSIZE_32_BITS:
+        case RC_MEMSIZE_32_BITS_BE:
         case RC_MEMSIZE_VARIABLE:
           value ^= 0xffffffff;
           break;

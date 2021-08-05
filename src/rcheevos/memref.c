@@ -53,6 +53,11 @@ int rc_parse_memref(const char** memaddr, char* size, unsigned* address) {
   aux++;
 
   switch (*aux++) {
+    /* ordered by estimated frequency in case compiler doesn't build a jump table */
+    case 'h': case 'H': *size = RC_MEMSIZE_8_BITS; break;
+    case ' ':           *size = RC_MEMSIZE_16_BITS; break;
+    case 'x': case 'X': *size = RC_MEMSIZE_32_BITS; break;
+
     case 'm': case 'M': *size = RC_MEMSIZE_BIT_0; break;
     case 'n': case 'N': *size = RC_MEMSIZE_BIT_1; break;
     case 'o': case 'O': *size = RC_MEMSIZE_BIT_2; break;
@@ -64,17 +69,21 @@ int rc_parse_memref(const char** memaddr, char* size, unsigned* address) {
     case 'l': case 'L': *size = RC_MEMSIZE_LOW; break;
     case 'u': case 'U': *size = RC_MEMSIZE_HIGH; break;
     case 'k': case 'K': *size = RC_MEMSIZE_BITCOUNT; break;
-    case 'h': case 'H': *size = RC_MEMSIZE_8_BITS; break;
     case 'w': case 'W': *size = RC_MEMSIZE_24_BITS; break;
-    case 'x': case 'X': *size = RC_MEMSIZE_32_BITS; break;
+    case 'g': case 'G': *size = RC_MEMSIZE_32_BITS_BE; break;
+    case 'i': case 'I': *size = RC_MEMSIZE_16_BITS_BE; break;
+
+    /* case 'j': case 'J': */
+    /* case 'v': case 'V': */
+    /* case 'y': case 'Y': 64 bit? */
+    /* case 'z': case 'Z': 128 bit? */
 
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
     case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
     case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+      /* legacy support - addresses without a size prefix are assumed to be 16-bit */
       aux--;
-      /* fallthrough */
-    case ' ':
       *size = RC_MEMSIZE_16_BITS;
       break;
 
@@ -198,6 +207,19 @@ static unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void*
 
     case RC_MEMSIZE_32_BITS:
       value = peek(address, 4, ud);
+      break;
+
+    case RC_MEMSIZE_16_BITS_BE:
+      value = peek(address, 2, ud);
+      value = (value >> 8) | ((value & 0xFF) << 8);
+      break;
+
+    case RC_MEMSIZE_32_BITS_BE:
+      value = peek(address, 4, ud);
+      value = ((value & 0xFF000000) >> 24) |
+              ((value & 0x00FF0000) >> 8) |
+              ((value & 0x0000FF00) << 8) |
+              ((value & 0x000000FF) << 24);
       break;
 
     default:
