@@ -150,9 +150,24 @@ unsigned rc_transform_memref_value(unsigned value, char size)
       value = (value >> 4) & 0x0f;
       break;
 
+    case RC_MEMSIZE_24_BITS:
+      value = (value & 0x00ffffff);
+      break;
+
     case RC_MEMSIZE_BITCOUNT:
       value = rc_bits_set[(value & 0x0F)]
             + rc_bits_set[((value >> 4) & 0x0F)];
+      break;
+
+    case RC_MEMSIZE_16_BITS_BE:
+      value = (value >> 8) | ((value & 0xFF) << 8);
+      break;
+
+    case RC_MEMSIZE_32_BITS_BE:
+      value = ((value & 0xFF000000) >> 24) |
+              ((value & 0x00FF0000) >> 8) |
+              ((value & 0x0000FF00) << 8) |
+              ((value & 0x000000FF) << 24);
       break;
 
     default:
@@ -165,6 +180,7 @@ unsigned rc_transform_memref_value(unsigned value, char size)
 char rc_memref_shared_size(char size)
 {
   switch (size) {
+    case RC_MEMSIZE_8_BITS:
     case RC_MEMSIZE_BIT_0:
     case RC_MEMSIZE_BIT_1:
     case RC_MEMSIZE_BIT_2:
@@ -179,6 +195,15 @@ char rc_memref_shared_size(char size)
       /* these can all share an 8-bit memref and just mask off the appropriate data in rc_transform_memref_value */
       return RC_MEMSIZE_8_BITS;
 
+    case RC_MEMSIZE_16_BITS:
+    case RC_MEMSIZE_16_BITS_BE:
+      return RC_MEMSIZE_16_BITS;
+
+    case RC_MEMSIZE_24_BITS: /* don't expect client to understand 3-byte peek */
+    case RC_MEMSIZE_32_BITS:
+    case RC_MEMSIZE_32_BITS_BE:
+      return RC_MEMSIZE_32_BITS;
+
     default:
       return size;
   }
@@ -186,11 +211,13 @@ char rc_memref_shared_size(char size)
 
 static unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void* ud) {
   unsigned value;
+  char shared_size;
 
   if (!peek)
     return 0;
 
-  switch (size)
+  shared_size = rc_memref_shared_size(size);
+  switch (shared_size)
   {
     case RC_MEMSIZE_8_BITS:
       value = peek(address, 1, ud);
@@ -200,40 +227,16 @@ static unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void*
       value = peek(address, 2, ud);
       break;
 
-    case RC_MEMSIZE_24_BITS:
-      /* peek 4 bytes - don't expect the caller to understand 24-bit numbers */
-      value = peek(address, 4, ud) & 0x00FFFFFF;
-      break;
-
     case RC_MEMSIZE_32_BITS:
       value = peek(address, 4, ud);
       break;
 
-    case RC_MEMSIZE_16_BITS_BE:
-      value = peek(address, 2, ud);
-      value = (value >> 8) | ((value & 0xFF) << 8);
-      break;
-
-    case RC_MEMSIZE_32_BITS_BE:
-      value = peek(address, 4, ud);
-      value = ((value & 0xFF000000) >> 24) |
-              ((value & 0x00FF0000) >> 8) |
-              ((value & 0x0000FF00) << 8) |
-              ((value & 0x000000FF) << 24);
-      break;
-
     default:
-      if (rc_memref_shared_size(size) == RC_MEMSIZE_8_BITS)
-      {
-        value = peek(address, 1, ud);
-        value = rc_transform_memref_value(value, size);
-      }
-      else
-      {
-        value = 0;
-      }
-      break;
+      return 0;
   }
+
+  if (shared_size != size)
+    value = rc_transform_memref_value(value, size);
 
   return value;
 }
