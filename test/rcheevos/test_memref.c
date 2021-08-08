@@ -25,6 +25,7 @@ static void test_shared_sizes(void)
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_16_BITS, RC_MEMSIZE_16_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_16_BITS_BE, RC_MEMSIZE_16_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_24_BITS, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_24_BITS_BE, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS_BE, RC_MEMSIZE_32_BITS);
 }
@@ -44,6 +45,7 @@ static void test_transforms(void)
   TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_HIGH, 0x00000007);
   TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_BITCOUNT, 0x00000004); /* only counts bits in lowest byte */
   TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_16_BITS_BE, 0x00007856);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_24_BITS_BE, 0x00785634);
   TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_32_BITS_BE, 0x78563412);
 
   TEST_PARAMS3(test_transform, 0x00000001, RC_MEMSIZE_BIT_0, 0x00000001);

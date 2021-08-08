@@ -72,8 +72,8 @@ int rc_parse_memref(const char** memaddr, char* size, unsigned* address) {
     case 'w': case 'W': *size = RC_MEMSIZE_24_BITS; break;
     case 'g': case 'G': *size = RC_MEMSIZE_32_BITS_BE; break;
     case 'i': case 'I': *size = RC_MEMSIZE_16_BITS_BE; break;
+    case 'j': case 'J': *size = RC_MEMSIZE_24_BITS_BE; break;
 
-    /* case 'j': case 'J': */
     /* case 'v': case 'V': */
     /* case 'y': case 'Y': 64 bit? */
     /* case 'z': case 'Z': 128 bit? */
@@ -174,6 +174,12 @@ unsigned rc_transform_memref_value(unsigned value, char size) {
               ((value & 0x00FF) << 8);
       break;
 
+    case RC_MEMSIZE_24_BITS_BE:
+      value = ((value & 0xFF0000) >> 16) |
+               (value & 0x00FF00) |
+              ((value & 0x0000FF) << 16);
+      break;
+
     case RC_MEMSIZE_32_BITS_BE:
       value = ((value & 0xFF000000) >> 24) |
               ((value & 0x00FF0000) >> 8) |
@@ -208,6 +214,7 @@ static const char rc_memref_shared_sizes[] = {
   RC_MEMSIZE_8_BITS,  /* RC_MEMSIZE_BIT_7      */
   RC_MEMSIZE_8_BITS,  /* RC_MEMSIZE_BITCOUNT   */
   RC_MEMSIZE_16_BITS, /* RC_MEMSIZE_16_BITS_BE */
+  RC_MEMSIZE_32_BITS, /* RC_MEMSIZE_24_BITS_BE */
   RC_MEMSIZE_32_BITS, /* RC_MEMSIZE_32_BITS_BE */
   RC_MEMSIZE_32_BITS  /* RC_MEMSIZE_VARIABLE   */
 };
