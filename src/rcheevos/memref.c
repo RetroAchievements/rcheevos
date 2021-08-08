@@ -213,10 +213,11 @@ static const char rc_memref_shared_sizes[] = {
 };
 
 char rc_memref_shared_size(char size) {
-  if (size < 0 || size > sizeof(rc_memref_shared_sizes) / sizeof(rc_memref_shared_sizes[0]))
+  const size_t index = (size_t)size;
+  if (index > sizeof(rc_memref_shared_sizes) / sizeof(rc_memref_shared_sizes[0]))
     return size;
 
-  return rc_memref_shared_sizes[size];
+  return rc_memref_shared_sizes[index];
 }
 
 static unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void* ud) {
