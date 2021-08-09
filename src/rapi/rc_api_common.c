@@ -101,7 +101,7 @@ static int rc_json_parse_array(const char** json_ptr, rc_json_field_t* field) {
   if (*json != ']') {
     do
     {
-      while (isspace(*json))
+      while (isspace((unsigned char)*json))
         ++json;
 
       result = rc_json_parse_field(&json, &unused_field);
