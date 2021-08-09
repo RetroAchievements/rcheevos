@@ -161,7 +161,7 @@ $(LUA_SRC)/%.o: $(LUA_SRC)/%.c
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-test: check_ctype $(OBJ)
+test: $(OBJ)
 	$(CC) $(LDFLAGS) -o $@$(EXE) $+ -lm
 	@echo ---------------------------------
 
