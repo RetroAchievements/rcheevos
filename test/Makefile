@@ -161,7 +161,7 @@ $(LUA_SRC)/%.o: $(LUA_SRC)/%.c
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-test: $(OBJ)
+test: check_ctype $(OBJ)
 	$(CC) $(LDFLAGS) -o $@$(EXE) $+ -lm
 	@echo ---------------------------------
 
@@ -179,7 +179,7 @@ check_ctype:
 	then echo "*** Error: isspace without unsigned char cast" && false; \
 	fi
 
-runtests: check_ctype test
+runtests: test
 	@./test$(EXE)
 
 valgrind: test
