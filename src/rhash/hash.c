@@ -58,7 +58,6 @@ static void filereader_seek(void* file_handle, int64_t offset, int origin)
 #elif defined(_LARGEFILE64_SOURCE)
   fseeko64((FILE*)file_handle, offset, origin);
 #else
-#pragma message("Using generic fseek may fail for large files")
   fseek((FILE*)file_handle, offset, origin);
 #endif
 }
