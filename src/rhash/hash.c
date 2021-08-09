@@ -1240,7 +1240,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   /* the boot filename is 96 bytes into the meta information (https://mc.pp.se/dc/ip0000.bin.html) */
   /* remove whitespace from bootfile */
   i = 0;
-  while (!isspace(buffer[96 + i]) && i < 16)
+  while (!isspace((unsigned char)buffer[96 + i]) && i < 16)
     ++i;
 
   /* sometimes boot file isn't present on meta information.
@@ -1308,13 +1308,13 @@ static int rc_hash_find_playstation_executable(void* track_handle, const char* b
     if (strncmp(ptr, boot_key, boot_key_len) == 0)
     {
       ptr += boot_key_len;
-      while (isspace(*ptr))
+      while (isspace((unsigned char)*ptr))
         ++ptr;
 
       if (*ptr == '=')
       {
         ++ptr;
-        while (isspace(*ptr))
+        while (isspace((unsigned char)*ptr))
           ++ptr;
 
         if (strncmp(ptr, cdrom_prefix, cdrom_prefix_len) == 0)
@@ -1323,7 +1323,7 @@ static int rc_hash_find_playstation_executable(void* track_handle, const char* b
           ++ptr;
 
         start = ptr;
-        while (!isspace(*ptr) && *ptr != ';')
+        while (!isspace((unsigned char)*ptr) && *ptr != ';')
           ++ptr;
 
         size = (unsigned)(ptr - start);
@@ -1734,7 +1734,7 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
     next = ptr;
 
     /* remove trailing whitespace - especially '\r' */
-    while (ptr > start && isspace(ptr[-1]))
+    while (ptr > start && isspace((unsigned char)ptr[-1]))
       --ptr;
 
     /* if we found a non-empty line, break out of the loop to process it */
