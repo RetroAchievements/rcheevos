@@ -255,6 +255,9 @@ struct rc_trigger_t {
 
   /* True if at least one condition has a non-zero required hit count */
   char has_required_hits;
+
+  /* True if the measured value should be displayed as a percentage */
+  char measured_as_percent;
 };
 
 int rc_trigger_size(const char* memaddr);

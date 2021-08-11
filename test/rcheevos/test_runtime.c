@@ -190,6 +190,7 @@ static void test_deactivate_achievements(void)
 static void test_achievement_measured(void)
 {
   unsigned char ram[] = { 0, 10, 10 };
+  char buffer[32];
   memory_t memory;
   rc_runtime_t runtime;
   unsigned value, target;
@@ -199,38 +200,162 @@ static void test_achievement_measured(void)
 
   rc_runtime_init(&runtime);
 
-  assert_activate_achievement(&runtime, 1, "0xH0001=10");
-  assert_activate_achievement(&runtime, 2, "M:0xH0002>=10");
+  /* use equality so we can test values greater than the target */
+  assert_activate_achievement(&runtime, 1, "0xH0002==10");
+  assert_activate_achievement(&runtime, 2, "M:0xH0002==10");
+  assert_activate_achievement(&runtime, 3, "G:0xH0002==10");
 
-  /* both achievements are true, should remain in waiting state */
+  /* achievements are true, should remain in waiting state with no measured value */
   assert_do_frame(&runtime, &memory);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 1, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "");
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 10);
-  ASSERT_FALSE(rc_runtime_get_achievement_measured(&runtime, 3, &value, &target));
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 2, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "0/10");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 3, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 10);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "0%");
+  ASSERT_FALSE(rc_runtime_get_achievement_measured(&runtime, 4, &value, &target));
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 4, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "");
 
-  /* both achievements are false, should activate */
-  ram[1] = ram[2] = 9;
+  /* achievements are false, should activate */
+  ram[2] = 9;
   assert_do_frame(&runtime, &memory);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 1, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "");
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
   ASSERT_NUM_EQUALS(value, 9);
   ASSERT_NUM_EQUALS(target, 10);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 2, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "9/10");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 3, &value, &target));
+  ASSERT_NUM_EQUALS(value, 9);
+  ASSERT_NUM_EQUALS(target, 10);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "90%");
 
-  /* second achievement is true, should trigger - triggered achievement is not measurable */
+  /* value greater than target (i.e. "6 >= 5" should report maximum "5/5" or "100%" */
+  ram[2] = 12;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 1, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
+  ASSERT_NUM_EQUALS(value, 12);
+  ASSERT_NUM_EQUALS(target, 10);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 2, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "10/10");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 3, &value, &target));
+  ASSERT_NUM_EQUALS(value, 12);
+  ASSERT_NUM_EQUALS(target, 10);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "100%");
+
+  /* achievements are true, should trigger - triggered achievement is not measurable */
   ram[2] = 10;
   assert_do_frame(&runtime, &memory);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 1, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "");
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 2, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 3, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "");
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_achievement_measured_maxint(void)
+{
+  unsigned char ram[] = { 0xFF, 0xFF, 0xFF, 0xFF };
+  char buffer[32];
+  memory_t memory;
+  rc_runtime_t runtime;
+  unsigned value, target;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_achievement(&runtime, 2, "M:0xX0000==hFFFFFFFF");
+  assert_activate_achievement(&runtime, 3, "G:0xX0000==hFFFFFFFF");
+
+  /* achievements are true, should remain in waiting state */
+  assert_do_frame(&runtime, &memory);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0xFFFFFFFF);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 2, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "0/4294967295");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 3, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0xFFFFFFFF);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "0%");
+
+  /* achievements are false (value fits in 31-bits), should activate */
+  ram[1] = ram[3] = 0x7F;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0x7FFF7FFF);
+  ASSERT_NUM_EQUALS(target, 0xFFFFFFFF);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 2, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "2147450879/4294967295");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 3, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0x7FFF7FFF);
+  ASSERT_NUM_EQUALS(target, 0xFFFFFFFF);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "49%");
+
+  /* achievements are false (value requires 32-bits) */
+  ram[1] = ram[3] = 0xFE;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0xFEFFFEFF);
+  ASSERT_NUM_EQUALS(target, 0xFFFFFFFF);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 2, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "4278189823/4294967295");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 3, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0xFEFFFEFF);
+  ASSERT_NUM_EQUALS(target, 0xFFFFFFFF);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "99%");
+
+  /* achievements are true, should trigger - triggered achievement is not measurable */
+  ram[1] = ram[3] = 0xFF;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 2, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 3, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1273,6 +1398,7 @@ void test_runtime(void) {
   TEST(test_two_achievements_activate_and_trigger);
   TEST(test_deactivate_achievements);
   TEST(test_achievement_measured);
+  TEST(test_achievement_measured_maxint);
 
   TEST(test_shared_memref);
   TEST(test_replace_active_trigger);
