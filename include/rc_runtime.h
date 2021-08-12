@@ -7,7 +7,7 @@ extern "C" {
 
 #include "rc_error.h"
 
-#include <stdint.h>
+#include <stddef.h>
 
 /*****************************************************************************\
 | Forward Declarations (defined in rc_runtime_types.h)                        |
