@@ -296,7 +296,10 @@ static int rc_json_missing_field(rc_api_response_t* response, const rc_json_fiel
 
 int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_api_response_t* response, rc_json_field_t* field, const char* field_name) {
   const char* json = field->value_start;
-  (void)field_name;
+#ifndef NDEBUG
+  if (strcmp(field->name, field_name) != 0)
+    return 0;
+#endif
 
   if (!json)
     return rc_json_missing_field(response, field);
@@ -353,12 +356,16 @@ int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, r
 }
 
 int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+#ifndef NDEBUG
+  if (strcmp(field->name, field_name) != 0)
+    return 0;
+#endif
+
   if (!field->value_start || *field->value_start != '[') {
     *num_entries = 0;
     return rc_json_missing_field(response, field);
   }
 
-  (void)field_name;
   memcpy(iterator, field, sizeof(*iterator));
   ++iterator->value_start; /* skip [ */
 
