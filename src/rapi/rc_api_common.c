@@ -397,7 +397,7 @@ static unsigned rc_json_decode_hex4(const char* input) {
   memcpy(hex, input, 4);
   hex[4] = '\0';
 
-  return (unsigned)strtol(hex, NULL, 16);
+  return (unsigned)strtoul(hex, NULL, 16);
 }
 
 static int rc_json_ucs32_to_utf8(unsigned char* dst, unsigned ucs32_char) {
