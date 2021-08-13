@@ -247,7 +247,7 @@ static int rc_runtime_progress_read_condset(rc_runtime_progress_t* progress, rc_
   rc_condition_t* cond;
   unsigned flags;
 
-  condset->is_paused = rc_runtime_progress_read_uint(progress);
+  condset->is_paused = (char)rc_runtime_progress_read_uint(progress);
 
   cond = condset->conditions;
   while (cond) {
@@ -311,7 +311,7 @@ static int rc_runtime_progress_read_trigger(rc_runtime_progress_t* progress, rc_
   rc_condset_t* condset;
   int result;
 
-  trigger->state = rc_runtime_progress_read_uint(progress);
+  trigger->state = (char)rc_runtime_progress_read_uint(progress);
   trigger->measured_value = rc_runtime_progress_read_uint(progress);
 
   if (trigger->requirement) {

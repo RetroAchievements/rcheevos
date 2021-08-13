@@ -296,6 +296,7 @@ static int rc_json_missing_field(rc_api_response_t* response, const rc_json_fiel
 
 int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_api_response_t* response, rc_json_field_t* field, const char* field_name) {
   const char* json = field->value_start;
+  (void)field_name;
 
   if (!json)
     return rc_json_missing_field(response, field);
@@ -357,6 +358,7 @@ int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator,
     return rc_json_missing_field(response, field);
   }
 
+  (void)field_name;
   memcpy(iterator, field, sizeof(*iterator));
   ++iterator->value_start; /* skip [ */
 
@@ -388,7 +390,7 @@ static unsigned rc_json_decode_hex4(const char* input) {
   memcpy(hex, input, 4);
   hex[4] = '\0';
 
-  return strtol(hex, NULL, 16);
+  return (unsigned)strtol(hex, NULL, 16);
 }
 
 static int rc_json_ucs32_to_utf8(unsigned char* dst, unsigned ucs32_char) {

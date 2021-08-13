@@ -131,7 +131,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state);
 int rc_evaluate_condition_value(rc_condition_t* self, rc_eval_state_t* eval_state);
 
-int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, int is_indirect, rc_parse_state_t* parse);
+int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_indirect, rc_parse_state_t* parse);
 unsigned rc_evaluate_operand(rc_operand_t* self, rc_eval_state_t* eval_state);
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);

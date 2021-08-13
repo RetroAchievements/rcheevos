@@ -14,6 +14,7 @@ static void _assert_activate_achievement(rc_runtime_t* runtime, unsigned int id,
 
 static void event_handler(const rc_runtime_event_t* e)
 {
+    (void)e;
 }
 
 static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)

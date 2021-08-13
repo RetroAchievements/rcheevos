@@ -1567,7 +1567,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
   }
 }
 
-static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
+static int rc_hash_whole_file(char hash[33], const char* path)
 {
   md5_state_t md5;
   uint8_t* buffer;
@@ -1828,7 +1828,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WONDERSWAN:
       /* generic whole-file hash - don't buffer */
-      return rc_hash_whole_file(hash, console_id, path);
+      return rc_hash_whole_file(hash, path);
 
     case RC_CONSOLE_MSX:
     case RC_CONSOLE_PC8800:
@@ -1836,7 +1836,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
       if (rc_path_compare_extension(path, "m3u"))
         return rc_hash_generate_from_playlist(hash, console_id, path);
 
-      return rc_hash_whole_file(hash, console_id, path);
+      return rc_hash_whole_file(hash, path);
 
     case RC_CONSOLE_ATARI_7800:
     case RC_CONSOLE_ATARI_LYNX:
@@ -1902,7 +1902,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
   }
 }
 
-static void rc_hash_iterator_append_console(struct rc_hash_iterator* iterator, int console_id)
+static void rc_hash_iterator_append_console(struct rc_hash_iterator* iterator, uint8_t console_id)
 {
   int i = 0;
   while (iterator->consoles[i] != 0)

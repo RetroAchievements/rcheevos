@@ -95,7 +95,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     self->type = RC_CONDITION_STANDARD;
   }
 
-  result = rc_parse_operand(&self->operand1, &aux, 1, is_indirect, parse);
+  result = rc_parse_operand(&self->operand1, &aux, is_indirect, parse);
   if (result < 0) {
     parse->offset = result;
     return 0;
@@ -158,7 +158,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       break;
   }
 
-  result = rc_parse_operand(&self->operand2, &aux, 1, is_indirect, parse);
+  result = rc_parse_operand(&self->operand2, &aux, is_indirect, parse);
   if (result < 0) {
     parse->offset = result;
     return 0;

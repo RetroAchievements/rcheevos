@@ -13,7 +13,7 @@ static void event_handler(const rc_runtime_event_t* e)
   memcpy(&events[event_count++], e, sizeof(rc_runtime_event_t));
 }
 
-static void _assert_event(char type, int id, int value)
+static void _assert_event(char type, unsigned id, int value)
 {
   int i;
 

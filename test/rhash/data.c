@@ -81,7 +81,7 @@ static void fill_image(uint8_t* image, size_t size)
 
       default:
         count = 1;
-        value = (seed >> 8) ^ (seed >> 16);
+        value = ((seed >> 8) ^ (seed >> 16)) & 0xFF;
         break;
     }
 
@@ -278,11 +278,11 @@ uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size,
     }
     else
     {
-      image[offset + 0x14 + 0x48 + 0x11] = (binary_size >> 16);
+      image[offset + 0x14 + 0x48 + 0x11] = (binary_size >> 16) & 0xFF;
       image[offset + 0x14 + 0x48 + 0x12] = (binary_size >> 8) & 0xFF;
       image[offset + 0x14 + 0x48 + 0x13] = (binary_size & 0xFF);
 
-      image[offset + 0x14 + 0x48 + 0x16] = ((binary_size + 2047) / 2048) >> 8;
+      image[offset + 0x14 + 0x48 + 0x16] = (((binary_size + 2047) / 2048) >> 8) & 0xFF;
       image[offset + 0x14 + 0x48 + 0x17] = ((binary_size + 2047) / 2048) & 0xFF;
 
       image[offset + 0x14 + 0x48 + 0x47] = (uint8_t)(i + 2);

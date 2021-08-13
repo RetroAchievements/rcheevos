@@ -103,7 +103,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
     return ret;
 
   size = rc_memref_shared_size(self->size);
-  self->value.memref = rc_alloc_memref(parse, address, size, is_indirect);
+  self->value.memref = rc_alloc_memref(parse, address, size, (char)is_indirect);
   if (parse->offset < 0)
     return parse->offset;
 
@@ -111,7 +111,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
   return RC_OK;
 }
 
-int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_trigger, int is_indirect, rc_parse_state_t* parse) {
+int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_indirect, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   char* end;
   int ret;
