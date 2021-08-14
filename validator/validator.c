@@ -155,7 +155,7 @@ static void validate_richpresence_file(const char* richpresence_file, char resul
   file_contents[file_size] = '\0';
   fclose(file);
 
-  validate_richpresence(file_contents, result, sizeof(result), 0xFFFFFFFF);
+  validate_richpresence(file_contents, result, result_size, 0xFFFFFFFF);
 
   free(file_contents);
 }
@@ -286,6 +286,7 @@ static void validate_patchdata_directory(const char* patchdata_directory, int er
   char* filename;
   size_t filename_len;
   char path[2048];
+  int need_newline = 0;
 
   DIR* dir = opendir(patchdata_directory);
   if (!dir) {
