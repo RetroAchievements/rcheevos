@@ -76,7 +76,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
             ++buffer_ptr; /* ignore sign */
 
           /* if it looks like a floating point number, add the 'f' prefix */
-          while (isdigit(*(unsigned char*)buffer_ptr))
+          while (isdigit((unsigned char)*buffer_ptr))
             ++buffer_ptr;
           if (*buffer_ptr == '.')
             *ptr++ = 'f';

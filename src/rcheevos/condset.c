@@ -140,7 +140,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
   return self;
 }
 
-static void rc_condset_update_indirect_memrefs(rc_condset_t* self, rc_condition_t* condition, int processing_pause, rc_eval_state_t* eval_state) {
+static void rc_condset_update_indirect_memrefs(rc_condition_t* condition, int processing_pause, rc_eval_state_t* eval_state) {
   for (; condition != 0; condition = condition->next) {
     if (condition->pause != processing_pause)
       continue;
@@ -311,10 +311,10 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
            * if the set has any indirect memrefs, manually update them now so the deltas are correct */
           if (self->has_indirect_memrefs) {
             /* first, update any indirect memrefs in the remaining part of the pause subset  */
-            rc_condset_update_indirect_memrefs(self, condition->next, 1, eval_state);
+            rc_condset_update_indirect_memrefs(condition->next, 1, eval_state);
 
             /* then, update all indirect memrefs in the non-pause subset */
-            rc_condset_update_indirect_memrefs(self, self->conditions, 0, eval_state);
+            rc_condset_update_indirect_memrefs(self->conditions, 0, eval_state);
           }
 
           return 1;

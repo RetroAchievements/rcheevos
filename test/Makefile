@@ -106,13 +106,14 @@ else
 endif
 
 # more strict validation for source files to eliminate warnings/errors in upstream consumers
-SRC_CFLAGS=-pedantic -Wsign-compare
+# 3DS build (retroarch) doesn't support signed char
+SRC_CFLAGS=-pedantic -Wsign-compare -fno-signed-char
 
 ifeq ($(BUILD), c89)
     CFLAGS += -std=c89
 else ifeq ($(BUILD), retroarch)
     # RetroArch builds with gcc8 and gnu99 which adds some extra warning validations
-    SRC_CFLAGS += -std=gnu99 -D_GNU_SOURCE -Wall -fno-signed-char
+    SRC_CFLAGS += -std=gnu99 -D_GNU_SOURCE -Wall
 else
     $(error unknown BUILD "$(BUILD)")
 endif
@@ -163,6 +164,20 @@ $(LUA_SRC)/%.o: $(LUA_SRC)/%.c
 test: $(OBJ)
 	$(CC) $(LDFLAGS) -o $@$(EXE) $+ -lm
 	@echo ---------------------------------
+
+check_ctype:
+	@if grep -rnI "isalpha([^(u]" ../src/*; \
+	then echo "*** Error: isalpha without unsigned char cast" && false; \
+	fi
+	@if grep -rnI "isalnum([^(u]" ../src/*; \
+	then echo "*** Error: isalnum without unsigned char cast" && false; \
+	fi
+	@if grep -rnI "isdigit([^(u]" ../src/*; \
+	then echo "*** Error: isdigit without unsigned char cast" && false; \
+	fi
+	@if grep -rnI "isspace([^(u]" ../src/*; \
+	then echo "*** Error: isspace without unsigned char cast" && false; \
+	fi
 
 runtests: test
 	@./test$(EXE)
