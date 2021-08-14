@@ -116,7 +116,6 @@ int rc_parse_memref(const char** memaddr, char* size, unsigned* address);
 void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);
 void rc_update_memref_value(rc_memref_value_t* memref, unsigned value);
 unsigned rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state);
-unsigned rc_get_memref_value_value(rc_memref_value_t* memref, int operand_type);
 char rc_memref_shared_size(char size);
 unsigned rc_transform_memref_value(unsigned value, char size);
 

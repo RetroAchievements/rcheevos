@@ -3,6 +3,70 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
+static void test_shared_size(char size, char expected)
+{
+  ASSERT_NUM_EQUALS(rc_memref_shared_size(size), expected);
+}
+
+static void test_shared_sizes(void)
+{
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_8_BITS, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_0, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_1, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_2, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_3, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_4, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_5, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_6, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_7, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_LOW, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_HIGH, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BITCOUNT, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_16_BITS, RC_MEMSIZE_16_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_16_BITS_BE, RC_MEMSIZE_16_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_24_BITS, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_24_BITS_BE, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS_BE, RC_MEMSIZE_32_BITS);
+}
+
+static void test_transform(unsigned value, char size, unsigned expected)
+{
+  ASSERT_NUM_EQUALS(rc_transform_memref_value(value, size), expected);
+}
+
+static void test_transforms(void)
+{
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_8_BITS, 0x00000078);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_16_BITS, 0x00005678);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_24_BITS, 0x00345678);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_32_BITS, 0x12345678);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_LOW, 0x00000008);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_HIGH, 0x00000007);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_BITCOUNT, 0x00000004); /* only counts bits in lowest byte */
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_16_BITS_BE, 0x00007856);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_24_BITS_BE, 0x00785634);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_32_BITS_BE, 0x78563412);
+
+  TEST_PARAMS3(test_transform, 0x00000001, RC_MEMSIZE_BIT_0, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000002, RC_MEMSIZE_BIT_1, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000004, RC_MEMSIZE_BIT_2, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000008, RC_MEMSIZE_BIT_3, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000010, RC_MEMSIZE_BIT_4, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000020, RC_MEMSIZE_BIT_5, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000040, RC_MEMSIZE_BIT_6, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000080, RC_MEMSIZE_BIT_7, 0x00000001);
+
+  TEST_PARAMS3(test_transform, 0x000000FE, RC_MEMSIZE_BIT_0, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000FD, RC_MEMSIZE_BIT_1, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000FB, RC_MEMSIZE_BIT_2, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000F7, RC_MEMSIZE_BIT_3, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000EF, RC_MEMSIZE_BIT_4, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000DF, RC_MEMSIZE_BIT_5, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000BF, RC_MEMSIZE_BIT_6, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x0000007F, RC_MEMSIZE_BIT_7, 0x00000000);
+}
+
 static int get_memref_count(rc_parse_state_t* parse) {
   int count = 0;
   rc_memref_t *memref = *parse->first_memref;
@@ -188,10 +252,16 @@ static void test_update_memref_values() {
 void test_memref(void) {
   TEST_SUITE_BEGIN();
 
+  test_shared_sizes();
+  test_transforms();
+
   TEST(test_allocate_shared_address);
   TEST(test_allocate_shared_address2);
+
   TEST(test_sizing_mode_grow_buffer);
   TEST(test_update_memref_values);
+
+  /* rc_parse_memref is thoroughly tested by rc_parse_operand tests */
 
   TEST_SUITE_END();
 }
