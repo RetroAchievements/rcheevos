@@ -361,7 +361,7 @@ static int rc_hash_finalize(md5_state_t* md5, char hash[33])
   return 1;
 }
 
-static int rc_hash_buffer(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_buffer(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   md5_state_t md5;
   md5_init(&md5);
@@ -558,7 +558,7 @@ static int rc_hash_3do(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
-static int rc_hash_7800(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_7800(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it */
   if (memcmp(&buffer[1], "ATARI7800", 9) == 0)
@@ -645,7 +645,7 @@ static int rc_hash_arcade(char hash[33], const char* path)
   return rc_hash_buffer(hash, (uint8_t*)filename, filename_length);
 }
 
-static int rc_hash_lynx(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_lynx(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it */
   if (buffer[0] == 'L' && buffer[1] == 'Y' && buffer[2] == 'N' && buffer[3] == 'X' && buffer[4] == 0)
@@ -659,7 +659,7 @@ static int rc_hash_lynx(char hash[33], uint8_t* buffer, size_t buffer_size)
   return rc_hash_buffer(hash, buffer, buffer_size);
 }
 
-static int rc_hash_nes(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_nes(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it */
   if (buffer[0] == 'N' && buffer[1] == 'E' && buffer[2] == 'S' && buffer[3] == 0x1A)
@@ -708,7 +708,7 @@ static void rc_hash_n64_to_z64(uint8_t* buffer, const uint8_t* stop)
   }
 }
 
-static int rc_hash_n64(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_n64(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   uint8_t* swapbuffer;
   uint8_t* stop;
@@ -997,7 +997,7 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
-static int rc_hash_pce(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_pce(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it (expect ROM data to be multiple of 128KB) */
   uint32_t calc_size = ((uint32_t)buffer_size / 0x20000) * 0x20000;
@@ -1495,7 +1495,7 @@ static int rc_hash_sega_cd(char hash[33], const char* path)
   return rc_hash_buffer(hash, buffer, sizeof(buffer));
 }
 
-static int rc_hash_snes(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_snes(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it */
   uint32_t calc_size = ((uint32_t)buffer_size / 0x2000) * 0x2000;
@@ -1510,7 +1510,7 @@ static int rc_hash_snes(char hash[33], uint8_t* buffer, size_t buffer_size)
   return rc_hash_buffer(hash, buffer, buffer_size);
 }
 
-int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer, size_t buffer_size)
+int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* buffer, size_t buffer_size)
 {
   switch (console_id)
   {
