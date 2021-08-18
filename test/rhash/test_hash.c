@@ -877,7 +877,85 @@ static void test_hash_ps2_psx()
   /* cleanup */
   free(image);
 
-  /* validation (should not generate PS2 hash for PSX file */
+  /* validation (should not generate PS2 hash for PSX file) */
+  ASSERT_NUM_EQUALS(result_file, 0);
+  ASSERT_NUM_EQUALS(result_iterator, 0);
+}
+
+static void test_hash_psp()
+{
+  const size_t param_sfo_size = 690;
+  uint8_t* param_sfo = generate_generic_file(param_sfo_size);
+  const size_t eboot_bin_size = 273470;
+  uint8_t* eboot_bin = generate_generic_file(eboot_bin_size);
+  size_t image_size;
+  uint8_t* image = generate_iso9660_bin(160, "TEST", &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "80c0b42b2d89d036086869433a176a03";
+
+  generate_iso9660_file(image, "PSP_GAME\\PARAM.SFO", param_sfo, param_sfo_size);
+  generate_iso9660_file(image, "PSP_GAME\\SYSDIR\\EBOOT.BIN", eboot_bin, eboot_bin_size);
+
+  mock_file(0, "game.iso", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PSP, "game.iso");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.iso", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  free(eboot_bin);
+  free(param_sfo);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_psp_video()
+{
+  const size_t param_sfo_size = 690;
+  uint8_t* param_sfo = generate_generic_file(param_sfo_size);
+  const size_t eboot_bin_size = 273470;
+  uint8_t* eboot_bin = generate_generic_file(eboot_bin_size);
+  size_t image_size;
+  uint8_t* image = generate_iso9660_bin(160, "TEST", &image_size);
+  char hash_file[33], hash_iterator[33];
+
+  /* UMD video disc may have an UPDATE folder, but nothing in the PSP_GAME or SYSDIR folders. */
+  generate_iso9660_file(image, "PSP_GAME\\SYSDIR\\UPDATE\\EBOOT.BIN", eboot_bin, eboot_bin_size);
+  /* the PARAM.SFO file is in the UMD_VIDEO folder. */
+  generate_iso9660_file(image, "UMD_VIDEO\\PARAM.SFO", param_sfo, param_sfo_size);
+
+  mock_file(0, "game.iso", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PSP, "game.iso");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.iso", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  free(eboot_bin);
+  free(param_sfo);
+
+  /* validation */
   ASSERT_NUM_EQUALS(result_file, 0);
   ASSERT_NUM_EQUALS(result_iterator, 0);
 }
@@ -1286,6 +1364,10 @@ void test_hash(void) {
   /* Playstation 2 */
   TEST(test_hash_ps2_iso);
   TEST(test_hash_ps2_psx);
+
+  /* Playstation Portable */
+  TEST(test_hash_psp);
+  TEST(test_hash_psp_video);
 
   /* Pokemon Mini */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_POKEMON_MINI, "test.min", 524288, "68f0f13b598e0b66461bc578375c3888");
