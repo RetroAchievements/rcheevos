@@ -101,6 +101,61 @@ static int validate_leaderboard(const char* leaderboard, char result[], const si
   return success;
 }
 
+static int validate_macros(const rc_richpresence_t* richpresence, const char* script, char result[], const size_t result_size)
+{
+  const unsigned short RC_FORMAT_UNKNOWN_MACRO = 103; /* enum not exposed by header */
+
+  rc_richpresence_display_t* display = richpresence->first_display;
+  while (display != NULL) {
+    rc_richpresence_display_part_t* part = display->display;
+    while (part != NULL) {
+      if (part->display_type == RC_FORMAT_UNKNOWN_MACRO) {
+        /* include opening parenthesis to prevent partial match */
+        size_t macro_len = strchr(part->text, '(') - part->text + 1;
+
+        /* find the display portion of the script */
+        const char* ptr = script;
+        int line = 1;
+        while (strncmp(ptr, "Display:", 8) != 0) {
+          while (*ptr != '\n')
+            ++ptr;
+
+          ++line;
+          ++ptr;
+        }
+
+        /* find the first matching reference to the unknown macro */
+        do {
+          while (*ptr != '@') {
+            if (*ptr == '\n')
+              ++line;
+
+            if (*ptr == '\0') {
+              /* unexpected, but prevent potential infinite loop */
+              snprintf(result, result_size, "Unknown macro \"%.*s\"", (int)(macro_len - 1), part->text);
+              return 0;
+            }
+
+            ++ptr;
+          }
+          ++ptr;
+
+          if (strncmp(ptr, part->text, macro_len) == 0) {
+            snprintf(result, result_size, "Line %d: Unknown macro \"%.*s\"", line, (int)(macro_len - 1), part->text);
+            return 0;
+          }
+        } while (1);
+      }
+
+      part = part->next;
+    }
+
+    display = display->next;
+  }
+
+  return 1;
+}
+
 static int validate_richpresence(const char* script, char result[], const size_t result_size, unsigned max_address)
 {
   char* buffer;
@@ -125,6 +180,8 @@ static int validate_richpresence(const char* script, char result[], const size_t
   }
   else {
     success = validate_memrefs(compiled->memrefs, result, result_size, max_address);
+    if (success)
+      success = validate_macros(compiled, script, result, result_size);
   }
 
   if (success)
