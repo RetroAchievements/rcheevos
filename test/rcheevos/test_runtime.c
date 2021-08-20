@@ -442,6 +442,8 @@ static void test_trigger_with_resetif() {
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
+
+  rc_runtime_destroy(&runtime);
 }
 
 static void test_trigger_with_resetnextif() {
@@ -494,6 +496,8 @@ static void test_trigger_with_resetnextif() {
   ASSERT_NUM_EQUALS(event_count, 2);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_RESET, 1, 0);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
+
+  rc_runtime_destroy(&runtime);
 }
 
 static void test_reset_event(void)

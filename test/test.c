@@ -39,6 +39,7 @@ static void test_lua(void) {
     trigger = rc_parse_trigger(buffer, "@test=0xX0", L, 1);
     assert(rc_test_trigger(trigger, peek, &memory, L) != 0);
 
+    lua_close(L);
 #endif /* RC_DISABLE_LUA */
   }
 }
