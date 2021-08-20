@@ -35,7 +35,7 @@ jobs:
       run: ./test
       working-directory: test
     - name: Valgrind
-      run: make ARCH=x86 BUILD=c89 valgrind
+      run: make ARCH=x64 BUILD=c89 valgrind
       working-directory: test
       
   # RetroArch compiles with gcc-8, gnu99, and a different set of warnings.
@@ -57,7 +57,7 @@ jobs:
       run: ./test
       working-directory: test
     - name: Valgrind
-      run: make ARCH=x86 BUILD=c89 valgrind
+      run: make ARCH=x64 BUILD=retroarch valgrind
       working-directory: test
       
   linux-x64-lua:
@@ -74,7 +74,7 @@ jobs:
       run: ./test
       working-directory: test
     - name: Valgrind
-      run: make ARCH=x86 BUILD=c89 valgrind
+      run: make ARCH=x64 BUILD=c89 HAVE_LUA=1 valgrind
       working-directory: test
 
   windows-x64-msbuild:
