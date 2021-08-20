@@ -419,6 +419,45 @@ static void test_measured() {
 
   /* measured(repeated(3, byte(2) == 52)) */
   assert_parse_trigger(&trigger, buffer, "M:0xH0002=52(3)");
+  ASSERT_NUM_EQUALS(trigger->measured_as_percent, 0);
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 0, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 0, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* condition is true - hit count should be incremented to reach target */
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 0, 3U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 3U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* condition is true - target previously met */
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 0, 3U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 3U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+}
+
+static void test_measured_as_percent() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[256];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* measured(repeated(3, byte(2) == 52)) */
+  assert_parse_trigger(&trigger, buffer, "G:0xH0002=52(3)");
+  ASSERT_NUM_EQUALS(trigger->measured_as_percent, 1);
 
   /* condition is true - hit count should be incremented */
   assert_evaluate_trigger(trigger, &memory, 0);
@@ -1759,6 +1798,7 @@ void test_trigger(void) {
 
   /* measured */
   TEST(test_measured);
+  TEST(test_measured_as_percent);
   TEST(test_measured_comparison);
   TEST(test_measured_addhits);
   TEST(test_measured_indirect);

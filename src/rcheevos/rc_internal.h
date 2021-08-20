@@ -99,6 +99,7 @@ typedef struct {
   int lines_read;
 
   char has_required_hits;
+  char measured_as_percent;
 }
 rc_parse_state_t;
 
