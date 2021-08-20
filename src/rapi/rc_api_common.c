@@ -296,6 +296,10 @@ static int rc_json_missing_field(rc_api_response_t* response, const rc_json_fiel
 
 int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_api_response_t* response, rc_json_field_t* field, const char* field_name) {
   const char* json = field->value_start;
+#ifndef NDEBUG
+  if (strcmp(field->name, field_name) != 0)
+    return 0;
+#endif
 
   if (!json)
     return rc_json_missing_field(response, field);
@@ -352,6 +356,11 @@ int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, r
 }
 
 int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+#ifndef NDEBUG
+  if (strcmp(field->name, field_name) != 0)
+    return 0;
+#endif
+
   if (!field->value_start || *field->value_start != '[') {
     *num_entries = 0;
     return rc_json_missing_field(response, field);
@@ -388,7 +397,7 @@ static unsigned rc_json_decode_hex4(const char* input) {
   memcpy(hex, input, 4);
   hex[4] = '\0';
 
-  return strtol(hex, NULL, 16);
+  return (unsigned)strtoul(hex, NULL, 16);
 }
 
 static int rc_json_ucs32_to_utf8(unsigned char* dst, unsigned ucs32_char) {
@@ -1093,7 +1102,7 @@ int rc_api_init_fetch_image_request(rc_api_request_t* request, const rc_api_fetc
     case RC_IMAGE_TYPE_USER:
       rc_url_builder_append(&builder, "/UserPic/", 9);
       rc_url_builder_append(&builder, api_params->image_name, strlen(api_params->image_name));
-      rc_url_builder_append(&builder, ".png", 9);
+      rc_url_builder_append(&builder, ".png", 4);
       break;
 
     default:

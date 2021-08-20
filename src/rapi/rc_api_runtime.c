@@ -129,7 +129,7 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
   if (result != RC_OK)
     return result;
 
-  if (!rc_json_get_required_object(patchdata_fields, sizeof(patchdata_fields) / sizeof(patchdata_fields[0]), &response->response, &fields[2], "Response"))
+  if (!rc_json_get_required_object(patchdata_fields, sizeof(patchdata_fields) / sizeof(patchdata_fields[0]), &response->response, &fields[2], "PatchData"))
     return RC_MISSING_VALUE;
 
   if (!rc_json_get_required_unum(&response->id, &response->response, &patchdata_fields[0], "ID"))

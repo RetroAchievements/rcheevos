@@ -493,7 +493,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
         memcpy(format, line, chars);
         format[chars] = '\0';
 
-        lookup->format = rc_parse_format(format);
+        lookup->format = (unsigned short)rc_parse_format(format);
       } else {
         lookup->format = RC_FORMAT_VALUE;
       }

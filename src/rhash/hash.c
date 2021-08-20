@@ -360,7 +360,7 @@ static int rc_hash_finalize(md5_state_t* md5, char hash[33])
   return 1;
 }
 
-static int rc_hash_buffer(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_buffer(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   md5_state_t md5;
   md5_init(&md5);
@@ -557,7 +557,7 @@ static int rc_hash_3do(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
-static int rc_hash_7800(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_7800(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it */
   if (memcmp(&buffer[1], "ATARI7800", 9) == 0)
@@ -644,7 +644,7 @@ static int rc_hash_arcade(char hash[33], const char* path)
   return rc_hash_buffer(hash, (uint8_t*)filename, filename_length);
 }
 
-static int rc_hash_lynx(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_lynx(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it */
   if (buffer[0] == 'L' && buffer[1] == 'Y' && buffer[2] == 'N' && buffer[3] == 'X' && buffer[4] == 0)
@@ -658,7 +658,7 @@ static int rc_hash_lynx(char hash[33], uint8_t* buffer, size_t buffer_size)
   return rc_hash_buffer(hash, buffer, buffer_size);
 }
 
-static int rc_hash_nes(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_nes(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it */
   if (buffer[0] == 'N' && buffer[1] == 'E' && buffer[2] == 'S' && buffer[3] == 0x1A)
@@ -707,7 +707,7 @@ static void rc_hash_n64_to_z64(uint8_t* buffer, const uint8_t* stop)
   }
 }
 
-static int rc_hash_n64(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_n64(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   uint8_t* swapbuffer;
   uint8_t* stop;
@@ -996,7 +996,7 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
-static int rc_hash_pce(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_pce(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it (expect ROM data to be multiple of 128KB) */
   uint32_t calc_size = ((uint32_t)buffer_size / 0x20000) * 0x20000;
@@ -1358,7 +1358,6 @@ static int rc_hash_psx(char hash[33], const char* path)
   void* track_handle;
   uint32_t sector;
   unsigned size;
-  size_t num_read;
   int result = 0;
   md5_state_t md5;
 
@@ -1378,7 +1377,7 @@ static int rc_hash_psx(char hash[33], const char* path)
   {
     rc_hash_error("Could not locate primary executable");
   }
-  else if ((num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
+  else if (rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer)) < sizeof(buffer))
   {
     rc_hash_error("Could not read primary executable");
   }
@@ -1423,7 +1422,6 @@ static int rc_hash_ps2(char hash[33], const char* path)
   void* track_handle;
   uint32_t sector;
   unsigned size;
-  size_t num_read;
   int result = 0;
   md5_state_t md5;
 
@@ -1436,7 +1434,7 @@ static int rc_hash_ps2(char hash[33], const char* path)
   {
     rc_hash_error("Could not locate primary executable");
   }
-  else if ((num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
+  else if (rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer)) < sizeof(buffer))
   {
     rc_hash_error("Could not read primary executable");
   }
@@ -1496,7 +1494,7 @@ static int rc_hash_sega_cd(char hash[33], const char* path)
   return rc_hash_buffer(hash, buffer, sizeof(buffer));
 }
 
-static int rc_hash_snes(char hash[33], uint8_t* buffer, size_t buffer_size)
+static int rc_hash_snes(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it */
   uint32_t calc_size = ((uint32_t)buffer_size / 0x2000) * 0x2000;
@@ -1511,7 +1509,7 @@ static int rc_hash_snes(char hash[33], uint8_t* buffer, size_t buffer_size)
   return rc_hash_buffer(hash, buffer, buffer_size);
 }
 
-int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer, size_t buffer_size)
+int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* buffer, size_t buffer_size)
 {
   switch (console_id)
   {
@@ -1568,7 +1566,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, uint8_t* buffer,
   }
 }
 
-static int rc_hash_whole_file(char hash[33], int console_id, const char* path)
+static int rc_hash_whole_file(char hash[33], const char* path)
 {
   md5_state_t md5;
   uint8_t* buffer;
@@ -1829,7 +1827,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WONDERSWAN:
       /* generic whole-file hash - don't buffer */
-      return rc_hash_whole_file(hash, console_id, path);
+      return rc_hash_whole_file(hash, path);
 
     case RC_CONSOLE_MSX:
     case RC_CONSOLE_PC8800:
@@ -1837,7 +1835,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
       if (rc_path_compare_extension(path, "m3u"))
         return rc_hash_generate_from_playlist(hash, console_id, path);
 
-      return rc_hash_whole_file(hash, console_id, path);
+      return rc_hash_whole_file(hash, path);
 
     case RC_CONSOLE_ATARI_7800:
     case RC_CONSOLE_ATARI_LYNX:
@@ -1903,7 +1901,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
   }
 }
 
-static void rc_hash_iterator_append_console(struct rc_hash_iterator* iterator, int console_id)
+static void rc_hash_iterator_append_console(struct rc_hash_iterator* iterator, uint8_t console_id)
 {
   int i = 0;
   while (iterator->consoles[i] != 0)

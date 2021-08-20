@@ -81,7 +81,7 @@ int rc_api_process_fetch_achievement_info_response(rc_api_fetch_achievement_info
   if (!rc_json_get_required_unum(&response->game_id, &response->response, &response_fields[2], "GameID"))
     return RC_MISSING_VALUE;
 
-  if (!rc_json_get_required_array(&response->num_recently_awarded, &iterator, &response->response, &response_fields[3], "RecentWinners"))
+  if (!rc_json_get_required_array(&response->num_recently_awarded, &iterator, &response->response, &response_fields[3], "RecentWinner"))
     return RC_MISSING_VALUE;
 
   if (response->num_recently_awarded) {
@@ -184,7 +184,7 @@ int rc_api_process_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info
   if (result != RC_OK)
     return result;
 
-  if (!rc_json_get_required_object(leaderboarddata_fields, sizeof(leaderboarddata_fields) / sizeof(leaderboarddata_fields[0]), &response->response, &fields[2], "Response"))
+  if (!rc_json_get_required_object(leaderboarddata_fields, sizeof(leaderboarddata_fields) / sizeof(leaderboarddata_fields[0]), &response->response, &fields[2], "LeaderboardData"))
     return RC_MISSING_VALUE;
 
   if (!rc_json_get_required_unum(&response->id, &response->response, &leaderboarddata_fields[0], "LBID"))

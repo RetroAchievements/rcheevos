@@ -78,6 +78,7 @@ static size_t _mock_file_read(void* file_handle, void* buffer, size_t count)
 
 static void _mock_file_close(void* file_handle)
 {
+    (void)file_handle;
 }
 
 static void reset_mock_files()
