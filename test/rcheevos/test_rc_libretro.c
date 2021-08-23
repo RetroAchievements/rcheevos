@@ -419,7 +419,12 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "PicoDrive", "picodrive_region", "Japan NTSC");
   TEST_PARAMS3(test_disallowed_setting, "PicoDrive", "picodrive_region", "Europe");
   TEST_PARAMS3(test_disallowed_setting, "PicoDrive", "picodrive_region", "Japan PAL");
-  
+
+  TEST_PARAMS3(test_allowed_setting,    "SMS Plus GX", "smsplus_region", "auto");
+  TEST_PARAMS3(test_allowed_setting,    "SMS Plus GX", "smsplus_region", "ntsc-u");
+  TEST_PARAMS3(test_disallowed_setting, "SMS Plus GX", "smsplus_region", "pal");
+  TEST_PARAMS3(test_allowed_setting,    "SMS Plus GX", "smsplus_region", "ntsc-j");
+
   TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_region", "Auto");
   TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_region", "NTSC");
   TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_region", "PAL");
