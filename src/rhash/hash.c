@@ -118,7 +118,11 @@ void* rc_file_open(const char* path)
   void* handle;
 
   if (!filereader)
+  {
     rc_hash_init_custom_filereader(NULL);
+    if (!filereader)
+      return NULL;
+  }
 
   handle = filereader->open(path);
   if (handle && verbose_message_callback)
@@ -494,7 +498,7 @@ static int rc_hash_3do(char hash[33], const char* path)
             block_location *= block_size;
 
             /* the file size is at offset 0x10 (assume 0x10 is always 0) */
-            size = buffer[offset + 0x11] * 65536 + buffer[offset + 0x12] * 256 + buffer[offset + 0x13];
+            size = (size_t)buffer[offset + 0x11] * 65536 + buffer[offset + 0x12] * 256 + buffer[offset + 0x13];
 
             if (verbose_message_callback)
             {
