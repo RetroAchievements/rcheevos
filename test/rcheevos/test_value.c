@@ -222,6 +222,21 @@ void test_value(void) {
   /* delta should initially be 0, so a hit will be tallied */
   TEST_PARAMS2(test_evaluate_value, "M:0xH0002!=d0xH0002", 1);
 
+  /* division (cannot occur directly on measured condition, so use AddSource) */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001/2_M:0", 9);       /* 18/2 = 9 */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001/5_M:0", 3);       /* 18/5 = 3 */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0002/0xH0001_M:0", 2); /* 52/18 = 2 */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001/0xH0002_M:0", 0); /* 18/52 = 0 */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001/0xH0001_M:0", 1); /* 18/18 = 1 */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001/0xH0000_M:0", 0); /* 18/0 = 0 */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0000/0xH0000_M:0", 0); /* 0/0 = 0 */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0000/0xH0001_M:0", 0); /* 0/18 = 0 */
+
+  /* using measured_if */
+  TEST_PARAMS2(test_evaluate_value, "Q:0xH0001!=0_M:0xH0002", 0x34);
+  TEST_PARAMS2(test_evaluate_value, "Q:0xH0001=0_M:0xH0002", 0);
+  TEST_PARAMS2(test_evaluate_value, "Q:0xH0001!=0_M:1", 1);
+
   /* pause and reset affect hit count */
   TEST(test_evaluate_measured_value_with_pause);
   TEST(test_evaluate_measured_value_with_reset);
