@@ -223,62 +223,74 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 }
 
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
-  unsigned value1 = rc_evaluate_operand(&self->operand1, eval_state) + eval_state->add_value;
-  unsigned value2 = rc_evaluate_operand(&self->operand2, eval_state);
+  rc_typed_value_t value1, value2;
 
-  switch (self->oper) {
-    case RC_OPERATOR_EQ: return value1 == value2;
-    case RC_OPERATOR_NE: return value1 != value2;
-    case RC_OPERATOR_LT: return value1 < value2;
-    case RC_OPERATOR_LE: return value1 <= value2;
-    case RC_OPERATOR_GT: return value1 > value2;
-    case RC_OPERATOR_GE: return value1 >= value2;
-    case RC_OPERATOR_NONE: return 1;
-    default: return 1;
+  rc_evaluate_operand(&value1, &self->operand1, eval_state);
+  if (eval_state->add_value.type != RC_VALUE_TYPE_NONE)
+    rc_typed_value_add(&value1, &eval_state->add_value);
+
+  rc_evaluate_operand(&value2, &self->operand2, eval_state);
+  if (value2.type != value1.type)
+    rc_typed_value_convert(&value2, value1.type);
+
+  switch (value1.type) {
+    case RC_VALUE_TYPE_UNSIGNED:
+      switch (self->oper) {
+        case RC_OPERATOR_EQ: return value1.u32 == value2.u32;
+        case RC_OPERATOR_NE: return value1.u32 != value2.u32;
+        case RC_OPERATOR_LT: return value1.u32 < value2.u32;
+        case RC_OPERATOR_LE: return value1.u32 <= value2.u32;
+        case RC_OPERATOR_GT: return value1.u32 > value2.u32;
+        case RC_OPERATOR_GE: return value1.u32 >= value2.u32;
+        default: return 1;
+      }
+
+    case RC_VALUE_TYPE_SIGNED:
+      switch (self->oper) {
+        case RC_OPERATOR_EQ: return value1.i32 == value2.i32;
+        case RC_OPERATOR_NE: return value1.i32 != value2.i32;
+        case RC_OPERATOR_LT: return value1.i32 < value2.i32;
+        case RC_OPERATOR_LE: return value1.i32 <= value2.i32;
+        case RC_OPERATOR_GT: return value1.i32 > value2.i32;
+        case RC_OPERATOR_GE: return value1.i32 >= value2.i32;
+        default: return 1;
+      }
+
+    case RC_VALUE_TYPE_FLOAT:
+      switch (self->oper) {
+        case RC_OPERATOR_EQ: return value1.f32 == value2.f32;
+        case RC_OPERATOR_NE: return value1.f32 != value2.f32;
+        case RC_OPERATOR_LT: return value1.f32 < value2.f32;
+        case RC_OPERATOR_LE: return value1.f32 <= value2.f32;
+        case RC_OPERATOR_GT: return value1.f32 > value2.f32;
+        case RC_OPERATOR_GE: return value1.f32 >= value2.f32;
+        default: return 1;
+      }
+
+    default:
+      return 1;
   }
 }
 
-int rc_evaluate_condition_value(rc_condition_t* self, rc_eval_state_t* eval_state) {
-  unsigned value = rc_evaluate_operand(&self->operand1, eval_state);
+void rc_evaluate_condition_value(rc_typed_value_t* value, rc_condition_t* self, rc_eval_state_t* eval_state) {
+  rc_typed_value_t amount;
+
+  rc_evaluate_operand(value, &self->operand1, eval_state);
+  rc_evaluate_operand(&amount, &self->operand2, eval_state);
 
   switch (self->oper) {
     case RC_OPERATOR_MULT:
-      if (self->operand2.type == RC_OPERAND_FP) {
-        value = (int)((double)value * self->operand2.value.dbl);
-      }
-      else {
-        /* the c standard for unsigned multiplication is well defined as non-overflowing truncation
-         * to the type's size. this allows negative multiplication through twos-complements. i.e.
-         *   1 * -1 (0xFFFFFFFF) = 0xFFFFFFFF = -1
-         *   3 * -2 (0xFFFFFFFE) = 0x2FFFFFFFA & 0xFFFFFFFF = 0xFFFFFFFA = -6
-         *  10 * -5 (0xFFFFFFFB) = 0x9FFFFFFCE & 0xFFFFFFFF = 0xFFFFFFCE = -50
-         */
-        value *= rc_evaluate_operand(&self->operand2, eval_state);
-      }
+      rc_typed_value_multiply(value, &amount);
       break;
 
     case RC_OPERATOR_DIV:
-      if (self->operand2.type == RC_OPERAND_FP)
-      {
-        if (self->operand2.value.dbl == 0.0)
-          value = 0;
-        else
-          value = (int)((double)value / self->operand2.value.dbl);
-      }
-      else
-      {
-        unsigned value2 = rc_evaluate_operand(&self->operand2, eval_state);
-        if (value2 == 0)
-          value = 0;
-        else
-          value /= value2;
-      }
+      rc_typed_value_divide(value, &amount);
       break;
 
     case RC_OPERATOR_AND:
-      value &= rc_evaluate_operand(&self->operand2, eval_state);
+      rc_typed_value_convert(value, RC_VALUE_TYPE_UNSIGNED);
+      rc_typed_value_convert(&amount, RC_VALUE_TYPE_UNSIGNED);
+      value->u32 &= amount.u32;
       break;
   }
-
-  return value;
 }

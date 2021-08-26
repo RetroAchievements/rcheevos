@@ -314,3 +314,232 @@ void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_Sta
     variable = variable->next;
   }
 }
+
+void rc_typed_value_convert(rc_typed_value_t* value, char new_type) {
+  switch (new_type) {
+    case RC_VALUE_TYPE_UNSIGNED:
+      switch (value->type) {
+        case RC_VALUE_TYPE_UNSIGNED:
+          return;
+        case RC_VALUE_TYPE_SIGNED:
+          value->u32 = (unsigned)value->i32;
+          break;
+        case RC_VALUE_TYPE_FLOAT:
+          value->u32 = (unsigned)value->f32;
+          break;
+        default:
+          value->u32 = 0;
+          break;
+      }
+      break;
+
+    case RC_VALUE_TYPE_SIGNED:
+      switch (value->type) {
+        case RC_VALUE_TYPE_SIGNED:
+          return;
+        case RC_VALUE_TYPE_UNSIGNED:
+          value->i32 = (int)value->u32;
+          break;
+        case RC_VALUE_TYPE_FLOAT:
+          value->i32 = (int)value->f32;
+          break;
+        default:
+          value->i32 = 0;
+          break;
+      }
+      break;
+
+    case RC_VALUE_TYPE_FLOAT:
+      switch (value->type) {
+        case RC_VALUE_TYPE_FLOAT:
+          return;
+        case RC_VALUE_TYPE_UNSIGNED:
+          value->f32 = (float)value->u32;
+          break;
+        case RC_VALUE_TYPE_SIGNED:
+          value->f32 = (float)value->i32;
+          break;
+        default:
+          value->f32 = 0.0;
+          break;
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  value->type = new_type;
+}
+
+static rc_typed_value_t* rc_typed_value_convert_into(rc_typed_value_t* dest, const rc_typed_value_t* source, char new_type) {
+  memcpy(dest, source, sizeof(rc_typed_value_t));
+  rc_typed_value_convert(dest, new_type);
+  return dest;
+}
+
+void rc_typed_value_add(rc_typed_value_t* value, const rc_typed_value_t* amount) {
+  rc_typed_value_t converted;
+
+  if (amount->type != value->type && value->type != RC_VALUE_TYPE_NONE)
+    amount = rc_typed_value_convert_into(&converted, amount, value->type);
+
+  switch (value->type)
+  {
+    case RC_VALUE_TYPE_UNSIGNED:
+      value->u32 += amount->u32;
+      break;
+
+    case RC_VALUE_TYPE_SIGNED:
+      value->i32 += amount->i32;
+      break;
+
+    case RC_VALUE_TYPE_FLOAT:
+      value->f32 += amount->f32;
+      break;
+
+    case RC_VALUE_TYPE_NONE:
+      memcpy(value, amount, sizeof(rc_typed_value_t));
+      break;
+
+    default:
+      break;
+  }
+}
+
+void rc_typed_value_multiply(rc_typed_value_t* value, const rc_typed_value_t* amount) {
+  rc_typed_value_t converted;
+
+  switch (value->type)
+  {
+    case RC_VALUE_TYPE_UNSIGNED:
+      switch (amount->type)
+      {
+        case RC_VALUE_TYPE_UNSIGNED:
+          /* the c standard for unsigned multiplication is well defined as non-overflowing truncation
+           * to the type's size. this allows negative multiplication through twos-complements. i.e.
+           *   1 * -1 (0xFFFFFFFF) = 0xFFFFFFFF = -1
+           *   3 * -2 (0xFFFFFFFE) = 0x2FFFFFFFA & 0xFFFFFFFF = 0xFFFFFFFA = -6
+           *  10 * -5 (0xFFFFFFFB) = 0x9FFFFFFCE & 0xFFFFFFFF = 0xFFFFFFCE = -50
+           */
+          value->u32 *= amount->u32;
+          break;
+
+        case RC_VALUE_TYPE_SIGNED:
+          value->u32 *= (unsigned)amount->i32;
+          break;
+
+        case RC_VALUE_TYPE_FLOAT:
+          rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
+          value->f32 *= amount->f32;
+          break;
+
+        default:
+          value->type = RC_VALUE_TYPE_NONE;
+          break;
+      }
+      break;
+
+    case RC_VALUE_TYPE_SIGNED:
+      switch (amount->type)
+      {
+        case RC_VALUE_TYPE_SIGNED:
+          value->i32 *= amount->i32;
+          break;
+
+        case RC_VALUE_TYPE_UNSIGNED:
+          value->i32 *= (int)amount->u32;
+          break;
+
+        case RC_VALUE_TYPE_FLOAT:
+          rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
+          value->f32 *= amount->f32;
+          break;
+
+        default:
+          value->type = RC_VALUE_TYPE_NONE;
+          break;
+      }
+      break;
+
+    case RC_VALUE_TYPE_FLOAT:
+      if (amount->type == RC_VALUE_TYPE_NONE) {
+        value->type = RC_VALUE_TYPE_NONE;
+      }
+      else {
+        amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
+        value->f32 *= amount->f32;
+      }
+      break;
+
+    default:
+      value->type = RC_VALUE_TYPE_NONE;
+      break;
+  }
+}
+
+void rc_typed_value_divide(rc_typed_value_t* value, const rc_typed_value_t* amount) {
+  rc_typed_value_t converted;
+
+  switch (amount->type)
+  {
+    case RC_VALUE_TYPE_UNSIGNED:
+      if (amount->u32 == 0) { /* divide by zero */
+        value->type = RC_VALUE_TYPE_NONE;
+        return;
+      }
+
+      switch (value->type) {
+        case RC_VALUE_TYPE_UNSIGNED: /* integer math */
+          value->u32 /= amount->u32;
+          return;
+        case RC_VALUE_TYPE_SIGNED: /* integer math */
+          value->i32 /= (int)amount->u32;
+          return;
+        case RC_VALUE_TYPE_FLOAT:
+          amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
+          break;
+        default:
+          value->type = RC_VALUE_TYPE_NONE;
+          return;
+      }
+      break;
+
+    case RC_VALUE_TYPE_SIGNED:
+      if (amount->i32 == 0) { /* divide by zero */
+        value->type = RC_VALUE_TYPE_NONE;
+        return;
+      }
+
+      switch (value->type) {
+        case RC_VALUE_TYPE_SIGNED: /* integer math */
+          value->i32 /= amount->i32;
+          return;
+        case RC_VALUE_TYPE_UNSIGNED: /* integer math */
+          value->u32 /= (unsigned)amount->i32;
+          return;
+        case RC_VALUE_TYPE_FLOAT:
+          amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
+          break;
+        default:
+          value->type = RC_VALUE_TYPE_NONE;
+          return;
+      }
+      break;
+
+    case RC_VALUE_TYPE_FLOAT:
+      break;
+
+    default:
+      value->type = RC_VALUE_TYPE_NONE;
+      return;
+  }
+
+  if (amount->f32 == 0.0) { /* divide by zero */
+    value->type = RC_VALUE_TYPE_NONE;
+    return;
+  }
+
+  rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
+  value->f32 /= amount->f32;
+}

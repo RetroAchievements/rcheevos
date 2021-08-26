@@ -77,13 +77,15 @@ static void test_parse_error_operand(const char* memaddr, int valid_chars, int e
 static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_t* memrefs)
 {
   rc_eval_state_t eval_state;
+  rc_typed_value_t value;
 
   memset(&eval_state, 0, sizeof(eval_state));
   eval_state.peek = peek;
   eval_state.peek_userdata = memory;
 
   rc_update_memref_values(memrefs, peek, memory);
-  return rc_evaluate_operand(op, &eval_state);
+  rc_evaluate_operand(&value, op, &eval_state);
+  return value.u32;
 }
 
 static void test_evaluate_operand(const char* memaddr, memory_t* memory, unsigned expected_value) {
@@ -318,8 +320,8 @@ static void test_parse_float_values() {
   TEST_PARAMS3(test_parse_operand_fp, "F0.5", RC_OPERAND_FP, 0.5);
   TEST_PARAMS3(test_parse_operand_fp, "f+0.5", RC_OPERAND_FP, 0.5);
   TEST_PARAMS3(test_parse_operand_fp, "f-0.5", RC_OPERAND_FP, -0.5);
-  TEST_PARAMS3(test_parse_operand_fp, "f1.0", RC_OPERAND_CONST, 1.0);
-  TEST_PARAMS3(test_parse_operand_fp, "f1.000000", RC_OPERAND_CONST, 1.0);
+  TEST_PARAMS3(test_parse_operand_fp, "f1.0", RC_OPERAND_FP, 1.0);
+  TEST_PARAMS3(test_parse_operand_fp, "f1.000000", RC_OPERAND_FP, 1.0);
   TEST_PARAMS3(test_parse_operand_fp, "f1.000001", RC_OPERAND_FP, 1.000001);
   TEST_PARAMS3(test_parse_operand_fp, "f1", RC_OPERAND_CONST, 1.0);
   TEST_PARAMS3(test_parse_operand_fp, "f0.666666", RC_OPERAND_FP, 0.666666);

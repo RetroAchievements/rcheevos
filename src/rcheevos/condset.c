@@ -146,7 +146,10 @@ static void rc_condset_update_indirect_memrefs(rc_condition_t* condition, int pr
       continue;
 
     if (condition->type == RC_CONDITION_ADD_ADDRESS) {
-      eval_state->add_address = rc_evaluate_condition_value(condition, eval_state);
+      rc_typed_value_t value;
+      rc_evaluate_condition_value(&value, condition, eval_state);
+      rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
+      eval_state->add_address = value.u32;
       continue;
     }
 
@@ -166,6 +169,7 @@ static void rc_condset_update_indirect_memrefs(rc_condition_t* condition, int pr
 
 static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc_eval_state_t* eval_state) {
   rc_condition_t* condition;
+  rc_typed_value_t value;
   int set_valid, cond_valid, and_next, or_next, reset_next;
   unsigned measured_value = 0;
   unsigned total_hits = 0;
@@ -176,7 +180,8 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
   and_next = 1;
   or_next = 0;
   reset_next = 0;
-  eval_state->add_value = eval_state->add_hits = eval_state->add_address = 0;
+  eval_state->add_value.type = RC_VALUE_TYPE_NONE;
+  eval_state->add_hits = eval_state->add_address = 0;
 
   for (condition = self->conditions; condition != 0; condition = condition->next) {
     if (condition->pause != processing_pause)
@@ -185,23 +190,32 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     /* STEP 1: process modifier conditions */
     switch (condition->type) {
       case RC_CONDITION_ADD_SOURCE:
-        eval_state->add_value += rc_evaluate_condition_value(condition, eval_state);
+        rc_evaluate_condition_value(&value, condition, eval_state);
+        rc_typed_value_add(&eval_state->add_value, &value);
         eval_state->add_address = 0;
         continue;
 
       case RC_CONDITION_SUB_SOURCE:
-        eval_state->add_value -= rc_evaluate_condition_value(condition, eval_state);
+        rc_evaluate_condition_value(&value, condition, eval_state);
+        rc_typed_value_convert(&value, RC_VALUE_TYPE_SIGNED);
+        value.i32 = -value.i32;
+        rc_typed_value_add(&eval_state->add_value, &value);
         eval_state->add_address = 0;
         continue;
 
       case RC_CONDITION_ADD_ADDRESS:
-        eval_state->add_address = rc_evaluate_condition_value(condition, eval_state);
+        rc_evaluate_condition_value(&value, condition, eval_state);
+        rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
+        eval_state->add_address = value.u32;
         continue;
 
       case RC_CONDITION_MEASURED:
         if (condition->required_hits == 0) {
           /* Measured condition without a hit target measures the value of the left operand */
-          measured_value = rc_evaluate_condition_value(condition, eval_state) + eval_state->add_value;
+          rc_evaluate_condition_value(&value, condition, eval_state);
+          rc_typed_value_add(&value, &eval_state->add_value);
+          rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
+          measured_value = value.u32;
         }
         break;
 
@@ -211,7 +225,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
 
     /* STEP 2: evaluate the current condition */
     condition->is_true = (char)rc_test_condition(condition, eval_state);
-    eval_state->add_value = 0;
+    eval_state->add_value.type = RC_VALUE_TYPE_NONE;
     eval_state->add_address = 0;
 
     /* apply logic flags and reset them for the next condition */

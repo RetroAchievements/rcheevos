@@ -32,7 +32,11 @@ static void test_shared_sizes(void)
 
 static void test_transform(unsigned value, char size, unsigned expected)
 {
-  ASSERT_NUM_EQUALS(rc_transform_memref_value(value, size), expected);
+  rc_typed_value_t typed_value;
+  typed_value.type = RC_VALUE_TYPE_UNSIGNED;
+  typed_value.u32 = value;
+  rc_transform_memref_value(&typed_value, size);
+  ASSERT_NUM_EQUALS(typed_value.u32, expected);
 }
 
 static void test_transforms(void)
