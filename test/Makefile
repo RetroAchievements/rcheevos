@@ -183,7 +183,7 @@ runtests: test
 	@./test$(EXE)
 
 valgrind: test
-	@valgrind --leak-check=full ./test$(EXE)
+	@valgrind --leak-check=full --error-exitcode=1 ./test$(EXE)
 
 clean:
 	rm -f test$(EXE) $(OBJ)

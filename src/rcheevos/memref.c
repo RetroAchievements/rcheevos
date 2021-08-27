@@ -221,7 +221,7 @@ static const char rc_memref_shared_sizes[] = {
 
 char rc_memref_shared_size(char size) {
   const size_t index = (size_t)size;
-  if (index > sizeof(rc_memref_shared_sizes) / sizeof(rc_memref_shared_sizes[0]))
+  if (index >= sizeof(rc_memref_shared_sizes) / sizeof(rc_memref_shared_sizes[0]))
     return size;
 
   return rc_memref_shared_sizes[index];
