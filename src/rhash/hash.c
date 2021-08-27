@@ -410,9 +410,9 @@ static int rc_hash_cd_file(md5_state_t* md5, void* track_handle, uint32_t sector
   {
     md5_append(md5, buffer, (int)num_read);
 
-    size -= (unsigned)num_read;
-    if (size == 0)
+    if (size <= (unsigned)num_read)
       break;
+    size -= (unsigned)num_read;
 
     ++sector;
     if (size >= sizeof(buffer))
@@ -1465,6 +1465,40 @@ static int rc_hash_ps2(char hash[33], const char* path)
   return result;
 }
 
+static int rc_hash_psp(char hash[33], const char* path)
+{
+  void* track_handle;
+  uint32_t sector;
+  unsigned size;
+  md5_state_t md5;
+
+  track_handle = rc_cd_open_track(path, 1);
+  if (!track_handle)
+    return rc_hash_error("Could not open track");
+
+  /* http://www.romhacking.net/forum/index.php?topic=30899.0
+   * PSP_GAME/PARAM.SFO contains key/value pairs identifying the game for the system (i.e. serial number,
+   * name, version). PSP_GAME/SYSDIR/EBOOT.BIN is the encrypted primary executable.
+   */
+  sector = rc_cd_find_file_sector(track_handle, "PSP_GAME\\PARAM.SFO", &size);
+  if (!sector)
+    return rc_hash_error("Not a PSP game disc");
+
+  md5_init(&md5);
+  if (!rc_hash_cd_file(&md5, track_handle, sector, NULL, size, "PSP_GAME\\PARAM.SFO"))
+    return 0;
+
+  sector = rc_cd_find_file_sector(track_handle, "PSP_GAME\\SYSDIR\\EBOOT.BIN", &size);
+  if (!sector)
+    return rc_hash_error("Could not find primary executable");
+
+  if (!rc_hash_cd_file(&md5, track_handle, sector, NULL, size, "PSP_GAME\\SYSDIR\\EBOOT.BIN"))
+    return 0;
+
+  rc_cd_close_track(track_handle);
+  return rc_hash_finalize(&md5, hash);
+}
+
 static int rc_hash_sega_cd(char hash[33], const char* path)
 {
   uint8_t buffer[512];
@@ -1886,6 +1920,9 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
 
       return rc_hash_ps2(hash, path);
 
+    case RC_CONSOLE_PSP:
+      return rc_hash_psp(hash, path);
+
     case RC_CONSOLE_DREAMCAST:
       if (rc_path_compare_extension(path, "m3u"))
         return rc_hash_generate_from_playlist(hash, console_id, path);
@@ -2127,8 +2164,9 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         if (rc_path_compare_extension(ext, "iso"))
         {
           iterator->consoles[0] = RC_CONSOLE_PLAYSTATION_2;
-          iterator->consoles[1] = RC_CONSOLE_3DO;
-          iterator->consoles[2] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
+          iterator->consoles[1] = RC_CONSOLE_PSP;
+          iterator->consoles[2] = RC_CONSOLE_3DO;
+          iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
           need_path = 1;
         }
         break;
