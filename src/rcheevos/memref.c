@@ -104,6 +104,25 @@ int rc_parse_memref(const char** memaddr, char* size, unsigned* address) {
   return RC_OK;
 }
 
+static void rc_transform_memref_float(rc_typed_value_t* value) {
+  /* decodes an IEEE 754 float */
+  const unsigned mantissa = (value->u32 & 0x7FFFFF) | 0x800000;
+  double dbl = ((double)mantissa) / ((double)0x800000);
+  const int exponent = ((value->u32 >> 23) & 0xFF);
+
+  if (exponent >= 127)
+    dbl *= (double)(1 << (exponent - 127));
+  else
+    dbl /= (double)(1 << (127 - exponent));
+
+  if (value->u32 & 0x80000000)
+    value->f32 = (float)-dbl;
+  else
+    value->f32 = (float)dbl;
+
+  value->type = RC_VALUE_TYPE_FLOAT;
+}
+
 static const unsigned char rc_bits_set[16] = { 0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4 };
 
 void rc_transform_memref_value(rc_typed_value_t* value, char size) {
@@ -188,6 +207,10 @@ void rc_transform_memref_value(rc_typed_value_t* value, char size) {
                    ((value->u32 & 0x000000FF) << 24);
       break;
 
+    case RC_MEMSIZE_FLOAT:
+      rc_transform_memref_float(value);
+      break;
+
     default:
       break;
   }
@@ -215,6 +238,7 @@ static const char rc_memref_shared_sizes[] = {
   RC_MEMSIZE_16_BITS, /* RC_MEMSIZE_16_BITS_BE */
   RC_MEMSIZE_32_BITS, /* RC_MEMSIZE_24_BITS_BE */
   RC_MEMSIZE_32_BITS, /* RC_MEMSIZE_32_BITS_BE */
+  RC_MEMSIZE_32_BITS, /* RC_MEMSIZE_FLOAT      */
   RC_MEMSIZE_32_BITS  /* RC_MEMSIZE_VARIABLE   */
 };
 

@@ -39,6 +39,15 @@ static void test_transform(unsigned value, char size, unsigned expected)
   ASSERT_NUM_EQUALS(typed_value.u32, expected);
 }
 
+static void test_transform_float(unsigned value, char size, double expected)
+{
+  rc_typed_value_t typed_value;
+  typed_value.type = RC_VALUE_TYPE_UNSIGNED;
+  typed_value.u32 = value;
+  rc_transform_memref_value(&typed_value, size);
+  ASSERT_NUM_EQUALS(typed_value.f32, (float)expected);
+}
+
 static void test_transforms(void)
 {
   TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_8_BITS, 0x00000078);
@@ -69,6 +78,15 @@ static void test_transforms(void)
   TEST_PARAMS3(test_transform, 0x000000DF, RC_MEMSIZE_BIT_5, 0x00000000);
   TEST_PARAMS3(test_transform, 0x000000BF, RC_MEMSIZE_BIT_6, 0x00000000);
   TEST_PARAMS3(test_transform, 0x0000007F, RC_MEMSIZE_BIT_7, 0x00000000);
+
+  TEST_PARAMS3(test_transform_float, 0x3F800000, RC_MEMSIZE_FLOAT, 1.0);
+  TEST_PARAMS3(test_transform_float, 0x41460000, RC_MEMSIZE_FLOAT, 12.375);
+  TEST_PARAMS3(test_transform_float, 0x42883EF9, RC_MEMSIZE_FLOAT, 68.123);
+  TEST_PARAMS3(test_transform_float, 0x80000000, RC_MEMSIZE_FLOAT, 0.0);
+  TEST_PARAMS3(test_transform_float, 0xC0000000, RC_MEMSIZE_FLOAT, -2.0);
+  TEST_PARAMS3(test_transform_float, 0x40490FDB, RC_MEMSIZE_FLOAT, 3.14159274101257324);
+  TEST_PARAMS3(test_transform_float, 0x3EAAAAAB, RC_MEMSIZE_FLOAT, 0.333333334326744076);
+  TEST_PARAMS3(test_transform_float, 0x429A4492, RC_MEMSIZE_FLOAT, 77.1339);
 }
 
 static int get_memref_count(rc_parse_state_t* parse) {
