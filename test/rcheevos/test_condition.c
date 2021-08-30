@@ -146,6 +146,35 @@ static void test_evaluate_condition(const char* memaddr, int expected_result) {
   }
 }
 
+static void test_evaluate_condition_float(const char* memaddr, int expected_result) {
+  rc_condition_t* self;
+  rc_parse_state_t parse;
+  char buffer[512];
+  rc_memref_t* memrefs;
+  int ret;
+  unsigned char ram[] = {0x00, 0x00, 0x00, 0x40, 0x83, 0x49, 0x0F, 0xDB}; /* FF0=2, FF4=2*pi */
+  memory_t memory;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  self = rc_parse_condition(&memaddr, &parse, 0);
+  rc_destroy_parse_state(&parse);
+
+  ASSERT_NUM_GREATER(parse.offset, 0);
+  ASSERT_NUM_EQUALS(*memaddr, 0);
+
+  ret = evaluate_condition(self, &memory, memrefs);
+
+  if (expected_result) {
+    ASSERT_NUM_EQUALS(ret, 1);
+  } else {
+    ASSERT_NUM_EQUALS(ret, 0);
+  }
+}
+
 static void test_condition_compare_delta() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -258,10 +287,6 @@ void test_condition(void) {
   TEST_PARAMS2(test_parse_condition_error, "0x1234=1.2", RC_INVALID_REQUIRED_HITS);
   TEST_PARAMS2(test_parse_condition_error, "0.1234==0", RC_INVALID_OPERATOR); /* period is assumed to be operator */
   TEST_PARAMS2(test_parse_condition_error, "0==0.1234", RC_INVALID_REQUIRED_HITS); /* period is assumed to be start of hit target, no end marker */
-  TEST_PARAMS2(test_parse_condition_error, "F0.1234==0", RC_INVALID_COMPARISON); /* floating value only valid on modifiers */
-  TEST_PARAMS2(test_parse_condition_error, "0==f0.1234", RC_INVALID_COMPARISON); /* floating value only valid on modifiers */
-  TEST_PARAMS2(test_parse_condition_error, "A:F0.1234*2", RC_INVALID_FP_OPERAND); /* floating value only valid on right side of modifiers */
-  TEST_PARAMS2(test_parse_condition_error, "A:2*f0.1234", RC_OK); /* floating value only valid on right side of modifiers */
 
   /* simple evaluations (ram[1] = 18, ram[2] = 52) */
   TEST_PARAMS2(test_evaluate_condition, "0xH0001=18", 1);
@@ -277,6 +302,50 @@ void test_condition(void) {
   TEST_PARAMS2(test_evaluate_condition, "0xH0001>0xH0002", 0);
   TEST_PARAMS2(test_evaluate_condition, "0xH0001=0xH0001", 1);
   TEST_PARAMS2(test_evaluate_condition, "0xH0001!=0xH0002", 1);
+
+  /* float evaluations (ram[0] = 2.0, ram[4] = 3.14159 */
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000=f2.0", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000!=f2.0", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<=f2.0", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>=f2.0", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<f2.0", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>f2.0", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<f1.999999", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>f1.999999", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<f2.000001", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>f2.000001", 0);
+
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000=2", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000!=2", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<=2", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>=2", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<2", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>2", 0);
+
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004=f6.283185", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004!=f6.283185", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<=f6.283185", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>=f6.283185", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<f6.283185", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>f6.283185", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<f6.283183", 0); /* due to rounding during the conversion from */
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>f6.283183", 1); /* binary to float, the last decimal digit may */
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<f6.283187", 1); /* not change. go two digits to either side to */
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>f6.283187", 0); /* ensure we cover an epsilon gap */
+
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004=6", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004!=6", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<=6", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>=6", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<6", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>6", 1);
+
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000==fF0000", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000!=fF0000", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000==fM0004", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000!=fM0004", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<fM0004", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>fM0004", 0);
 
   TEST(test_condition_compare_delta);
 

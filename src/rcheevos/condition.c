@@ -106,11 +106,6 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     return 0;
   }
 
-  if (self->operand1.type == RC_OPERAND_FP) {
-    parse->offset = can_modify ? RC_INVALID_FP_OPERAND : RC_INVALID_COMPARISON;
-    return 0;
-  }
-
   result = rc_parse_operator(&aux);
   if (result < 0) {
     parse->offset = result;
@@ -175,11 +170,6 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     self->operand2.value.num = 0;
   }
 
-  if (!can_modify && self->operand2.type == RC_OPERAND_FP) {
-    parse->offset = RC_INVALID_COMPARISON;
-    return 0;
-  }
-
   if (*aux == '(') {
     char* end;
     self->required_hits = (unsigned)strtoul(++aux, &end, 10);
@@ -222,6 +212,60 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   return self;
 }
 
+static int rc_condition_compare_floats(float f1, float f2, char oper) {
+  if (f1 == f2) {
+    /* exactly equal */
+  }
+  else {
+    /* attempt to match 7 significant digits (24-bit significand supports just over 7 significant decimal digits) */
+    const float epsilon = (float)0.0000001;
+    const float abs1 = (f1 < 0) ? -f1 : f1;
+    const float abs2 = (f2 < 0) ? -f2 : f2;
+    const float threshold = ((abs1 < abs2) ? abs1 : abs2) * epsilon;
+    const float diff = f1 - f2;
+    const float abs_diff = (diff < 0) ? -diff : diff;
+
+    if (abs_diff <= threshold) {
+      /* approximately equal */
+    }
+    else if (diff > threshold) {
+      /* greater */
+      switch (oper) {
+        case RC_OPERATOR_NE:
+        case RC_OPERATOR_GT:
+        case RC_OPERATOR_GE:
+          return 1;
+
+        default:
+          return 0;
+      }
+    }
+    else {
+      /* lesser */
+      switch (oper) {
+        case RC_OPERATOR_NE:
+        case RC_OPERATOR_LT:
+        case RC_OPERATOR_LE:
+          return 1;
+
+        default:
+          return 0;
+      }
+    }
+  }
+
+  /* exactly or approximately equal */
+  switch (oper) {
+    case RC_OPERATOR_EQ:
+    case RC_OPERATOR_GE:
+    case RC_OPERATOR_LE:
+      return 1;
+
+    default:
+      return 0;
+  }
+}
+
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
   rc_typed_value_t value1, value2;
 
@@ -257,15 +301,7 @@ int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
       }
 
     case RC_VALUE_TYPE_FLOAT:
-      switch (self->oper) {
-        case RC_OPERATOR_EQ: return value1.f32 == value2.f32;
-        case RC_OPERATOR_NE: return value1.f32 != value2.f32;
-        case RC_OPERATOR_LT: return value1.f32 < value2.f32;
-        case RC_OPERATOR_LE: return value1.f32 <= value2.f32;
-        case RC_OPERATOR_GT: return value1.f32 > value2.f32;
-        case RC_OPERATOR_GE: return value1.f32 >= value2.f32;
-        default: return 1;
-      }
+      return rc_condition_compare_floats(value1.f32, value2.f32, self->oper);
 
     default:
       return 1;

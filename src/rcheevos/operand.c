@@ -200,7 +200,6 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_indirect, 
         }
 
         self->type = RC_OPERAND_FP;
-
       }
       else {
         /* not a floating point value, make sure something was read and advance the read pointer */
