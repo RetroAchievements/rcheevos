@@ -45,50 +45,62 @@ int rc_parse_memref(const char** memaddr, char* size, unsigned* address) {
   char* end;
   unsigned long value;
 
-  if (*aux++ != '0')
-    return RC_INVALID_MEMORY_OPERAND;
-
-  if (*aux != 'x' && *aux != 'X')
-    return RC_INVALID_MEMORY_OPERAND;
-  aux++;
-
-  switch (*aux++) {
-    /* ordered by estimated frequency in case compiler doesn't build a jump table */
-    case 'h': case 'H': *size = RC_MEMSIZE_8_BITS; break;
-    case ' ':           *size = RC_MEMSIZE_16_BITS; break;
-    case 'x': case 'X': *size = RC_MEMSIZE_32_BITS; break;
-
-    case 'm': case 'M': *size = RC_MEMSIZE_BIT_0; break;
-    case 'n': case 'N': *size = RC_MEMSIZE_BIT_1; break;
-    case 'o': case 'O': *size = RC_MEMSIZE_BIT_2; break;
-    case 'p': case 'P': *size = RC_MEMSIZE_BIT_3; break;
-    case 'q': case 'Q': *size = RC_MEMSIZE_BIT_4; break;
-    case 'r': case 'R': *size = RC_MEMSIZE_BIT_5; break;
-    case 's': case 'S': *size = RC_MEMSIZE_BIT_6; break;
-    case 't': case 'T': *size = RC_MEMSIZE_BIT_7; break;
-    case 'l': case 'L': *size = RC_MEMSIZE_LOW; break;
-    case 'u': case 'U': *size = RC_MEMSIZE_HIGH; break;
-    case 'k': case 'K': *size = RC_MEMSIZE_BITCOUNT; break;
-    case 'w': case 'W': *size = RC_MEMSIZE_24_BITS; break;
-    case 'g': case 'G': *size = RC_MEMSIZE_32_BITS_BE; break;
-    case 'i': case 'I': *size = RC_MEMSIZE_16_BITS_BE; break;
-    case 'j': case 'J': *size = RC_MEMSIZE_24_BITS_BE; break;
-
-    /* case 'v': case 'V': */
-    /* case 'y': case 'Y': 64 bit? */
-    /* case 'z': case 'Z': 128 bit? */
-
-    case '0': case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-    case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
-    case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
-      /* legacy support - addresses without a size prefix are assumed to be 16-bit */
-      aux--;
-      *size = RC_MEMSIZE_16_BITS;
-      break;
-
-    default:
+  if (aux[0] == '0') {
+    if (aux[1] != 'x' && aux[1] != 'X')
       return RC_INVALID_MEMORY_OPERAND;
+
+    aux += 2;
+    switch (*aux++) {
+      /* ordered by estimated frequency in case compiler doesn't build a jump table */
+      case 'h': case 'H': *size = RC_MEMSIZE_8_BITS; break;
+      case ' ':           *size = RC_MEMSIZE_16_BITS; break;
+      case 'x': case 'X': *size = RC_MEMSIZE_32_BITS; break;
+
+      case 'm': case 'M': *size = RC_MEMSIZE_BIT_0; break;
+      case 'n': case 'N': *size = RC_MEMSIZE_BIT_1; break;
+      case 'o': case 'O': *size = RC_MEMSIZE_BIT_2; break;
+      case 'p': case 'P': *size = RC_MEMSIZE_BIT_3; break;
+      case 'q': case 'Q': *size = RC_MEMSIZE_BIT_4; break;
+      case 'r': case 'R': *size = RC_MEMSIZE_BIT_5; break;
+      case 's': case 'S': *size = RC_MEMSIZE_BIT_6; break;
+      case 't': case 'T': *size = RC_MEMSIZE_BIT_7; break;
+      case 'l': case 'L': *size = RC_MEMSIZE_LOW; break;
+      case 'u': case 'U': *size = RC_MEMSIZE_HIGH; break;
+      case 'k': case 'K': *size = RC_MEMSIZE_BITCOUNT; break;
+      case 'w': case 'W': *size = RC_MEMSIZE_24_BITS; break;
+      case 'g': case 'G': *size = RC_MEMSIZE_32_BITS_BE; break;
+      case 'i': case 'I': *size = RC_MEMSIZE_16_BITS_BE; break;
+      case 'j': case 'J': *size = RC_MEMSIZE_24_BITS_BE; break;
+
+      /* case 'v': case 'V': */
+      /* case 'y': case 'Y': 64 bit? */
+      /* case 'z': case 'Z': 128 bit? */
+
+      case '0': case '1': case '2': case '3': case '4':
+      case '5': case '6': case '7': case '8': case '9':
+      case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+      case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+        /* legacy support - addresses without a size prefix are assumed to be 16-bit */
+        aux--;
+        *size = RC_MEMSIZE_16_BITS;
+        break;
+
+      default:
+        return RC_INVALID_MEMORY_OPERAND;
+    }
+  }
+  else if (aux[0] == 'f' || aux[0] == 'F') {
+    ++aux;
+    switch (*aux++) {
+      case 'f': case 'F': *size = RC_MEMSIZE_FLOAT; break;
+      case 'm': case 'M': *size = RC_MEMSIZE_MBF32; break;
+
+      default:
+        return RC_INVALID_FP_OPERAND;
+    }
+  }
+  else {
+    return RC_INVALID_MEMORY_OPERAND;
   }
 
   value = strtoul(aux, &end, 16);

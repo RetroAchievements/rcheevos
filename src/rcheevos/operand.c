@@ -142,6 +142,14 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_indirect, 
       break;
 
     case 'f': case 'F': /* floating point constant */
+      if (isalpha((unsigned char)aux[1])) {
+        ret = rc_parse_operand_memory(self, &aux, parse, is_indirect);
+
+        if (ret < 0)
+          return ret;
+
+        break;
+      }
       allow_decimal = 1;
       /* fall through */
     case 'v': case 'V': /* signed integer constant */
