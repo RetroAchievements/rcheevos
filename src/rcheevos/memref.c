@@ -106,8 +106,8 @@ int rc_parse_memref(const char** memaddr, char* size, unsigned* address) {
 
 static void rc_transform_memref_float(rc_typed_value_t* value) {
   /* decodes an IEEE 754 float */
-  const unsigned mantissa = (value->u32 & 0x7FFFFF) | 0x800000;
-  double dbl = ((double)mantissa) / ((double)0x800000);
+  const unsigned significand = (value->u32 & 0x7FFFFF) | 0x800000;
+  double dbl = ((double)significand) / ((double)0x800000);
   const int exponent = ((value->u32 >> 23) & 0xFF);
 
   if (exponent >= 127)
@@ -116,6 +116,30 @@ static void rc_transform_memref_float(rc_typed_value_t* value) {
     dbl /= (double)(1 << (127 - exponent));
 
   if (value->u32 & 0x80000000)
+    value->f32 = (float)-dbl;
+  else
+    value->f32 = (float)dbl;
+
+  value->type = RC_VALUE_TYPE_FLOAT;
+}
+
+static void rc_transform_memref_mbf32(rc_typed_value_t* value) {
+  /* decodes a Microsoft Binary Format float */
+  /* NOTE: 32-bit MBF is stored in memory as big endian (at least for Apple II) */
+  const unsigned significand = ((value->u32 & 0xFF000000) >> 24) |
+                               ((value->u32 & 0x00FF0000) >> 8) |
+                               ((value->u32 & 0x00007F00) << 8) | 0x800000;
+  double dbl = ((double)significand) / ((double)0x800000);
+  const int exponent = (value->u32 & 0xFF);
+
+  if (exponent > 128)
+    dbl *= (double)(1 << (exponent - 129));
+  else if (exponent == 0)
+    dbl = 0;
+  else
+    dbl /= (double)(1 << (129 - exponent));
+
+  if (value->u32 & 0x00008000)
     value->f32 = (float)-dbl;
   else
     value->f32 = (float)dbl;
@@ -209,6 +233,10 @@ void rc_transform_memref_value(rc_typed_value_t* value, char size) {
 
     case RC_MEMSIZE_FLOAT:
       rc_transform_memref_float(value);
+      break;
+
+    case RC_MEMSIZE_MBF32:
+      rc_transform_memref_mbf32(value);
       break;
 
     default:

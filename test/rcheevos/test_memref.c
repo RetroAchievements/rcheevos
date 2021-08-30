@@ -87,6 +87,17 @@ static void test_transforms(void)
   TEST_PARAMS3(test_transform_float, 0x40490FDB, RC_MEMSIZE_FLOAT, 3.14159274101257324);
   TEST_PARAMS3(test_transform_float, 0x3EAAAAAB, RC_MEMSIZE_FLOAT, 0.333333334326744076);
   TEST_PARAMS3(test_transform_float, 0x429A4492, RC_MEMSIZE_FLOAT, 77.1339);
+
+  /* MBF values are stored big endian (at least on Apple II), so will be byteswapped
+   * when passed to rc_transform_memref_value */
+  TEST_PARAMS3(test_transform_float, 0x00000081, RC_MEMSIZE_MBF32, 1.0);        /* 81 00 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x00002084, RC_MEMSIZE_MBF32, 10.0);       /* 84 20 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x00004687, RC_MEMSIZE_MBF32, 99.0);       /* 87 46 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x00000000, RC_MEMSIZE_MBF32, 0.0);        /* 00 00 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x00000080, RC_MEMSIZE_MBF32, 0.5);        /* 80 00 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x00008082, RC_MEMSIZE_MBF32, -2.0);       /* 82 80 00 00 */
+  TEST_PARAMS3(test_transform_float, 0xF3043581, RC_MEMSIZE_MBF32, 1.41421354); /* 81 34 04 F3 */
+  TEST_PARAMS3(test_transform_float, 0xDB0F4983, RC_MEMSIZE_MBF32, 6.28318548); /* 83 49 0F DB */
 }
 
 static int get_memref_count(rc_parse_state_t* parse) {
