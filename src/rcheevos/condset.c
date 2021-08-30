@@ -94,6 +94,9 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
       else if ((*next)->operand2.type == RC_OPERAND_CONST) {
         measured_target = (*next)->operand2.value.num;
       }
+      else if ((*next)->operand2.type == RC_OPERAND_FP) {
+        measured_target = (unsigned)(*next)->operand2.value.dbl;
+      }
       else {
         parse->offset = RC_INVALID_MEASURED_TARGET;
         return 0;

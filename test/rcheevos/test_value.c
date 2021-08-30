@@ -5,7 +5,8 @@
 
 static void test_evaluate_value(const char* memaddr, int expected_value) {
   rc_value_t* self;
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  /* bytes 5-8 are the float value for pi */
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56, 0xDB, 0x0F, 0x49, 0x40};
   memory_t memory;
   char buffer[2048];
   unsigned* overflow;
@@ -508,6 +509,11 @@ void test_value(void) {
   /* measured format requires a measured condition */
   TEST_PARAMS2(test_invalid_value, "A:0xH0002_0xH0003>10.99.", RC_INVALID_VALUE_FLAG); /* no flag on condition 2 */
   TEST_PARAMS2(test_invalid_value, "A:0xH0002_A:0xH0003", RC_MISSING_VALUE_MEASURED);
+
+  /* measured value with float data */
+  TEST_PARAMS2(test_evaluate_value, "M:fF0005", 3);               /* 3.141592 -> 3 */
+  TEST_PARAMS2(test_evaluate_value, "A:fF0005*10_M:0", 31);       /* 3.141592 x 10 -> 31.415 -> 31 */
+  TEST_PARAMS2(test_evaluate_value, "A:fF0005*f11.2_M:f6.9", 42); /* 3.141592 x 11.2 -> 35.185 + 6.9 ->  -> 42.085 -> 42 */
 
   /* delta should initially be 0, so a hit will be tallied */
   TEST_PARAMS2(test_evaluate_value, "M:0xH0002!=d0xH0002", 1);

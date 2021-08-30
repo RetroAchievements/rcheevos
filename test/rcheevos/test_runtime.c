@@ -189,7 +189,8 @@ static void test_deactivate_achievements(void)
 
 static void test_achievement_measured(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+    /* bytes 3-7 are the float value for 16*pi */
+  unsigned char ram[] = { 0, 10, 10, 0xDB, 0x0F, 0x49, 0x41 };
   char buffer[32];
   memory_t memory;
   rc_runtime_t runtime;
@@ -204,6 +205,7 @@ static void test_achievement_measured(void)
   assert_activate_achievement(&runtime, 1, "0xH0002==10");
   assert_activate_achievement(&runtime, 2, "M:0xH0002==10");
   assert_activate_achievement(&runtime, 3, "G:0xH0002==10");
+  assert_activate_achievement(&runtime, 4, "M:fF0003==f12.56637");
 
   /* achievements are true, should remain in waiting state with no measured value */
   assert_do_frame(&runtime, &memory);
@@ -222,12 +224,18 @@ static void test_achievement_measured(void)
   ASSERT_NUM_EQUALS(target, 10);
   ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
   ASSERT_STR_EQUALS(buffer, "0%");
-  ASSERT_FALSE(rc_runtime_get_achievement_measured(&runtime, 4, &value, &target));
-  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 4, buffer, sizeof(buffer)));
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 4, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 12);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 4, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "0/12");
+  ASSERT_FALSE(rc_runtime_get_achievement_measured(&runtime, 5, &value, &target));
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 5, buffer, sizeof(buffer)));
   ASSERT_STR_EQUALS(buffer, "");
 
   /* achievements are false, should activate */
   ram[2] = 9;
+  ram[6] = 0x40;
   assert_do_frame(&runtime, &memory);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
@@ -244,9 +252,15 @@ static void test_achievement_measured(void)
   ASSERT_NUM_EQUALS(target, 10);
   ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
   ASSERT_STR_EQUALS(buffer, "90%");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 4, &value, &target));
+  ASSERT_NUM_EQUALS(value, 3);
+  ASSERT_NUM_EQUALS(target, 12);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 4, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "3/12"); /* captured measured value and target are integers, so 3.14/12.56 -> 3/12 */
 
   /* value greater than target (i.e. "6 >= 5" should report maximum "5/5" or "100%" */
   ram[2] = 12;
+  ram[6] = 0x42;
   assert_do_frame(&runtime, &memory);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
@@ -263,9 +277,15 @@ static void test_achievement_measured(void)
   ASSERT_NUM_EQUALS(target, 10);
   ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
   ASSERT_STR_EQUALS(buffer, "100%");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 4, &value, &target));
+  ASSERT_NUM_EQUALS(value, 50);
+  ASSERT_NUM_EQUALS(target, 12);
+  ASSERT_TRUE(rc_runtime_format_achievement_measured(&runtime, 4, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "12/12");
 
   /* achievements are true, should trigger - triggered achievement is not measurable */
   ram[2] = 10;
+  ram[6] = 0x41;
   assert_do_frame(&runtime, &memory);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
@@ -281,6 +301,11 @@ static void test_achievement_measured(void)
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0);
   ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 3, buffer, sizeof(buffer)));
+  ASSERT_STR_EQUALS(buffer, "");
+  ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 4, &value, &target));
+  ASSERT_NUM_EQUALS(value, 0);
+  ASSERT_NUM_EQUALS(target, 0);
+  ASSERT_FALSE(rc_runtime_format_achievement_measured(&runtime, 4, buffer, sizeof(buffer)));
   ASSERT_STR_EQUALS(buffer, "");
 
   rc_runtime_destroy(&runtime);
