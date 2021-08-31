@@ -269,7 +269,7 @@ static int rc_luapeek(lua_State* L) {
 
 #endif /* RC_DISABLE_LUA */
 
-int rc_operand_is_memref(rc_operand_t* self) {
+int rc_operand_is_memref(const rc_operand_t* self) {
   switch (self->type) {
     case RC_OPERAND_CONST:
     case RC_OPERAND_FP:

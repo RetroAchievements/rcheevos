@@ -1,36 +1,30 @@
 #include "rc_internal.h"
 
-static void rc_update_condition_pause(rc_condition_t* condition, int* in_pause) {
-  if (condition->next != 0) {
-    rc_update_condition_pause(condition->next, in_pause);
-  }
+static void rc_update_condition_pause(rc_condition_t* condition) {
+  rc_condition_t* subclause = condition;
 
-  switch (condition->type) {
-    case RC_CONDITION_PAUSE_IF:
-      *in_pause = condition->pause = 1;
-      break;
+  while (condition) {
+    if (condition->type == RC_CONDITION_PAUSE_IF) {
+      while (subclause != condition) {
+        subclause->pause = 1;
+        subclause = subclause->next;
+      }
+      condition->pause = 1;
+    }
+    else {
+      condition->pause = 0;
+    }
 
-    case RC_CONDITION_ADD_SOURCE:
-    case RC_CONDITION_SUB_SOURCE:
-    case RC_CONDITION_ADD_HITS:
-    case RC_CONDITION_SUB_HITS:
-    case RC_CONDITION_AND_NEXT:
-    case RC_CONDITION_OR_NEXT:
-    case RC_CONDITION_ADD_ADDRESS:
-    case RC_CONDITION_RESET_NEXT_IF:
-      condition->pause = (char)*in_pause;
-      break;
+    if (!rc_condition_is_combining(condition))
+      subclause = condition->next;
 
-    default:
-      *in_pause = condition->pause = 0;
-      break;
+    condition = condition->next;
   }
 }
 
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, int is_value) {
   rc_condset_t* self;
   rc_condition_t** next;
-  int in_pause;
   int in_add_address;
   unsigned measured_target = 0;
 
@@ -132,10 +126,8 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
 
   *next = 0;
 
-  if (parse->buffer != 0) {
-    in_pause = 0;
-    rc_update_condition_pause(self->conditions, &in_pause);
-  }
+  if (parse->buffer != 0)
+    rc_update_condition_pause(self->conditions);
 
   return self;
 }
