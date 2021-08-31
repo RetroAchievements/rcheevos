@@ -84,7 +84,7 @@ static const char* size_string(char size) {
 
 static const char* operator_string(char oper) {
   switch (oper) {
-    case RC_OPERATOR_NONE: return "&";
+    case RC_OPERATOR_NONE: return "";
     case RC_OPERATOR_AND: return "&";
     case RC_OPERATOR_MULT: return "*";
     case RC_OPERATOR_DIV: return "/";
