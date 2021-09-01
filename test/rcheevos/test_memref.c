@@ -3,6 +3,8 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
+#include <float.h>
+
 static void test_shared_size(char size, char expected)
 {
   ASSERT_NUM_EQUALS(rc_memref_shared_size(size), expected);
@@ -45,7 +47,35 @@ static void test_transform_float(unsigned value, char size, double expected)
   typed_value.type = RC_VALUE_TYPE_UNSIGNED;
   typed_value.u32 = value;
   rc_transform_memref_value(&typed_value, size);
-  ASSERT_NUM_EQUALS(typed_value.f32, (float)expected);
+  ASSERT_FLOAT_EQUALS(typed_value.f32, expected);
+}
+
+static void test_transform_float_inf(unsigned value, char size)
+{
+  /* C89 does not provide defines for NAN and INFINITY, nor does it provide isnan() or isinf() functions */
+  rc_typed_value_t typed_value;
+  typed_value.type = RC_VALUE_TYPE_UNSIGNED;
+  typed_value.u32 = value;
+  rc_transform_memref_value(&typed_value, size);
+
+  if (typed_value.f32 < FLT_MAX) {
+    /* infinity will be greater than max float value */
+    ASSERT_FAIL("result of transform is not infinity")
+  }
+}
+
+static void test_transform_float_nan(unsigned value, char size)
+{
+  /* C89 does not provide defines for NAN and INFINITY, nor does it provide isnan() or isinf() functions */
+  rc_typed_value_t typed_value;
+  typed_value.type = RC_VALUE_TYPE_UNSIGNED;
+  typed_value.u32 = value;
+  rc_transform_memref_value(&typed_value, size);
+
+  if (typed_value.f32 == typed_value.f32) {
+    /* NaN cannot be compared, will fail equality check with itself */
+    ASSERT_FAIL("result of transform is not NaN")
+  }
 }
 
 static void test_transforms(void)
@@ -81,15 +111,20 @@ static void test_transforms(void)
 
   TEST_PARAMS3(test_transform_float, 0x3F800000, RC_MEMSIZE_FLOAT, 1.0);
   TEST_PARAMS3(test_transform_float, 0x41460000, RC_MEMSIZE_FLOAT, 12.375);
-  TEST_PARAMS3(test_transform_float, 0x42883EF9, RC_MEMSIZE_FLOAT, 68.123);
-  TEST_PARAMS3(test_transform_float, 0x80000000, RC_MEMSIZE_FLOAT, 0.0);
+  TEST_PARAMS3(test_transform_float, 0x42883EFA, RC_MEMSIZE_FLOAT, 68.123);
+  TEST_PARAMS3(test_transform_float, 0x00000000, RC_MEMSIZE_FLOAT, 0.0);
+  TEST_PARAMS3(test_transform_float, 0x80000000, RC_MEMSIZE_FLOAT, -0.0);
   TEST_PARAMS3(test_transform_float, 0xC0000000, RC_MEMSIZE_FLOAT, -2.0);
   TEST_PARAMS3(test_transform_float, 0x40490FDB, RC_MEMSIZE_FLOAT, 3.14159274101257324);
   TEST_PARAMS3(test_transform_float, 0x3EAAAAAB, RC_MEMSIZE_FLOAT, 0.333333334326744076);
-  TEST_PARAMS3(test_transform_float, 0x429A4492, RC_MEMSIZE_FLOAT, 77.1339);
+  TEST_PARAMS3(test_transform_float, 0x429A4492, RC_MEMSIZE_FLOAT, 77.133926);
+  TEST_PARAMS3(test_transform_float, 0x58635FA9, RC_MEMSIZE_FLOAT, 1000000000000000.0);
+  TEST_PARAMS3(test_transform_float, 0x24E69595, RC_MEMSIZE_FLOAT, 0.0000000000000001);
+  TEST_PARAMS2(test_transform_float_inf, 0x7F800000, RC_MEMSIZE_FLOAT);
+  TEST_PARAMS2(test_transform_float_nan, 0x7FFFFFFF, RC_MEMSIZE_FLOAT);
 
   /* MBF values are stored big endian (at least on Apple II), so will be byteswapped
-   * when passed to rc_transform_memref_value */
+   * when passed to rc_transform_memref_value. MBF doesn't support infinity or NaN. */
   TEST_PARAMS3(test_transform_float, 0x00000081, RC_MEMSIZE_MBF32, 1.0);        /* 81 00 00 00 */
   TEST_PARAMS3(test_transform_float, 0x00002084, RC_MEMSIZE_MBF32, 10.0);       /* 84 20 00 00 */
   TEST_PARAMS3(test_transform_float, 0x00004687, RC_MEMSIZE_MBF32, 99.0);       /* 87 46 00 00 */

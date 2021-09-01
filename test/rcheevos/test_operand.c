@@ -130,7 +130,7 @@ static void test_evaluate_operand_float(const char* memaddr, memory_t* memory, d
   rc_destroy_parse_state(&parse);
 
   value = evaluate_operand_float(&self, memory, memrefs);
-  ASSERT_NUM_EQUALS(value, expected_value);
+  ASSERT_FLOAT_EQUALS(value, expected_value);
 }
 static void test_parse_memory_references() {
   /* sizes */

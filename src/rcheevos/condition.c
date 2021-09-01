@@ -1,6 +1,7 @@
 #include "rc_internal.h"
 
 #include <stdlib.h>
+#include <float.h>
 
 static int rc_parse_operator(const char** memaddr) {
   const char* oper = *memaddr;
@@ -218,10 +219,9 @@ static int rc_condition_compare_floats(float f1, float f2, char oper) {
   }
   else {
     /* attempt to match 7 significant digits (24-bit significand supports just over 7 significant decimal digits) */
-    const float epsilon = (float)0.0000001;
     const float abs1 = (f1 < 0) ? -f1 : f1;
     const float abs2 = (f2 < 0) ? -f2 : f2;
-    const float threshold = ((abs1 < abs2) ? abs1 : abs2) * epsilon;
+    const float threshold = ((abs1 < abs2) ? abs1 : abs2) * FLT_EPSILON;
     const float diff = f1 - f2;
     const float abs_diff = (diff < 0) ? -diff : diff;
 

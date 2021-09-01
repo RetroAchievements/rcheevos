@@ -2,6 +2,7 @@
 
 #include <stdlib.h> /* malloc/realloc */
 #include <string.h> /* memcpy */
+#include <math.h>   /* INFINITY/NAN */
 
 #define MEMREF_PLACEHOLDER_ADDRESS 0xFFFFFFFF
 
@@ -116,21 +117,64 @@ int rc_parse_memref(const char** memaddr, char* size, unsigned* address) {
   return RC_OK;
 }
 
+static float rc_build_float(unsigned mantissa_bits, int exponent, int sign) {
+  /* 32-bit float has a 23-bit mantissa and 8-bit exponent */
+  const unsigned mantissa = mantissa_bits | 0x800000;
+  double dbl = ((double)mantissa) / ((double)0x800000);
+
+  if (exponent > 127) {
+    /* exponent above 127 is a special number */
+    if (mantissa_bits == 0) {
+      /* infinity */
+#ifdef INFINITY /* INFINITY and NAN #defines require C99 */
+      dbl = INFINITY;
+#else
+      dbl = -log(0.0);
+#endif
+    }
+    else {
+      /* NaN */
+#ifdef NAN
+      dbl = NAN;
+#else
+      dbl = -sqrt(-1);
+#endif
+    }
+  }
+  else if (exponent > 0) {
+    /* exponent from 1 to 127 is a number greater than 1 */
+    while (exponent > 30) {
+      dbl *= (double)(1 << 30);
+      exponent -= 30;
+    }
+    dbl *= (double)(1 << exponent);
+  }
+  else if (exponent < 0) {
+    /* exponent from -1 to -127 is a number less than 1 */
+    exponent = -exponent;
+    while (exponent > 30) {
+      dbl /= (double)(1 << 30);
+      exponent -= 30;
+    }
+    dbl /= (double)(1 << exponent);
+  }
+  else {
+    /* exponent of 0 requires no adjustment */
+  }
+
+  return (sign) ? (float)-dbl : (float)dbl;
+}
+
 static void rc_transform_memref_float(rc_typed_value_t* value) {
   /* decodes an IEEE 754 float */
-  const unsigned significand = (value->u32 & 0x7FFFFF) | 0x800000;
-  double dbl = ((double)significand) / ((double)0x800000);
-  const int exponent = ((value->u32 >> 23) & 0xFF);
+  const unsigned mantissa = (value->u32 & 0x7FFFFF);
+  const int exponent = (int)((value->u32 >> 23) & 0xFF) - 127;
+  const int sign = (value->u32 & 0x80000000);
 
-  if (exponent >= 127)
-    dbl *= (double)(1 << (exponent - 127));
+  if (mantissa == 0 && exponent == -127)
+    value->f32 = (sign) ? -0.0f : 0.0f;
   else
-    dbl /= (double)(1 << (127 - exponent));
-
-  if (value->u32 & 0x80000000)
-    value->f32 = (float)-dbl;
-  else
-    value->f32 = (float)dbl;
+    value->f32 = rc_build_float(mantissa, exponent, sign);
 
   value->type = RC_VALUE_TYPE_FLOAT;
 }
@@ -138,23 +182,16 @@ static void rc_transform_memref_float(rc_typed_value_t* value) {
 static void rc_transform_memref_mbf32(rc_typed_value_t* value) {
   /* decodes a Microsoft Binary Format float */
   /* NOTE: 32-bit MBF is stored in memory as big endian (at least for Apple II) */
-  const unsigned significand = ((value->u32 & 0xFF000000) >> 24) |
-                               ((value->u32 & 0x00FF0000) >> 8) |
-                               ((value->u32 & 0x00007F00) << 8) | 0x800000;
-  double dbl = ((double)significand) / ((double)0x800000);
-  const int exponent = (value->u32 & 0xFF);
+  const unsigned mantissa = ((value->u32 & 0xFF000000) >> 24) |
+                            ((value->u32 & 0x00FF0000) >> 8) |
+                            ((value->u32 & 0x00007F00) << 8);
+  const int exponent = (int)(value->u32 & 0xFF) - 129;
+  const int sign = (value->u32 & 0x00008000);
 
-  if (exponent > 128)
-    dbl *= (double)(1 << (exponent - 129));
-  else if (exponent == 0)
-    dbl = 0;
+  if (mantissa == 0 && exponent == -129)
+    value->f32 = (sign) ? -0.0f : 0.0f;
   else
-    dbl /= (double)(1 << (129 - exponent));
-
-  if (value->u32 & 0x00008000)
-    value->f32 = (float)-dbl;
-  else
-    value->f32 = (float)dbl;
+    value->f32 = rc_build_float(mantissa, exponent, sign);
 
   value->type = RC_VALUE_TYPE_FLOAT;
 }
