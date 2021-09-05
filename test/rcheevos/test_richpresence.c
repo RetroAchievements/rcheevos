@@ -957,7 +957,7 @@ static void test_macro_unterminated() {
   * since we don't detect unknown macros in `rc_richpresence_size`, this was causing a
   * write-past-end-of-buffer memory corruption error. this test recreated that error. */
   assert_parse_richpresence(&richpresence, buffer, "Display:\n@Points(0x 0001");
-  assert_richpresence_output(richpresence, &memory, "[Unknown macro]Points(0x 0001");
+  assert_richpresence_output(richpresence, &memory, "@Points(0x 0001");
 }
 
 static void test_macro_without_parameter() {
@@ -991,6 +991,62 @@ static void test_macro_non_numeric_parameter() {
   int result = rc_richpresence_size_lines("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(Zero) Points", &lines);
   ASSERT_NUM_EQUALS(result, RC_INVALID_MEMORY_OPERAND);
   ASSERT_NUM_EQUALS(lines, 5);
+}
+
+static void test_asciichar() {
+  unsigned char ram[] = { 'K', 'e', 'n', '\0', 'V', 'e', 'g', 'a', 1 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:Round\n0= (Round 1)\n1= (Round 2)\n\n"
+      "Display:\n@ASCIIChar(0xH0)@ASCIIChar(0xH1)@ASCIIChar(0xH2)@ASCIIChar(0xH3) vs @ASCIIChar(0xH4)@ASCIIChar(0xH5)@ASCIIChar(0xH6)@ASCIIChar(0xH7)@Round(0xH8)");
+  assert_richpresence_output(richpresence, &memory, "Ken vs Vega (Round 2)");
+
+  ram[0] = 'R'; ram[1] = 'o'; ram[2] = 's'; ram[3] = 'e';
+  ram[4] = 'K'; ram[5] = 'e'; ram[6] = 'n'; ram[7] = '\0';
+  ram[8] = 0;
+  assert_richpresence_output(richpresence, &memory, "Rose vs Ken (Round 1)");
+}
+
+static void test_ascii8(unsigned char c1, unsigned char c2, unsigned char c3, unsigned char c4,
+    unsigned char c5, unsigned char c6, unsigned char c7, unsigned char c8, char* expected) {
+  unsigned char ram[9];
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  ram[0] = c1; ram[1] = c2; ram[2] = c3; ram[3] = c4;
+  ram[4] = c5; ram[5] = c6; ram[6] = c7; ram[7] = c8;
+  ram[8] = '~';
+
+  assert_parse_richpresence(&richpresence, buffer, "Display:\n@ASCIIChar(0xH0)@ASCIIChar(0xH1)@ASCIIChar(0xH2)@ASCIIChar(0xH3)@ASCIIChar(0xH4)@ASCIIChar(0xH5)@ASCIIChar(0xH6)@ASCIIChar(0xH7)");
+  assert_richpresence_output(richpresence, &memory, expected);
+}
+
+static void test_unicode4(unsigned short c1, unsigned short c2, unsigned short c3, unsigned short c4, char* expected) {
+  unsigned char ram[10];
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  ram[0] = c1 & 0xFF; ram[1] = (c1 >> 8) & 0xFF;
+  ram[2] = c2 & 0xFF; ram[3] = (c2 >> 8) & 0xFF;
+  ram[4] = c3 & 0xFF; ram[5] = (c3 >> 8) & 0xFF;
+  ram[6] = c4 & 0xFF; ram[7] = (c4 >> 8) & 0xFF;
+  ram[8] = '~'; ram[9] = '\0';
+
+  assert_parse_richpresence(&richpresence, buffer, "Display:\n@UnicodeChar(0x 0)@UnicodeChar(0x 2)@UnicodeChar(0x 4)@UnicodeChar(0x 6)");
+  assert_richpresence_output(richpresence, &memory, expected);
 }
 
 static void test_random_text_between_sections() {
@@ -1127,6 +1183,25 @@ void test_richpresence(void) {
   TEST(test_macro_without_parameter);
   TEST(test_macro_without_parameter_conditional_display);
   TEST(test_macro_non_numeric_parameter);
+
+  /* asciichar */
+  TEST(test_asciichar);
+  TEST_PARAMS9(test_ascii8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, "");
+  TEST_PARAMS9(test_ascii8, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, "ABCDEFGH");
+  TEST_PARAMS9(test_ascii8, 0x54, 0x65, 0x73, 0x74, 0x00, 0x00, 0x00, 0x00, "Test");
+  TEST_PARAMS9(test_ascii8, 0x54, 0x65, 0x73, 0x74, 0x00, 0x46, 0x6F, 0x6F, "Test");
+  TEST_PARAMS9(test_ascii8, 0x00, 0x54, 0x65, 0x73, 0x74, 0x00, 0x00, 0x00, "");
+  TEST_PARAMS9(test_ascii8, 0x31, 0x7E, 0x32, 0x7F, 0x33, 0x20, 0x34, 0x5E, "1~2?3 4^"); /* 7F out of range */
+  TEST_PARAMS9(test_ascii8, 0x54, 0x61, 0x62, 0x09, 0x31, 0x0D, 0x0E, 0x00, "Tab?1??"); /* control characters */
+
+  /* unicodechar */
+  TEST_PARAMS5(test_unicode4, 0x0000, 0x0000, 0x0000, 0x0000, "");
+  TEST_PARAMS5(test_unicode4, 0x0054, 0x0065, 0x0073, 0x0074, "Test");
+  TEST_PARAMS5(test_unicode4, 0x0000, 0x0065, 0x0073, 0x0074, "");
+  TEST_PARAMS5(test_unicode4, 0x00A9, 0x0031, 0x0032, 0x0033, "\xc2\xa9\x31\x32\x33"); /* two-byte unicode char */
+  TEST_PARAMS5(test_unicode4, 0x2260, 0x0020, 0x0040, 0x0040, "\xe2\x89\xa0 @@"); /* three-byte unicode char */
+  TEST_PARAMS5(test_unicode4, 0xD83D, 0xDEB6, 0x005F, 0x007A, "\xef\xbf\xbd\xef\xbf\xbd_z"); /* four-byte unicode pair */
+  TEST_PARAMS5(test_unicode4, 0x0009, 0x003E, 0x000D, 0x000A, "\xef\xbf\xbd>\xef\xbf\xbd\xef\xbf\xbd"); /* control characters */
 
   /* comments */
   TEST(test_random_text_between_sections); /* before official comments extra text was ignored, so was occassionally used to comment */

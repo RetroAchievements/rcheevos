@@ -8,7 +8,9 @@
 enum {
   RC_FORMAT_STRING = 101,
   RC_FORMAT_LOOKUP = 102,
-  RC_FORMAT_UNKNOWN_MACRO = 103
+  RC_FORMAT_UNKNOWN_MACRO = 103,
+  RC_FORMAT_ASCIICHAR = 104,
+  RC_FORMAT_UNICODECHAR = 105
 };
 
 static rc_memref_value_t* rc_alloc_helper_variable_memref_value(const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
@@ -73,6 +75,12 @@ static const char* rc_parse_line(const char* line, const char** end, rc_parse_st
   return nextline;
 }
 
+typedef struct rc_richpresence_builtin_macro_t {
+  const char* name;
+  size_t name_len;
+  unsigned short display_type;
+} rc_richpresence_builtin_macro_t;
+
 static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const char* line, const char* endline, rc_parse_state_t* parse, rc_richpresence_lookup_t* first_lookup) {
   rc_richpresence_display_t* self;
   rc_richpresence_display_part_t* part;
@@ -132,6 +140,8 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
 
     if (*ptr == '@') {
       /* handle macro part */
+      size_t macro_len;
+
       line = ++ptr;
       while (ptr < endline && *ptr != '(')
         ++ptr;
@@ -141,58 +151,69 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
         return 0;
       }
 
-      if (ptr > line) {
-        /* find the lookup and hook it up */
-        lookup = first_lookup;
-        while (lookup) {
-          if (strncmp(lookup->name, line, ptr - line) == 0 && lookup->name[ptr - line] == '\0') {
-            part = RC_ALLOC(rc_richpresence_display_part_t, parse);
-            *next = part;
-            next = &part->next;
+      macro_len = ptr - line;
 
-            part->text = lookup->name;
-            part->lookup = lookup;
-            part->display_type = lookup->format;
+      part = RC_ALLOC(rc_richpresence_display_part_t, parse);
+      memset(part, 0, sizeof(rc_richpresence_display_part_t));
+      *next = part;
+      next = &part->next;
 
-            in = line;
-            line = ++ptr;
-            while (ptr < endline && *ptr != ')')
-              ++ptr;
-            if (*ptr == ')') {
-              part->value = rc_alloc_helper_variable_memref_value(line, (int)(ptr-line), parse);
-              if (parse->offset < 0)
-                return 0;
-              ++ptr;
-            }
-            else {
-              /* non-terminated macro, dump the macro and the remaining portion of the line */
-              --in; /* already skipped over @ */
-              part->display_type = RC_FORMAT_STRING;
-              part->text = rc_alloc_str(parse, in, (int)(ptr - in));
-            }
+      part->display_type = RC_FORMAT_UNKNOWN_MACRO;
 
+      /* find the lookup and hook it up */
+      lookup = first_lookup;
+      while (lookup) {
+        if (strncmp(lookup->name, line, macro_len) == 0 && lookup->name[macro_len] == '\0') {
+          part->text = lookup->name;
+          part->lookup = lookup;
+          part->display_type = lookup->format;
+          break;
+        }
+
+        lookup = lookup->next;
+      }
+
+      if (!lookup) {
+        static const rc_richpresence_builtin_macro_t builtin_macros[] = {
+          {"ASCIIChar", 9, RC_FORMAT_ASCIICHAR},
+          {"UnicodeChar", 11, RC_FORMAT_UNICODECHAR},
+        };
+        int i;
+
+        for (i = 0; i < sizeof(builtin_macros) / sizeof(builtin_macros[0]); ++i) {
+          if (macro_len == builtin_macros[i].name_len &&
+              memcmp(builtin_macros[i].name, line, builtin_macros[i].name_len) == 0) {
+            part->text = builtin_macros[i].name;
+            part->lookup = NULL;
+            part->display_type = builtin_macros[i].display_type;
             break;
           }
-
-          lookup = lookup->next;
         }
+      }
 
-        if (!lookup) {
-          part = RC_ALLOC(rc_richpresence_display_part_t, parse);
-          memset(part, 0, sizeof(rc_richpresence_display_part_t));
-          *next = part;
-          next = &part->next;
+      /* find the closing parenthesis */
+      in = line;
+      line = ++ptr;
+      while (ptr < endline && *ptr != ')')
+        ++ptr;
 
-          /* find the closing parenthesis */
-          while (ptr < endline && *ptr != ')')
-            ++ptr;
-          if (*ptr == ')')
-            ++ptr;
+      if (*ptr != ')') {
+        /* non-terminated macro, dump the macro and the remaining portion of the line */
+        --in; /* already skipped over @ */
+        part->display_type = RC_FORMAT_STRING;
+        part->text = rc_alloc_str(parse, in, (int)(ptr - in));
+      }
+      else if (part->display_type != RC_FORMAT_UNKNOWN_MACRO) {
+        part->value = rc_alloc_helper_variable_memref_value(line, (int)(ptr - line), parse);
+        if (parse->offset < 0)
+            return 0;
 
-          /* assert: the allocated string is going to be smaller than the memory used for the parameter of the macro */
-          part->display_type = RC_FORMAT_UNKNOWN_MACRO;
-          part->text = rc_alloc_str(parse, line, (int)(ptr - line));
-        }
+        ++ptr;
+      }
+      else {
+        /* assert: the allocated string is going to be smaller than the memory used for the parameter of the macro */
+        ++ptr;
+        part->text = rc_alloc_str(parse, in, (int)(ptr - in));
       }
     }
 
@@ -655,6 +676,76 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         }
 
         chars = strlen(text);
+        break;
+
+      case RC_FORMAT_ASCIICHAR:
+        chars = 0;
+        text = tmp;
+
+        do {
+          value = part->value->value;
+          if (value == 0) {
+            /* null terminator - skip over remaining character macros */
+            while (part->next && part->next->display_type == RC_FORMAT_ASCIICHAR)
+              part = part->next;
+            break;
+          }
+
+          if (value < 32 || value >= 127)
+            value = '?';
+
+          tmp[chars++] = (char)value;
+          if (chars == sizeof(tmp) || !part->next || part->next->display_type != RC_FORMAT_ASCIICHAR)
+            break;
+
+          part = part->next;
+        } while (1);
+
+        tmp[chars] = '\0';
+        break;
+
+      case RC_FORMAT_UNICODECHAR:
+        chars = 0;
+        text = tmp;
+
+        do {
+          value = part->value->value;
+          if (value == 0) {
+            /* null terminator - skip over remaining character macros */
+            while (part->next && part->next->display_type == RC_FORMAT_UNICODECHAR)
+              part = part->next;
+            break;
+          }
+
+          if (value < 32 || value > 65535)
+            value = 0xFFFD; /* unicode replacement char */
+
+          if (value < 0x80) {
+            tmp[chars++] = (char)value;
+          }
+          else if (value < 0x0800) {
+            tmp[chars + 1] = (char)(0x80 | (value & 0x3F)); value >>= 6;
+            tmp[chars] = (char)(0xC0 | (value & 0x1F));
+            chars += 2;
+          }
+          else {
+            /* surrogate pair not supported, convert to replacement char */
+            if (value >= 0xD800 && value < 0xE000)
+              value = 0xFFFD;
+
+            tmp[chars + 2] = (char)(0x80 | (value & 0x3F)); value >>= 6;
+            tmp[chars + 1] = (char)(0x80 | (value & 0x3F)); value >>= 6;
+            tmp[chars] = (char)(0xE0 | (value & 0x1F));
+            chars += 3;
+          }
+
+          if (chars >= sizeof(tmp) - 3 || !part->next || part->next->display_type != RC_FORMAT_UNICODECHAR)
+            break;
+
+          part = part->next;
+        } while (1);
+
+        tmp[chars] = '\0';
         break;
 
       case RC_FORMAT_UNKNOWN_MACRO:
