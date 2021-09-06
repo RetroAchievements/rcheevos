@@ -175,6 +175,12 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
 
       if (!lookup) {
         static const rc_richpresence_builtin_macro_t builtin_macros[] = {
+          {"Number", 6, RC_FORMAT_VALUE},
+          {"Score", 5, RC_FORMAT_SCORE},
+          {"Centiseconds", 12, RC_FORMAT_CENTISECS},
+          {"Seconds", 7, RC_FORMAT_SECONDS},
+          {"Minutes", 7, RC_FORMAT_MINUTES},
+          {"SecondsAsMinutes", 16, RC_FORMAT_SECONDS_AS_MINUTES},
           {"ASCIIChar", 9, RC_FORMAT_ASCIICHAR},
           {"UnicodeChar", 11, RC_FORMAT_UNICODECHAR},
         };

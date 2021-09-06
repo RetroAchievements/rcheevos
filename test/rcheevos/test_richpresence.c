@@ -993,6 +993,22 @@ static void test_macro_non_numeric_parameter() {
   ASSERT_NUM_EQUALS(lines, 5);
 }
 
+static void test_builtin_macro(const char* macro, const char* expected) {
+  unsigned char ram[] = { 0x39, 0x30 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char script[128];
+  char buffer[256];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  snprintf(script, sizeof(script), "Display:\n@%s(0x 0)", macro);
+
+  assert_parse_richpresence(&richpresence, buffer, script);
+  assert_richpresence_output(richpresence, &memory, expected);
+}
+
 static void test_asciichar() {
   unsigned char ram[] = { 'K', 'e', 'n', '\0', 'V', 'e', 'g', 'a', 1 };
   memory_t memory;
@@ -1183,6 +1199,16 @@ void test_richpresence(void) {
   TEST(test_macro_without_parameter);
   TEST(test_macro_without_parameter_conditional_display);
   TEST(test_macro_non_numeric_parameter);
+
+  /* builtin macros */
+  TEST_PARAMS2(test_builtin_macro, "Number", "12345");
+  TEST_PARAMS2(test_builtin_macro, "Score", "012345");
+  TEST_PARAMS2(test_builtin_macro, "Centiseconds", "2:03.45");
+  TEST_PARAMS2(test_builtin_macro, "Seconds", "3h25:45");
+  TEST_PARAMS2(test_builtin_macro, "Minutes", "205h45");
+  TEST_PARAMS2(test_builtin_macro, "SecondsAsMinutes", "3h25");
+  TEST_PARAMS2(test_builtin_macro, "ASCIIChar", "?"); // 0x3039 is not a single ASCII char
+  TEST_PARAMS2(test_builtin_macro, "UnicodeChar", "\xe3\x80\xb9");
 
   /* asciichar */
   TEST(test_asciichar);
