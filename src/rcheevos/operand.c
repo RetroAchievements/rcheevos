@@ -438,7 +438,7 @@ void rc_evaluate_operand(rc_typed_value_t* result, rc_operand_t* self, rc_eval_s
   /* step 2: convert read memory to desired format */
   rc_transform_memref_value(result, self->size);
 
-  /* step 3: apply logic */
+  /* step 3: apply logic (BCD/invert) */
   if (result->type == RC_VALUE_TYPE_UNSIGNED)
     result->u32 = rc_transform_operand_value(result->u32, self);
 }

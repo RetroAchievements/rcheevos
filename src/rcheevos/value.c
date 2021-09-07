@@ -2,6 +2,7 @@
 
 #include <string.h> /* memset */
 #include <ctype.h> /* isdigit */
+#include <float.h> /* FLT_EPSILON */
 
 static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condset_t** next_clause;
@@ -188,13 +189,15 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int 
   return (parse.offset >= 0) ? self : NULL;
 }
 
-int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t peek, void* ud, lua_State* L) {
   rc_eval_state_t eval_state;
   rc_condset_t* condset;
-  int result = 0;
-  int paused = 1;
+  int valid = 0;
 
   rc_update_memref_values(self->memrefs, peek, ud);
+
+  value->i32 = 0;
+  value->type = RC_VALUE_TYPE_SIGNED;
 
   for (condset = self->conditions; condset != NULL; condset = condset->next) {
     memset(&eval_state, 0, sizeof(eval_state));
@@ -214,34 +217,46 @@ int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) 
       rc_reset_condset(condset);
 
       /* if the measured value came from a hit count, reset it too */
-      if (eval_state.measured_from_hits)
-        eval_state.measured_value = 0;
+      if (eval_state.measured_from_hits) {
+        eval_state.measured_value.u32 = 0;
+        eval_state.measured_value.type = RC_VALUE_TYPE_UNSIGNED;
+      }
     }
 
-    if (paused) {
+    if (!valid) {
       /* capture the first valid measurement */
-      result = (int)eval_state.measured_value;
-      paused = 0;
+      memcpy(value, &eval_state.measured_value, sizeof(*value));
+      valid = 1;
     }
     else {
       /* multiple condsets are currently only used for the MAX_OF operation.
        * only keep the condset's value if it's higher than the current highest value.
        */
-      if ((int)eval_state.measured_value > result)
-        result = (int)eval_state.measured_value;
+      if (rc_typed_value_compare(&eval_state.measured_value, value, RC_OPERATOR_GT))
+        memcpy(value, &eval_state.measured_value, sizeof(*value));
     }
   }
 
-  if (!paused) {
+  return valid;
+}
+
+int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+  rc_typed_value_t result;
+  int valid = rc_evaluate_value_typed(self, &result, peek, ud, L);
+
+  if (valid) {
     /* if not paused, store the value so that it's available when paused. */
-    rc_update_memref_value(&self->value, result);
+    rc_typed_value_convert(&result, RC_VALUE_TYPE_UNSIGNED);
+    rc_update_memref_value(&self->value, result.u32);
   }
   else {
     /* when paused, the Measured value will not be captured, use the last captured value. */
-    result = self->value.value;
+    result.u32 = self->value.value;
+    result.type = RC_VALUE_TYPE_UNSIGNED;
   }
 
-  return result;
+  rc_typed_value_convert(&result, RC_VALUE_TYPE_SIGNED);
+  return result.i32;
 }
 
 void rc_reset_value(rc_value_t* self) {
@@ -309,9 +324,29 @@ rc_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len, rc_pa
 }
 
 void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L) {
+  rc_typed_value_t result;
+
   while (variable) {
-    rc_evaluate_value(variable, peek, ud, L);
+    if (rc_evaluate_value_typed(variable, &result, peek, ud, L)) {
+      /* store the raw bytes and type to be restored by rc_typed_value_from_memref_value  */
+      rc_update_memref_value(&variable->value, result.u32);
+      variable->value.type = result.type;
+    }
+
     variable = variable->next;
+  }
+}
+
+void rc_typed_value_from_memref_value(rc_typed_value_t* value, const rc_memref_value_t* memref) {
+  value->u32 = memref->value;
+
+  if (memref->size == RC_MEMSIZE_VARIABLE) {
+    /* a variable can be any of the supported types, but the raw data was copied into u32 */
+    value->type = memref->type;
+  }
+  else {
+    /* not a variable, only u32 is supported */
+    value->type = RC_VALUE_TYPE_UNSIGNED;
   }
 }
 
@@ -542,4 +577,94 @@ void rc_typed_value_divide(rc_typed_value_t* value, const rc_typed_value_t* amou
 
   rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
   value->f32 /= amount->f32;
+}
+
+static int rc_typed_value_compare_floats(float f1, float f2, char oper) {
+  if (f1 == f2) {
+    /* exactly equal */
+  }
+  else {
+    /* attempt to match 7 significant digits (24-bit mantissa supports just over 7 significant decimal digits) */
+    /* https://stackoverflow.com/questions/17333/what-is-the-most-effective-way-for-float-and-double-comparison */
+    const float abs1 = (f1 < 0) ? -f1 : f1;
+    const float abs2 = (f2 < 0) ? -f2 : f2;
+    const float threshold = ((abs1 < abs2) ? abs1 : abs2) * FLT_EPSILON;
+    const float diff = f1 - f2;
+    const float abs_diff = (diff < 0) ? -diff : diff;
+
+    if (abs_diff <= threshold) {
+      /* approximately equal */
+    }
+    else if (diff > threshold) {
+      /* greater */
+      switch (oper) {
+        case RC_OPERATOR_NE:
+        case RC_OPERATOR_GT:
+        case RC_OPERATOR_GE:
+          return 1;
+
+        default:
+          return 0;
+      }
+    }
+    else {
+      /* lesser */
+      switch (oper) {
+        case RC_OPERATOR_NE:
+        case RC_OPERATOR_LT:
+        case RC_OPERATOR_LE:
+          return 1;
+
+        default:
+          return 0;
+      }
+    }
+  }
+
+  /* exactly or approximately equal */
+  switch (oper) {
+    case RC_OPERATOR_EQ:
+    case RC_OPERATOR_GE:
+    case RC_OPERATOR_LE:
+      return 1;
+
+    default:
+      return 0;
+  }
+}
+
+int rc_typed_value_compare(const rc_typed_value_t* value1, const rc_typed_value_t* value2, char oper) {
+  rc_typed_value_t converted_value2;
+  if (value2->type != value1->type)
+    value2 = rc_typed_value_convert_into(&converted_value2, value2, value1->type);
+
+  switch (value1->type) {
+    case RC_VALUE_TYPE_UNSIGNED:
+      switch (oper) {
+        case RC_OPERATOR_EQ: return value1->u32 == value2->u32;
+        case RC_OPERATOR_NE: return value1->u32 != value2->u32;
+        case RC_OPERATOR_LT: return value1->u32 < value2->u32;
+        case RC_OPERATOR_LE: return value1->u32 <= value2->u32;
+        case RC_OPERATOR_GT: return value1->u32 > value2->u32;
+        case RC_OPERATOR_GE: return value1->u32 >= value2->u32;
+        default: return 1;
+      }
+
+    case RC_VALUE_TYPE_SIGNED:
+      switch (oper) {
+        case RC_OPERATOR_EQ: return value1->i32 == value2->i32;
+        case RC_OPERATOR_NE: return value1->i32 != value2->i32;
+        case RC_OPERATOR_LT: return value1->i32 < value2->i32;
+        case RC_OPERATOR_LE: return value1->i32 <= value2->i32;
+        case RC_OPERATOR_GT: return value1->i32 > value2->i32;
+        case RC_OPERATOR_GE: return value1->i32 >= value2->i32;
+        default: return 1;
+      }
+
+    case RC_VALUE_TYPE_FLOAT:
+      return rc_typed_value_compare_floats(value1->f32, value2->f32, oper);
+
+    default:
+      return 1;
+  }
 }

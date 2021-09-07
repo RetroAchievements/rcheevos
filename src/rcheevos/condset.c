@@ -1,5 +1,7 @@
 #include "rc_internal.h"
 
+#include <string.h> /* memcpy */
+
 static void rc_update_condition_pause(rc_condition_t* condition, int* in_pause) {
   if (condition->next != 0) {
     rc_update_condition_pause(condition->next, in_pause);
@@ -169,14 +171,17 @@ static void rc_condset_update_indirect_memrefs(rc_condition_t* condition, int pr
   }
 }
 
-
 static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc_eval_state_t* eval_state) {
   rc_condition_t* condition;
   rc_typed_value_t value;
-  int set_valid, cond_valid, and_next, or_next, reset_next;
-  unsigned measured_value = 0;
-  unsigned total_hits = 0;
-  int can_measure = 1, measured_from_hits = 0;
+  int set_valid, cond_valid, and_next, or_next, reset_next, measured_from_hits, can_measure;
+  rc_typed_value_t measured_value;
+  unsigned total_hits;
+
+  measured_value.type = RC_VALUE_TYPE_NONE;
+  measured_from_hits = 0;
+  can_measure = 1;
+  total_hits = 0;
 
   eval_state->primed = 1;
   set_valid = 1;
@@ -213,12 +218,10 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         continue;
 
       case RC_CONDITION_MEASURED:
-        if (condition->required_hits == 0) {
+        if (condition->required_hits == 0 && can_measure) {
           /* Measured condition without a hit target measures the value of the left operand */
-          rc_evaluate_condition_value(&value, condition, eval_state);
-          rc_typed_value_add(&value, &eval_state->add_value);
-          rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
-          measured_value = value.u32;
+          rc_evaluate_condition_value(&measured_value, condition, eval_state);
+          rc_typed_value_add(&measured_value, &eval_state->add_value);
         }
         break;
 
@@ -362,13 +365,19 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         if (condition->required_hits != 0) {
           /* if there's a hit target, capture the current hits for recording Measured value later */
           measured_from_hits = 1;
-          measured_value = total_hits;
+          if (can_measure) {
+            measured_value.u32 = total_hits;
+            measured_value.type = RC_VALUE_TYPE_UNSIGNED;
+          }
         }
         break;
 
       case RC_CONDITION_MEASURED_IF:
-        if (!cond_valid)
+        if (!cond_valid) {
+          measured_value.u32 = 0;
+          measured_value.type = RC_VALUE_TYPE_UNSIGNED;
           can_measure = 0;
+        }
         break;
 
       case RC_CONDITION_TRIGGER:
@@ -385,10 +394,13 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     set_valid &= cond_valid;
   }
 
-  /* if not suppressed, update the measured value */
-  if (measured_value > eval_state->measured_value && can_measure) {
-    eval_state->measured_value = measured_value;
-    eval_state->measured_from_hits = (char)measured_from_hits;
+  if (measured_value.type != RC_VALUE_TYPE_NONE) {
+    /* if no previous Measured value was captured, or the new one is greater, keep the new one */
+    if (eval_state->measured_value.type == RC_VALUE_TYPE_NONE ||
+        rc_typed_value_compare(&measured_value, &eval_state->measured_value, RC_OPERATOR_GT)) {
+      memcpy(&eval_state->measured_value, &measured_value, sizeof(measured_value));
+      eval_state->measured_from_hits = (char)measured_from_hits;
+    }
   }
 
   return set_valid;

@@ -92,7 +92,7 @@ typedef struct {
   void* peek_userdata;
   lua_State* L;
 
-  unsigned measured_value;  /* Measured */
+  rc_typed_value_t measured_value;  /* Measured */
   char was_reset;           /* ResetIf triggered */
   char has_hits;            /* one of more hit counts is non-zero */
   char primed;              /* true if all non-Trigger conditions are true */
@@ -153,6 +153,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_indirect, 
 void rc_evaluate_operand(rc_typed_value_t* value, rc_operand_t* self, rc_eval_state_t* eval_state);
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
+int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 void rc_reset_value(rc_value_t* self);
 rc_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse);
 void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L);
@@ -161,6 +162,10 @@ void rc_typed_value_convert(rc_typed_value_t* value, char new_type);
 void rc_typed_value_add(rc_typed_value_t* value, const rc_typed_value_t* amount);
 void rc_typed_value_multiply(rc_typed_value_t* value, const rc_typed_value_t* amount);
 void rc_typed_value_divide(rc_typed_value_t* value, const rc_typed_value_t* amount);
+int rc_typed_value_compare(const rc_typed_value_t* value1, const rc_typed_value_t* value2, char oper);
+void rc_typed_value_from_memref_value(rc_typed_value_t* value, const rc_memref_value_t* memref);
+
+int rc_format_typed_value(char* buffer, int size, const rc_typed_value_t* value, int format);
 
 void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_state_t* parse);
 

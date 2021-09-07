@@ -189,7 +189,7 @@ static void test_deactivate_achievements(void)
 
 static void test_achievement_measured(void)
 {
-    /* bytes 3-7 are the float value for 16*pi */
+  /* bytes 3-7 are the float value for 16*pi */
   unsigned char ram[] = { 0, 10, 10, 0xDB, 0x0F, 0x49, 0x41 };
   char buffer[32];
   memory_t memory;

@@ -1,7 +1,6 @@
 #include "rc_internal.h"
 
 #include <stdlib.h>
-#include <float.h>
 
 static int rc_parse_operator(const char** memaddr) {
   const char* oper = *memaddr;
@@ -213,59 +212,6 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   return self;
 }
 
-static int rc_condition_compare_floats(float f1, float f2, char oper) {
-  if (f1 == f2) {
-    /* exactly equal */
-  }
-  else {
-    /* attempt to match 7 significant digits (24-bit significand supports just over 7 significant decimal digits) */
-    const float abs1 = (f1 < 0) ? -f1 : f1;
-    const float abs2 = (f2 < 0) ? -f2 : f2;
-    const float threshold = ((abs1 < abs2) ? abs1 : abs2) * FLT_EPSILON;
-    const float diff = f1 - f2;
-    const float abs_diff = (diff < 0) ? -diff : diff;
-
-    if (abs_diff <= threshold) {
-      /* approximately equal */
-    }
-    else if (diff > threshold) {
-      /* greater */
-      switch (oper) {
-        case RC_OPERATOR_NE:
-        case RC_OPERATOR_GT:
-        case RC_OPERATOR_GE:
-          return 1;
-
-        default:
-          return 0;
-      }
-    }
-    else {
-      /* lesser */
-      switch (oper) {
-        case RC_OPERATOR_NE:
-        case RC_OPERATOR_LT:
-        case RC_OPERATOR_LE:
-          return 1;
-
-        default:
-          return 0;
-      }
-    }
-  }
-
-  /* exactly or approximately equal */
-  switch (oper) {
-    case RC_OPERATOR_EQ:
-    case RC_OPERATOR_GE:
-    case RC_OPERATOR_LE:
-      return 1;
-
-    default:
-      return 0;
-  }
-}
-
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
   rc_typed_value_t value1, value2;
 
@@ -274,38 +220,8 @@ int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
     rc_typed_value_add(&value1, &eval_state->add_value);
 
   rc_evaluate_operand(&value2, &self->operand2, eval_state);
-  if (value2.type != value1.type)
-    rc_typed_value_convert(&value2, value1.type);
 
-  switch (value1.type) {
-    case RC_VALUE_TYPE_UNSIGNED:
-      switch (self->oper) {
-        case RC_OPERATOR_EQ: return value1.u32 == value2.u32;
-        case RC_OPERATOR_NE: return value1.u32 != value2.u32;
-        case RC_OPERATOR_LT: return value1.u32 < value2.u32;
-        case RC_OPERATOR_LE: return value1.u32 <= value2.u32;
-        case RC_OPERATOR_GT: return value1.u32 > value2.u32;
-        case RC_OPERATOR_GE: return value1.u32 >= value2.u32;
-        default: return 1;
-      }
-
-    case RC_VALUE_TYPE_SIGNED:
-      switch (self->oper) {
-        case RC_OPERATOR_EQ: return value1.i32 == value2.i32;
-        case RC_OPERATOR_NE: return value1.i32 != value2.i32;
-        case RC_OPERATOR_LT: return value1.i32 < value2.i32;
-        case RC_OPERATOR_LE: return value1.i32 <= value2.i32;
-        case RC_OPERATOR_GT: return value1.i32 > value2.i32;
-        case RC_OPERATOR_GE: return value1.i32 >= value2.i32;
-        default: return 1;
-      }
-
-    case RC_VALUE_TYPE_FLOAT:
-      return rc_condition_compare_floats(value1.f32, value2.f32, self->oper);
-
-    default:
-      return 1;
-  }
+  return rc_typed_value_compare(&value1, &value2, self->oper);
 }
 
 void rc_evaluate_condition_value(rc_typed_value_t* value, rc_condition_t* self, rc_eval_state_t* eval_state) {
