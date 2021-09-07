@@ -3,6 +3,8 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
+#include "../src/rcheevos/rc_compat.h"
+
 static void _assert_parse_richpresence(rc_richpresence_t** richpresence, void* buffer, const char* script) {
   int size;
   unsigned* overflow;
