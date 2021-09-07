@@ -167,14 +167,14 @@ static float rc_build_float(unsigned mantissa_bits, int exponent, int sign) {
 
 static void rc_transform_memref_float(rc_typed_value_t* value) {
   /* decodes an IEEE 754 float */
-  const unsigned mantissa = (value->u32 & 0x7FFFFF);
-  const int exponent = (int)((value->u32 >> 23) & 0xFF) - 127;
-  const int sign = (value->u32 & 0x80000000);
+  const unsigned mantissa = (value->value.u32 & 0x7FFFFF);
+  const int exponent = (int)((value->value.u32 >> 23) & 0xFF) - 127;
+  const int sign = (value->value.u32 & 0x80000000);
 
   if (mantissa == 0 && exponent == -127)
-    value->f32 = (sign) ? -0.0f : 0.0f;
+    value->value.f32 = (sign) ? -0.0f : 0.0f;
   else
-    value->f32 = rc_build_float(mantissa, exponent, sign);
+    value->value.f32 = rc_build_float(mantissa, exponent, sign);
 
   value->type = RC_VALUE_TYPE_FLOAT;
 }
@@ -182,16 +182,16 @@ static void rc_transform_memref_float(rc_typed_value_t* value) {
 static void rc_transform_memref_mbf32(rc_typed_value_t* value) {
   /* decodes a Microsoft Binary Format float */
   /* NOTE: 32-bit MBF is stored in memory as big endian (at least for Apple II) */
-  const unsigned mantissa = ((value->u32 & 0xFF000000) >> 24) |
-                            ((value->u32 & 0x00FF0000) >> 8) |
-                            ((value->u32 & 0x00007F00) << 8);
-  const int exponent = (int)(value->u32 & 0xFF) - 129;
-  const int sign = (value->u32 & 0x00008000);
+  const unsigned mantissa = ((value->value.u32 & 0xFF000000) >> 24) |
+                            ((value->value.u32 & 0x00FF0000) >> 8) |
+                            ((value->value.u32 & 0x00007F00) << 8);
+  const int exponent = (int)(value->value.u32 & 0xFF) - 129;
+  const int sign = (value->value.u32 & 0x00008000);
 
   if (mantissa == 0 && exponent == -129)
-    value->f32 = (sign) ? -0.0f : 0.0f;
+    value->value.f32 = (sign) ? -0.0f : 0.0f;
   else
-    value->f32 = rc_build_float(mantissa, exponent, sign);
+    value->value.f32 = rc_build_float(mantissa, exponent, sign);
 
   value->type = RC_VALUE_TYPE_FLOAT;
 }
@@ -203,81 +203,81 @@ void rc_transform_memref_value(rc_typed_value_t* value, char size) {
   switch (size)
   {
     case RC_MEMSIZE_8_BITS:
-      value->u32 = (value->u32 & 0x000000ff);
+      value->value.u32 = (value->value.u32 & 0x000000ff);
       break;
 
     case RC_MEMSIZE_16_BITS:
-      value->u32 = (value->u32 & 0x0000ffff);
+      value->value.u32 = (value->value.u32 & 0x0000ffff);
       break;
 
     case RC_MEMSIZE_24_BITS:
-      value->u32 = (value->u32 & 0x00ffffff);
+      value->value.u32 = (value->value.u32 & 0x00ffffff);
       break;
 
     case RC_MEMSIZE_32_BITS:
       break;
 
     case RC_MEMSIZE_BIT_0:
-      value->u32 = (value->u32 >> 0) & 1;
+      value->value.u32 = (value->value.u32 >> 0) & 1;
       break;
 
     case RC_MEMSIZE_BIT_1:
-      value->u32 = (value->u32 >> 1) & 1;
+      value->value.u32 = (value->value.u32 >> 1) & 1;
       break;
 
     case RC_MEMSIZE_BIT_2:
-      value->u32 = (value->u32 >> 2) & 1;
+      value->value.u32 = (value->value.u32 >> 2) & 1;
       break;
 
     case RC_MEMSIZE_BIT_3:
-      value->u32 = (value->u32 >> 3) & 1;
+      value->value.u32 = (value->value.u32 >> 3) & 1;
       break;
 
     case RC_MEMSIZE_BIT_4:
-      value->u32 = (value->u32 >> 4) & 1;
+      value->value.u32 = (value->value.u32 >> 4) & 1;
       break;
 
     case RC_MEMSIZE_BIT_5:
-      value->u32 = (value->u32 >> 5) & 1;
+      value->value.u32 = (value->value.u32 >> 5) & 1;
       break;
 
     case RC_MEMSIZE_BIT_6:
-      value->u32 = (value->u32 >> 6) & 1;
+      value->value.u32 = (value->value.u32 >> 6) & 1;
       break;
 
     case RC_MEMSIZE_BIT_7:
-      value->u32 = (value->u32 >> 7) & 1;
+      value->value.u32 = (value->value.u32 >> 7) & 1;
       break;
 
     case RC_MEMSIZE_LOW:
-      value->u32 = value->u32 & 0x0f;
+      value->value.u32 = value->value.u32 & 0x0f;
       break;
 
     case RC_MEMSIZE_HIGH:
-      value->u32 = (value->u32 >> 4) & 0x0f;
+      value->value.u32 = (value->value.u32 >> 4) & 0x0f;
       break;
 
     case RC_MEMSIZE_BITCOUNT:
-      value->u32 = rc_bits_set[(value->u32 & 0x0F)]
-                 + rc_bits_set[((value->u32 >> 4) & 0x0F)];
+      value->value.u32 = rc_bits_set[(value->value.u32 & 0x0F)]
+                       + rc_bits_set[((value->value.u32 >> 4) & 0x0F)];
       break;
 
     case RC_MEMSIZE_16_BITS_BE:
-      value->u32 = ((value->u32 & 0xFF00) >> 8) |
-                   ((value->u32 & 0x00FF) << 8);
+      value->value.u32 = ((value->value.u32 & 0xFF00) >> 8) |
+                         ((value->value.u32 & 0x00FF) << 8);
       break;
 
     case RC_MEMSIZE_24_BITS_BE:
-      value->u32 = ((value->u32 & 0xFF0000) >> 16) |
-                    (value->u32 & 0x00FF00) |
-                   ((value->u32 & 0x0000FF) << 16);
+      value->value.u32 = ((value->value.u32 & 0xFF0000) >> 16) |
+                          (value->value.u32 & 0x00FF00) |
+                         ((value->value.u32 & 0x0000FF) << 16);
       break;
 
     case RC_MEMSIZE_32_BITS_BE:
-      value->u32 = ((value->u32 & 0xFF000000) >> 24) |
-                   ((value->u32 & 0x00FF0000) >> 8) |
-                   ((value->u32 & 0x0000FF00) << 8) |
-                   ((value->u32 & 0x000000FF) << 24);
+      value->value.u32 = ((value->value.u32 & 0xFF000000) >> 24) |
+                         ((value->value.u32 & 0x00FF0000) >> 8) |
+                         ((value->value.u32 & 0x0000FF00) << 8) |
+                         ((value->value.u32 & 0x000000FF) << 24);
       break;
 
     case RC_MEMSIZE_FLOAT:
@@ -338,15 +338,15 @@ static unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void*
   switch (shared_size)
   {
     case RC_MEMSIZE_8_BITS:
-      value.u32 = peek(address, 1, ud);
+      value.value.u32 = peek(address, 1, ud);
       break;
 
     case RC_MEMSIZE_16_BITS:
-      value.u32 = peek(address, 2, ud);
+      value.value.u32 = peek(address, 2, ud);
       break;
 
     case RC_MEMSIZE_32_BITS:
-      value.u32 = peek(address, 4, ud);
+      value.value.u32 = peek(address, 4, ud);
       break;
 
     default:
@@ -358,7 +358,7 @@ static unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void*
     rc_transform_memref_value(&value, size);
   }
 
-  return value.u32;
+  return value.value.u32;
 }
 
 void rc_update_memref_value(rc_memref_value_t* memref, unsigned new_value) {

@@ -242,7 +242,7 @@ void rc_evaluate_condition_value(rc_typed_value_t* value, rc_condition_t* self, 
     case RC_OPERATOR_AND:
       rc_typed_value_convert(value, RC_VALUE_TYPE_UNSIGNED);
       rc_typed_value_convert(&amount, RC_VALUE_TYPE_UNSIGNED);
-      value->u32 &= amount.u32;
+      value->value.u32 &= amount.value.u32;
       break;
   }
 }

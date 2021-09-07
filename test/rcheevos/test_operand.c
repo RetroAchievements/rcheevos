@@ -85,7 +85,7 @@ static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_t
 
   rc_update_memref_values(memrefs, peek, memory);
   rc_evaluate_operand(&value, op, &eval_state);
-  return value.u32;
+  return value.value.u32;
 }
 
 static void test_evaluate_operand(const char* memaddr, memory_t* memory, unsigned expected_value) {
@@ -114,7 +114,7 @@ static float evaluate_operand_float(rc_operand_t* op, memory_t* memory, rc_memre
 
   rc_update_memref_values(memrefs, peek, memory);
   rc_evaluate_operand(&value, op, &eval_state);
-  return value.f32;
+  return value.value.f32;
 }
 
 static void test_evaluate_operand_float(const char* memaddr, memory_t* memory, double expected_value) {

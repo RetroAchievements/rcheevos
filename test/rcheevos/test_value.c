@@ -160,19 +160,19 @@ static void init_typed_value(rc_typed_value_t* value, char type, unsigned u32, d
 
   switch (type) {
     case RC_VALUE_TYPE_UNSIGNED:
-      value->u32 = u32;
+      value->value.u32 = u32;
       break;
 
     case RC_VALUE_TYPE_SIGNED:
-      value->i32 = (int)u32;
+      value->value.i32 = (int)u32;
       break;
 
     case RC_VALUE_TYPE_FLOAT:
-      value->f32 = (float)f32;
+      value->value.f32 = (float)f32;
       break;
 
     case RC_VALUE_TYPE_NONE:
-      value->u32 = 0xCDCDCDCD; /* force uninitialized value */
+      value->value.u32 = 0xCDCDCDCD; /* force uninitialized value */
       break;
 
     default:
@@ -185,15 +185,15 @@ static void _assert_typed_value(const rc_typed_value_t* value, char type, unsign
 
   switch (type) {
     case RC_VALUE_TYPE_UNSIGNED:
-      ASSERT_NUM_EQUALS(value->u32, u32);
+      ASSERT_NUM_EQUALS(value->value.u32, u32);
       break;
 
     case RC_VALUE_TYPE_SIGNED:
-      ASSERT_NUM_EQUALS(value->i32, (int)u32);
+      ASSERT_NUM_EQUALS(value->value.i32, (int)u32);
       break;
 
     case RC_VALUE_TYPE_FLOAT:
-      ASSERT_NUM_EQUALS(value->f32, (float)f32);
+      ASSERT_NUM_EQUALS(value->value.f32, (float)f32);
       break;
 
     default:

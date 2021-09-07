@@ -36,18 +36,18 @@ static void test_transform(unsigned value, char size, unsigned expected)
 {
   rc_typed_value_t typed_value;
   typed_value.type = RC_VALUE_TYPE_UNSIGNED;
-  typed_value.u32 = value;
+  typed_value.value.u32 = value;
   rc_transform_memref_value(&typed_value, size);
-  ASSERT_NUM_EQUALS(typed_value.u32, expected);
+  ASSERT_NUM_EQUALS(typed_value.value.u32, expected);
 }
 
 static void test_transform_float(unsigned value, char size, double expected)
 {
   rc_typed_value_t typed_value;
   typed_value.type = RC_VALUE_TYPE_UNSIGNED;
-  typed_value.u32 = value;
+  typed_value.value.u32 = value;
   rc_transform_memref_value(&typed_value, size);
-  ASSERT_FLOAT_EQUALS(typed_value.f32, expected);
+  ASSERT_FLOAT_EQUALS(typed_value.value.f32, expected);
 }
 
 static void test_transform_float_inf(unsigned value, char size)
@@ -55,10 +55,10 @@ static void test_transform_float_inf(unsigned value, char size)
   /* C89 does not provide defines for NAN and INFINITY, nor does it provide isnan() or isinf() functions */
   rc_typed_value_t typed_value;
   typed_value.type = RC_VALUE_TYPE_UNSIGNED;
-  typed_value.u32 = value;
+  typed_value.value.u32 = value;
   rc_transform_memref_value(&typed_value, size);
 
-  if (typed_value.f32 < FLT_MAX) {
+  if (typed_value.value.f32 < FLT_MAX) {
     /* infinity will be greater than max float value */
     ASSERT_FAIL("result of transform is not infinity")
   }
@@ -69,10 +69,10 @@ static void test_transform_float_nan(unsigned value, char size)
   /* C89 does not provide defines for NAN and INFINITY, nor does it provide isnan() or isinf() functions */
   rc_typed_value_t typed_value;
   typed_value.type = RC_VALUE_TYPE_UNSIGNED;
-  typed_value.u32 = value;
+  typed_value.value.u32 = value;
   rc_transform_memref_value(&typed_value, size);
 
-  if (typed_value.f32 == typed_value.f32) {
+  if (typed_value.value.f32 == typed_value.value.f32) {
     /* NaN cannot be compared, will fail equality check with itself */
     ASSERT_FAIL("result of transform is not NaN")
   }

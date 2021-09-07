@@ -196,7 +196,7 @@ int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t
 
   rc_update_memref_values(self->memrefs, peek, ud);
 
-  value->i32 = 0;
+  value->value.i32 = 0;
   value->type = RC_VALUE_TYPE_SIGNED;
 
   for (condset = self->conditions; condset != NULL; condset = condset->next) {
@@ -218,7 +218,7 @@ int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t
 
       /* if the measured value came from a hit count, reset it too */
       if (eval_state.measured_from_hits) {
-        eval_state.measured_value.u32 = 0;
+        eval_state.measured_value.value.u32 = 0;
         eval_state.measured_value.type = RC_VALUE_TYPE_UNSIGNED;
       }
     }
@@ -247,16 +247,16 @@ int rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) 
   if (valid) {
     /* if not paused, store the value so that it's available when paused. */
     rc_typed_value_convert(&result, RC_VALUE_TYPE_UNSIGNED);
-    rc_update_memref_value(&self->value, result.u32);
+    rc_update_memref_value(&self->value, result.value.u32);
   }
   else {
     /* when paused, the Measured value will not be captured, use the last captured value. */
-    result.u32 = self->value.value;
+    result.value.u32 = self->value.value;
     result.type = RC_VALUE_TYPE_UNSIGNED;
   }
 
   rc_typed_value_convert(&result, RC_VALUE_TYPE_SIGNED);
-  return result.i32;
+  return result.value.i32;
 }
 
 void rc_reset_value(rc_value_t* self) {
@@ -329,7 +329,7 @@ void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_Sta
   while (variable) {
     if (rc_evaluate_value_typed(variable, &result, peek, ud, L)) {
       /* store the raw bytes and type to be restored by rc_typed_value_from_memref_value  */
-      rc_update_memref_value(&variable->value, result.u32);
+      rc_update_memref_value(&variable->value, result.value.u32);
       variable->value.type = result.type;
     }
 
@@ -338,7 +338,7 @@ void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_Sta
 }
 
 void rc_typed_value_from_memref_value(rc_typed_value_t* value, const rc_memref_value_t* memref) {
-  value->u32 = memref->value;
+  value->value.u32 = memref->value;
 
   if (memref->size == RC_MEMSIZE_VARIABLE) {
     /* a variable can be any of the supported types, but the raw data was copied into u32 */
@@ -357,13 +357,13 @@ void rc_typed_value_convert(rc_typed_value_t* value, char new_type) {
         case RC_VALUE_TYPE_UNSIGNED:
           return;
         case RC_VALUE_TYPE_SIGNED:
-          value->u32 = (unsigned)value->i32;
+          value->value.u32 = (unsigned)value->value.i32;
           break;
         case RC_VALUE_TYPE_FLOAT:
-          value->u32 = (unsigned)value->f32;
+          value->value.u32 = (unsigned)value->value.f32;
           break;
         default:
-          value->u32 = 0;
+          value->value.u32 = 0;
           break;
       }
       break;
@@ -373,13 +373,13 @@ void rc_typed_value_convert(rc_typed_value_t* value, char new_type) {
         case RC_VALUE_TYPE_SIGNED:
           return;
         case RC_VALUE_TYPE_UNSIGNED:
-          value->i32 = (int)value->u32;
+          value->value.i32 = (int)value->value.u32;
           break;
         case RC_VALUE_TYPE_FLOAT:
-          value->i32 = (int)value->f32;
+          value->value.i32 = (int)value->value.f32;
           break;
         default:
-          value->i32 = 0;
+          value->value.i32 = 0;
           break;
       }
       break;
@@ -389,13 +389,13 @@ void rc_typed_value_convert(rc_typed_value_t* value, char new_type) {
         case RC_VALUE_TYPE_FLOAT:
           return;
         case RC_VALUE_TYPE_UNSIGNED:
-          value->f32 = (float)value->u32;
+          value->value.f32 = (float)value->value.u32;
           break;
         case RC_VALUE_TYPE_SIGNED:
-          value->f32 = (float)value->i32;
+          value->value.f32 = (float)value->value.i32;
           break;
         default:
-          value->f32 = 0.0;
+          value->value.f32 = 0.0;
           break;
       }
       break;
@@ -422,15 +422,15 @@ void rc_typed_value_add(rc_typed_value_t* value, const rc_typed_value_t* amount)
   switch (value->type)
   {
     case RC_VALUE_TYPE_UNSIGNED:
-      value->u32 += amount->u32;
+      value->value.u32 += amount->value.u32;
       break;
 
     case RC_VALUE_TYPE_SIGNED:
-      value->i32 += amount->i32;
+      value->value.i32 += amount->value.i32;
       break;
 
     case RC_VALUE_TYPE_FLOAT:
-      value->f32 += amount->f32;
+      value->value.f32 += amount->value.f32;
       break;
 
     case RC_VALUE_TYPE_NONE:
@@ -457,16 +457,16 @@ void rc_typed_value_multiply(rc_typed_value_t* value, const rc_typed_value_t* am
            *   3 * -2 (0xFFFFFFFE) = 0x2FFFFFFFA & 0xFFFFFFFF = 0xFFFFFFFA = -6
            *  10 * -5 (0xFFFFFFFB) = 0x9FFFFFFCE & 0xFFFFFFFF = 0xFFFFFFCE = -50
            */
-          value->u32 *= amount->u32;
+          value->value.u32 *= amount->value.u32;
           break;
 
         case RC_VALUE_TYPE_SIGNED:
-          value->u32 *= (unsigned)amount->i32;
+          value->value.u32 *= (unsigned)amount->value.i32;
           break;
 
         case RC_VALUE_TYPE_FLOAT:
           rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
-          value->f32 *= amount->f32;
+          value->value.f32 *= amount->value.f32;
           break;
 
         default:
@@ -479,16 +479,16 @@ void rc_typed_value_multiply(rc_typed_value_t* value, const rc_typed_value_t* am
       switch (amount->type)
       {
         case RC_VALUE_TYPE_SIGNED:
-          value->i32 *= amount->i32;
+          value->value.i32 *= amount->value.i32;
           break;
 
         case RC_VALUE_TYPE_UNSIGNED:
-          value->i32 *= (int)amount->u32;
+          value->value.i32 *= (int)amount->value.u32;
           break;
 
         case RC_VALUE_TYPE_FLOAT:
           rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
-          value->f32 *= amount->f32;
+          value->value.f32 *= amount->value.f32;
           break;
 
         default:
@@ -503,7 +503,7 @@ void rc_typed_value_multiply(rc_typed_value_t* value, const rc_typed_value_t* am
       }
       else {
         amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
-        value->f32 *= amount->f32;
+        value->value.f32 *= amount->value.f32;
       }
       break;
 
@@ -519,17 +519,17 @@ void rc_typed_value_divide(rc_typed_value_t* value, const rc_typed_value_t* amou
   switch (amount->type)
   {
     case RC_VALUE_TYPE_UNSIGNED:
-      if (amount->u32 == 0) { /* divide by zero */
+      if (amount->value.u32 == 0) { /* divide by zero */
         value->type = RC_VALUE_TYPE_NONE;
         return;
       }
 
       switch (value->type) {
         case RC_VALUE_TYPE_UNSIGNED: /* integer math */
-          value->u32 /= amount->u32;
+          value->value.u32 /= amount->value.u32;
           return;
         case RC_VALUE_TYPE_SIGNED: /* integer math */
-          value->i32 /= (int)amount->u32;
+          value->value.i32 /= (int)amount->value.u32;
           return;
         case RC_VALUE_TYPE_FLOAT:
           amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
@@ -541,17 +541,17 @@ void rc_typed_value_divide(rc_typed_value_t* value, const rc_typed_value_t* amou
       break;
 
     case RC_VALUE_TYPE_SIGNED:
-      if (amount->i32 == 0) { /* divide by zero */
+      if (amount->value.i32 == 0) { /* divide by zero */
         value->type = RC_VALUE_TYPE_NONE;
         return;
       }
 
       switch (value->type) {
         case RC_VALUE_TYPE_SIGNED: /* integer math */
-          value->i32 /= amount->i32;
+          value->value.i32 /= amount->value.i32;
           return;
         case RC_VALUE_TYPE_UNSIGNED: /* integer math */
-          value->u32 /= (unsigned)amount->i32;
+          value->value.u32 /= (unsigned)amount->value.i32;
           return;
         case RC_VALUE_TYPE_FLOAT:
           amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
@@ -570,13 +570,13 @@ void rc_typed_value_divide(rc_typed_value_t* value, const rc_typed_value_t* amou
       return;
   }
 
-  if (amount->f32 == 0.0) { /* divide by zero */
+  if (amount->value.f32 == 0.0) { /* divide by zero */
     value->type = RC_VALUE_TYPE_NONE;
     return;
   }
 
   rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
-  value->f32 /= amount->f32;
+  value->value.f32 /= amount->value.f32;
 }
 
 static int rc_typed_value_compare_floats(float f1, float f2, char oper) {
@@ -641,28 +641,28 @@ int rc_typed_value_compare(const rc_typed_value_t* value1, const rc_typed_value_
   switch (value1->type) {
     case RC_VALUE_TYPE_UNSIGNED:
       switch (oper) {
-        case RC_OPERATOR_EQ: return value1->u32 == value2->u32;
-        case RC_OPERATOR_NE: return value1->u32 != value2->u32;
-        case RC_OPERATOR_LT: return value1->u32 < value2->u32;
-        case RC_OPERATOR_LE: return value1->u32 <= value2->u32;
-        case RC_OPERATOR_GT: return value1->u32 > value2->u32;
-        case RC_OPERATOR_GE: return value1->u32 >= value2->u32;
+        case RC_OPERATOR_EQ: return value1->value.u32 == value2->value.u32;
+        case RC_OPERATOR_NE: return value1->value.u32 != value2->value.u32;
+        case RC_OPERATOR_LT: return value1->value.u32 < value2->value.u32;
+        case RC_OPERATOR_LE: return value1->value.u32 <= value2->value.u32;
+        case RC_OPERATOR_GT: return value1->value.u32 > value2->value.u32;
+        case RC_OPERATOR_GE: return value1->value.u32 >= value2->value.u32;
         default: return 1;
       }
 
     case RC_VALUE_TYPE_SIGNED:
       switch (oper) {
-        case RC_OPERATOR_EQ: return value1->i32 == value2->i32;
-        case RC_OPERATOR_NE: return value1->i32 != value2->i32;
-        case RC_OPERATOR_LT: return value1->i32 < value2->i32;
-        case RC_OPERATOR_LE: return value1->i32 <= value2->i32;
-        case RC_OPERATOR_GT: return value1->i32 > value2->i32;
-        case RC_OPERATOR_GE: return value1->i32 >= value2->i32;
+        case RC_OPERATOR_EQ: return value1->value.i32 == value2->value.i32;
+        case RC_OPERATOR_NE: return value1->value.i32 != value2->value.i32;
+        case RC_OPERATOR_LT: return value1->value.i32 < value2->value.i32;
+        case RC_OPERATOR_LE: return value1->value.i32 <= value2->value.i32;
+        case RC_OPERATOR_GT: return value1->value.i32 > value2->value.i32;
+        case RC_OPERATOR_GE: return value1->value.i32 >= value2->value.i32;
         default: return 1;
       }
 
     case RC_VALUE_TYPE_FLOAT:
-      return rc_typed_value_compare_floats(value1->f32, value2->f32, oper);
+      return rc_typed_value_compare_floats(value1->value.f32, value2->value.f32, oper);
 
     default:
       return 1;

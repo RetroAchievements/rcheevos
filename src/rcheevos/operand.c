@@ -391,17 +391,17 @@ void rc_evaluate_operand(rc_typed_value_t* result, rc_operand_t* self, rc_eval_s
   switch (self->type) {
     case RC_OPERAND_CONST:
       result->type = RC_VALUE_TYPE_UNSIGNED;
-      result->u32 = self->value.num;
+      result->value.u32 = self->value.num;
       return;
 
     case RC_OPERAND_FP:
       result->type = RC_VALUE_TYPE_FLOAT;
-      result->f32 = (float)self->value.dbl;
+      result->value.f32 = (float)self->value.dbl;
       return;
 
     case RC_OPERAND_LUA:
       result->type = RC_VALUE_TYPE_UNSIGNED;
-      result->u32 = 0;
+      result->value.u32 = 0;
 
 #ifndef RC_DISABLE_LUA
       if (eval_state->L != 0) {
@@ -415,10 +415,10 @@ void rc_evaluate_operand(rc_typed_value_t* result, rc_operand_t* self, rc_eval_s
 
         if (lua_pcall(eval_state->L, 2, 1, 0) == LUA_OK) {
           if (lua_isboolean(eval_state->L, -1)) {
-            result->u32 = (unsigned)lua_toboolean(eval_state->L, -1);
+            result->value.u32 = (unsigned)lua_toboolean(eval_state->L, -1);
           }
           else {
-            result->u32 = (unsigned)lua_tonumber(eval_state->L, -1);
+            result->value.u32 = (unsigned)lua_tonumber(eval_state->L, -1);
           }
         }
 
@@ -431,7 +431,7 @@ void rc_evaluate_operand(rc_typed_value_t* result, rc_operand_t* self, rc_eval_s
 
     default:
       result->type = RC_VALUE_TYPE_UNSIGNED;
-      result->u32 = rc_get_memref_value(self->value.memref, self->type, eval_state);
+      result->value.u32 = rc_get_memref_value(self->value.memref, self->type, eval_state);
       break;
   }
 
@@ -440,5 +440,5 @@ void rc_evaluate_operand(rc_typed_value_t* result, rc_operand_t* self, rc_eval_s
 
   /* step 3: apply logic (BCD/invert) */
   if (result->type == RC_VALUE_TYPE_UNSIGNED)
-    result->u32 = rc_transform_operand_value(result->u32, self);
+    result->value.u32 = rc_transform_operand_value(result->value.u32, self);
 }

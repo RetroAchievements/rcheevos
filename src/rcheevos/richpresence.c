@@ -644,10 +644,10 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         text = part->lookup->default_label;
         item = part->lookup->root;
         while (item) {
-          if (value.u32 > item->last) {
+          if (value.value.u32 > item->last) {
             item = item->right;
           }
-          else if (value.u32 < item->first) {
+          else if (value.value.u32 < item->first) {
             item = item->left;
           }
           else {

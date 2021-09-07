@@ -154,7 +154,7 @@ static void rc_condset_update_indirect_memrefs(rc_condition_t* condition, int pr
       rc_typed_value_t value;
       rc_evaluate_condition_value(&value, condition, eval_state);
       rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
-      eval_state->add_address = value.u32;
+      eval_state->add_address = value.value.u32;
       continue;
     }
 
@@ -206,7 +206,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_SUB_SOURCE:
         rc_evaluate_condition_value(&value, condition, eval_state);
         rc_typed_value_convert(&value, RC_VALUE_TYPE_SIGNED);
-        value.i32 = -value.i32;
+        value.value.i32 = -value.value.i32;
         rc_typed_value_add(&eval_state->add_value, &value);
         eval_state->add_address = 0;
         continue;
@@ -214,7 +214,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_ADD_ADDRESS:
         rc_evaluate_condition_value(&value, condition, eval_state);
         rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
-        eval_state->add_address = value.u32;
+        eval_state->add_address = value.value.u32;
         continue;
 
       case RC_CONDITION_MEASURED:
@@ -366,7 +366,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
           /* if there's a hit target, capture the current hits for recording Measured value later */
           measured_from_hits = 1;
           if (can_measure) {
-            measured_value.u32 = total_hits;
+            measured_value.value.u32 = total_hits;
             measured_value.type = RC_VALUE_TYPE_UNSIGNED;
           }
         }
@@ -374,7 +374,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
 
       case RC_CONDITION_MEASURED_IF:
         if (!cond_valid) {
-          measured_value.u32 = 0;
+          measured_value.value.u32 = 0;
           measured_value.type = RC_VALUE_TYPE_UNSIGNED;
           can_measure = 0;
         }

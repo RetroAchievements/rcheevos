@@ -73,11 +73,11 @@ enum {
 };
 
 typedef struct {
-  union value {
+  union {
     unsigned u32;
     int i32;
     float f32;
-  };
+  } value;
 
   char type;
 }
