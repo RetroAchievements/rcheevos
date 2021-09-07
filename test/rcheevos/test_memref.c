@@ -30,6 +30,9 @@ static void test_shared_sizes(void)
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_24_BITS_BE, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS_BE, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_FLOAT, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_MBF32, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_VARIABLE, RC_MEMSIZE_32_BITS);
 }
 
 static void test_transform(unsigned value, char size, unsigned expected)

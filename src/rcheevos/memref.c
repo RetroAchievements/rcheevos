@@ -316,6 +316,7 @@ static const char rc_memref_shared_sizes[] = {
   RC_MEMSIZE_32_BITS, /* RC_MEMSIZE_24_BITS_BE */
   RC_MEMSIZE_32_BITS, /* RC_MEMSIZE_32_BITS_BE */
   RC_MEMSIZE_32_BITS, /* RC_MEMSIZE_FLOAT      */
+  RC_MEMSIZE_32_BITS, /* RC_MEMSIZE_MBF32      */
   RC_MEMSIZE_32_BITS  /* RC_MEMSIZE_VARIABLE   */
 };
 
