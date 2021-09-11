@@ -506,6 +506,14 @@ static const rc_memory_region_t _rc_memory_regions_playstation2[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_playstation2 = { _rc_memory_regions_playstation2, 2 };
 
+/* ===== PlayStation Portable ===== */
+/* https://github.com/uofw/upspd/wiki/Memory-map */
+static const rc_memory_region_t _rc_memory_regions_psp[] = {
+    { 0x00000000U, 0x007FFFFFU, 0x08000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Kernel RAM" },
+    { 0x00800000U, 0x01FFFFFFU, 0x08800000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+};
+static const rc_memory_regions_t rc_memory_regions_psp = { _rc_memory_regions_psp, 2 };
+
 /* ===== Pokemon Mini ===== */
 /* https://www.pokemon-mini.net/documentation/memory-map/ */
 static const rc_memory_region_t _rc_memory_regions_pokemini[] = {
@@ -715,6 +723,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_PLAYSTATION_2:
       return &rc_memory_regions_playstation2;
+
+    case RC_CONSOLE_PSP:
+      return &rc_memory_regions_psp;
 
     case RC_CONSOLE_POKEMON_MINI:
       return &rc_memory_regions_pokemini;
