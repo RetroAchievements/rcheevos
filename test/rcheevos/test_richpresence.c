@@ -1009,6 +1009,19 @@ static void test_builtin_macro(const char* macro, const char* expected) {
   assert_richpresence_output(richpresence, &memory, expected);
 }
 
+static void test_builtin_macro_override() {
+  unsigned char ram[] = { 0x39, 0x30 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[256];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Format:Number\nFormatType=SECS\n\nDisplay:\n@Number(0x 0)");
+  assert_richpresence_output(richpresence, &memory, "3h25:45");
+}
+
 static void test_asciichar() {
   unsigned char ram[] = { 'K', 'e', 'n', '\0', 'V', 'e', 'g', 'a', 1 };
   memory_t memory;
@@ -1209,6 +1222,7 @@ void test_richpresence(void) {
   TEST_PARAMS2(test_builtin_macro, "SecondsAsMinutes", "3h25");
   TEST_PARAMS2(test_builtin_macro, "ASCIIChar", "?"); // 0x3039 is not a single ASCII char
   TEST_PARAMS2(test_builtin_macro, "UnicodeChar", "\xe3\x80\xb9");
+  TEST(test_builtin_macro_override);
 
   /* asciichar */
   TEST(test_asciichar);
