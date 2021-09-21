@@ -1031,6 +1031,22 @@ static void test_builtin_macro(const char* macro, const char* expected) {
   assert_richpresence_output(richpresence, &memory, expected);
 }
 
+static void test_builtin_macro_float(const char* macro, const char* expected) {
+  unsigned char ram[] = { 0x92, 0x44, 0x9A, 0x42 }; /* 77.133926 */
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char script[128];
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  snprintf(script, sizeof(script), "Display:\n@%s(fF0000)", macro);
+
+  assert_parse_richpresence(&richpresence, buffer, script);
+  assert_richpresence_output(richpresence, &memory, expected);
+}
+
 static void test_builtin_macro_override() {
   unsigned char ram[] = { 0x39, 0x30 };
   memory_t memory;
@@ -1256,6 +1272,12 @@ void test_richpresence(void) {
   TEST_PARAMS2(test_builtin_macro, "SecondsAsMinutes", "3h25");
   TEST_PARAMS2(test_builtin_macro, "ASCIIChar", "?"); // 0x3039 is not a single ASCII char
   TEST_PARAMS2(test_builtin_macro, "UnicodeChar", "\xe3\x80\xb9");
+  TEST_PARAMS2(test_builtin_macro_float, "Float1", "77.1");
+  TEST_PARAMS2(test_builtin_macro_float, "Float2", "77.13");
+  TEST_PARAMS2(test_builtin_macro_float, "Float3", "77.134");
+  TEST_PARAMS2(test_builtin_macro_float, "Float4", "77.1339");
+  TEST_PARAMS2(test_builtin_macro_float, "Float5", "77.13393");
+  TEST_PARAMS2(test_builtin_macro_float, "Float6", "77.133926");
   TEST(test_builtin_macro_override);
 
   /* asciichar */

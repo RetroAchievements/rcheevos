@@ -183,6 +183,12 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
           {"SecondsAsMinutes", 16, RC_FORMAT_SECONDS_AS_MINUTES},
           {"ASCIIChar", 9, RC_FORMAT_ASCIICHAR},
           {"UnicodeChar", 11, RC_FORMAT_UNICODECHAR},
+          {"Float1", 6, RC_FORMAT_FLOAT1},
+          {"Float2", 6, RC_FORMAT_FLOAT2},
+          {"Float3", 6, RC_FORMAT_FLOAT3},
+          {"Float4", 6, RC_FORMAT_FLOAT4},
+          {"Float5", 6, RC_FORMAT_FLOAT5},
+          {"Float6", 6, RC_FORMAT_FLOAT6},
         };
         int i;
 
@@ -689,20 +695,21 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
       case RC_FORMAT_ASCIICHAR:
         chars = 0;
         text = tmp;
+        value.type = RC_VALUE_TYPE_UNSIGNED;
 
         do {
-          value = part->value->value;
-          if (value == 0) {
+          value.value.u32 = part->value->value;
+          if (value.value.u32 == 0) {
             /* null terminator - skip over remaining character macros */
             while (part->next && part->next->display_type == RC_FORMAT_ASCIICHAR)
               part = part->next;
             break;
           }
 
-          if (value < 32 || value >= 127)
-            value = '?';
+          if (value.value.u32 < 32 || value.value.u32 >= 127)
+            value.value.u32 = '?';
 
-          tmp[chars++] = (char)value;
+          tmp[chars++] = (char)value.value.u32;
           if (chars == sizeof(tmp) || !part->next || part->next->display_type != RC_FORMAT_ASCIICHAR)
             break;
 
@@ -715,35 +722,36 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
       case RC_FORMAT_UNICODECHAR:
         chars = 0;
         text = tmp;
+        value.type = RC_VALUE_TYPE_UNSIGNED;
 
         do {
-          value = part->value->value;
-          if (value == 0) {
+          value.value.u32 = part->value->value;
+          if (value.value.u32 == 0) {
             /* null terminator - skip over remaining character macros */
             while (part->next && part->next->display_type == RC_FORMAT_UNICODECHAR)
               part = part->next;
             break;
           }
 
-          if (value < 32 || value > 65535)
-            value = 0xFFFD; /* unicode replacement char */
+          if (value.value.u32 < 32 || value.value.u32 > 65535)
+            value.value.u32 = 0xFFFD; /* unicode replacement char */
 
-          if (value < 0x80) {
-            tmp[chars++] = (char)value;
+          if (value.value.u32 < 0x80) {
+            tmp[chars++] = (char)value.value.u32;
           }
-          else if (value < 0x0800) {
-            tmp[chars + 1] = (char)(0x80 | (value & 0x3F)); value >>= 6;
-            tmp[chars] = (char)(0xC0 | (value & 0x1F));
+          else if (value.value.u32 < 0x0800) {
+            tmp[chars + 1] = (char)(0x80 | (value.value.u32 & 0x3F)); value.value.u32 >>= 6;
+            tmp[chars] = (char)(0xC0 | (value.value.u32 & 0x1F));
             chars += 2;
           }
           else {
             /* surrogate pair not supported, convert to replacement char */
-            if (value >= 0xD800 && value < 0xE000)
-              value = 0xFFFD;
+            if (value.value.u32 >= 0xD800 && value.value.u32 < 0xE000)
+              value.value.u32 = 0xFFFD;
 
-            tmp[chars + 2] = (char)(0x80 | (value & 0x3F)); value >>= 6;
-            tmp[chars + 1] = (char)(0x80 | (value & 0x3F)); value >>= 6;
-            tmp[chars] = (char)(0xE0 | (value & 0x1F));
+            tmp[chars + 2] = (char)(0x80 | (value.value.u32 & 0x3F)); value.value.u32 >>= 6;
+            tmp[chars + 1] = (char)(0x80 | (value.value.u32 & 0x3F)); value.value.u32 >>= 6;
+            tmp[chars] = (char)(0xE0 | (value.value.u32 & 0x1F));
             chars += 3;
           }
 
