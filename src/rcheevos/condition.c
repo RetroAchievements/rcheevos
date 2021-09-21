@@ -222,6 +222,21 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   return self;
 }
 
+int rc_condition_is_combining(const rc_condition_t* self) {
+  switch (self->type) {
+    case RC_CONDITION_STANDARD:
+    case RC_CONDITION_PAUSE_IF:
+    case RC_CONDITION_RESET_IF:
+    case RC_CONDITION_MEASURED_IF:
+    case RC_CONDITION_TRIGGER:
+    case RC_CONDITION_MEASURED:
+      return 0;
+
+    default:
+      return 1;
+  }
+}
+
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
   unsigned value1 = rc_evaluate_operand(&self->operand1, eval_state) + eval_state->add_value;
   unsigned value2 = rc_evaluate_operand(&self->operand2, eval_state);

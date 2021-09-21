@@ -123,7 +123,7 @@ typedef struct rc_operand_t {
 }
 rc_operand_t;
 
-int rc_operand_is_memref(rc_operand_t* operand);
+int rc_operand_is_memref(const rc_operand_t* operand);
 
 /*****************************************************************************\
 | Conditions                                                                  |
