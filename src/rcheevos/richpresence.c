@@ -623,11 +623,11 @@ void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, voi
 static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part, char* buffer, unsigned buffersize)
 {
   rc_richpresence_lookup_item_t* item;
+  rc_typed_value_t value;
   char tmp[256];
   char* ptr = buffer;
   const char* text;
   size_t chars;
-  unsigned value;
 
   *ptr = '\0';
   while (part) {
@@ -638,14 +638,16 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         break;
 
       case RC_FORMAT_LOOKUP:
-        value = part->value->value;
+        rc_typed_value_from_memref_value(&value, part->value);
+        rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
+
         text = part->lookup->default_label;
         item = part->lookup->root;
         while (item) {
-          if (value > item->last) {
+          if (value.value.u32 > item->last) {
             item = item->right;
           }
-          else if (value < item->first) {
+          else if (value.value.u32 < item->first) {
             item = item->left;
           }
           else {
@@ -663,8 +665,8 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         break;
 
       default:
-        value = part->value->value;
-        chars = rc_format_value(tmp, sizeof(tmp), value, part->display_type);
+        rc_typed_value_from_memref_value(&value, part->value);
+        chars = rc_format_typed_value(tmp, sizeof(tmp), &value, part->display_type);
         text = tmp;
         break;
     }

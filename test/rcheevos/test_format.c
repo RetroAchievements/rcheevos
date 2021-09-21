@@ -53,5 +53,16 @@ void test_format(void) {
   TEST_PARAMS2(test_parse_format, "OTHER", RC_FORMAT_SCORE);
   TEST_PARAMS2(test_parse_format, "INVALID", RC_FORMAT_VALUE);
 
+  TEST_PARAMS2(test_parse_format, "FLOAT", RC_FORMAT_VALUE);
+  TEST_PARAMS2(test_parse_format, "FLOAT0", RC_FORMAT_VALUE);
+  TEST_PARAMS2(test_parse_format, "FLOAT1", RC_FORMAT_FLOAT1);
+  TEST_PARAMS2(test_parse_format, "FLOAT2", RC_FORMAT_FLOAT2);
+  TEST_PARAMS2(test_parse_format, "FLOAT3", RC_FORMAT_FLOAT3);
+  TEST_PARAMS2(test_parse_format, "FLOAT4", RC_FORMAT_FLOAT4);
+  TEST_PARAMS2(test_parse_format, "FLOAT5", RC_FORMAT_FLOAT5);
+  TEST_PARAMS2(test_parse_format, "FLOAT6", RC_FORMAT_FLOAT6);
+  TEST_PARAMS2(test_parse_format, "FLOAT7", RC_FORMAT_VALUE);
+  TEST_PARAMS2(test_parse_format, "FLOAT10", RC_FORMAT_VALUE);
+
   TEST_SUITE_END();
 }
