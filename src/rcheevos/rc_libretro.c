@@ -36,6 +36,11 @@ static const rc_disallowed_setting_t _rc_disallowed_dolphin_settings[] = {
   { NULL, NULL }
 };
 
+static const rc_disallowed_setting_t _rc_disallowed_duckstation_settings[] = {
+  { "duckstation_CDROM.LoadImagePatches", "true" },
+  { NULL, NULL }
+};
+
 static const rc_disallowed_setting_t _rc_disallowed_ecwolf_settings[] = {
   { "ecwolf-invulnerability", "enabled" },
   { NULL, NULL }
@@ -107,6 +112,7 @@ static const rc_disallowed_setting_t _rc_disallowed_virtual_jaguar_settings[] = 
 static const rc_disallowed_core_settings_t rc_disallowed_core_settings[] = {
   { "bsnes-mercury", _rc_disallowed_bsnes_settings },
   { "dolphin-emu", _rc_disallowed_dolphin_settings },
+  { "DuckStation", _rc_disallowed_duckstation_settings },
   { "ecwolf", _rc_disallowed_ecwolf_settings },
   { "FCEUmm", _rc_disallowed_fceumm_settings },
   { "FinalBurn Neo", _rc_disallowed_fbneo_settings },

@@ -3,6 +3,8 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
+#include "../src/rcheevos/rc_compat.h"
+
 static void _assert_parse_richpresence(rc_richpresence_t** richpresence, void* buffer, const char* script) {
   int size;
   unsigned* overflow;
@@ -498,6 +500,26 @@ static void test_macro_frames() {
 
   ram[1] = 20;
   assert_richpresence_output(richpresence, &memory, "3:42.20");
+}
+
+static void test_macro_float(const char* format, unsigned value, const char* expected) {
+  unsigned char ram[4];
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char script[128];
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  ram[0] = (value & 0xFF);
+  ram[1] = (value >> 8) & 0xFF;
+  ram[2] = (value >> 16) & 0xFF;
+  ram[3] = (value >> 24) & 0xFF;
+
+  snprintf(script, sizeof(script), "Format:N\nFormatType=%s\n\nDisplay:\n@N(fF0000)", format);
+
+  assert_parse_richpresence(&richpresence, buffer, script);
+  assert_richpresence_output(richpresence, &memory, expected);
 }
 
 static void test_macro_lookup_simple() {
@@ -1180,6 +1202,18 @@ void test_richpresence(void) {
 
   /* frames macros */
   TEST(test_macro_frames);
+
+  /* float macros */
+  TEST_PARAMS3(test_macro_float, "VALUE", 0x429A4492, "77"); /* 77.133926 */
+  TEST_PARAMS3(test_macro_float, "FLOAT1", 0x429A4492, "77.1");
+  TEST_PARAMS3(test_macro_float, "FLOAT2", 0x429A4492, "77.13");
+  TEST_PARAMS3(test_macro_float, "FLOAT3", 0x429A4492, "77.134"); /* rounded up */
+  TEST_PARAMS3(test_macro_float, "FLOAT4", 0x429A4492, "77.1339");
+  TEST_PARAMS3(test_macro_float, "FLOAT5", 0x429A4492, "77.13393"); /* rounded up */
+  TEST_PARAMS3(test_macro_float, "FLOAT6", 0x429A4492, "77.133926");
+  TEST_PARAMS3(test_macro_float, "VALUE", 0xC0000000, "-2"); /* -2.0 */
+  TEST_PARAMS3(test_macro_float, "FLOAT1", 0xC0000000, "-2.0");
+  TEST_PARAMS3(test_macro_float, "FLOAT6", 0xC0000000, "-2.000000");
 
   /* lookup macros */
   TEST(test_macro_lookup_simple);
