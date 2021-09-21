@@ -148,6 +148,7 @@ void rc_reset_condset(rc_condset_t* self);
 rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse, int is_indirect);
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state);
 void rc_evaluate_condition_value(rc_typed_value_t* value, rc_condition_t* self, rc_eval_state_t* eval_state);
+int rc_condition_is_combining(const rc_condition_t* self);
 
 int rc_parse_operand(rc_operand_t* self, const char** memaddr, int is_indirect, rc_parse_state_t* parse);
 void rc_evaluate_operand(rc_typed_value_t* value, rc_operand_t* self, rc_eval_state_t* eval_state);

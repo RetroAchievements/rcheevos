@@ -23,6 +23,277 @@
  * grep -v ": OK" results.txt  | grep -v "File: " | grep .
  */
 
+static const char* flag_string(char type) {
+  switch (type) {
+    case RC_CONDITION_STANDARD: return "";
+    case RC_CONDITION_PAUSE_IF: return "PauseIf ";
+    case RC_CONDITION_RESET_IF: return "ResetIf ";
+    case RC_CONDITION_MEASURED_IF: return "MeasuredIf ";
+    case RC_CONDITION_TRIGGER: return "Trigger ";
+    case RC_CONDITION_MEASURED: return "Measured ";
+    case RC_CONDITION_ADD_SOURCE: return "AddSource ";
+    case RC_CONDITION_SUB_SOURCE: return "SubSource ";
+    case RC_CONDITION_ADD_ADDRESS: return "AddAddress ";
+    case RC_CONDITION_ADD_HITS: return "AddHits ";
+    case RC_CONDITION_SUB_HITS: return "SubHits ";
+    case RC_CONDITION_RESET_NEXT_IF: return "ResetNextIf ";
+    case RC_CONDITION_AND_NEXT: return "AndNext ";
+    case RC_CONDITION_OR_NEXT: return "OrNext ";
+    default: return "Unknown";
+  }
+}
+
+static const char* type_string(char type) {
+  switch (type) {
+    case RC_OPERAND_ADDRESS: return "Mem";
+    case RC_OPERAND_DELTA: return "Delta";
+    case RC_OPERAND_CONST: return "Value";
+    case RC_OPERAND_FP: return "Float";
+    case RC_OPERAND_LUA: return "Lua";
+    case RC_OPERAND_PRIOR: return "Prior";
+    case RC_OPERAND_BCD: return "BCD";
+    case RC_OPERAND_INVERTED: return "Inverted";
+    default: return "Unknown";
+  }
+}
+
+static const char* size_string(char size) {
+  switch (size) {
+    case RC_MEMSIZE_8_BITS: return "8-bit";
+    case RC_MEMSIZE_16_BITS: return "16-bit";
+    case RC_MEMSIZE_24_BITS: return "24-bit";
+    case RC_MEMSIZE_32_BITS: return "32-bit";
+    case RC_MEMSIZE_LOW: return "Lower4";
+    case RC_MEMSIZE_HIGH: return "Upper4";
+    case RC_MEMSIZE_BIT_0: return "Bit0";
+    case RC_MEMSIZE_BIT_1: return "Bit1";
+    case RC_MEMSIZE_BIT_2: return "Bit2";
+    case RC_MEMSIZE_BIT_3: return "Bit3";
+    case RC_MEMSIZE_BIT_4: return "Bit4";
+    case RC_MEMSIZE_BIT_5: return "Bit5";
+    case RC_MEMSIZE_BIT_6: return "Bit6";
+    case RC_MEMSIZE_BIT_7: return "Bit7";
+    case RC_MEMSIZE_BITCOUNT: return "BitCount";
+    case RC_MEMSIZE_16_BITS_BE: return "16-bit BE";
+    case RC_MEMSIZE_24_BITS_BE: return "24-bit BE";
+    case RC_MEMSIZE_32_BITS_BE: return "32-bit BE";
+    case RC_MEMSIZE_VARIABLE: return "Variable";
+    default: return "Unknown";
+  }
+}
+
+static const char* operator_string(char oper) {
+  switch (oper) {
+    case RC_OPERATOR_NONE: return "";
+    case RC_OPERATOR_AND: return "&";
+    case RC_OPERATOR_MULT: return "*";
+    case RC_OPERATOR_DIV: return "/";
+    case RC_OPERATOR_EQ: return "=";
+    case RC_OPERATOR_NE: return "!=";
+    case RC_OPERATOR_GE: return ">=";
+    case RC_OPERATOR_GT: return ">";
+    case RC_OPERATOR_LE: return "<=";
+    case RC_OPERATOR_LT: return "<";
+    default: return "?";
+  }
+}
+
+static void append_condition(char result[], size_t result_size, const rc_condition_t* cond) {
+  const char* flag = flag_string(cond->type);
+  const char* src_type = type_string(cond->operand1.type);
+  const char* tgt_type = type_string(cond->operand2.type);
+  const char* cmp = operator_string(cond->oper);
+  char val1[32], val2[32];
+
+  if (rc_operand_is_memref(&cond->operand1))
+    snprintf(val1, sizeof(val1), "%s 0x%06x", size_string(cond->operand1.size), cond->operand1.value.memref->address);
+  else
+    snprintf(val1, sizeof(val1), "0x%06x", cond->operand1.value.num);
+
+  if (rc_operand_is_memref(&cond->operand2))
+    snprintf(val2, sizeof(val2), "%s 0x%06x", size_string(cond->operand2.size), cond->operand2.value.memref->address);
+  else
+    snprintf(val2, sizeof(val2), "0x%06x", cond->operand2.value.num);
+
+  const size_t message_len = strlen(result);
+  result += message_len;
+  result_size -= message_len;
+
+  snprintf(result, result_size, ": %s%s %s %s %s %s", flag, src_type, val1, cmp, tgt_type, val2);
+}
+
+static unsigned max_value(const rc_operand_t* operand)
+{
+  if (operand->type == RC_OPERAND_CONST)
+    return operand->value.num;
+
+  if (!rc_operand_is_memref(operand))
+    return 0xFFFFFFFF;
+
+  switch (rc_memref_shared_size(operand->size)) {
+    case RC_MEMSIZE_8_BITS:
+      switch (operand->size) {
+        case RC_MEMSIZE_BIT_0:
+        case RC_MEMSIZE_BIT_1:
+        case RC_MEMSIZE_BIT_2:
+        case RC_MEMSIZE_BIT_3:
+        case RC_MEMSIZE_BIT_4:
+        case RC_MEMSIZE_BIT_5:
+        case RC_MEMSIZE_BIT_6:
+        case RC_MEMSIZE_BIT_7:
+          return 1;
+
+        case RC_MEMSIZE_LOW:
+        case RC_MEMSIZE_HIGH:
+          return 0xF;
+
+        case RC_MEMSIZE_BITCOUNT:
+          return 8;
+
+        default:
+          return 0xFF;
+      }
+
+    case RC_MEMSIZE_16_BITS:
+      return 0xFFFF;
+
+    case RC_MEMSIZE_24_BITS:
+      return 0xFFFFFF;
+
+    default:
+      return 0xFFFFFFFF;
+  }
+}
+
+static int validate_range(unsigned min_val, unsigned max_val, char oper, unsigned max, char result[], const size_t result_size) {
+  switch (oper) {
+    case RC_OPERATOR_AND:
+      if (min_val > max) {
+        snprintf(result, result_size, "mask has more bits than source");
+        return 0;
+      }
+      else if (min_val == 0 && max_val == 0) {
+        snprintf(result, result_size, "result of mask always 0");
+        return 0;
+      }
+      break;
+
+    case RC_OPERATOR_EQ:
+      if (min_val > max) {
+        snprintf(result, result_size, "comparison is never true");
+        return 0;
+      }
+      break;
+
+    case RC_OPERATOR_NE:
+      if (min_val > max) {
+        snprintf(result, result_size, "comparison is always true");
+        return 0;
+      }
+      break;
+
+    case RC_OPERATOR_GE:
+      if (min_val > max) {
+        snprintf(result, result_size, "comparison is never true");
+        return 0;
+      }
+      if (max_val == 0) {
+        snprintf(result, result_size, "comparison is always true");
+        return 0;
+      }
+      break;
+
+    case RC_OPERATOR_GT:
+      if (min_val >= max) {
+        snprintf(result, result_size, "comparison is never true");
+        return 0;
+      }
+      break;
+
+    case RC_OPERATOR_LE:
+      if (min_val >= max) {
+        snprintf(result, result_size, "comparison is always true");
+        return 0;
+      }
+      break;
+
+    case RC_OPERATOR_LT:
+      if (min_val > max) {
+        snprintf(result, result_size, "comparison is always true");
+        return 0;
+      }
+      if (max_val == 0) {
+        snprintf(result, result_size, "comparison is never true");
+        return 0;
+      }
+      break;
+  }
+
+  return 1;
+}
+
+static int validate_condset(const rc_condset_t* condset, char result[], const size_t result_size) {
+  int index = 1;
+  unsigned long long add_source_max = 0;
+  int in_add_hits = 0;
+
+  if (!condset)
+    return 1;
+
+  for (const rc_condition_t* cond = condset->conditions; cond; cond = cond->next, ++index) {
+    unsigned max = max_value(&cond->operand1);
+    const int is_memref = rc_operand_is_memref(&cond->operand1);
+
+    switch (cond->type) {
+      case RC_CONDITION_ADD_SOURCE:
+        add_source_max += max;
+        continue;
+
+      case RC_CONDITION_SUB_SOURCE:
+        if (add_source_max < max) /* potential underflow - may be expected */
+          add_source_max = 0xFFFFFFFF;
+        continue;
+
+      case RC_CONDITION_ADD_ADDRESS: /* ignore these */
+        continue;
+
+      default:
+        if (add_source_max) {
+          const unsigned long long overflow = add_source_max + max;
+          if (overflow > 0xFFFFFFFFUL)
+            max = 0xFFFFFFFF;
+          else
+            max += (unsigned)add_source_max;
+        }
+        break;
+    }
+
+    const size_t prefix_length = snprintf(result, result_size, "condition %d ", index);
+    const unsigned max_val = max_value(&cond->operand2);
+    if (max_val != max && add_source_max == 0 && is_memref && rc_operand_is_memref(&cond->operand2)) {
+      const unsigned compare_max = max_value(&cond->operand2);
+      if (compare_max != max) {
+        snprintf(result + prefix_length, result_size - prefix_length, "comparing different memory sizes");
+        append_condition(result, result_size, cond);
+        return 0;
+      }
+    }
+
+    /* if either side is a memref, or there's a running add source chain, check for impossible comparisons */
+    const unsigned min_val = (cond->operand2.type == RC_OPERAND_CONST) ? cond->operand2.value.num : 0;
+    if (is_memref || min_val == 0 || add_source_max) {
+      if (!validate_range(min_val, max_val, cond->oper, max, result + prefix_length, result_size - prefix_length)) {
+        append_condition(result, result_size, cond);
+        return 0;
+      }
+    }
+
+    add_source_max = 0;
+  }
+
+  return 1;
+}
+
 static int validate_memrefs(rc_memref_t* memref, char result[], const size_t result_size, unsigned max_address) {
   if (max_address < 0xFFFFFFFF) {
     while (memref) {
@@ -60,6 +331,18 @@ static int validate_trigger(const char* trigger, char result[], const size_t res
   }
   else {
     success = validate_memrefs(compiled->memrefs, result, result_size, max_address);
+    if (success) {
+      snprintf(result, result_size, "Core ");
+      success = validate_condset(compiled->requirement, result + 5, result_size - 5);
+
+      const rc_condset_t* alt = compiled->alternative;
+      int index = 1;
+      while (alt && success) {
+        const size_t prefix_length = snprintf(result, result_size, "Alt%d ", index++);
+        success = validate_condset(alt, result + prefix_length, result_size - prefix_length);
+        alt = alt->next;
+      }
+    }
   }
 
   if (success)
@@ -283,7 +566,8 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
         file_title[0] = '\0';
       }
 
-      printf(" achievement %d: %s\n", fetch_game_data_response.achievements[i].id, buffer);
+      printf(" achievement %d%s: %s\n", fetch_game_data_response.achievements[i].id,
+          (fetch_game_data_response.achievements[i].category == 3) ? "" : " (Unofficial)", buffer);
     }
   }
 
