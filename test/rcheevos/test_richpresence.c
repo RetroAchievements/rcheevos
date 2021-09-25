@@ -1270,7 +1270,7 @@ void test_richpresence(void) {
   TEST_PARAMS2(test_builtin_macro, "Seconds", "3h25:45");
   TEST_PARAMS2(test_builtin_macro, "Minutes", "205h45");
   TEST_PARAMS2(test_builtin_macro, "SecondsAsMinutes", "3h25");
-  TEST_PARAMS2(test_builtin_macro, "ASCIIChar", "?"); // 0x3039 is not a single ASCII char
+  TEST_PARAMS2(test_builtin_macro, "ASCIIChar", "?"); /* 0x3039 is not a single ASCII char */
   TEST_PARAMS2(test_builtin_macro, "UnicodeChar", "\xe3\x80\xb9");
   TEST_PARAMS2(test_builtin_macro_float, "Float1", "77.1");
   TEST_PARAMS2(test_builtin_macro_float, "Float2", "77.13");
