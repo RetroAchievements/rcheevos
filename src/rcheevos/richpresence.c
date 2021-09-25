@@ -190,7 +190,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
           {"Float5", 6, RC_FORMAT_FLOAT5},
           {"Float6", 6, RC_FORMAT_FLOAT6},
         };
-        int i;
+        size_t i;
 
         for (i = 0; i < sizeof(builtin_macros) / sizeof(builtin_macros[0]); ++i) {
           if (macro_len == builtin_macros[i].name_len &&
