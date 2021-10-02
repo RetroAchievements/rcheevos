@@ -360,6 +360,41 @@ static int validate_leaderboard(const char* leaderboard, char result[], const si
 
   int ret = rc_lboard_size(leaderboard);
   if (ret < 0) {
+    const char* start = leaderboard;
+    char part[4] = { 0,0,0,0 };
+    do
+    {
+        char* next = strstr(start, "::");
+        part[0] = toupper((int)start[0]);
+        part[1] = toupper((int)start[1]);
+        part[2] = toupper((int)start[2]);
+        start += 4;
+
+        if (strcmp(part, "VAL") == 0)
+        {
+            int ret2 = rc_value_size(start);
+            if (ret2 == ret)
+            {
+                snprintf(result, result_size, "%s: %s", part, rc_error_str(ret));
+                return 0;
+            }
+        }
+        else
+        {
+            int ret2 = rc_trigger_size(start);
+            if (ret2 == ret)
+            {
+                snprintf(result, result_size, "%s: %s", part, rc_error_str(ret));
+                return 0;
+            }
+        }
+
+        if (!next)
+            break;
+
+        start = next + 2;
+    } while (1);
+
     snprintf(result, result_size, "%s", rc_error_str(ret));
     return 0;
   }
