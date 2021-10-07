@@ -255,6 +255,10 @@ static int validate_condset(const rc_condset_t* condset, char result[], const si
         continue;
 
       case RC_CONDITION_ADD_ADDRESS: /* ignore these */
+        if (cond->operand1.type == RC_OPERAND_DELTA || cond->operand1.type == RC_OPERAND_PRIOR) {
+          snprintf(result, result_size, "condition %d: pointer adjustment should not use value from previous frame", index);
+          return 0;
+        }
         continue;
 
       default:
