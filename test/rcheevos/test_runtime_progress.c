@@ -12,9 +12,26 @@ static void _assert_activate_achievement(rc_runtime_t* runtime, unsigned int id,
 }
 #define assert_activate_achievement(runtime, id, memaddr) ASSERT_HELPER(_assert_activate_achievement(runtime, id, memaddr), "assert_activate_achievement")
 
+static void _assert_activate_rich_presence(rc_runtime_t* runtime, const char* script)
+{
+  int result = rc_runtime_activate_richpresence(runtime, script, NULL, 0);
+  ASSERT_NUM_EQUALS(result, RC_OK);
+}
+#define assert_activate_rich_presence(runtime, script) ASSERT_HELPER(_assert_activate_rich_presence(runtime, script), "assert_activate_rich_presence")
+
+static void _assert_richpresence_output(rc_runtime_t* runtime, memory_t* memory, const char* expected_display_string) {
+  char output[256];
+  int result;
+
+  result = rc_runtime_get_richpresence(runtime, output, sizeof(output), peek, memory, NULL);
+  ASSERT_STR_EQUALS(output, expected_display_string);
+  ASSERT_NUM_EQUALS(result, strlen(expected_display_string));
+}
+#define assert_richpresence_output(runtime, memory, expected_display_string) ASSERT_HELPER(_assert_richpresence_output(runtime, memory, expected_display_string), "assert_richpresence_output")
+
 static void event_handler(const rc_runtime_event_t* e)
 {
-    (void)e;
+  (void)e;
 }
 
 static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)
@@ -1097,6 +1114,207 @@ static void test_multiple_achievements_deactivated_no_memrefs()
   rc_runtime_destroy(&runtime);
 }
 
+static void test_rich_presence_none()
+{
+  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  rc_runtime_init(&runtime);
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_rich_presence_static()
+{
+  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  rc_runtime_init(&runtime);
+
+  assert_activate_rich_presence(&runtime, "Display:\nTest");
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_rich_presence_simple_lookup()
+{
+  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  rc_runtime_init(&runtime);
+
+  assert_activate_rich_presence(&runtime, "Display:\n@Number(p0xH02)");
+  assert_do_frame(&runtime, &memory); /* prev[2] = 0 */
+
+  ram[2] = 4;
+  assert_do_frame(&runtime, &memory); /* prev[2] = 2 */
+
+  ram[2] = 8;
+  assert_do_frame(&runtime, &memory); /* prev[2] = 4 */
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  ram[2] = 12;
+  assert_do_frame(&runtime, &memory); /* prev[2] = 8 */
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  /* deserialized should remember prev[2] = 4 */
+  assert_richpresence_output(&runtime, &memory, "4");
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_rich_presence_tracked_hits()
+{
+  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  rc_runtime_init(&runtime);
+
+  assert_activate_rich_presence(&runtime, "Display:\n@Number(M:0xH02=2)");
+  assert_do_frame(&runtime, &memory); /* count = 1 */
+  assert_do_frame(&runtime, &memory); /* count = 2 */
+  assert_do_frame(&runtime, &memory); /* count = 3 */
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  assert_do_frame(&runtime, &memory); /* count = 4 */
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  /* deserialized should remember count = 3 */
+  assert_richpresence_output(&runtime, &memory, "3");
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_rich_presence_tracked_hits_md5_changed()
+{
+  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  rc_runtime_init(&runtime);
+
+  assert_activate_rich_presence(&runtime, "Display:\n@Number(M:0xH02=2)");
+  assert_do_frame(&runtime, &memory); /* count = 1 */
+  assert_do_frame(&runtime, &memory); /* count = 2 */
+  assert_do_frame(&runtime, &memory); /* count = 3 */
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  assert_do_frame(&runtime, &memory); /* count = 4 */
+
+  assert_activate_rich_presence(&runtime, "Display:\n@Number(M:0xH02=2)!");
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  /* md5 changed, but variable is stored external to RP, 3 should be remembered */
+  assert_richpresence_output(&runtime, &memory, "3!");
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_rich_presence_conditional_display()
+{
+  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  rc_runtime_init(&runtime);
+
+  assert_activate_rich_presence(&runtime, "Display:\n?0xH02=2.3.?Three\nLess");
+  assert_do_frame(&runtime, &memory); /* count = 1 */
+  assert_do_frame(&runtime, &memory); /* count = 2 */
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  assert_do_frame(&runtime, &memory); /* count = 3 */
+  assert_do_frame(&runtime, &memory); /* count = 4 */
+  assert_richpresence_output(&runtime, &memory, "Three");
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  /* deserialized should remember count = 2 */
+  assert_richpresence_output(&runtime, &memory, "Less");
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_rich_presence_conditional_display_md5_changed()
+{
+  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  rc_runtime_init(&runtime);
+
+  assert_activate_rich_presence(&runtime, "Display:\n?0xH02=2.3.?Three\nLess");
+  assert_do_frame(&runtime, &memory); /* count = 1 */
+  assert_do_frame(&runtime, &memory); /* count = 2 */
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  assert_do_frame(&runtime, &memory); /* count = 3 */
+  assert_do_frame(&runtime, &memory); /* count = 4 */
+  assert_richpresence_output(&runtime, &memory, "Three");
+
+  reset_runtime(&runtime);
+  assert_activate_rich_presence(&runtime, "Display:\n?0xH02=2.3.?Three!\nLess");
+  assert_deserialize(&runtime, buffer);
+
+  /* md5 changed, hit count should be discarded */
+  assert_richpresence_output(&runtime, &memory, "Less");
+
+  assert_do_frame(&runtime, &memory); /* count = 1 */
+  assert_do_frame(&runtime, &memory); /* count = 2 */
+  assert_richpresence_output(&runtime, &memory, "Less");
+
+  assert_do_frame(&runtime, &memory); /* count = 3 */
+  assert_richpresence_output(&runtime, &memory, "Three!");
+
+  rc_runtime_destroy(&runtime);
+}
+
 /* ======================================================== */
 
 void test_runtime_progress(void) {
@@ -1123,6 +1341,13 @@ void test_runtime_progress(void) {
   TEST(test_multiple_achievements_deactivated_memrefs);
   TEST(test_multiple_achievements_deactivated_no_memrefs);
 
+  TEST(test_rich_presence_none);
+  TEST(test_rich_presence_static);
+  TEST(test_rich_presence_simple_lookup);
+  TEST(test_rich_presence_tracked_hits);
+  TEST(test_rich_presence_tracked_hits_md5_changed);
+  TEST(test_rich_presence_conditional_display);
+  TEST(test_rich_presence_conditional_display_md5_changed);
 
   TEST_SUITE_END();
 }

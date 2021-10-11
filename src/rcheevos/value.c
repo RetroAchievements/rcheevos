@@ -50,6 +50,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
   self->conditions = RC_ALLOC(rc_condset_t, parse);
   self->conditions->has_pause = 0;
   self->conditions->is_paused = 0;
+  self->conditions->has_indirect_memrefs = 0;
 
   next = &self->conditions->conditions;
   next_clause = &self->conditions->next;

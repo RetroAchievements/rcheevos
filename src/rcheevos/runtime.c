@@ -413,17 +413,52 @@ int rc_runtime_format_lboard_value(char* buffer, int size, int value, int format
 int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua_State* L, int funcs_idx) {
   rc_richpresence_t* richpresence;
   rc_runtime_richpresence_t* previous;
-  rc_richpresence_display_t* display;
+  rc_runtime_richpresence_t** previous_ptr;
   rc_parse_state_t parse;
+  unsigned char md5[16];
   int size;
 
   if (script == NULL)
     return RC_MISSING_DISPLAY_STRING;
 
+  rc_runtime_checksum(script, md5);
+
+  /* look for existing match */
+  previous_ptr = NULL;
+  previous = self->richpresence;
+  while (previous) {
+    if (previous && memcmp(self->richpresence->md5, md5, 16) == 0) {
+      /* unchanged. reset all of the conditions */
+      rc_reset_richpresence(self->richpresence->richpresence);
+
+      /* move to front of linked list*/
+      if (previous_ptr) {
+        *previous_ptr = previous->previous;
+        if (!self->richpresence->owns_memrefs) {
+          free(self->richpresence->buffer);
+          previous->previous = self->richpresence->previous;
+        }
+        else {
+          previous->previous = self->richpresence;
+        }
+
+        self->richpresence = previous;
+      }
+
+      /* return success*/
+      return RC_OK;
+    }
+
+    previous_ptr = &previous->previous;
+    previous = previous->previous;
+  }
+
+  /* no existing match found, parse script */
   size = rc_richpresence_size(script);
   if (size < 0)
     return size;
 
+  /* if the previous script doesn't have any memrefs, free it */
   previous = self->richpresence;
   if (previous) {
     if (!previous->owns_memrefs) {
@@ -432,12 +467,14 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
     }
   }
 
+  /* allocate and process the new script */
   self->richpresence = (rc_runtime_richpresence_t*)malloc(sizeof(rc_runtime_richpresence_t));
   if (!self->richpresence)
     return RC_OUT_OF_MEMORY;
 
   self->richpresence->previous = previous;
   self->richpresence->owns_memrefs = 0;
+  memcpy(self->richpresence->md5, md5, sizeof(md5));
   self->richpresence->buffer = malloc(size);
 
   if (!self->richpresence->buffer)
@@ -469,11 +506,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   }
   else {
     /* reset all of the conditions */
-    display = richpresence->first_display;
-    while (display != NULL) {
-      rc_reset_trigger(&display->trigger);
-      display = display->next;
-    }
+    rc_reset_richpresence(richpresence);
   }
 
   return RC_OK;
