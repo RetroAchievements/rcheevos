@@ -12,6 +12,13 @@ static void _assert_activate_achievement(rc_runtime_t* runtime, unsigned int id,
 }
 #define assert_activate_achievement(runtime, id, memaddr) ASSERT_HELPER(_assert_activate_achievement(runtime, id, memaddr), "assert_activate_achievement")
 
+static void _assert_activate_leaderboard(rc_runtime_t* runtime, unsigned int id, const char* script)
+{
+  int result = rc_runtime_activate_lboard(runtime, id, script, NULL, 0);
+  ASSERT_NUM_EQUALS(result, RC_OK);
+}
+#define assert_activate_leaderboard(runtime, id, script) ASSERT_HELPER(_assert_activate_leaderboard(runtime, id, script), "assert_activate_leaderboard")
+
 static void _assert_activate_rich_presence(rc_runtime_t* runtime, const char* script)
 {
   int result = rc_runtime_activate_richpresence(runtime, script, NULL, 0);
@@ -103,32 +110,25 @@ static rc_trigger_t* find_trigger(rc_runtime_t* runtime, unsigned ach_id)
       return runtime->triggers[i].trigger;
   }
 
+  ASSERT_MESSAGE("could not find trigger for achievement %u", ach_id);
   return NULL;
 }
 
-static rc_condset_t* find_condset(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx)
+static rc_condition_t* find_trigger_cond(rc_trigger_t* trigger, unsigned group_idx, unsigned cond_idx)
 {
-  rc_trigger_t* trigger = find_trigger(runtime, ach_id);
-  if (!trigger) {
-    ASSERT_MESSAGE("could not find trigger for achievement %u", ach_id);
-    return NULL;
-  }
+  rc_condset_t* condset;
+  rc_condition_t* cond;
 
-  rc_condset_t* condset = trigger->requirement;
+  if (!trigger)
+    return NULL;
+
+  condset = trigger->requirement;
   if (group_idx > 0) {
     condset = trigger->alternative;
     while (condset && --group_idx != 0)
       condset = condset->next;
   }
 
-  return condset;
-}
-
-static rc_condition_t* find_cond(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx)
-{
-  rc_condition_t* cond;
-
-  rc_condset_t* condset = find_condset(runtime, ach_id, group_idx);
   if (!condset)
     return NULL;
 
@@ -143,7 +143,8 @@ static rc_condition_t* find_cond(rc_runtime_t* runtime, unsigned ach_id, unsigne
 
 static void _assert_hitcount(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
 {
-  rc_condition_t* cond = find_cond(runtime, ach_id, group_idx, cond_idx);
+  rc_trigger_t* trigger = find_trigger(runtime, ach_id);
+  rc_condition_t* cond = find_trigger_cond(trigger, group_idx, cond_idx);
   ASSERT_PTR_NOT_NULL(cond);
 
   ASSERT_NUM_EQUALS(cond->current_hits, expected_hits);
@@ -152,7 +153,8 @@ static void _assert_hitcount(rc_runtime_t* runtime, unsigned ach_id, unsigned gr
 
 static void _assert_cond_memref(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_value, unsigned expected_prior, char expected_changed)
 {
-  rc_condition_t* cond = find_cond(runtime, ach_id, group_idx, cond_idx);
+  rc_trigger_t* trigger = find_trigger(runtime, ach_id);
+  rc_condition_t* cond = find_trigger_cond(trigger, group_idx, cond_idx);
   ASSERT_PTR_NOT_NULL(cond);
 
   ASSERT_NUM_EQUALS(cond->operand1.value.memref->value.value, expected_value);
@@ -164,12 +166,13 @@ static void _assert_cond_memref(rc_runtime_t* runtime, unsigned ach_id, unsigned
 
 static void _assert_cond_memref2(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_value, unsigned expected_prior, char expected_changed)
 {
-    rc_condition_t* cond = find_cond(runtime, ach_id, group_idx, cond_idx);
-    ASSERT_PTR_NOT_NULL(cond);
+  rc_trigger_t* trigger = find_trigger(runtime, ach_id);
+  rc_condition_t* cond = find_trigger_cond(trigger, group_idx, cond_idx);
+  ASSERT_PTR_NOT_NULL(cond);
 
-    ASSERT_NUM_EQUALS(cond->operand2.value.memref->value.value, expected_value);
-    ASSERT_NUM_EQUALS(cond->operand2.value.memref->value.prior, expected_prior);
-    ASSERT_NUM_EQUALS(cond->operand2.value.memref->value.changed, expected_changed);
+  ASSERT_NUM_EQUALS(cond->operand2.value.memref->value.value, expected_value);
+  ASSERT_NUM_EQUALS(cond->operand2.value.memref->value.prior, expected_prior);
+  ASSERT_NUM_EQUALS(cond->operand2.value.memref->value.changed, expected_changed);
 }
 #define assert_cond_memref2(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed) \
  ASSERT_HELPER(_assert_cond_memref2(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed), "assert_cond_memref2")
@@ -182,6 +185,48 @@ static void _assert_achievement_state(rc_runtime_t* runtime, unsigned ach_id, in
   ASSERT_NUM_EQUALS(trigger->state, state);
 }
 #define assert_achievement_state(runtime, ach_id, state) ASSERT_HELPER(_assert_achievement_state(runtime, ach_id, state), "assert_achievement_state")
+
+static rc_lboard_t* find_lboard(rc_runtime_t* runtime, unsigned lboard_id)
+{
+  unsigned i;
+  for (i = 0; i < runtime->lboard_count; ++i) {
+    if (runtime->lboards[i].id == lboard_id && runtime->lboards[i].lboard)
+      return runtime->lboards[i].lboard;
+  }
+
+  ASSERT_MESSAGE("could not find leaderboard %u", lboard_id);
+  return NULL;
+}
+
+static void _assert_sta_hitcount(rc_runtime_t* runtime, unsigned lboard_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
+{
+  rc_lboard_t* lboard = find_lboard(runtime, lboard_id);
+  rc_condition_t* cond = find_trigger_cond(&lboard->start, group_idx, cond_idx);
+  ASSERT_PTR_NOT_NULL(cond);
+
+  ASSERT_NUM_EQUALS(cond->current_hits, expected_hits);
+}
+#define assert_sta_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_sta_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits), "assert_sta_hitcount")
+
+static void _assert_sub_hitcount(rc_runtime_t* runtime, unsigned lboard_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
+{
+  rc_lboard_t* lboard = find_lboard(runtime, lboard_id);
+  rc_condition_t* cond = find_trigger_cond(&lboard->submit, group_idx, cond_idx);
+  ASSERT_PTR_NOT_NULL(cond);
+
+  ASSERT_NUM_EQUALS(cond->current_hits, expected_hits);
+}
+#define assert_sub_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_sub_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits), "assert_sub_hitcount")
+
+static void _assert_can_hitcount(rc_runtime_t* runtime, unsigned lboard_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
+{
+  rc_lboard_t* lboard = find_lboard(runtime, lboard_id);
+  rc_condition_t* cond = find_trigger_cond(&lboard->cancel, group_idx, cond_idx);
+  ASSERT_PTR_NOT_NULL(cond);
+
+  ASSERT_NUM_EQUALS(cond->current_hits, expected_hits);
+}
+#define assert_can_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_can_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits), "assert_can_hitcount")
 
 static void update_md5(unsigned char* buffer)
 {
@@ -971,7 +1016,7 @@ static void test_multiple_achievements_paused_and_primed()
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_PAUSED);
   assert_achievement_state(&runtime, 3, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 4, RC_TRIGGER_STATE_PRIMED);
-  ASSERT_TRUE(find_condset(&runtime, 2, 0)->is_paused);
+  ASSERT_TRUE(find_trigger(&runtime, 2)->requirement->is_paused);
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
@@ -983,7 +1028,7 @@ static void test_multiple_achievements_paused_and_primed()
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 3, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 4, RC_TRIGGER_STATE_ACTIVE);
-  ASSERT_FALSE(find_condset(&runtime, 2, 0)->is_paused);
+  ASSERT_FALSE(find_trigger(&runtime, 2)->requirement->is_paused);
 
   assert_serialize(&runtime, buffer2, sizeof(buffer2));
 
@@ -994,7 +1039,7 @@ static void test_multiple_achievements_paused_and_primed()
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_PAUSED);
   assert_achievement_state(&runtime, 3, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 4, RC_TRIGGER_STATE_PRIMED);
-  ASSERT_TRUE(find_condset(&runtime, 2, 0)->is_paused);
+  ASSERT_TRUE(find_trigger(&runtime, 2)->requirement->is_paused);
 
   reset_runtime(&runtime);
   assert_deserialize(&runtime, buffer2);
@@ -1003,7 +1048,7 @@ static void test_multiple_achievements_paused_and_primed()
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 3, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 4, RC_TRIGGER_STATE_ACTIVE);
-  ASSERT_FALSE(find_condset(&runtime, 2, 0)->is_paused);
+  ASSERT_FALSE(find_trigger(&runtime, 2)->requirement->is_paused);
 
   rc_runtime_destroy(&runtime);
 }
@@ -1110,6 +1155,195 @@ static void test_multiple_achievements_deactivated_no_memrefs()
   assert_hitcount(&runtime, 1, 0, 0, 3);
   assert_hitcount(&runtime, 2, 0, 0, 0);
   assert_hitcount(&runtime, 3, 0, 0, 1);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_single_leaderboard()
+{
+  unsigned char ram[] = { 2, 3, 6 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.4.::VAL:0xH0002");
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 4;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 5;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+
+  assert_memref(&runtime, 1, 5, 5, 4);
+  assert_memref(&runtime, 2, 6, 6, 0);
+  assert_sta_hitcount(&runtime, 1, 0, 0, 3);
+  assert_sub_hitcount(&runtime, 1, 0, 0, 2);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer);
+
+  assert_memref(&runtime, 1, 5, 5, 4);
+  assert_memref(&runtime, 2, 6, 6, 0);
+  assert_sta_hitcount(&runtime, 1, 0, 0, 3);
+  assert_sub_hitcount(&runtime, 1, 0, 0, 2);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_multiple_leaderboards()
+{
+  unsigned char ram[] = { 2, 3, 6 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.4.::VAL:0xH0002");
+  assert_activate_leaderboard(&runtime, 2, "STA:0xH0001=5::SUB:0xH0002=5::CAN:0xH0001=0::VAL:0xH0000");
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 4;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 5;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+
+  assert_sta_hitcount(&runtime, 1, 0, 0, 3);
+  assert_sub_hitcount(&runtime, 1, 0, 0, 2);
+  assert_sta_hitcount(&runtime, 2, 0, 0, 2);
+  assert_sub_hitcount(&runtime, 2, 0, 0, 0);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_deserialize(&runtime, buffer);
+
+  assert_sta_hitcount(&runtime, 1, 0, 0, 3);
+  assert_sub_hitcount(&runtime, 1, 0, 0, 2);
+  assert_sta_hitcount(&runtime, 2, 0, 0, 2);
+  assert_sub_hitcount(&runtime, 2, 0, 0, 0);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_multiple_leaderboards_ignore_inactive()
+{
+  unsigned char ram[] = { 2, 3, 6 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.4.::VAL:0xH0002");
+  assert_activate_leaderboard(&runtime, 2, "STA:0xH0001=5::SUB:0xH0002=5::CAN:0xH0001=0::VAL:0xH0000");
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 4;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 5;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+
+  find_lboard(&runtime, 1)->state = RC_LBOARD_STATE_DISABLED;
+  assert_sta_hitcount(&runtime, 1, 0, 0, 3);
+  assert_sub_hitcount(&runtime, 1, 0, 0, 2);
+  assert_sta_hitcount(&runtime, 2, 0, 0, 2);
+  assert_sub_hitcount(&runtime, 2, 0, 0, 0);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_DISABLED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  find_lboard(&runtime, 1)->state = RC_LBOARD_STATE_ACTIVE;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_deserialize(&runtime, buffer);
+
+  /* non-serialized leaderboard should be reset */
+  assert_sta_hitcount(&runtime, 1, 0, 0, 0);
+  assert_sub_hitcount(&runtime, 1, 0, 0, 0);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_WAITING);
+
+  /* serialized leaderboard should be restored */
+  assert_sta_hitcount(&runtime, 2, 0, 0, 2);
+  assert_sub_hitcount(&runtime, 2, 0, 0, 0);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_multiple_leaderboards_ignore_modified()
+{
+  unsigned char ram[] = { 2, 3, 6 };
+  unsigned char buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.4.::VAL:0xH0002");
+  assert_activate_leaderboard(&runtime, 2, "STA:0xH0001=5::SUB:0xH0002=5::CAN:0xH0001=0::VAL:0xH0000");
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 4;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 5;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+
+  assert_sta_hitcount(&runtime, 1, 0, 0, 3);
+  assert_sub_hitcount(&runtime, 1, 0, 0, 2);
+  assert_sta_hitcount(&runtime, 2, 0, 0, 2);
+  assert_sub_hitcount(&runtime, 2, 0, 0, 0);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.3.::VAL:0xH0002");
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_deserialize(&runtime, buffer);
+
+  /* modified leaderboard should be reset */
+  assert_sta_hitcount(&runtime, 1, 0, 0, 0);
+  assert_sub_hitcount(&runtime, 1, 0, 0, 0);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_WAITING);
+
+  /* serialized leaderboard should be restored */
+  assert_sta_hitcount(&runtime, 2, 0, 0, 2);
+  assert_sub_hitcount(&runtime, 2, 0, 0, 0);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
 
   rc_runtime_destroy(&runtime);
 }
@@ -1340,6 +1574,11 @@ void test_runtime_progress(void) {
   TEST(test_multiple_achievements_paused_and_primed);
   TEST(test_multiple_achievements_deactivated_memrefs);
   TEST(test_multiple_achievements_deactivated_no_memrefs);
+
+  TEST(test_single_leaderboard);
+  TEST(test_multiple_leaderboards);
+  TEST(test_multiple_leaderboards_ignore_inactive);
+  TEST(test_multiple_leaderboards_ignore_modified);
 
   TEST(test_rich_presence_none);
   TEST(test_rich_presence_static);

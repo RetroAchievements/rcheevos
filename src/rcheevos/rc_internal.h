@@ -169,6 +169,7 @@ void rc_typed_value_from_memref_value(rc_typed_value_t* value, const rc_memref_v
 int rc_format_typed_value(char* buffer, int size, const rc_typed_value_t* value, int format);
 
 void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_state_t* parse);
+int rc_lboard_state_active(int state);
 
 void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script, rc_parse_state_t* parse);
 

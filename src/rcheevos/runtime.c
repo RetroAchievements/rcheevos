@@ -300,6 +300,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   unsigned char md5[16];
   rc_lboard_t* lboard;
   rc_parse_state_t parse;
+  rc_runtime_lboard_t* runtime_lboard;
   int size;
   unsigned i;
 
@@ -378,14 +379,15 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, unsigned id, const char* mema
   }
 
   /* assign the new lboard */
-  self->lboards[self->lboard_count].id = id;
-  self->lboards[self->lboard_count].value = 0;
-  self->lboards[self->lboard_count].lboard = lboard;
-  self->lboards[self->lboard_count].buffer = lboard_buffer;
-  self->lboards[self->lboard_count].invalid_memref = NULL;
-  memcpy(self->lboards[self->lboard_count].md5, md5, 16);
-  self->lboards[self->lboard_count].owns_memrefs = rc_runtime_allocated_memrefs(self);
-  ++self->lboard_count;
+  runtime_lboard = &self->lboards[self->lboard_count++];
+  runtime_lboard->id = id;
+  runtime_lboard->value = 0;
+  runtime_lboard->lboard = lboard;
+  runtime_lboard->buffer = lboard_buffer;
+  runtime_lboard->invalid_memref = NULL;
+  memcpy(runtime_lboard->md5, md5, 16);
+  runtime_lboard->serialized_size = 0;
+  runtime_lboard->owns_memrefs = rc_runtime_allocated_memrefs(self);
 
   /* reset it, and return it */
   lboard->memrefs = NULL;
