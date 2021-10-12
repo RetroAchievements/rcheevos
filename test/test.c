@@ -58,6 +58,7 @@ extern void test_runtime_progress();
 
 extern void test_consoleinfo();
 extern void test_rc_libretro();
+extern void test_rc_validate();
 
 extern void test_url();
 
@@ -88,6 +89,7 @@ int main(void) {
 
   test_consoleinfo();
   test_rc_libretro();
+  test_rc_validate();
 
   test_lua();
 
