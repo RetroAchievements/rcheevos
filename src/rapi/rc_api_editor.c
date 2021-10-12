@@ -98,3 +98,55 @@ int rc_api_process_fetch_code_notes_response(rc_api_fetch_code_notes_response_t*
 void rc_api_destroy_fetch_code_notes_response(rc_api_fetch_code_notes_response_t* response) {
   rc_buf_destroy(&response->response.buffer);
 }
+
+/* --- Update Code Note --- */
+
+int rc_api_init_update_code_note_request(rc_api_request_t* request, const rc_api_update_code_note_request_t* api_params) {
+  rc_api_url_builder_t builder;
+
+  rc_api_url_build_dorequest_url(request);
+
+  if (api_params->game_id == 0)
+    return RC_INVALID_STATE;
+
+  rc_url_builder_init(&builder, &request->buffer, 128);
+  if (!rc_api_url_build_dorequest(&builder, "submitcodenote", api_params->username, api_params->api_token))
+    return builder.result;
+
+  rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
+  rc_url_builder_append_unum_param(&builder, "m", api_params->address);
+
+  if (api_params->note && *api_params->note)
+    rc_url_builder_append_str_param(&builder, "n", api_params->note);
+
+  request->post_data = rc_url_builder_finalize(&builder);
+
+  return builder.result;
+}
+
+int rc_api_process_update_code_note_response(rc_api_update_code_note_response_t* response, const char* server_response) {
+  int result;
+
+  rc_json_field_t fields[] = {
+    {"Success"},
+    {"Error"}
+    /* unused fields
+    {"GameID"},
+    {"Address"},
+    {"Note"}
+    */
+  };
+
+  memset(response, 0, sizeof(*response));
+  rc_buf_init(&response->response.buffer);
+
+  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  if (result != RC_OK || !response->response.succeeded)
+    return result;
+
+  return RC_OK;
+}
+
+void rc_api_destroy_update_code_note_response(rc_api_update_code_note_response_t* response) {
+  rc_buf_destroy(&response->response.buffer);
+}

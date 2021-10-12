@@ -127,6 +127,92 @@ static void test_init_fetch_code_notes_response_deleted_items()
   rc_api_destroy_fetch_code_notes_response(&fetch_code_notes_response);
 }
 
+static void test_init_update_code_note_request()
+{
+  rc_api_update_code_note_request_t update_code_note_request;
+  rc_api_request_t request;
+
+  memset(&update_code_note_request, 0, sizeof(update_code_note_request));
+  update_code_note_request.username = "Dev";
+  update_code_note_request.api_token = "API_TOKEN";
+  update_code_note_request.game_id = 1234;
+  update_code_note_request.address = 0x1C00;
+  update_code_note_request.note = "flags\n1=first\n2=second";
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_code_note_request(&request, &update_code_note_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=submitcodenote&u=Dev&t=API_TOKEN&g=1234&m=7168&n=flags%0a1%3dfirst%0a2%3dsecond");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_code_note_request_no_game_id()
+{
+  rc_api_update_code_note_request_t update_code_note_request;
+  rc_api_request_t request;
+
+  memset(&update_code_note_request, 0, sizeof(update_code_note_request));
+  update_code_note_request.username = "Dev";
+  update_code_note_request.api_token = "API_TOKEN";
+  update_code_note_request.address = 0x1C00;
+  update_code_note_request.note = "flags\n1=first\n2=second";
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_code_note_request(&request, &update_code_note_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_code_note_request_no_note()
+{
+  rc_api_update_code_note_request_t update_code_note_request;
+  rc_api_request_t request;
+
+  memset(&update_code_note_request, 0, sizeof(update_code_note_request));
+  update_code_note_request.username = "Dev";
+  update_code_note_request.api_token = "API_TOKEN";
+  update_code_note_request.game_id = 1234;
+  update_code_note_request.address = 0x1C00;
+  update_code_note_request.note = NULL;
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_code_note_request(&request, &update_code_note_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=submitcodenote&u=Dev&t=API_TOKEN&g=1234&m=7168");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_code_note_request_empty_note()
+{
+  rc_api_update_code_note_request_t update_code_note_request;
+  rc_api_request_t request;
+
+  memset(&update_code_note_request, 0, sizeof(update_code_note_request));
+  update_code_note_request.username = "Dev";
+  update_code_note_request.api_token = "API_TOKEN";
+  update_code_note_request.game_id = 1234;
+  update_code_note_request.address = 0x1C00;
+  update_code_note_request.note = "";
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_code_note_request(&request, &update_code_note_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=submitcodenote&u=Dev&t=API_TOKEN&g=1234&m=7168");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_code_note_response()
+{
+  rc_api_update_code_note_response_t update_code_note_response;
+  const char* server_response = "{\"Success\":true,\"GameID\":1234,\"Address\":7168,\"Note\":\"test\"}";
+  memset(&update_code_note_response, 0, sizeof(update_code_note_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_update_code_note_response(&update_code_note_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(update_code_note_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(update_code_note_response.response.error_message);
+
+  rc_api_destroy_update_code_note_response(&update_code_note_response);
+}
+
 void test_rapi_editor(void) {
   TEST_SUITE_BEGIN();
 
@@ -138,6 +224,15 @@ void test_rapi_editor(void) {
   TEST(test_init_fetch_code_notes_response_one_item);
   TEST(test_init_fetch_code_notes_response_several_items);
   TEST(test_init_fetch_code_notes_response_deleted_items);
+
+  /* update code note */
+  TEST(test_init_update_code_note_request);
+  TEST(test_init_update_code_note_request_no_game_id);
+  TEST(test_init_update_code_note_request_no_note);
+  TEST(test_init_update_code_note_request_empty_note);
+
+  TEST(test_init_update_code_note_response);
+
 
   TEST_SUITE_END();
 }
