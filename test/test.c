@@ -68,6 +68,7 @@ extern void test_rapi_common();
 extern void test_rapi_user();
 extern void test_rapi_runtime();
 extern void test_rapi_info();
+extern void test_rapi_editor();
 
 TEST_FRAMEWORK_DECLARATIONS()
 
@@ -100,6 +101,7 @@ int main(void) {
   test_rapi_user();
   test_rapi_runtime();
   test_rapi_info();
+  test_rapi_editor();
 
   TEST_FRAMEWORK_SHUTDOWN();
 
