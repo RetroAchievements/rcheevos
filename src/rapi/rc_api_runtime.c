@@ -338,7 +338,8 @@ int rc_api_process_award_achievement_response(rc_api_award_achievement_response_
     {"Success"},
     {"Error"},
     {"Score"},
-    {"AchievementID"}
+    {"AchievementID"},
+    {"AchievementsRemaining"}
   };
 
   memset(response, 0, sizeof(*response));
@@ -363,6 +364,7 @@ int rc_api_process_award_achievement_response(rc_api_award_achievement_response_
 
   rc_json_get_optional_unum(&response->new_player_score, &fields[2], "Score", 0);
   rc_json_get_optional_unum(&response->awarded_achievement_id, &fields[3], "AchievementID", 0);
+  rc_json_get_optional_unum(&response->achievements_remaining, &fields[4], "AchievementsRemaining", (unsigned)-1);
 
   return RC_OK;
 }

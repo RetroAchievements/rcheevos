@@ -631,7 +631,7 @@ int rc_json_get_unum(unsigned* out, const rc_json_field_t* field, const char* fi
   return 1;
 }
 
-void rc_json_get_optional_unum(unsigned* out, const rc_json_field_t* field, const char* field_name, int default_value) {
+void rc_json_get_optional_unum(unsigned* out, const rc_json_field_t* field, const char* field_name, unsigned default_value) {
   if (!rc_json_get_unum(out, field, field_name))
     *out = default_value;
 }
