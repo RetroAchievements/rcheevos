@@ -279,3 +279,74 @@ int rc_api_process_fetch_badge_range_response(rc_api_fetch_badge_range_response_
 void rc_api_destroy_fetch_badge_range_response(rc_api_fetch_badge_range_response_t* response) {
   rc_buf_destroy(&response->response.buffer);
 }
+
+/* --- Add Game Hash --- */
+
+int rc_api_init_add_game_hash_request(rc_api_request_t* request, const rc_api_add_game_hash_request_t* api_params) {
+  rc_api_url_builder_t builder;
+
+  rc_api_url_build_dorequest_url(request);
+
+  if (api_params->console_id == 0)
+    return RC_INVALID_STATE;
+  if (!api_params->hash || !*api_params->hash)
+    return RC_INVALID_STATE;
+  if (api_params->game_id == 0 && (!api_params->title || !*api_params->title))
+    return RC_INVALID_STATE;
+
+  rc_url_builder_init(&builder, &request->buffer, 128);
+  if (!rc_api_url_build_dorequest(&builder, "submitgametitle", api_params->username, api_params->api_token))
+    return builder.result;
+
+  rc_url_builder_append_unum_param(&builder, "c", api_params->console_id);
+  rc_url_builder_append_str_param(&builder, "m", api_params->hash);
+  if (api_params->title)
+    rc_url_builder_append_str_param(&builder, "i", api_params->title);
+  if (api_params->game_id)
+    rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
+  if (api_params->hash_description && *api_params->hash_description)
+    rc_url_builder_append_str_param(&builder, "d", api_params->hash_description);
+
+  request->post_data = rc_url_builder_finalize(&builder);
+
+  return builder.result;
+}
+
+int rc_api_process_add_game_hash_response(rc_api_add_game_hash_response_t* response, const char* server_response) {
+  int result;
+
+  rc_json_field_t fields[] = {
+    {"Success"},
+    {"Error"},
+    {"Response"}
+  };
+
+  rc_json_field_t response_fields[] = {
+    {"GameID"}
+    /* unused fields
+    {"MD5"},
+    {"ConsoleID"},
+    {"GameTitle"},
+    {"Success"}
+    */
+  };
+
+  memset(response, 0, sizeof(*response));
+  rc_buf_init(&response->response.buffer);
+
+  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  if (result != RC_OK || !response->response.succeeded)
+    return result;
+
+  if (!rc_json_get_required_object(&response_fields, sizeof(response_fields) / sizeof(response_fields[0]), &response->response, &fields[2], "Response"))
+    return RC_MISSING_VALUE;
+
+  if (!rc_json_get_required_unum(&response->game_id, &response->response, &response_fields[0], "GameID"))
+    return RC_MISSING_VALUE;
+
+  return RC_OK;
+}
+
+void rc_api_destroy_add_game_hash_response(rc_api_add_game_hash_response_t* response) {
+  rc_buf_destroy(&response->response.buffer);
+}

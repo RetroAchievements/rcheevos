@@ -3,6 +3,7 @@
 
 #include "../test_framework.h"
 #include "rc_compat.h"
+#include "rc_consoles.h"
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
 
@@ -339,6 +340,132 @@ static void test_init_fetch_badge_range_response()
   rc_api_destroy_fetch_badge_range_response(&fetch_badge_range_response);
 }
 
+static void test_init_add_game_hash_request()
+{
+  rc_api_add_game_hash_request_t add_game_hash_request;
+  rc_api_request_t request;
+
+  memset(&add_game_hash_request, 0, sizeof(add_game_hash_request));
+  add_game_hash_request.username = "Dev";
+  add_game_hash_request.api_token = "API_TOKEN";
+  add_game_hash_request.console_id = RC_CONSOLE_NINTENDO;
+  add_game_hash_request.game_id = 1234;
+  add_game_hash_request.title = "Game Name";
+  add_game_hash_request.hash = "NEW_HASH";
+  add_game_hash_request.hash_description = "Game Name [No Intro].nes";
+
+  ASSERT_NUM_EQUALS(rc_api_init_add_game_hash_request(&request, &add_game_hash_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=submitgametitle&u=Dev&t=API_TOKEN&c=7&m=NEW_HASH&i=Game+Name&g=1234&d=Game+Name+%5bNo+Intro%5d.nes");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_add_game_hash_request_no_game_id()
+{
+  rc_api_add_game_hash_request_t add_game_hash_request;
+  rc_api_request_t request;
+
+  memset(&add_game_hash_request, 0, sizeof(add_game_hash_request));
+  add_game_hash_request.username = "Dev";
+  add_game_hash_request.api_token = "API_TOKEN";
+  add_game_hash_request.console_id = RC_CONSOLE_NINTENDO;
+  add_game_hash_request.title = "Game Name";
+  add_game_hash_request.hash = "NEW_HASH";
+  add_game_hash_request.hash_description = "Game Name [No Intro].nes";
+
+  ASSERT_NUM_EQUALS(rc_api_init_add_game_hash_request(&request, &add_game_hash_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=submitgametitle&u=Dev&t=API_TOKEN&c=7&m=NEW_HASH&i=Game+Name&d=Game+Name+%5bNo+Intro%5d.nes");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_add_game_hash_request_no_console_id()
+{
+  rc_api_add_game_hash_request_t add_game_hash_request;
+  rc_api_request_t request;
+
+  memset(&add_game_hash_request, 0, sizeof(add_game_hash_request));
+  add_game_hash_request.username = "Dev";
+  add_game_hash_request.api_token = "API_TOKEN";
+  add_game_hash_request.game_id = 1234;
+  add_game_hash_request.title = "Game Name";
+  add_game_hash_request.hash = "NEW_HASH";
+  add_game_hash_request.hash_description = "Game Name [No Intro].nes";
+
+  ASSERT_NUM_EQUALS(rc_api_init_add_game_hash_request(&request, &add_game_hash_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_add_game_hash_request_no_title()
+{
+  rc_api_add_game_hash_request_t add_game_hash_request;
+  rc_api_request_t request;
+
+  memset(&add_game_hash_request, 0, sizeof(add_game_hash_request));
+  add_game_hash_request.username = "Dev";
+  add_game_hash_request.api_token = "API_TOKEN";
+  add_game_hash_request.console_id = RC_CONSOLE_NINTENDO;
+  add_game_hash_request.game_id = 1234;
+  add_game_hash_request.hash = "NEW_HASH";
+  add_game_hash_request.hash_description = "Game Name [No Intro].nes";
+
+  /* title is not required when a game id is provided (at least at the client
+   * level - the server will generate an error, but that could change) */
+  ASSERT_NUM_EQUALS(rc_api_init_add_game_hash_request(&request, &add_game_hash_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=submitgametitle&u=Dev&t=API_TOKEN&c=7&m=NEW_HASH&g=1234&d=Game+Name+%5bNo+Intro%5d.nes");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_add_game_hash_request_no_title_or_game_id()
+{
+  rc_api_add_game_hash_request_t add_game_hash_request;
+  rc_api_request_t request;
+
+  memset(&add_game_hash_request, 0, sizeof(add_game_hash_request));
+  add_game_hash_request.username = "Dev";
+  add_game_hash_request.api_token = "API_TOKEN";
+  add_game_hash_request.console_id = RC_CONSOLE_NINTENDO;
+  add_game_hash_request.hash = "NEW_HASH";
+  add_game_hash_request.hash_description = "Game Name [No Intro].nes";
+
+  ASSERT_NUM_EQUALS(rc_api_init_add_game_hash_request(&request, &add_game_hash_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_add_game_hash_response()
+{
+  rc_api_add_game_hash_response_t add_game_hash_response;
+  const char* server_response = "{\"Success\":true,\"Response\":{\"GameID\":1234}}";
+  memset(&add_game_hash_response, 0, sizeof(add_game_hash_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_add_game_hash_response(&add_game_hash_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(add_game_hash_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(add_game_hash_response.response.error_message);
+  ASSERT_UNUM_EQUALS(add_game_hash_response.game_id, 1234);
+
+  rc_api_destroy_add_game_hash_response(&add_game_hash_response);
+}
+
+static void test_init_add_game_hash_response_error()
+{
+  rc_api_add_game_hash_response_t add_game_hash_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"The ROM you are trying to load is not in the database.\"}";
+  memset(&add_game_hash_response, 0, sizeof(add_game_hash_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_add_game_hash_response(&add_game_hash_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(add_game_hash_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(add_game_hash_response.response.error_message, "The ROM you are trying to load is not in the database.");
+  ASSERT_UNUM_EQUALS(add_game_hash_response.game_id, 0);
+
+  rc_api_destroy_add_game_hash_response(&add_game_hash_response);
+}
+
 void test_rapi_editor(void) {
   TEST_SUITE_BEGIN();
 
@@ -371,6 +498,16 @@ void test_rapi_editor(void) {
   TEST(test_init_fetch_badge_range_request);
 
   TEST(test_init_fetch_badge_range_response);
+
+  /* add game hash */
+  TEST(test_init_add_game_hash_request);
+  TEST(test_init_add_game_hash_request_no_game_id);
+  TEST(test_init_add_game_hash_request_no_console_id);
+  TEST(test_init_add_game_hash_request_no_title);
+  TEST(test_init_add_game_hash_request_no_title_or_game_id);
+
+  TEST(test_init_add_game_hash_response);
+  TEST(test_init_add_game_hash_response_error);
 
   TEST_SUITE_END();
 }

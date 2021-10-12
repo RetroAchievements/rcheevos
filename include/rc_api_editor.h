@@ -152,6 +152,45 @@ int rc_api_init_fetch_badge_range_request(rc_api_request_t* request, const rc_ap
 int rc_api_process_fetch_badge_range_response(rc_api_fetch_badge_range_response_t* response, const char* server_response);
 void rc_api_destroy_fetch_badge_range_response(rc_api_fetch_badge_range_response_t* response);
 
+/* --- Add Game Hash --- */
+
+/**
+ * API parameters for an add game hash request.
+ */
+typedef struct rc_api_add_game_hash_request_t {
+  /* The username of the developer */
+  const char* username;
+  /* The API token from the login request */
+  const char* api_token;
+  /* The unique identifier of the game (0 to create a new game entry) */
+  unsigned game_id;
+  /* The unique identifier of the console for the game */
+  unsigned console_id;
+  /* The title of the game */
+  const char* title;
+  /* The hash being added */
+  const char* hash;
+  /* A description of the hash being added (usually the normalized ROM name) */
+  const char* hash_description;
+}
+rc_api_add_game_hash_request_t;
+
+/**
+ * Response data for an update code note request.
+ */
+typedef struct rc_api_add_game_hash_response_t {
+  /* The unique identifier of the game */
+  unsigned game_id;
+
+  /* Common server-provided response information */
+  rc_api_response_t response;
+}
+rc_api_add_game_hash_response_t;
+
+int rc_api_init_add_game_hash_request(rc_api_request_t* request, const rc_api_add_game_hash_request_t* api_params);
+int rc_api_process_add_game_hash_response(rc_api_add_game_hash_response_t* response, const char* server_response);
+void rc_api_destroy_add_game_hash_response(rc_api_add_game_hash_response_t* response);
+
 #ifdef __cplusplus
 }
 #endif
