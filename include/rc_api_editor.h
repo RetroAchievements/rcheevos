@@ -123,6 +123,35 @@ int rc_api_init_update_achievement_request(rc_api_request_t* request, const rc_a
 int rc_api_process_update_achievement_response(rc_api_update_achievement_response_t* response, const char* server_response);
 void rc_api_destroy_update_achievement_response(rc_api_update_achievement_response_t* response);
 
+/* --- Fetch Badge Range --- */
+
+/**
+ * API parameters for a fetch badge range request.
+ */
+typedef struct rc_api_fetch_badge_range_request_t {
+  /* Unused */
+  unsigned unused;
+}
+rc_api_fetch_badge_range_request_t;
+
+/**
+ * Response data for a fetch badge range request.
+ */
+typedef struct rc_api_fetch_badge_range_response_t {
+  /* The numeric identifier of the first valid badge ID */
+  unsigned first_badge_id;
+  /* The numeric identifier of the first unassigned badge ID */
+  unsigned next_badge_id;
+
+  /* Common server-provided response information */
+  rc_api_response_t response;
+}
+rc_api_fetch_badge_range_response_t;
+
+int rc_api_init_fetch_badge_range_request(rc_api_request_t* request, const rc_api_fetch_badge_range_request_t* api_params);
+int rc_api_process_fetch_badge_range_response(rc_api_fetch_badge_range_response_t* response, const char* server_response);
+void rc_api_destroy_fetch_badge_range_response(rc_api_fetch_badge_range_response_t* response);
+
 #ifdef __cplusplus
 }
 #endif

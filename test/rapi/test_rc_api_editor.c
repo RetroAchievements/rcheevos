@@ -310,6 +310,35 @@ static void test_init_update_achievement_response_invalid_perms()
   rc_api_destroy_update_achievement_response(&update_achievement_response);
 }
 
+static void test_init_fetch_badge_range_request()
+{
+  rc_api_fetch_badge_range_request_t fetch_badge_range_request;
+  rc_api_request_t request;
+
+  memset(&fetch_badge_range_request, 0, sizeof(fetch_badge_range_request));
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_badge_range_request(&request, &fetch_badge_range_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=badgeiter");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_badge_range_response()
+{
+  rc_api_fetch_badge_range_response_t fetch_badge_range_response;
+  const char* server_response = "{\"Success\":true,\"FirstBadge\":12,\"NextBadge\":123456}";
+  memset(&fetch_badge_range_response, 0, sizeof(fetch_badge_range_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_badge_range_response(&fetch_badge_range_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_badge_range_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_badge_range_response.response.error_message);
+  ASSERT_UNUM_EQUALS(fetch_badge_range_response.first_badge_id, 12);
+  ASSERT_UNUM_EQUALS(fetch_badge_range_response.next_badge_id, 123456);
+
+  rc_api_destroy_fetch_badge_range_response(&fetch_badge_range_response);
+}
+
 void test_rapi_editor(void) {
   TEST_SUITE_BEGIN();
 
@@ -337,6 +366,11 @@ void test_rapi_editor(void) {
 
   TEST(test_init_update_achievement_response);
   TEST(test_init_update_achievement_response_invalid_perms);
+
+  /* fetch badge range */
+  TEST(test_init_fetch_badge_range_request);
+
+  TEST(test_init_fetch_badge_range_response);
 
   TEST_SUITE_END();
 }
