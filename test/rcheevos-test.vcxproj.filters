@@ -277,7 +277,7 @@
       <Filter>src\rapi</Filter>
     </ClCompile>
     <ClCompile Include="rapi\test_rc_api_editor.c">
-      <Filter>tests\rcheevos</Filter>
+      <Filter>tests\rapi</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

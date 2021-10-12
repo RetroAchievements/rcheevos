@@ -88,6 +88,8 @@ typedef struct rc_api_leaderboard_definition_t {
   const char* description;
   /* The definition of the leaderboard to be passed to rc_runtime_activate_lboard */
   const char* definition;
+  /* Non-zero if lower values are better for this leaderboard */
+  int lower_is_better;
 }
 rc_api_leaderboard_definition_t;
 

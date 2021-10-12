@@ -119,7 +119,8 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
     {"Title"},
     {"Description"},
     {"Mem"},
-    {"Format"}
+    {"Format"},
+    {"LowerIsBetter"}
   };
 
   memset(response, 0, sizeof(*response));
@@ -237,6 +238,7 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
         return RC_MISSING_VALUE;
       if (!rc_json_get_required_string(&leaderboard->definition, &response->response, &leaderboard_fields[3], "Mem"))
         return RC_MISSING_VALUE;
+      rc_json_get_optional_bool(&leaderboard->lower_is_better, &leaderboard_fields[5], "LowerIsBetter", 0);
 
       if (!leaderboard_fields[4].value_end)
         return RC_MISSING_VALUE;
