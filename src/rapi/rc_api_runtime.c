@@ -4,6 +4,7 @@
 #include "rc_runtime.h"
 #include "rc_runtime_types.h"
 #include "../rcheevos/rc_compat.h"
+#include "../rhash/md5.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -306,8 +307,9 @@ void rc_api_destroy_ping_response(rc_api_ping_response_t* response) {
 
 int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_api_award_achievement_request_t* api_params) {
   rc_api_url_builder_t builder;
-  char signature[128];
-  char checksum[33];
+  char buffer[33];
+  md5_state_t md5;
+  md5_byte_t digest[16];
 
   rc_api_url_build_dorequest_url(request);
 
@@ -322,9 +324,15 @@ int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_ap
       rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
 
     /* Evaluate the signature. */
-    snprintf(signature, sizeof(signature), "%u%s%u", api_params->achievement_id, api_params->username, api_params->hardcore ? 1 : 0);
-    rc_api_generate_checksum(checksum, signature);
-    rc_url_builder_append_str_param(&builder, "v", checksum);
+    md5_init(&md5);
+    snprintf(buffer, sizeof(buffer), "%u", api_params->achievement_id);
+    md5_append(&md5, buffer, strlen(buffer));
+    md5_append(&md5, api_params->username, strlen(api_params->username));
+    snprintf(buffer, sizeof(buffer), "%d", api_params->hardcore ? 1 : 0);
+    md5_append(&md5, buffer, strlen(buffer));
+    md5_finish(&md5, digest);
+    rc_api_format_md5(buffer, digest);
+    rc_url_builder_append_str_param(&builder, "v", buffer);
 
     request->post_data = rc_url_builder_finalize(&builder);
   }
@@ -377,8 +385,9 @@ void rc_api_destroy_award_achievement_response(rc_api_award_achievement_response
 
 int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_api_submit_lboard_entry_request_t* api_params) {
   rc_api_url_builder_t builder;
-  char signature[128];
-  char checksum[33];
+  char buffer[33];
+  md5_state_t md5;
+  md5_byte_t digest[16];
 
   rc_api_url_build_dorequest_url(request);
 
@@ -394,9 +403,15 @@ int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_
       rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
 
     /* Evaluate the signature. */
-    snprintf(signature, sizeof(signature), "%u%s%d", api_params->leaderboard_id, api_params->username, api_params->score);
-    rc_api_generate_checksum(checksum, signature);
-    rc_url_builder_append_str_param(&builder, "v", checksum);
+    md5_init(&md5);
+    snprintf(buffer, sizeof(buffer), "%u", api_params->leaderboard_id);
+    md5_append(&md5, buffer, strlen(buffer));
+    md5_append(&md5, api_params->username, strlen(api_params->username));
+    snprintf(buffer, sizeof(buffer), "%d", api_params->score);
+    md5_append(&md5, buffer, strlen(buffer));
+    md5_finish(&md5, digest);
+    rc_api_format_md5(buffer, digest);
+    rc_url_builder_append_str_param(&builder, "v", buffer);
 
     request->post_data = rc_url_builder_finalize(&builder);
   }

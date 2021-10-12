@@ -1,4 +1,5 @@
 #include "rc_api_editor.h"
+#include "rc_api_runtime.h"
 
 #include "../test_framework.h"
 #include "rc_compat.h"
@@ -213,6 +214,102 @@ static void test_init_update_code_note_response()
   rc_api_destroy_update_code_note_response(&update_code_note_response);
 }
 
+static void test_init_update_achievement_request()
+{
+  rc_api_update_achievement_request_t update_achievement_request;
+  rc_api_request_t request;
+
+  memset(&update_achievement_request, 0, sizeof(update_achievement_request));
+  update_achievement_request.username = "Dev";
+  update_achievement_request.api_token = "API_TOKEN";
+  update_achievement_request.game_id = 1234;
+  update_achievement_request.achievement_id = 5555;
+  update_achievement_request.title = "Title";
+  update_achievement_request.description = "Description";
+  update_achievement_request.badge = "123456";
+  update_achievement_request.trigger = "0xH1234=1";
+  update_achievement_request.points = 5;
+  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_CORE;
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_achievement_request(&request, &update_achievement_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=uploadachievement&u=Dev&t=API_TOKEN&a=5555&g=1234&n=Title&d=Description&m=0xH1234%3d1&z=5&f=3&b=123456&h=7cd9d3f0bfdf84734968353b5a430cfd");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_achievement_request_new()
+{
+  rc_api_update_achievement_request_t update_achievement_request;
+  rc_api_request_t request;
+
+  memset(&update_achievement_request, 0, sizeof(update_achievement_request));
+  update_achievement_request.username = "Dev";
+  update_achievement_request.api_token = "API_TOKEN";
+  update_achievement_request.game_id = 1234;
+  update_achievement_request.title = "Title";
+  update_achievement_request.description = "Description";
+  update_achievement_request.badge = "123456";
+  update_achievement_request.trigger = "0xH1234=1";
+  update_achievement_request.points = 5;
+  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_UNOFFICIAL;
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_achievement_request(&request, &update_achievement_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=uploadachievement&u=Dev&t=API_TOKEN&g=1234&n=Title&d=Description&m=0xH1234%3d1&z=5&f=5&b=123456&h=10dd1fd6e0201f634b1b7536d4860ccb");
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_achievement_request_no_game_id()
+{
+  rc_api_update_achievement_request_t update_achievement_request;
+  rc_api_request_t request;
+
+  memset(&update_achievement_request, 0, sizeof(update_achievement_request));
+  update_achievement_request.username = "Dev";
+  update_achievement_request.api_token = "API_TOKEN";
+  update_achievement_request.achievement_id = 5555;
+  update_achievement_request.title = "Title";
+  update_achievement_request.description = "Description";
+  update_achievement_request.badge = "123456";
+  update_achievement_request.trigger = "0xH1234=1";
+  update_achievement_request.points = 5;
+  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_CORE;
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_achievement_request(&request, &update_achievement_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_achievement_response()
+{
+  rc_api_update_achievement_response_t update_achievement_response;
+  const char* server_response = "{\"Success\":true,\"AchievementID\":1234}";
+  memset(&update_achievement_response, 0, sizeof(update_achievement_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_update_achievement_response(&update_achievement_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(update_achievement_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(update_achievement_response.response.error_message);
+  ASSERT_UNUM_EQUALS(update_achievement_response.achievement_id, 1234);
+
+  rc_api_destroy_update_achievement_response(&update_achievement_response);
+}
+
+static void test_init_update_achievement_response_invalid_perms()
+{
+  rc_api_update_achievement_response_t update_achievement_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"You must be a developer to perform this action! Please drop a message in the forums to apply.\"}";
+  memset(&update_achievement_response, 0, sizeof(update_achievement_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_update_achievement_response(&update_achievement_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(update_achievement_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(update_achievement_response.response.error_message, "You must be a developer to perform this action! Please drop a message in the forums to apply.");
+  ASSERT_UNUM_EQUALS(update_achievement_response.achievement_id, 0);
+
+  rc_api_destroy_update_achievement_response(&update_achievement_response);
+}
+
 void test_rapi_editor(void) {
   TEST_SUITE_BEGIN();
 
@@ -233,6 +330,13 @@ void test_rapi_editor(void) {
 
   TEST(test_init_update_code_note_response);
 
+  /* update achievement */
+  TEST(test_init_update_achievement_request);
+  TEST(test_init_update_achievement_request_new);
+  TEST(test_init_update_achievement_request_no_game_id);
+
+  TEST(test_init_update_achievement_response);
+  TEST(test_init_update_achievement_response_invalid_perms);
 
   TEST_SUITE_END();
 }

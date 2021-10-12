@@ -72,7 +72,7 @@ void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* 
 
 void rc_api_url_build_dorequest_url(rc_api_request_t* request);
 int rc_api_url_build_dorequest(rc_api_url_builder_t* builder, const char* api, const char* username, const char* api_token);
-void rc_api_generate_checksum(char checksum[33], const char* data);
+void rc_api_format_md5(char checksum[33], const unsigned char digest[16]);
 
 #ifdef __cplusplus
 }

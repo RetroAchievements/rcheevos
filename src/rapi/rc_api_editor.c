@@ -1,6 +1,9 @@
 #include "rc_api_editor.h"
 #include "rc_api_common.h"
 
+#include "../rcheevos/rc_compat.h"
+#include "../rhash/md5.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -148,5 +151,87 @@ int rc_api_process_update_code_note_response(rc_api_update_code_note_response_t*
 }
 
 void rc_api_destroy_update_code_note_response(rc_api_update_code_note_response_t* response) {
+  rc_buf_destroy(&response->response.buffer);
+}
+
+/* --- Update Achievement --- */
+
+int rc_api_init_update_achievement_request(rc_api_request_t* request, const rc_api_update_achievement_request_t* api_params) {
+  rc_api_url_builder_t builder;
+  char buffer[33];
+  md5_state_t md5;
+  md5_byte_t hash[16];
+
+  rc_api_url_build_dorequest_url(request);
+
+  if (api_params->game_id == 0 || api_params->category == 0)
+    return RC_INVALID_STATE;
+  if (!api_params->title || !*api_params->title)
+    return RC_INVALID_STATE;
+  if (!api_params->description || !*api_params->description)
+    return RC_INVALID_STATE;
+  if (!api_params->trigger || !*api_params->trigger)
+    return RC_INVALID_STATE;
+
+  rc_url_builder_init(&builder, &request->buffer, 128);
+  if (!rc_api_url_build_dorequest(&builder, "uploadachievement", api_params->username, api_params->api_token))
+    return builder.result;
+
+  if (api_params->achievement_id)
+    rc_url_builder_append_unum_param(&builder, "a", api_params->achievement_id);
+  rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
+  rc_url_builder_append_str_param(&builder, "n", api_params->title);
+  rc_url_builder_append_str_param(&builder, "d", api_params->description);
+  rc_url_builder_append_str_param(&builder, "m", api_params->trigger);
+  rc_url_builder_append_unum_param(&builder, "z", api_params->points);
+  rc_url_builder_append_unum_param(&builder, "f", api_params->category);
+  if (api_params->badge)
+    rc_url_builder_append_str_param(&builder, "b", api_params->badge);
+
+  /* Evaluate the signature. */
+  md5_init(&md5);
+  md5_append(&md5, api_params->username, strlen(api_params->username));
+  md5_append(&md5, "SECRET", 6);
+  snprintf(buffer, sizeof(buffer), "%u", api_params->achievement_id);
+  md5_append(&md5, buffer, strlen(buffer));
+  md5_append(&md5, "SEC", 3);
+  md5_append(&md5, api_params->trigger, strlen(api_params->trigger));
+  snprintf(buffer, sizeof(buffer), "%u", api_params->points);
+  md5_append(&md5, buffer, strlen(buffer));
+  md5_append(&md5, "RE2", 3);
+  snprintf(buffer, sizeof(buffer), "%u", api_params->points * 3);
+  md5_append(&md5, buffer, strlen(buffer));
+  md5_finish(&md5, hash);
+  rc_api_format_md5(buffer, hash);
+  rc_url_builder_append_str_param(&builder, "h", buffer);
+
+  request->post_data = rc_url_builder_finalize(&builder);
+
+  return builder.result;
+}
+
+int rc_api_process_update_achievement_response(rc_api_update_achievement_response_t* response, const char* server_response) {
+  int result;
+
+  rc_json_field_t fields[] = {
+    {"Success"},
+    {"Error"},
+    {"AchievementID"}
+  };
+
+  memset(response, 0, sizeof(*response));
+  rc_buf_init(&response->response.buffer);
+
+  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  if (result != RC_OK || !response->response.succeeded)
+    return result;
+
+  if (!rc_json_get_required_unum(&response->achievement_id, &response->response, &fields[2], "AchievementID"))
+    return RC_MISSING_VALUE;
+
+  return RC_OK;
+}
+
+void rc_api_destroy_update_achievement_response(rc_api_update_achievement_response_t* response) {
   rc_buf_destroy(&response->response.buffer);
 }
