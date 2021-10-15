@@ -116,6 +116,8 @@ static int rc_validate_range(unsigned min_val, unsigned max_val, char oper, unsi
 }
 
 int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t result_size, unsigned max_address) {
+  const rc_condition_t* cond;
+  unsigned max_val;
   int index = 1;
   unsigned long long add_source_max = 0;
   int in_add_hits = 0;
@@ -127,7 +129,7 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
     return 1;
   }
 
-  for (const rc_condition_t* cond = condset->conditions; cond; cond = cond->next, ++index) {
+  for (cond = condset->conditions; cond; cond = cond->next, ++index) {
     unsigned max = rc_max_value(&cond->operand1);
     const int is_memref1 = rc_operand_is_memref(&cond->operand1);
     const int is_memref2 = rc_operand_is_memref(&cond->operand2);
@@ -205,7 +207,7 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
     }
 
     /* check for comparing two differently sized memrefs */
-    const unsigned max_val = rc_max_value(&cond->operand2);
+    max_val = rc_max_value(&cond->operand2);
     if (max_val != max && add_source_max == 0 && is_memref1 && is_memref2) {
       snprintf(result, result_size, "Condition %d: Comparing different memory sizes", index);
       return 0;
