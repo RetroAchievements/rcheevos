@@ -255,19 +255,26 @@ static int validate_leaderboard(const char* leaderboard, char result[], const si
   else {
     snprintf(result, result_size, "STA: ");
     success = rc_validate_trigger(&compiled->start, result + 5, result_size - 5, max_address);
-    
-    if (success) {
+    if (!success) {
+      append_invalid_trigger_condition(result + 5, result_size - 5, &compiled->start);
+    }
+    else {
       snprintf(result, result_size, "SUB: ");
       success = rc_validate_trigger(&compiled->submit, result + 5, result_size - 5, max_address);
-    }
+      if (!success) {
+        append_invalid_trigger_condition(result + 5, result_size - 5, &compiled->submit);
+      }
+      else {
+        snprintf(result, result_size, "CAN: ");
+        success = rc_validate_trigger(&compiled->cancel, result + 5, result_size - 5, max_address);
 
-    if (success) {
-      snprintf(result, result_size, "CAN: ");
-      success = rc_validate_trigger(&compiled->cancel, result + 5, result_size - 5, max_address);
-    }
-
-    if (success) {
-      snprintf(result, result_size, "%d OK", ret);
+        if (!success) {
+          append_invalid_trigger_condition(result + 5, result_size - 5, &compiled->cancel);
+        }
+        else {
+          snprintf(result, result_size, "%d OK", ret);
+        }
+      }
     }
   }
 
