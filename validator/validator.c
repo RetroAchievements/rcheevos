@@ -121,11 +121,14 @@ static void append_condition(char result[], size_t result_size, const rc_conditi
   result += message_len;
   result_size -= message_len;
 
-  snprintf(result, result_size, ": %s%s %s %s %s %s", flag, src_type, val1, cmp, tgt_type, val2);
+  if (cond->oper == RC_OPERATOR_NONE)
+    snprintf(result, result_size, ": %s%s %s", flag, src_type, val1);
+  else
+    snprintf(result, result_size, ": %s%s %s %s %s %s", flag, src_type, val1, cmp, tgt_type, val2);
 }
 
 static void append_invalid_condition(char result[], size_t result_size, const rc_condset_t* condset) {
-  if (strncmp(result, "condition ", 10) == 0) {
+  if (strncmp(result, "Condition ", 10) == 0) {
     int index = atoi(&result[10]);
     const rc_condition_t* cond;
     for (cond = condset->conditions; cond; cond = cond->next) {
@@ -140,7 +143,7 @@ static void append_invalid_condition(char result[], size_t result_size, const rc
 
 static void append_invalid_trigger_condition(char result[], size_t result_size, const rc_trigger_t* trigger) {
   if (strncmp(result, "Alt", 3) == 0) {
-    int index = atoi(&result[10]);
+    int index = atoi(&result[3]);
     const rc_condset_t* condset;
     for (condset = trigger->alternative; condset; condset = condset->next) {
       if (--index == 0) {
@@ -205,39 +208,35 @@ static int validate_leaderboard(const char* leaderboard, char result[], const si
 
   int ret = rc_lboard_size(leaderboard);
   if (ret < 0) {
+    /* generic problem parsing the leaderboard, attempt to report where */
     const char* start = leaderboard;
     char part[4] = { 0,0,0,0 };
-    do
-    {
-        char* next = strstr(start, "::");
-        part[0] = toupper((int)start[0]);
-        part[1] = toupper((int)start[1]);
-        part[2] = toupper((int)start[2]);
-        start += 4;
+    do {
+      char* next = strstr(start, "::");
+      part[0] = toupper((int)start[0]);
+      part[1] = toupper((int)start[1]);
+      part[2] = toupper((int)start[2]);
+      start += 4;
 
-        if (strcmp(part, "VAL") == 0)
-        {
-            int ret2 = rc_value_size(start);
-            if (ret2 == ret)
-            {
-                snprintf(result, result_size, "%s: %s", part, rc_error_str(ret));
-                return 0;
-            }
+      if (strcmp(part, "VAL") == 0) {
+        int ret2 = rc_value_size(start);
+        if (ret2 == ret) {
+          snprintf(result, result_size, "%s: %s", part, rc_error_str(ret));
+          return 0;
         }
-        else
-        {
-            int ret2 = rc_trigger_size(start);
-            if (ret2 == ret)
-            {
-                snprintf(result, result_size, "%s: %s", part, rc_error_str(ret));
-                return 0;
-            }
+      }
+      else {
+        int ret2 = rc_trigger_size(start);
+        if (ret2 == ret) {
+          snprintf(result, result_size, "%s: %s", part, rc_error_str(ret));
+          return 0;
         }
+      }
 
-        if (!next)
-            break;
+      if (!next)
+        break;
 
-        start = next + 2;
+      start = next + 2;
     } while (1);
 
     snprintf(result, result_size, "%s", rc_error_str(ret));
@@ -254,11 +253,23 @@ static int validate_leaderboard(const char* leaderboard, char result[], const si
     snprintf(result, result_size, "write past end of buffer");
   }
   else {
-    success = rc_validate_memrefs(compiled->memrefs, result, result_size, max_address);
-  }
+    snprintf(result, result_size, "STA: ");
+    success = rc_validate_trigger(&compiled->start, result + 5, result_size - 5, max_address);
+    
+    if (success) {
+      snprintf(result, result_size, "SUB: ");
+      success = rc_validate_trigger(&compiled->submit, result + 5, result_size - 5, max_address);
+    }
 
-  if (success)
-    snprintf(result, result_size, "%d OK", ret);
+    if (success) {
+      snprintf(result, result_size, "CAN: ");
+      success = rc_validate_trigger(&compiled->cancel, result + 5, result_size - 5, max_address);
+    }
+
+    if (success) {
+      snprintf(result, result_size, "%d OK", ret);
+    }
+  }
 
   free(buffer);
   return success;
@@ -342,13 +353,22 @@ static int validate_richpresence(const char* script, char result[], const size_t
     snprintf(result, result_size, "write past end of buffer");
   }
   else {
-    success = rc_validate_memrefs(compiled->memrefs, result, result_size, max_address);
+    const rc_richpresence_display_t* display;
+    int index = 1;
+    for (display = compiled->first_display; display; display = display->next) {
+      const size_t prefix_length = snprintf(result, result_size, "Display%d: ", index++);
+      success = rc_validate_trigger(&display->trigger, result + prefix_length, result_size - prefix_length, max_address);
+      if (!success)
+        break;
+    }
+
+    if (success)
+      success = rc_validate_memrefs(compiled->memrefs, result, result_size, max_address);
     if (success)
       success = validate_macros(compiled, script, result, result_size);
+    if (success)
+      snprintf(result, result_size, "%d OK", ret);
   }
-
-  if (success)
-    snprintf(result, result_size, "%d OK", ret);
 
   free(buffer);
   return success;
