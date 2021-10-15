@@ -1,5 +1,7 @@
 #include "rc_validate.h"
 
+#include "rc_compat.h"
+
 #include "../test_framework.h"
 
 #include <stdlib.h>
