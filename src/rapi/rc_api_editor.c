@@ -190,17 +190,17 @@ int rc_api_init_update_achievement_request(rc_api_request_t* request, const rc_a
 
   /* Evaluate the signature. */
   md5_init(&md5);
-  md5_append(&md5, api_params->username, strlen(api_params->username));
-  md5_append(&md5, "SECRET", 6);
+  md5_append(&md5, (md5_byte_t*)api_params->username, strlen(api_params->username));
+  md5_append(&md5, (md5_byte_t*)"SECRET", 6);
   snprintf(buffer, sizeof(buffer), "%u", api_params->achievement_id);
-  md5_append(&md5, buffer, strlen(buffer));
-  md5_append(&md5, "SEC", 3);
-  md5_append(&md5, api_params->trigger, strlen(api_params->trigger));
+  md5_append(&md5, (md5_byte_t*)buffer, strlen(buffer));
+  md5_append(&md5, (md5_byte_t*)"SEC", 3);
+  md5_append(&md5, (md5_byte_t*)api_params->trigger, strlen(api_params->trigger));
   snprintf(buffer, sizeof(buffer), "%u", api_params->points);
-  md5_append(&md5, buffer, strlen(buffer));
-  md5_append(&md5, "RE2", 3);
+  md5_append(&md5, (md5_byte_t*)buffer, strlen(buffer));
+  md5_append(&md5, (md5_byte_t*)"RE2", 3);
   snprintf(buffer, sizeof(buffer), "%u", api_params->points * 3);
-  md5_append(&md5, buffer, strlen(buffer));
+  md5_append(&md5, (md5_byte_t*)buffer, strlen(buffer));
   md5_finish(&md5, hash);
   rc_api_format_md5(buffer, hash);
   rc_url_builder_append_str_param(&builder, "h", buffer);
@@ -338,7 +338,7 @@ int rc_api_process_add_game_hash_response(rc_api_add_game_hash_response_t* respo
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
-  if (!rc_json_get_required_object(&response_fields, sizeof(response_fields) / sizeof(response_fields[0]), &response->response, &fields[2], "Response"))
+  if (!rc_json_get_required_object(response_fields, sizeof(response_fields) / sizeof(response_fields[0]), &response->response, &fields[2], "Response"))
     return RC_MISSING_VALUE;
 
   if (!rc_json_get_required_unum(&response->game_id, &response->response, &response_fields[0], "GameID"))

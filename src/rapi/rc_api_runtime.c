@@ -326,10 +326,10 @@ int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_ap
     /* Evaluate the signature. */
     md5_init(&md5);
     snprintf(buffer, sizeof(buffer), "%u", api_params->achievement_id);
-    md5_append(&md5, buffer, strlen(buffer));
-    md5_append(&md5, api_params->username, strlen(api_params->username));
+    md5_append(&md5, (md5_byte_t*)buffer, strlen(buffer));
+    md5_append(&md5, (md5_byte_t*)api_params->username, strlen(api_params->username));
     snprintf(buffer, sizeof(buffer), "%d", api_params->hardcore ? 1 : 0);
-    md5_append(&md5, buffer, strlen(buffer));
+    md5_append(&md5, (md5_byte_t*)buffer, strlen(buffer));
     md5_finish(&md5, digest);
     rc_api_format_md5(buffer, digest);
     rc_url_builder_append_str_param(&builder, "v", buffer);
@@ -405,10 +405,10 @@ int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_
     /* Evaluate the signature. */
     md5_init(&md5);
     snprintf(buffer, sizeof(buffer), "%u", api_params->leaderboard_id);
-    md5_append(&md5, buffer, strlen(buffer));
-    md5_append(&md5, api_params->username, strlen(api_params->username));
+    md5_append(&md5, (md5_byte_t*)buffer, strlen(buffer));
+    md5_append(&md5, (md5_byte_t*)api_params->username, strlen(api_params->username));
     snprintf(buffer, sizeof(buffer), "%d", api_params->score);
-    md5_append(&md5, buffer, strlen(buffer));
+    md5_append(&md5, (md5_byte_t*)buffer, strlen(buffer));
     md5_finish(&md5, digest);
     rc_api_format_md5(buffer, digest);
     rc_url_builder_append_str_param(&builder, "v", buffer);
