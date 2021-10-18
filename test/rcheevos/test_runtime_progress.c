@@ -1352,7 +1352,6 @@ static void test_multiple_leaderboards_ignore_modified()
 
 static void test_rich_presence_none()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   unsigned char buffer[2048];
   rc_runtime_t runtime;
   rc_runtime_init(&runtime);
@@ -1367,7 +1366,6 @@ static void test_rich_presence_none()
 
 static void test_rich_presence_static()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   unsigned char buffer[2048];
   rc_runtime_t runtime;
   rc_runtime_init(&runtime);
