@@ -1185,6 +1185,7 @@ static void test_single_leaderboard()
   assert_memref(&runtime, 2, 6, 6, 0);
   assert_sta_hitcount(&runtime, 1, 0, 0, 3);
   assert_sub_hitcount(&runtime, 1, 0, 0, 2);
+  assert_can_hitcount(&runtime, 1, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
@@ -1196,6 +1197,7 @@ static void test_single_leaderboard()
   assert_memref(&runtime, 2, 6, 6, 0);
   assert_sta_hitcount(&runtime, 1, 0, 0, 3);
   assert_sub_hitcount(&runtime, 1, 0, 0, 2);
+  assert_can_hitcount(&runtime, 1, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
 
   rc_runtime_destroy(&runtime);
@@ -1352,11 +1354,7 @@ static void test_rich_presence_none()
 {
   unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   unsigned char buffer[2048];
-  memory_t memory;
   rc_runtime_t runtime;
-
-  memory.ram = ram;
-  memory.size = sizeof(ram);
   rc_runtime_init(&runtime);
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
@@ -1371,11 +1369,7 @@ static void test_rich_presence_static()
 {
   unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   unsigned char buffer[2048];
-  memory_t memory;
   rc_runtime_t runtime;
-
-  memory.ram = ram;
-  memory.size = sizeof(ram);
   rc_runtime_init(&runtime);
 
   assert_activate_rich_presence(&runtime, "Display:\nTest");
