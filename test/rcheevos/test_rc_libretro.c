@@ -431,7 +431,15 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_region", "Auto");
   TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_region", "NTSC");
   TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_region", "PAL");
-  
+  TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_gfx_clip", "enabled");
+  TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_gfx_clip", "disabled");
+  TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_gfx_transp", "enabled");
+  TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_gfx_transp", "disabled");
+  TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_layer_1", "enabled");
+  TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_layer_1", "disabled");
+  TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_layer_5", "enabled");
+  TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_layer_5", "disabled");
+
   TEST_PARAMS3(test_allowed_setting,    "Virtual Jaguar", "virtualjaguar_pal", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "Virtual Jaguar", "virtualjaguar_pal", "enabled");
 
