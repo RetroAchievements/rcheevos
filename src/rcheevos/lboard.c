@@ -239,6 +239,18 @@ int rc_evaluate_lboard(rc_lboard_t* self, int* value, rc_peek_t peek, void* peek
   return self->state;
 }
 
+int rc_lboard_state_active(int state) {
+  switch (state)
+  {
+    case RC_LBOARD_STATE_DISABLED:
+    case RC_LBOARD_STATE_INACTIVE:
+      return 0;
+
+    default:
+      return 1;
+  }
+}
+
 void rc_reset_lboard(rc_lboard_t* self) {
   self->state = RC_LBOARD_STATE_WAITING;
 

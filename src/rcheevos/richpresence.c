@@ -218,7 +218,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
       else if (part->display_type != RC_FORMAT_UNKNOWN_MACRO) {
         part->value = rc_alloc_helper_variable_memref_value(line, (int)(ptr - line), parse);
         if (parse->offset < 0)
-            return 0;
+          return 0;
 
         ++ptr;
       }
@@ -821,4 +821,15 @@ int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* bu
 int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
   rc_update_richpresence(richpresence, peek, peek_ud, L);
   return rc_get_richpresence_display_string(richpresence, buffer, buffersize, peek, peek_ud, L);
+}
+
+void rc_reset_richpresence(rc_richpresence_t* self) {
+  rc_richpresence_display_t* display;
+  rc_value_t* variable;
+
+  for (display = self->first_display; display; display = display->next)
+    rc_reset_trigger(&display->trigger);
+
+  for (variable = self->variables; variable; variable = variable->next)
+    rc_reset_value(variable);
 }
