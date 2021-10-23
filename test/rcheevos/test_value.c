@@ -498,6 +498,11 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "O:0xH0000=0_M:0xH0002=0", 1);
   TEST_PARAMS2(test_evaluate_value, "I:0xH0000_M:0xH0002", 0x34);
 
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001*2_A:0xH0002*2_M:0", 0x12 * 2 + 0x34 * 2);
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001*2_M:0xH0002*2", 0x12 * 2 + 0x34 * 2); /* multiplier in final condition */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001/2_M:0xH0002/2", 0x12 / 2 + 0x34 / 2);
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001&15_M:0xH0002&15", (0x12 & 15) + (0x34 & 15));
+
   /* measured format does not support alt groups */
   TEST_PARAMS2(test_invalid_value, "M:0xH0002=6SM:0xH0003=6", RC_INVALID_VALUE_FLAG);
   /* does not start with X:, so legacy parser says it's an invalid memory accessor */

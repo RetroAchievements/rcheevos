@@ -81,8 +81,20 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
       }
       else if (is_value) {
         measured_target = (unsigned)-1;
-        if ((*next)->oper != RC_OPERATOR_NONE)
-          (*next)->required_hits = measured_target;
+        switch ((*next)->oper)
+        {
+          case RC_OPERATOR_AND:
+          case RC_OPERATOR_DIV:
+          case RC_OPERATOR_MULT:
+          case RC_OPERATOR_NONE:
+            /* measuring value. leave required_hits at 0 */
+            break;
+
+          default:
+            /* comparison operator, measuring hits. set required_hits to MAX_INT */
+            (*next)->required_hits = measured_target;
+            break;
+        }
       }
       else if ((*next)->required_hits != 0) {
         measured_target = (*next)->required_hits;
