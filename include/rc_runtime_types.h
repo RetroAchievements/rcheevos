@@ -408,6 +408,7 @@ rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_S
 int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
 void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, lua_State* L);
 int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
+void rc_reset_richpresence(rc_richpresence_t* self);
 
 #ifdef __cplusplus
 }

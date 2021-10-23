@@ -100,6 +100,9 @@ static const rc_disallowed_setting_t _rc_disallowed_smsplus_settings[] = {
 };
 
 static const rc_disallowed_setting_t _rc_disallowed_snes9x_settings[] = {
+  { "snes9x_gfx_clip", "disabled" },
+  { "snes9x_gfx_transp", "disabled" },
+  { "snes9x_layer_*", "disabled" },
   { "snes9x_region", "pal" },
   { NULL, NULL }
 };
