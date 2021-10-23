@@ -147,7 +147,7 @@ static float rc_build_float(unsigned mantissa_bits, int exponent, int sign) {
       dbl *= (double)(1 << 30);
       exponent -= 30;
     }
-    dbl *= (double)(1 << exponent);
+    dbl *= (double)((long long)1 << exponent);
   }
   else if (exponent < 0) {
     /* exponent from -1 to -127 is a number less than 1 */
@@ -156,7 +156,7 @@ static float rc_build_float(unsigned mantissa_bits, int exponent, int sign) {
       dbl /= (double)(1 << 30);
       exponent -= 30;
     }
-    dbl /= (double)(1 << exponent);
+    dbl /= (double)((long long)1 << exponent);
   }
   else {
     /* exponent of 0 requires no adjustment */
