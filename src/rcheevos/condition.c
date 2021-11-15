@@ -70,6 +70,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   self = RC_ALLOC(rc_condition_t, parse);
   self->current_hits = 0;
   self->is_true = 0;
+  self->pause = 0;
 
   if (*aux != 0 && aux[1] == ':') {
     switch (*aux) {

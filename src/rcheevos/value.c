@@ -44,29 +44,26 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
   char buffer[64] = "A:";
   const char* buffer_ptr;
   char* ptr;
-  int end_of_clause;
 
   /* convert legacy format into condset */
   self->conditions = RC_ALLOC(rc_condset_t, parse);
-  self->conditions->has_pause = 0;
-  self->conditions->is_paused = 0;
-  self->conditions->has_indirect_memrefs = 0;
+  memset(self->conditions, 0, sizeof(rc_condset_t));
 
   next = &self->conditions->conditions;
   next_clause = &self->conditions->next;
 
-  for (;;) {
+  for (;; ++(*memaddr)) {
+    buffer[0] = 'A'; /* reset to AddSource */
     ptr = &buffer[2];
-    end_of_clause = 0;
 
-    do {
+    /* extract the next clause */
+    for (;; ++(*memaddr)) {
       switch (**memaddr) {
         case '_': /* add next */
         case '$': /* maximum of */
         case '\0': /* end of string */
         case ':': /* end of leaderboard clause */
         case ')': /* end of rich presence macro */
-          end_of_clause = 1;
           *ptr = '\0';
           break;
 
@@ -74,24 +71,31 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
           *ptr++ = '*';
 
           buffer_ptr = *memaddr + 1;
-          if (*buffer_ptr == '-' || *buffer_ptr == '+')
-            ++buffer_ptr; /* ignore sign */
+          if (*buffer_ptr == '-') {
+            buffer[0] = 'B'; /* change to SubSource */
+            ++(*memaddr); /* don't copy sign */
+            ++buffer_ptr; /* ignore sign when doing floating point check */
+          }
+          else if (*buffer_ptr == '+') {
+            ++buffer_ptr; /* ignore sign when doing floating point check  */
+          }
 
           /* if it looks like a floating point number, add the 'f' prefix */
           while (isdigit((unsigned char)*buffer_ptr))
             ++buffer_ptr;
           if (*buffer_ptr == '.')
             *ptr++ = 'f';
-          break;
+          continue;
 
         default:
           *ptr++ = **memaddr;
-          break;
+          continue;
       }
 
-      ++(*memaddr);
-    } while (!end_of_clause);
+      break;
+    }
 
+    /* process the clause */
     buffer_ptr = buffer;
     cond = rc_parse_condition(&buffer_ptr, parse, 0);
     if (parse->offset < 0)
@@ -115,31 +119,40 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
         return;
     }
 
-    cond->pause = 0;
     *next = cond;
 
-    switch ((*memaddr)[-1]) {
-      case '_': /* add next */
-        next = &cond->next;
-        break;
-
-      case '$': /* max of */
-        cond->type = RC_CONDITION_MEASURED;
-        cond->next = 0;
-        *next_clause = RC_ALLOC(rc_condset_t, parse);
-        (*next_clause)->has_pause = 0;
-        (*next_clause)->is_paused = 0;
-        next = &(*next_clause)->conditions;
-        next_clause = &(*next_clause)->next;
-        break;
-
-      default: /* end of valid string */
-        --(*memaddr); /* undo the increment we performed when copying the string */
-        cond->type = RC_CONDITION_MEASURED;
-        cond->next = 0;
-        *next_clause = 0;
-        return;
+    if (**memaddr == '_') {
+      /* add next */
+      next = &cond->next;
+      continue;
     }
+
+    if (cond->type == RC_CONDITION_SUB_SOURCE) {
+      /* cannot change SubSource to Measured. add a dummy condition */
+      next = &cond->next;
+      buffer_ptr = "A:0";
+      cond = rc_parse_condition(&buffer_ptr, parse, 0);
+      *next = cond;
+    }
+
+    /* convert final AddSource condition to Measured */
+    cond->type = RC_CONDITION_MEASURED;
+    cond->next = 0;
+
+    if (**memaddr != '$') {
+      /* end of valid string */
+      *next_clause = 0;
+      break;
+    }
+
+    /* max of ($), start a new clause */
+    *next_clause = RC_ALLOC(rc_condset_t, parse);
+
+    if (parse->buffer) /* don't clear in sizing mode or pointer will break */
+      memset(*next_clause, 0, sizeof(rc_condset_t));
+
+    next = &(*next_clause)->conditions;
+    next_clause = &(*next_clause)->next;
   }
 }
 
