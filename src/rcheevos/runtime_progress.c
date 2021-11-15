@@ -320,9 +320,6 @@ static int rc_runtime_progress_write_variable(rc_runtime_progress_t* progress, c
 {
   unsigned flags;
 
-  unsigned djb2 = rc_runtime_progress_djb2(variable->name);
-  rc_runtime_progress_write_uint(progress, djb2);
-
   flags = rc_runtime_progress_should_serialize_variable_condset(variable->conditions);
   if (variable->value.changed)
     flags |= RC_MEMREF_FLAG_CHANGED_THIS_FRAME;
@@ -354,7 +351,12 @@ static int rc_runtime_progress_write_variables(rc_runtime_progress_t* progress)
   rc_runtime_progress_write_uint(progress, count);
 
   for (variable = progress->runtime->variables; variable; variable = variable->next)
+  {
+    unsigned djb2 = rc_runtime_progress_djb2(variable->name);
+    rc_runtime_progress_write_uint(progress, djb2);
+
     rc_runtime_progress_write_variable(progress, variable);
+  }
 
   rc_runtime_progress_end_chunk(progress);
   return RC_OK;
