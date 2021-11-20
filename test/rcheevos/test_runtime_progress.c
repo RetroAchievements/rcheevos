@@ -1187,6 +1187,8 @@ static void test_single_leaderboard()
   assert_sub_hitcount(&runtime, 1, 0, 0, 2);
   assert_can_hitcount(&runtime, 1, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.value, 6);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.prior, 0);
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
@@ -1199,6 +1201,8 @@ static void test_single_leaderboard()
   assert_sub_hitcount(&runtime, 1, 0, 0, 2);
   assert_can_hitcount(&runtime, 1, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.value, 6);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.prior, 0);
 
   rc_runtime_destroy(&runtime);
 }
@@ -1231,7 +1235,11 @@ static void test_multiple_leaderboards()
   assert_sta_hitcount(&runtime, 2, 0, 0, 2);
   assert_sub_hitcount(&runtime, 2, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.value, 6);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.prior, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.value, 2);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.prior, 0);
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
@@ -1244,7 +1252,11 @@ static void test_multiple_leaderboards()
   assert_sta_hitcount(&runtime, 2, 0, 0, 2);
   assert_sub_hitcount(&runtime, 2, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.value, 6);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.prior, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.value, 2);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.prior, 0);
 
   rc_runtime_destroy(&runtime);
 }
@@ -1278,7 +1290,11 @@ static void test_multiple_leaderboards_ignore_inactive()
   assert_sta_hitcount(&runtime, 2, 0, 0, 2);
   assert_sub_hitcount(&runtime, 2, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_DISABLED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.value, 6);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.prior, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.value, 2);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.prior, 0);
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
@@ -1291,11 +1307,15 @@ static void test_multiple_leaderboards_ignore_inactive()
   assert_sta_hitcount(&runtime, 1, 0, 0, 0);
   assert_sub_hitcount(&runtime, 1, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_WAITING);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.value, 0);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.prior, 0);
 
   /* serialized leaderboard should be restored */
   assert_sta_hitcount(&runtime, 2, 0, 0, 2);
   assert_sub_hitcount(&runtime, 2, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.value, 2);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.prior, 0);
 
   rc_runtime_destroy(&runtime);
 }
@@ -1328,7 +1348,11 @@ static void test_multiple_leaderboards_ignore_modified()
   assert_sta_hitcount(&runtime, 2, 0, 0, 2);
   assert_sub_hitcount(&runtime, 2, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.value, 6);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.prior, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.value, 2);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.prior, 0);
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
@@ -1341,11 +1365,15 @@ static void test_multiple_leaderboards_ignore_modified()
   assert_sta_hitcount(&runtime, 1, 0, 0, 0);
   assert_sub_hitcount(&runtime, 1, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->state, RC_LBOARD_STATE_WAITING);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.value, 0);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.prior, 0);
 
   /* serialized leaderboard should be restored */
   assert_sta_hitcount(&runtime, 2, 0, 0, 2);
   assert_sub_hitcount(&runtime, 2, 0, 0, 0);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->state, RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.value, 2);
+  ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.prior, 0);
 
   rc_runtime_destroy(&runtime);
 }
