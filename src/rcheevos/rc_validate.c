@@ -215,6 +215,8 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
 
     /* if either side is a memref, or there's a running add source chain, check for impossible comparisons */
     if (is_memref1 || is_memref2 || add_source_max) {
+      const size_t prefix_length = snprintf(result, result_size, "Condition %d: ", index);
+
       unsigned min_val;
       switch (cond->operand2.type) {
         case RC_OPERAND_CONST:
@@ -228,7 +230,7 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
           /* assert: is_memref1 (because operand2==FP means !is_memref2) */
           if (!add_source_max && !rc_operand_is_float_memref(&cond->operand1) &&
               (float)min_val != cond->operand2.value.dbl) {
-            snprintf(result, result_size, "Condition %d: Comparison is never true", index);
+            snprintf(result + prefix_length, result_size - prefix_length, "Comparison is never true");
             return 0;
           }
 
@@ -241,14 +243,13 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
           /* assert: is_memref2 (because operand1==FP means !is_memref1) */
           if (cond->operand1.type == RC_OPERAND_FP && !add_source_max && !rc_operand_is_float_memref(&cond->operand2) &&
               (float)((int)cond->operand1.value.dbl) != cond->operand1.value.dbl) {
-            snprintf(result, result_size, "Condition %d: Comparison is never true", index);
+            snprintf(result + prefix_length, result_size - prefix_length, "Comparison is never true");
             return 0;
           }
 
           break;
       }
 
-      const size_t prefix_length = snprintf(result, result_size, "Condition %d: ", index);
       if (!rc_validate_range(min_val, max_val, cond->oper, max, result + prefix_length, result_size - prefix_length))
         return 0;
     }
