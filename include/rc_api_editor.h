@@ -123,6 +123,55 @@ int rc_api_init_update_achievement_request(rc_api_request_t* request, const rc_a
 int rc_api_process_update_achievement_response(rc_api_update_achievement_response_t* response, const char* server_response);
 void rc_api_destroy_update_achievement_response(rc_api_update_achievement_response_t* response);
 
+/* --- Update Leaderboard --- */
+
+/**
+ * API parameters for an update leaderboard request.
+ */
+typedef struct rc_api_update_leaderboard_request_t {
+  /* The username of the developer */
+  const char* username;
+  /* The API token from the login request */
+  const char* api_token;
+  /* The unique identifier of the leaderboard (0 to create a new leaderboard) */
+  unsigned leaderboard_id;
+  /* The unique identifier of the game */
+  unsigned game_id;
+  /* The name of the leaderboard */
+  const char* title;
+  /* The description of the leaderboard */
+  const char* description;
+  /* The start trigger for the leaderboard */
+  const char* start_trigger;
+  /* The submit trigger for the leaderboard */
+  const char* submit_trigger;
+  /* The cancel trigger for the leaderboard */
+  const char* cancel_trigger;
+  /* The value definition for the leaderboard */
+  const char* value_definition;
+  /* The format of leaderboard values */
+  const char* format;
+  /* Whether or not lower scores are better for the leaderboard */
+  int lower_is_better;
+}
+rc_api_update_leaderboard_request_t;
+
+/**
+ * Response data for an update leaderboard request.
+ */
+typedef struct rc_api_update_leaderboard_response_t {
+  /* The unique identifier of the leaderboard */
+  unsigned leaderboard_id;
+
+  /* Common server-provided response information */
+  rc_api_response_t response;
+}
+rc_api_update_leaderboard_response_t;
+
+int rc_api_init_update_leaderboard_request(rc_api_request_t* request, const rc_api_update_leaderboard_request_t* api_params);
+int rc_api_process_update_leaderboard_response(rc_api_update_leaderboard_response_t* response, const char* server_response);
+void rc_api_destroy_update_leaderboard_response(rc_api_update_leaderboard_response_t* response);
+
 /* --- Fetch Badge Range --- */
 
 /**
