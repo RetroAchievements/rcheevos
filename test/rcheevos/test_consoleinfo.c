@@ -105,7 +105,11 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 64, "Sharp X1");
   TEST_PARAMS2(test_name, 65, "TIC-80");
   TEST_PARAMS2(test_name, 66, "Thomson TO8");
-  TEST_PARAMS2(test_name, 67, "Unknown");
+  TEST_PARAMS2(test_name, 67, "PC-6000");
+  TEST_PARAMS2(test_name, 68, "Sega Pico");
+  TEST_PARAMS2(test_name, 69, "Mega Duck");
+  TEST_PARAMS2(test_name, 70, "Zeebo");
+  TEST_PARAMS2(test_name, 71, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
