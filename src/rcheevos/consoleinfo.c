@@ -669,9 +669,6 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
        *       Genesis, but we currently don't support it. */
       return &rc_memory_regions_megadrive;
 
-    case RC_CONSOLE_MEGADUCK:
-      return &rc_memory_regions_megaduck;
-
     case RC_CONSOLE_MSX:
       return &rc_memory_regions_msx;
 
@@ -690,9 +687,6 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
     case RC_CONSOLE_ORIC:
       return &rc_memory_regions_oric;
 
-    case RC_CONSOLE_PC6000:
-      return &rc_memory_regions_pc6000;
-
     case RC_CONSOLE_PC8800:
       return &rc_memory_regions_pc8800;
 
@@ -701,9 +695,6 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_PCFX:
       return &rc_memory_regions_pcfx;
-
-    case RC_CONSOLE_PICO:
-      return &rc_memory_regions_pico;
 
     case RC_CONSOLE_PLAYSTATION:
       return &rc_memory_regions_playstation;
@@ -746,9 +737,6 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_WONDERSWAN:
       return &rc_memory_regions_wonderswan;
-
-    case RC_CONSOLE_ZEEBO:
-      return &rc_memory_regions_zeebo;
 
     default:
       return &rc_memory_regions_none;
