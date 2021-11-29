@@ -91,6 +91,9 @@
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -127,6 +130,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\rapi\rc_api_common.c" />
+    <ClCompile Include="..\src\rapi\rc_api_editor.c" />
+    <ClCompile Include="..\src\rapi\rc_api_info.c" />
     <ClCompile Include="..\src\rapi\rc_api_runtime.c" />
     <ClCompile Include="..\src\rapi\rc_api_user.c" />
     <ClCompile Include="..\src\rcheevos\alloc.c" />
@@ -139,6 +144,7 @@
     <ClCompile Include="..\src\rcheevos\memref.c" />
     <ClCompile Include="..\src\rcheevos\operand.c" />
     <ClCompile Include="..\src\rcheevos\rc_libretro.c" />
+    <ClCompile Include="..\src\rcheevos\rc_validate.c" />
     <ClCompile Include="..\src\rcheevos\richpresence.c" />
     <ClCompile Include="..\src\rcheevos\runtime.c" />
     <ClCompile Include="..\src\rcheevos\runtime_progress.c" />
@@ -182,6 +188,8 @@
     <ClCompile Include="lua\src\lvm.c" />
     <ClCompile Include="lua\src\lzio.c" />
     <ClCompile Include="rapi\test_rc_api_common.c" />
+    <ClCompile Include="rapi\test_rc_api_editor.c" />
+    <ClCompile Include="rapi\test_rc_api_info.c" />
     <ClCompile Include="rapi\test_rc_api_runtime.c" />
     <ClCompile Include="rapi\test_rc_api_user.c" />
     <ClCompile Include="rcheevos\test_condition.c" />
@@ -192,6 +200,7 @@
     <ClCompile Include="rcheevos\test_memref.c" />
     <ClCompile Include="rcheevos\test_operand.c" />
     <ClCompile Include="rcheevos\test_rc_libretro.c" />
+    <ClCompile Include="rcheevos\test_rc_validate.c" />
     <ClCompile Include="rcheevos\test_richpresence.c" />
     <ClCompile Include="rcheevos\test_runtime.c" />
     <ClCompile Include="rcheevos\test_runtime_progress.c" />
@@ -204,6 +213,8 @@
     <ClCompile Include="rurl\test_url.c" />
     <ClCompile Include="test.c" />
     <ClInclude Include="..\include\rcheevos.h" />
+    <ClInclude Include="..\include\rc_api_editor.h" />
+    <ClInclude Include="..\include\rc_api_info.h" />
     <ClInclude Include="..\include\rc_api_request.h" />
     <ClInclude Include="..\include\rc_api_runtime.h" />
     <ClInclude Include="..\include\rc_api_user.h" />
@@ -217,6 +228,7 @@
     <ClInclude Include="..\include\rc_error.h" />
     <ClInclude Include="..\src\rapi\rc_api_common.h" />
     <ClInclude Include="..\src\rcheevos\rc_libretro.h" />
+    <ClInclude Include="..\src\rcheevos\rc_validate.h" />
     <ClInclude Include="..\src\rhash\md5.h" />
     <ClInclude Include="libretro.h" />
     <ClInclude Include="rcheevos\mock_memory.h" />

@@ -540,9 +540,17 @@ static void test_unparsable_strings() {
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH02SM:0xH03", RC_INVALID_VALUE_FLAG);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=A::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02", RC_INVALID_MEMORY_OPERAND);
 
-  /* "STA:0xH00=1" is valid, but that leaves the read pointer pointing at the "A", which is not "::", so the code
-   * thinks it's completely done with the input. As the CAN logic was never parsed, RC_MISSING_CANCEL is returned. */
-  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=1A::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02", RC_MISSING_CANCEL);
+  /* "STA:0xH00=1" is valid, but that leaves the read pointer pointing at the "A", which is not "::", so a generic
+   * invalid field error is returned. */
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=1A::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02", RC_INVALID_LBOARD_FIELD);
+
+  /* Missing '_' causes "0xH00=10" to be valid, but that leaves the read pointer pointing at the "x", which is not 
+   * "::", so a generic invalid field error is returned. */
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=10xH01=1::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02", RC_INVALID_LBOARD_FIELD);
+
+  /* Garbage following value field (legacy format conversion will return invalid comparison) */
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=1::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02=1=2", RC_INVALID_COMPARISON);
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=1::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH02=1=2", RC_INVALID_LBOARD_FIELD);
 }
 
 void test_lboard(void) {

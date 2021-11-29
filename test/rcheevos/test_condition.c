@@ -49,8 +49,8 @@ static void _assert_parse_condition(
     ASSERT_HELPER(_assert_parse_condition(memaddr, expected_type, expected_left_type, expected_left_size, expected_left_value, \
                                           expected_operator, expected_right_type, expected_right_size, expected_right_value, expected_required_hits), "assert_parse_condition")
 
-static void test_parse_condition(const char* memaddr, int expected_type, int expected_left_type,
-    int expected_operator, int expected_required_hits) {
+static void test_parse_condition(const char* memaddr, char expected_type, char expected_left_type,
+    char expected_operator, int expected_required_hits) {
   if (expected_operator == RC_OPERATOR_NONE) {
     assert_parse_condition(memaddr, expected_type,
       expected_left_type, RC_MEMSIZE_8_BITS, 0x1234U,
@@ -70,8 +70,8 @@ static void test_parse_condition(const char* memaddr, int expected_type, int exp
 }
 
 static void test_parse_operands(const char* memaddr,
-    int expected_left_type, int expected_left_size, unsigned expected_left_value,
-    int expected_right_type, int expected_right_size, unsigned expected_right_value) {
+    char expected_left_type, char expected_left_size, unsigned expected_left_value,
+    char expected_right_type, char expected_right_size, unsigned expected_right_value) {
   assert_parse_condition(memaddr, RC_CONDITION_STANDARD,
     expected_left_type, expected_left_size, expected_left_value,
     RC_OPERATOR_EQ,
@@ -80,7 +80,7 @@ static void test_parse_operands(const char* memaddr,
   );
 }
 
-static void test_parse_modifier(const char* memaddr, int expected_operator, int expected_operand, double expected_multiplier) {
+static void test_parse_modifier(const char* memaddr, char expected_operator, char expected_operand, double expected_multiplier) {
   assert_parse_condition(memaddr, RC_CONDITION_ADD_SOURCE,
     RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
     expected_operator,
@@ -89,7 +89,7 @@ static void test_parse_modifier(const char* memaddr, int expected_operator, int 
   );
 }
 
-static void test_parse_modifier_shorthand(const char* memaddr, int expected_type) {
+static void test_parse_modifier_shorthand(const char* memaddr, char expected_type) {
   assert_parse_condition(memaddr, expected_type,
     RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
     RC_OPERATOR_NONE,
@@ -124,6 +124,35 @@ static void test_evaluate_condition(const char* memaddr, int expected_result) {
   rc_memref_t* memrefs;
   int ret;
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  self = rc_parse_condition(&memaddr, &parse, 0);
+  rc_destroy_parse_state(&parse);
+
+  ASSERT_NUM_GREATER(parse.offset, 0);
+  ASSERT_NUM_EQUALS(*memaddr, 0);
+
+  ret = evaluate_condition(self, &memory, memrefs);
+
+  if (expected_result) {
+    ASSERT_NUM_EQUALS(ret, 1);
+  } else {
+    ASSERT_NUM_EQUALS(ret, 0);
+  }
+}
+
+static void test_evaluate_condition_float(const char* memaddr, int expected_result) {
+  rc_condition_t* self;
+  rc_parse_state_t parse;
+  char buffer[512];
+  rc_memref_t* memrefs;
+  int ret;
+  unsigned char ram[] = {0x00, 0x00, 0x00, 0x40, 0x83, 0x49, 0x0F, 0xDB}; /* FF0=2, FF4=2*pi */
   memory_t memory;
 
   memory.ram = ram;
@@ -205,6 +234,7 @@ void test_condition(void) {
   TEST_PARAMS5(test_parse_condition, "C:0xH1234=8", RC_CONDITION_ADD_HITS, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
   TEST_PARAMS5(test_parse_condition, "D:0xH1234=8", RC_CONDITION_SUB_HITS, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
   TEST_PARAMS5(test_parse_condition, "M:0xH1234=8", RC_CONDITION_MEASURED, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
+  TEST_PARAMS5(test_parse_condition, "G:0xH1234=8", RC_CONDITION_MEASURED, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
   TEST_PARAMS5(test_parse_condition, "Q:0xH1234=8", RC_CONDITION_MEASURED_IF, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
   TEST_PARAMS5(test_parse_condition, "I:0xH1234=8", RC_CONDITION_ADD_ADDRESS, RC_OPERAND_ADDRESS, RC_OPERATOR_NONE, 0);
   TEST_PARAMS5(test_parse_condition, "T:0xH1234=8", RC_CONDITION_TRIGGER, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
@@ -252,14 +282,11 @@ void test_condition(void) {
   TEST_PARAMS2(test_parse_condition_error, "P:0x1234", RC_INVALID_OPERATOR);
   TEST_PARAMS2(test_parse_condition_error, "R:0x1234", RC_INVALID_OPERATOR);
   TEST_PARAMS2(test_parse_condition_error, "M:0x1234", RC_INVALID_OPERATOR);
+  TEST_PARAMS2(test_parse_condition_error, "G:0x1234", RC_INVALID_OPERATOR);
   TEST_PARAMS2(test_parse_condition_error, "Y:0x1234", RC_INVALID_CONDITION_TYPE);
   TEST_PARAMS2(test_parse_condition_error, "0x1234=1.2", RC_INVALID_REQUIRED_HITS);
   TEST_PARAMS2(test_parse_condition_error, "0.1234==0", RC_INVALID_OPERATOR); /* period is assumed to be operator */
   TEST_PARAMS2(test_parse_condition_error, "0==0.1234", RC_INVALID_REQUIRED_HITS); /* period is assumed to be start of hit target, no end marker */
-  TEST_PARAMS2(test_parse_condition_error, "F0.1234==0", RC_INVALID_COMPARISON); /* floating value only valid on modifiers */
-  TEST_PARAMS2(test_parse_condition_error, "0==f0.1234", RC_INVALID_COMPARISON); /* floating value only valid on modifiers */
-  TEST_PARAMS2(test_parse_condition_error, "A:F0.1234*2", RC_INVALID_FP_OPERAND); /* floating value only valid on right side of modifiers */
-  TEST_PARAMS2(test_parse_condition_error, "A:2*f0.1234", RC_OK); /* floating value only valid on right side of modifiers */
 
   /* simple evaluations (ram[1] = 18, ram[2] = 52) */
   TEST_PARAMS2(test_evaluate_condition, "0xH0001=18", 1);
@@ -275,6 +302,50 @@ void test_condition(void) {
   TEST_PARAMS2(test_evaluate_condition, "0xH0001>0xH0002", 0);
   TEST_PARAMS2(test_evaluate_condition, "0xH0001=0xH0001", 1);
   TEST_PARAMS2(test_evaluate_condition, "0xH0001!=0xH0002", 1);
+
+  /* float evaluations (ram[0] = 2.0, ram[4] = 3.14159 */
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000=f2.0", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000!=f2.0", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<=f2.0", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>=f2.0", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<f2.0", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>f2.0", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<f1.999999", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>f1.999999", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<f2.000001", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>f2.000001", 0);
+
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000=2", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000!=2", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<=2", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>=2", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<2", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>2", 0);
+
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004=f6.283185", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004!=f6.283185", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<=f6.283185", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>=f6.283185", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<f6.283185", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>f6.283185", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<f6.283183", 0); /* due to rounding during the conversion from */
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>f6.283183", 1); /* binary to float, the last decimal digit may */
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<f6.283187", 1); /* not change. go two digits to either side to */
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>f6.283187", 0); /* ensure we cover an epsilon gap */
+
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004=6", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004!=6", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<=6", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>=6", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004<6", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fM0004>6", 1);
+
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000==fF0000", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000!=fF0000", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000==fM0004", 0);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000!=fM0004", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000<fM0004", 1);
+  TEST_PARAMS2(test_evaluate_condition_float, "fF0000>fM0004", 0);
 
   TEST(test_condition_compare_delta);
 

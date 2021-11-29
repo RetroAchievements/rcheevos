@@ -91,6 +91,9 @@
       <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)..\test\lua\src</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -132,10 +135,12 @@
     <ClCompile Include="..\src\rcheevos\compat.c" />
     <ClCompile Include="..\src\rcheevos\condition.c" />
     <ClCompile Include="..\src\rcheevos\condset.c" />
+    <ClCompile Include="..\src\rcheevos\consoleinfo.c" />
     <ClCompile Include="..\src\rcheevos\format.c" />
     <ClCompile Include="..\src\rcheevos\lboard.c" />
     <ClCompile Include="..\src\rcheevos\memref.c" />
     <ClCompile Include="..\src\rcheevos\operand.c" />
+    <ClCompile Include="..\src\rcheevos\rc_validate.c" />
     <ClCompile Include="..\src\rcheevos\richpresence.c" />
     <ClCompile Include="..\src\rcheevos\runtime.c" />
     <ClCompile Include="..\src\rcheevos\trigger.c" />

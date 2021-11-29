@@ -267,6 +267,24 @@
     <ClCompile Include="rcheevos\test_rc_libretro.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rapi\rc_api_info.c">
+      <Filter>src\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="rapi\test_rc_api_info.c">
+      <Filter>tests\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rapi\rc_api_editor.c">
+      <Filter>src\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="rapi\test_rc_api_editor.c">
+      <Filter>tests\rapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rcheevos\rc_validate.c">
+      <Filter>src\rcheevos</Filter>
+    </ClCompile>
+    <ClCompile Include="rcheevos\test_rc_validate.c">
+      <Filter>tests\rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">
@@ -327,6 +345,15 @@
       <Filter>src\rcheevos</Filter>
     </ClInclude>
     <ClInclude Include="..\include\rc_runtime_types.h">
+      <Filter>src\rcheevos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_api_info.h">
+      <Filter>src\rapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_api_editor.h">
+      <Filter>src\rapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rcheevos\rc_validate.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
   </ItemGroup>

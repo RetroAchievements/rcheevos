@@ -363,6 +363,9 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "dolphin-emu", "dolphin_cheats_enabled", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "dolphin-emu", "dolphin_cheats_enabled", "enabled");
 
+  TEST_PARAMS3(test_allowed_setting,    "DuckStation", "duckstation_CDROM.LoadImagePatches", "false");
+  TEST_PARAMS3(test_disallowed_setting, "DuckStation", "duckstation_CDROM.LoadImagePatches", "true");
+
   TEST_PARAMS3(test_allowed_setting,    "ecwolf", "ecwolf-invulnerability", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "ecwolf", "ecwolf-invulnerability", "enabled");
 
@@ -419,11 +422,24 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "PicoDrive", "picodrive_region", "Japan NTSC");
   TEST_PARAMS3(test_disallowed_setting, "PicoDrive", "picodrive_region", "Europe");
   TEST_PARAMS3(test_disallowed_setting, "PicoDrive", "picodrive_region", "Japan PAL");
-  
+
+  TEST_PARAMS3(test_allowed_setting,    "SMS Plus GX", "smsplus_region", "auto");
+  TEST_PARAMS3(test_allowed_setting,    "SMS Plus GX", "smsplus_region", "ntsc-u");
+  TEST_PARAMS3(test_disallowed_setting, "SMS Plus GX", "smsplus_region", "pal");
+  TEST_PARAMS3(test_allowed_setting,    "SMS Plus GX", "smsplus_region", "ntsc-j");
+
   TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_region", "Auto");
   TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_region", "NTSC");
   TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_region", "PAL");
-  
+  TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_gfx_clip", "enabled");
+  TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_gfx_clip", "disabled");
+  TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_gfx_transp", "enabled");
+  TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_gfx_transp", "disabled");
+  TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_layer_1", "enabled");
+  TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_layer_1", "disabled");
+  TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_layer_5", "enabled");
+  TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_layer_5", "disabled");
+
   TEST_PARAMS3(test_allowed_setting,    "Virtual Jaguar", "virtualjaguar_pal", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "Virtual Jaguar", "virtualjaguar_pal", "enabled");
 

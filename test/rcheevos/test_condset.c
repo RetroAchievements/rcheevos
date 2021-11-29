@@ -3300,6 +3300,67 @@ static void test_addaddress_double_indirection() {
   assert_evaluate_condset(condset, memrefs, &memory, 1);
 }
 
+static void test_addaddress_double_indirection_with_delta() {
+  unsigned char ram[] = { 0, 2, 4 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* prev(byte(0x0000 + byte(0x0000 + byte(0x0000)))) == 22 | prev($($($0000)))) == 22*/
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000=0_I:0xH0000=0_d0xH0000=4");
+
+  /* NOTE: indirectly calculated memrefs keep their own delta, not the delta of the newly pointed to 
+   *       value. using the intermediate deltas to calculate an address for the current frame will
+   *       generate incorrect values. Only the final item in the chain should have the delta. */
+
+  /* 1st frame: A = Mem[0] = 0 (delta[0] = 0), B = Mem[A] = Mem[0] = 0 (delta B = 0), C = Mem[B] = Mem[0] = 0 (delta C = 0) */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 2nd frame: A = Mem[0] = 1 (delta[0] = 0), B = Mem[A] = Mem[1] = 2 (delta B = 0), C = Mem[B] = Mem[2] = 4 (delta C = 0) */
+  ram[0] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 3nd frame: A = Mem[0] = 1 (delta[0] = 1), B = Mem[A] = Mem[1] = 2 (delta B = 2), C = Mem[B] = Mem[2] = 4 (delta C = 4) */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
+static void test_addaddress_double_indirection_with_delta_incorrect() {
+  unsigned char ram[] = { 0, 2, 4 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* prev(byte(0x0000 + prev(byte(0x0000 + prev(byte(0x0000)))))) == 22 | prev($($($0000)))) == 22*/
+  assert_parse_condset(&condset, &memrefs, buffer, "I:d0xH0000=0_I:d0xH0000=0_d0xH0000=4");
+
+  /* putting prevs on each step of the chain results in using old pointers to get to data that may not exist yet,
+   * but this validates that incorrect behavior */
+
+  /* 1st frame: Mem[0] = 0 (delta[0] = 0), B = Mem[deltaA] = Mem[0] = 0 (delta B = 0), C = Mem[deltaB] = Mem[0] = 0 (delta C = 0) */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 2nd frame: Mem[0] = 1 (delta[0] = 0), B = Mem[deltaA] = Mem[0] = 1 (delta B = 0), C = Mem[deltaB] = Mem[0] = 1 (delta C = 0) */
+  ram[0] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 3rd frame: Mem[0] = 1 (delta[0] = 1), B = Mem[deltaA] = Mem[1] = 2 (delta B = 1), C = Mem[deltaB] = Mem[1] = 2 (delta C = 1) */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 4th frame: Mem[0] = 1 (delta[0] = 1), B = Mem[deltaA] = Mem[1] = 2 (delta B = 2), C = Mem[deltaB] = Mem[2] = 4 (delta C = 2) */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 5th frame: Mem[0] = 1 (delta[0] = 1), B = Mem[deltaA] = Mem[1] = 2 (delta B = 2), C = Mem[deltaB] = Mem[2] = 4 (delta C = 4) */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_addaddress_adjust_both_sides() {
   unsigned char ram[] = {0x02, 0x11, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3540,6 +3601,8 @@ void test_condset(void) {
   TEST(test_addaddress_indirect_pointer_multiple);
   TEST(test_addaddress_pointer_data_size_differs_from_pointer_size);
   TEST(test_addaddress_double_indirection);
+  TEST(test_addaddress_double_indirection_with_delta);
+  TEST(test_addaddress_double_indirection_with_delta_incorrect);
   TEST(test_addaddress_adjust_both_sides);
   TEST(test_addaddress_adjust_both_sides_different_bases);
   TEST(test_addaddress_scaled);

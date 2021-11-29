@@ -110,6 +110,16 @@ extern const char* test_framework_basename(const char* path);
   TEST_INIT() \
   func(p1, p2, p3, p4, p5, p6, p7);
 
+#define TEST_PARAMS8(func, p1, p2, p3, p4, p5, p6, p7, p8) \
+  __test_framework_state.current_test = #func "(" #p1 ", " #p2 ", " #p3 ", " #p4 ", " #p5 ", " #p6 ", " #p7 ", " #p8 ")"; \
+  TEST_INIT() \
+  func(p1, p2, p3, p4, p5, p6, p7, p8);
+
+#define TEST_PARAMS9(func, p1, p2, p3, p4, p5, p6, p7, p8, p9) \
+  __test_framework_state.current_test = #func "(" #p1 ", " #p2 ", " #p3 ", " #p4 ", " #p5 ", " #p6 ", " #p7 ", " #p8 ", " #p9 ")"; \
+  TEST_INIT() \
+  func(p1, p2, p3, p4, p5, p6, p7, p8, p9);
+
 #define ASSERT_HELPER(func_call, func_name) { \
   TEST_PUSH_CURRENT_LINE(func_name); \
   func_call; \
@@ -154,6 +164,8 @@ extern const char* test_framework_basename(const char* path);
 #define ASSERT_NUM_GREATER_EQUALS(value, expected) ASSERT_COMPARE(value, >=, expected, int, "%d")
 #define ASSERT_NUM_LESS(value, expected)           ASSERT_COMPARE(value, <,  expected, int, "%d")
 #define ASSERT_NUM_LESS_EQUALS(value, expected)    ASSERT_COMPARE(value, <=, expected, int, "%d")
+
+#define ASSERT_FLOAT_EQUALS(value, expected)       ASSERT_COMPARE(value, ==, expected, float, "%f")
 
 /* TODO: figure out some way to detect c89 so we can use int64_t and %lld on non-c89 builds */
 #define ASSERT_NUM64_EQUALS(value, expected)       ASSERT_COMPARE(value, ==, expected, int, "%d")

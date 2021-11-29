@@ -46,6 +46,7 @@ OBJ=$(RC_SRC)/alloc.o \
     $(RC_SRC)/memref.o \
     $(RC_SRC)/operand.o \
     $(RC_SRC)/rc_libretro.o \
+    $(RC_SRC)/rc_validate.o \
     $(RC_SRC)/richpresence.o \
     $(RC_SRC)/runtime.o \
     $(RC_SRC)/runtime_progress.o \
@@ -56,6 +57,8 @@ OBJ=$(RC_SRC)/alloc.o \
     $(RC_HASH_SRC)/md5.o \
     $(RC_URL_SRC)/url.o \
     $(RC_API_SRC)/rc_api_common.o \
+    $(RC_API_SRC)/rc_api_editor.o \
+    $(RC_API_SRC)/rc_api_info.o \
     $(RC_API_SRC)/rc_api_runtime.o \
     $(RC_API_SRC)/rc_api_user.o \
     rcheevos/test_condition.o \
@@ -66,6 +69,7 @@ OBJ=$(RC_SRC)/alloc.o \
     rcheevos/test_memref.o \
     rcheevos/test_operand.o \
     rcheevos/test_rc_libretro.o \
+    rcheevos/test_rc_validate.o \
     rcheevos/test_richpresence.o \
     rcheevos/test_runtime.o \
     rcheevos/test_runtime_progress.o \
@@ -77,6 +81,8 @@ OBJ=$(RC_SRC)/alloc.o \
     rhash/test_cdreader.o \
     rhash/test_hash.o \
     rapi/test_rc_api_common.o \
+    rapi/test_rc_api_editor.o \
+    rapi/test_rc_api_info.o \
     rapi/test_rc_api_runtime.o \
     rapi/test_rc_api_user.o \
     test.o
@@ -104,7 +110,8 @@ else
 endif
 
 # more strict validation for source files to eliminate warnings/errors in upstream consumers
-SRC_CFLAGS=-pedantic -Wsign-compare
+# 3DS build (retroarch) doesn't support signed char
+SRC_CFLAGS=-pedantic -Wsign-compare -fno-signed-char
 
 ifeq ($(BUILD), c89)
     CFLAGS += -std=c89
@@ -162,11 +169,25 @@ test: $(OBJ)
 	$(CC) $(LDFLAGS) -o $@$(EXE) $+ -lm
 	@echo ---------------------------------
 
+check_ctype:
+	@if grep -rnI "isalpha([^(u]" ../src/*; \
+	then echo "*** Error: isalpha without unsigned char cast" && false; \
+	fi
+	@if grep -rnI "isalnum([^(u]" ../src/*; \
+	then echo "*** Error: isalnum without unsigned char cast" && false; \
+	fi
+	@if grep -rnI "isdigit([^(u]" ../src/*; \
+	then echo "*** Error: isdigit without unsigned char cast" && false; \
+	fi
+	@if grep -rnI "isspace([^(u]" ../src/*; \
+	then echo "*** Error: isspace without unsigned char cast" && false; \
+	fi
+
 runtests: test
 	@./test$(EXE)
 
 valgrind: test
-	@valgrind --leak-check=full ./test$(EXE)
+	@valgrind --leak-check=full --error-exitcode=1 ./test$(EXE)
 
 clean:
 	rm -f test$(EXE) $(OBJ)

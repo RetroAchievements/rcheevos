@@ -163,6 +163,12 @@
     <ClCompile Include="..\src\rapi\rc_api_common.c">
       <Filter>src\rapi</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rcheevos\consoleinfo.c">
+      <Filter>src\rcheevos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rcheevos\rc_validate.c">
+      <Filter>src\rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">

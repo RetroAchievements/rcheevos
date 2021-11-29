@@ -3,6 +3,143 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
+#include <float.h>
+
+static void test_shared_size(char size, char expected)
+{
+  ASSERT_NUM_EQUALS(rc_memref_shared_size(size), expected);
+}
+
+static void test_shared_sizes(void)
+{
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_8_BITS, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_0, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_1, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_2, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_3, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_4, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_5, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_6, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BIT_7, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_LOW, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_HIGH, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_BITCOUNT, RC_MEMSIZE_8_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_16_BITS, RC_MEMSIZE_16_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_16_BITS_BE, RC_MEMSIZE_16_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_24_BITS, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_24_BITS_BE, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS_BE, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_FLOAT, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_MBF32, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_VARIABLE, RC_MEMSIZE_32_BITS);
+}
+
+static void test_transform(unsigned value, char size, unsigned expected)
+{
+  rc_typed_value_t typed_value;
+  typed_value.type = RC_VALUE_TYPE_UNSIGNED;
+  typed_value.value.u32 = value;
+  rc_transform_memref_value(&typed_value, size);
+  ASSERT_NUM_EQUALS(typed_value.value.u32, expected);
+}
+
+static void test_transform_float(unsigned value, char size, double expected)
+{
+  rc_typed_value_t typed_value;
+  typed_value.type = RC_VALUE_TYPE_UNSIGNED;
+  typed_value.value.u32 = value;
+  rc_transform_memref_value(&typed_value, size);
+  ASSERT_FLOAT_EQUALS(typed_value.value.f32, expected);
+}
+
+static void test_transform_float_inf(unsigned value, char size)
+{
+  /* C89 does not provide defines for NAN and INFINITY, nor does it provide isnan() or isinf() functions */
+  rc_typed_value_t typed_value;
+  typed_value.type = RC_VALUE_TYPE_UNSIGNED;
+  typed_value.value.u32 = value;
+  rc_transform_memref_value(&typed_value, size);
+
+  if (typed_value.value.f32 < FLT_MAX) {
+    /* infinity will be greater than max float value */
+    ASSERT_FAIL("result of transform is not infinity")
+  }
+}
+
+static void test_transform_float_nan(unsigned value, char size)
+{
+  /* C89 does not provide defines for NAN and INFINITY, nor does it provide isnan() or isinf() functions */
+  rc_typed_value_t typed_value;
+  typed_value.type = RC_VALUE_TYPE_UNSIGNED;
+  typed_value.value.u32 = value;
+  rc_transform_memref_value(&typed_value, size);
+
+  if (typed_value.value.f32 == typed_value.value.f32) {
+    /* NaN cannot be compared, will fail equality check with itself */
+    ASSERT_FAIL("result of transform is not NaN")
+  }
+}
+
+static void test_transforms(void)
+{
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_8_BITS, 0x00000078);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_16_BITS, 0x00005678);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_24_BITS, 0x00345678);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_32_BITS, 0x12345678);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_LOW, 0x00000008);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_HIGH, 0x00000007);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_BITCOUNT, 0x00000004); /* only counts bits in lowest byte */
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_16_BITS_BE, 0x00007856);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_24_BITS_BE, 0x00785634);
+  TEST_PARAMS3(test_transform, 0x12345678, RC_MEMSIZE_32_BITS_BE, 0x78563412);
+
+  TEST_PARAMS3(test_transform, 0x00000001, RC_MEMSIZE_BIT_0, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000002, RC_MEMSIZE_BIT_1, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000004, RC_MEMSIZE_BIT_2, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000008, RC_MEMSIZE_BIT_3, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000010, RC_MEMSIZE_BIT_4, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000020, RC_MEMSIZE_BIT_5, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000040, RC_MEMSIZE_BIT_6, 0x00000001);
+  TEST_PARAMS3(test_transform, 0x00000080, RC_MEMSIZE_BIT_7, 0x00000001);
+
+  TEST_PARAMS3(test_transform, 0x000000FE, RC_MEMSIZE_BIT_0, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000FD, RC_MEMSIZE_BIT_1, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000FB, RC_MEMSIZE_BIT_2, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000F7, RC_MEMSIZE_BIT_3, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000EF, RC_MEMSIZE_BIT_4, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000DF, RC_MEMSIZE_BIT_5, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x000000BF, RC_MEMSIZE_BIT_6, 0x00000000);
+  TEST_PARAMS3(test_transform, 0x0000007F, RC_MEMSIZE_BIT_7, 0x00000000);
+
+  TEST_PARAMS3(test_transform_float, 0x3F800000, RC_MEMSIZE_FLOAT, 1.0);
+  TEST_PARAMS3(test_transform_float, 0x41460000, RC_MEMSIZE_FLOAT, 12.375);
+  TEST_PARAMS3(test_transform_float, 0x42883EFA, RC_MEMSIZE_FLOAT, 68.123);
+  TEST_PARAMS3(test_transform_float, 0x00000000, RC_MEMSIZE_FLOAT, 0.0);
+  TEST_PARAMS3(test_transform_float, 0x80000000, RC_MEMSIZE_FLOAT, -0.0);
+  TEST_PARAMS3(test_transform_float, 0xC0000000, RC_MEMSIZE_FLOAT, -2.0);
+  TEST_PARAMS3(test_transform_float, 0x40490FDB, RC_MEMSIZE_FLOAT, 3.14159274101257324);
+  TEST_PARAMS3(test_transform_float, 0x3EAAAAAB, RC_MEMSIZE_FLOAT, 0.333333334326744076);
+  TEST_PARAMS3(test_transform_float, 0x429A4492, RC_MEMSIZE_FLOAT, 77.133926);
+  TEST_PARAMS3(test_transform_float, 0x4350370A, RC_MEMSIZE_FLOAT, 208.214996);
+  TEST_PARAMS3(test_transform_float, 0x45AE36E9, RC_MEMSIZE_FLOAT, 5574.863770);
+  TEST_PARAMS3(test_transform_float, 0x58635FA9, RC_MEMSIZE_FLOAT, 1000000000000000.0);
+  TEST_PARAMS3(test_transform_float, 0x24E69595, RC_MEMSIZE_FLOAT, 0.0000000000000001);
+  TEST_PARAMS2(test_transform_float_inf, 0x7F800000, RC_MEMSIZE_FLOAT);
+  TEST_PARAMS2(test_transform_float_nan, 0x7FFFFFFF, RC_MEMSIZE_FLOAT);
+
+  /* MBF values are stored big endian (at least on Apple II), so will be byteswapped
+   * when passed to rc_transform_memref_value. MBF doesn't support infinity or NaN. */
+  TEST_PARAMS3(test_transform_float, 0x00000081, RC_MEMSIZE_MBF32, 1.0);        /* 81 00 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x00002084, RC_MEMSIZE_MBF32, 10.0);       /* 84 20 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x00004687, RC_MEMSIZE_MBF32, 99.0);       /* 87 46 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x00000000, RC_MEMSIZE_MBF32, 0.0);        /* 00 00 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x00000080, RC_MEMSIZE_MBF32, 0.5);        /* 80 00 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x00008082, RC_MEMSIZE_MBF32, -2.0);       /* 82 80 00 00 */
+  TEST_PARAMS3(test_transform_float, 0xF3043581, RC_MEMSIZE_MBF32, 1.41421354); /* 81 34 04 F3 */
+  TEST_PARAMS3(test_transform_float, 0xDB0F4983, RC_MEMSIZE_MBF32, 6.28318548); /* 83 49 0F DB */
+}
+
 static int get_memref_count(rc_parse_state_t* parse) {
   int count = 0;
   rc_memref_t *memref = *parse->first_memref;
@@ -188,10 +325,16 @@ static void test_update_memref_values() {
 void test_memref(void) {
   TEST_SUITE_BEGIN();
 
+  test_shared_sizes();
+  test_transforms();
+
   TEST(test_allocate_shared_address);
   TEST(test_allocate_shared_address2);
+
   TEST(test_sizing_mode_grow_buffer);
   TEST(test_update_memref_values);
+
+  /* rc_parse_memref is thoroughly tested by rc_parse_operand tests */
 
   TEST_SUITE_END();
 }

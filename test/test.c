@@ -39,6 +39,7 @@ static void test_lua(void) {
     trigger = rc_parse_trigger(buffer, "@test=0xX0", L, 1);
     assert(rc_test_trigger(trigger, peek, &memory, L) != 0);
 
+    lua_close(L);
 #endif /* RC_DISABLE_LUA */
   }
 }
@@ -57,6 +58,7 @@ extern void test_runtime_progress();
 
 extern void test_consoleinfo();
 extern void test_rc_libretro();
+extern void test_rc_validate();
 
 extern void test_url();
 
@@ -66,6 +68,8 @@ extern void test_hash();
 extern void test_rapi_common();
 extern void test_rapi_user();
 extern void test_rapi_runtime();
+extern void test_rapi_info();
+extern void test_rapi_editor();
 
 TEST_FRAMEWORK_DECLARATIONS()
 
@@ -86,6 +90,7 @@ int main(void) {
 
   test_consoleinfo();
   test_rc_libretro();
+  test_rc_validate();
 
   test_lua();
 
@@ -97,6 +102,8 @@ int main(void) {
   test_rapi_common();
   test_rapi_user();
   test_rapi_runtime();
+  test_rapi_info();
+  test_rapi_editor();
 
   TEST_FRAMEWORK_SHUTDOWN();
 
