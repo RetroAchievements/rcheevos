@@ -280,6 +280,13 @@ static const rc_memory_region_t _rc_memory_regions_colecovision[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_colecovision = { _rc_memory_regions_colecovision, 1 };
 
+/* ===== Dreamcast ===== */
+/* http://archiv.sega-dc.de/munkeechuff/hardware/Memory.html */
+static const rc_memory_region_t _rc_memory_regions_dreamcast[] = {
+    { 0x00000000U, 0x00FFFFFFU, 0x0C000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_dreamcast = { _rc_memory_regions_dreamcast, 1 };
+
 /* ===== GameBoy / GameBoy Color ===== */
 static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
     { 0x000000U, 0x0000FFU, 0x000000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Interrupt vector" },
@@ -663,6 +670,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_COLECOVISION:
       return &rc_memory_regions_colecovision;
+
+    case RC_CONSOLE_DREAMCAST:
+      return &rc_memory_regions_dreamcast;
 
     case RC_CONSOLE_GAMEBOY:
       return &rc_memory_regions_gameboy;
