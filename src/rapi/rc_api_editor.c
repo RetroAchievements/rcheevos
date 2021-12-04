@@ -236,6 +236,97 @@ void rc_api_destroy_update_achievement_response(rc_api_update_achievement_respon
   rc_buf_destroy(&response->response.buffer);
 }
 
+/* --- Update Leaderboard --- */
+
+int rc_api_init_update_leaderboard_request(rc_api_request_t* request, const rc_api_update_leaderboard_request_t* api_params) {
+    rc_api_url_builder_t builder;
+    char buffer[33];
+    md5_state_t md5;
+    md5_byte_t hash[16];
+
+    rc_api_url_build_dorequest_url(request);
+
+    if (api_params->game_id == 0)
+        return RC_INVALID_STATE;
+    if (!api_params->title || !*api_params->title)
+        return RC_INVALID_STATE;
+    if (!api_params->description || !*api_params->description)
+        return RC_INVALID_STATE;
+    if (!api_params->start_trigger || !*api_params->start_trigger)
+        return RC_INVALID_STATE;
+    if (!api_params->submit_trigger || !*api_params->submit_trigger)
+        return RC_INVALID_STATE;
+    if (!api_params->cancel_trigger || !*api_params->cancel_trigger)
+        return RC_INVALID_STATE;
+    if (!api_params->value_definition || !*api_params->value_definition)
+        return RC_INVALID_STATE;
+    if (!api_params->format || !*api_params->format)
+        return RC_INVALID_STATE;
+
+    rc_url_builder_init(&builder, &request->buffer, 128);
+    if (!rc_api_url_build_dorequest(&builder, "uploadleaderboard", api_params->username, api_params->api_token))
+        return builder.result;
+
+    if (api_params->leaderboard_id)
+        rc_url_builder_append_unum_param(&builder, "i", api_params->leaderboard_id);
+    rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
+    rc_url_builder_append_str_param(&builder, "n", api_params->title);
+    rc_url_builder_append_str_param(&builder, "d", api_params->description);
+    rc_url_builder_append_str_param(&builder, "s", api_params->start_trigger);
+    rc_url_builder_append_str_param(&builder, "b", api_params->submit_trigger);
+    rc_url_builder_append_str_param(&builder, "c", api_params->cancel_trigger);
+    rc_url_builder_append_str_param(&builder, "l", api_params->value_definition);
+    rc_url_builder_append_num_param(&builder, "w", api_params->lower_is_better);
+    rc_url_builder_append_str_param(&builder, "f", api_params->format);
+
+    /* Evaluate the signature. */
+    md5_init(&md5);
+    md5_append(&md5, (md5_byte_t*)api_params->username, (int)strlen(api_params->username));
+    md5_append(&md5, (md5_byte_t*)"SECRET", 6);
+    snprintf(buffer, sizeof(buffer), "%u", api_params->leaderboard_id);
+    md5_append(&md5, (md5_byte_t*)buffer, (int)strlen(buffer));
+    md5_append(&md5, (md5_byte_t*)"SEC", 3);
+    md5_append(&md5, (md5_byte_t*)api_params->start_trigger, (int)strlen(api_params->start_trigger));
+    md5_append(&md5, (md5_byte_t*)api_params->submit_trigger, (int)strlen(api_params->submit_trigger));
+    md5_append(&md5, (md5_byte_t*)api_params->cancel_trigger, (int)strlen(api_params->cancel_trigger));
+    md5_append(&md5, (md5_byte_t*)api_params->value_definition, (int)strlen(api_params->value_definition));
+    md5_append(&md5, (md5_byte_t*)"RE2", 3);
+    md5_append(&md5, (md5_byte_t*)api_params->format, (int)strlen(api_params->format));
+    md5_finish(&md5, hash);
+    rc_api_format_md5(buffer, hash);
+    rc_url_builder_append_str_param(&builder, "h", buffer);
+
+    request->post_data = rc_url_builder_finalize(&builder);
+
+    return builder.result;
+}
+
+int rc_api_process_update_leaderboard_response(rc_api_update_leaderboard_response_t* response, const char* server_response) {
+    int result;
+
+    rc_json_field_t fields[] = {
+      {"Success"},
+      {"Error"},
+      {"LeaderboardID"}
+    };
+
+    memset(response, 0, sizeof(*response));
+    rc_buf_init(&response->response.buffer);
+
+    result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+    if (result != RC_OK || !response->response.succeeded)
+        return result;
+
+    if (!rc_json_get_required_unum(&response->leaderboard_id, &response->response, &fields[2], "LeaderboardID"))
+        return RC_MISSING_VALUE;
+
+    return RC_OK;
+}
+
+void rc_api_destroy_update_leaderboard_response(rc_api_update_leaderboard_response_t* response) {
+    rc_buf_destroy(&response->response.buffer);
+}
+
 /* --- Fetch Badge Range --- */
 
 int rc_api_init_fetch_badge_range_request(rc_api_request_t* request, const rc_api_fetch_badge_range_request_t* api_params) {
