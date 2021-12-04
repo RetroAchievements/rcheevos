@@ -170,6 +170,28 @@ void test_delta_pointers() {
   TEST_PARAMS2(test_validate_trigger, "I:0xX1234_I:0xH0010_0xH0000=1", "");
 }
 
+void test_float_comparisons() {
+  TEST_PARAMS2(test_validate_trigger, "fF1234=f2.3", "");
+  TEST_PARAMS2(test_validate_trigger, "fM1234=f2.3", "");
+  TEST_PARAMS2(test_validate_trigger, "fF1234=2", "");
+  TEST_PARAMS2(test_validate_trigger, "0xX1234=2", "");
+  TEST_PARAMS2(test_validate_trigger, "0xX1234=f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234!=f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234<f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234<=f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234>f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234>=f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234=f2.0", ""); /* float can be converted to int without loss of data*/
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=f2.3", "Condition 1: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=f300.0", "Condition 1: Comparison is never true"); /* value out of range */
+  TEST_PARAMS2(test_validate_trigger, "f2.3=fF1234", "");
+  TEST_PARAMS2(test_validate_trigger, "f2.3=0xX1234", "Condition 1: Comparison is never true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "f2.0=0xX1234", "");
+  TEST_PARAMS2(test_validate_trigger, "A:Ff2345_fF1234=f2.3", "");
+  TEST_PARAMS2(test_validate_trigger, "A:0xX2345_fF1234=f2.3", "");
+  TEST_PARAMS2(test_validate_trigger, "A:Ff2345_0x1234=f2.3", "");
+}
+
 void test_rc_validate(void) {
   TEST_SUITE_BEGIN();
 
@@ -183,6 +205,7 @@ void test_rc_validate(void) {
   test_size_comparisons();
   test_address_range();
   test_delta_pointers();
+  test_float_comparisons();
 
   TEST_SUITE_END();
 }

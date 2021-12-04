@@ -215,8 +215,41 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
 
     /* if either side is a memref, or there's a running add source chain, check for impossible comparisons */
     if (is_memref1 || is_memref2 || add_source_max) {
-      const unsigned min_val = (cond->operand2.type == RC_OPERAND_CONST) ? cond->operand2.value.num : 0;
       const size_t prefix_length = snprintf(result, result_size, "Condition %d: ", index);
+
+      unsigned min_val;
+      switch (cond->operand2.type) {
+        case RC_OPERAND_CONST:
+          min_val = cond->operand2.value.num;
+          break;
+
+        case RC_OPERAND_FP:
+          min_val = (int)cond->operand2.value.dbl;
+
+          /* cannot compare an integer memory reference to a non-integral floating point value */
+          /* assert: is_memref1 (because operand2==FP means !is_memref2) */
+          if (!add_source_max && !rc_operand_is_float_memref(&cond->operand1) &&
+              (float)min_val != cond->operand2.value.dbl) {
+            snprintf(result + prefix_length, result_size - prefix_length, "Comparison is never true");
+            return 0;
+          }
+
+          break;
+
+        default:
+          min_val = 0;
+
+          /* cannot compare an integer memory reference to a non-integral floating point value */
+          /* assert: is_memref2 (because operand1==FP means !is_memref1) */
+          if (cond->operand1.type == RC_OPERAND_FP && !add_source_max && !rc_operand_is_float_memref(&cond->operand2) &&
+              (float)((int)cond->operand1.value.dbl) != cond->operand1.value.dbl) {
+            snprintf(result + prefix_length, result_size - prefix_length, "Comparison is never true");
+            return 0;
+          }
+
+          break;
+      }
+
       if (!rc_validate_range(min_val, max_val, cond->oper, max, result + prefix_length, result_size - prefix_length))
         return 0;
     }
