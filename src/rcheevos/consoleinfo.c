@@ -96,6 +96,9 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_MEGA_DRIVE:
       return "Sega Genesis";
 
+    case RC_CONSOLE_MEGADUCK:
+      return "Mega Duck";
+
     case RC_CONSOLE_MS_DOS:
       return "MS-DOS";
 
@@ -126,6 +129,9 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_ORIC:
       return "Oric";
 
+    case RC_CONSOLE_PC6000:
+      return "PC-6000";
+
     case RC_CONSOLE_PC8800:
       return "PC-8000/8800";
 
@@ -155,6 +161,9 @@ const char* rc_console_name(int console_id)
 
     case RC_CONSOLE_SEGA_CD:
       return "Sega CD";
+	  
+    case RC_CONSOLE_PICO:
+      return "Sega Pico";
 
     case RC_CONSOLE_SATURN:
       return "Sega Saturn";
@@ -203,6 +212,9 @@ const char* rc_console_name(int console_id)
 
     case RC_CONSOLE_XBOX:
       return "XBOX";
+
+    case RC_CONSOLE_ZEEBO:
+      return "Zeebo";
 
     case RC_CONSOLE_ZX81:
       return "ZX-81";
