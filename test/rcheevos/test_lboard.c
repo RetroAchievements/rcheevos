@@ -527,6 +527,10 @@ static void test_unparsable_strings() {
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::SUB:0xH00=3::PRO:0xH04::VAL:0xH02", RC_MISSING_CANCEL);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::PRO:0xH04::VAL:0xH02", RC_MISSING_SUBMIT);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04", RC_MISSING_VALUE);
+  TEST_PARAMS2(test_unparsable_lboard, "STA:::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02", RC_MISSING_START);
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:::SUB:0xH00=3::VAL:0xH02", RC_MISSING_CANCEL);
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:::VAL:0xH02", RC_MISSING_SUBMIT);
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:", RC_MISSING_VALUE);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::STA:0=0", RC_DUPLICATED_START);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::CAN:0=0", RC_DUPLICATED_CANCEL);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::PRO:0xH04::VAL:0xH02::SUB:0=0", RC_DUPLICATED_SUBMIT);
