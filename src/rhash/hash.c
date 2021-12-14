@@ -1267,14 +1267,17 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   sector = rc_cd_find_file_sector(track_handle, exe_file, &size);
   if (sector == 0)
   {
-    /* a dreamcast cue file does not accurately represent the space betwee the low density and high
+    /* a dreamcast cue file does not accurately represent the space between the low density and high
      * density areas. we expect track 3 to start at sector 45000, regardless of what information we
-     * got from the cue file. so forcibly adjust the absolute sector using 45000 and try again. */
-    rc_hash_cdreader_absolute_sector_to_track_sector old_function = cdreader_funcs.absolute_sector_to_track_sector;
-    cdreader_funcs.absolute_sector_to_track_sector = rc_cd_absolute_sector_to_track_sector_dreamcast;
-    sector = rc_cd_find_file_sector(track_handle, exe_file, &size);
-    cdreader_funcs.absolute_sector_to_track_sector = old_function;
-    high_density_offset = old_function(track_handle, 45000);
+     * got from the cue file, so forcibly adjust the absolute sector using 45000 and try again. */
+    high_density_offset = rc_cd_absolute_sector_to_track_sector(track_handle, 45000);
+    if (high_density_offset > 0)
+    {
+      rc_hash_cdreader_absolute_sector_to_track_sector old_function = cdreader_funcs.absolute_sector_to_track_sector;
+      cdreader_funcs.absolute_sector_to_track_sector = rc_cd_absolute_sector_to_track_sector_dreamcast;
+      sector = rc_cd_find_file_sector(track_handle, exe_file, &size);
+      cdreader_funcs.absolute_sector_to_track_sector = old_function;
+    }
   }
 
   rc_cd_close_track(track_handle);
@@ -2105,10 +2108,11 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
           iterator->consoles[1] = RC_CONSOLE_PLAYSTATION_2;
-          iterator->consoles[2] = RC_CONSOLE_PC_ENGINE;
-          iterator->consoles[3] = RC_CONSOLE_3DO;
-          iterator->consoles[4] = RC_CONSOLE_PCFX;
-          iterator->consoles[5] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
+          iterator->consoles[2] = RC_CONSOLE_DREAMCAST;
+          iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
+          iterator->consoles[4] = RC_CONSOLE_PC_ENGINE;
+          iterator->consoles[5] = RC_CONSOLE_3DO;
+          iterator->consoles[6] = RC_CONSOLE_PCFX;
           need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "chd"))
@@ -2116,10 +2120,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
           iterator->consoles[1] = RC_CONSOLE_PLAYSTATION_2;
           iterator->consoles[2] = RC_CONSOLE_DREAMCAST;
-          iterator->consoles[3] = RC_CONSOLE_PC_ENGINE;
-          iterator->consoles[4] = RC_CONSOLE_3DO;
-          iterator->consoles[5] = RC_CONSOLE_PCFX;
-          iterator->consoles[6] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
+          iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
+          iterator->consoles[4] = RC_CONSOLE_PC_ENGINE;
+          iterator->consoles[5] = RC_CONSOLE_3DO;
+          iterator->consoles[6] = RC_CONSOLE_PCFX;
           need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "col"))

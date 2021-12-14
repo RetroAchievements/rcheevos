@@ -672,10 +672,10 @@ static void test_absolute_sector_to_track_sector_cue_pregap()
 
   ASSERT_PTR_NOT_NULL(track_handle->file_handle);
   ASSERT_STR_EQUALS(get_mock_filename(track_handle->file_handle), "game2.bin");
-  
+
   /* pregap of second track starts at sector 500 */
   ASSERT_NUM_EQUALS(track_handle->first_sector, 500);
-  
+
   /* data for second track starts at sector 650 */
   ASSERT_NUM_EQUALS(cdreader->absolute_sector_to_track_sector(track_handle, 818), 818 - 650);
 
