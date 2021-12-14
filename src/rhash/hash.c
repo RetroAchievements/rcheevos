@@ -1196,6 +1196,12 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
+static uint32_t rc_cd_absolute_sector_to_track_sector_dreamcast(void* track_handle, uint32_t sector)
+{
+  (void)track_handle;
+  return (sector - 45000);
+}
+
 static int rc_hash_dreamcast(char hash[33], const char* path)
 {
   uint8_t buffer[256];
@@ -1208,6 +1214,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   int result = 0;
   md5_state_t md5;
   int i = 0;
+  int high_density_offset = 0;
 
   /* track 03 is the data track that contains the TOC and IP.BIN */
   track_handle = rc_cd_open_track(path, 3);
@@ -1258,6 +1265,17 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   exe_file[i] = '\0';
 
   sector = rc_cd_find_file_sector(track_handle, exe_file, &size);
+  if (sector == 0)
+  {
+    /* a dreamcast cue file does not accurately represent the space betwee the low density and high
+     * density areas. we expect track 3 to start at sector 45000, regardless of what information we
+     * got from the cue file. so forcibly adjust the absolute sector using 45000 and try again. */
+    rc_hash_cdreader_absolute_sector_to_track_sector old_function = cdreader_funcs.absolute_sector_to_track_sector;
+    cdreader_funcs.absolute_sector_to_track_sector = rc_cd_absolute_sector_to_track_sector_dreamcast;
+    sector = rc_cd_find_file_sector(track_handle, exe_file, &size);
+    cdreader_funcs.absolute_sector_to_track_sector = old_function;
+    high_density_offset = old_function(track_handle, 45000);
+  }
 
   rc_cd_close_track(track_handle);
 
@@ -1266,7 +1284,7 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
 
   /* last track contains the boot executable */
   last_track_handle = rc_cd_open_track(path, RC_HASH_CDTRACK_LAST);
-  track_sector = rc_cd_absolute_sector_to_track_sector(last_track_handle, sector);
+  track_sector = rc_cd_absolute_sector_to_track_sector(last_track_handle, sector) - high_density_offset;
 
   if ((int32_t)track_sector < 0)
   {
