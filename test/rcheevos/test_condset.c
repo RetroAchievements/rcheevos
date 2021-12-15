@@ -1748,6 +1748,28 @@ static void test_addsource_divide() {
   assert_hit_count(condset, 1, 2);
 }
 
+static void test_addsource_compare_percentage() {
+  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* (byte(0)/byte(1) > 0.5) => (byte(1) * 0.5) < byte(0) */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:0xH0001*f0.5_0<0xH0000");
+
+  /* 0/6 > 50% = false */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  ram[0] = 2; assert_evaluate_condset(condset, memrefs, &memory, 0); /* 2/6 > 50% = false */
+  ram[0] = 4; assert_evaluate_condset(condset, memrefs, &memory, 1); /* 4/6 > 50% = true */
+  ram[1] = 7; assert_evaluate_condset(condset, memrefs, &memory, 1); /* 4/7 > 50% = true */
+  ram[0] = 3; assert_evaluate_condset(condset, memrefs, &memory, 0); /* 3/7 > 50% = false */
+}
+
 static void test_subsource_divide() {
   unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3562,6 +3584,7 @@ void test_condset(void) {
   TEST(test_addsource_divide);
   TEST(test_addsource_divide_address);
   TEST(test_subsource_divide);
+  TEST(test_addsource_compare_percentage);
   TEST(test_addsource_mask);
   TEST(test_subsource_mask);
   TEST(test_subsource_overflow_comparison_equal);
