@@ -618,18 +618,19 @@ static void test_hash_nds_supercard()
   const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
 
   /* inject the SuperCard header (512 bytes) */
-  memcpy(&image[512], &image[0], image_size - 512);
-  memset(&image[0], 0, 512);
-  image[0] = 0x2E;
-  image[1] = 0x00;
-  image[2] = 0x00;
-  image[3] = 0xEA;
-  image[0xB0] = 0x44;
-  image[0xB1] = 0x46;
-  image[0xB2] = 0x96;
-  image[0xB3] = 0x00;
+  uint8_t* image2 = malloc(image_size + 512);
+  memcpy(&image2[512], &image[0], image_size);
+  memset(&image2[0], 0, 512);
+  image2[0] = 0x2E;
+  image2[1] = 0x00;
+  image2[2] = 0x00;
+  image2[3] = 0xEA;
+  image2[0xB0] = 0x44;
+  image2[0xB1] = 0x46;
+  image2[0xB2] = 0x96;
+  image2[0xB3] = 0x00;
 
-  mock_file(0, "game.nds", image, image_size);
+  mock_file(0, "game.nds", image2, image_size);
 
   /* test file hash */
   int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO_DS, "game.nds");
@@ -644,6 +645,7 @@ static void test_hash_nds_supercard()
 
   /* cleanup */
   free(image);
+  free(image2);
 
   /* validation */
   ASSERT_NUM_EQUALS(result_file, 1);
