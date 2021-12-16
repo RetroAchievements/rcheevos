@@ -371,7 +371,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
             verbose_message_callback(message);
           }
 
-          if (current_track.id == (int)track)
+          if (current_track.id == track)
           {
             done = 1;
             break;

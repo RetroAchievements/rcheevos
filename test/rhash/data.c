@@ -642,6 +642,7 @@ uint8_t* convert_to_2352(uint8_t* input, size_t* size, uint32_t first_sector)
     uint8_t* input_ptr = input;
     uint8_t* ptr = output;
     uint8_t minutes, seconds, frames;
+    uint32_t i;
 
     first_sector += 150;
     frames = (first_sector % 75);
@@ -649,9 +650,9 @@ uint8_t* convert_to_2352(uint8_t* input, size_t* size, uint32_t first_sector)
     seconds = (first_sector % 60);
     minutes = first_sector / 60;
 
-    for (uint32_t i = 0; i < num_sectors; i++)
+    for (i = 0; i < num_sectors; i++)
     {
-      // 16-byte sync header
+      /* 16 - byte sync header */
       memcpy(ptr, sync_pattern, 12);
       ptr += 12;
       *ptr++ = ((minutes / 10) << 4) | (minutes % 10);
@@ -668,11 +669,11 @@ uint8_t* convert_to_2352(uint8_t* input, size_t* size, uint32_t first_sector)
       }
       *ptr++ = 2;
 
-      // 2048 bytes data
+      /* 2048 bytes data */
       memcpy(ptr, input_ptr, 2048);
       input_ptr += 2048;
 
-      // 288 bytes parity/checksums
+      /* 288 bytes parity / checksums */
       ptr += 2352 - 16;
     }
 
