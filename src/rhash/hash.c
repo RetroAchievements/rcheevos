@@ -1547,6 +1547,83 @@ static int rc_hash_snes(char hash[33], const uint8_t* buffer, size_t buffer_size
   return rc_hash_buffer(hash, buffer, buffer_size);
 }
 
+struct rc_buffered_file
+{
+  const uint8_t* read_ptr;
+  const uint8_t* data;
+  size_t data_size;
+};
+
+static struct rc_buffered_file rc_buffered_file;
+
+static void* rc_file_open_buffered_file(const char* path)
+{
+  struct rc_buffered_file* handle = (struct rc_buffered_file*)malloc(sizeof(struct rc_buffered_file));
+  memcpy(handle, &rc_buffered_file, sizeof(rc_buffered_file));
+  return handle;
+}
+
+void rc_file_seek_buffered_file(void* file_handle, int64_t offset, int origin)
+{
+  struct rc_buffered_file* buffered_file = (struct rc_buffered_file*)file_handle;
+  switch (origin)
+  {
+    case SEEK_SET: buffered_file->read_ptr = buffered_file->data + offset; break;
+    case SEEK_CUR: buffered_file->read_ptr += offset; break;
+    case SEEK_END: buffered_file->read_ptr = buffered_file->data + buffered_file->data_size - 1 - offset; break;
+  }
+
+  if (buffered_file->read_ptr < buffered_file->data)
+    buffered_file->read_ptr = buffered_file->data;
+  else if (buffered_file->read_ptr > buffered_file->data + buffered_file->data_size)
+    buffered_file->read_ptr = buffered_file->data + buffered_file->data_size;
+}
+
+int64_t rc_file_tell_buffered_file(void* file_handle)
+{
+  struct rc_buffered_file* buffered_file = (struct rc_buffered_file*)file_handle;
+  return (buffered_file->read_ptr - buffered_file->data);
+}
+
+size_t rc_file_read_buffered_file(void* file_handle, void* buffer, int requested_bytes)
+{
+  struct rc_buffered_file* buffered_file = (struct rc_buffered_file*)file_handle;
+  const int64_t remaining = buffered_file->data_size - (buffered_file->read_ptr - buffered_file->data);
+  if (requested_bytes > remaining)
+     requested_bytes = (int)remaining;
+
+  memcpy(buffer, buffered_file->read_ptr, requested_bytes);
+  buffered_file->read_ptr += requested_bytes;
+  return requested_bytes;
+}
+
+void rc_file_close_buffered_file(void* file_handle)
+{
+  free(file_handle);
+}
+
+static int rc_hash_file_from_buffer(char hash[33], int console_id, const uint8_t* buffer, size_t buffer_size)
+{
+  struct rc_hash_filereader filereader_funcs_old;
+  int result;
+
+  memcpy(&filereader_funcs_old, &filereader_funcs, sizeof(filereader_funcs));
+
+  filereader_funcs.open = rc_file_open_buffered_file;
+  filereader_funcs.close = rc_file_close_buffered_file;
+  filereader_funcs.read = rc_file_read_buffered_file;
+  filereader_funcs.seek = rc_file_seek_buffered_file;
+  filereader_funcs.tell = rc_file_tell_buffered_file;
+
+  rc_buffered_file.data = rc_buffered_file.read_ptr = buffer;
+  rc_buffered_file.data_size = buffer_size;
+
+  result = rc_hash_generate_from_file(hash, console_id, "[buffered file]");
+
+  memcpy(&filereader_funcs, &filereader_funcs_old, sizeof(filereader_funcs));
+  return result;
+}
+
 int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* buffer, size_t buffer_size)
 {
   switch (console_id)
@@ -1601,6 +1678,9 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* b
 
     case RC_CONSOLE_SUPER_NINTENDO:
       return rc_hash_snes(hash, buffer, buffer_size);
+
+    case RC_CONSOLE_NINTENDO_DS:
+      return rc_hash_file_from_buffer(hash, console_id, buffer, buffer_size);
   }
 }
 
