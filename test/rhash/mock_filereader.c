@@ -186,14 +186,17 @@ static void* _mock_cd_open_track(const char* path, uint32_t track)
 
 static size_t _mock_cd_read_sector(void* track_handle, uint32_t sector, void* buffer, size_t requested_bytes)
 {
+  mock_file_data* file = (mock_file_data*)track_handle;
+  sector -= file->first_sector;
+
   _mock_file_seek(track_handle, sector * 2048, SEEK_SET);
   return _mock_file_read(track_handle, buffer, requested_bytes);
 }
 
-static uint32_t _mock_cd_absolute_sector_to_track_sector(void* track_handle, uint32_t sector)
+static uint32_t _mock_cd_first_track_sector(void* track_handle)
 {
   mock_file_data* file = (mock_file_data*)track_handle;
-  return sector - file->first_sector;
+  return file->first_sector;
 }
 
 void mock_cd_num_tracks(int num_tracks)
@@ -208,7 +211,7 @@ void init_mock_cdreader()
   cdreader.open_track = _mock_cd_open_track;
   cdreader.close_track = _mock_file_close;
   cdreader.read_sector = _mock_cd_read_sector;
-  cdreader.absolute_sector_to_track_sector = _mock_cd_absolute_sector_to_track_sector;
+  cdreader.first_track_sector = _mock_cd_first_track_sector;
 
   rc_hash_init_custom_cdreader(&cdreader);
 

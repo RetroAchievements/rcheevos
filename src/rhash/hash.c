@@ -193,13 +193,13 @@ static size_t rc_cd_read_sector(void* track_handle, uint32_t sector, void* buffe
   return 0;
 }
 
-static uint32_t rc_cd_absolute_sector_to_track_sector(void* track_handle, uint32_t sector)
+static uint32_t rc_cd_first_track_sector(void* track_handle)
 {
-  if (cdreader && cdreader->absolute_sector_to_track_sector)
-    return cdreader->absolute_sector_to_track_sector(track_handle, sector);
+  if (cdreader && cdreader->first_track_sector)
+    return cdreader->first_track_sector(track_handle);
 
-  rc_hash_error("no hook registered for cdreader_absolute_sector_to_track_sector");
-  return sector;
+  rc_hash_error("no hook registered for cdreader_first_track_sector");
+  return 0;
 }
 
 static void rc_cd_close_track(void* track_handle)
@@ -242,7 +242,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
   else
   {
     /* find the cd information */
-    if (!rc_cd_read_sector(track_handle, 16, buffer, 256))
+    if (!rc_cd_read_sector(track_handle, rc_cd_first_track_sector(track_handle) + 16, buffer, 256))
       return 0;
 
     /* the directory_record starts at 156, the sector containing the table of contents is 2 bytes into that.
@@ -252,7 +252,6 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
   }
 
   /* fetch and process the directory record */
-  sector = rc_cd_absolute_sector_to_track_sector(track_handle, sector);
   if (!rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer)))
     return 0;
 
@@ -405,7 +404,7 @@ static int rc_hash_cd_file(md5_state_t* md5, void* track_handle, uint32_t sector
     if (name)
       snprintf(message, sizeof(message), "Hashing %s title (%u bytes) and contents (%u bytes) ", name, (unsigned)strlen(name), size);
     else
-      snprintf(message, sizeof(message), "Hashing %s contents (%u bytes)", description, size);
+      snprintf(message, sizeof(message), "Hashing %s contents (%u bytes @ sector %u)", description, size, sector);
 
     verbose_message_callback(message);
   }
@@ -1026,7 +1025,7 @@ static int rc_hash_pce_track(char hash[33], void* track_handle)
    * the string "PC Engine CD-ROM SYSTEM" should exist at 32 bytes into the sector
    * http://shu.sheldows.com/shu/download/pcedocs/pce_cdrom.html
    */
-  if (rc_cd_read_sector(track_handle, 1, buffer, 128) < 128)
+  if (rc_cd_read_sector(track_handle, rc_cd_first_track_sector(track_handle) + 1, buffer, 128) < 128)
   {
     return rc_hash_error("Not a PC Engine CD");
   }
@@ -1059,6 +1058,7 @@ static int rc_hash_pce_track(char hash[33], void* track_handle)
       verbose_message_callback(message);
     }
 
+    sector += rc_cd_first_track_sector(track_handle);
     while (num_sectors > 0)
     {
       rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
@@ -1122,7 +1122,8 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
     return rc_hash_error("Could not open track");
 
   /* PC-FX CD will have a header marker in sector 0 */
-  rc_cd_read_sector(track_handle, 0, buffer, 32);
+  sector = rc_cd_first_track_sector(track_handle);
+  rc_cd_read_sector(track_handle, sector, buffer, 32);
   if (memcmp("PC-FX:Hu_CD-ROM", &buffer[0], 15) != 0)
   {
     rc_cd_close_track(track_handle);
@@ -1132,7 +1133,8 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
     if (!track_handle)
       return rc_hash_error("Could not open track");
 
-    rc_cd_read_sector(track_handle, 0, buffer, 32);
+    sector = rc_cd_first_track_sector(track_handle);
+    rc_cd_read_sector(track_handle, sector, buffer, 32);
   }
 
   if (memcmp("PC-FX:Hu_CD-ROM", &buffer[0], 15) == 0)
@@ -1140,7 +1142,7 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
     /* PC-FX boot header fills the first two sectors of the disc
      * https://bitbucket.org/trap15/pcfxtools/src/master/pcfx-cdlink.c
      * the important stuff is the first 128 bytes of the second sector (title being the first 32) */
-    rc_cd_read_sector(track_handle, 1, buffer, 128);
+    rc_cd_read_sector(track_handle, sector + 1, buffer, 128);
 
     md5_init(&md5);
     md5_append(&md5, buffer, 128);
@@ -1166,6 +1168,7 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
       verbose_message_callback(message);
     }
 
+    sector += rc_cd_first_track_sector(track_handle);
     while (num_sectors > 0)
     {
       rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
@@ -1178,7 +1181,7 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
   else
   {
     int result = 0;
-    rc_cd_read_sector(track_handle, 1, buffer, 128);
+    rc_cd_read_sector(track_handle, sector + 1, buffer, 128);
 
     /* some PC-FX CDs still identify as PCE CDs */
     if (memcmp("PC Engine CD-ROM SYSTEM", &buffer[32], 23) == 0)
@@ -1196,39 +1199,43 @@ static int rc_hash_pcfx_cd(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
-static uint32_t rc_cd_absolute_sector_to_track_sector_dreamcast(void* track_handle, uint32_t sector)
-{
-  (void)track_handle;
-  return (sector - 45000);
-}
-
 static int rc_hash_dreamcast(char hash[33], const char* path)
 {
-  uint8_t buffer[256];
+  uint8_t buffer[256] = "";
   void* track_handle;
-  void* last_track_handle;
   char exe_file[32] = "";
   unsigned size;
   uint32_t sector;
-  uint32_t track_sector;
   int result = 0;
   md5_state_t md5;
   int i = 0;
-  int high_density_offset = 0;
 
   /* track 03 is the data track that contains the TOC and IP.BIN */
   track_handle = rc_cd_open_track(path, 3);
-  if (!track_handle)
-    return rc_hash_error("Could not open track");
-
-  /* first 256 bytes from first sector should have IP.BIN structure that stores game meta information
-   * https://mc.pp.se/dc/ip.bin.html */
-  rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
+  if (track_handle)
+  {
+    /* first 256 bytes from first sector should have IP.BIN structure that stores game meta information
+     * https://mc.pp.se/dc/ip.bin.html */
+    rc_cd_read_sector(track_handle, rc_cd_first_track_sector(track_handle), buffer, sizeof(buffer));
+  }
 
   if (memcmp(&buffer[0], "SEGA SEGAKATANA ", 16) != 0)
   {
-    rc_cd_close_track(track_handle);
-    return rc_hash_error("Not a Dreamcast CD");
+    if (track_handle)
+      rc_cd_close_track(track_handle);
+
+    /* not a gd-rom dreamcast file. check for mil-cd by looking for the marker in the first data track */
+    track_handle = rc_cd_open_track(path, RC_HASH_CDTRACK_FIRST_DATA);
+    if (!track_handle)
+      return rc_hash_error("Could not open track");
+
+    rc_cd_read_sector(track_handle, rc_cd_first_track_sector(track_handle), buffer, sizeof(buffer));
+    if (memcmp(&buffer[0], "SEGA SEGAKATANA ", 16) != 0)
+    {
+      /* did not find marker on track 3 or first data track */
+      rc_cd_close_track(track_handle);
+      return rc_hash_error("Not a Dreamcast CD");
+    }
   }
 
   /* start the hash with the game meta information */
@@ -1267,42 +1274,24 @@ static int rc_hash_dreamcast(char hash[33], const char* path)
   sector = rc_cd_find_file_sector(track_handle, exe_file, &size);
   if (sector == 0)
   {
-    /* a dreamcast cue file does not accurately represent the space between the low density and high
-     * density areas. we expect track 3 to start at sector 45000, regardless of what information we
-     * got from the cue file, so forcibly adjust the absolute sector using 45000 and try again. */
-    high_density_offset = rc_cd_absolute_sector_to_track_sector(track_handle, 45000);
-    if (high_density_offset > 0)
-    {
-      rc_hash_cdreader_absolute_sector_to_track_sector old_function = cdreader_funcs.absolute_sector_to_track_sector;
-      cdreader_funcs.absolute_sector_to_track_sector = rc_cd_absolute_sector_to_track_sector_dreamcast;
-      sector = rc_cd_find_file_sector(track_handle, exe_file, &size);
-      cdreader_funcs.absolute_sector_to_track_sector = old_function;
-    }
-  }
-
-  rc_cd_close_track(track_handle);
-
-  if (sector == 0)
+    rc_cd_close_track(track_handle);
     return rc_hash_error("Could not locate boot executable");
-
-  /* last track contains the boot executable */
-  last_track_handle = rc_cd_open_track(path, RC_HASH_CDTRACK_LAST);
-  track_sector = rc_cd_absolute_sector_to_track_sector(last_track_handle, sector) - high_density_offset;
-
-  if ((int32_t)track_sector < 0)
-  {
-    /* boot executable is not in the last track; try the primary data track.
-     * There's only a handful of games that do this: Q*bert was the first identified. */
-    rc_cd_close_track(last_track_handle);
-
-    rc_hash_verbose("Boot executable not found in last track, trying primary track");
-    last_track_handle = rc_cd_open_track(path, 3);
-    track_sector = rc_cd_absolute_sector_to_track_sector(last_track_handle, sector);
   }
 
-  result = rc_hash_cd_file(&md5, last_track_handle, track_sector, NULL, size, "boot executable");
+  if (rc_cd_read_sector(track_handle, sector, buffer, 1))
+  {
+    /* the boot executable is in the primary data track */
+  }
+  else
+  {
+    rc_cd_close_track(track_handle);
 
-  rc_cd_close_track(last_track_handle);
+    /* the boot executable is normally in the last track */
+    track_handle = rc_cd_open_track(path, RC_HASH_CDTRACK_LAST);
+  }
+
+  result = rc_hash_cd_file(&md5, track_handle, sector, NULL, size, "boot executable");
+  rc_cd_close_track(track_handle);
 
   rc_hash_finalize(&md5, hash);
   return result;

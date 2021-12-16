@@ -630,3 +630,53 @@ uint8_t* generate_generic_file(size_t size)
 
   return image;
 }
+
+uint8_t* convert_to_2352(uint8_t* input, size_t* size, uint32_t first_sector)
+{
+    const uint32_t num_sectors = *size / 2048;
+    const uint32_t output_size = num_sectors * 2352;
+    const uint8_t sync_pattern[] = {
+      0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00
+    };
+    uint8_t* output = (uint8_t*)malloc(output_size);
+    uint8_t* input_ptr = input;
+    uint8_t* ptr = output;
+    uint8_t minutes, seconds, frames;
+
+    first_sector += 150;
+    frames = (first_sector % 75);
+    first_sector /= 75;
+    seconds = (first_sector % 60);
+    minutes = first_sector / 60;
+
+    for (uint32_t i = 0; i < num_sectors; i++)
+    {
+      // 16-byte sync header
+      memcpy(ptr, sync_pattern, 12);
+      ptr += 12;
+      *ptr++ = ((minutes / 10) << 4) | (minutes % 10);
+      *ptr++ = ((seconds / 10) << 4) | (seconds % 10);
+      *ptr++ = ((frames / 10) << 4) | (frames % 10);
+      if (++frames == 75)
+      {
+        frames = 0;
+        if (++seconds == 60)
+        {
+          seconds = 0;
+          ++minutes;
+        }
+      }
+      *ptr++ = 2;
+
+      // 2048 bytes data
+      memcpy(ptr, input_ptr, 2048);
+      input_ptr += 2048;
+
+      // 288 bytes parity/checksums
+      ptr += 2352 - 16;
+    }
+
+    free(input);
+    *size = output_size;
+    return output;
+}
