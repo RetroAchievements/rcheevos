@@ -234,9 +234,9 @@ static void test_process_fetch_game_data_response_leaderboards() {
        "{\"ID\":4401,\"Title\":\"Leaderboard1\",\"Description\":\"Desc1\","
         "\"Mem\":\"0=1\",\"Format\":\"SCORE\"},"
        "{\"ID\":4402,\"Title\":\"Leaderboard2\",\"Description\":\"Desc2\","
-        "\"Mem\":\"0=1\",\"Format\":\"SECS\",\"LowerIsBetter\":false},"
+        "\"Mem\":\"0=1\",\"Format\":\"SECS\",\"LowerIsBetter\":false,\"Hidden\":true},"
        "{\"ID\":4403,\"Title\":\"Leaderboard3\",\"Description\":\"Desc3\","
-        "\"Mem\":\"0=1\",\"Format\":\"UNKNOWN\",\"LowerIsBetter\":true}"
+        "\"Mem\":\"0=1\",\"Format\":\"UNKNOWN\",\"LowerIsBetter\":true,\"Hidden\":false}"
       "]}}";
   rc_api_leaderboard_definition_t* leaderboard;
 
@@ -261,6 +261,7 @@ static void test_process_fetch_game_data_response_leaderboards() {
   ASSERT_STR_EQUALS(leaderboard->definition, "0=1");
   ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
   ASSERT_NUM_EQUALS(leaderboard->lower_is_better, 0);
+  ASSERT_NUM_EQUALS(leaderboard->hidden, 0);
 
   ++leaderboard;
   ASSERT_NUM_EQUALS(leaderboard->id, 4402);
@@ -269,6 +270,7 @@ static void test_process_fetch_game_data_response_leaderboards() {
   ASSERT_STR_EQUALS(leaderboard->definition, "0=1");
   ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SECONDS);
   ASSERT_NUM_EQUALS(leaderboard->lower_is_better, 0);
+  ASSERT_NUM_EQUALS(leaderboard->hidden, 1);
 
   ++leaderboard;
   ASSERT_NUM_EQUALS(leaderboard->id, 4403);
@@ -277,6 +279,7 @@ static void test_process_fetch_game_data_response_leaderboards() {
   ASSERT_STR_EQUALS(leaderboard->definition, "0=1");
   ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_VALUE);
   ASSERT_NUM_EQUALS(leaderboard->lower_is_better, 1);
+  ASSERT_NUM_EQUALS(leaderboard->hidden, 0);
 
   rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
 }
