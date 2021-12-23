@@ -420,6 +420,64 @@ static void test_hash_dreamcast_split_bin()
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
+static void test_hash_dreamcast_cue()
+{
+  const char* cue_file =
+      "FILE \"track01.bin\" BINARY\n"
+      "  TRACK 01 MODE1/2352\n"
+      "    INDEX 01 00:00:00\n"
+      "FILE \"track02.bin\" BINARY\n"
+      "  TRACK 02 AUDIO\n"
+      "    INDEX 00 00:00:00\n"
+      "    INDEX 01 00:02:00\n"
+      "FILE \"track03.bin\" BINARY\n"
+      "  TRACK 03 MODE1/2352\n"
+      "    INDEX 01 00:00:00\n"
+      "FILE \"track04.bin\" BINARY\n"
+      "  TRACK 04 AUDIO\n"
+      "    INDEX 00 00:00:00\n"
+      "    INDEX 01 00:02:00\n"
+      "FILE \"track05.bin\" BINARY\n"
+      "  TRACK 05 MODE1/2352\n"
+      "    INDEX 00 00:00:00\n"
+      "    INDEX 01 00:03:00\n";
+  size_t image_size;
+  uint8_t* image = convert_to_2352(generate_dreamcast_bin(45000, 1697028, &image_size), &image_size, 45000);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "c952864c3364591d2a8793ce2cfbf3a0";
+
+  mock_file(0, "game.cue", (uint8_t*)cue_file, strlen(cue_file));
+  mock_file(1, "track01.bin", image, 1425312);    /* 606 sectors */
+  mock_file(2, "track02.bin", image, 1589952);    /* 676 sectors */
+  mock_file(3, "track03.bin", image, image_size); /* 737 sectors */
+  mock_file(4, "track04.bin", image, 1237152);    /* 526 sectors */
+  mock_file(5, "track05.bin", image, image_size);
+
+  rc_hash_init_default_cdreader(); /* want to test actual first_track_sector calculation */
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_DREAMCAST, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  init_mock_cdreader();
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
 /* ========================================================================= */
 
 static void test_hash_nes_32k()
@@ -1283,6 +1341,7 @@ void test_hash(void) {
   /* Dreamcast */
   TEST(test_hash_dreamcast_single_bin);
   TEST(test_hash_dreamcast_split_bin);
+  TEST(test_hash_dreamcast_cue);
 
   /* Gameboy */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_GAMEBOY, "test.gb", 131072, "a0f425b23200568132ba76b2405e3933");

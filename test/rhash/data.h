@@ -10,6 +10,8 @@ extern "C" {
 
 uint8_t* generate_generic_file(size_t size);
 
+uint8_t* convert_to_2352(uint8_t* input, size_t* input_size, uint32_t first_sector);
+
 uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size, size_t* image_size);
 uint8_t* generate_dreamcast_bin(unsigned track_first_sector, unsigned binary_size, size_t* image_size);
 uint8_t* generate_pce_cd_bin(unsigned binary_sectors, size_t* image_size);
