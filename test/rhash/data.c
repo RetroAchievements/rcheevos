@@ -158,6 +158,49 @@ uint8_t* generate_fds_file(size_t sides, int with_header, size_t* image_size)
   return image;
 }
 
+uint8_t* generate_nds_file(size_t mb, unsigned arm9_size, unsigned arm7_size, size_t* image_size)
+{
+  uint8_t* image;
+  const size_t size_needed = mb * 1024 * 1024;
+
+  image = (uint8_t*)calloc(size_needed, 1);
+  if (image != NULL)
+  {
+    uint32_t arm9_addr = 65536;
+    uint32_t arm7_addr = arm9_addr + arm9_size;
+    uint32_t icon_addr = arm7_addr + arm7_size;
+
+    fill_image(image, size_needed);
+
+    image[0x20] = (arm9_addr & 0xFF);
+    image[0x21] = ((arm9_addr >> 8) & 0xFF);
+    image[0x22] = ((arm9_addr >> 16) & 0xFF);
+    image[0x23] = ((arm9_addr >> 24) & 0xFF);
+    image[0x2C] = (arm9_size & 0xFF);
+    image[0x2D] = ((arm9_size >> 8) & 0xFF);
+    image[0x2E] = ((arm9_size >> 16) & 0xFF);
+    image[0x2F] = ((arm9_size >> 24) & 0xFF);
+
+    image[0x30] = (arm7_addr & 0xFF);
+    image[0x31] = ((arm7_addr >> 8) & 0xFF);
+    image[0x32] = ((arm7_addr >> 16) & 0xFF);
+    image[0x33] = ((arm7_addr >> 24) & 0xFF);
+    image[0x3C] = (arm7_size & 0xFF);
+    image[0x3D] = ((arm7_size >> 8) & 0xFF);
+    image[0x3E] = ((arm7_size >> 16) & 0xFF);
+    image[0x3F] = ((arm7_size >> 24) & 0xFF);
+
+    image[0x68] = (icon_addr & 0xFF);
+    image[0x69] = ((icon_addr >> 8) & 0xFF);
+    image[0x6A] = ((icon_addr >> 16) & 0xFF);
+    image[0x6B] = ((icon_addr >> 24) & 0xFF);
+  }
+
+  if (image_size)
+    *image_size = size_needed;
+  return image;
+}
+
 uint8_t* generate_atari_7800_file(size_t kb, int with_header, size_t* image_size)
 {
   uint8_t* image;

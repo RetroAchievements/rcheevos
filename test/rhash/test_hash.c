@@ -637,6 +637,113 @@ static void test_hash_n64_file(const char* filename, uint8_t* buffer, size_t buf
 
 /* ========================================================================= */
 
+static void test_hash_nds()
+{
+  size_t image_size;
+  uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
+
+  mock_file(0, "game.nds", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO_DS, "game.nds");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.nds", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_hash);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
+}
+
+static void test_hash_nds_supercard()
+{
+  size_t image_size;
+  uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
+
+  /* inject the SuperCard header (512 bytes) */
+  uint8_t* image2 = malloc(image_size + 512);
+  memcpy(&image2[512], &image[0], image_size);
+  memset(&image2[0], 0, 512);
+  image2[0] = 0x2E;
+  image2[1] = 0x00;
+  image2[2] = 0x00;
+  image2[3] = 0xEA;
+  image2[0xB0] = 0x44;
+  image2[0xB1] = 0x46;
+  image2[0xB2] = 0x96;
+  image2[0xB3] = 0x00;
+
+  mock_file(0, "game.nds", image2, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO_DS, "game.nds");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.nds", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  free(image2);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_hash);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
+}
+
+static void test_hash_nds_buffered()
+{
+  size_t image_size;
+  uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
+  char hash_buffer[33], hash_iterator[33];
+  const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
+
+  /* test file hash */
+  int result_buffer = rc_hash_generate_from_buffer(hash_buffer, RC_CONSOLE_NINTENDO_DS, image, image_size);
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.nds", image, image_size);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_buffer, 1);
+  ASSERT_STR_EQUALS(hash_buffer, expected_hash);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
+}
+
+/* ========================================================================= */
+
 static void test_hash_pce_cd()
 {
   size_t image_size;
@@ -1394,6 +1501,11 @@ void test_hash(void) {
   TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91");
   TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
   TEST_PARAMS4(test_hash_n64_file, "game.z64", test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
+
+  /* Nintendo DS */
+  TEST(test_hash_nds);
+  TEST(test_hash_nds_supercard);
+  TEST(test_hash_nds_buffered);
 
   /* Oric (no fixed file size) */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ORIC, "test.tap", 18119, "953a2baa3232c63286aeae36b2172cef");
