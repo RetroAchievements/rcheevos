@@ -382,6 +382,10 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-cheat-mvsc-P1_Char_1_Easy_Hyper_Combo", "enabled");
   TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-cheat-mvsc-P1_Char_1_Easy_Hyper_Combo", "0 - Disabled"); /* multi-not value match */
   TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-cheat-mvsc-P1_Char_1_Easy_Hyper_Combo", "1 - Enabled");
+  TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-dipswitch-mslug-BIOS", "MVS Asia/Europe ver. 6 (1 slot)");
+  TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-dipswitch-mslug-BIOS", "Universe BIOS ver. 2.3 (alt)");
+  TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-neogeo-mode", "DIPSWITCH");
+  TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-neogeo-mode", "UNIBIOS");
 
   TEST_PARAMS3(test_allowed_setting,    "Genesis Plus GX", "genesis_plus_gx_lock_on", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "Genesis Plus GX", "genesis_plus_gx_lock_on", "action replay (pro)");

@@ -49,6 +49,8 @@ static const rc_disallowed_setting_t _rc_disallowed_ecwolf_settings[] = {
 static const rc_disallowed_setting_t _rc_disallowed_fbneo_settings[] = {
   { "fbneo-allow-patched-romsets", "enabled" },
   { "fbneo-cheat-*", "!,Disabled,0 - Disabled" },
+  { "fbneo-dipswitch-*", "Universe BIOS*" },
+  { "fbneo-neogeo-mode", "UNIBIOS" },
   { NULL, NULL }
 };
 
@@ -132,10 +134,11 @@ static const rc_disallowed_core_settings_t rc_disallowed_core_settings[] = {
   { NULL, NULL }
 };
 
-static int rc_libretro_string_equal_nocase(const char* test, const char* value) {
-  while (*test) {
-    if (tolower(*test++) != tolower(*value++))
-      return 0;
+static int rc_libretro_string_equal_nocase_wildcard(const char* test, const char* value) {
+  char c1, c2;
+  while ((c1 = *test++)) {
+    if (tolower(c1) != tolower(c2 = *value++))
+      return (c2 == '*');
   }
 
   return (*value == '\0');
@@ -160,7 +163,7 @@ static int rc_libretro_match_value(const char* val, const char* match) {
           char buffer[128];
           memcpy(buffer, ptr, size);
           buffer[size] = '\0';
-          if (rc_libretro_string_equal_nocase(buffer, val))
+          if (rc_libretro_string_equal_nocase_wildcard(buffer, val))
             return 1;
         }
       }
@@ -174,7 +177,7 @@ static int rc_libretro_match_value(const char* val, const char* match) {
     return !rc_libretro_match_value(val, &match[1]);
 
   /* just a single value, attempt to match it */
-  return rc_libretro_string_equal_nocase(val, match);
+  return rc_libretro_string_equal_nocase_wildcard(val, match);
 }
 
 int rc_libretro_is_setting_allowed(const rc_disallowed_setting_t* disallowed_settings, const char* setting, const char* value) {
