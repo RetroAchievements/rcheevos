@@ -90,6 +90,8 @@ typedef struct rc_api_leaderboard_definition_t {
   const char* definition;
   /* Non-zero if lower values are better for this leaderboard */
   int lower_is_better;
+  /* Non-zero if the leaderboard should not be displayed in a list of leaderboards */
+  int hidden;
 }
 rc_api_leaderboard_definition_t;
 
