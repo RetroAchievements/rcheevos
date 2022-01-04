@@ -253,7 +253,10 @@ void test_condition(void) {
   TEST_PARAMS4(test_parse_modifier, "A:0xH1234*-1", RC_OPERATOR_MULT, RC_OPERAND_CONST, -1);
   TEST_PARAMS4(test_parse_modifier, "A:0xH1234*0xH3456", RC_OPERATOR_MULT, RC_OPERAND_ADDRESS, 0x3456);
 
+  /* legacy serializers would include whatever happened to be in the right side before it was converted to a modifier.
+   * they should be ignored */
   TEST_PARAMS4(test_parse_modifier, "A:0xH1234=0", RC_OPERATOR_NONE, RC_OPERAND_CONST, 0);
+  TEST_PARAMS4(test_parse_modifier, "A:0xH1234!=0xH1234", RC_OPERATOR_NONE, RC_OPERAND_CONST, 0);
   TEST_PARAMS4(test_parse_modifier, "A:0xH1234=0.60.", RC_OPERATOR_NONE, RC_OPERAND_CONST, 0);
   TEST_PARAMS4(test_parse_modifier, "A:0xH1234=0(60)", RC_OPERATOR_NONE, RC_OPERAND_CONST, 0);
 

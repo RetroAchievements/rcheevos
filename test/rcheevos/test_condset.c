@@ -1492,6 +1492,50 @@ static void test_subsource() {
   assert_hit_count(condset, 1, 2);
 }
 
+static void test_subsource_legacy_garbage() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(1) - byte(2) == 14 */
+  /* old serializers would store the comparison and right-side value from the condition before it was converted to SubSource */
+  assert_parse_condset(&condset, &memrefs, buffer, "B:0xH0002=0xH0000_0xH0001=14");
+
+  /* difference is not correct */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 0);
+
+  /* difference is correct */
+  ram[2] = 4;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1); /* hit only tallied on final condition */
+
+  /* first condition is true, but not difference */
+  ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+
+  /* first condition is true, difference is negative inverse of expected value */
+  ram[2] = 14;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+
+  /* difference is correct again */
+  ram[1] = 28;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 2);
+}
+
 static void test_subsource_overflow() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3575,6 +3619,7 @@ void test_condset(void) {
   TEST(test_addsource);
   TEST(test_addsource_overflow);
   TEST(test_subsource);
+  TEST(test_subsource_legacy_garbage);
   TEST(test_subsource_overflow);
   TEST(test_addsource_subsource);
   TEST(test_addsource_multiply);
