@@ -136,6 +136,7 @@ void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);
 void rc_update_memref_value(rc_memref_value_t* memref, unsigned value);
 unsigned rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state);
 char rc_memref_shared_size(char size);
+unsigned rc_memref_mask(char size);
 void rc_transform_memref_value(rc_typed_value_t* value, char size);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);

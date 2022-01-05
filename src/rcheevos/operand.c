@@ -103,6 +103,16 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
     return ret;
 
   size = rc_memref_shared_size(self->size);
+  if (size != self->size && self->type == RC_OPERAND_PRIOR) {
+    /* if the shared size differs from the requested size and it's a prior operation, we
+     * have to check to make sure both sizes use the same mask, or the prior value may be
+     * updated when bits outside the mask are modified, which would make it look like the
+     * current value once the mask is applied. if the mask differs, create a new 
+     * non-shared record for tracking the prior data. */
+    if (rc_memref_mask(size) != rc_memref_mask(self->size))
+      size = self->size;
+  }
+
   self->value.memref = rc_alloc_memref(parse, address, size, (char)is_indirect);
   if (parse->offset < 0)
     return parse->offset;

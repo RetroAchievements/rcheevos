@@ -293,6 +293,38 @@ void rc_transform_memref_value(rc_typed_value_t* value, char size) {
   }
 }
 
+static const unsigned rc_memref_masks[] = {
+  0x000000ff, /* RC_MEMSIZE_8_BITS     */
+  0x0000ffff, /* RC_MEMSIZE_16_BITS    */
+  0x00ffffff, /* RC_MEMSIZE_24_BITS    */
+  0xffffffff, /* RC_MEMSIZE_32_BITS    */
+  0x0000000f, /* RC_MEMSIZE_LOW        */
+  0x000000f0, /* RC_MEMSIZE_HIGH       */
+  0x00000001, /* RC_MEMSIZE_BIT_0      */
+  0x00000002, /* RC_MEMSIZE_BIT_1      */
+  0x00000004, /* RC_MEMSIZE_BIT_2      */
+  0x00000008, /* RC_MEMSIZE_BIT_3      */
+  0x00000010, /* RC_MEMSIZE_BIT_4      */
+  0x00000020, /* RC_MEMSIZE_BIT_5      */
+  0x00000040, /* RC_MEMSIZE_BIT_6      */
+  0x00000080, /* RC_MEMSIZE_BIT_7      */
+  0x000000ff, /* RC_MEMSIZE_BITCOUNT   */
+  0x0000ffff, /* RC_MEMSIZE_16_BITS_BE */
+  0x00ffffff, /* RC_MEMSIZE_24_BITS_BE */
+  0xffffffff, /* RC_MEMSIZE_32_BITS_BE */
+  0xffffffff, /* RC_MEMSIZE_FLOAT      */
+  0xffffffff, /* RC_MEMSIZE_MBF32      */
+  0xffffffff  /* RC_MEMSIZE_VARIABLE   */
+};
+
+unsigned rc_memref_mask(char size) {
+  const size_t index = (size_t)size;
+  if (index >= sizeof(rc_memref_masks) / sizeof(rc_memref_masks[0]))
+    return 0xffffffff;
+
+  return rc_memref_masks[index];
+}
+
 /* all sizes less than 8-bits (1 byte) are mapped to 8-bits. 24-bit is mapped to 32-bit
  * as we don't expect the client to understand a request for 3 bytes. all other reads are
  * mapped to the little-endian read of the same size. */
