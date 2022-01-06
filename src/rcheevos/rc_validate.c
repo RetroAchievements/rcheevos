@@ -33,18 +33,18 @@ static unsigned rc_max_value(const rc_operand_t* operand)
       return 8;
 
     case RC_MEMSIZE_8_BITS:
-      return 0xFF;
+      return (operand->type == RC_OPERAND_BCD) ? 165 : 0xFF;
 
     case RC_MEMSIZE_16_BITS:
     case RC_MEMSIZE_16_BITS_BE:
-      return 0xFFFF;
+      return (operand->type == RC_OPERAND_BCD) ? 16665 : 0xFFFF;
 
     case RC_MEMSIZE_24_BITS:
     case RC_MEMSIZE_24_BITS_BE:
-      return 0xFFFFFF;
+      return (operand->type == RC_OPERAND_BCD) ? 1666665 : 0xFFFFFF;
 
     default:
-      return 0xFFFFFFFF;
+      return (operand->type == RC_OPERAND_BCD) ? 166666665 : 0xFFFFFFFF;
   }
 }
 

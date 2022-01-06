@@ -98,6 +98,10 @@ static void test_range_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "0xH1234<255", "");
   TEST_PARAMS2(test_validate_trigger, "0xH1234<=255", "Condition 1: Comparison is always true");
 
+  /* while a BCD value shouldn't exceed 99, it can reach 165: 0xFF => 15*10+15 */
+  TEST_PARAMS2(test_validate_trigger, "b0xH1234<165", "");
+  TEST_PARAMS2(test_validate_trigger, "b0xH1234<=165", "Condition 1: Comparison is always true");
+
   TEST_PARAMS2(test_validate_trigger, "R:0xH1234<255", "");
   TEST_PARAMS2(test_validate_trigger, "R:0xH1234<=255", "Condition 1: Comparison is always true");
 
@@ -111,11 +115,20 @@ static void test_range_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "0x 1234>=65535", "");
   TEST_PARAMS2(test_validate_trigger, "0x 1234>=65536", "Condition 1: Comparison is never true");
 
+  TEST_PARAMS2(test_validate_trigger, "b0x 1234>=16665", "");
+  TEST_PARAMS2(test_validate_trigger, "b0x 1234>=16666", "Condition 1: Comparison is never true");
+
   TEST_PARAMS2(test_validate_trigger, "0xW1234>=16777215", "");
   TEST_PARAMS2(test_validate_trigger, "0xW1234>=16777216", "Condition 1: Comparison is never true");
 
+  TEST_PARAMS2(test_validate_trigger, "b0xW1234>=1666665", "");
+  TEST_PARAMS2(test_validate_trigger, "b0xW1234>=1666666", "Condition 1: Comparison is never true");
+
   TEST_PARAMS2(test_validate_trigger, "0xX1234>=4294967295", "");
   TEST_PARAMS2(test_validate_trigger, "0xX1234>4294967295", "Condition 1: Comparison is never true");
+
+  TEST_PARAMS2(test_validate_trigger, "b0xX1234>=166666665", "");
+  TEST_PARAMS2(test_validate_trigger, "b0xX1234>=166666666", "Condition 1: Comparison is never true");
 
   TEST_PARAMS2(test_validate_trigger, "0xT1234>=1", "");
   TEST_PARAMS2(test_validate_trigger, "0xT1234>1", "Condition 1: Comparison is never true");
@@ -131,6 +144,8 @@ static void test_range_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234/10_0xH1235>280", "Condition 2: Comparison is never true");
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234&10_0xH1235>=265", "");
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234&10_0xH1235>265", "Condition 2: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "A:b0xH1234*100_b0xH1235>=16665", "");
+  TEST_PARAMS2(test_validate_trigger, "A:b0xH1234*100_b0xH1235>16665", "Condition 2: Comparison is never true");
 
   /* max for SubSource is always 0xFFFFFFFF */
   TEST_PARAMS2(test_validate_trigger, "B:0xH1234_0xH1235<510", "");
