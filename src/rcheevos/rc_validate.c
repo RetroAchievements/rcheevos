@@ -48,6 +48,32 @@ static unsigned rc_max_value(const rc_operand_t* operand)
   }
 }
 
+static unsigned rc_scale_value(unsigned value, char oper, const rc_operand_t* operand)
+{
+  switch (oper) {
+    case RC_OPERATOR_MULT:
+    {
+      unsigned long long scaled = ((unsigned long long)value) * rc_max_value(operand);
+      if (scaled > 0xFFFFFFFF)
+        return 0xFFFFFFFF;
+
+      return (unsigned)scaled;
+    }
+
+    case RC_OPERATOR_DIV:
+    {
+      const unsigned min_val = (operand->type == RC_OPERAND_CONST) ? operand->value.num : 1;
+      return value / min_val;
+    }
+
+    case RC_OPERATOR_AND:
+      return rc_max_value(operand);
+
+    default:
+      return value;
+  }
+}
+
 static int rc_validate_range(unsigned min_val, unsigned max_val, char oper, unsigned max, char result[], const size_t result_size) {
   switch (oper) {
     case RC_OPERATOR_AND:
@@ -152,11 +178,13 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
 
     switch (cond->type) {
       case RC_CONDITION_ADD_SOURCE:
+        max = rc_scale_value(max, cond->oper, &cond->operand2);
         add_source_max += max;
         is_combining = 1;
         continue;
 
       case RC_CONDITION_SUB_SOURCE:
+        max = rc_scale_value(max, cond->oper, &cond->operand2);
         if (add_source_max < max) /* potential underflow - may be expected */
           add_source_max = 0xFFFFFFFF;
         is_combining = 1;

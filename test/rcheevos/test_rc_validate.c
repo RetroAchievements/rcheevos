@@ -121,8 +121,16 @@ static void test_range_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "0xT1234>1", "Condition 1: Comparison is never true");
 
   /* max for AddSource is the sum of all parts (255+255=510) */
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234_0<255", "");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234_0<=255", "Condition 2: Comparison is always true");
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234_0xH1235<510", "");
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234_0xH1235<=510", "Condition 2: Comparison is always true");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234*10_0xH1235>=2805", "");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234*10_0xH1235>2805", "Condition 2: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234/10_0xH1235>=280", "");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234/10_0xH1235>280", "Condition 2: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234&10_0xH1235>=265", "");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234&10_0xH1235>265", "Condition 2: Comparison is never true");
 
   /* max for SubSource is always 0xFFFFFFFF */
   TEST_PARAMS2(test_validate_trigger, "B:0xH1234_0xH1235<510", "");
