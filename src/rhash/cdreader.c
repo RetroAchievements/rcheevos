@@ -254,7 +254,12 @@ static int64_t cdreader_get_bin_size(const char* cue_path, const char* bin_name)
   char* bin_filename = cdreader_get_bin_path(cue_path, bin_name);
   if (bin_filename)
   {
-    void* file_handle = rc_file_open(bin_filename);
+    /* disable verbose messaging while getting file size */
+    rc_hash_message_callback old_verbose_message_callback = verbose_message_callback;
+    void* file_handle;
+    verbose_message_callback = NULL;
+
+    file_handle = rc_file_open(bin_filename);
     if (file_handle)
     {
       rc_file_seek(file_handle, 0, SEEK_END);
@@ -262,6 +267,7 @@ static int64_t cdreader_get_bin_size(const char* cue_path, const char* bin_name)
       rc_file_close(file_handle);
     }
 
+    verbose_message_callback = old_verbose_message_callback;
     free(bin_filename);
   }
 
