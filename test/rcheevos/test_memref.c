@@ -5,6 +5,36 @@
 
 #include <float.h>
 
+static void test_mask(char size, unsigned expected)
+{
+  ASSERT_NUM_EQUALS(rc_memref_mask(size), expected);
+}
+
+static void test_shared_masks(void)
+{
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_8_BITS, 0x000000ff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_BIT_0, 0x00000001);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_BIT_1, 0x00000002);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_BIT_2, 0x00000004);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_BIT_3, 0x00000008);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_BIT_4, 0x00000010);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_BIT_5, 0x00000020);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_BIT_6, 0x00000040);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_BIT_7, 0x00000080);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_LOW, 0x0000000f);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_HIGH, 0x000000f0);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_BITCOUNT, 0x000000ff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_16_BITS, 0x0000ffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_16_BITS_BE, 0x0000ffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_24_BITS, 0x00ffffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_24_BITS_BE, 0x00ffffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_32_BITS, 0xffffffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_32_BITS_BE, 0xffffffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_FLOAT, 0xffffffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_MBF32, 0xffffffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_VARIABLE, 0xffffffff);
+}
+
 static void test_shared_size(char size, char expected)
 {
   ASSERT_NUM_EQUALS(rc_memref_shared_size(size), expected);
@@ -325,6 +355,7 @@ static void test_update_memref_values() {
 void test_memref(void) {
   TEST_SUITE_BEGIN();
 
+  test_shared_masks();
   test_shared_sizes();
   test_transforms();
 

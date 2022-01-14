@@ -209,6 +209,106 @@ static void test_condition_compare_delta() {
   ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
 }
 
+static void test_condition_delta_24bit() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condition_t* cond;
+  rc_parse_state_t parse;
+  char buffer[512];
+  rc_memref_t* memrefs;
+
+  const char* cond_str = "0xW0001>d0xW0001";
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  cond = rc_parse_condition(&cond_str, &parse, 0);
+  rc_destroy_parse_state(&parse);
+
+  ASSERT_NUM_GREATER(parse.offset, 0);
+  ASSERT_NUM_EQUALS(*cond_str, 0);
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* initial delta value is 0x000000, 0xAB3412 > 0x000000 */
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+
+  /* delta value is now 0xAB3412, 0xAB3412 == 0xAB3412 */
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+
+  /* value changes to 0xAB3411, delta value is now 0xAB3412, 0xAB3411 < 0xAB3412 */
+  ram[1] = 0x11;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+
+  /* value changes to 0xAB3412, delta value is now 0xAB3411, 0xAB3412 > 0xAB3411 */
+  ram[1] = 0x12;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+
+  /* ram[4] should not affect the 24-bit value, 0xAB3412 == 0xAB3412 */
+  ram[4] = 0xAC;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+
+  /* value changes to 0xAB3411, delta is still 0xAB3412, 0xAB3411 < 0xAB3412 */
+  ram[1] = 0x11;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+
+  /* ram[4] should not affect the 24-bit value, 0xAB3411 == 0xAB3411 */
+  ram[4] = 0xAD;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+}
+
+static void test_condition_prior_24bit() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condition_t* cond;
+  rc_parse_state_t parse;
+  char buffer[512];
+  rc_memref_t* memrefs;
+
+  const char* cond_str = "0xW0001>p0xW0001";
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  cond = rc_parse_condition(&cond_str, &parse, 0);
+  rc_destroy_parse_state(&parse);
+
+  ASSERT_NUM_GREATER(parse.offset, 0);
+  ASSERT_NUM_EQUALS(*cond_str, 0);
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* initial prior value is 0x000000, 0xAB3412 > 0x000000 */
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+
+  /* delta value is now 0xAB3412, but prior is still 0x000000, 0xAB3412 > 0x000000 */
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+
+  /* value changes to 0xAB3411, delta and prior values are now 0xAB3412, 0xAB3411 < 0xAB3412 */
+  ram[1] = 0x11;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+
+  /* value changes to 0xAB3412, delta and prior values are now 0xAB3411, 0xAB3412 > 0xAB3411 */
+  ram[1] = 0x12;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+
+  /* ram[4] should not affect the 24-bit value, 0xAB3412 > 0xAB3411 */
+  ram[4] = 0xAC;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+
+  /* ram[4] should not affect the 24-bit value, 0xAB3412 > 0xAB3411 */
+  ram[4] = 0xAD;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+
+  /* value changes to 0xAB3411, delta and prior values are now 0xAB3412, 0xAB3411 < 0xAB3412 */
+  ram[1] = 0x11;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+
+  /* ram[4] should not affect the 24-bit value, 0xAB3411 < 0xAB3412 */
+  ram[4] = 0xAE;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+
+  /* ram[4] should not affect the 24-bit value, 0xAB3411 < 0xAB3412 */
+  ram[4] = 0xAF;
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+}
+
 void test_condition(void) {
   TEST_SUITE_BEGIN();
 
@@ -351,6 +451,8 @@ void test_condition(void) {
   TEST_PARAMS2(test_evaluate_condition_float, "fF0000>fM0004", 0);
 
   TEST(test_condition_compare_delta);
+  TEST(test_condition_delta_24bit);
+  TEST(test_condition_prior_24bit);
 
   TEST_SUITE_END();
 }
