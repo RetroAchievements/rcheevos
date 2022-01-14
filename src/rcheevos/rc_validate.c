@@ -33,18 +33,44 @@ static unsigned rc_max_value(const rc_operand_t* operand)
       return 8;
 
     case RC_MEMSIZE_8_BITS:
-      return 0xFF;
+      return (operand->type == RC_OPERAND_BCD) ? 165 : 0xFF;
 
     case RC_MEMSIZE_16_BITS:
     case RC_MEMSIZE_16_BITS_BE:
-      return 0xFFFF;
+      return (operand->type == RC_OPERAND_BCD) ? 16665 : 0xFFFF;
 
     case RC_MEMSIZE_24_BITS:
     case RC_MEMSIZE_24_BITS_BE:
-      return 0xFFFFFF;
+      return (operand->type == RC_OPERAND_BCD) ? 1666665 : 0xFFFFFF;
 
     default:
-      return 0xFFFFFFFF;
+      return (operand->type == RC_OPERAND_BCD) ? 166666665 : 0xFFFFFFFF;
+  }
+}
+
+static unsigned rc_scale_value(unsigned value, char oper, const rc_operand_t* operand)
+{
+  switch (oper) {
+    case RC_OPERATOR_MULT:
+    {
+      unsigned long long scaled = ((unsigned long long)value) * rc_max_value(operand);
+      if (scaled > 0xFFFFFFFF)
+        return 0xFFFFFFFF;
+
+      return (unsigned)scaled;
+    }
+
+    case RC_OPERATOR_DIV:
+    {
+      const unsigned min_val = (operand->type == RC_OPERAND_CONST) ? operand->value.num : 1;
+      return value / min_val;
+    }
+
+    case RC_OPERATOR_AND:
+      return rc_max_value(operand);
+
+    default:
+      return value;
   }
 }
 
@@ -152,11 +178,13 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
 
     switch (cond->type) {
       case RC_CONDITION_ADD_SOURCE:
+        max = rc_scale_value(max, cond->oper, &cond->operand2);
         add_source_max += max;
         is_combining = 1;
         continue;
 
       case RC_CONDITION_SUB_SOURCE:
+        max = rc_scale_value(max, cond->oper, &cond->operand2);
         if (add_source_max < max) /* potential underflow - may be expected */
           add_source_max = 0xFFFFFFFF;
         is_combining = 1;
