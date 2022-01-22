@@ -250,7 +250,7 @@ int rc_api_init_update_leaderboard_request(rc_api_request_t* request, const rc_a
         return RC_INVALID_STATE;
     if (!api_params->title || !*api_params->title)
         return RC_INVALID_STATE;
-    if (!api_params->description || !*api_params->description)
+    if (!api_params->description)
         return RC_INVALID_STATE;
     if (!api_params->start_trigger || !*api_params->start_trigger)
         return RC_INVALID_STATE;

@@ -384,6 +384,32 @@ static void test_init_update_leaderboard_request_no_game_id()
   rc_api_destroy_request(&request);
 }
 
+static void test_init_update_leaderboard_request_no_description()
+{
+  rc_api_update_leaderboard_request_t update_leaderboard_request;
+  rc_api_request_t request;
+
+  memset(&update_leaderboard_request, 0, sizeof(update_leaderboard_request));
+  update_leaderboard_request.username = "Dev";
+  update_leaderboard_request.api_token = "API_TOKEN";
+  update_leaderboard_request.game_id = 1234;
+  update_leaderboard_request.leaderboard_id = 5555;
+  update_leaderboard_request.title = "Title";
+  update_leaderboard_request.description = "";
+  update_leaderboard_request.start_trigger = "0xH1234=1";
+  update_leaderboard_request.submit_trigger = "0xH1234=2";
+  update_leaderboard_request.cancel_trigger = "0xH1234=3";
+  update_leaderboard_request.value_definition = "0xH2345";
+  update_leaderboard_request.lower_is_better = 1;
+  update_leaderboard_request.format = "SCORE";
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_leaderboard_request(&request, &update_leaderboard_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&i=5555&g=1234&n=Title&d=&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&h=bbdb85cb1eb82773d5740c2d5d515ec0");
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_init_update_leaderboard_response()
 {
   rc_api_update_leaderboard_response_t update_leaderboard_response;
@@ -599,6 +625,7 @@ void test_rapi_editor(void) {
   TEST(test_init_update_leaderboard_request);
   TEST(test_init_update_leaderboard_request_new);
   TEST(test_init_update_leaderboard_request_no_game_id);
+  TEST(test_init_update_leaderboard_request_no_description);
 
   TEST(test_init_update_leaderboard_response);
   TEST(test_init_update_leaderboard_response_invalid_perms);
