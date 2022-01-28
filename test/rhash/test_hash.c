@@ -605,7 +605,11 @@ static void test_hash_nes_file_iterator_32k()
 static void test_hash_n64(uint8_t* buffer, size_t buffer_size, const char* expected_hash)
 {
   char hash[33];
-  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_NINTENDO_64, buffer, buffer_size);
+  int result;
+
+  rc_hash_reset_filereader(); /* explicitly unset the filereader */
+  result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_NINTENDO_64, buffer, buffer_size);
+  init_mock_filereader(); /* restore the mock filereader */
 
   ASSERT_NUM_EQUALS(result, 1);
   ASSERT_STR_EQUALS(hash, expected_hash);

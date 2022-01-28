@@ -83,6 +83,12 @@ static void filereader_close(void* file_handle)
   fclose((FILE*)file_handle);
 }
 
+/* for unit tests - normally would call rc_hash_init_custom_filereader(NULL) */
+void rc_hash_reset_filereader()
+{
+  filereader = NULL;
+}
+
 void rc_hash_init_custom_filereader(struct rc_hash_filereader* reader)
 {
   /* initialize with defaults first */
@@ -1535,23 +1541,24 @@ void rc_file_close_buffered_file(void* file_handle)
 
 static int rc_hash_file_from_buffer(char hash[33], int console_id, const uint8_t* buffer, size_t buffer_size)
 {
-  struct rc_hash_filereader filereader_funcs_old;
+  struct rc_hash_filereader buffered_filereader_funcs;
+  struct rc_hash_filereader* old_filereader = filereader;
   int result;
 
-  memcpy(&filereader_funcs_old, &filereader_funcs, sizeof(filereader_funcs));
-
-  filereader_funcs.open = rc_file_open_buffered_file;
-  filereader_funcs.close = rc_file_close_buffered_file;
-  filereader_funcs.read = rc_file_read_buffered_file;
-  filereader_funcs.seek = rc_file_seek_buffered_file;
-  filereader_funcs.tell = rc_file_tell_buffered_file;
+  memset(&buffered_filereader_funcs, 0, sizeof(buffered_filereader_funcs));
+  buffered_filereader_funcs.open = rc_file_open_buffered_file;
+  buffered_filereader_funcs.close = rc_file_close_buffered_file;
+  buffered_filereader_funcs.read = rc_file_read_buffered_file;
+  buffered_filereader_funcs.seek = rc_file_seek_buffered_file;
+  buffered_filereader_funcs.tell = rc_file_tell_buffered_file;
+  filereader = &buffered_filereader_funcs;
 
   rc_buffered_file.data = rc_buffered_file.read_ptr = buffer;
   rc_buffered_file.data_size = buffer_size;
 
   result = rc_hash_generate_from_file(hash, console_id, "[buffered file]");
 
-  memcpy(&filereader_funcs, &filereader_funcs_old, sizeof(filereader_funcs));
+  filereader = old_filereader;
   return result;
 }
 
