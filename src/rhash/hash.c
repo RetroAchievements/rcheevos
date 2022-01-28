@@ -1578,6 +1578,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* b
     case RC_CONSOLE_MAGNAVOX_ODYSSEY2:
     case RC_CONSOLE_MASTER_SYSTEM:
     case RC_CONSOLE_MEGA_DRIVE:
+    case RC_CONSOLE_MEGADUCK:
     case RC_CONSOLE_MSX:
     case RC_CONSOLE_NEOGEO_POCKET:
     case RC_CONSOLE_ORIC:
@@ -1863,6 +1864,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_MAGNAVOX_ODYSSEY2:
     case RC_CONSOLE_MASTER_SYSTEM:
     case RC_CONSOLE_MEGA_DRIVE:
+    case RC_CONSOLE_MEGADUCK:
     case RC_CONSOLE_NEOGEO_POCKET:
     case RC_CONSOLE_ORIC:
     case RC_CONSOLE_POKEMON_MINI:
@@ -2081,7 +2083,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
               }
            }
 
-          /* bin is associated with MegaDrive, Sega32X, Atari 2600, and Watara Supervision.
+          /* bin is associated with MegaDrive, Sega32X, Atari 2600, Watara Supervision, and MegaDuck.
            * Since they all use the same hashing algorithm, only specify one of them */
           iterator->consoles[0] = RC_CONSOLE_MEGA_DRIVE;
         }

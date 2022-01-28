@@ -1474,6 +1474,9 @@ void test_hash(void) {
   /* Mega Drive */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MEGA_DRIVE, "test.md", 1048576, "da9461b3b0f74becc3ccf6c2a094c516");
 
+  /* Mega Duck */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MEGADUCK, "test.bin", 65536, "8e6576cd5c21e44e0bbfc4480577b040");
+
   /* MSX */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
