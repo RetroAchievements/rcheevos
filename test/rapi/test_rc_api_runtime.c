@@ -139,6 +139,26 @@ static void test_process_fetch_game_data_response_empty() {
   rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
 }
 
+static void test_process_fetch_game_data_response_invalid_credentials() {
+  rc_api_fetch_game_data_response_t fetch_game_data_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+
+  memset(&fetch_game_data_response, 0, sizeof(fetch_game_data_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(fetch_game_data_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.id, 0);
+  ASSERT_PTR_NULL(fetch_game_data_response.title);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.console_id, 0);
+  ASSERT_PTR_NULL(fetch_game_data_response.image_name);
+  ASSERT_PTR_NULL(fetch_game_data_response.rich_presence_script);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 0);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 0);
+
+  rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
+}
+
 static void test_process_fetch_game_data_response_achievements() {
   rc_api_fetch_game_data_response_t fetch_game_data_response;
   const char* server_response = "{\"Success\":true,\"PatchData\":{"
@@ -571,6 +591,22 @@ static void test_process_award_achievement_response_empty() {
   rc_api_destroy_award_achievement_response(&award_achievement_response);
 }
 
+static void test_process_award_achievement_response_invalid_credentials() {
+  rc_api_award_achievement_response_t award_achievement_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+
+  memset(&award_achievement_response, 0, sizeof(award_achievement_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_award_achievement_response(&award_achievement_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(award_achievement_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0);
+
+  rc_api_destroy_award_achievement_response(&award_achievement_response);
+}
+
 static void test_process_award_achievement_response_text() {
   rc_api_award_achievement_response_t award_achievement_response;
   const char* server_response = "You do not have access to that resource";
@@ -724,6 +760,26 @@ static void test_process_submit_lb_entry_response_no_entries() {
   rc_api_destroy_submit_lboard_entry_response(&submit_lb_entry_response);
 }
 
+static void test_process_submit_lb_entry_response_invalid_credentials() {
+  rc_api_submit_lboard_entry_response_t submit_lb_entry_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+
+  memset(&submit_lb_entry_response, 0, sizeof(submit_lb_entry_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_submit_lboard_entry_response(&submit_lb_entry_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(submit_lb_entry_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(submit_lb_entry_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_NUM_EQUALS(submit_lb_entry_response.submitted_score, 0);
+  ASSERT_NUM_EQUALS(submit_lb_entry_response.best_score, 0);
+  ASSERT_NUM_EQUALS(submit_lb_entry_response.new_rank, 0);
+  ASSERT_NUM_EQUALS(submit_lb_entry_response.num_entries, 0);
+
+  ASSERT_NUM_EQUALS(submit_lb_entry_response.num_top_entries, 0);
+  ASSERT_PTR_NULL(submit_lb_entry_response.top_entries);
+
+  rc_api_destroy_submit_lboard_entry_response(&submit_lb_entry_response);
+}
+
 static void test_process_submit_lb_entry_response_entries_not_array() {
   rc_api_submit_lboard_entry_response_t submit_lb_entry_response;
   const char* server_response = "{\"Success\":true,\"Response\":{\"Score\":1234,\"BestScore\":2345,"
@@ -756,6 +812,7 @@ void test_rapi_runtime(void) {
   TEST(test_init_fetch_game_data_request_no_id);
 
   TEST(test_process_fetch_game_data_response_empty);
+  TEST(test_process_fetch_game_data_response_invalid_credentials);
   TEST(test_process_fetch_game_data_response_achievements);
   TEST(test_process_fetch_game_data_response_leaderboards);
   TEST(test_process_fetch_game_data_response_rich_presence);
@@ -781,6 +838,7 @@ void test_rapi_runtime(void) {
   TEST(test_process_award_achievement_response_non_hardcore_already_unlocked);
   TEST(test_process_award_achievement_response_generic_failure);
   TEST(test_process_award_achievement_response_empty);
+  TEST(test_process_award_achievement_response_invalid_credentials);
   TEST(test_process_award_achievement_response_text);
   TEST(test_process_award_achievement_response_no_fields);
 
@@ -792,6 +850,7 @@ void test_rapi_runtime(void) {
 
   TEST(test_process_submit_lb_entry_response_success);
   TEST(test_process_submit_lb_entry_response_no_entries);
+  TEST(test_process_submit_lb_entry_response_invalid_credentials);
   TEST(test_process_submit_lb_entry_response_entries_not_array);
 
   TEST_SUITE_END();

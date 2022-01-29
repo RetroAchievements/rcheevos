@@ -50,6 +50,20 @@ static void test_process_start_session_response()
   rc_api_destroy_start_session_response(&start_session_response);
 }
 
+static void test_process_start_session_response_invalid_credentials()
+{
+  rc_api_start_session_response_t start_session_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+
+  memset(&start_session_response, 0, sizeof(start_session_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_start_session_response(&start_session_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(start_session_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(start_session_response.response.error_message, "Credentials invalid (0)");
+
+  rc_api_destroy_start_session_response(&start_session_response);
+}
+
 static void test_init_login_request_password()
 {
   rc_api_login_request_t login_request;
@@ -384,6 +398,21 @@ static void test_init_fetch_user_unlocks_response_empty_array()
   rc_api_destroy_fetch_user_unlocks_response(&fetch_user_unlocks_response);
 }
 
+static void test_init_fetch_user_unlocks_response_invalid_credentials()
+{
+  rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+  memset(&fetch_user_unlocks_response, 0, sizeof(fetch_user_unlocks_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_user_unlocks_response(&fetch_user_unlocks_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(fetch_user_unlocks_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_PTR_NULL(fetch_user_unlocks_response.achievement_ids);
+  ASSERT_NUM_EQUALS(fetch_user_unlocks_response.num_achievement_ids, 0);
+
+  rc_api_destroy_fetch_user_unlocks_response(&fetch_user_unlocks_response);
+}
+
 static void test_init_fetch_user_unlocks_response_one_item()
 {
   rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
@@ -427,6 +456,7 @@ void test_rapi_user(void) {
   TEST(test_init_start_session_request_no_game);
 
   TEST(test_process_start_session_response);
+  TEST(test_process_start_session_response_invalid_credentials);
 
   /* login */
   TEST(test_init_login_request_password);
@@ -452,6 +482,7 @@ void test_rapi_user(void) {
   TEST(test_init_fetch_user_unlocks_request_hardcore);
 
   TEST(test_init_fetch_user_unlocks_response_empty_array);
+  TEST(test_init_fetch_user_unlocks_response_invalid_credentials);
   TEST(test_init_fetch_user_unlocks_response_one_item);
   TEST(test_init_fetch_user_unlocks_response_several_items);
 
