@@ -1573,6 +1573,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* b
       return rc_hash_error(message);
     }
 
+    case RC_CONSOLE_AMSTRAD_PC:
     case RC_CONSOLE_APPLE_II:
     case RC_CONSOLE_ATARI_2600:
     case RC_CONSOLE_ATARI_JAGUAR:
@@ -1859,7 +1860,6 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
       return rc_hash_error(buffer);
     }
 
-    case RC_CONSOLE_APPLE_II:
     case RC_CONSOLE_ATARI_2600:
     case RC_CONSOLE_ATARI_JAGUAR:
     case RC_CONSOLE_COLECOVISION:
@@ -1885,6 +1885,8 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
       /* generic whole-file hash - don't buffer */
       return rc_hash_whole_file(hash, path);
 
+    case RC_CONSOLE_AMSTRAD_PC:
+    case RC_CONSOLE_APPLE_II:
     case RC_CONSOLE_MSX:
     case RC_CONSOLE_PC8800:
       /* generic whole-file hash with m3u support - don't buffer */
@@ -2004,6 +2006,9 @@ static void rc_hash_initialize_dsk_iterator(struct rc_hash_iterator* iterator, c
   {
     /* FAT-12 5.25" DD (512 byte sectors, 9 sectors per track, 40 tracks per side */
     iterator->consoles[0] = RC_CONSOLE_MSX;
+
+    /* AMSDOS 3" - 40 tracks */
+    iterator->consoles[1] = RC_CONSOLE_AMSTRAD_PC;
   }
   else if (size == 256 * 16 * 35) /* 140KB */
   {
@@ -2020,6 +2025,7 @@ static void rc_hash_initialize_dsk_iterator(struct rc_hash_iterator* iterator, c
 
   /* check MSX first, as Apple II isn't supported by RetroArch, and RAppleWin won't use the iterator */
   rc_hash_iterator_append_console(iterator, RC_CONSOLE_MSX);
+  rc_hash_iterator_append_console(iterator, RC_CONSOLE_AMSTRAD_PC);
   rc_hash_iterator_append_console(iterator, RC_CONSOLE_APPLE_II);
 }
 
