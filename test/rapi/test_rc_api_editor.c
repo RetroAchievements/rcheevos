@@ -215,6 +215,19 @@ static void test_init_update_code_note_response()
   rc_api_destroy_update_code_note_response(&update_code_note_response);
 }
 
+static void test_init_update_code_note_response_invalid_credentials()
+{
+  rc_api_update_code_note_response_t update_code_note_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+  memset(&update_code_note_response, 0, sizeof(update_code_note_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_update_code_note_response(&update_code_note_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(update_code_note_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(update_code_note_response.response.error_message, "Credentials invalid (0)");
+
+  rc_api_destroy_update_code_note_response(&update_code_note_response);
+}
+
 static void test_init_update_achievement_request()
 {
   rc_api_update_achievement_request_t update_achievement_request;
@@ -293,6 +306,20 @@ static void test_init_update_achievement_response()
   ASSERT_NUM_EQUALS(update_achievement_response.response.succeeded, 1);
   ASSERT_PTR_NULL(update_achievement_response.response.error_message);
   ASSERT_UNUM_EQUALS(update_achievement_response.achievement_id, 1234);
+
+  rc_api_destroy_update_achievement_response(&update_achievement_response);
+}
+
+static void test_init_update_achievement_response_invalid_credentials()
+{
+  rc_api_update_achievement_response_t update_achievement_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+  memset(&update_achievement_response, 0, sizeof(update_achievement_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_update_achievement_response(&update_achievement_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(update_achievement_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(update_achievement_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_UNUM_EQUALS(update_achievement_response.achievement_id, 0);
 
   rc_api_destroy_update_achievement_response(&update_achievement_response);
 }
@@ -420,6 +447,20 @@ static void test_init_update_leaderboard_response()
   ASSERT_NUM_EQUALS(update_leaderboard_response.response.succeeded, 1);
   ASSERT_PTR_NULL(update_leaderboard_response.response.error_message);
   ASSERT_UNUM_EQUALS(update_leaderboard_response.leaderboard_id, 1234);
+
+  rc_api_destroy_update_leaderboard_response(&update_leaderboard_response);
+}
+
+static void test_init_update_leaderboard_response_invalid_credentials()
+{
+  rc_api_update_leaderboard_response_t update_leaderboard_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+  memset(&update_leaderboard_response, 0, sizeof(update_leaderboard_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_update_leaderboard_response(&update_leaderboard_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(update_leaderboard_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(update_leaderboard_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_UNUM_EQUALS(update_leaderboard_response.leaderboard_id, 0);
 
   rc_api_destroy_update_leaderboard_response(&update_leaderboard_response);
 }
@@ -593,6 +634,20 @@ static void test_init_add_game_hash_response_error()
   rc_api_destroy_add_game_hash_response(&add_game_hash_response);
 }
 
+static void test_init_add_game_hash_response_invalid_credentials()
+{
+  rc_api_add_game_hash_response_t add_game_hash_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+  memset(&add_game_hash_response, 0, sizeof(add_game_hash_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_add_game_hash_response(&add_game_hash_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(add_game_hash_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(add_game_hash_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_UNUM_EQUALS(add_game_hash_response.game_id, 0);
+
+  rc_api_destroy_add_game_hash_response(&add_game_hash_response);
+}
+
 void test_rapi_editor(void) {
   TEST_SUITE_BEGIN();
 
@@ -612,6 +667,7 @@ void test_rapi_editor(void) {
   TEST(test_init_update_code_note_request_empty_note);
 
   TEST(test_init_update_code_note_response);
+  TEST(test_init_update_code_note_response_invalid_credentials);
 
   /* update achievement */
   TEST(test_init_update_achievement_request);
@@ -619,6 +675,7 @@ void test_rapi_editor(void) {
   TEST(test_init_update_achievement_request_no_game_id);
 
   TEST(test_init_update_achievement_response);
+  TEST(test_init_update_achievement_response_invalid_credentials);
   TEST(test_init_update_achievement_response_invalid_perms);
 
   /* update leaderboard */
@@ -628,6 +685,7 @@ void test_rapi_editor(void) {
   TEST(test_init_update_leaderboard_request_no_description);
 
   TEST(test_init_update_leaderboard_response);
+  TEST(test_init_update_leaderboard_response_invalid_credentials);
   TEST(test_init_update_leaderboard_response_invalid_perms);
 
   /* fetch badge range */
@@ -644,6 +702,7 @@ void test_rapi_editor(void) {
 
   TEST(test_init_add_game_hash_response);
   TEST(test_init_add_game_hash_response_error);
+  TEST(test_init_add_game_hash_response_invalid_credentials);
 
   TEST_SUITE_END();
 }
