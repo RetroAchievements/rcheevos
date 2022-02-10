@@ -3558,6 +3558,77 @@ static void test_addaddress_scaled_negative() {
   assert_evaluate_condset(condset, memrefs, &memory, 0);
 }
 
+static void test_prior_sequence() {
+  unsigned char ram[] = {0x00};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* prior(bit0(0))==1 && prior(bit1(0))==1 && prior(bit2(0))==1 */
+  assert_parse_condset(&condset, &memrefs, buffer, "p0xM0000=1_p0xN0000=1_p0xO0000=1");
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* value ~> 1 [0001], all priors still 0 */
+  ram[0] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 0);
+  assert_hit_count(condset, 2, 0);
+
+  /* value ~> 2 [0010], prior(bit0(0)) = 1, prior(bit1(0)) = 0, prior(bit2(0)) = 0 */
+  ram[0] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 0);
+  assert_hit_count(condset, 2, 0);
+
+  /* value ~> 3 [0011], prior(bit0(0)) = 0, prior(bit1(0)) = 0, prior(bit2(0)) = 0 */
+  ram[0] = 3;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 0);
+  assert_hit_count(condset, 2, 0);
+
+  /* value ~> 4 [0100], prior(bit0(0)) = 1, prior(bit1(0)) = 1, prior(bit2(0)) = 0 */
+  ram[0] = 4;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 0);
+
+  /* value ~> 5 [0101], prior(bit0(0)) = 0, prior(bit1(0)) = 1, prior(bit2(0)) = 0 */
+  ram[0] = 5;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 2);
+  assert_hit_count(condset, 2, 0);
+
+  /* value ~> 6 [0110], prior(bit0(0)) = 1, prior(bit1(0)) = 0, prior(bit2(0)) = 0 */
+  ram[0] = 6;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 3);
+  assert_hit_count(condset, 1, 2);
+  assert_hit_count(condset, 2, 0);
+
+  /* value ~> 7 [0111], prior(bit0(0)) = 0, prior(bit1(0)) = 0, prior(bit2(0)) = 0 */
+  ram[0] = 7;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 3);
+  assert_hit_count(condset, 1, 2);
+  assert_hit_count(condset, 2, 0);
+
+  /* value ~> 8 [1000], prior(bit0(0)) = 1, prior(bit1(0)) = 1, prior(bit2(0)) = 1 */
+  ram[0] = 8;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 4);
+  assert_hit_count(condset, 1, 3);
+  assert_hit_count(condset, 2, 1);
+}
+
 void test_condset(void) {
   TEST_SUITE_BEGIN();
 
@@ -3675,6 +3746,9 @@ void test_condset(void) {
   TEST(test_addaddress_adjust_both_sides_different_bases);
   TEST(test_addaddress_scaled);
   TEST(test_addaddress_scaled_negative);
+
+  /* prior */
+  TEST(test_prior_sequence);
 
   TEST_SUITE_END();
 }
