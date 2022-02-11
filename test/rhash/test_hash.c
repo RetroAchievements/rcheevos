@@ -1402,8 +1402,13 @@ void test_hash(void) {
   TEST(test_hash_3do_no_launchme);
   TEST(test_hash_3do_long_directory);
 
+  /* Amstrad CPC */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_AMSTRAD_PC, "test.dsk", 194816, "9d616e4ad3f16966f61422c57e22aadd");
+  TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_AMSTRAD_PC, "test.dsk", 194816, "9d616e4ad3f16966f61422c57e22aadd");
+
   /* Apple II */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_APPLE_II, "test.dsk", 143360, "88be638f4d78b4072109e55f13e8a0ac");
+  TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_APPLE_II, "test.dsk", 143360, "88be638f4d78b4072109e55f13e8a0ac");
 
   /* Arcade */
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");

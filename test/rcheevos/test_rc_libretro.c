@@ -360,6 +360,9 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "bsnes-mercury", "bsnes_region", "NTSC");
   TEST_PARAMS3(test_disallowed_setting, "bsnes-mercury", "bsnes_region", "PAL");
 
+  TEST_PARAMS3(test_allowed_setting, "cap32", "cap32_autorun", "enabled");
+  TEST_PARAMS3(test_disallowed_setting, "cap32", "cap32_autorun", "disabled");
+
   TEST_PARAMS3(test_allowed_setting,    "dolphin-emu", "dolphin_cheats_enabled", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "dolphin-emu", "dolphin_cheats_enabled", "enabled");
 
