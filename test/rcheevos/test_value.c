@@ -519,6 +519,7 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "M:fF0005", 3);               /* 3.141592 -> 3 */
   TEST_PARAMS2(test_evaluate_value, "A:fF0005*10_M:0", 31);       /* 3.141592 x 10 -> 31.415 -> 31 */
   TEST_PARAMS2(test_evaluate_value, "A:fF0005*f11.2_M:f6.9", 42); /* 3.141592 x 11.2 -> 35.185 + 6.9 ->  -> 42.085 -> 42 */
+  TEST_PARAMS2(test_evaluate_value, "A:fF0005*f5.555555555555555555555555555555555555555555555556_M:f6.9", 24); /* 3.141592 x 5.555556 -> 17.4532902 + 6.9 ->  -> 24.353290 -> 24 */
 
   /* delta should initially be 0, so a hit will be tallied */
   TEST_PARAMS2(test_evaluate_value, "M:0xH0002!=d0xH0002", 1);
