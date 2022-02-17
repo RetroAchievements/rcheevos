@@ -400,7 +400,7 @@ enum {
   RC_OVERLAP_NONE = 0,
   RC_OVERLAP_CONFLICTING,
   RC_OVERLAP_REDUNDANT,
-  RC_OVERLAP_DEFER,
+  RC_OVERLAP_DEFER
 };
 
 static int rc_validate_comparison_overlap(int comparison1, unsigned value1, int comparison2, unsigned value2)
@@ -562,9 +562,11 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
 {
   int comparison1, comparison2;
   unsigned value1, value2;
-  int overlap;
+  const rc_operand_t* operand1;
+  const rc_operand_t* operand2;
   const rc_condition_t* compare_condition;
   const rc_condition_t* condition;
+  int overlap;
 
   /* empty group */
   if (conditions == NULL || compare_conditions == NULL)
@@ -578,7 +580,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
     if (condition->required_hits)
       continue;
 
-    const rc_operand_t* operand1 = rc_validate_get_comparison(condition, &comparison1, &value1);
+    operand1 = rc_validate_get_comparison(condition, &comparison1, &value1);
     if (!operand1)
       continue;
 
@@ -607,7 +609,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
       if (compare_condition->required_hits)
         continue;
 
-      const rc_operand_t* operand2 = rc_validate_get_comparison(compare_condition, &comparison2, &value2);
+      operand2 = rc_validate_get_comparison(compare_condition, &comparison2, &value2);
       if (!operand2 || operand2->value.memref->address != operand1->value.memref->address ||
           operand2->size != operand1->size || operand2->type != operand1->type)
         continue;
