@@ -351,6 +351,34 @@ static void test_memory_init_from_memory_map_out_of_order() {
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x20002));
 }
 
+static void test_memory_init_from_memory_map_disconnect_gaps() {
+  rc_libretro_memory_regions_t regions;
+  unsigned char buffer[256];
+  /* the disconnect bit is smaller than the region size, so only parts of the memory map
+   * will be filled by the region. in this case, 00-1F will be buffer[00-1F], but
+   * buffer[20-3F] will be associated to addresses 40-5F! */
+  const struct retro_memory_descriptor mmap_desc[] = {
+	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer[0], 0, 0x0000, 0xFC20, 0x0020, sizeof(buffer), "RAM" },
+  };
+  const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
+
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_MAGNAVOX_ODYSSEY2));
+
+  ASSERT_NUM_EQUALS(regions.count, 10);
+  ASSERT_NUM_EQUALS(regions.total_size, 0x140);
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x0002), &buffer[0x02]);
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x0022));
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x0042), &buffer[0x22]);
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x0062));
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x0082), &buffer[0x42]);
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x00A2));
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x00C2), &buffer[0x62]);
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x00E2));
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x0102), &buffer[0x82]);
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x0122));
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x0142));
+}
+
 
 void test_rc_libretro(void) {
   TEST_SUITE_BEGIN();
@@ -360,7 +388,7 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "bsnes-mercury", "bsnes_region", "NTSC");
   TEST_PARAMS3(test_disallowed_setting, "bsnes-mercury", "bsnes_region", "PAL");
 
-  TEST_PARAMS3(test_allowed_setting, "cap32", "cap32_autorun", "enabled");
+  TEST_PARAMS3(test_allowed_setting,    "cap32", "cap32_autorun", "enabled");
   TEST_PARAMS3(test_disallowed_setting, "cap32", "cap32_autorun", "disabled");
 
   TEST_PARAMS3(test_allowed_setting,    "dolphin-emu", "dolphin_cheats_enabled", "disabled");
@@ -471,6 +499,7 @@ void test_rc_libretro(void) {
   TEST(test_memory_init_from_memory_map_splice);
   TEST(test_memory_init_from_memory_map_mirrored);
   TEST(test_memory_init_from_memory_map_out_of_order);
+  TEST(test_memory_init_from_memory_map_disconnect_gaps);
 
   TEST_SUITE_END();
 }
