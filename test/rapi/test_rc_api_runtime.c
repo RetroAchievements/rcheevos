@@ -350,6 +350,29 @@ static void test_process_fetch_game_data_response_rich_presence_null() {
   rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
 }
 
+static void test_process_fetch_game_data_response_rich_presence_tab() {
+  rc_api_fetch_game_data_response_t fetch_game_data_response;
+  const char* server_response = "{\"Success\":true,\"PatchData\":{"
+      "\"ID\":177,\"Title\":\"Some Other Game\",\"ConsoleID\":2,\"ImageIcon\":\"/Images/000001.png\","
+      "\"Achievements\":[],\"Leaderboards\":[],"
+      "\"RichPresencePatch\":\"Display:\\r\\nTest\\tTab\\r\\n\""
+      "}}";
+
+  memset(&fetch_game_data_response, 0, sizeof(fetch_game_data_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_data_response.response.error_message);
+  ASSERT_STR_EQUALS(fetch_game_data_response.title, "Some Other Game");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.console_id, 2);
+  ASSERT_STR_EQUALS(fetch_game_data_response.image_name, "000001");
+  ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "Display:\r\nTest\tTab\r\n");
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 0);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 0);
+
+  rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
+}
+
 static void test_init_ping_request() {
   rc_api_ping_request_t ping_request;
   rc_api_request_t request;
@@ -817,6 +840,7 @@ void test_rapi_runtime(void) {
   TEST(test_process_fetch_game_data_response_leaderboards);
   TEST(test_process_fetch_game_data_response_rich_presence);
   TEST(test_process_fetch_game_data_response_rich_presence_null);
+  TEST(test_process_fetch_game_data_response_rich_presence_tab);
 
   /* ping */
   TEST(test_init_ping_request);
