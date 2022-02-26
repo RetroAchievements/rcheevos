@@ -109,7 +109,8 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 68, "Sega Pico");
   TEST_PARAMS2(test_name, 69, "Mega Duck");
   TEST_PARAMS2(test_name, 70, "Zeebo");
-  TEST_PARAMS2(test_name, 71, "Unknown");
+  TEST_PARAMS2(test_name, 71, "Arduboy");
+  TEST_PARAMS2(test_name, 72, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
@@ -119,6 +120,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_AMSTRAD_PC, 0x090000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_APPLE_II, 0x020000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ARCADE, 0x000000);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_ARDUBOY, 0x000F00);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_2600, 0x000080);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_7800, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_JAGUAR, 0x200000);
