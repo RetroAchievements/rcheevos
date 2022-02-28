@@ -670,7 +670,7 @@ static int rc_hash_text(char hash[33], const uint8_t* buffer, size_t buffer_size
 
     /* include a normalized line ending */
     /* NOTE: this causes a line ending to be hashed at the end of the file, even if one was not present */
-    md5_append(&md5, "\n", 1);
+    md5_append(&md5, (const uint8_t*)"\n", 1);
 
     /* skip newline */
     if (scan < stop && *scan == '\r')
