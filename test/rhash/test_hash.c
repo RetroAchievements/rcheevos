@@ -331,7 +331,7 @@ static void test_hash_arduboy()
       ":100010000C94910D0C94910D0C94910D0C94910DE8\n"
       ":100020000C94910D0C94910D0C94C32A0C94352BC7\n"
       ":00000001FF\n";
-  mock_file(0, "game.hex", hex_input, strlen(hex_input));
+  mock_file(0, "game.hex", (const uint8_t*)hex_input, strlen(hex_input));
 
   /* test file hash */
   int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARDUBOY, "game.hex");
@@ -362,7 +362,7 @@ static void test_hash_arduboy_crlf()
       ":100010000C94910D0C94910D0C94910D0C94910DE8\r\n"
       ":100020000C94910D0C94910D0C94C32A0C94352BC7\r\n"
       ":00000001FF\r\n";
-  mock_file(0, "game.hex", hex_input, strlen(hex_input));
+  mock_file(0, "game.hex", (const uint8_t*)hex_input, strlen(hex_input));
 
   /* test file hash */
   int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARDUBOY, "game.hex");
@@ -393,7 +393,7 @@ static void test_hash_arduboy_no_final_lf()
       ":100010000C94910D0C94910D0C94910D0C94910DE8\n"
       ":100020000C94910D0C94910D0C94C32A0C94352BC7\n"
       ":00000001FF";
-  mock_file(0, "game.hex", hex_input, strlen(hex_input));
+  mock_file(0, "game.hex", (const uint8_t*)hex_input, strlen(hex_input));
 
   /* test file hash */
   int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARDUBOY, "game.hex");
