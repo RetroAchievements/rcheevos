@@ -676,7 +676,7 @@ uint8_t* generate_generic_file(size_t size)
 
 uint8_t* convert_to_2352(uint8_t* input, size_t* size, uint32_t first_sector)
 {
-    const uint32_t num_sectors = *size / 2048;
+    const uint32_t num_sectors = (uint32_t)(*size / 2048);
     const uint32_t output_size = num_sectors * 2352;
     const uint8_t sync_pattern[] = {
       0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00
