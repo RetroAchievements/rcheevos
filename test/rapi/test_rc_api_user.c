@@ -181,6 +181,26 @@ static void test_process_login_response_success()
   ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
   ASSERT_NUM_EQUALS(login_response.score, 1234);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 2);
+  ASSERT_STR_EQUALS(login_response.display_name, "USER");
+
+  rc_api_destroy_login_response(&login_response);
+}
+
+static void test_process_login_response_unique_display_name()
+{
+  rc_api_login_response_t login_response;
+  const char* server_response = "{\"Success\":true,\"User\":\"USER\",\"DisplayName\":\"Gaming Hero\",\"Token\":\"ApiTOKEN\",\"Score\":1234,\"Messages\":2}";
+
+  memset(&login_response, 0, sizeof(login_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_login_response(&login_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(login_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(login_response.response.error_message);
+  ASSERT_STR_EQUALS(login_response.username, "USER");
+  ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
+  ASSERT_NUM_EQUALS(login_response.score, 1234);
+  ASSERT_NUM_EQUALS(login_response.num_unread_messages, 2);
+  ASSERT_STR_EQUALS(login_response.display_name, "Gaming Hero");
 
   rc_api_destroy_login_response(&login_response);
 }
@@ -199,6 +219,7 @@ static void test_process_login_response_error()
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
 
   rc_api_destroy_login_response(&login_response);
 }
@@ -217,6 +238,7 @@ static void test_process_login_response_generic_failure()
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
 
   rc_api_destroy_login_response(&login_response);
 }
@@ -235,6 +257,7 @@ static void test_process_login_response_empty()
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
 
   rc_api_destroy_login_response(&login_response);
 }
@@ -253,6 +276,7 @@ static void test_process_login_response_text()
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
 
   rc_api_destroy_login_response(&login_response);
 }
@@ -271,6 +295,7 @@ static void test_process_login_response_html()
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
 
   rc_api_destroy_login_response(&login_response);
 }
@@ -289,6 +314,7 @@ static void test_process_login_response_no_required_fields()
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
 
   rc_api_destroy_login_response(&login_response);
 }
@@ -307,6 +333,7 @@ static void test_process_login_response_no_token()
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
 
   rc_api_destroy_login_response(&login_response);
 }
@@ -325,6 +352,7 @@ static void test_process_login_response_no_optional_fields()
   ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
   ASSERT_NUM_EQUALS(login_response.score, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_STR_EQUALS(login_response.display_name, "USER");
 
   rc_api_destroy_login_response(&login_response);
 }
@@ -343,6 +371,7 @@ static void test_process_login_response_null_score()
   ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
   ASSERT_NUM_EQUALS(login_response.score, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_STR_EQUALS(login_response.display_name, "USER");
 
   rc_api_destroy_login_response(&login_response);
 }
@@ -467,6 +496,7 @@ void test_rapi_user(void) {
   TEST(test_init_login_request_alternate_host);
 
   TEST(test_process_login_response_success);
+  TEST(test_process_login_response_unique_display_name);
   TEST(test_process_login_response_error);
   TEST(test_process_login_response_generic_failure);
   TEST(test_process_login_response_empty);
