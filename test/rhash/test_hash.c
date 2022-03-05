@@ -321,6 +321,101 @@ static void test_hash_3do_long_directory()
 
 /* ========================================================================= */
 
+static void test_hash_arduboy()
+{
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "67b64633285a7f965064ba29dab45148";
+
+  const char* hex_input =
+      ":100000000C94690D0C94910D0C94910D0C94910D20\n"
+      ":100010000C94910D0C94910D0C94910D0C94910DE8\n"
+      ":100020000C94910D0C94910D0C94C32A0C94352BC7\n"
+      ":00000001FF\n";
+  mock_file(0, "game.hex", (const uint8_t*)hex_input, strlen(hex_input));
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARDUBOY, "game.hex");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.hex", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_arduboy_crlf()
+{
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "67b64633285a7f965064ba29dab45148";
+
+  const char* hex_input =
+      ":100000000C94690D0C94910D0C94910D0C94910D20\r\n"
+      ":100010000C94910D0C94910D0C94910D0C94910DE8\r\n"
+      ":100020000C94910D0C94910D0C94C32A0C94352BC7\r\n"
+      ":00000001FF\r\n";
+  mock_file(0, "game.hex", (const uint8_t*)hex_input, strlen(hex_input));
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARDUBOY, "game.hex");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.hex", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_arduboy_no_final_lf()
+{
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "67b64633285a7f965064ba29dab45148";
+
+  const char* hex_input =
+      ":100000000C94690D0C94910D0C94910D0C94910D20\n"
+      ":100010000C94910D0C94910D0C94910D0C94910DE8\n"
+      ":100020000C94910D0C94910D0C94C32A0C94352BC7\n"
+      ":00000001FF";
+  mock_file(0, "game.hex", (const uint8_t*)hex_input, strlen(hex_input));
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARDUBOY, "game.hex");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.hex", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+/* ========================================================================= */
+
 static void test_hash_atari_7800()
 {
   size_t image_size;
@@ -1409,6 +1504,11 @@ void test_hash(void) {
   /* Apple II */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_APPLE_II, "test.dsk", 143360, "88be638f4d78b4072109e55f13e8a0ac");
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_APPLE_II, "test.dsk", 143360, "88be638f4d78b4072109e55f13e8a0ac");
+
+  /* Arduboy */
+  TEST(test_hash_arduboy);
+  TEST(test_hash_arduboy_crlf);
+  TEST(test_hash_arduboy_no_final_lf);
 
   /* Arcade */
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
