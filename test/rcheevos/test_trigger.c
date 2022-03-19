@@ -829,6 +829,124 @@ static void test_measured_while_paused_multiple() {
   ASSERT_NUM_EQUALS(trigger->measured_target, 6U);
 }
 
+static void test_measured_while_paused_reset_alt() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* measured(repeated(3, byte(2) == 52)) && unless(byte(1) == 1) && (never(byte(3) == 1)) */
+  assert_parse_trigger(&trigger, buffer, "M:0xH0002=52(3)_P:0xH0001=1SR:0xH0003=1");
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+
+  /* paused - hit count should not be incremented */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+
+  /* reset - hit count should be cleared */
+  ram[3] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+
+  /* unpaused, reset still true, hit count should remain cleared */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+
+  /* reset not true - hit count should be incremented */
+  ram[3] = 0;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+}
+
+static void test_measured_while_paused_reset_core() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* measured(repeated(3, byte(2) == 52)) && unless(byte(1) == 1) && (never(byte(3) == 1)) */
+  assert_parse_trigger(&trigger, buffer, "R:0xH0003=1SM:0xH0002=52(3)_P:0xH0001=1");
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+
+  /* paused - hit count should not be incremented */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+
+  /* reset - hit count should be cleared */
+  ram[3] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+
+  /* unpaused, reset still true, hit count should remain cleared */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+
+  /* reset not true - hit count should be incremented */
+  ram[3] = 0;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+}
+
+static void test_measured_while_paused_reset_non_hitcount() {
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* measured(repeated(3, byte(2) == 52)) && unless(byte(1) == 1) && (never(byte(3) == 1)) */
+  assert_parse_trigger(&trigger, buffer, "M:0xH0002=99_P:0xH0001=1SR:0xH0003=1");
+
+  /* initial value */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 52U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 99U);
+
+  /* paused - capture value and return that*/
+  ram[1] = 1;
+  ram[2] = 60;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 52U);
+
+  /* reset - captured value should not be cleared */
+  ram[3] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 52U);
+
+  /* unpaused, reset still true, value should reflect current */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 60U);
+}
+
 static void test_measured_reset_hitcount() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -1806,6 +1924,9 @@ void test_trigger(void) {
   TEST(test_measured_multiple_with_hitcount_in_core);
   TEST(test_measured_while_paused);
   TEST(test_measured_while_paused_multiple);
+  TEST(test_measured_while_paused_reset_alt);
+  TEST(test_measured_while_paused_reset_core);
+  TEST(test_measured_while_paused_reset_non_hitcount);
   TEST(test_measured_reset_hitcount);
   TEST(test_measured_reset_comparison);
   TEST(test_measured_if);
