@@ -490,6 +490,7 @@ void test_value(void) {
 
   /* measured format - supports hit counts and combining flags
    * (AddSource, SubSource, AddHits, SubHits, AndNext, OrNext, and AddAddress) */
+  TEST_PARAMS2(test_evaluate_value, "M:0xH0002", 0x34);
   TEST_PARAMS2(test_evaluate_value, "A:0xH0001_M:0xH0002", 0x12 + 0x34);
   TEST_PARAMS2(test_evaluate_value, "B:0xH0001_M:0xH0002", 0x34 - 0x12);
   TEST_PARAMS2(test_evaluate_value, "C:0xH0000=0_M:0xH0002=52", 2);
@@ -498,6 +499,8 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "O:0xH0000=0_M:0xH0002=0", 1);
   TEST_PARAMS2(test_evaluate_value, "I:0xH0000_M:0xH0002", 0x34);
 
+  TEST_PARAMS2(test_evaluate_value, "M:0xH0002*2", 0x34 * 2);
+  TEST_PARAMS2(test_evaluate_value, "M:0xH0002/2", 0x34 / 2);
   TEST_PARAMS2(test_evaluate_value, "A:0xH0001*2_A:0xH0002*2_M:0", 0x12 * 2 + 0x34 * 2);
   TEST_PARAMS2(test_evaluate_value, "A:0xH0001*2_M:0xH0002*2", 0x12 * 2 + 0x34 * 2); /* multiplier in final condition */
   TEST_PARAMS2(test_evaluate_value, "A:0xH0001/2_M:0xH0002/2", 0x12 / 2 + 0x34 / 2);
