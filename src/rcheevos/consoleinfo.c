@@ -201,6 +201,9 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_VIRTUAL_BOY:
       return "Virtual Boy";
 
+    case RC_CONSOLE_WASM:
+      return "WebAssembly";
+
     case RC_CONSOLE_WII:
       return "Wii";
 
@@ -670,6 +673,16 @@ static const rc_memory_region_t _rc_memory_regions_watara_supervision[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_watara_supervision = { _rc_memory_regions_watara_supervision, 3 };
 
+/* ===== WebAssembly ===== */
+/* https://github.com/aduros/wasm4/blob/main/site/docs/intro.md#hardware-specs */
+static const rc_memory_region_t _rc_memory_regions_wasm[] = {
+    { 0x000000U, 0x00FFFFU, 0x00000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    /* Persistent storage is not directly accessible from the game. It has to be loaded into System RAM first
+    { 0x010000U, 0x0103FFU, 0x80000000U, RC_MEMORY_TYPE_SAVE_RAM, "Disk Storage"}
+    */
+};
+static const rc_memory_regions_t rc_memory_regions_wasm = { _rc_memory_regions_wasm, 1 };
+
 /* ===== WonderSwan ===== */
 /* http://daifukkat.su/docs/wsman/#ovr_memmap */
 static const rc_memory_region_t _rc_memory_regions_wonderswan[] = {
@@ -820,6 +833,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_VIRTUAL_BOY:
       return &rc_memory_regions_virtualboy;
+
+    case RC_CONSOLE_WASM:
+      return &rc_memory_regions_wasm;
 
     case RC_CONSOLE_WONDERSWAN:
       return &rc_memory_regions_wonderswan;
