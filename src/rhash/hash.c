@@ -1629,7 +1629,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* b
     case RC_CONSOLE_TIC80:
     case RC_CONSOLE_VECTREX:
     case RC_CONSOLE_VIRTUAL_BOY:
-    case RC_CONSOLE_WASM:
+    case RC_CONSOLE_WASM4:
     case RC_CONSOLE_WONDERSWAN:
       return rc_hash_buffer(hash, buffer, buffer_size);
 
@@ -1917,7 +1917,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_TIC80:
     case RC_CONSOLE_VECTREX:
     case RC_CONSOLE_VIRTUAL_BOY:
-    case RC_CONSOLE_WASM:
+    case RC_CONSOLE_WASM4:
     case RC_CONSOLE_WONDERSWAN:
       /* generic whole-file hash - don't buffer */
       return rc_hash_whole_file(hash, path);
@@ -2397,7 +2397,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "wasm"))
         {
-          iterator->consoles[0] = RC_CONSOLE_WASM;
+          iterator->consoles[0] = RC_CONSOLE_WASM4;
         }
         else if (rc_path_compare_extension(ext, "woz"))
         {

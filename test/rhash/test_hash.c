@@ -1685,8 +1685,8 @@ void test_hash(void) {
   /* Watara Supervision */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPERVISION, "test.sv", 32768, "6a2305a2b6675a97ff792709be1ca857");
 
-  /* WebAssembly */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WASM, "test.wasm", 33454, "bce38bb5f05622fc7e0e56757059d180");
+  /* WASM-4 */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WASM4, "test.wasm", 33454, "bce38bb5f05622fc7e0e56757059d180");
 
   /* WonderSwan */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.ws", 524288, "68f0f13b598e0b66461bc578375c3888");

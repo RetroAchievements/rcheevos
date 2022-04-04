@@ -110,7 +110,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 69, "Mega Duck");
   TEST_PARAMS2(test_name, 70, "Zeebo");
   TEST_PARAMS2(test_name, 71, "Arduboy");
-  TEST_PARAMS2(test_name, 72, "WebAssembly");
+  TEST_PARAMS2(test_name, 72, "WASM-4");
   TEST_PARAMS2(test_name, 73, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
@@ -159,7 +159,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_SUPERVISION, 0x006000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_THOMSONTO8, 0x080000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_TIC80, 0x018000);
-  TEST_PARAMS2(test_memory, RC_CONSOLE_WASM, 0x010000);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_WASM4, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_WONDERSWAN, 0x090000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_VECTREX, 0x000400);
   TEST_PARAMS2(test_memory, RC_CONSOLE_VIRTUAL_BOY, 0x020000);
