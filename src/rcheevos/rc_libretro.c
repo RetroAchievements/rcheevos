@@ -572,7 +572,7 @@ void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
   char image_path[1024];
   char* m3u_contents;
   char* ptr;
-  size_t num_read, file_len;
+  size_t file_len;
   void* file_handle;
   int index = 0;
 
@@ -593,7 +593,7 @@ void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
   rc_file_seek(file_handle, 0, SEEK_SET);
 
   m3u_contents = (char*)malloc(file_len + 1);
-  num_read = rc_file_read(file_handle, m3u_contents, (int)file_len);
+  rc_file_read(file_handle, m3u_contents, (int)file_len);
   m3u_contents[file_len] = '\0';
 
   rc_file_close(file_handle);
