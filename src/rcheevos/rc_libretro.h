@@ -53,6 +53,35 @@ void rc_libretro_memory_destroy(rc_libretro_memory_regions_t* regions);
 
 unsigned char* rc_libretro_memory_find(const rc_libretro_memory_regions_t* regions, unsigned address);
 
+/*****************************************************************************\
+| Disk Identification                                                         |
+\*****************************************************************************/
+
+typedef struct rc_libretro_hash_entry_t
+{
+  uint32_t                         path_djb2;
+  int                              game_id;
+  char                             hash[33];
+} rc_libretro_hash_entry_t;
+
+typedef struct rc_libretro_hash_set_t
+{
+  struct rc_libretro_hash_entry_t* entries;
+  uint16_t                         entries_count;
+  uint16_t                         entries_size;
+} rc_libretro_hash_set_t;
+
+typedef int (*rc_libretro_get_image_path_func)(unsigned index, char* buffer, size_t buffer_size);
+
+void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
+                               const char* m3u_path, rc_libretro_get_image_path_func get_image_path);
+void rc_libretro_hash_set_destroy(struct rc_libretro_hash_set_t* hash_set);
+
+void rc_libretro_hash_set_add(struct rc_libretro_hash_set_t* hash_set,
+                              const char* path, int game_id, const char hash[33]);
+const char* rc_libretro_hash_set_get_hash(const struct rc_libretro_hash_set_t* hash_set, const char* path);
+int rc_libretro_hash_set_get_game_id(const struct rc_libretro_hash_set_t* hash_set, const char* hash);
+
 #ifdef __cplusplus
 }
 #endif
