@@ -5,6 +5,8 @@
 #include "../test_framework.h"
 #include "../rhash/mock_filereader.h"
 
+#include <stdio.h>
+
 static void* retro_memory_data[4] = { NULL, NULL, NULL, NULL };
 static size_t retro_memory_size[4] = { 0, 0, 0, 0 };
 
@@ -480,7 +482,7 @@ static void test_hash_set_m3u_single() {
   const char* m3u_contents = "file.dsk";
 
   init_mock_filereader();
-  mock_file(0, "game.m3u", m3u_contents, strlen(m3u_contents));
+  mock_file(0, "game.m3u", (uint8_t*)m3u_contents, strlen(m3u_contents));
 
   rc_libretro_hash_set_init(&hash_set, "game.m3u", libretro_get_image_path);
 
@@ -496,7 +498,7 @@ static void test_hash_set_m3u_savedisk() {
   const char* m3u_contents = "file.dsk\n#SAVEDISK:";
 
   init_mock_filereader();
-  mock_file(0, "game.m3u", m3u_contents, strlen(m3u_contents));
+  mock_file(0, "game.m3u", (uint8_t*)m3u_contents, strlen(m3u_contents));
 
   rc_libretro_hash_set_init(&hash_set, "game.m3u", libretro_get_image_path);
 
@@ -511,7 +513,7 @@ static void test_hash_set_m3u_savedisk_volume_label() {
   const char* m3u_contents = "file.dsk\n#SAVEDISK:DSAVE";
 
   init_mock_filereader();
-  mock_file(0, "game.m3u", m3u_contents, strlen(m3u_contents));
+  mock_file(0, "game.m3u", (uint8_t*)m3u_contents, strlen(m3u_contents));
 
   rc_libretro_hash_set_init(&hash_set, "game.m3u", libretro_get_image_path);
 
@@ -539,7 +541,7 @@ static void test_hash_set_m3u_savedisk_multiple_with_comments_and_whitespace() {
       "#SAVEDISK:|No Custom Label for Save Disk"; /* index 5 */
 
   init_mock_filereader();
-  mock_file(0, "game.m3u", m3u_contents, strlen(m3u_contents));
+  mock_file(0, "game.m3u", (uint8_t*)m3u_contents, strlen(m3u_contents));
 
   rc_libretro_hash_set_init(&hash_set, "game.m3u", libretro_get_image_path);
 
@@ -567,7 +569,7 @@ static void test_hash_set_m3u_savedisk_no_core_support() {
   const char* m3u_contents = "file1.dsk\n#SAVEDISK:\nfile2.dsk";
 
   init_mock_filereader();
-  mock_file(0, "game.m3u", m3u_contents, strlen(m3u_contents));
+  mock_file(0, "game.m3u", (uint8_t*)m3u_contents, strlen(m3u_contents));
 
   rc_libretro_hash_set_init(&hash_set, "game.m3u", libretro_get_image_path_no_core_support);
 
