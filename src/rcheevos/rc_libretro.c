@@ -633,6 +633,14 @@ void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
   } while (*ptr);
 
   free(m3u_contents);
+
+  if (hash_set->entries_count > 0)
+  {
+    /* at least one save disk was found. make sure the core supports the #SAVEDISK: extension by
+     * asking for the last expected disk. if it's not found, assume no #SAVEDISK: support */
+    if (!get_image_path(index - 1, image_path, sizeof(image_path)))
+      hash_set->entries_count = 0;
+  }
 }
 
 void rc_libretro_hash_set_destroy(struct rc_libretro_hash_set_t* hash_set) {
