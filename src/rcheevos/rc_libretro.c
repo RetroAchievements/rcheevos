@@ -229,6 +229,41 @@ const rc_disallowed_setting_t* rc_libretro_get_disallowed_settings(const char* l
   return NULL;
 }
 
+typedef struct rc_disallowed_core_systems_t
+{
+    const char* library_name;
+    const int disallowed_consoles[4];
+} rc_disallowed_core_systems_t;
+
+static const rc_disallowed_core_systems_t rc_disallowed_core_systems[] = {
+  /* https://github.com/libretro/Mesen-S/issues/8 */
+  { "Mesen-S", { RC_CONSOLE_GAMEBOY, RC_CONSOLE_GAMEBOY_COLOR, 0 }},
+  { NULL, { 0 } }
+};
+
+int rc_libretro_is_system_allowed(const char* library_name, int console_id) {
+  const rc_disallowed_core_systems_t* core_filter = rc_disallowed_core_systems;
+  size_t library_name_length;
+  int i;
+
+  if (!library_name || !library_name[0])
+    return 1;
+
+  library_name_length = strlen(library_name) + 1;
+  while (core_filter->library_name) {
+    if (memcmp(core_filter->library_name, library_name, library_name_length) == 0) {
+      for (i = 0; i < sizeof(core_filter->disallowed_consoles) / sizeof(core_filter->disallowed_consoles[0]); ++i) {
+        if (core_filter->disallowed_consoles[i] == console_id)
+          return 0;
+      }
+      break;
+    }
+
+    ++core_filter;
+  }
+
+  return 1;
+}
 
 unsigned char* rc_libretro_memory_find(const rc_libretro_memory_regions_t* regions, unsigned address) {
   unsigned i;
