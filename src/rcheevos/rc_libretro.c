@@ -244,7 +244,7 @@ static const rc_disallowed_core_systems_t rc_disallowed_core_systems[] = {
 int rc_libretro_is_system_allowed(const char* library_name, int console_id) {
   const rc_disallowed_core_systems_t* core_filter = rc_disallowed_core_systems;
   size_t library_name_length;
-  int i;
+  size_t i;
 
   if (!library_name || !library_name[0])
     return 1;
