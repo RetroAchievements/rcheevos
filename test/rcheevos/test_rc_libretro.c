@@ -1,8 +1,10 @@
 #include "rc_libretro.h"
 
+#include "rc_compat.h"
 #include "rc_consoles.h"
 
 #include "../test_framework.h"
+#include "../rhash/mock_filereader.h"
 
 static void* retro_memory_data[4] = { NULL, NULL, NULL, NULL };
 static size_t retro_memory_size[4] = { 0, 0, 0, 0 };
@@ -13,10 +15,19 @@ static void libretro_get_core_memory_info(unsigned id, rc_libretro_core_memory_i
   info->size = retro_memory_size[id];
 }
 
+static int libretro_get_image_path(unsigned index, char* buffer, size_t buffer_size)
+{
+  if (index < 0 || index > 9)
+    return 0;
+
+  snprintf(buffer, buffer_size, "save%d.dsk", index);
+  return 1;
+}
+
 static void test_allowed_setting(const char* library_name, const char* setting, const char* value) {
   const rc_disallowed_setting_t* settings = rc_libretro_get_disallowed_settings(library_name);
   if (!settings)
-	return;
+    return;
 
   ASSERT_TRUE(rc_libretro_is_setting_allowed(settings, setting, value));
 }
@@ -202,8 +213,8 @@ static void test_memory_init_from_memory_map() {
   rc_libretro_memory_regions_t regions;
   unsigned char buffer1[8], buffer2[8];
   const struct retro_memory_descriptor mmap_desc[] = {
-	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" },
-	{ RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" }
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" },
+    { RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" }
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
@@ -220,8 +231,8 @@ static void test_memory_init_from_memory_map_null_filler() {
   rc_libretro_memory_regions_t regions;
   unsigned char buffer1[8], buffer2[8];
   const struct retro_memory_descriptor mmap_desc[] = {
-	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" },
-	{ RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" }
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" },
+    { RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" }
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
@@ -238,7 +249,7 @@ static void test_memory_init_from_memory_map_no_save_ram() {
   rc_libretro_memory_regions_t regions;
   unsigned char buffer1[8];
   const struct retro_memory_descriptor mmap_desc[] = {
-	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" }
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" }
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
@@ -255,8 +266,8 @@ static void test_memory_init_from_memory_map_merge_neighbors() {
   rc_libretro_memory_regions_t regions;
   unsigned char* buffer1 = malloc(0x10000); /* have to malloc to prevent array-bounds compiler warnings */
   const struct retro_memory_descriptor mmap_desc[] = {
-	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0x0000], 0, 0x0000U, 0, 0, 0xFC00, "RAM" },
-	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0xFC00], 0, 0xFC00U, 0, 0, 0x0400, "Hardware controllers" }
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0x0000], 0, 0x0000U, 0, 0, 0xFC00, "RAM" },
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0xFC00], 0, 0xFC00U, 0, 0, 0x0400, "Hardware controllers" }
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
@@ -275,8 +286,8 @@ static void test_memory_init_from_memory_map_merge_neighbors() {
 static void test_memory_init_from_memory_map_no_ram() {
   rc_libretro_memory_regions_t regions;
   const struct retro_memory_descriptor mmap_desc[] = {
-	{ RETRO_MEMDESC_SYSTEM_RAM, NULL, 0, 0xFF0000U, 0, 0, 0x10000, "RAM" },
-	{ RETRO_MEMDESC_SAVE_RAM,   NULL, 0, 0x000000U, 0, 0, 0x10000, "SRAM" }
+    { RETRO_MEMDESC_SYSTEM_RAM, NULL, 0, 0xFF0000U, 0, 0, 0x10000, "RAM" },
+    { RETRO_MEMDESC_SAVE_RAM,   NULL, 0, 0x000000U, 0, 0, 0x10000, "SRAM" }
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
@@ -295,9 +306,9 @@ static void test_memory_init_from_memory_map_splice() {
   rc_libretro_memory_regions_t regions;
   unsigned char buffer1[8], buffer2[8], buffer3[8];
   const struct retro_memory_descriptor mmap_desc[] = {
-	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x08000, "RAM1" },
-	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer2[0], 0, 0xFF8000U, 0, 0, 0x08000, "RAM2" },
-	{ RETRO_MEMDESC_SAVE_RAM,   &buffer3[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" }
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x08000, "RAM1" },
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer2[0], 0, 0xFF8000U, 0, 0, 0x08000, "RAM2" },
+    { RETRO_MEMDESC_SAVE_RAM,   &buffer3[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" }
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
@@ -315,8 +326,8 @@ static void test_memory_init_from_memory_map_mirrored() {
   rc_libretro_memory_regions_t regions;
   unsigned char buffer1[8], buffer2[8];
   const struct retro_memory_descriptor mmap_desc[] = {
-	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0xFF0000U, 0x00C000U, 0x04000, "RAM" },
-	{ RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0x000000U, 0x000000U, 0x10000, "SRAM" }
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0xFF0000U, 0x00C000U, 0x04000, "RAM" },
+    { RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0x000000U, 0x000000U, 0x10000, "SRAM" }
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
@@ -337,8 +348,8 @@ static void test_memory_init_from_memory_map_out_of_order() {
   rc_libretro_memory_regions_t regions;
   unsigned char buffer1[8], buffer2[8];
   const struct retro_memory_descriptor mmap_desc[] = {
-	{ RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" },
-	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" }
+    { RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" },
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" }
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
@@ -358,7 +369,7 @@ static void test_memory_init_from_memory_map_disconnect_gaps() {
    * will be filled by the region. in this case, 00-1F will be buffer[00-1F], but
    * buffer[20-3F] will be associated to addresses 40-5F! */
   const struct retro_memory_descriptor mmap_desc[] = {
-	{ RETRO_MEMDESC_SYSTEM_RAM, &buffer[0], 0, 0x0000, 0xFC20, 0x0020, sizeof(buffer), "RAM" },
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer[0], 0, 0x0000, 0xFC20, 0x0020, sizeof(buffer), "RAM" },
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
@@ -377,6 +388,199 @@ static void test_memory_init_from_memory_map_disconnect_gaps() {
   ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x0102), &buffer[0x82]);
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x0122));
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x0142));
+}
+
+static void test_hash_set_add_single() {
+  rc_libretro_hash_set_t hash_set;
+  const char hash[] = "ABCDEF01234567899876543210ABCDEF";
+
+  rc_libretro_hash_set_init(&hash_set, "file.rom", libretro_get_image_path);
+
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file.rom"));
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash), 0);
+
+  rc_libretro_hash_set_add(&hash_set, "file.rom", 1234, hash);
+
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file.rom"), hash);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash), 1234);
+
+  rc_libretro_hash_set_destroy(&hash_set);
+}
+
+static void test_hash_set_update_single() {
+  rc_libretro_hash_set_t hash_set;
+  const char hash[] = "ABCDEF01234567899876543210ABCDEF";
+  const char hash2[] = "0123456789ABCDEF0123456789ABCDEF";
+
+  rc_libretro_hash_set_init(&hash_set, "file.rom", libretro_get_image_path);
+
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file.rom"));
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash), 0);
+
+  rc_libretro_hash_set_add(&hash_set, "file.rom", 99, hash);
+
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file.rom"), hash);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash), 99);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash2), 0);
+
+  rc_libretro_hash_set_add(&hash_set, "file.rom", 1234, hash2);
+  ASSERT_NUM_EQUALS(hash_set.entries_count, 1);
+
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file.rom"), hash2);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash), 0);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash2), 1234);
+
+  rc_libretro_hash_set_destroy(&hash_set);
+}
+
+static void test_hash_set_add_many() {
+  rc_libretro_hash_set_t hash_set;
+  const char hash1[] = "ABCDEF01234567899876543210ABCDE1";
+  const char hash2[] = "ABCDEF01234567899876543210ABCDE2";
+  const char hash3[] = "ABCDEF01234567899876543210ABCDE3";
+  const char hash4[] = "ABCDEF01234567899876543210ABCDE4";
+  const char hash5[] = "ABCDEF01234567899876543210ABCDE5";
+  const char hash6[] = "ABCDEF01234567899876543210ABCDE6";
+  const char hash7[] = "ABCDEF01234567899876543210ABCDE7";
+  const char hash8[] = "ABCDEF01234567899876543210ABCDE8";
+
+  rc_libretro_hash_set_init(&hash_set, "file.rom", libretro_get_image_path);
+
+  rc_libretro_hash_set_add(&hash_set, "file1.rom", 1, hash1);
+  rc_libretro_hash_set_add(&hash_set, "file2.rom", 2, hash2);
+  rc_libretro_hash_set_add(&hash_set, "file3.rom", 3, hash3);
+  rc_libretro_hash_set_add(&hash_set, "file4.rom", 4, hash4);
+  rc_libretro_hash_set_add(&hash_set, "file5.rom", 5, hash5);
+  rc_libretro_hash_set_add(&hash_set, "file6.rom", 6, hash6);
+  rc_libretro_hash_set_add(&hash_set, "file7.rom", 7, hash7);
+  rc_libretro_hash_set_add(&hash_set, "file8.rom", 8, hash8);
+
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file1.rom"), hash1);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash1), 1);
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file2.rom"), hash2);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash2), 2);
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file3.rom"), hash3);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash3), 3);
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file4.rom"), hash4);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash4), 4);
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file5.rom"), hash5);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash5), 5);
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file6.rom"), hash6);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash6), 6);
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file7.rom"), hash7);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash7), 7);
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "file8.rom"), hash8);
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash8), 8);
+
+  rc_libretro_hash_set_destroy(&hash_set);
+}
+
+static void test_hash_set_m3u_single() {
+  rc_libretro_hash_set_t hash_set;
+  const char hash[] = "ABCDEF01234567899876543210ABCDEF";
+  const char* m3u_contents = "file.dsk";
+
+  init_mock_filereader();
+  mock_file(0, "game.m3u", (uint8_t*)m3u_contents, strlen(m3u_contents));
+
+  rc_libretro_hash_set_init(&hash_set, "game.m3u", libretro_get_image_path);
+
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file.dsk"));
+  ASSERT_NUM_EQUALS(rc_libretro_hash_set_get_game_id(&hash_set, hash), 0);
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "save1.dsk"));
+
+  rc_libretro_hash_set_destroy(&hash_set);
+}
+
+static void test_hash_set_m3u_savedisk() {
+  rc_libretro_hash_set_t hash_set;
+  const char* m3u_contents = "file.dsk\n#SAVEDISK:";
+
+  init_mock_filereader();
+  mock_file(0, "game.m3u", (uint8_t*)m3u_contents, strlen(m3u_contents));
+
+  rc_libretro_hash_set_init(&hash_set, "game.m3u", libretro_get_image_path);
+
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file.dsk"));
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "save1.dsk"), "[SAVE DISK]");
+
+  rc_libretro_hash_set_destroy(&hash_set);
+}
+
+static void test_hash_set_m3u_savedisk_volume_label() {
+  rc_libretro_hash_set_t hash_set;
+  const char* m3u_contents = "file.dsk\n#SAVEDISK:DSAVE";
+
+  init_mock_filereader();
+  mock_file(0, "game.m3u", (uint8_t*)m3u_contents, strlen(m3u_contents));
+
+  rc_libretro_hash_set_init(&hash_set, "game.m3u", libretro_get_image_path);
+
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file.dsk"));
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "save1.dsk"), "[SAVE DISK]");
+
+  rc_libretro_hash_set_destroy(&hash_set);
+}
+
+static void test_hash_set_m3u_savedisk_multiple_with_comments_and_whitespace() {
+  rc_libretro_hash_set_t hash_set;
+  const char* m3u_contents =
+      "#EXTM3U\n"
+      "file.dsk\n" /* index 0 */
+      "\n"
+      "#Save disk in the middle, because why not?\n"
+      "#SAVEDISK:\n" /* index 1 */
+      "    \r\n"
+      "\tfile2.dsk|File 2\n" /* index 2 */
+      "#SAVEDISK:DSAVE\n" /* index 3 */
+      "\t\r\n"
+      "#LABEL:My Custom Disk Label\n"
+      "file3.dsk" /* index 4 */
+      "\r\n"
+      "#SAVEDISK:|No Custom Label for Save Disk"; /* index 5 */
+
+  init_mock_filereader();
+  mock_file(0, "game.m3u", (uint8_t*)m3u_contents, strlen(m3u_contents));
+
+  rc_libretro_hash_set_init(&hash_set, "game.m3u", libretro_get_image_path);
+
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file.dsk"));
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "save1.dsk"), "[SAVE DISK]");
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file2.dsk"));
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "save3.dsk"), "[SAVE DISK]");
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file3.dsk"));
+  ASSERT_STR_EQUALS(rc_libretro_hash_set_get_hash(&hash_set, "save5.dsk"), "[SAVE DISK]");
+
+  rc_libretro_hash_set_destroy(&hash_set);
+}
+
+static int libretro_get_image_path_no_core_support(unsigned index, char* buffer, size_t buffer_size)
+{
+  if (index < 0 || index > 1)
+    return 0;
+
+  snprintf(buffer, buffer_size, "file%d.dsk", index);
+  return 1;
+}
+
+static void test_hash_set_m3u_savedisk_no_core_support() {
+  rc_libretro_hash_set_t hash_set;
+  const char* m3u_contents = "file1.dsk\n#SAVEDISK:\nfile2.dsk";
+
+  init_mock_filereader();
+  mock_file(0, "game.m3u", (uint8_t*)m3u_contents, strlen(m3u_contents));
+
+  rc_libretro_hash_set_init(&hash_set, "game.m3u", libretro_get_image_path_no_core_support);
+
+  ASSERT_NUM_EQUALS(hash_set.entries_count, 0);
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file1.dsk"));
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file2.dsk"));
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "file3.dsk"));
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "save1.dsk"));
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "save2.dsk"));
+  ASSERT_PTR_NULL(rc_libretro_hash_set_get_hash(&hash_set, "save3.dsk"));
+
+  rc_libretro_hash_set_destroy(&hash_set);
 }
 
 
@@ -500,6 +704,17 @@ void test_rc_libretro(void) {
   TEST(test_memory_init_from_memory_map_mirrored);
   TEST(test_memory_init_from_memory_map_out_of_order);
   TEST(test_memory_init_from_memory_map_disconnect_gaps);
+
+  /* rc_libretro_hash_set_t */
+  TEST(test_hash_set_add_single);
+  TEST(test_hash_set_update_single);
+  TEST(test_hash_set_add_many);
+
+  TEST(test_hash_set_m3u_single);
+  TEST(test_hash_set_m3u_savedisk);
+  TEST(test_hash_set_m3u_savedisk_volume_label);
+  TEST(test_hash_set_m3u_savedisk_multiple_with_comments_and_whitespace);
+  TEST(test_hash_set_m3u_savedisk_no_core_support);
 
   TEST_SUITE_END();
 }
