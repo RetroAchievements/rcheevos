@@ -245,6 +245,14 @@ static const rc_memory_region_t _rc_memory_regions_3do[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_3do = { _rc_memory_regions_3do, 1 };
 
+/* ===== Amiga ===== */
+/* http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node00D3.html */
+static const rc_memory_region_t _rc_memory_regions_amiga[] = {
+    { 0x000000U, 0x07FFFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Main RAM" }, /* 512KB main RAM */
+    { 0x080000U, 0x0FFFFFU, 0x080000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Extended RAM" }, /* 512KB extended RAM */
+};
+static const rc_memory_regions_t rc_memory_regions_amiga = { _rc_memory_regions_amiga, 2 };
+
 /* ===== Amstrad CPC ===== */
 /* http://www.cpcalive.com/docs/amstrad_cpc_6128_memory_map.html */
 /* https://www.cpcwiki.eu/index.php/File:AWMG_page151.jpg */
@@ -725,6 +733,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
   {
     case RC_CONSOLE_3DO:
       return &rc_memory_regions_3do;
+
+    case RC_CONSOLE_AMIGA:
+      return &rc_memory_regions_amiga;
 
     case RC_CONSOLE_AMSTRAD_PC:
       return &rc_memory_regions_amstrad_pc;

@@ -118,6 +118,7 @@ void test_consoleinfo(void) {
 
   /* memory maps */
   TEST_PARAMS2(test_memory, RC_CONSOLE_3DO, 0x200000);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_AMIGA, 0x100000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_AMSTRAD_PC, 0x090000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_APPLE_II, 0x020000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ARCADE, 0x000000);
