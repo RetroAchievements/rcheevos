@@ -1609,6 +1609,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* b
     case RC_CONSOLE_ATARI_2600:
     case RC_CONSOLE_ATARI_JAGUAR:
     case RC_CONSOLE_COLECOVISION:
+    case RC_CONSOLE_COMMODORE_64:
     case RC_CONSOLE_GAMEBOY:
     case RC_CONSOLE_GAMEBOY_ADVANCE:
     case RC_CONSOLE_GAMEBOY_COLOR:
@@ -1924,6 +1925,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
 
     case RC_CONSOLE_AMSTRAD_PC:
     case RC_CONSOLE_APPLE_II:
+    case RC_CONSOLE_COMMODORE_64:
     case RC_CONSOLE_MSX:
     case RC_CONSOLE_PC8800:
       /* generic whole-file hash with m3u support - don't buffer */
@@ -2182,6 +2184,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           rc_hash_initialize_dsk_iterator(iterator, path);
         }
+        else if (rc_path_compare_extension(ext, "d64"))
+        {
+            iterator->consoles[0] = RC_CONSOLE_COMMODORE_64;
+        }
         else if (rc_path_compare_extension(ext, "d88"))
         {
           iterator->consoles[0] = RC_CONSOLE_PC8800;
@@ -2321,6 +2327,11 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         else if (rc_path_compare_extension(ext, "ngc"))
         {
           iterator->consoles[0] = RC_CONSOLE_NEOGEO_POCKET;
+        }
+        else if (rc_path_compare_extension(ext, "nib"))
+        {
+            /* also Apple II, but both are full-file hashes */
+            iterator->consoles[0] = RC_CONSOLE_COMMODORE_64;
         }
         break;
 

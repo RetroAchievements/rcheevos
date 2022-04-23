@@ -1502,6 +1502,7 @@ void test_hash(void) {
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_AMSTRAD_PC, "test.dsk", 194816, "9d616e4ad3f16966f61422c57e22aadd");
 
   /* Apple II */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_APPLE_II, "test.nib", 232960, "96e8d33bdc385fd494327d6e6791cbe4");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_APPLE_II, "test.dsk", 143360, "88be638f4d78b4072109e55f13e8a0ac");
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_APPLE_II, "test.dsk", 143360, "88be638f4d78b4072109e55f13e8a0ac");
 
@@ -1553,6 +1554,11 @@ void test_hash(void) {
 
   /* Colecovision */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_COLECOVISION, "test.col", 16384, "455f07d8500f3fabc54906737866167f");
+
+  /* Commodore 64 */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_COMMODORE_64, "test.nib", 327936, "e7767d32b23e3fa62c5a250a08caeba3");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_COMMODORE_64, "test.d64", 174848, "ecd5a8ef4e77f2e9469d9b6e891394f0");
+  TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_COMMODORE_64, "test.d64", 174848, "ecd5a8ef4e77f2e9469d9b6e891394f0");
 
   /* Dreamcast */
   TEST(test_hash_dreamcast_single_bin);

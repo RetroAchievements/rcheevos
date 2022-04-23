@@ -327,6 +327,20 @@ static const rc_memory_region_t _rc_memory_regions_colecovision[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_colecovision = { _rc_memory_regions_colecovision, 1 };
 
+/* ===== Commodore 64 ===== */
+/* https://www.c64-wiki.com/wiki/Memory_Map */
+/* https://sta.c64.org/cbm64mem.html */
+static const rc_memory_region_t _rc_memory_regions_c64[] = {
+    { 0x000000U, 0x0003FFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Kernel RAM" },
+    { 0x000400U, 0x0007FFU, 0x000400U, RC_MEMORY_TYPE_VIDEO_RAM, "Screen RAM" },
+    { 0x000800U, 0x009FFFU, 0x000800U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* BASIC Program Storage Area */
+    { 0x00A000U, 0x00BFFFU, 0x00A000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* Machine Language Storage Area / BASIC ROM Area */
+    { 0x00C000U, 0x00CFFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* Machine Language Storage Area */
+    { 0x00D000U, 0x00DFFFU, 0x00D000U, RC_MEMORY_TYPE_SYSTEM_RAM, "I/O Area" },   /* also Character ROM */
+    { 0x00E000U, 0x00FFFFU, 0x00E000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* Machine Language Storage Area / Kernal ROM */
+};
+static const rc_memory_regions_t rc_memory_regions_c64 = { _rc_memory_regions_c64, 7 };
+
 /* ===== Dreamcast ===== */
 /* http://archiv.sega-dc.de/munkeechuff/hardware/Memory.html */
 static const rc_memory_region_t _rc_memory_regions_dreamcast[] = {
@@ -735,6 +749,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_COLECOVISION:
       return &rc_memory_regions_colecovision;
+
+    case RC_CONSOLE_COMMODORE_64:
+      return &rc_memory_regions_c64;
 
     case RC_CONSOLE_DREAMCAST:
       return &rc_memory_regions_dreamcast;
