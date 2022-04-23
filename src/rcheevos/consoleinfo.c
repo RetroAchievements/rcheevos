@@ -556,9 +556,10 @@ static const rc_memory_regions_t rc_memory_regions_playstation = { _rc_memory_re
 /* https://psi-rockin.github.io/ps2tek/ */
 static const rc_memory_region_t _rc_memory_regions_playstation2[] = {
     { 0x00000000U, 0x000FFFFFU, 0x00000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Kernel RAM" },
-    { 0x00100000U, 0x01FFFFFFU, 0x00100000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+    { 0x00100000U, 0x01FFFFFFU, 0x00100000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x02000000U, 0x02003FFFU, 0x70000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Scratchpad RAM" },
 };
-static const rc_memory_regions_t rc_memory_regions_playstation2 = { _rc_memory_regions_playstation2, 2 };
+static const rc_memory_regions_t rc_memory_regions_playstation2 = { _rc_memory_regions_playstation2, 3 };
 
 /* ===== PlayStation Portable ===== */
 /* https://github.com/uofw/upspd/wiki/Memory-map */
