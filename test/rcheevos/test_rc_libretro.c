@@ -38,6 +38,14 @@ static void test_disallowed_setting(const char* library_name, const char* settin
   ASSERT_FALSE(rc_libretro_is_setting_allowed(settings, setting, value));
 }
 
+static void test_allowed_system(const char* library_name, int console_id) {
+  ASSERT_TRUE(rc_libretro_is_system_allowed(library_name, console_id));
+}
+
+static void test_disallowed_system(const char* library_name, int console_id) {
+  ASSERT_FALSE(rc_libretro_is_system_allowed(library_name, console_id));
+}
+
 static void test_memory_init_without_regions() {
   rc_libretro_memory_regions_t regions;
   unsigned char buffer1[16], buffer2[8];
@@ -681,6 +689,13 @@ void test_rc_libretro(void) {
 
   TEST_PARAMS3(test_allowed_setting,    "Virtual Jaguar", "virtualjaguar_pal", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "Virtual Jaguar", "virtualjaguar_pal", "enabled");
+
+  /* rc_libretro_is_system_allowed */
+  TEST_PARAMS2(test_allowed_system,     "FCEUmm", RC_CONSOLE_NINTENDO);
+
+  TEST_PARAMS2(test_allowed_system,     "Mesen-S", RC_CONSOLE_SUPER_NINTENDO);
+  TEST_PARAMS2(test_disallowed_system,  "Mesen-S", RC_CONSOLE_GAMEBOY);
+  TEST_PARAMS2(test_disallowed_system,  "Mesen-S", RC_CONSOLE_GAMEBOY_COLOR);
 
   /* rc_libretro_memory_init */
   TEST(test_memory_init_without_regions);
