@@ -356,6 +356,21 @@ static const rc_memory_region_t _rc_memory_regions_dreamcast[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_dreamcast = { _rc_memory_regions_dreamcast, 1 };
 
+/* ===== Fairchild Channel F ===== */
+static const rc_memory_region_t _rc_memory_regions_fairchild_channel_f[] = {
+    /* "System RAM" is actually just a bunch of registers internal to CPU so all carts have it.
+     * "Video RAM" is part of the console so it's always available but it is write-only by the ROMs.
+     * "Cartridge RAM" is the cart BUS. Most carts only have ROMs on this bus. Exception are
+     *     German Schach and homebrew carts that have 2K of RAM there in addition to ROM.
+     * "F2102 RAM" is used by Maze for 1K of RAM.
+     * https://discord.com/channels/310192285306454017/645777658319208448/967001438087708714 */
+    { 0x00000000U, 0x0000003FU, 0x00100000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x00000040U, 0x0000083FU, 0x00300000U, RC_MEMORY_TYPE_VIDEO_RAM, "Video RAM" },
+    { 0x00000840U, 0x0001083FU, 0x00000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM" },
+    { 0x00010840U, 0x00010C3FU, 0x00200000U, RC_MEMORY_TYPE_SYSTEM_RAM, "F2102 RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_fairchild_channel_f = { _rc_memory_regions_fairchild_channel_f, 4 };
+
 /* ===== GameBoy / GameBoy Color ===== */
 static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
     { 0x000000U, 0x0000FFU, 0x000000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Interrupt vector" },
@@ -766,6 +781,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_DREAMCAST:
       return &rc_memory_regions_dreamcast;
+
+    case RC_CONSOLE_FAIRCHILD_CHANNEL_F:
+      return &rc_memory_regions_fairchild_channel_f;
 
     case RC_CONSOLE_MEGADUCK:
     case RC_CONSOLE_GAMEBOY:

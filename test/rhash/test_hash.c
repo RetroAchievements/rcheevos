@@ -1565,6 +1565,10 @@ void test_hash(void) {
   TEST(test_hash_dreamcast_split_bin);
   TEST(test_hash_dreamcast_cue);
 
+  /* Fairchild Channel F */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_FAIRCHILD_CHANNEL_F, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_FAIRCHILD_CHANNEL_F, "test.chf", 2048, "02c3f2fa186388ba8eede9147fb431c4");
+
   /* Gameboy */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_GAMEBOY, "test.gb", 131072, "a0f425b23200568132ba76b2405e3933");
 
