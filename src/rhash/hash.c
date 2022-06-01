@@ -84,7 +84,7 @@ static void filereader_close(void* file_handle)
 }
 
 /* for unit tests - normally would call rc_hash_init_custom_filereader(NULL) */
-void rc_hash_reset_filereader()
+void rc_hash_reset_filereader(void)
 {
   filereader = NULL;
 }
@@ -1909,7 +1909,6 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_INTELLIVISION:
     case RC_CONSOLE_MAGNAVOX_ODYSSEY2:
     case RC_CONSOLE_MASTER_SYSTEM:
-    case RC_CONSOLE_MEGA_DRIVE:
     case RC_CONSOLE_MEGADUCK:
     case RC_CONSOLE_NEOGEO_POCKET:
     case RC_CONSOLE_ORIC:
@@ -1928,6 +1927,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_AMSTRAD_PC:
     case RC_CONSOLE_APPLE_II:
     case RC_CONSOLE_COMMODORE_64:
+    case RC_CONSOLE_MEGA_DRIVE:
     case RC_CONSOLE_MSX:
     case RC_CONSOLE_PC8800:
       /* generic whole-file hash with m3u support - don't buffer */
