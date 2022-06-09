@@ -425,7 +425,16 @@ static void test_pauseif_short_circuit() {
   memory.ram = ram;
   memory.size = sizeof(ram);
 
-  /* evaluation of an achievement stops at the first true pauseif condition */
+  /* evaluation of an achievement stops at the first true pauseif condition
+   *
+   * this allows achievements to prevent accumulating hits on a pauselock farther down
+   * in a group. a better solution would be to use an AndNext on the pauselock, but
+   * there are achievements in the wild relying on this behavior.
+   * see https://retroachievements.org/achievement/66804, which has a PauseIf 2040 frames
+   * pass (condition 5), but don't tally those frames if the game is paused (condition 3).
+   * similarly, https://retroachievements.org/achievement/154804 has a PauseIf 480 frames
+   * (condition 5), but don't tally those frames if the map is visible (condition 4).
+   */
   assert_parse_condset(&condset, &memrefs, buffer, "P:0xH0001=1_P:0xH0002=1.3._0xH0003=1.4.");
 
   /* nothing true */
