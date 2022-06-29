@@ -117,7 +117,7 @@ ifeq ($(BUILD), c89)
     CFLAGS += -std=c89
 else ifeq ($(BUILD), retroarch)
     # RetroArch builds with gcc8 and gnu99 which adds some extra warning validations
-    SRC_CFLAGS += -std=gnu99 -D_GNU_SOURCE -Wall
+    SRC_CFLAGS += -std=gnu99 -D_GNU_SOURCE -Wall -Warray-bounds=2
 else
     $(error unknown BUILD "$(BUILD)")
 endif
@@ -157,6 +157,9 @@ $(RC_HASH_SRC)/%.o: $(RC_HASH_SRC)/%.c
 	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
 
 $(RC_URL_SRC)/%.o: $(RC_URL_SRC)/%.c
+	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+
+$(RC_API_SRC)/%.o: $(RC_API_SRC)/%.c
 	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
 
 $(LUA_SRC)/%.o: $(LUA_SRC)/%.c
