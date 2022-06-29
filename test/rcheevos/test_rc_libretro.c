@@ -670,6 +670,12 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_disallowed_setting, "PicoDrive", "picodrive_region", "Europe");
   TEST_PARAMS3(test_disallowed_setting, "PicoDrive", "picodrive_region", "Japan PAL");
 
+  TEST_PARAMS3(test_allowed_setting,    "QUASI88", "q88_cpu_clock", "16");
+  TEST_PARAMS3(test_allowed_setting,    "QUASI88", "q88_cpu_clock", "8");
+  TEST_PARAMS3(test_allowed_setting,    "QUASI88", "q88_cpu_clock", "4");
+  TEST_PARAMS3(test_disallowed_setting, "QUASI88", "q88_cpu_clock", "2");
+  TEST_PARAMS3(test_disallowed_setting, "QUASI88", "q88_cpu_clock", "1");
+
   TEST_PARAMS3(test_allowed_setting,    "SMS Plus GX", "smsplus_region", "auto");
   TEST_PARAMS3(test_allowed_setting,    "SMS Plus GX", "smsplus_region", "ntsc-u");
   TEST_PARAMS3(test_disallowed_setting, "SMS Plus GX", "smsplus_region", "pal");
