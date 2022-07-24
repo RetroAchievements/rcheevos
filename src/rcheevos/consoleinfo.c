@@ -60,8 +60,8 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_DREAMCAST:
       return "Dreamcast";
 
-    case RC_CONSOLE_ELEKTOR_TV_GAMES:
-      return "Elektor TV Games";
+    case RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER:
+      return "Elektor TV Games Computer";
 
     case RC_CONSOLE_EVENTS:
       return "Events";
@@ -375,7 +375,7 @@ static const rc_memory_region_t _rc_memory_regions_dreamcast[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_dreamcast = { _rc_memory_regions_dreamcast, 1 };
 
-/* ===== Elektor TV Games ===== */
+/* ===== Elektor TV Games Computer ===== */
 /* https://amigan.yatho.com/e-coding.txt */
 static const rc_memory_region_t _rc_memory_regions_elektor_tv_games[] = {
     { 0x000000U, 0x0013FFU, 0x000800U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
@@ -824,7 +824,7 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
     case RC_CONSOLE_DREAMCAST:
       return &rc_memory_regions_dreamcast;
 
-    case RC_CONSOLE_ELEKTOR_TV_GAMES:
+    case RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER:
       return &rc_memory_regions_elektor_tv_games;
 
     case RC_CONSOLE_FAIRCHILD_CHANNEL_F:

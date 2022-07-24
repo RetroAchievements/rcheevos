@@ -1611,7 +1611,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* b
     case RC_CONSOLE_ATARI_JAGUAR:
     case RC_CONSOLE_COLECOVISION:
     case RC_CONSOLE_COMMODORE_64:
-    case RC_CONSOLE_ELEKTOR_TV_GAMES:
+    case RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER:
     case RC_CONSOLE_FAIRCHILD_CHANNEL_F:
     case RC_CONSOLE_GAMEBOY:
     case RC_CONSOLE_GAMEBOY_ADVANCE:
@@ -1905,7 +1905,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_ATARI_2600:
     case RC_CONSOLE_ATARI_JAGUAR:
     case RC_CONSOLE_COLECOVISION:
-    case RC_CONSOLE_ELEKTOR_TV_GAMES:
+    case RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER:
     case RC_CONSOLE_FAIRCHILD_CHANNEL_F:
     case RC_CONSOLE_GAMEBOY:
     case RC_CONSOLE_GAMEBOY_ADVANCE:
@@ -2355,7 +2355,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "pgm"))
         {
-          iterator->consoles[0] = RC_CONSOLE_ELEKTOR_TV_GAMES;
+          iterator->consoles[0] = RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER;
         }
         break;
 
@@ -2408,7 +2408,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "tvc"))
         {
-          iterator->consoles[0] = RC_CONSOLE_ELEKTOR_TV_GAMES;
+          iterator->consoles[0] = RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER;
         }
         break;
 

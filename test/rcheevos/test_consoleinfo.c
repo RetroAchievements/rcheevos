@@ -113,7 +113,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 72, "WASM-4");
   TEST_PARAMS2(test_name, 73, "Arcadia 2001");
   TEST_PARAMS2(test_name, 74, "Interton VC 4000");
-  TEST_PARAMS2(test_name, 75, "Elektor TV Games");
+  TEST_PARAMS2(test_name, 75, "Elektor TV Games Computer");
   TEST_PARAMS2(test_name, 76, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
@@ -134,7 +134,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_COLECOVISION, 0x000400);
   TEST_PARAMS2(test_memory, RC_CONSOLE_COMMODORE_64, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_DREAMCAST, 0x01000000);
-  TEST_PARAMS2(test_memory, RC_CONSOLE_ELEKTOR_TV_GAMES, 0x001800);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER, 0x001800);
   TEST_PARAMS2(test_memory, RC_CONSOLE_FAIRCHILD_CHANNEL_F, 0x010C40);
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAMEBOY, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAMEBOY_COLOR, 0x016000);

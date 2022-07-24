@@ -1568,9 +1568,9 @@ void test_hash(void) {
   TEST(test_hash_dreamcast_split_bin);
   TEST(test_hash_dreamcast_cue);
 
-  /* Elektor TV Games */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ELEKTOR_TV_GAMES, "test.pgm", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ELEKTOR_TV_GAMES, "test.tvc", 1861, "37097124a29aff663432d049654a17dc");
+  /* Elektor TV Games Computer */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER, "test.pgm", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER, "test.tvc", 1861, "37097124a29aff663432d049654a17dc");
 
   /* Fairchild Channel F */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_FAIRCHILD_CHANNEL_F, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");
