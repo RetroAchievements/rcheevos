@@ -1542,6 +1542,9 @@ void test_hash(void) {
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/spectrum/game.zip", "a5f62157b2617bd728c4b1bc885c29e9");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/ngp/game.zip", "d4133b74c4e57274ca514e27a370dcb6");
 
+  /* Arcadia 2001 */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ARCADIA_2001, "test.bin", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
+
   /* Atari 2600 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_2600, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");
 
@@ -1565,6 +1568,10 @@ void test_hash(void) {
   TEST(test_hash_dreamcast_split_bin);
   TEST(test_hash_dreamcast_cue);
 
+  /* Elektor TV Games */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ELEKTOR_TV_GAMES, "test.pgm", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ELEKTOR_TV_GAMES, "test.tvc", 1861, "37097124a29aff663432d049654a17dc");
+
   /* Fairchild Channel F */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_FAIRCHILD_CHANNEL_F, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_FAIRCHILD_CHANNEL_F, "test.chf", 2048, "02c3f2fa186388ba8eede9147fb431c4");
@@ -1583,6 +1590,9 @@ void test_hash(void) {
 
   /* Intellivision */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_INTELLIVISION, "test.bin", 8192, "ce1127f881b40ce6a67ecefba50e2835");
+
+  /* Interton VC 4000 */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_INTERTON_VC_4000, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");
 
   /* Magnavox Odyssey 2 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MAGNAVOX_ODYSSEY2, "test.bin", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
