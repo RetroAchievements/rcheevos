@@ -487,9 +487,9 @@ static const rc_memory_regions_t rc_memory_regions_intellivision = { _rc_memory_
 /* https://amigan.yatho.com/i-coding.txt */
 /* Cartridge RAM is not persisted, it's just expanded storage */
 static const rc_memory_region_t _rc_memory_regions_interton_vc_4000[] = {
-    { 0x000000U, 0x0000FFU, 0x001F00U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
-    { 0x000100U, 0x0004FFU, 0x001800U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM" },
-    { 0x000500U, 0x0005FFU, 0x001E00U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "I/O Area" }
+    { 0x000000U, 0x0003FFU, 0x001800U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM" },
+    { 0x000400U, 0x0004FFU, 0x001E00U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "I/O Area" },
+    { 0x000500U, 0x0005FFU, 0x001F00U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, 
 };
 static const rc_memory_regions_t rc_memory_regions_interton_vc_4000 = { _rc_memory_regions_interton_vc_4000, 3 };
 
