@@ -111,7 +111,10 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 70, "Zeebo");
   TEST_PARAMS2(test_name, 71, "Arduboy");
   TEST_PARAMS2(test_name, 72, "WASM-4");
-  TEST_PARAMS2(test_name, 73, "Unknown");
+  TEST_PARAMS2(test_name, 73, "Arcadia 2001");
+  TEST_PARAMS2(test_name, 74, "Interton VC 4000");
+  TEST_PARAMS2(test_name, 75, "Elektor TV Games Computer");
+  TEST_PARAMS2(test_name, 76, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
@@ -122,6 +125,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_AMSTRAD_PC, 0x090000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_APPLE_II, 0x020000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ARCADE, 0x000000);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_ARCADIA_2001, 0x000300);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ARDUBOY, 0x000F00);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_2600, 0x000080);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_7800, 0x010000);
@@ -130,12 +134,14 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_COLECOVISION, 0x000400);
   TEST_PARAMS2(test_memory, RC_CONSOLE_COMMODORE_64, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_DREAMCAST, 0x01000000);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER, 0x001800);
   TEST_PARAMS2(test_memory, RC_CONSOLE_FAIRCHILD_CHANNEL_F, 0x010C40);
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAMEBOY, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAMEBOY_COLOR, 0x016000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAMEBOY_ADVANCE, 0x048000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAME_GEAR, 0x002000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_INTELLIVISION, 0x040080);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_INTERTON_VC_4000, 0x000600);
   TEST_PARAMS2(test_memory, RC_CONSOLE_MAGNAVOX_ODYSSEY2, 0x000140);
   TEST_PARAMS2(test_memory, RC_CONSOLE_MASTER_SYSTEM, 0x002000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_MEGA_DRIVE, 0x020000);
