@@ -1934,6 +1934,54 @@ static void test_addsource_mask() {
   assert_hit_count(condset, 1, 2);
 }
 
+static void test_addsource_float_first() {
+  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0xC0, 0x3F}; /* fF0004 = 1.5 */
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* float(4) + float(4) + float(4) + 1 == 5.5 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:fF0004_A:fF0004_A:fF0004_1=f5.5");
+
+  /* sum is correct */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
+static void test_addsource_float_second() {
+  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0xC0, 0x3F}; /* fF0004 = 1.5 */
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* 1 + float(4) + float(4) + float(4) == 5.5 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:1_A:fF0004_A:fF0004_fF0004=f5.5");
+
+  /* the first value defines the type of the accumulator. since it's an integer, each float will be
+   * truncated when it is added to the accumulator, so 1 + (1.5) + (1.5) is 3. when the accumulator is
+   * added to the final value, the accumulator is converted to match the final value, so 3.0 + 1.5 = 4.5. */
+
+  /* sum is not correct */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 1 + float(4) + float(4) + float(4) == 4.5 (note: two intermediary floats are converted to int, but not last) */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:1_A:fF0004_A:fF0004_fF0004=f4.5");
+  /* sum is correct */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 1 + float(4) + float(4) + float(4) + 0 == 4.0 (note: all intermediate floats are converted to int) */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:1_A:fF0004_A:fF0004_A:fF0004_0=f4.0");
+  /* sum is correct */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_subsource_mask() {
   unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3711,6 +3759,8 @@ void test_condset(void) {
   TEST(test_subsource_divide);
   TEST(test_addsource_compare_percentage);
   TEST(test_addsource_mask);
+  TEST(test_addsource_float_first);
+  TEST(test_addsource_float_second);
   TEST(test_subsource_mask);
   TEST(test_subsource_overflow_comparison_equal);
   TEST(test_subsource_overflow_comparison_greater);

@@ -1230,6 +1230,7 @@ void test_richpresence(void) {
   TEST_PARAMS3(test_macro_float, "VALUE", 0xC0000000, "-2"); /* -2.0 */
   TEST_PARAMS3(test_macro_float, "FLOAT1", 0xC0000000, "-2.0");
   TEST_PARAMS3(test_macro_float, "FLOAT6", 0xC0000000, "-2.000000");
+  TEST_PARAMS3(test_macro_float, "SECS", 0x429A4492, "1:17"); /* 77.133926 */
 
   /* lookup macros */
   TEST(test_macro_lookup_simple);
