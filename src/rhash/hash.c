@@ -1918,6 +1918,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_MEGADUCK:
     case RC_CONSOLE_NEOGEO_POCKET:
     case RC_CONSOLE_ORIC:
+    case RC_CONSOLE_PC_ENGINE:
     case RC_CONSOLE_POKEMON_MINI:
     case RC_CONSOLE_SEGA_32X:
     case RC_CONSOLE_SG1000:
@@ -1965,7 +1966,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_NINTENDO_DS:
       return rc_hash_nintendo_ds(hash, path);
 
-    case RC_CONSOLE_PC_ENGINE:
+    case RC_CONSOLE_PC_ENGINE_CD:
       if (rc_path_compare_extension(path, "cue") || rc_path_compare_extension(path, "chd"))
         return rc_hash_pce_cd(hash, path);
 
@@ -2162,7 +2163,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           iterator->consoles[1] = RC_CONSOLE_PLAYSTATION_2;
           iterator->consoles[2] = RC_CONSOLE_DREAMCAST;
           iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
-          iterator->consoles[4] = RC_CONSOLE_PC_ENGINE;
+          iterator->consoles[4] = RC_CONSOLE_PC_ENGINE_CD;
           iterator->consoles[5] = RC_CONSOLE_3DO;
           iterator->consoles[6] = RC_CONSOLE_PCFX;
           need_path = 1;
@@ -2173,7 +2174,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           iterator->consoles[1] = RC_CONSOLE_PLAYSTATION_2;
           iterator->consoles[2] = RC_CONSOLE_DREAMCAST;
           iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
-          iterator->consoles[4] = RC_CONSOLE_PC_ENGINE;
+          iterator->consoles[4] = RC_CONSOLE_PC_ENGINE_CD;
           iterator->consoles[5] = RC_CONSOLE_3DO;
           iterator->consoles[6] = RC_CONSOLE_PCFX;
           need_path = 1;

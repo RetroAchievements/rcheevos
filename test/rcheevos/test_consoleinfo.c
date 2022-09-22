@@ -114,7 +114,8 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 73, "Arcadia 2001");
   TEST_PARAMS2(test_name, 74, "Interton VC 4000");
   TEST_PARAMS2(test_name, 75, "Elektor TV Games Computer");
-  TEST_PARAMS2(test_name, 76, "Unknown");
+  TEST_PARAMS2(test_name, 76, "PC Engine CD");
+  TEST_PARAMS2(test_name, 77, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
@@ -154,6 +155,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_ORIC, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_PC8800, 0x011000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_PC_ENGINE, 0x42800);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_PC_ENGINE_CD, 0x42800);
   TEST_PARAMS2(test_memory, RC_CONSOLE_PCFX, 0x210000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_PLAYSTATION, 0x200000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_PLAYSTATION_2, 0x02004000);

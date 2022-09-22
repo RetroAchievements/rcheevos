@@ -854,7 +854,7 @@ static void test_hash_pce_cd()
   mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
 
   /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PC_ENGINE, "game.cue");
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PC_ENGINE_CD, "game.cue");
 
   /* test file identification from iterator */
   int result_iterator;
@@ -886,7 +886,7 @@ static void test_hash_pce_cd_invalid_header()
   /* make the header not match */
   image[2048 + 0x24] = 0x34;
 
-  test_hash_unknown_format(RC_CONSOLE_PC_ENGINE, "game.cue");
+  test_hash_unknown_format(RC_CONSOLE_PC_ENGINE_CD, "game.cue");
 
   free(image);
 }
