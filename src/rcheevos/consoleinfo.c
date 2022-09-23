@@ -608,9 +608,8 @@ static const rc_memory_regions_t rc_memory_regions_pc8800 = { _rc_memory_regions
 /* http://www.archaicpixels.com/Memory_Map */
 static const rc_memory_region_t _rc_memory_regions_pc_engine[] = {
     { 0x000000U, 0x001FFFU, 0x1F0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
-    { 0x012000U, 0x041FFFU, 0x0D0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Super System Card RAM" }
 };
-static const rc_memory_regions_t rc_memory_regions_pc_engine = { _rc_memory_regions_pc_engine, 4 };
+static const rc_memory_regions_t rc_memory_regions_pc_engine = { _rc_memory_regions_pc_engine, 1 };
 
 /* ===== PC Engine CD===== */
 /* http://www.archaicpixels.com/Memory_Map */

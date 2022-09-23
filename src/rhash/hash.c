@@ -1918,7 +1918,6 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_MEGADUCK:
     case RC_CONSOLE_NEOGEO_POCKET:
     case RC_CONSOLE_ORIC:
-    case RC_CONSOLE_PC_ENGINE:
     case RC_CONSOLE_POKEMON_MINI:
     case RC_CONSOLE_SEGA_32X:
     case RC_CONSOLE_SG1000:
@@ -1947,6 +1946,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_ATARI_7800:
     case RC_CONSOLE_ATARI_LYNX:
     case RC_CONSOLE_NINTENDO:
+    case RC_CONSOLE_PC_ENGINE:
     case RC_CONSOLE_SUPER_NINTENDO:
       /* additional logic whole-file hash - buffer then call rc_hash_generate_from_buffer */
       return rc_hash_buffered_file(hash, console_id, path);
