@@ -936,7 +936,7 @@ static void test_hash_pcfx_invalid_header()
   /* make the header not match */
   image[12] = 0x34;
 
-  test_hash_unknown_format(RC_CONSOLE_PC_ENGINE, "game.cue");
+  test_hash_unknown_format(RC_CONSOLE_PCFX, "game.cue");
 
   free(image);
 }
