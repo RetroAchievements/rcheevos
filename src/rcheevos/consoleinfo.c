@@ -156,6 +156,9 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_PC_ENGINE:
       return "PC Engine";
 
+    case RC_CONSOLE_PC_ENGINE_CD:
+      return "PC Engine CD";
+
     case RC_CONSOLE_PLAYSTATION:
       return "PlayStation";
 
@@ -605,11 +608,18 @@ static const rc_memory_regions_t rc_memory_regions_pc8800 = { _rc_memory_regions
 /* http://www.archaicpixels.com/Memory_Map */
 static const rc_memory_region_t _rc_memory_regions_pc_engine[] = {
     { 0x000000U, 0x001FFFU, 0x1F0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+};
+static const rc_memory_regions_t rc_memory_regions_pc_engine = { _rc_memory_regions_pc_engine, 1 };
+
+/* ===== PC Engine CD===== */
+/* http://www.archaicpixels.com/Memory_Map */
+static const rc_memory_region_t _rc_memory_regions_pc_engine_cd[] = {
+    { 0x000000U, 0x001FFFU, 0x1F0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
     { 0x002000U, 0x011FFFU, 0x100000U, RC_MEMORY_TYPE_SYSTEM_RAM, "CD RAM" },
     { 0x012000U, 0x041FFFU, 0x0D0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Super System Card RAM" },
     { 0x042000U, 0x0427FFU, 0x1EE000U, RC_MEMORY_TYPE_SAVE_RAM,   "CD Battery-backed RAM" }
 };
-static const rc_memory_regions_t rc_memory_regions_pc_engine = { _rc_memory_regions_pc_engine, 4 };
+static const rc_memory_regions_t rc_memory_regions_pc_engine_cd = { _rc_memory_regions_pc_engine_cd, 4 };
 
 /* ===== PC-FX ===== */
 /* http://daifukkat.su/pcfx/data/memmap.html */
@@ -884,6 +894,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_PC_ENGINE:
       return &rc_memory_regions_pc_engine;
+
+    case RC_CONSOLE_PC_ENGINE_CD:
+      return &rc_memory_regions_pc_engine_cd;
 
     case RC_CONSOLE_PCFX:
       return &rc_memory_regions_pcfx;
