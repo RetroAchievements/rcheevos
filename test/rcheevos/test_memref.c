@@ -62,6 +62,7 @@ static void test_shared_sizes(void)
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS_BE, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_FLOAT, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_MBF32, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_MBF32_LE, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_VARIABLE, RC_MEMSIZE_32_BITS);
 }
 
@@ -168,7 +169,22 @@ static void test_transforms(void)
   TEST_PARAMS3(test_transform_float, 0x00000080, RC_MEMSIZE_MBF32, 0.5);        /* 80 00 00 00 */
   TEST_PARAMS3(test_transform_float, 0x00008082, RC_MEMSIZE_MBF32, -2.0);       /* 82 80 00 00 */
   TEST_PARAMS3(test_transform_float, 0xF3043581, RC_MEMSIZE_MBF32, 1.41421354); /* 81 34 04 F3 */
+  TEST_PARAMS3(test_transform_float, 0xDA0F4982, RC_MEMSIZE_MBF32, 3.14159256); /* 82 49 0F DA */
   TEST_PARAMS3(test_transform_float, 0xDB0F4983, RC_MEMSIZE_MBF32, 6.28318548); /* 83 49 0F DB */
+
+  /* Some flavors of BASIC (notably Locomotive BASIC on the Amstrad CPC) use the native endian-ness of
+   * the system for their MBF values, so we support both MBF32 (big endian) and MBF32_LE (little endian).
+   * Also note that Amstrad BASIC and Apple II BASIC both use MBF40, but since MBF40 just adds 8 extra bits
+   * of significance as the end of the MBF32 value, we can discard those as we convert to a 32-bit float. */
+  TEST_PARAMS3(test_transform_float, 0x81000000, RC_MEMSIZE_MBF32_LE, 1.0);        /* 00 00 00 81 */
+  TEST_PARAMS3(test_transform_float, 0x84200000, RC_MEMSIZE_MBF32_LE, 10.0);       /* 00 00 20 84 */
+  TEST_PARAMS3(test_transform_float, 0x87460000, RC_MEMSIZE_MBF32_LE, 99.0);       /* 00 00 46 87 */
+  TEST_PARAMS3(test_transform_float, 0x00000000, RC_MEMSIZE_MBF32_LE, 0.0);        /* 00 00 00 00 */
+  TEST_PARAMS3(test_transform_float, 0x80000000, RC_MEMSIZE_MBF32_LE, 0.5);        /* 00 00 00 80 */
+  TEST_PARAMS3(test_transform_float, 0x82800000, RC_MEMSIZE_MBF32_LE, -2.0);       /* 00 00 80 82 */
+  TEST_PARAMS3(test_transform_float, 0x813504F3, RC_MEMSIZE_MBF32_LE, 1.41421354); /* F3 04 34 81 */
+  TEST_PARAMS3(test_transform_float, 0x82490FDA, RC_MEMSIZE_MBF32_LE, 3.14159256); /* DA 0F 49 82 */
+  TEST_PARAMS3(test_transform_float, 0x83490FDB, RC_MEMSIZE_MBF32_LE, 6.28318548); /* DB 0F 49 83 */
 }
 
 static int get_memref_count(rc_parse_state_t* parse) {
