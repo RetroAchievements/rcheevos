@@ -582,29 +582,36 @@ void test_evaluate_prior_memory_reference() {
 }
 
 static void test_evaluate_memory_references_float() {
-  unsigned char ram[] = {0x00, 0x00, 0x80, 0x3F, 0x81, 0x00, 0x00, 0x00};
+  unsigned char ram[] = {0x00, 0x00, 0x80, 0x3F, 0x81, 0x00, 0x00, 0x00, 0x00, 0x81};
   memory_t memory;
   memory.ram = ram;
   memory.size = sizeof(ram);
 
   TEST_PARAMS3(test_evaluate_operand_float, "fF0", &memory, 1.0); /* IEE754 float */
   TEST_PARAMS3(test_evaluate_operand_float, "fM4", &memory, 1.0); /* MBF32 float */
+  TEST_PARAMS3(test_evaluate_operand_float, "fL6", &memory, 1.0); /* MBF32_LE float */
 
   /* BCD and inversion are not supported for floats - behaves as if the prefix wasn't present */
   TEST_PARAMS3(test_evaluate_operand_float, "bfF0", &memory, 1.0); /* IEE754 float */
   TEST_PARAMS3(test_evaluate_operand_float, "bfM4", &memory, 1.0); /* MBF32 float */
+  TEST_PARAMS3(test_evaluate_operand_float, "bfL6", &memory, 1.0); /* MBF32_LE float */
   TEST_PARAMS3(test_evaluate_operand_float, "~fF0", &memory, 1.0); /* IEE754 float */
   TEST_PARAMS3(test_evaluate_operand_float, "~fM4", &memory, 1.0); /* MBF32 float */
+  TEST_PARAMS3(test_evaluate_operand_float, "~fL6", &memory, 1.0); /* MBF32_LE float */
 
   ram[2] = 0x00; ram[3] = 0x40; /* set IEE754 float to 2.0 */
   ram[4] = 0x83; ram[5] = 0x40; /* set MBF32 float to 6.0 */
+  ram[9] = 0x83; ram[8] = 0x00; /* set MBF32_LE float to 4.0 */
 
   TEST_PARAMS3(test_evaluate_operand_float, "fF0", &memory, 2.0); /* IEE754 float */
   TEST_PARAMS3(test_evaluate_operand_float, "fM4", &memory, 6.0); /* MBF32 float */
+  TEST_PARAMS3(test_evaluate_operand_float, "fL6", &memory, 4.0); /* MBF32_LE float */
   TEST_PARAMS3(test_evaluate_operand_float, "bfF0", &memory, 2.0); /* IEE754 float */
   TEST_PARAMS3(test_evaluate_operand_float, "bfM4", &memory, 6.0); /* MBF32 float */
+  TEST_PARAMS3(test_evaluate_operand_float, "bfL6", &memory, 4.0); /* MBF32_LE float */
   TEST_PARAMS3(test_evaluate_operand_float, "~fF0", &memory, 2.0); /* IEE754 float */
   TEST_PARAMS3(test_evaluate_operand_float, "~fM4", &memory, 6.0); /* MBF32 float */
+  TEST_PARAMS3(test_evaluate_operand_float, "~fL6", &memory, 4.0); /* MBF32_LE float */
 }
 
 static void test_evaluate_delta_memory_reference_float() {
