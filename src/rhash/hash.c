@@ -347,6 +347,34 @@ int rc_path_compare_extension(const char* path, const char* ext)
 
 /* ===================================================== */
 
+static void rc_hash_byteswap16(uint8_t* buffer, const uint8_t* stop)
+{
+  uint32_t* ptr = (uint32_t*)buffer;
+  const uint32_t* stop32 = (const uint32_t*)stop;
+  while (ptr < stop32)
+  {
+    uint32_t temp = *ptr;
+    temp = (temp & 0xFF00FF00) >> 8 |
+           (temp & 0x00FF00FF) << 8;
+    *ptr++ = temp;
+  }
+}
+
+static void rc_hash_byteswap32(uint8_t* buffer, const uint8_t* stop)
+{
+  uint32_t* ptr = (uint32_t*)buffer;
+  const uint32_t* stop32 = (const uint32_t*)stop;
+  while (ptr < stop32)
+  {
+    uint32_t temp = *ptr;
+    temp = (temp & 0xFF000000) >> 24 |
+           (temp & 0x00FF0000) >> 8 |
+           (temp & 0x0000FF00) << 8 |
+           (temp & 0x000000FF) << 24;
+    *ptr++ = temp;
+  }
+}
+
 static int rc_hash_finalize(md5_state_t* md5, char hash[33])
 {
   md5_byte_t digest[16];
@@ -684,6 +712,93 @@ static int rc_hash_text(char hash[33], const uint8_t* buffer, size_t buffer_size
   return rc_hash_finalize(&md5, hash);
 }
 
+static int rc_hash_jaguar_cd(char hash[33], const char* path)
+{
+  uint8_t buffer[2352];
+  char message[128];
+  void* track_handle;
+  md5_state_t md5;
+  int byteswapped;
+  unsigned size = 0;
+  unsigned offset = 0;
+  unsigned sector = 0;
+  unsigned remaining;
+  int i;
+
+  /* Jaguar CD header is in the first sector of the first data track OF THE SECOND SESSION.
+   * The first track must be an audio track, but may be a warning message or actual game audio */
+  track_handle = rc_cd_open_track(path, RC_HASH_CDTRACK_FIRST_OF_SECOND_SESSION);
+  if (!track_handle)
+    return rc_hash_error("Could not open track");
+
+  /* The header is an unspecified distance into the first sector, but usually two bytes in.
+   * It consists of 64 bytes of "TAIR" or "ATRI" repeating, depending on whether or not the data 
+   * is byteswapped. Then another 32 byte that reads "ATARI APPROVED DATA HEADER ATRI "
+   * (possibly byteswapped). Then a big-endian 32-bit value for the address where the boot code
+   * should be loaded, and a second big-endian 32-bit value for the size of the boot code. */ 
+  sector = rc_cd_first_track_sector(track_handle);
+  rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+
+  for (i = 66; i < sizeof(buffer) - 32 - 4 * 3; i++)
+  {
+    if (memcmp(&buffer[i], "TARA IPARPVODED TA AEHDAREA RT I", 32) == 0)
+    {
+      byteswapped = 1;
+      offset = i + 32 + 4;
+      size = (buffer[offset] << 16) | (buffer[offset + 1] << 24) | (buffer[offset + 2]) | (buffer[offset + 3] << 8);
+      break;
+    }
+    else if (memcmp(&buffer[i], "ATARI APPROVED DATA HEADER ATRI ", 32) == 0)
+    {
+      byteswapped = 0;
+      offset = i + 32 + 4;
+      size = (buffer[offset] << 24) | (buffer[offset + 1] << 16) | (buffer[offset + 2] << 8) | (buffer[offset + 3]);
+      break;
+    }
+  }
+
+  if (size == 0) /* did not see ATARI APPROVED DATA HEADER */
+  {
+    rc_cd_close_track(track_handle);
+    return rc_hash_error("Not a Jaguar CD");
+  }
+
+  md5_init(&md5);
+
+  offset += 4;
+
+  if (verbose_message_callback)
+  {
+    snprintf(message, sizeof(message), "Hashing boot executable (%u bytes starting at %u bytes into sector %u)", size, offset, sector);
+    rc_hash_verbose(message);
+  }
+
+  do
+  {
+    if (byteswapped)
+      rc_hash_byteswap16(buffer, &buffer[sizeof(buffer)]);
+
+    remaining = sizeof(buffer) - offset;
+    if (remaining >= size)
+    {
+      md5_append(&md5, &buffer[offset], size);
+      size = 0;
+      break;
+    }
+
+    md5_append(&md5, &buffer[offset], remaining);
+    size -= remaining;
+    offset = 0;
+  } while (rc_cd_read_sector(track_handle, ++sector, buffer, sizeof(buffer)) == sizeof(buffer));
+
+  rc_cd_close_track(track_handle);
+
+  if (size > 0)
+    return rc_hash_error("Not enough data");
+
+  return rc_hash_finalize(&md5, hash);
+}
+
 static int rc_hash_lynx(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it */
@@ -717,34 +832,6 @@ static int rc_hash_nes(char hash[33], const uint8_t* buffer, size_t buffer_size)
   }
 
   return rc_hash_buffer(hash, buffer, buffer_size);
-}
-
-static void rc_hash_v64_to_z64(uint8_t* buffer, const uint8_t* stop)
-{
-  uint32_t* ptr = (uint32_t*)buffer;
-  const uint32_t* stop32 = (const uint32_t*)stop;
-  while (ptr < stop32)
-  {
-    uint32_t temp = *ptr;
-    temp = (temp & 0xFF00FF00) >> 8 |
-           (temp & 0x00FF00FF) << 8;
-    *ptr++ = temp;
-  }
-}
-
-static void rc_hash_n64_to_z64(uint8_t* buffer, const uint8_t* stop)
-{
-  uint32_t* ptr = (uint32_t*)buffer;
-  const uint32_t* stop32 = (const uint32_t*)stop;
-  while (ptr < stop32)
-  {
-    uint32_t temp = *ptr;
-    temp = (temp & 0xFF000000) >> 24 |
-           (temp & 0x00FF0000) >> 8 |
-           (temp & 0x0000FF00) << 8 |
-           (temp & 0x000000FF) << 24;
-    *ptr++ = temp;
-  }
 }
 
 static int rc_hash_n64(char hash[33], const char* path)
@@ -818,9 +905,9 @@ static int rc_hash_n64(char hash[33], const char* path)
     rc_file_read(file_handle, buffer, (int)buffer_size);
 
     if (is_v64)
-      rc_hash_v64_to_z64(buffer, stop);
+      rc_hash_byteswap16(buffer, stop);
     else if (is_n64)
-      rc_hash_n64_to_z64(buffer, stop);
+      rc_hash_byteswap32(buffer, stop);
 
     md5_append(&md5, buffer, (int)buffer_size);
     remaining -= buffer_size;
@@ -832,9 +919,9 @@ static int rc_hash_n64(char hash[33], const char* path)
 
     stop = buffer + remaining;
     if (is_v64)
-      rc_hash_v64_to_z64(buffer, stop);
+      rc_hash_byteswap16(buffer, stop);
     else if (is_n64)
-      rc_hash_n64_to_z64(buffer, stop);
+      rc_hash_byteswap32(buffer, stop);
 
     md5_append(&md5, buffer, (int)remaining);
   }
@@ -2008,6 +2095,9 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
         return rc_hash_generate_from_playlist(hash, console_id, path);
 
       return rc_hash_sega_cd(hash, path);
+
+    case RC_CONSOLE_ATARI_JAGUAR_CD:
+      return rc_hash_jaguar_cd(hash, path);
   }
 }
 
@@ -2166,6 +2256,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           iterator->consoles[4] = RC_CONSOLE_PC_ENGINE_CD;
           iterator->consoles[5] = RC_CONSOLE_3DO;
           iterator->consoles[6] = RC_CONSOLE_PCFX;
+          iterator->consoles[7] = RC_CONSOLE_ATARI_JAGUAR_CD;
           need_path = 1;
         }
         else if (rc_path_compare_extension(ext, "chd"))

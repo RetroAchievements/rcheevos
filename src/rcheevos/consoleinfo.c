@@ -39,6 +39,9 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_ATARI_JAGUAR:
       return "Atari Jaguar";
 
+    case RC_CONSOLE_ATARI_JAGUAR_CD:
+      return "Atari Jaguar CD";
+
     case RC_CONSOLE_ATARI_LYNX:
       return "Atari Lynx";
 
@@ -820,6 +823,7 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
       return &rc_memory_regions_atari7800;
 
     case RC_CONSOLE_ATARI_JAGUAR:
+    case RC_CONSOLE_ATARI_JAGUAR_CD:
       return &rc_memory_regions_atari_jaguar;
 
     case RC_CONSOLE_ATARI_LYNX:
