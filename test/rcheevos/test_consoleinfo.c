@@ -115,7 +115,8 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 74, "Interton VC 4000");
   TEST_PARAMS2(test_name, 75, "Elektor TV Games Computer");
   TEST_PARAMS2(test_name, 76, "PC Engine CD");
-  TEST_PARAMS2(test_name, 77, "Unknown");
+  TEST_PARAMS2(test_name, 77, "Atari Jaguar CD");
+  TEST_PARAMS2(test_name, 78, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
@@ -131,6 +132,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_2600, 0x000080);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_7800, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_JAGUAR, 0x200000);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_JAGUAR_CD, 0x200000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ATARI_LYNX, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_COLECOVISION, 0x000400);
   TEST_PARAMS2(test_memory, RC_CONSOLE_COMMODORE_64, 0x010000);

@@ -14,6 +14,7 @@ typedef struct cdrom_t
   void* file_handle;
   int sector_size;
   int sector_header_size;
+  int raw_data_size;
   int64_t file_track_offset;
   int track_first_sector;
   int track_pregap_sectors;
@@ -128,6 +129,7 @@ static void test_open_cue_track_2()
   ASSERT_NUM64_EQUALS(track_handle->file_track_offset, 9807840); /* track 2: 0x95A7E0 */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
 }
@@ -147,6 +149,7 @@ static void test_open_cue_track_12()
   ASSERT_NUM64_EQUALS(track_handle->file_track_offset, 664047216); /* track 12: 0x27948E70 */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
 }
@@ -189,6 +192,7 @@ static void test_open_gdi_track_3()
   ASSERT_NUM_EQUALS(track_handle->track_first_sector, 45000);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
 }
@@ -215,6 +219,7 @@ static void test_open_gdi_track_3_quoted()
   ASSERT_NUM_EQUALS(track_handle->track_first_sector, 45000);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
 }
@@ -280,6 +285,7 @@ static void test_open_cue_track_largest_data()
   ASSERT_NUM64_EQUALS(track_handle->file_track_offset, 146190912); /* track 5: 0x8B6B240 */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
 }
@@ -301,6 +307,7 @@ static void test_open_cue_track_largest_data_multiple_bin()
   ASSERT_NUM_EQUALS(track_handle->track_pregap_sectors, 225); /* INDEX 01 00:03:00 */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
 }
@@ -321,6 +328,7 @@ static void test_open_cue_track_largest_data_backwards_compatibility()
   ASSERT_NUM64_EQUALS(track_handle->file_track_offset, 146190912); /* track 5: 0x8B6B240 */
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
 }
@@ -506,6 +514,7 @@ static void test_determine_sector_size_sync(int sector_size)
   ASSERT_NUM64_EQUALS(track_handle->file_track_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->sector_size, sector_size);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 16);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
   free(image);
@@ -531,6 +540,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor(int sector
   ASSERT_NUM64_EQUALS(track_handle->file_track_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->sector_size, sector_size);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 24);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
   free(image);
@@ -567,6 +577,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0(int
   ASSERT_NUM_EQUALS(track_handle->track_pregap_sectors, 150);
   ASSERT_NUM_EQUALS(track_handle->sector_size, sector_size);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 24);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
   free(image);
@@ -592,6 +603,7 @@ static void test_determine_sector_size_sync_2048()
   ASSERT_NUM64_EQUALS(track_handle->file_track_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->sector_size, 2352);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 24);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
   free(image);
@@ -617,6 +629,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_2048()
   ASSERT_NUM64_EQUALS(track_handle->file_track_offset, 0);
   ASSERT_NUM_EQUALS(track_handle->sector_size, sector_size);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 0);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
   free(image);
@@ -653,6 +666,7 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0_204
   ASSERT_NUM_EQUALS(track_handle->track_pregap_sectors, 150);
   ASSERT_NUM_EQUALS(track_handle->sector_size, sector_size);
   ASSERT_NUM_EQUALS(track_handle->sector_header_size, 0);
+  ASSERT_NUM_EQUALS(track_handle->raw_data_size, 2048);
 
   cdreader->close_track(track_handle);
   free(image);

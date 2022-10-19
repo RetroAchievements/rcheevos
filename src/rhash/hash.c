@@ -739,7 +739,7 @@ static int rc_hash_jaguar_cd(char hash[33], const char* path)
   sector = rc_cd_first_track_sector(track_handle);
   rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
 
-  for (i = 66; i < sizeof(buffer) - 32 - 4 * 3; i++)
+  for (i = 64; i < sizeof(buffer) - 32 - 4 * 3; i++)
   {
     if (memcmp(&buffer[i], "TARA IPARPVODED TA AEHDAREA RT I", 32) == 0)
     {
