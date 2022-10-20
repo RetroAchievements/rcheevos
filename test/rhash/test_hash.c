@@ -603,9 +603,8 @@ static void test_hash_atari_jaguar_cd_no_header()
   size_t image_size;
   uint8_t* image = generate_jaguarcd_bin(2, 32768, 1, &image_size);
   char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "56e257d21bf0cead91e35c3c97dafd5b";
 
-  image[2 + 64 + 12] = 'B'; // corrupt header
+  image[2 + 64 + 12] = 'B'; /* corrupt the header */
 
   mock_file(0, "game.cue", (uint8_t*)cue_file, strlen(cue_file));
   mock_file(1, "track02.bin", image, image_size);
@@ -647,7 +646,6 @@ static void test_hash_atari_jaguar_cd_no_sessions()
   size_t image_size;
   uint8_t* image = generate_jaguarcd_bin(2, 99200, 1, &image_size);
   char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "56e257d21bf0cead91e35c3c97dafd5b";
 
   mock_file(0, "game.cue", (uint8_t*)cue_file, strlen(cue_file));
   mock_file(1, "track03.bin", image, image_size);

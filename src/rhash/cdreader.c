@@ -819,13 +819,13 @@ static size_t cdreader_read_sector(void* track_handle, uint32_t sector, void* bu
   sector_start = (int64_t)(sector - cdrom->track_first_sector) * cdrom->sector_size + 
       cdrom->sector_header_size + cdrom->file_track_offset;
 
-  while (requested_bytes > cdrom->raw_data_size)
+  while (requested_bytes > (size_t)cdrom->raw_data_size)
   {
     rc_file_seek(cdrom->file_handle, sector_start, SEEK_SET);
     num_read = rc_file_read(cdrom->file_handle, buffer_ptr, cdrom->raw_data_size);
     total_read += num_read;
 
-    if (num_read < cdrom->raw_data_size)
+    if (num_read < (size_t)cdrom->raw_data_size)
       return total_read;
 
     buffer_ptr += cdrom->raw_data_size;

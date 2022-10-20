@@ -723,7 +723,7 @@ static int rc_hash_jaguar_cd(char hash[33], const char* path)
   unsigned offset = 0;
   unsigned sector = 0;
   unsigned remaining;
-  int i;
+  size_t i;
 
   /* Jaguar CD header is in the first sector of the first data track OF THE SECOND SESSION.
    * The first track must be an audio track, but may be a warning message or actual game audio */
