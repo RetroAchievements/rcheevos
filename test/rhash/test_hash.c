@@ -445,6 +445,235 @@ static void test_hash_atari_7800_with_header()
 
 /* ========================================================================= */
 
+static void test_hash_atari_jaguar_cd()
+{
+  const char* cue_file =
+      "REM SESSION 01\n"
+      "FILE \"track01.bin\" BINARY\n"
+      "  TRACK 01 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "REM SESSION 02\n"
+      "FILE \"track02.bin\" BINARY\n"
+      "  TRACK 02 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "FILE \"track03.bin\" BINARY\n"
+      "  TRACK 03 AUDIO\n"
+      "    INDEX 01 00:00:00\n";
+  size_t image_size;
+  uint8_t* image = generate_jaguarcd_bin(2, 60024, 0, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "c324d95dc5831c2d5c470eefb18c346b";
+
+  mock_file(0, "game.cue", (uint8_t*)cue_file, strlen(cue_file));
+  mock_file(1, "track02.bin", image, image_size);
+
+  rc_hash_init_default_cdreader(); /* want to test actual FIRST_OF_SECOND_SESSION calculation */
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ATARI_JAGUAR_CD, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  init_mock_cdreader();
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_atari_jaguar_cd_byteswapped()
+{
+  const char* cue_file =
+      "REM SESSION 01\n"
+      "FILE \"track01.bin\" BINARY\n"
+      "  TRACK 01 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "REM SESSION 02\n"
+      "FILE \"track02.bin\" BINARY\n"
+      "  TRACK 02 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "FILE \"track03.bin\" BINARY\n"
+      "  TRACK 03 AUDIO\n"
+      "    INDEX 01 00:00:00\n";
+  size_t image_size;
+  uint8_t* image = generate_jaguarcd_bin(2, 60024, 1, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "c324d95dc5831c2d5c470eefb18c346b";
+
+  mock_file(0, "game.cue", (uint8_t*)cue_file, strlen(cue_file));
+  mock_file(1, "track02.bin", image, image_size);
+
+  rc_hash_init_default_cdreader(); /* want to test actual FIRST_OF_SECOND_SESSION calculation */
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ATARI_JAGUAR_CD, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  init_mock_cdreader();
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_atari_jaguar_cd_track3()
+{
+  const char* cue_file =
+      "REM SESSION 01\n"
+      "FILE \"track01.bin\" BINARY\n"
+      "  TRACK 01 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "FILE \"track02.bin\" BINARY\n"
+      "  TRACK 02 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "REM SESSION 02\n"
+      "FILE \"track03.bin\" BINARY\n"
+      "  TRACK 03 AUDIO\n"
+      "    INDEX 01 00:00:00\n";
+  size_t image_size;
+  uint8_t* image = generate_jaguarcd_bin(1470, 99200, 1, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "060e9d223c584b581cf7d7ce17c0e5dc";
+
+  mock_file(0, "game.cue", (uint8_t*)cue_file, strlen(cue_file));
+  mock_file(1, "track03.bin", image, image_size);
+
+  rc_hash_init_default_cdreader(); /* want to test actual FIRST_OF_SECOND_SESSION calculation */
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ATARI_JAGUAR_CD, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  init_mock_cdreader();
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_atari_jaguar_cd_no_header()
+{
+  const char* cue_file =
+      "REM SESSION 01\n"
+      "FILE \"track01.bin\" BINARY\n"
+      "  TRACK 01 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "REM SESSION 02\n"
+      "FILE \"track02.bin\" BINARY\n"
+      "  TRACK 02 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "FILE \"track03.bin\" BINARY\n"
+      "  TRACK 03 AUDIO\n"
+      "    INDEX 01 00:00:00\n";
+  size_t image_size;
+  uint8_t* image = generate_jaguarcd_bin(2, 32768, 1, &image_size);
+  char hash_file[33], hash_iterator[33];
+
+  image[2 + 64 + 12] = 'B'; /* corrupt the header */
+
+  mock_file(0, "game.cue", (uint8_t*)cue_file, strlen(cue_file));
+  mock_file(1, "track02.bin", image, image_size);
+
+  rc_hash_init_default_cdreader(); /* want to test actual FIRST_OF_SECOND_SESSION calculation */
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ATARI_JAGUAR_CD, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  init_mock_cdreader();
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 0);
+  ASSERT_NUM_EQUALS(result_iterator, 0);
+}
+
+static void test_hash_atari_jaguar_cd_no_sessions()
+{
+  const char* cue_file =
+      "FILE \"track01.bin\" BINARY\n"
+      "  TRACK 01 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "FILE \"track02.bin\" BINARY\n"
+      "  TRACK 02 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "FILE \"track03.bin\" BINARY\n"
+      "  TRACK 03 AUDIO\n"
+      "    INDEX 01 00:00:00\n";
+  size_t image_size;
+  uint8_t* image = generate_jaguarcd_bin(2, 99200, 1, &image_size);
+  char hash_file[33], hash_iterator[33];
+
+  mock_file(0, "game.cue", (uint8_t*)cue_file, strlen(cue_file));
+  mock_file(1, "track03.bin", image, image_size);
+
+  rc_hash_init_default_cdreader(); /* want to test actual FIRST_OF_SECOND_SESSION calculation */
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ATARI_JAGUAR_CD, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  init_mock_cdreader();
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 0);
+  ASSERT_NUM_EQUALS(result_iterator, 0);
+}
+
+/* ========================================================================= */
+
 static void test_hash_dreamcast_single_bin()
 {
   size_t image_size;
@@ -1554,6 +1783,13 @@ void test_hash(void) {
 
   /* Atari Jaguar */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_JAGUAR, "test.jag", 0x400000, "a247ec8a8c42e18fcb80702dfadac14b");
+
+  /* Atari Jaguar CD */
+  TEST(test_hash_atari_jaguar_cd);
+  TEST(test_hash_atari_jaguar_cd_byteswapped);
+  TEST(test_hash_atari_jaguar_cd_track3);
+  TEST(test_hash_atari_jaguar_cd_no_header);
+  TEST(test_hash_atari_jaguar_cd_no_sessions);
 
   /* Colecovision */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_COLECOVISION, "test.col", 16384, "455f07d8500f3fabc54906737866167f");

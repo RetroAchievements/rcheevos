@@ -620,6 +620,38 @@ uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8
   return file_contents_start;
 }
 
+uint8_t* generate_jaguarcd_bin(unsigned header_offset, unsigned binary_size, int byteswapped, size_t* image_size)
+{
+  size_t size_needed = (((binary_size + 64 + 32 + 8) + 2351) / 2352) * 2352;
+  uint8_t* image = (uint8_t*)calloc(size_needed, 1);
+  int i;
+
+  /* header is 64 bytes of ATRI repeating followed by approved data message, load address, and binary size */
+  for (i = 0; i < 64; i += 4)
+      memcpy(&image[header_offset + i], "ATRI", 4);
+  memcpy(&image[header_offset + 64], "ATARI APPROVED DATA HEADER ATRI ", 32);
+  image[header_offset + 64 + 32 + 2] = 0xA0;
+  image[header_offset + 64 + 32 + 4 + 1] = (binary_size >> 16);
+  image[header_offset + 64 + 32 + 4 + 2] = (binary_size >> 8) & 0xFF;
+  image[header_offset + 64 + 32 + 4 + 3] = (binary_size & 0xFF);
+
+  /* binary data */
+  fill_image(&image[header_offset + 64 + 32 + 8], size_needed - (header_offset + 64 + 32 + 8));
+
+  if (byteswapped)
+  {
+      for (i = 0; i < size_needed; i += 2)
+      {
+          uint8_t tmp = image[i];
+          image[i] = image[i + 1];
+          image[i + 1] = tmp;
+      }
+  }
+
+  *image_size = size_needed;
+  return image;
+}
+
 uint8_t* generate_psx_bin(const char* binary_name, unsigned binary_size, size_t* image_size)
 {
   const unsigned sectors_needed = (((binary_size + 2047) / 2048) + 20);
