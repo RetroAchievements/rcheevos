@@ -293,8 +293,11 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
           break;
       }
 
-      if (!rc_validate_range(min_val, max_val, cond->oper, max, result + prefix_length, result_size - prefix_length))
+      if (rc_operand_is_float(&cond->operand2) && rc_operand_is_float(&cond->operand1)) {
+        /* both sides are floats, don't validate range*/
+      } else if (!rc_validate_range(min_val, max_val, cond->oper, max, result + prefix_length, result_size - prefix_length)) {
         return 0;
+      }
     }
 
     add_source_max = 0;
