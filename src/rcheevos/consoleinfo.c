@@ -555,6 +555,35 @@ static const rc_memory_region_t _rc_memory_regions_neo_geo_pocket[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_neo_geo_pocket = { _rc_memory_regions_neo_geo_pocket, 1 };
 
+/* ===== Neo Geo CD ===== */
+/* https://wiki.neogeodev.org/index.php?title=68k_memory_map */
+/* NeoCD exposes $000000-$1FFFFF as System RAM, but it seems like only the WORKRAM section is used.
+ * This is consistent with http://www.hardmvs.fr/manuals/NeoGeoProgrammersGuide.pdf (page25), which says:
+ *
+ *   Furthermore, the NEO-GEO provides addresses 100000H-10FFFFH as a work area, out of  which the
+ *   addresses 10F300H-10FFFFH are reserved exclusively for use by the system program. Therefore,
+ *   every game is to use addresses 100000H-10F2FFH.
+ *
+ * Also note that PRG files (game ROM) can be loaded anywhere else in the $000000-$1FFFFF range.
+ * AoF3 illustrates this pretty clearly: https://wiki.neogeodev.org/index.php?title=IPL_file
+ *
+ *   PROG_CD.PRG,0,0
+ *   PROG_CDX.PRG,0,058000
+ *   CNV_NM.PRG,0,0C0000
+ *   FIX_DATA.PRG,0,0FD000
+ *   OBJACTLK.PRG,0,130000
+ *   SSEL_CNV.PRG,0,15A000
+ *   SSEL_BAK.PRG,0,16F000
+ *   HITMSG.PRG,0,170000
+ *   SSEL_SPR.PRG,0,19D000
+ */
+static const rc_memory_region_t _rc_memory_regions_neo_geo_cd[] = {
+    { 0x000000U, 0x00F2FFU, 0x00100000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    /* NOTE: some BIOS settings are exposed through the reserved RAM: https://wiki.neogeodev.org/index.php?title=68k_ASM_defines */
+    { 0x00F300U, 0x00FFFFU, 0x0010F300U, RC_MEMORY_TYPE_SYSTEM_RAM, "Reserved RAM" },
+};
+static const rc_memory_regions_t rc_memory_regions_neo_geo_cd = { _rc_memory_regions_neo_geo_cd, 2 };
+
 /* ===== Nintendo Entertainment System ===== */
 /* https://wiki.nesdev.com/w/index.php/CPU_memory_map */
 static const rc_memory_region_t _rc_memory_regions_nes[] = {
@@ -889,6 +918,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_NEOGEO_POCKET:
       return &rc_memory_regions_neo_geo_pocket;
+
+    case RC_CONSOLE_NEO_GEO_CD:
+      return &rc_memory_regions_neo_geo_cd;
 
     case RC_CONSOLE_NINTENDO:
       return &rc_memory_regions_nes;
