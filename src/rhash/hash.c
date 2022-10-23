@@ -223,7 +223,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
 {
   uint8_t buffer[2048], *tmp;
   int sector;
-  unsigned num_sectors;
+  unsigned num_sectors = 0;
   size_t filename_length;
   const char* slash;
 
@@ -248,6 +248,8 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
   }
   else
   {
+    unsigned logical_block_size;
+
     /* find the cd information */
     if (!rc_cd_read_sector(track_handle, rc_cd_first_track_sector(track_handle) + 16, buffer, 256))
       return 0;
@@ -256,8 +258,15 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
      * https://www.cdroller.com/htm/readdata.html
      */
     sector = buffer[156 + 2] | (buffer[156 + 3] << 8) | (buffer[156 + 4] << 16);
-    num_sectors = (buffer[156 + 10] | (buffer[156 + 11] << 8)); /* length of section */
-    num_sectors /= (buffer[128] | (buffer[128 + 1] << 8)); /* logical block size */
+
+    /* if the table of contents spans more than one sector, it's length of section will exceed it's logical block size */
+    logical_block_size = (buffer[128] | (buffer[128 + 1] << 8)); /* logical block size */
+    if (logical_block_size == 0) {
+      num_sectors = 1;
+    } else {
+      num_sectors = (buffer[156 + 10] | (buffer[156 + 11] << 8)); /* length of section */
+      num_sectors /= logical_block_size;
+    }
   }
 
   /* fetch and process the directory record */
