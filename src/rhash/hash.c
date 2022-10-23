@@ -889,7 +889,7 @@ static int rc_hash_neogeo_cd(char hash[33], const char* path)
       {
         char error[128];
         rc_cd_close_track(track_handle);
-        snprintf(error, sizeof(error), "Could not read %s", start);
+        snprintf(error, sizeof(error), "Could not read %.16s", start);
         return rc_hash_error(error);
       }
     }
