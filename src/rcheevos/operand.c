@@ -320,6 +320,13 @@ int rc_operand_is_memref(const rc_operand_t* self) {
   }
 }
 
+int rc_operand_is_float(const rc_operand_t* self) {
+  if (self->type == RC_OPERAND_FP)
+    return 1;
+
+  return rc_operand_is_float_memref(self);
+}
+
 unsigned rc_transform_operand_value(unsigned value, const rc_operand_t* self) {
   switch (self->type)
   {

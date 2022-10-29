@@ -213,6 +213,10 @@ void test_float_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "A:Ff2345_fF1234=f2.3", "");
   TEST_PARAMS2(test_validate_trigger, "A:0xX2345_fF1234=f2.3", "");
   TEST_PARAMS2(test_validate_trigger, "A:Ff2345_0x1234=f2.3", "");
+  TEST_PARAMS2(test_validate_trigger, "fM1234>f2.3", "");
+  TEST_PARAMS2(test_validate_trigger, "fM1234>f-2.3", "");
+  TEST_PARAMS2(test_validate_trigger, "I:0xX2345_fM1234>f1.0", "");
+  TEST_PARAMS2(test_validate_trigger, "I:0xX2345_fM1234>f-1.0", "");
 }
 
 void test_conflicting_conditions() {
