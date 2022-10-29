@@ -1070,6 +1070,91 @@ static void test_hash_nds_buffered()
   ASSERT_STR_EQUALS(hash_iterator, expected_hash);
 }
 
+
+/* ========================================================================= */
+
+static void test_hash_neogeocd()
+{
+  const char* ipl_txt = "FIXA.FIX,0,0\r\nPROG.PRG,0,0\r\nSOUND.PCM,0,0\r\n\x1a";
+  const size_t prog_prg_size = 273470;
+  uint8_t* prog_prg = generate_generic_file(prog_prg_size);
+  size_t image_size;
+  uint8_t* image = generate_iso9660_bin(160, "TEST", &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "96f35b20c6cf902286da45e81a50b2a3";
+
+  generate_iso9660_file(image, "IPL.TXT", (uint8_t*)ipl_txt, strlen(ipl_txt));
+  generate_iso9660_file(image, "PROG.PRG", prog_prg, prog_prg_size);
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NEO_GEO_CD, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  free(prog_prg);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_neogeocd_multiple_prg()
+{
+  const char* ipl_txt = "FIXA.FIX,0,0\r\nPROG1.PRG,0,0\r\nSOUND.PCM,0,0\r\nPROG2.PRG,0,44000\r\n\x1a";
+  const size_t prog1_prg_size = 273470;
+  uint8_t* prog1_prg = generate_generic_file(prog1_prg_size);
+  const size_t prog2_prg_size = 13768;
+  uint8_t* prog2_prg = generate_generic_file(prog2_prg_size);
+  size_t image_size;
+  uint8_t* image = generate_iso9660_bin(160, "TEST", &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "d62df483c4786d3c63f27b6c5f17eeca";
+
+  generate_iso9660_file(image, "IPL.TXT", (uint8_t*)ipl_txt, strlen(ipl_txt));
+  generate_iso9660_file(image, "PROG1.PRG", prog1_prg, prog1_prg_size);
+  generate_iso9660_file(image, "PROG2.PRG", prog2_prg, prog2_prg_size);
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)"game.bin", 8);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NEO_GEO_CD, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  free(prog1_prg);
+  free(prog2_prg);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
 /* ========================================================================= */
 
 static void test_hash_pce_cd()
@@ -1846,6 +1931,10 @@ void test_hash(void) {
   /* MSX */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
+
+  /* Neo Geo CD */
+  TEST(test_hash_neogeocd);
+  TEST(test_hash_neogeocd_multiple_prg);
 
   /* Neo Geo Pocket */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_NEOGEO_POCKET, "test.ngc", 2097152, "cf86acf519625a25a17b1246975e90ae");
