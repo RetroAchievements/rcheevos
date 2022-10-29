@@ -339,6 +339,7 @@ static const unsigned rc_memref_masks[] = {
   0xffffffff, /* RC_MEMSIZE_32_BITS_BE */
   0xffffffff, /* RC_MEMSIZE_FLOAT      */
   0xffffffff, /* RC_MEMSIZE_MBF32      */
+  0xffffffff, /* RC_MEMSIZE_MBF32_LE   */
   0xffffffff  /* RC_MEMSIZE_VARIABLE   */
 };
 
