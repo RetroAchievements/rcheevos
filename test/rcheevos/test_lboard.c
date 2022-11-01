@@ -470,6 +470,72 @@ static void test_value_from_addhits() {
   ASSERT_NUM_EQUALS(value, 1);
 }
 
+static void test_value_from_float() {
+  /* bytes 5-8 are the float value for pi */
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56, 0xDB, 0x0F, 0x49, 0x40};
+  memory_t memory;
+  rc_lboard_t* lboard;
+  char buffer[1024];
+  int value;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_lboard(&lboard, buffer, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:fF0005");
+  lboard->state = RC_LBOARD_STATE_ACTIVE;
+
+  /* started, nothing to tally */
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 3);
+
+  /* canceled, expect no value */
+  ram[0] = 2;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_CANCELED);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* waiting to start, expect no value */
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* restarted */
+  ram[0] = 0;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 3);
+}
+
+static void test_value_from_float_scaled() {
+  /* bytes 5-8 are the float value for pi */
+  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56, 0xDB, 0x0F, 0x49, 0x40};
+  memory_t memory;
+  rc_lboard_t* lboard;
+  char buffer[1024];
+  int value;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_lboard(&lboard, buffer, "STA:0xH00=0::CAN:0xH00=2::SUB:0xH00=3::VAL:fF0005*100");
+  lboard->state = RC_LBOARD_STATE_ACTIVE;
+
+  /* started, nothing to tally */
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 314);
+
+  /* canceled, expect no value */
+  ram[0] = 2;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_CANCELED);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* waiting to start, expect no value */
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* restarted */
+  ram[0] = 0;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 314);
+}
+
 static void test_maximum_value_from_conditions() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -578,6 +644,8 @@ void test_lboard(void) {
 
   TEST(test_value_from_hitcount);
   TEST(test_value_from_addhits);
+  TEST(test_value_from_float);
+  TEST(test_value_from_float_scaled);
   TEST(test_maximum_value_from_conditions);
   TEST(test_measured_value_and_condition);
 
