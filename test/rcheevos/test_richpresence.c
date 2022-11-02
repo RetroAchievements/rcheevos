@@ -1180,14 +1180,14 @@ static void test_display_string_comment_only() {
   int lines;
   int result = rc_richpresence_size_lines("Display:\n// This is a comment\n// And another\n// And some whitespace", &lines);
   ASSERT_NUM_EQUALS(result, RC_MISSING_DISPLAY_STRING);
-  ASSERT_NUM_EQUALS(lines, 5); // end of file reached
+  ASSERT_NUM_EQUALS(lines, 5); /* end of file reached */
 }
 
 static void test_display_string_comment_with_blank_line() {
   int lines;
   int result = rc_richpresence_size_lines("Display:\n// This is a comment\n// And another\n\n// And some whitespace", &lines);
   ASSERT_NUM_EQUALS(result, RC_MISSING_DISPLAY_STRING);
-  ASSERT_NUM_EQUALS(lines, 4); // line 4 was blank
+  ASSERT_NUM_EQUALS(lines, 4); /* line 4 was blank */
 }
 
 void test_richpresence(void) {
