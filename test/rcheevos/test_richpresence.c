@@ -1156,6 +1156,39 @@ static void test_comments() {
   assert_richpresence_output(richpresence, &memory, "At ");
 }
 
+static void test_comments_between_lines() {
+  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "// Locations are fun!\nLookup:Location\n// lookup\n0=Zero\n// 0\n1=One\n// 1\n\n//Display goes here\nDisplay:\n// display\nAt @Location(0xH0000)\n// text\n\n//Written by User3");
+  assert_richpresence_output(richpresence, &memory, "At Zero");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "At One");
+
+  /* no entry - default to empty string */
+  ram[0] = 2;
+  assert_richpresence_output(richpresence, &memory, "At ");
+}
+
+static void test_display_string_comment_only() {
+  int lines;
+  int result = rc_richpresence_size_lines("Display:\n// This is a comment\n// And another\n// And some whitespace", &lines);
+  ASSERT_NUM_EQUALS(result, RC_MISSING_DISPLAY_STRING);
+  ASSERT_NUM_EQUALS(lines, 5); /* end of file reached */
+}
+
+static void test_display_string_comment_with_blank_line() {
+  int lines;
+  int result = rc_richpresence_size_lines("Display:\n// This is a comment\n// And another\n\n// And some whitespace", &lines);
+  ASSERT_NUM_EQUALS(result, RC_MISSING_DISPLAY_STRING);
+  ASSERT_NUM_EQUALS(lines, 4); /* line 4 was blank */
+}
 
 void test_richpresence(void) {
   TEST_SUITE_BEGIN();
@@ -1303,6 +1336,9 @@ void test_richpresence(void) {
   /* comments */
   TEST(test_random_text_between_sections); /* before official comments extra text was ignored, so was occassionally used to comment */
   TEST(test_comments);
+  TEST(test_comments_between_lines);
+  TEST(test_display_string_comment_only);
+  TEST(test_display_string_comment_with_blank_line);
 
   TEST_SUITE_END();
 }
