@@ -1934,6 +1934,43 @@ static void test_addsource_mask() {
   assert_hit_count(condset, 1, 2);
 }
 
+static void test_addsource_xor() {
+  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(1) ^ 0x05 + byte(2) == 22 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:0xH0001^h5_0xH0002=22");
+
+  /* sum (6 ^ 5 + 52 == 22) is not correct */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 0);
+
+  /* sum ((6 ^ 5 = 3) + 19 = 22) is correct */
+  ram[2] = 19;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+
+  /* sum ((17 ^ 5 = 20) + 19 = 22) is not correct */
+  ram[1] = 0x11;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+
+  /* sum ((17 ^ 5 = 20) + 2 = 22) is correct */
+  ram[2] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 2);
+}
+
 static void test_addsource_float_first() {
   unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0xC0, 0x3F}; /* fF0004 = 1.5 */
   memory_t memory;
@@ -3759,6 +3796,7 @@ void test_condset(void) {
   TEST(test_subsource_divide);
   TEST(test_addsource_compare_percentage);
   TEST(test_addsource_mask);
+  TEST(test_addsource_xor);
   TEST(test_addsource_float_first);
   TEST(test_addsource_float_second);
   TEST(test_subsource_mask);

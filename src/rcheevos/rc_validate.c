@@ -69,6 +69,9 @@ static unsigned rc_scale_value(unsigned value, char oper, const rc_operand_t* op
     case RC_OPERATOR_AND:
       return rc_max_value(operand);
 
+    case RC_OPERATOR_XOR:
+      return value | rc_max_value(operand);
+
     default:
       return value;
   }
