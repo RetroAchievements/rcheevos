@@ -117,13 +117,13 @@ static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_
   return rc_test_condition(cond, &eval_state);
 }
 
-static void test_evaluate_condition(const char* memaddr, int expected_result) {
+static void test_evaluate_condition(const char* memaddr, int expected_comparator, int expected_result) {
   rc_condition_t* self;
   rc_parse_state_t parse;
   char buffer[512];
   rc_memref_t* memrefs;
   int ret;
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  unsigned char ram[] = {0x00, 0x11, 0x34, 0xAB, 0x56};
   memory_t memory;
 
   memory.ram = ram;
@@ -137,6 +137,10 @@ static void test_evaluate_condition(const char* memaddr, int expected_result) {
   ASSERT_NUM_GREATER(parse.offset, 0);
   ASSERT_NUM_EQUALS(*memaddr, 0);
 
+  rc_update_memref_values(memrefs, peek, &memory); // capture delta for ram[1]
+  ram[1] = 0x12;
+
+  ASSERT_NUM_EQUALS(self->optimized_comparator, expected_comparator);
   ret = evaluate_condition(self, &memory, memrefs);
 
   if (expected_result) {
@@ -144,6 +148,29 @@ static void test_evaluate_condition(const char* memaddr, int expected_result) {
   } else {
     ASSERT_NUM_EQUALS(ret, 0);
   }
+}
+
+static void test_default_comparator(const char* memaddr) {
+  rc_condset_t* condset;
+  rc_condition_t* condition;
+  rc_parse_state_t parse;
+  char buffer[512];
+  rc_memref_t* memrefs;
+
+  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+  condset = rc_parse_condset(&memaddr, &parse, 0);
+  rc_destroy_parse_state(&parse);
+
+  ASSERT_NUM_GREATER(parse.offset, 0);
+  ASSERT_NUM_EQUALS(*memaddr, 0);
+
+  condition = condset->conditions;
+  while (condition->next)
+    condition = condition->next;
+
+  /* expect last condition to have default comparator - that's the point of this test */
+  ASSERT_NUM_EQUALS(condition->optimized_comparator, RC_PROCESSING_COMPARE_DEFAULT);
 }
 
 static void test_evaluate_condition_float(const char* memaddr, int expected_result) {
@@ -392,20 +419,97 @@ void test_condition(void) {
   TEST_PARAMS2(test_parse_condition_error, "0.1234==0", RC_INVALID_OPERATOR); /* period is assumed to be operator */
   TEST_PARAMS2(test_parse_condition_error, "0==0.1234", RC_INVALID_REQUIRED_HITS); /* period is assumed to be start of hit target, no end marker */
 
-  /* simple evaluations (ram[1] = 18, ram[2] = 52) */
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001=18", 1);
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001!=18", 0);
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001<=18", 1);
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001>=18", 1);
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001<18", 0);
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001>18", 0);
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001>0", 1);
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001!=0", 1);
+  /* simple evaluations (ram[1] = 18, delta(ram[1]) = 17, ram[2] = 52, delta(ram[2]) = 52) */
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001!=0", RC_PROCESSING_COMPARE_MEMREF_TO_CONST, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001>0", RC_PROCESSING_COMPARE_MEMREF_TO_CONST, 1);
 
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001<0xH0002", 1);
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001>0xH0002", 0);
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001=0xH0001", 1);
-  TEST_PARAMS2(test_evaluate_condition, "0xH0001!=0xH0002", 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001=18", RC_PROCESSING_COMPARE_MEMREF_TO_CONST, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001!=18", RC_PROCESSING_COMPARE_MEMREF_TO_CONST, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001<=18", RC_PROCESSING_COMPARE_MEMREF_TO_CONST, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001>=18", RC_PROCESSING_COMPARE_MEMREF_TO_CONST, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001<18", RC_PROCESSING_COMPARE_MEMREF_TO_CONST, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001>18", RC_PROCESSING_COMPARE_MEMREF_TO_CONST, 0);
+
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001=18", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 0);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001!=18", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001<=18", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001>=18", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 0);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001<18", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001>18", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 0);
+
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002=52", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002!=52", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 0);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002<=52", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002>=52", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002<52", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 0);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002>52", RC_PROCESSING_COMPARE_DELTA_TO_CONST, 0);
+
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001<0xH0002", RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001>0xH0002", RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001=0xH0002", RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001!=0xH0002", RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF, 1);
+
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001=d0xH0001", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001!=d0xH0001", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001<=d0xH0001", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001>=d0xH0001", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001<d0xH0001", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001>d0xH0001", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 1);
+
+  TEST_PARAMS3(test_evaluate_condition, "0xH0002=d0xH0002", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0002!=d0xH0002", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0002<=d0xH0002", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0002>=d0xH0002", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0002<d0xH0002", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0002>d0xH0002", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA, 0);
+
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001=0xH0001", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 0);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001!=0xH0001", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001<=0xH0001", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001>=0xH0001", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 0);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001<0xH0001", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0001>0xH0001", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 0);
+
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002=0xH0002", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002!=0xH0002", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 0);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002<=0xH0002", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002>=0xH0002", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002<0xH0002", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 0);
+  TEST_PARAMS3(test_evaluate_condition, "d0xH0002>0xH0002", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF, 0);
+
+  TEST_PARAMS3(test_evaluate_condition, "0xM0001=1", RC_PROCESSING_COMPARE_MEMREF_TO_CONST_TRANSFORMED, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xM0001!=1", RC_PROCESSING_COMPARE_MEMREF_TO_CONST_TRANSFORMED, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xK0001=2", RC_PROCESSING_COMPARE_MEMREF_TO_CONST_TRANSFORMED, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xK0001!=2", RC_PROCESSING_COMPARE_MEMREF_TO_CONST_TRANSFORMED, 0);
+
+  TEST_PARAMS3(test_evaluate_condition, "d0xM0001=1", RC_PROCESSING_COMPARE_DELTA_TO_CONST_TRANSFORMED, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xM0001!=1", RC_PROCESSING_COMPARE_DELTA_TO_CONST_TRANSFORMED, 0);
+  TEST_PARAMS3(test_evaluate_condition, "d0xM0002=1", RC_PROCESSING_COMPARE_DELTA_TO_CONST_TRANSFORMED, 0);
+  TEST_PARAMS3(test_evaluate_condition, "d0xM0002!=1", RC_PROCESSING_COMPARE_DELTA_TO_CONST_TRANSFORMED, 1);
+
+  TEST_PARAMS3(test_evaluate_condition, "0xM0001=0xN0001", RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF_TRANSFORMED, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xM0001!=0xN0001", RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF_TRANSFORMED, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xM0001=0xH0000", RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF_TRANSFORMED, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xM0001!=0xH0000", RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF_TRANSFORMED, 0);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0000=0xM0001", RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF_TRANSFORMED, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0000!=0xM0001", RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF_TRANSFORMED, 0);
+
+  TEST_PARAMS3(test_evaluate_condition, "0xM0001=d0xN0001", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA_TRANSFORMED, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xM0001!=d0xN0001", RC_PROCESSING_COMPARE_MEMREF_TO_DELTA_TRANSFORMED, 0);
+
+  TEST_PARAMS3(test_evaluate_condition, "d0xM0001=0xN0001", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF_TRANSFORMED, 1);
+  TEST_PARAMS3(test_evaluate_condition, "d0xM0001!=0xN0001", RC_PROCESSING_COMPARE_DELTA_TO_MEMREF_TRANSFORMED, 0);
+
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001=0xH0001", RC_PROCESSING_COMPARE_ALWAYS_TRUE, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0xH0001!=0xH0001", RC_PROCESSING_COMPARE_ALWAYS_FALSE, 0);
+  TEST_PARAMS3(test_evaluate_condition, "1=1", RC_PROCESSING_COMPARE_ALWAYS_TRUE, 1);
+  TEST_PARAMS3(test_evaluate_condition, "0=1", RC_PROCESSING_COMPARE_ALWAYS_FALSE, 0);
+
+  TEST_PARAMS1(test_default_comparator, "I:0xH0000_0xH0001=0"); /* indirect cannot be optimized */
+  TEST_PARAMS1(test_default_comparator, "fF0001=f2.0"); /* float is not common enough to be optimized */
+  TEST_PARAMS1(test_default_comparator, "p0xH0001=0"); /* prior is not common enough to be optimized */
+  TEST_PARAMS1(test_default_comparator, "b0xH0001=0"); /* bcd is not common enough to be optimized */
+  TEST_PARAMS1(test_default_comparator, "~0xH0001=0"); /* inverted is not common enough to be optimized */
 
   /* float evaluations (ram[0] = 2.0, ram[4] = 3.14159 */
   TEST_PARAMS2(test_evaluate_condition_float, "fF0000=f2.0", 1);
