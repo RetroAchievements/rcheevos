@@ -11,6 +11,8 @@
 #include "rcheevos/mock_memory.h"
 #endif
 
+#define TIMING_TEST 0
+
 static void test_lua(void) {
   {
     /*------------------------------------------------------------------------
@@ -44,6 +46,8 @@ static void test_lua(void) {
   }
 }
 
+extern void test_timing();
+
 extern void test_condition();
 extern void test_memref();
 extern void test_operand();
@@ -76,6 +80,9 @@ TEST_FRAMEWORK_DECLARATIONS()
 int main(void) {
   TEST_FRAMEWORK_INIT();
 
+#if TIMING_TEST
+  test_timing();
+#else
   test_memref();
   test_operand();
   test_condition();
@@ -104,6 +111,7 @@ int main(void) {
   test_rapi_runtime();
   test_rapi_info();
   test_rapi_editor();
+#endif
 
   TEST_FRAMEWORK_SHUTDOWN();
 
