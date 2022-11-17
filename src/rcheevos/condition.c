@@ -287,7 +287,8 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     self->required_hits = 0;
   }
 
-  self->optimized_comparator = rc_condition_determine_comparator(self);
+  if (parse->buffer != 0)
+    self->optimized_comparator = rc_condition_determine_comparator(self);
 
   *memaddr = aux;
   return self;
