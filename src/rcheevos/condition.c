@@ -45,28 +45,41 @@ static char rc_condition_determine_comparator(const rc_condition_t* self) {
     else if ((self->operand2.type == RC_OPERAND_ADDRESS || self->operand2.type == RC_OPERAND_DELTA) &&
              !self->operand2.value.memref->value.is_indirect && !rc_operand_is_float(&self->operand2)) {
       /* right side is an integer memory reference */
+      const int is_same_memref = (self->operand1.value.memref == self->operand2.value.memref);
       needs_translate |= (self->operand2.size != self->operand2.value.memref->value.size);
 
       if (self->operand1.type == RC_OPERAND_ADDRESS) {
         if (self->operand2.type == RC_OPERAND_ADDRESS) {
-          if (self->operand1.value.memref == self->operand2.value.memref && self->operand1.size == self->operand2.size)
+          if (is_same_memref && !needs_translate) {
+            /* comparing a memref to itself, will evaluate to a constant */
             return rc_test_condition_compare(0, 0, self->oper) ? RC_PROCESSING_COMPARE_ALWAYS_TRUE : RC_PROCESSING_COMPARE_ALWAYS_FALSE;
+          }
 
           return needs_translate ? RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF_TRANSFORMED : RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF;
         }
 
         assert(self->operand2.type == RC_OPERAND_DELTA);
-        return needs_translate ? RC_PROCESSING_COMPARE_MEMREF_TO_DELTA_TRANSFORMED : RC_PROCESSING_COMPARE_MEMREF_TO_DELTA;
+
+        if (is_same_memref) {
+          /* delta comparison is optimized to compare with itself (for detecting change) */
+          return needs_translate ? RC_PROCESSING_COMPARE_MEMREF_TO_DELTA_TRANSFORMED : RC_PROCESSING_COMPARE_MEMREF_TO_DELTA;
+        }
       }
+      else {
+        assert(self->operand1.type == RC_OPERAND_DELTA);
 
-      assert(self->operand1.type == RC_OPERAND_DELTA);
-
-      if (self->operand2.type == RC_OPERAND_ADDRESS)
-        return needs_translate ? RC_PROCESSING_COMPARE_DELTA_TO_MEMREF_TRANSFORMED : RC_PROCESSING_COMPARE_DELTA_TO_MEMREF;
+        if (self->operand2.type == RC_OPERAND_ADDRESS) {
+          if (is_same_memref) {
+            /* delta comparison is optimized to compare with itself (for detecting change) */
+            return needs_translate ? RC_PROCESSING_COMPARE_DELTA_TO_MEMREF_TRANSFORMED : RC_PROCESSING_COMPARE_DELTA_TO_MEMREF;
+          }
+        }
+      }
     }
   }
 
   if (self->operand1.type == RC_OPERAND_CONST && self->operand2.type == RC_OPERAND_CONST) {
+    /* comparing constants will always generate a constant result */
     return rc_test_condition_compare(self->operand1.value.num, self->operand2.value.num, self->oper) ?
         RC_PROCESSING_COMPARE_ALWAYS_TRUE : RC_PROCESSING_COMPARE_ALWAYS_FALSE;
   }

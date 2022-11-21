@@ -613,7 +613,7 @@ void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
   char image_path[1024];
   char* m3u_contents;
   char* ptr;
-  size_t file_len;
+  int64_t file_len;
   void* file_handle;
   int index = 0;
 

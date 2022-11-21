@@ -510,6 +510,10 @@ void test_condition(void) {
   TEST_PARAMS1(test_default_comparator, "p0xH0001=0"); /* prior is not common enough to be optimized */
   TEST_PARAMS1(test_default_comparator, "b0xH0001=0"); /* bcd is not common enough to be optimized */
   TEST_PARAMS1(test_default_comparator, "~0xH0001=0"); /* inverted is not common enough to be optimized */
+  TEST_PARAMS1(test_default_comparator, "d0xH0001=0x 0001"); /* delta comparison only optimized for same address, same size */
+  TEST_PARAMS1(test_default_comparator, "0xH0001=d0x 0001"); /* delta comparison only optimized for same address, same size */
+  TEST_PARAMS1(test_default_comparator, "d0xH0001=0xH0002"); /* delta comparison only optimized for same address, same size */
+  TEST_PARAMS1(test_default_comparator, "0xH0001=d0xH0002"); /* delta comparison only optimized for same address, same size */
 
   /* float evaluations (ram[0] = 2.0, ram[4] = 3.14159 */
   TEST_PARAMS2(test_evaluate_condition_float, "fF0000=f2.0", 1);
