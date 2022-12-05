@@ -1959,6 +1959,7 @@ void test_hash(void) {
   TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91");
   TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
   TEST_PARAMS4(test_hash_n64_file, "game.z64", test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
+  TEST_PARAMS3(test_hash_n64, test_rom_ndd, sizeof(test_rom_ndd), "a698b32a52970d8a52a5a52c83acc2a9");
 
   /* Nintendo DS */
   TEST(test_hash_nds);
