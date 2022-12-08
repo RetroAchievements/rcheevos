@@ -693,6 +693,14 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_layer_5", "enabled");
   TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_layer_5", "disabled");
 
+  TEST_PARAMS3(test_allowed_setting,    "VICE x64", "vice_autostart", "enabled");
+  TEST_PARAMS3(test_disallowed_setting, "VICE x64", "vice_autostart", "disabled");
+  TEST_PARAMS3(test_allowed_setting,    "VICE x64", "vice_autostart", "warp");
+  TEST_PARAMS3(test_allowed_setting,    "VICE x64", "vice_reset", "autostart");
+  TEST_PARAMS3(test_disallowed_setting, "VICE x64", "vice_reset", "soft");
+  TEST_PARAMS3(test_disallowed_setting, "VICE x64", "vice_reset", "hard");
+  TEST_PARAMS3(test_disallowed_setting, "VICE x64", "vice_reset", "freeze");
+
   TEST_PARAMS3(test_allowed_setting,    "Virtual Jaguar", "virtualjaguar_pal", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "Virtual Jaguar", "virtualjaguar_pal", "enabled");
 

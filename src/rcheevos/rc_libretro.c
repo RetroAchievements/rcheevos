@@ -129,6 +129,12 @@ static const rc_disallowed_setting_t _rc_disallowed_snes9x_settings[] = {
   { NULL, NULL }
 };
 
+static const rc_disallowed_setting_t _rc_disallowed_vice_settings[] = {
+  { "vice_autostart", "disabled" }, /* autostart dictates initial load and reset from menu */
+  { "vice_reset", "!autostart" }, /* reset dictates behavior when pressing reset button (END) */
+  { NULL, NULL }
+};
+
 static const rc_disallowed_setting_t _rc_disallowed_virtual_jaguar_settings[] = {
   { "virtualjaguar_pal", "enabled" },
   { NULL, NULL }
@@ -152,6 +158,7 @@ static const rc_disallowed_core_settings_t rc_disallowed_core_settings[] = {
   { "QUASI88", _rc_disallowed_quasi88_settings },
   { "SMS Plus GX", _rc_disallowed_smsplus_settings },
   { "Snes9x", _rc_disallowed_snes9x_settings },
+  { "VICE x64", _rc_disallowed_vice_settings },
   { "Virtual Jaguar", _rc_disallowed_virtual_jaguar_settings },
   { NULL, NULL }
 };
