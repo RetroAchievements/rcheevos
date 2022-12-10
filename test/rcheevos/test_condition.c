@@ -137,7 +137,7 @@ static void test_evaluate_condition(const char* memaddr, int expected_comparator
   ASSERT_NUM_GREATER(parse.offset, 0);
   ASSERT_NUM_EQUALS(*memaddr, 0);
 
-  rc_update_memref_values(memrefs, peek, &memory); // capture delta for ram[1]
+  rc_update_memref_values(memrefs, peek, &memory); /* capture delta for ram[1] */
   ram[1] = 0x12;
 
   ASSERT_NUM_EQUALS(self->optimized_comparator, expected_comparator);
