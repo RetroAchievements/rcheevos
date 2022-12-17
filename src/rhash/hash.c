@@ -966,6 +966,9 @@ static int rc_hash_n64(char hash[33], const char* path)
     rc_hash_verbose("converting n64 to z64");
     is_n64 = 1;
   }
+  else if (buffer[0] == 0xE8 || buffer[0] == 0x22) /* ndd format (don't byteswap) */
+  {
+  }
   else
   {
     free(buffer);

@@ -31,6 +31,7 @@ uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8
 extern uint8_t test_rom_z64[64];
 extern uint8_t test_rom_n64[64];
 extern uint8_t test_rom_v64[64];
+extern uint8_t test_rom_ndd[64];
 
 #ifdef __cplusplus
 }
