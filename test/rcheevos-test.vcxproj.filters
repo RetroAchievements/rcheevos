@@ -285,6 +285,9 @@
     <ClCompile Include="rcheevos\test_rc_validate.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="rcheevos\test_timing.c">
+      <Filter>tests\rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">
