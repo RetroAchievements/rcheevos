@@ -839,6 +839,65 @@ static void test_primed_event(void)
   rc_runtime_destroy(&runtime);
 }
 
+static void test_progress_event(void)
+{
+  unsigned char ram[] = { 0, 1 };
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  /* measured(byte(0x0001) >= 10) */
+  assert_activate_achievement(&runtime, 1, "M:0xH0001>=10");
+  runtime.triggers[0].trigger->state = RC_TRIGGER_STATE_ACTIVE;
+
+  /* should not receive notification when initialized first measured value */
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* unchanged */
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* increased */
+  ram[1] = 2;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 1, 2);
+
+  /* unchanged */
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* decreased */
+  ram[1] = 0;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 1, 0);
+
+  /* increased */
+  ram[1] = 9;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 1, 9);
+
+  /* triggered. should not receive change event */
+  ram[1] = 10;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
+
+  /* no longer active */
+  ram[1] = 11;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_lboard(void)
 {
   unsigned char ram[] = { 2, 10, 10 };
@@ -1439,6 +1498,7 @@ void test_runtime(void) {
   TEST(test_reset_event);
   TEST(test_paused_event);
   TEST(test_primed_event);
+  TEST(test_progress_event);
 
   /* leaderboards */
   TEST(test_lboard);
