@@ -569,7 +569,8 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 
     /* if the measured value changed and the achievement hasn't triggered, send a notification */
     if (trigger->measured_value != old_measured_value && old_measured_value != RC_MEASURED_UNKNOWN &&
-        trigger->measured_target != 0 && new_state != RC_TRIGGER_STATE_TRIGGERED &&
+        trigger->measured_target != 0 && trigger->measured_value <= trigger->measured_target &&
+        new_state != RC_TRIGGER_STATE_TRIGGERED &&
         new_state != RC_TRIGGER_STATE_INACTIVE && new_state != RC_TRIGGER_STATE_WAITING) {
 
       runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED;
