@@ -571,10 +571,24 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     if (trigger->measured_value != old_measured_value && old_measured_value != RC_MEASURED_UNKNOWN &&
         trigger->measured_target != 0 && new_state != RC_TRIGGER_STATE_TRIGGERED &&
         new_state != RC_TRIGGER_STATE_INACTIVE && new_state != RC_TRIGGER_STATE_WAITING) {
+
       runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED;
       runtime_event.id = self->triggers[i].id;
-      runtime_event.value = trigger->measured_value;
-      event_handler(&runtime_event);
+
+      if (trigger->measured_as_percent) {
+        /* if reporting measured value as a percentage, only send the notification if the percentage changes */
+        unsigned old_percent = (unsigned)(((unsigned long long)old_measured_value * 100) / trigger->measured_target);
+        unsigned new_percent = (unsigned)(((unsigned long long)trigger->measured_value * 100) / trigger->measured_target);
+        if (old_percent != new_percent) {
+          runtime_event.value = new_percent;
+          event_handler(&runtime_event);
+        }
+      }
+      else {
+        runtime_event.value = trigger->measured_value;
+        event_handler(&runtime_event);
+      }
+
       runtime_event.value = 0; /* achievement loop expects this to stay at 0 */
     }
 
