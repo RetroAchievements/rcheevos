@@ -83,6 +83,8 @@ typedef struct {
 }
 rc_typed_value_t;
 
+#define RC_MEASURED_UNKNOWN 0xFFFFFFFF
+
 typedef struct {
   rc_typed_value_t add_value;/* AddSource/SubSource */
   int add_hits;             /* AddHits */
