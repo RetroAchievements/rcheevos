@@ -1897,6 +1897,43 @@ static void test_addsource_divide_address() {
   assert_hit_count(condset, 1, 2);
 }
 
+static void test_addsource_divide_self() {
+  unsigned char ram[] = {0x00, 0x06, 0x10, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(1) / byte(1) + byte(2) == 22 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:0xH0001/0xH00001_0xH0002=22");
+
+  /* sum is not correct (1 + 16 != 22) */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 0);
+
+  /* sum is correct (1 + 21 == 22) */
+  ram[2] = 21;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+
+  /* sum is not correct (0 + 21 == 22) */
+  ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+
+  /* sum is correct (0 + 22 == 22) */
+  ram[2] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 2);
+}
+
 static void test_addsource_mask() {
   unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3793,6 +3830,7 @@ void test_condset(void) {
   TEST(test_addsource_multiply_address);
   TEST(test_addsource_divide);
   TEST(test_addsource_divide_address);
+  TEST(test_addsource_divide_self);
   TEST(test_subsource_divide);
   TEST(test_addsource_compare_percentage);
   TEST(test_addsource_mask);
