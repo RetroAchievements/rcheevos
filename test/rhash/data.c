@@ -534,6 +534,10 @@ uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8
       (image[root_directory_record_offset - 3] << 8) | (image[root_directory_record_offset - 2] << 16);
   const char* separator;
 
+  /* we start at the root. ignore explicit root path */
+  if (*filename == '\\')
+    ++filename;
+
   /* handle subdirectories */
   do
   {
