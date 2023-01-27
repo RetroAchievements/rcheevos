@@ -385,6 +385,64 @@ static void test_achievement_measured_maxint(void)
   rc_runtime_destroy(&runtime);
 }
 
+static void test_two_achievements_differing_resets_in_alts(void)
+{
+  unsigned char ram[] = { 0, 10, 10 };
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=10S1=1SR:0xH0000!=0");
+  assert_activate_achievement(&runtime, 2, "0xH0001=10S1=1SR:0xH0000!=1");
+
+  /* first achievement true (stays waiting), second not true because of reset */
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 2, 0);
+
+  /* both achievements are false, should activate */
+  ram[1] = 9;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
+
+  /* first should fire, second prevented by reset */
+  ram[1] = 10;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
+
+  /* second can fire, reset first which will be activated due to reset */
+  ram[0] = 1;
+  rc_reset_trigger(runtime.triggers[0].trigger);
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 2, 0);
+
+  /* both achievements are false again. second should active, first should be ignored */
+  ram[0] = 0;
+  assert_do_frame(&runtime, &memory);
+  ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
+  ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_shared_memref(void)
 {
   unsigned char ram[] = { 0, 10, 10 };
@@ -1557,6 +1615,7 @@ void test_runtime(void) {
   TEST(test_deactivate_achievements);
   TEST(test_achievement_measured);
   TEST(test_achievement_measured_maxint);
+  TEST(test_two_achievements_differing_resets_in_alts);
 
   TEST(test_shared_memref);
   TEST(test_replace_active_trigger);
