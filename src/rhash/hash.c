@@ -883,7 +883,7 @@ static int rc_hash_neogeo_cd(char hash[33], const char* path)
     while (*ptr && *ptr != '.')
       ++ptr;
 
-    if (memcmp(ptr, ".PRG", 4) == 0)
+    if (strncasecmp(ptr, ".PRG", 4) == 0)
     {
       ptr += 4;
       *ptr++ = '\0';
