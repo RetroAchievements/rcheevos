@@ -268,7 +268,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
     if (logical_block_size == 0) {
       num_sectors = 1;
     } else {
-      num_sectors = (buffer[156 + 10] | (buffer[156 + 11] << 8)); /* length of section */
+      num_sectors = (buffer[156 + 10] | (buffer[156 + 11] << 8) | (buffer[156 + 12] << 16) | (buffer[156 + 13] << 24)); /* length of section */
       num_sectors /= logical_block_size;
     }
   }
@@ -278,9 +278,9 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
     return 0;
 
   tmp = buffer;
-  while (tmp < buffer + sizeof(buffer))
+  do
   {
-    if (!*tmp)
+    if (tmp >= buffer + sizeof(buffer) || !*tmp)
     {
       /* end of this path table block. if the path table spans multiple sectors, keep scanning */
       if (num_sectors > 1)
@@ -316,7 +316,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uns
 
     /* the first byte of the record is the length of the record */
     tmp += *tmp;
-  }
+  } while (1);
 
   return 0;
 }
