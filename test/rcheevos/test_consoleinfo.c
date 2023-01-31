@@ -116,7 +116,8 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 75, "Elektor TV Games Computer");
   TEST_PARAMS2(test_name, 76, "PC Engine CD");
   TEST_PARAMS2(test_name, 77, "Atari Jaguar CD");
-  TEST_PARAMS2(test_name, 78, "Unknown");
+  TEST_PARAMS2(test_name, 78, "Nintendo DSi");
+  TEST_PARAMS2(test_name, 79, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
@@ -154,7 +155,8 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_NEO_GEO_CD, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_NINTENDO, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_NINTENDO_64, 0x800000);
-  TEST_PARAMS2(test_memory, RC_CONSOLE_NINTENDO_DS, 0x1000000);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_NINTENDO_DS, 0x0400000);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_NINTENDO_DSI, 0x1000000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ORIC, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_PC8800, 0x011000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_PC_ENGINE, 0x02000);

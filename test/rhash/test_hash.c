@@ -1070,6 +1070,67 @@ static void test_hash_nds_buffered()
   ASSERT_STR_EQUALS(hash_iterator, expected_hash);
 }
 
+/* ========================================================================= */
+
+static void test_hash_dsi()
+{
+  size_t image_size;
+  uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
+
+  mock_file(0, "game.nds", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO_DSI, "game.nds");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.nds", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_hash);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
+}
+
+static void test_hash_dsi_buffered()
+{
+  size_t image_size;
+  uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
+  char hash_buffer[33], hash_iterator[33];
+  const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
+
+  /* test file hash */
+  int result_buffer = rc_hash_generate_from_buffer(hash_buffer, RC_CONSOLE_NINTENDO_DSI, image, image_size);
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.nds", image, image_size);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_buffer, 1);
+  ASSERT_STR_EQUALS(hash_buffer, expected_hash);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
+}
 
 /* ========================================================================= */
 
@@ -2000,6 +2061,10 @@ void test_hash(void) {
   TEST(test_hash_nds);
   TEST(test_hash_nds_supercard);
   TEST(test_hash_nds_buffered);
+
+  /* Nintendo DSi */
+  TEST(test_hash_dsi);
+  TEST(test_hash_dsi_buffered);
 
   /* Oric (no fixed file size) */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ORIC, "test.tap", 18119, "953a2baa3232c63286aeae36b2172cef");

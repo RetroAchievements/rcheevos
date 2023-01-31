@@ -135,6 +135,9 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_NINTENDO_DS:
       return "Nintendo DS";
 
+    case RC_CONSOLE_NINTENDO_DSI:
+      return "Nintendo DSi";
+
     case RC_CONSOLE_NINTENDO_3DS:
       return "Nintendo 3DS";
 
@@ -626,12 +629,17 @@ static const rc_memory_regions_t rc_memory_regions_n64 = { _rc_memory_regions_n6
 
 /* ===== Nintendo DS ===== */
 /* https://www.akkit.org/info/gbatek.htm#dsmemorymaps */
-/* https://problemkaputt.de/gbatek.htm#dsiiomap */
 static const rc_memory_region_t _rc_memory_regions_nintendo_ds[] = {
-    { 0x000000U, 0x3FFFFFU, 0x02000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
-    { 0x400000U, 0xFFFFFFU, 0x02400000U, RC_MEMORY_TYPE_SYSTEM_RAM, "DSi Extended RAM" }
+    { 0x000000U, 0x3FFFFFU, 0x02000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
 };
-static const rc_memory_regions_t rc_memory_regions_nintendo_ds = { _rc_memory_regions_nintendo_ds, 2 };
+static const rc_memory_regions_t rc_memory_regions_nintendo_ds = { _rc_memory_regions_nintendo_ds, 1 };
+
+/* ===== Nintendo DSi ===== */
+/* https://problemkaputt.de/gbatek.htm#dsiiomap */
+static const rc_memory_region_t _rc_memory_regions_nintendo_dsi[] = {
+    { 0x000000U, 0xFFFFFFU, 0x02000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_nintendo_dsi = { _rc_memory_regions_nintendo_dsi, 1 };
 
 /* ===== Oric ===== */
 static const rc_memory_region_t _rc_memory_regions_oric[] = {
@@ -932,6 +940,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_NINTENDO_DS:
       return &rc_memory_regions_nintendo_ds;
+
+    case RC_CONSOLE_NINTENDO_DSI:
+      return &rc_memory_regions_nintendo_dsi;
 
     case RC_CONSOLE_ORIC:
       return &rc_memory_regions_oric;
