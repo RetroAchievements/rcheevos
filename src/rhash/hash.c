@@ -1857,6 +1857,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* b
 
     case RC_CONSOLE_NINTENDO_64:
     case RC_CONSOLE_NINTENDO_DS:
+    case RC_CONSOLE_NINTENDO_DSI:
       return rc_hash_file_from_buffer(hash, console_id, buffer, buffer_size);
   }
 }
@@ -2174,6 +2175,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
       return rc_hash_n64(hash, path);
 
     case RC_CONSOLE_NINTENDO_DS:
+    case RC_CONSOLE_NINTENDO_DSI:
       return rc_hash_nintendo_ds(hash, path);
 
     case RC_CONSOLE_PC_ENGINE_CD:
@@ -2537,7 +2539,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "nds"))
         {
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO_DS;
+          iterator->consoles[0] = RC_CONSOLE_NINTENDO_DS; /* ASSERT: handles both DS and DSi */
         }
         else if (rc_path_compare_extension(ext, "n64") ||
                  rc_path_compare_extension(ext, "ndd"))

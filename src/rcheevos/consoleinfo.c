@@ -135,6 +135,9 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_NINTENDO_DS:
       return "Nintendo DS";
 
+    case RC_CONSOLE_NINTENDO_DSI:
+      return "Nintendo DSi";
+
     case RC_CONSOLE_NINTENDO_3DS:
       return "Nintendo 3DS";
 
@@ -631,6 +634,13 @@ static const rc_memory_region_t _rc_memory_regions_nintendo_ds[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_nintendo_ds = { _rc_memory_regions_nintendo_ds, 1 };
 
+/* ===== Nintendo DSi ===== */
+/* https://problemkaputt.de/gbatek.htm#dsiiomap */
+static const rc_memory_region_t _rc_memory_regions_nintendo_dsi[] = {
+    { 0x000000U, 0xFFFFFFU, 0x02000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_nintendo_dsi = { _rc_memory_regions_nintendo_dsi, 1 };
+
 /* ===== Oric ===== */
 static const rc_memory_region_t _rc_memory_regions_oric[] = {
     /* actual size depends on machine type - up to 64KB */
@@ -930,6 +940,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_NINTENDO_DS:
       return &rc_memory_regions_nintendo_ds;
+
+    case RC_CONSOLE_NINTENDO_DSI:
+      return &rc_memory_regions_nintendo_dsi;
 
     case RC_CONSOLE_ORIC:
       return &rc_memory_regions_oric;
