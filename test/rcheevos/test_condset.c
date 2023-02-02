@@ -1247,6 +1247,61 @@ static void test_resetnextif_chain() {
   assert_hit_count(condset, 3, 1);
 }
 
+static void test_resetnextif_chain_andnext() {
+  unsigned char ram[] = {0x00, 0x00, 0x01};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* AndNext     byte(0x0000)=0
+   * ResetNextIf byte(0x0001)=1
+   * AndNext     byte(0x0000)=1
+   * ResetNextIf byte(0x0001)=1
+   *             byte(0x0002)=1 (5)
+   */
+  assert_parse_condset(&condset, &memrefs, buffer, "N:0xH0000=0_Z:0xH0001=1_N:0xH0000=1_Z:0xH0001=1_0xH0002=1.5.");
+
+  /* no ResetNextIf true. hit count incremented */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1); /* hit captured on byte(0) == 0 */
+  assert_hit_count(condset, 1, 0);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 3, 0);
+  assert_hit_count(condset, 4, 1);
+
+  /* second ResetNextIf clause true */
+  ram[0] = ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1); /* ResetNextIf on condition 3 doesn't affect condition 1 */
+  assert_hit_count(condset, 1, 0);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 3, 1);
+  assert_hit_count(condset, 4, 0);
+
+  /* no ResetNextIf true, hit count incremented */
+  ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 0);
+  assert_hit_count(condset, 2, 2);
+  assert_hit_count(condset, 3, 1);
+  assert_hit_count(condset, 4, 1);
+
+  /* first ResetNextIf clause true */
+  ram[0] = 0;
+  ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 2);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 0); /* first ResetNextIf affects second ResetNextIf */
+  assert_hit_count(condset, 3, 0);
+  assert_hit_count(condset, 4, 2); /* but not final clause */
+}
+
 static void test_resetnextif_chain_with_hits() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3814,6 +3869,7 @@ void test_condset(void) {
   TEST(test_resetnextif_andnext_hitchain);
   TEST(test_resetnextif_addaddress);
   TEST(test_resetnextif_chain);
+  TEST(test_resetnextif_chain_andnext);
   TEST(test_resetnextif_chain_with_hits);
   TEST(test_resetnextif_pause_lock);
 
