@@ -2337,6 +2337,27 @@ static void test_subsource_overflow_comparison_lesser_or_equal() {
   assert_evaluate_condset(condset, memrefs, &memory, 0);
 }
 
+static void test_subsource_float() {
+  unsigned char ram[] = {0x06, 0x00, 0x00, 0x00, 0x92, 0x44, 0x9A, 0x42}; /* fF0004 = 77.133926 */
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* float(0x0004) - word(0) * 1.666667 > 65.8 */
+  assert_parse_condset(&condset, &memrefs, buffer, "B:0x 0000*f1.666667_fF0004>f65.8");
+
+  /* 77.133926 - (6 * 1.666667) = 77.133926 - 10 = 67.133926 */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 77.133926 - (7 * 1.666667) = 77.133926 - 11.6667 = 65.4672 */
+  ram[0] = 7;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+}
+
 static void test_addhits() {
   unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3843,6 +3864,7 @@ void test_condset(void) {
   TEST(test_subsource_overflow_comparison_greater_or_equal);
   TEST(test_subsource_overflow_comparison_lesser);
   TEST(test_subsource_overflow_comparison_lesser_or_equal);
+  TEST(test_subsource_float);
 
   /* addhits/subhits */
   TEST(test_addhits);

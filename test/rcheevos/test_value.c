@@ -193,7 +193,7 @@ static void _assert_typed_value(const rc_typed_value_t* value, char type, unsign
       break;
 
     case RC_VALUE_TYPE_FLOAT:
-      ASSERT_NUM_EQUALS(value->value.f32, (float)f32);
+      ASSERT_FLOAT_EQUALS(value->value.f32, (float)f32);
       break;
 
     default:
@@ -445,6 +445,38 @@ static void test_typed_value_division() {
   TEST_PARAMS9(test_typed_value_divide, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_FLOAT, 0, -8.0, RC_VALUE_TYPE_FLOAT, 0, -0.39269875);
 }
 
+static void test_typed_value_negate(char type, int i32, double f32, char expected_type, signed result_i32, double result_f32) {
+  rc_typed_value_t value;
+
+  init_typed_value(&value, type, (unsigned)i32, f32);
+
+  rc_typed_value_negate(&value);
+
+  assert_typed_value(&value, expected_type, (unsigned)result_i32, result_f32);
+}
+
+static void test_typed_value_negation() {
+  /* unsigned source */
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_UNSIGNED, 0, 0.0, RC_VALUE_TYPE_SIGNED, 0, 0.0);
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_UNSIGNED, 99, 0.0, RC_VALUE_TYPE_SIGNED, -99, 0.0);
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_UNSIGNED, 0xFFFFFFFF, 0.0, RC_VALUE_TYPE_SIGNED, 1, 0.0);
+
+  /* signed source */
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_SIGNED, 0, 0.0, RC_VALUE_TYPE_SIGNED, 0, 0.0);
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_SIGNED, 99, 0.0, RC_VALUE_TYPE_SIGNED, -99, 0.0);
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_SIGNED, -1, 0.0, RC_VALUE_TYPE_SIGNED, 1, 0.0);
+
+  /* float source (whole numbers) */
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_FLOAT, 0, 0.0, RC_VALUE_TYPE_FLOAT, 0, 0.0);
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_FLOAT, 0, 99.0, RC_VALUE_TYPE_FLOAT, 0, -99.0);
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_FLOAT, 0, -1.0, RC_VALUE_TYPE_FLOAT, 0, 1.0);
+
+  /* float source (non-whole numbers) */
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_FLOAT, 0, 0.1, RC_VALUE_TYPE_FLOAT, 0, -0.1);
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_FLOAT, 0, -3.14159);
+  TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_FLOAT, 0, -2.7, RC_VALUE_TYPE_FLOAT, 0, 2.7);
+}
+
 void test_value(void) {
   TEST_SUITE_BEGIN();
 
@@ -560,6 +592,7 @@ void test_value(void) {
   test_typed_value_addition();
   test_typed_value_multiplication();
   test_typed_value_division();
+  test_typed_value_negation();
 
   TEST_SUITE_END();
 }
