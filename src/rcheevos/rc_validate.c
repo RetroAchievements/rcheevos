@@ -670,9 +670,16 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
           }
           else if (compare_condition->type == RC_CONDITION_MEASURED_IF || condition->type == RC_CONDITION_MEASURED_IF)
           {
-            /* MeasuredIf is a meta tag and allowed to be redundant */
-            if (compare_condition->type != condition->type)
+            /* ignore MeasuredIf redundancies between groups */
+            if (conditions != compare_conditions)
               continue;
+
+            if (compare_condition->type == RC_CONDITION_MEASURED_IF && condition->type != RC_CONDITION_MEASURED_IF)
+            {
+              /* only ever report the redundancy on the non-MeasuredIf condition. The MeasuredIf provides
+               * additional functionality. */
+              continue;
+            }
           }
           else if (compare_condition->type == RC_CONDITION_TRIGGER || condition->type == RC_CONDITION_TRIGGER)
           {
