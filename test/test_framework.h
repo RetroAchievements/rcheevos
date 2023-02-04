@@ -165,7 +165,15 @@ extern const char* test_framework_basename(const char* path);
 #define ASSERT_NUM_LESS(value, expected)           ASSERT_COMPARE(value, <,  expected, int, "%d")
 #define ASSERT_NUM_LESS_EQUALS(value, expected)    ASSERT_COMPARE(value, <=, expected, int, "%d")
 
-#define ASSERT_FLOAT_EQUALS(value, expected)       ASSERT_COMPARE(value, ==, expected, float, "%f")
+#define ASSERT_FLOAT_EQUALS(value, expected) { \
+  float __v = (float)value; \
+  float __e = (float)expected; \
+  double diff = (__v > __e) ? ((double)__v - (double)__e) : ((double)__e - (double)__v); \
+  if (diff >= 0.0000002) { /* FLT_EPSILON is ~1.19e-7 */ \
+    ASSERT_FAIL("Expected: " #value " = " #expected " (%s:%d)\n  Found:    %f = %f", \
+                test_framework_basename(__FILE__), __LINE__, __v, __e); \
+  } \
+}
 
 /* TODO: figure out some way to detect c89 so we can use int64_t and %lld on non-c89 builds */
 #define ASSERT_NUM64_EQUALS(value, expected)       ASSERT_COMPARE(value, ==, expected, int, "%d")
