@@ -869,7 +869,7 @@ void rc_hash_get_default_cdreader(struct rc_hash_cdreader* cdreader)
   cdreader->first_track_sector = cdreader_first_track_sector;
 }
 
-void rc_hash_init_default_cdreader()
+void rc_hash_init_default_cdreader(void)
 {
   struct rc_hash_cdreader cdreader;
   rc_hash_get_default_cdreader(&cdreader);
