@@ -339,6 +339,8 @@ int rc_api_init_fetch_badge_range_request(rc_api_request_t* request, const rc_ap
 
   request->post_data = rc_url_builder_finalize(&builder);
 
+  (void)api_params;
+
   return builder.result;
 }
 

@@ -1726,6 +1726,7 @@ static void* rc_file_open_buffered_file(const char* path)
 {
   struct rc_buffered_file* handle = (struct rc_buffered_file*)malloc(sizeof(struct rc_buffered_file));
   memcpy(handle, &rc_buffered_file, sizeof(rc_buffered_file));
+  (void)path;
   return handle;
 }
 
