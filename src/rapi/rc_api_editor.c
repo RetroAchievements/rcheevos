@@ -36,15 +36,15 @@ int rc_api_process_fetch_code_notes_response(rc_api_fetch_code_notes_response_t*
   int result;
 
   rc_json_field_t fields[] = {
-    {"Success"},
-    {"Error"},
-    {"CodeNotes"}
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("CodeNotes")
   };
 
   rc_json_field_t note_fields[] = {
-    {"Address"},
-    {"User"},
-    {"Note"}
+    RC_JSON_NEW_FIELD("Address"),
+    RC_JSON_NEW_FIELD("User"),
+    RC_JSON_NEW_FIELD("Note")
   };
 
   memset(response, 0, sizeof(*response));
@@ -131,12 +131,12 @@ int rc_api_process_update_code_note_response(rc_api_update_code_note_response_t*
   int result;
 
   rc_json_field_t fields[] = {
-    {"Success"},
-    {"Error"}
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error")
     /* unused fields
-    {"GameID"},
-    {"Address"},
-    {"Note"}
+    RC_JSON_NEW_FIELD("GameID"),
+    RC_JSON_NEW_FIELD("Address"),
+    RC_JSON_NEW_FIELD("Note")
     */
   };
 
@@ -214,9 +214,9 @@ int rc_api_process_update_achievement_response(rc_api_update_achievement_respons
   int result;
 
   rc_json_field_t fields[] = {
-    {"Success"},
-    {"Error"},
-    {"AchievementID"}
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("AchievementID")
   };
 
   memset(response, 0, sizeof(*response));
@@ -305,9 +305,9 @@ int rc_api_process_update_leaderboard_response(rc_api_update_leaderboard_respons
     int result;
 
     rc_json_field_t fields[] = {
-      {"Success"},
-      {"Error"},
-      {"LeaderboardID"}
+      RC_JSON_NEW_FIELD("Success"),
+      RC_JSON_NEW_FIELD("Error"),
+      RC_JSON_NEW_FIELD("LeaderboardID")
     };
 
     memset(response, 0, sizeof(*response));
@@ -339,6 +339,8 @@ int rc_api_init_fetch_badge_range_request(rc_api_request_t* request, const rc_ap
 
   request->post_data = rc_url_builder_finalize(&builder);
 
+  (void)api_params;
+
   return builder.result;
 }
 
@@ -346,10 +348,10 @@ int rc_api_process_fetch_badge_range_response(rc_api_fetch_badge_range_response_
   int result;
 
   rc_json_field_t fields[] = {
-    {"Success"},
-    {"Error"},
-    {"FirstBadge"},
-    {"NextBadge"}
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("FirstBadge"),
+    RC_JSON_NEW_FIELD("NextBadge")
   };
 
   memset(response, 0, sizeof(*response));
@@ -407,18 +409,18 @@ int rc_api_process_add_game_hash_response(rc_api_add_game_hash_response_t* respo
   int result;
 
   rc_json_field_t fields[] = {
-    {"Success"},
-    {"Error"},
-    {"Response"}
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Response")
   };
 
   rc_json_field_t response_fields[] = {
-    {"GameID"}
+    RC_JSON_NEW_FIELD("GameID")
     /* unused fields
-    {"MD5"},
-    {"ConsoleID"},
-    {"GameTitle"},
-    {"Success"}
+    RC_JSON_NEW_FIELD("MD5"),
+    RC_JSON_NEW_FIELD("ConsoleID"),
+    RC_JSON_NEW_FIELD("GameTitle"),
+    RC_JSON_NEW_FIELD("Success")
     */
   };
 

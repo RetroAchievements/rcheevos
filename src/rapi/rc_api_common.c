@@ -299,6 +299,8 @@ int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
+#else
+  (void)field_name;
 #endif
 
   if (!json)
@@ -359,6 +361,8 @@ int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator,
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
+#else
+  (void)field_name;
 #endif
 
   if (!field->value_start || *field->value_start != '[') {
@@ -453,6 +457,8 @@ int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
+#else
+  (void)field_name;
 #endif
 
   if (!src) {
@@ -564,6 +570,8 @@ int rc_json_get_num(int* out, const rc_json_field_t* field, const char* field_na
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
+#else
+  (void)field_name;
 #endif
 
   if (!src) {
@@ -615,6 +623,8 @@ int rc_json_get_unum(unsigned* out, const rc_json_field_t* field, const char* fi
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
+#else
+  (void)field_name;
 #endif
 
   if (!src) {
@@ -656,6 +666,8 @@ int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* 
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
+#else
+  (void)field_name;
 #endif
 
   if (*field->value_start == '\"') {
@@ -698,6 +710,8 @@ int rc_json_get_bool(int* out, const rc_json_field_t* field, const char* field_n
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
+#else
+  (void)field_name;
 #endif
 
   if (src) {
