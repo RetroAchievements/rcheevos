@@ -1143,6 +1143,76 @@ static int rc_hash_nintendo_ds(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
+static uint32_t rc_read_bigendian_u32_value(void* file_handle)
+{
+  char le_buffer[4];
+  char be_buffer[4];
+  rc_file_read(file_handle, le_buffer, 4);
+  for (int ix = 0; ix < 4; ix++)
+  {
+    be_buffer[3 - ix] = le_buffer[ix];
+  }
+  return *((uint32_t*)be_buffer);
+}
+
+static int rc_hash_gamecube(char hash[33], const char* path)
+{
+  md5_state_t md5;
+  void* file_handle;
+  const int BASE_HEADER_SIZE = 0x2440;
+
+  file_handle = rc_file_open(path);
+  //GetApploaderSize
+  uint32_t apploader_header_size = 0x20;
+  rc_file_seek(file_handle, 0x2440 + 0x14, SEEK_SET);
+  uint32_t apploader_body_size = rc_read_bigendian_u32_value(file_handle);
+  uint32_t apploader_trailer_size = rc_read_bigendian_u32_value(file_handle);
+  uint32_t header_size = BASE_HEADER_SIZE + apploader_header_size + apploader_body_size + apploader_trailer_size;
+  //GetBootDOLOffset
+  rc_file_seek(file_handle, 0x420, SEEK_SET);
+  uint32_t dol_offset = rc_read_bigendian_u32_value(file_handle);
+  //GetBootDOLSize
+  uint32_t dol_size = 0;
+  // Iterate through the 7 code segments
+  for (size_t i = 0; i < 7; i++)
+  {
+    rc_file_seek(file_handle, dol_offset + 0x00 + i * 4, SEEK_SET);
+    uint32_t offset = rc_read_bigendian_u32_value(file_handle);
+    rc_file_seek(file_handle, dol_offset + 0x90 + i * 4, SEEK_SET);
+    uint32_t size = rc_read_bigendian_u32_value(file_handle);
+    if (offset + size > dol_size)
+      dol_size = offset + size;
+  }
+  // Iterate through the 11 data segments
+  for (size_t i = 0; i < 11; i++)
+  {
+    rc_file_seek(file_handle, dol_offset + 0x1c + i * 4, SEEK_SET);
+    uint32_t offset = rc_read_bigendian_u32_value(file_handle);
+    rc_file_seek(file_handle, dol_offset + 0xac + i * 4, SEEK_SET);
+    uint32_t size = rc_read_bigendian_u32_value(file_handle);
+    if (offset + size > dol_size)
+      dol_size = offset + size;
+  }
+
+  md5_init(&md5);
+  // Hash headers
+  rc_file_seek(file_handle, 0, SEEK_SET);
+  char* header_buffer = (char*)malloc(header_size);
+  rc_file_read(file_handle, header_buffer, header_size);
+  md5_append(&md5, header_buffer, header_size);
+  free(header_buffer);
+  // Hash main.dol executable
+  rc_file_seek(file_handle, dol_offset, SEEK_SET);
+  char* dol_buffer = (char*)malloc(dol_size);
+  rc_file_read(file_handle, dol_buffer, dol_size);
+  md5_append(&md5, dol_buffer, dol_size);
+  free(dol_buffer);
+
+  rc_file_close(file_handle);
+
+  return rc_hash_finalize(&md5, hash);
+}
+
 static int rc_hash_pce(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it (expect ROM data to be multiple of 128KB) */
@@ -2178,6 +2248,9 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_NINTENDO_DS:
     case RC_CONSOLE_NINTENDO_DSI:
       return rc_hash_nintendo_ds(hash, path);
+
+    case RC_CONSOLE_GAMECUBE:
+      return rc_hash_gamecube(hash, path);
 
     case RC_CONSOLE_PC_ENGINE_CD:
       if (rc_path_compare_extension(path, "cue") || rc_path_compare_extension(path, "chd"))
