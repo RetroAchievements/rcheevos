@@ -444,6 +444,13 @@ static const rc_memory_region_t _rc_memory_regions_gameboy_advance[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_gameboy_advance = { _rc_memory_regions_gameboy_advance, 2 };
 
+/* ===== GameCube ===== */
+/* https://wiibrew.org/wiki/Memory_map */
+static const rc_memory_region_t _rc_memory_regions_gamecube[] = {
+    { 0x00000000U, 0x017FFFFF, 0x80000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_gamecube = { _rc_memory_regions_gamecube, 1 };
+
 /* ===== Game Gear ===== */
 /* http://www.smspower.org/Development/MemoryMap */
 static const rc_memory_region_t _rc_memory_regions_game_gear[] = {
@@ -822,6 +829,14 @@ static const rc_memory_region_t _rc_memory_regions_wasm4[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_wasm4 = { _rc_memory_regions_wasm4, 1 };
 
+/* ===== Wii ===== */
+/* https://wiibrew.org/wiki/Memory_map */
+static const rc_memory_region_t _rc_memory_regions_wii[] = {
+    { 0x00000000U, 0x017FFFFF, 0x80000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x01800000U, 0x057FFFFF, 0x90000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_wii = { _rc_memory_regions_wii, 2 };
+
 /* ===== WonderSwan ===== */
 /* http://daifukkat.su/docs/wsman/#ovr_memmap */
 static const rc_memory_region_t _rc_memory_regions_wonderswan[] = {
@@ -901,6 +916,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_GAMEBOY_ADVANCE:
       return &rc_memory_regions_gameboy_advance;
+
+    case RC_CONSOLE_GAMECUBE:
+      return &rc_memory_regions_gamecube;
 
     case RC_CONSOLE_GAME_GEAR:
       return &rc_memory_regions_game_gear;
@@ -1003,6 +1021,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_WASM4:
       return &rc_memory_regions_wasm4;
+
+    case RC_CONSOLE_WII:
+      return &rc_memory_regions_wii;
 
     case RC_CONSOLE_WONDERSWAN:
       return &rc_memory_regions_wonderswan;
