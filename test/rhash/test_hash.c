@@ -804,6 +804,21 @@ static void test_hash_dreamcast_cue()
 
 /* ========================================================================= */
 
+static void test_hash_gamecube()
+{
+  size_t image_size;
+  uint8_t* image = generate_gamecube_iso(32, &image_size);
+  char hash[33];
+  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_GAMECUBE, image, image_size);
+  free(image);
+
+  ASSERT_NUM_EQUALS(result, 1);
+  ASSERT_STR_EQUALS(hash, "502f1427121ca333dc481e83c14b36fd");
+  ASSERT_NUM_EQUALS(image_size, 32 * 1024 * 1024);
+}
+
+/* ========================================================================= */
+
 static void test_hash_nes_32k()
 {
   size_t image_size;
@@ -2040,6 +2055,9 @@ void test_hash(void) {
 
   /* Gameboy Advance */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_GAMEBOY_COLOR, "test.gba", 4194304, "a247ec8a8c42e18fcb80702dfadac14b");
+
+  /* Gamecube */
+  TEST(test_hash_gamecube);
 
   /* Game Gear */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_GAME_GEAR, "test.gg", 524288, "68f0f13b598e0b66461bc578375c3888");
