@@ -786,13 +786,11 @@ static const rc_memory_region_t _rc_memory_regions_thomson_to8[] = {
 static const rc_memory_regions_t rc_memory_regions_thomson_to8 = { _rc_memory_regions_thomson_to8, 1 };
 
 /* ===== TI-83 ===== */
-/* https://wikiti.brandonw.net/index.php?title=83Plus:Memory_Mapping#Naming_Conventions */
-/* TODO: bizhawk exposes 256KB of memory, but it never changes, so it's hard to tell if it's correct */
+/* https://tutorials.eeems.ca/ASMin28Days/lesson/day03.html#mem */
 static const rc_memory_region_t _rc_memory_regions_ti83[] = {
-    { 0x000000U, 0x003FFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Boot ROM" },
-    { 0x004000U, 0x00FFFFU, 0x004000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x000000U, 0x007FFFU, 0x008000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
 };
-static const rc_memory_regions_t rc_memory_regions_ti83 = { _rc_memory_regions_ti83, 2 };
+static const rc_memory_regions_t rc_memory_regions_ti83 = { _rc_memory_regions_ti83, 1 };
 
 /* ===== TIC-80 ===== */
 /* https://github.com/nesbox/TIC-80/wiki/RAM */
