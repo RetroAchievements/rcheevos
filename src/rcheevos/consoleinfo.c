@@ -801,6 +801,13 @@ static const rc_memory_region_t _rc_memory_regions_tic80[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_tic80 = { _rc_memory_regions_tic80, 10 };
 
+/* ===== Uzebox ===== */
+/* https://uzebox.org/index.php */
+static const rc_memory_region_t _rc_memory_regions_uzebox[] = {
+    { 0x000000U, 0x000FFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_uzebox = { _rc_memory_regions_uzebox, 1 };
+
 /* ===== Vectrex ===== */
 /* https://roadsidethoughts.com/vectrex/vectrex-memory-map.htm */
 static const rc_memory_region_t _rc_memory_regions_vectrex[] = {
@@ -1018,6 +1025,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_TIC80:
       return &rc_memory_regions_tic80;
+
+    case RC_CONSOLE_UZEBOX:
+      return &rc_memory_regions_uzebox;
 
     case RC_CONSOLE_VECTREX:
       return &rc_memory_regions_vectrex;
