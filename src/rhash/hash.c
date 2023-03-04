@@ -1148,81 +1148,102 @@ static int rc_hash_gamecube(char hash[33], const char* path)
   md5_state_t md5;
   void* file_handle;
   const uint32_t BASE_HEADER_SIZE = 0x2440;
+  const uint32_t MAX_HEADER_SIZE = 1024 * 1024;
+  uint8_t quad_buffer[4];
 
   file_handle = rc_file_open(path);
-  uint8_t* buffer = (uint8_t*)malloc(MAX_BUFFER_SIZE);
+
+  // Verify Gamecube
+  rc_file_seek(file_handle, 0x1c, SEEK_SET);
+  rc_file_read(file_handle, quad_buffer, 4);
+  if (quad_buffer[0] != 0xC2|| quad_buffer[1] != 0x33 || quad_buffer[2] != 0x9F || quad_buffer[3] != 0x3D)
+  {
+    rc_file_close(file_handle);
+    return rc_hash_error("Not a Gamecube disc");
+  }
+
+  // GetApploaderSize
+  rc_file_seek(file_handle, BASE_HEADER_SIZE, SEEK_SET);
+  uint32_t apploader_header_size = 0x20;
+  rc_file_read(file_handle, quad_buffer, 4);
+  uint32_t apploader_body_size =
+    (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+  rc_file_read(file_handle, quad_buffer, 4);
+  uint32_t apploader_trailer_size =
+    (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+  uint32_t header_size = BASE_HEADER_SIZE + apploader_header_size + apploader_body_size + apploader_trailer_size;
+  if (header_size > MAX_HEADER_SIZE) header_size = MAX_HEADER_SIZE;
+
+  // Hash headers
+  uint8_t* buffer = (uint8_t*)malloc(header_size);
   if (!buffer)
   {
     rc_file_close(file_handle);
     return rc_hash_error("Could not allocate temporary buffer");
   }
-
-  // Verify Gamecube
   rc_file_seek(file_handle, 0, SEEK_SET);
-  rc_file_read(file_handle, buffer, 0x2500);
-  if (buffer[0x1c] != 0xC2|| buffer[0x1d] != 0x33 || buffer[0x1e] != 0x9F || buffer[0x1f] != 0x3D)
-  {
-    rc_file_close(file_handle);
-    free(buffer);
-    return rc_hash_error("Not a Gamecube disc");
-  }
-
-  // GetApploaderSize
-  uint32_t apploader_header_size = 0x20;
-  uint32_t apploader_body_size = 
-    (buffer[BASE_HEADER_SIZE + 0x14] << 24) |
-    (buffer[BASE_HEADER_SIZE + 0x15] << 16) |
-    (buffer[BASE_HEADER_SIZE + 0x16] << 8) |
-    buffer[BASE_HEADER_SIZE + 0x17];
-  uint32_t apploader_trailer_size =
-    (buffer[BASE_HEADER_SIZE + 0x18] << 24) |
-    (buffer[BASE_HEADER_SIZE + 0x19] << 16) |
-    (buffer[BASE_HEADER_SIZE + 0x1a] << 8) |
-    buffer[BASE_HEADER_SIZE + 0x1b];
-  uint32_t header_size = BASE_HEADER_SIZE + apploader_header_size + apploader_body_size + apploader_trailer_size;
-
-  // Hash headers
+  rc_file_read(file_handle, buffer, header_size);
   md5_init(&md5);
-  md5_append(&md5, buffer, header_size);
   if (verbose_message_callback)
   {
     char message[128];
     snprintf(message, sizeof(message), "Hashing %u byte header", header_size);
     verbose_message_callback(message);
   }
+  md5_append(&md5, buffer, header_size);
 
   // GetBootDOLOffset
+  // Base header size is guaranteed larger than 0x423 therefore buffer contains dol_offset right now
   uint32_t dol_offset = (buffer[0x420] << 24) | (buffer[0x421] << 16) | (buffer[0x422] << 8) | buffer[0x423];
+  free(buffer);
 
-  // Iterate through the 7 main.dol code segments
+  // Find offsets and sizes for the 7 main.dol code segments and 11 main.dol data segments
+  uint8_t addr_buffer[0xD8];
+  uint32_t dol_offsets[18];
+  uint32_t dol_sizes[18];
+  uint32_t dol_buf_size = 0;
   rc_file_seek(file_handle, dol_offset, SEEK_SET);
-  rc_file_read(file_handle, buffer, MAX_BUFFER_SIZE);
-  for (size_t i = 0; i < 7; i++)
+  rc_file_read(file_handle, addr_buffer, 0xD8);
+  for (uint32_t ix = 0; ix < 18; ix++)
   {
-    uint32_t offset = (buffer[0x0 + i * 4] << 24) | (buffer[0x1 + i * 4] << 16) | (buffer[0x2 + i * 4] << 8) | buffer[0x3 + i * 4];
-    uint32_t size = (buffer[0x90 + i * 4] << 24) | (buffer[0x91 + i * 4] << 16) | (buffer[0x92 + i * 4] << 8) | buffer[0x93 + i * 4];
-    md5_append(&md5, buffer + offset, size);
-    if (verbose_message_callback)
-    {
-      char message[128];
-      snprintf(message, sizeof(message), "Hashing %u byte main.dol code segment", size);
-      verbose_message_callback(message);
-    }
-  }
-  // Iterate through the 11 main.dol data segments
-  for (size_t i = 0; i < 11; i++)
-  {
-    uint32_t offset = (buffer[0x1c + i * 4] << 24) | (buffer[0x1d + i * 4] << 16) | (buffer[0x1e + i * 4] << 8) | buffer[0x1f + i * 4];
-    uint32_t size = (buffer[0xac + i * 4] << 24) | (buffer[0xad + i * 4] << 16) | (buffer[0xae + i * 4] << 8) | buffer[0xaf + i * 4];
-    md5_append(&md5, buffer + offset, size);
-    if (verbose_message_callback)
-    {
-      char message[128];
-      snprintf(message, sizeof(message), "Hashing %u byte main.dol data segment", size);
-      verbose_message_callback(message);
-    }
+    dol_offsets[ix] =
+      (addr_buffer[0x0 + ix * 4] << 24) |
+      (addr_buffer[0x1 + ix * 4] << 16) |
+      (addr_buffer[0x2 + ix * 4] << 8) |
+      addr_buffer[0x3 + ix * 4];
+    dol_sizes[ix] =
+      (addr_buffer[0x90 + ix * 4] << 24) |
+      (addr_buffer[0x91 + ix * 4] << 16) |
+      (addr_buffer[0x92 + ix * 4] << 8) |
+      addr_buffer[0x93 + ix * 4];
+    dol_buf_size = (dol_sizes[ix] > dol_buf_size) ? dol_sizes[ix] : dol_buf_size;
   }
 
+  // Iterate through the 18 main.dol segments and hash each
+  buffer = (uint8_t*)malloc(dol_buf_size);
+  if (!buffer)
+  {
+    rc_file_close(file_handle);
+    return rc_hash_error("Could not allocate temporary buffer");
+  }
+  for (uint32_t ix = 0; ix < 18; ix++)
+  {
+    if (dol_sizes[ix] == 0) continue;
+    rc_file_seek(file_handle, dol_offsets[ix], SEEK_SET);
+    rc_file_read(file_handle, buffer, dol_sizes[ix]);
+    if (verbose_message_callback)
+    {
+      char message[128];
+      if (ix < 7)
+        snprintf(message, sizeof(message), "Hashing %u byte main.dol code segment %u", dol_sizes[ix], ix);
+      else
+        snprintf(message, sizeof(message), "Hashing %u byte main.dol data segment %u", dol_sizes[ix], ix - 7);
+      verbose_message_callback(message);
+    }
+    md5_append(&md5, buffer, dol_sizes[ix]);
+  }
+
+  // Finalize
   rc_file_close(file_handle);
   free(buffer);
 
@@ -2256,6 +2277,9 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
 
       return rc_hash_dreamcast(hash, path);
 
+    case RC_CONSOLE_GAMECUBE:
+      return rc_hash_gamecube(hash, path);
+
     case RC_CONSOLE_NEO_GEO_CD:
       return rc_hash_neogeo_cd(hash, path);
 
@@ -2265,9 +2289,6 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_NINTENDO_DS:
     case RC_CONSOLE_NINTENDO_DSI:
       return rc_hash_nintendo_ds(hash, path);
-
-    case RC_CONSOLE_GAMECUBE:
-      return rc_hash_gamecube(hash, path);
 
     case RC_CONSOLE_PC_ENGINE_CD:
       if (rc_path_compare_extension(path, "cue") || rc_path_compare_extension(path, "chd"))
