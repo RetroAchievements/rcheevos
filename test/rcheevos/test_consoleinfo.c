@@ -117,7 +117,9 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 76, "PC Engine CD");
   TEST_PARAMS2(test_name, 77, "Atari Jaguar CD");
   TEST_PARAMS2(test_name, 78, "Nintendo DSi");
-  TEST_PARAMS2(test_name, 79, "Unknown");
+  TEST_PARAMS2(test_name, 79, "TI-83");
+  TEST_PARAMS2(test_name, 80, "Uzebox");
+  TEST_PARAMS2(test_name, 81, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");

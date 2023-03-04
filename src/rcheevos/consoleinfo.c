@@ -207,8 +207,14 @@ const char* rc_console_name(int console_id)
     case RC_CONSOLE_THOMSONTO8:
       return "Thomson TO8";
 
+    case RC_CONSOLE_TI83:
+      return "TI-83";
+
     case RC_CONSOLE_TIC80:
       return "TIC-80";
+
+    case RC_CONSOLE_UZEBOX:
+      return "Uzebox";
 
     case RC_CONSOLE_VECTREX:
       return "Vectrex";
