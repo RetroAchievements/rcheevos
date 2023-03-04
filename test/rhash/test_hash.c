@@ -2180,6 +2180,10 @@ void test_hash(void) {
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_NINTENDO, "test.smc", 524288, "68f0f13b598e0b66461bc578375c3888");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_NINTENDO, "test.smc", 524288 + 512, "258c93ebaca1c3f488ab48218e5e8d38");
 
+  /* TI-83 */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_TI83, "test.83g", 1695, "bfb6048395a425c69743900785987c42");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_TI83, "test.83p", 2500, "6e81d530ee9a79d4f4f505729ad74bb5");
+
   /* TIC-80 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_TIC80, "test.tic", 67682, "79b96f4ffcedb3ce8210a83b22cd2c69");
 

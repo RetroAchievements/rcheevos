@@ -785,6 +785,13 @@ static const rc_memory_region_t _rc_memory_regions_thomson_to8[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_thomson_to8 = { _rc_memory_regions_thomson_to8, 1 };
 
+/* ===== TI-83 ===== */
+/* https://tutorials.eeems.ca/ASMin28Days/lesson/day03.html#mem */
+static const rc_memory_region_t _rc_memory_regions_ti83[] = {
+    { 0x000000U, 0x007FFFU, 0x008000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+};
+static const rc_memory_regions_t rc_memory_regions_ti83 = { _rc_memory_regions_ti83, 1 };
+
 /* ===== TIC-80 ===== */
 /* https://github.com/nesbox/TIC-80/wiki/RAM */
 static const rc_memory_region_t _rc_memory_regions_tic80[] = {
@@ -1015,6 +1022,9 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
 
     case RC_CONSOLE_THOMSONTO8:
       return &rc_memory_regions_thomson_to8;
+
+    case RC_CONSOLE_TI83:
+      return &rc_memory_regions_ti83;
 
     case RC_CONSOLE_TIC80:
       return &rc_memory_regions_tic80;

@@ -1943,6 +1943,7 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* b
     case RC_CONSOLE_SEGA_32X:
     case RC_CONSOLE_SG1000:
     case RC_CONSOLE_SUPERVISION:
+    case RC_CONSOLE_TI83:
     case RC_CONSOLE_TIC80:
     case RC_CONSOLE_VECTREX:
     case RC_CONSOLE_VIRTUAL_BOY:
@@ -2235,6 +2236,7 @@ int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
     case RC_CONSOLE_SEGA_32X:
     case RC_CONSOLE_SG1000:
     case RC_CONSOLE_SUPERVISION:
+    case RC_CONSOLE_TI83:
     case RC_CONSOLE_TIC80:
     case RC_CONSOLE_VECTREX:
     case RC_CONSOLE_VIRTUAL_BOY:
@@ -2429,6 +2431,15 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           /* decompressing zip file not supported */
           iterator->consoles[0] = RC_CONSOLE_ARCADE;
           need_path = 1;
+        }
+        break;
+
+      case '8':
+        /* http://tibasicdev.wikidot.com/file-extensions */
+        if (rc_path_compare_extension(ext, "83g") ||
+            rc_path_compare_extension(ext, "83p"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_TI83;
         }
         break;
 
