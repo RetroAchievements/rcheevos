@@ -2168,6 +2168,9 @@ void test_hash(void) {
   /* TIC-80 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_TIC80, "test.tic", 67682, "79b96f4ffcedb3ce8210a83b22cd2c69");
 
+  /* Uzebox */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_UZEBOX, "test.uze", 53654, "a9aab505e92edc034d3c732869159789");
+
   /* Vectrex */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SG1000, "test.vec", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
 
