@@ -238,8 +238,8 @@ uint8_t* generate_gamecube_iso(size_t mb, size_t* image_size)
     }
     for (int ix = 0; ix < 18 * 4; ix++)
     {
-      image[dol_sizes_addr + ix] = (ix % 4 == 3) ? (0x30 + 1 + ix) : 0; // offsets start at 0x00003100 and increment
-      image[dol_sizes_addr + 0x90 + ix] = (ix % 4 == 3) ? 0xff : 0; // 0x000000ff for each size
+      image[dol_sizes_addr + ix] = (ix % 4 == 2) ? (0x30 + 1 + ix / 4) : 0; // offsets start at 0x00003100 and increment
+      image[dol_sizes_addr + 0x90 + ix] = (ix % 8 == 3) ? 0xff : 0; // 0x000000ff for every other size
     }
   }
 

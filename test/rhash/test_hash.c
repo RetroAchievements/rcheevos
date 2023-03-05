@@ -814,7 +814,7 @@ static void test_hash_gamecube()
   free(image);
 
   ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "8317bb353a5ab0b8e4c6616302f5fd13");
+  ASSERT_STR_EQUALS(hash, "c7803b704fa43d22d8f6e55f4789cb45");
   ASSERT_NUM_EQUALS(image_size, 32 * 1024 * 1024);
 }
 
