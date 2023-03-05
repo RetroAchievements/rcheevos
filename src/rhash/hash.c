@@ -1149,7 +1149,14 @@ static int rc_hash_gamecube(char hash[33], const char* path)
   void* file_handle;
   const uint32_t BASE_HEADER_SIZE = 0x2440;
   const uint32_t MAX_HEADER_SIZE = 1024 * 1024;
+  uint32_t apploader_header_size, apploader_body_size, apploader_trailer_size, header_size;
   uint8_t quad_buffer[4];
+  uint8_t addr_buffer[0xD8];
+  uint8_t* buffer;
+  uint32_t dol_offset;
+  uint32_t dol_offsets[18];
+  uint32_t dol_sizes[18];
+  uint32_t dol_buf_size = 0;
 
   file_handle = rc_file_open(path);
 
@@ -1163,19 +1170,19 @@ static int rc_hash_gamecube(char hash[33], const char* path)
   }
 
   // GetApploaderSize
-  rc_file_seek(file_handle, BASE_HEADER_SIZE, SEEK_SET);
-  uint32_t apploader_header_size = 0x20;
+  rc_file_seek(file_handle, BASE_HEADER_SIZE + 0x14, SEEK_SET);
+  apploader_header_size = 0x20;
   rc_file_read(file_handle, quad_buffer, 4);
-  uint32_t apploader_body_size =
+  apploader_body_size =
     (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
   rc_file_read(file_handle, quad_buffer, 4);
-  uint32_t apploader_trailer_size =
+  apploader_trailer_size =
     (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
-  uint32_t header_size = BASE_HEADER_SIZE + apploader_header_size + apploader_body_size + apploader_trailer_size;
+  header_size = BASE_HEADER_SIZE + apploader_header_size + apploader_body_size + apploader_trailer_size;
   if (header_size > MAX_HEADER_SIZE) header_size = MAX_HEADER_SIZE;
 
   // Hash headers
-  uint8_t* buffer = (uint8_t*)malloc(header_size);
+  buffer = (uint8_t*)malloc(header_size);
   if (!buffer)
   {
     rc_file_close(file_handle);
@@ -1194,14 +1201,10 @@ static int rc_hash_gamecube(char hash[33], const char* path)
 
   // GetBootDOLOffset
   // Base header size is guaranteed larger than 0x423 therefore buffer contains dol_offset right now
-  uint32_t dol_offset = (buffer[0x420] << 24) | (buffer[0x421] << 16) | (buffer[0x422] << 8) | buffer[0x423];
+  dol_offset = (buffer[0x420] << 24) | (buffer[0x421] << 16) | (buffer[0x422] << 8) | buffer[0x423];
   free(buffer);
 
   // Find offsets and sizes for the 7 main.dol code segments and 11 main.dol data segments
-  uint8_t addr_buffer[0xD8];
-  uint32_t dol_offsets[18];
-  uint32_t dol_sizes[18];
-  uint32_t dol_buf_size = 0;
   rc_file_seek(file_handle, dol_offset, SEEK_SET);
   rc_file_read(file_handle, addr_buffer, 0xD8);
   for (uint32_t ix = 0; ix < 18; ix++)
@@ -1228,7 +1231,8 @@ static int rc_hash_gamecube(char hash[33], const char* path)
   }
   for (uint32_t ix = 0; ix < 18; ix++)
   {
-    if (dol_sizes[ix] == 0) continue;
+    if (dol_sizes[ix] == 0)
+      continue;
     rc_file_seek(file_handle, dol_offsets[ix], SEEK_SET);
     rc_file_read(file_handle, buffer, dol_sizes[ix]);
     if (verbose_message_callback)

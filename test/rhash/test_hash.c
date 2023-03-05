@@ -808,12 +808,13 @@ static void test_hash_gamecube()
 {
   size_t image_size;
   uint8_t* image = generate_gamecube_iso(32, &image_size);
+  mock_file(0, "test.iso", image, image_size);
   char hash[33];
-  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_GAMECUBE, image, image_size);
+  int result = rc_hash_generate_from_file(hash, RC_CONSOLE_GAMECUBE, "test.iso");
   free(image);
 
   ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "502f1427121ca333dc481e83c14b36fd");
+  ASSERT_STR_EQUALS(hash, "8317bb353a5ab0b8e4c6616302f5fd13");
   ASSERT_NUM_EQUALS(image_size, 32 * 1024 * 1024);
 }
 
