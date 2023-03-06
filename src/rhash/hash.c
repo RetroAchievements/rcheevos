@@ -1157,10 +1157,11 @@ static int rc_hash_gamecube(char hash[33], const char* path)
   uint32_t dol_offsets[18];
   uint32_t dol_sizes[18];
   uint32_t dol_buf_size = 0;
+  uint32_t ix;
 
   file_handle = rc_file_open(path);
 
-  // Verify Gamecube
+  /* Verify Gamecube */
   rc_file_seek(file_handle, 0x1c, SEEK_SET);
   rc_file_read(file_handle, quad_buffer, 4);
   if (quad_buffer[0] != 0xC2|| quad_buffer[1] != 0x33 || quad_buffer[2] != 0x9F || quad_buffer[3] != 0x3D)
@@ -1169,7 +1170,7 @@ static int rc_hash_gamecube(char hash[33], const char* path)
     return rc_hash_error("Not a Gamecube disc");
   }
 
-  // GetApploaderSize
+  /* GetApploaderSize */
   rc_file_seek(file_handle, BASE_HEADER_SIZE + 0x14, SEEK_SET);
   apploader_header_size = 0x20;
   rc_file_read(file_handle, quad_buffer, 4);
@@ -1181,7 +1182,7 @@ static int rc_hash_gamecube(char hash[33], const char* path)
   header_size = BASE_HEADER_SIZE + apploader_header_size + apploader_body_size + apploader_trailer_size;
   if (header_size > MAX_HEADER_SIZE) header_size = MAX_HEADER_SIZE;
 
-  // Hash headers
+  /* Hash headers */
   buffer = (uint8_t*)malloc(header_size);
   if (!buffer)
   {
@@ -1199,15 +1200,16 @@ static int rc_hash_gamecube(char hash[33], const char* path)
   }
   md5_append(&md5, buffer, header_size);
 
-  // GetBootDOLOffset
-  // Base header size is guaranteed larger than 0x423 therefore buffer contains dol_offset right now
+  /* GetBootDOLOffset
+   * Base header size is guaranteed larger than 0x423 therefore buffer contains dol_offset right now
+   */
   dol_offset = (buffer[0x420] << 24) | (buffer[0x421] << 16) | (buffer[0x422] << 8) | buffer[0x423];
   free(buffer);
 
-  // Find offsets and sizes for the 7 main.dol code segments and 11 main.dol data segments
+  /* Find offsetsand sizes for the 7 main.dol code segments and 11 main.dol data segments */
   rc_file_seek(file_handle, dol_offset, SEEK_SET);
   rc_file_read(file_handle, addr_buffer, 0xD8);
-  for (uint32_t ix = 0; ix < 18; ix++)
+  for (ix = 0; ix < 18; ix++)
   {
     dol_offsets[ix] =
       (addr_buffer[0x0 + ix * 4] << 24) |
@@ -1222,14 +1224,14 @@ static int rc_hash_gamecube(char hash[33], const char* path)
     dol_buf_size = (dol_sizes[ix] > dol_buf_size) ? dol_sizes[ix] : dol_buf_size;
   }
 
-  // Iterate through the 18 main.dol segments and hash each
+  /* Iterate through the 18 main.dol segments and hash each */
   buffer = (uint8_t*)malloc(dol_buf_size);
   if (!buffer)
   {
     rc_file_close(file_handle);
     return rc_hash_error("Could not allocate temporary buffer");
   }
-  for (uint32_t ix = 0; ix < 18; ix++)
+  for (ix = 0; ix < 18; ix++)
   {
     if (dol_sizes[ix] == 0)
       continue;
@@ -1247,7 +1249,7 @@ static int rc_hash_gamecube(char hash[33], const char* path)
     md5_append(&md5, buffer, dol_sizes[ix]);
   }
 
-  // Finalize
+  /* Finalize */
   rc_file_close(file_handle);
   free(buffer);
 
@@ -1970,7 +1972,6 @@ int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* b
     case RC_CONSOLE_NINTENDO_64:
     case RC_CONSOLE_NINTENDO_DS:
     case RC_CONSOLE_NINTENDO_DSI:
-    case RC_CONSOLE_GAMECUBE:
       return rc_hash_file_from_buffer(hash, console_id, buffer, buffer_size);
   }
 }
