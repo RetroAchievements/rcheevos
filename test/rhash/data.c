@@ -213,6 +213,7 @@ uint8_t* generate_gamecube_iso(size_t mb, size_t* image_size)
 {
   uint8_t* image;
   const size_t size_needed = mb * 1024 * 1024;
+  int ix;
 
   image = (uint8_t*)calloc(size_needed, 1);
   if (image != NULL)
@@ -228,15 +229,15 @@ uint8_t* generate_gamecube_iso(size_t mb, size_t* image_size)
     image[0x1e] = 0x9F;
     image[0x1f] = 0x3D;
 
-    for (int ix = 0; ix < 8; ix++)
+    for (ix = 0; ix < 8; ix++)
     {
       image[apploader_sizes_addr + ix] = (ix % 4 == 3) ? 0xff : 0; // 0x000000ff for both
     }
-    for (int ix = 0; ix < 4; ix++)
+    for (ix = 0; ix < 4; ix++)
     {
       image[dol_offset_addr + ix] = (ix % 4 == 2) ? 0x30 : 0; // 0x00003000
     }
-    for (int ix = 0; ix < 18 * 4; ix++)
+    for (ix = 0; ix < 18 * 4; ix++)
     {
       image[dol_sizes_addr + ix] = (ix % 4 == 2) ? (0x30 + 1 + ix / 4) : 0; // offsets start at 0x00003100 and increment
       image[dol_sizes_addr + 0x90 + ix] = (ix % 8 == 3) ? 0xff : 0; // 0x000000ff for every other size
