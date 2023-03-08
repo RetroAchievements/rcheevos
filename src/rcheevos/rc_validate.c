@@ -648,6 +648,13 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
           break;
 
         case RC_OVERLAP_REDUNDANT:
+          if (prefix != compare_prefix && strcmp(compare_prefix, "Core") == 0)
+          {
+            /* if the alt condition is more restrictive than the core condition, ignore it */
+            if (rc_validate_comparison_overlap(comparison2, value2, comparison1, value1) != RC_OVERLAP_REDUNDANT)
+              continue;
+          }
+
           if (compare_condition->type == RC_CONDITION_PAUSE_IF || condition->type == RC_CONDITION_PAUSE_IF)
           {
             /* ignore PauseIf redundancies between groups */
