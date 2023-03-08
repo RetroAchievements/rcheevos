@@ -785,6 +785,13 @@ static const rc_memory_region_t _rc_memory_regions_thomson_to8[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_thomson_to8 = { _rc_memory_regions_thomson_to8, 1 };
 
+/* ===== TI-83 ===== */
+/* https://tutorials.eeems.ca/ASMin28Days/lesson/day03.html#mem */
+static const rc_memory_region_t _rc_memory_regions_ti83[] = {
+    { 0x000000U, 0x007FFFU, 0x008000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+};
+static const rc_memory_regions_t rc_memory_regions_ti83 = { _rc_memory_regions_ti83, 1 };
+
 /* ===== TIC-80 ===== */
 /* https://github.com/nesbox/TIC-80/wiki/RAM */
 static const rc_memory_region_t _rc_memory_regions_tic80[] = {
@@ -800,6 +807,13 @@ static const rc_memory_region_t _rc_memory_regions_tic80[] = {
     { 0x014E04U, 0x017FFFU, 0x014E04U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM"}
 };
 static const rc_memory_regions_t rc_memory_regions_tic80 = { _rc_memory_regions_tic80, 10 };
+
+/* ===== Uzebox ===== */
+/* https://uzebox.org/index.php */
+static const rc_memory_region_t _rc_memory_regions_uzebox[] = {
+    { 0x000000U, 0x000FFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_uzebox = { _rc_memory_regions_uzebox, 1 };
 
 /* ===== Vectrex ===== */
 /* https://roadsidethoughts.com/vectrex/vectrex-memory-map.htm */
@@ -1016,8 +1030,14 @@ const rc_memory_regions_t* rc_console_memory_regions(int console_id)
     case RC_CONSOLE_THOMSONTO8:
       return &rc_memory_regions_thomson_to8;
 
+    case RC_CONSOLE_TI83:
+      return &rc_memory_regions_ti83;
+
     case RC_CONSOLE_TIC80:
       return &rc_memory_regions_tic80;
+
+    case RC_CONSOLE_UZEBOX:
+      return &rc_memory_regions_uzebox;
 
     case RC_CONSOLE_VECTREX:
       return &rc_memory_regions_vectrex;
