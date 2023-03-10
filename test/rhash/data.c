@@ -209,6 +209,50 @@ uint8_t* generate_nds_file(size_t mb, unsigned arm9_size, unsigned arm7_size, si
   return image;
 }
 
+uint8_t* generate_gamecube_iso(size_t mb, size_t* image_size)
+{
+  uint8_t* image;
+  const size_t size_needed = mb * 1024 * 1024;
+  int ix;
+
+  image = (uint8_t*)calloc(size_needed, 1);
+  if (image != NULL)
+  {
+    uint32_t apploader_sizes_addr = 0x2440 + 0x14;
+    uint32_t dol_offset_addr = 0x420;
+    uint32_t dol_sizes_addr = 0x3000;
+
+    fill_image(image, size_needed);
+
+    image[0x1c] = 0xC2;
+    image[0x1d] = 0x33;
+    image[0x1e] = 0x9F;
+    image[0x1f] = 0x3D;
+
+    for (ix = 0; ix < 8; ix++)
+    {
+      /* 0x000000ff for both */
+      image[apploader_sizes_addr + ix] = (ix % 4 == 3) ? 0xff : 0;
+    }
+    for (ix = 0; ix < 4; ix++)
+    {
+      /* 0x00003000 */
+      image[dol_offset_addr + ix] = (ix % 4 == 2) ? 0x30 : 0; 
+    }
+    for (ix = 0; ix < 18 * 4; ix++)
+    {
+      /* offsets start at 0x00003100 and increment */
+      image[dol_sizes_addr + ix] = (ix % 4 == 2) ? (0x30 + 1 + ix / 4) : 0; 
+      /* 0x000000ff for every other size */
+      image[dol_sizes_addr + 0x90 + ix] = (ix % 8 == 3) ? 0xff : 0; 
+    }
+  }
+
+  if (image_size)
+    *image_size = size_needed;
+  return image;
+}
+
 uint8_t* generate_atari_7800_file(size_t kb, int with_header, size_t* image_size)
 {
   uint8_t* image;
