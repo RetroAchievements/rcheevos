@@ -14,7 +14,7 @@ static void test_ping(const char* rich_presence, const char* expected_param)
   
   if (expected_param) {
     char expected_post[256];
-    sprintf(expected_post, "t=Token&%s", expected_param);
+    snprintf(expected_post, sizeof(expected_post), "t=Token&%s", expected_param);
     ASSERT_STR_EQUALS(post_buffer, expected_post);
   } else {
     ASSERT_STR_EQUALS(post_buffer, "t=Token");

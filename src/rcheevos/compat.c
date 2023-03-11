@@ -2,6 +2,9 @@
 
 #include <ctype.h>
 #include <stdarg.h>
+#include <time.h>
+
+#ifdef RC_C89_HELPERS
 
 int rc_strncasecmp(const char* left, const char* right, size_t length)
 {
@@ -44,20 +47,30 @@ char* rc_strdup(const char* str)
 {
   const size_t length = strlen(str);
   char* buffer = (char*)malloc(length + 1);
-  memcpy(buffer, str, length + 1);
+  if (buffer)
+    memcpy(buffer, str, length + 1);
   return buffer;
 }
 
 int rc_snprintf(char* buffer, size_t size, const char* format, ...)
 {
-   int result;
-   va_list args;
+  int result;
+  va_list args;
 
-   va_start(args, format);
-   /* assume buffer is large enough and ignore size */
-   (void)size;
-   result = vsprintf(buffer, format, args);
-   va_end(args);
+  va_start(args, format);
 
-   return result;
+#ifdef __STDC_WANT_SECURE_LIB__
+  result = vsprintf_s(buffer, size, format, args);
+#else
+  /* assume buffer is large enough and ignore size */
+  (void)size;
+  result = vsprintf(buffer, format, args);
+#endif
+
+  va_end(args);
+
+  return result;
 }
+
+#endif
+

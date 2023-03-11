@@ -30,6 +30,7 @@ extern "C" {
 #elif __STDC_VERSION__ < 199901L
 
 /* C89 redefinitions */
+#define RC_C89_HELPERS 1
 
 #ifndef snprintf
  extern int rc_snprintf(char* buffer, size_t size, const char* format, ...);
@@ -52,6 +53,12 @@ extern "C" {
 #endif
 
 #endif /* __STDC_VERSION__ < 199901L */
+
+#ifndef __STDC_WANT_SECURE_LIB__
+ /* _CRT_SECURE_NO_WARNINGS redefinitions */
+ #define strcpy_s(dest, sz, src) strcpy(dest, src)
+ #define sscanf_s sscanf
+#endif
 
 #ifdef __cplusplus
 }

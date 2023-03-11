@@ -48,7 +48,13 @@ static struct rc_hash_filereader* filereader = NULL;
 
 static void* filereader_open(const char* path)
 {
+#if defined(__STDC_WANT_SECURE_LIB__)
+  FILE* fp;
+  fopen_s(&fp, path, "rb");
+  return fp;
+#else
   return fopen(path, "rb");
+#endif
 }
 
 static void filereader_seek(void* file_handle, int64_t offset, int origin)
@@ -1838,8 +1844,11 @@ static struct rc_buffered_file rc_buffered_file;
 static void* rc_file_open_buffered_file(const char* path)
 {
   struct rc_buffered_file* handle = (struct rc_buffered_file*)malloc(sizeof(struct rc_buffered_file));
-  memcpy(handle, &rc_buffered_file, sizeof(rc_buffered_file));
   (void)path;
+
+  if (handle)
+    memcpy(handle, &rc_buffered_file, sizeof(rc_buffered_file));
+
   return handle;
 }
 

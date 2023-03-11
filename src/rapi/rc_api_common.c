@@ -672,7 +672,7 @@ int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* 
 
   if (*field->value_start == '\"') {
     memset(&tm, 0, sizeof(tm));
-    if (sscanf(field->value_start + 1, "%d-%d-%d %d:%d:%d",
+    if (sscanf_s(field->value_start + 1, "%d-%d-%d %d:%d:%d",
         &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6) {
       tm.tm_mon--; /* 0-based */
       tm.tm_year -= 1900; /* 1900 based */
@@ -683,9 +683,11 @@ int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* 
        * timezone conversion twice and manually removing the difference */
       {
          time_t local_timet = mktime(&tm);
-         struct tm* gmt_tm = gmtime(&local_timet);
-         time_t skewed_timet = mktime(gmt_tm); /* applies local time adjustment second time */
-         time_t tz_offset = skewed_timet - local_timet;
+         time_t skewed_timet, tz_offset;
+         struct tm gmt_tm;
+         gmtime_s(&gmt_tm, &local_timet);
+         skewed_timet = mktime(&gmt_tm); /* applies local time adjustment second time */
+         tz_offset = skewed_timet - local_timet;
          *out = local_timet - tz_offset;
       }
 
