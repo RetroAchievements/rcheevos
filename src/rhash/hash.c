@@ -750,7 +750,7 @@ static int rc_hash_jaguar_cd(char hash[33], const char* path)
   char message[128];
   void* track_handle;
   md5_state_t md5;
-  int byteswapped;
+  int byteswapped = 0;
   unsigned size = 0;
   unsigned offset = 0;
   unsigned sector = 0;
