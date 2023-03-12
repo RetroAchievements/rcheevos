@@ -59,8 +59,9 @@ extern "C" {
  #define strcpy_s(dest, sz, src) strcpy(dest, src)
  #define sscanf_s sscanf
 
+ /* NOTE: Microsoft secure gmtime_s parameter order differs from C11 standard */
  #include <time.h>
- extern struct tm* rc_gmtime_s(const time_t* timer, struct tm* buf);
+ extern struct tm* rc_gmtime_s(struct tm* buf, const time_t* timer);
  #define gmtime_s rc_gmtime_s
 #endif
 
