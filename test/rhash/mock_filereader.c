@@ -1,5 +1,7 @@
 #include "rc_hash.h"
 
+#include "../rcheevos/rc_compat.h"
+
 #include <stdlib.h>
 #include <string.h>
 
