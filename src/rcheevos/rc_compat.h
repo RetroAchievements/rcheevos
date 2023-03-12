@@ -58,6 +58,10 @@ extern "C" {
  /* _CRT_SECURE_NO_WARNINGS redefinitions */
  #define strcpy_s(dest, sz, src) strcpy(dest, src)
  #define sscanf_s sscanf
+
+ #include <time.h>
+ extern errno_t rc_gmtime_s(const time_t* timer, struct tm* buf);
+ #define gmtime_s rc_gmtime_s
 #endif
 
 #ifdef __cplusplus
