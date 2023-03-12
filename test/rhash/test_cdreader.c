@@ -1,5 +1,6 @@
 #include "rc_hash.h"
 
+#include "../rcheevos/rc_compat.h"
 #include "../test_framework.h"
 #include "data.h"
 #include "mock_filereader.h"
