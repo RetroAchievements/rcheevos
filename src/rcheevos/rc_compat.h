@@ -60,7 +60,7 @@ extern "C" {
  #define sscanf_s sscanf
 
  #include <time.h>
- extern errno_t rc_gmtime_s(const time_t* timer, struct tm* buf);
+ extern struct tm* rc_gmtime_s(const time_t* timer, struct tm* buf);
  #define gmtime_s rc_gmtime_s
 #endif
 

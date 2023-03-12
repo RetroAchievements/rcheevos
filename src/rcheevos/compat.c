@@ -75,11 +75,11 @@ int rc_snprintf(char* buffer, size_t size, const char* format, ...)
 
 #ifndef __STDC_WANT_SECURE_LIB__
 
-errno_t rc_gmtime_s(const time_t* timer, struct tm* buf)
+struct tm* rc_gmtime_s(const time_t* timer, struct tm* buf)
 {
   struct tm* tm = gmtime(timer);
   memcpy(buf, tm, sizeof(*tm));
-  return 0;
+  return buf;
 }
 
 #endif
