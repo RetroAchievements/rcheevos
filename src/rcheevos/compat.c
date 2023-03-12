@@ -2,7 +2,6 @@
 
 #include <ctype.h>
 #include <stdarg.h>
-#include <time.h>
 
 #ifdef RC_C89_HELPERS
 
@@ -73,4 +72,3 @@ int rc_snprintf(char* buffer, size_t size, const char* format, ...)
 }
 
 #endif
-

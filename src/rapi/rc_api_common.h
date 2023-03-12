@@ -14,6 +14,7 @@ typedef struct rc_api_url_builder_t {
   char* write;
   char* start;
   char* end;
+  /* pointer to a preallocated rc_api_buffer_t */
   rc_api_buffer_t* buffer;
   int result;
 }

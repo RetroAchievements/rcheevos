@@ -749,31 +749,32 @@ int rc_json_get_required_bool(int* out, rc_api_response_t* response, const rc_js
 /* --- rc_buf --- */
 
 void rc_buf_init(rc_api_buffer_t* buffer) {
-  buffer->write = &buffer->data[0];
-  buffer->end = &buffer->data[sizeof(buffer->data)];
-  buffer->next = NULL;
+  buffer->chunk.write = buffer->chunk.start = &buffer->data[0];
+  buffer->chunk.end = &buffer->data[sizeof(buffer->data)];
+  buffer->chunk.next = NULL;
 }
 
 void rc_buf_destroy(rc_api_buffer_t* buffer) {
+  rc_api_buffer_chunk_t *chunk;
 #ifdef DEBUG_BUFFERS
   int count = 0;
   int wasted = 0;
   int total = 0;
 #endif
 
-  /* first buffer is not allocated */
-  buffer = buffer->next;
+  /* first chunk is not allocated. skip it. */
+  chunk = buffer->chunk.next;
 
   /* deallocate any additional buffers */
-  while (buffer) {
-    rc_api_buffer_t* next = buffer->next;
+  while (chunk) {
+    rc_api_buffer_chunk_t* next = chunk->next;
 #ifdef DEBUG_BUFFERS
-    total += (int)(buffer->end - buffer->data);
-    wasted += (int)(buffer->end - buffer->write);
+    total += (int)(chunk->end - chunk->data);
+    wasted += (int)(chunk->end - chunk->write);
     ++count;
 #endif
-    free(buffer);
-    buffer = next;
+    free(chunk);
+    chunk = next;
   }
 
 #ifdef DEBUG_BUFFERS
@@ -783,47 +784,50 @@ void rc_buf_destroy(rc_api_buffer_t* buffer) {
 }
 
 char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount) {
+  rc_api_buffer_chunk_t* chunk = &buffer->chunk;
   size_t remaining;
-  while (buffer) {
-    remaining = buffer->end - buffer->write;
+  while (chunk) {
+    remaining = chunk->end - chunk->write;
     if (remaining >= amount)
-      return buffer->write;
+      return chunk->write;
 
-    if (!buffer->next) {
-      /* allocate a chunk of memory that is a multiple of 256-bytes. casting it to an rc_api_buffer_t will
-       * effectively unbound the data field, so use write and end pointers to track how data is being used.
+    if (!chunk->next) {
+      /* allocate a chunk of memory that is a multiple of 256-bytes. the first 32 bytes will be associated
+       * to the chunk header, and the remaining will be used for data.
        */
-      const size_t buffer_prefix_size = sizeof(rc_api_buffer_t) - sizeof(buffer->data);
-      const size_t alloc_size = (amount + buffer_prefix_size + 0xFF) & ~0xFF;
-      buffer->next = (rc_api_buffer_t*)malloc(alloc_size);
-      if (!buffer->next)
+      const size_t chunk_header_size = sizeof(rc_api_buffer_chunk_t);
+      const size_t alloc_size = (chunk_header_size + amount + 0xFF) & ~0xFF;
+      chunk->next = (rc_api_buffer_chunk_t*)malloc(alloc_size);
+      if (!chunk->next)
         break;
 
-      buffer->next->write = buffer->next->data;
-      buffer->next->end = buffer->next->write + (alloc_size - buffer_prefix_size);
-      buffer->next->next = NULL;
+      chunk->next->start = (char*)chunk->next + chunk_header_size;
+      chunk->next->write = chunk->next->start;
+      chunk->next->end = (char*)chunk->next + alloc_size;
+      chunk->next->next = NULL;
     }
 
-    buffer = buffer->next;
+    chunk = chunk->next;
   }
 
   return NULL;
 }
 
 void rc_buf_consume(rc_api_buffer_t* buffer, const char* start, char* end) {
+  rc_api_buffer_chunk_t* chunk = &buffer->chunk;
   do {
-    if (buffer->write == start) {
-      size_t offset = (end - buffer->data);
+    if (chunk->write == start) {
+      size_t offset = (end - chunk->start);
       offset = (offset + 7) & ~7;
-      buffer->write = &buffer->data[offset];
+      chunk->write = &chunk->start[offset];
 
-      if (buffer->write > buffer->end)
-        buffer->write = buffer->end;
+      if (chunk->write > chunk->end)
+        chunk->write = chunk->end;
       break;
     }
 
-    buffer = buffer->next;
-  } while (buffer);
+    chunk = chunk->next;
+  } while (chunk);
 }
 
 void* rc_buf_alloc(rc_api_buffer_t* buffer, size_t amount) {
@@ -846,13 +850,13 @@ void rc_api_format_md5(char checksum[33], const unsigned char digest[16]) {
 /* --- rc_url_builder --- */
 
 void rc_url_builder_init(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, size_t estimated_size) {
-  rc_api_buffer_t* used_buffer;
+  rc_api_buffer_chunk_t* used_buffer;
 
   memset(builder, 0, sizeof(*builder));
   builder->buffer = buffer;
   builder->write = builder->start = rc_buf_reserve(buffer, estimated_size);
 
-  used_buffer = buffer;
+  used_buffer = &buffer->chunk;
   while (used_buffer && used_buffer->write != builder->write)
     used_buffer = used_buffer->next;
 
@@ -875,7 +879,7 @@ static int rc_url_builder_reserve(rc_api_url_builder_t* builder, size_t amount) 
     if (remaining < amount) {
       const size_t used = builder->write - builder->start;
       const size_t current_size = builder->end - builder->start;
-      const size_t buffer_prefix_size = sizeof(rc_api_buffer_t) - sizeof(builder->buffer->data);
+      const size_t buffer_prefix_size = sizeof(rc_api_buffer_chunk_t);
       char* new_start;
       size_t new_size = (current_size < 256) ? 256 : current_size * 2;
       do {
