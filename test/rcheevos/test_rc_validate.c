@@ -1,6 +1,7 @@
 #include "rc_validate.h"
 
 #include "rc_compat.h"
+#include "rc_consoles.h"
 
 #include "../test_framework.h"
 
@@ -59,6 +60,48 @@ static void test_validate_trigger_64k(const char* trigger, const char* expected_
 
 static void test_validate_trigger_128k(const char* trigger, const char* expected_error) {
   test_validate_trigger_max_address(trigger, expected_error, 0x1FFFF);
+}
+
+int validate_trigger_for_console(const char* trigger, char result[], const size_t result_size, int console_id) {
+  char* buffer;
+  rc_trigger_t* compiled;
+  int success = 0;
+
+  int ret = rc_trigger_size(trigger);
+  if (ret < 0) {
+    snprintf(result, result_size, "%s", rc_error_str(ret));
+    return 0;
+  }
+
+  buffer = (char*)malloc(ret + 4);
+  memset(buffer + ret, 0xCD, 4);
+  compiled = rc_parse_trigger(buffer, trigger, NULL, 0);
+  if (compiled == NULL) {
+    snprintf(result, result_size, "parse failed");
+  }
+  else if (*(unsigned*)&buffer[ret] != 0xCDCDCDCD) {
+    snprintf(result, result_size, "write past end of buffer");
+  }
+  else if (rc_validate_trigger_for_console(compiled, result, result_size, console_id)) {
+    success = 1;
+  }
+
+  free(buffer);
+  return success;
+}
+
+static void test_validate_trigger_console(const char* trigger, const char* expected_error, int console_id) {
+  char buffer[512];
+  int valid = validate_trigger_for_console(trigger, buffer, sizeof(buffer), console_id);
+
+  if (*expected_error) {
+    ASSERT_STR_EQUALS(buffer, expected_error);
+    ASSERT_NUM_EQUALS(valid, 0);
+  }
+  else {
+    ASSERT_STR_EQUALS(buffer, "");
+    ASSERT_NUM_EQUALS(valid, 1);
+  }
 }
 
 static void test_combining_conditions_at_end_of_definition() {
@@ -180,6 +223,31 @@ void test_address_range() {
   /* AddAddress can use really big values for negative offsets, don't flag them. */
   TEST_PARAMS2(test_validate_trigger_128k, "I:0xX1234_0xHFFFFFF00>5", "");
   TEST_PARAMS2(test_validate_trigger_128k, "I:0xX1234_0xH1234>5_0xHFFFFFF00>5", "Condition 3: Address FFFFFF00 out of range (max 1FFFF)");
+
+  /* console-specific warnings */
+  TEST_PARAMS3(test_validate_trigger_console, "0xH0123>23", "", RC_CONSOLE_NINTENDO);
+  TEST_PARAMS3(test_validate_trigger_console, "0xH07FF>23", "", RC_CONSOLE_NINTENDO);
+  TEST_PARAMS3(test_validate_trigger_console, "0xH0800>23", "Condition 1: Mirror RAM may not be exposed by emulator (address 0800)", RC_CONSOLE_NINTENDO);
+  TEST_PARAMS3(test_validate_trigger_console, "0xH1FFF>23", "Condition 1: Mirror RAM may not be exposed by emulator (address 1FFF)", RC_CONSOLE_NINTENDO);
+  TEST_PARAMS3(test_validate_trigger_console, "0xH2000>23", "", RC_CONSOLE_NINTENDO);
+  TEST_PARAMS3(test_validate_trigger_console, "0xH0123>0xH1000", "Condition 1: Mirror RAM may not be exposed by emulator (address 1000)", RC_CONSOLE_NINTENDO);
+
+  TEST_PARAMS3(test_validate_trigger_console, "0xHC123>23", "", RC_CONSOLE_GAMEBOY);
+  TEST_PARAMS3(test_validate_trigger_console, "0xHDFFF>23", "", RC_CONSOLE_GAMEBOY);
+  TEST_PARAMS3(test_validate_trigger_console, "0xHE000>23", "Condition 1: Echo RAM may not be exposed by emulator (address E000)", RC_CONSOLE_GAMEBOY);
+  TEST_PARAMS3(test_validate_trigger_console, "0xHFDFF>23", "Condition 1: Echo RAM may not be exposed by emulator (address FDFF)", RC_CONSOLE_GAMEBOY);
+  TEST_PARAMS3(test_validate_trigger_console, "0xHFE00>23", "", RC_CONSOLE_GAMEBOY);
+
+  TEST_PARAMS3(test_validate_trigger_console, "0xHC123>23", "", RC_CONSOLE_GAMEBOY_COLOR);
+  TEST_PARAMS3(test_validate_trigger_console, "0xHDFFF>23", "", RC_CONSOLE_GAMEBOY_COLOR);
+  TEST_PARAMS3(test_validate_trigger_console, "0xHE000>23", "Condition 1: Echo RAM may not be exposed by emulator (address E000)", RC_CONSOLE_GAMEBOY_COLOR);
+  TEST_PARAMS3(test_validate_trigger_console, "0xHFDFF>23", "Condition 1: Echo RAM may not be exposed by emulator (address FDFF)", RC_CONSOLE_GAMEBOY_COLOR);
+  TEST_PARAMS3(test_validate_trigger_console, "0xHFE00>23", "", RC_CONSOLE_GAMEBOY_COLOR);
+
+  TEST_PARAMS3(test_validate_trigger_console, "0xH9E20=68", "Condition 1: Kernel RAM may not be initialized without real BIOS (address 9E20)", RC_CONSOLE_PLAYSTATION);
+  TEST_PARAMS3(test_validate_trigger_console, "0xHB8BE=68", "Condition 1: Kernel RAM may not be initialized without real BIOS (address B8BE)", RC_CONSOLE_PLAYSTATION);
+  TEST_PARAMS3(test_validate_trigger_console, "0xHFFFF=68", "Condition 1: Kernel RAM may not be initialized without real BIOS (address FFFF)", RC_CONSOLE_PLAYSTATION);
+  TEST_PARAMS3(test_validate_trigger_console, "0xH10000=68", "", RC_CONSOLE_PLAYSTATION);
 }
 
 void test_delta_pointers() {

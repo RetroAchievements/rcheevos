@@ -1,10 +1,80 @@
 #include "rc_validate.h"
 
 #include "rc_compat.h"
+#include "rc_consoles.h"
 #include "rc_internal.h"
 
 #include <stddef.h>
 #include <stdlib.h>
+
+static int rc_validate_memref(const rc_memref_t* memref, char result[], const size_t result_size, int console_id, unsigned max_address)
+{
+  if (memref->address > max_address) {
+    snprintf(result, result_size, "Address %04X out of range (max %04X)", memref->address, max_address);
+    return 0;
+  }
+
+  switch (console_id) {
+    case RC_CONSOLE_NINTENDO:
+      if (memref->address >= 0x0800 && memref->address <= 0x1FFF) {
+        snprintf(result, result_size, "Mirror RAM may not be exposed by emulator (address %04X)", memref->address);
+        return 0;
+      }
+      break;
+
+    case RC_CONSOLE_GAMEBOY:
+    case RC_CONSOLE_GAMEBOY_COLOR:
+      if (memref->address >= 0xE000 && memref->address <= 0xFDFF) {
+        snprintf(result, result_size, "Echo RAM may not be exposed by emulator (address %04X)", memref->address);
+        return 0;
+      }
+      break;
+
+    case RC_CONSOLE_PLAYSTATION:
+      if (memref->address <= 0xFFFF) {
+        snprintf(result, result_size, "Kernel RAM may not be initialized without real BIOS (address %04X)", memref->address);
+        return 0;
+      }
+      break;
+  }
+
+  return 1;
+}
+
+int rc_validate_memrefs(const rc_memref_t* memref, char result[], const size_t result_size, unsigned max_address)
+{
+  while (memref) {
+    if (!rc_validate_memref(memref, result, result_size, 0, max_address))
+      return 0;
+
+    memref = memref->next;
+  }
+
+  return 1;
+}
+
+static unsigned rc_console_max_address(int console_id)
+{
+  const rc_memory_regions_t* memory_regions;
+  memory_regions = rc_console_memory_regions(console_id);
+  if (memory_regions && memory_regions->num_regions > 0)
+    return memory_regions->region[memory_regions->num_regions - 1].end_address;
+
+  return 0xFFFFFFFF;
+}
+
+int rc_validate_memrefs_for_console(const rc_memref_t* memref, char result[], const size_t result_size, int console_id)
+{
+  const unsigned max_address = rc_console_max_address(console_id);
+  while (memref) {
+    if (!rc_validate_memref(memref, result, result_size, console_id, max_address))
+      return 0;
+
+    memref = memref->next;
+  }
+
+  return 1;
+}
 
 static unsigned rc_max_value(const rc_operand_t* operand)
 {
@@ -92,7 +162,8 @@ static int rc_validate_get_condition_index(const rc_condset_t* condset, const rc
    return 0;
 }
 
-static int rc_validate_range(unsigned min_val, unsigned max_val, char oper, unsigned max, char result[], const size_t result_size) {
+static int rc_validate_range(unsigned min_val, unsigned max_val, char oper, unsigned max, char result[], const size_t result_size)
+{
   switch (oper) {
     case RC_OPERATOR_AND:
       if (min_val > max) {
@@ -159,8 +230,10 @@ static int rc_validate_range(unsigned min_val, unsigned max_val, char oper, unsi
   return 1;
 }
 
-int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t result_size, unsigned max_address) {
+int rc_validate_condset_internal(const rc_condset_t* condset, char result[], const size_t result_size, int console_id, unsigned max_address)
+{
   const rc_condition_t* cond;
+  char buffer[128];
   unsigned max_val;
   int index = 1;
   unsigned long long add_source_max = 0;
@@ -179,14 +252,12 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
     const int is_memref2 = rc_operand_is_memref(&cond->operand2);
 
     if (!in_add_address) {
-      if (is_memref1 && cond->operand1.value.memref->address > max_address) {
-        snprintf(result, result_size, "Condition %d: Address %04X out of range (max %04X)",
-            index, cond->operand1.value.memref->address, max_address);
+      if (is_memref1 && !rc_validate_memref(cond->operand1.value.memref, buffer, sizeof(buffer), console_id, max_address)) {
+        snprintf(result, result_size, "Condition %d: %s", index, buffer);
         return 0;
       }
-      if (is_memref2 && cond->operand2.value.memref->address > max_address) {
-        snprintf(result, result_size, "Condition %d: Address %04X out of range (max %04X)",
-            index, cond->operand2.value.memref->address, max_address);
+      if (is_memref2 && !rc_validate_memref(cond->operand2.value.memref, buffer, sizeof(buffer), console_id, max_address)) {
+        snprintf(result, result_size, "Condition %d: %s", index, buffer);
         return 0;
       }
     }
@@ -315,19 +386,15 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
   return 1;
 }
 
-int rc_validate_memrefs(const rc_memref_t* memref, char result[], const size_t result_size, unsigned max_address) {
-  if (max_address < 0xFFFFFFFF) {
-    while (memref) {
-      if (memref->address > max_address) {
-        snprintf(result, result_size, "Address %04X out of range (max %04X)", memref->address, max_address);
-        return 0;
-      }
+int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t result_size, unsigned max_address)
+{
+  return rc_validate_condset_internal(condset, result, result_size, 0, max_address);
+}
 
-      memref = memref->next;
-    }
-  }
-
-  return 1;
+int rc_validate_condset_for_console(const rc_condset_t* condset, char result[], const size_t result_size, int console_id)
+{
+  const unsigned max_address = rc_console_max_address(console_id);
+  return rc_validate_condset_internal(condset, result, result_size, console_id, max_address);
 }
 
 static int rc_validate_is_combining_condition(const rc_condition_t* condition)
@@ -722,20 +789,21 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
   return 1;
 }
 
-int rc_validate_trigger(const rc_trigger_t* trigger, char result[], const size_t result_size, unsigned max_address) {
+static int rc_validate_trigger_internal(const rc_trigger_t* trigger, char result[], const size_t result_size, int console_id, unsigned max_address)
+{
   const rc_condset_t* alt;
   int index;
 
   if (!trigger->alternative)
   {
-    if (!rc_validate_condset(trigger->requirement, result, result_size, max_address))
+    if (!rc_validate_condset_internal(trigger->requirement, result, result_size, console_id, max_address))
       return 0;
 
     return rc_validate_conflicting_conditions(trigger->requirement, trigger->requirement, "", "", result, result_size);
   }
 
   snprintf(result, result_size, "Core ");
-  if (!rc_validate_condset(trigger->requirement, result + 5, result_size - 5, max_address))
+  if (!rc_validate_condset_internal(trigger->requirement, result + 5, result_size - 5, console_id, max_address))
     return 0;
 
   /* compare core to itself */
@@ -746,7 +814,7 @@ int rc_validate_trigger(const rc_trigger_t* trigger, char result[], const size_t
   for (alt = trigger->alternative; alt; alt = alt->next, ++index) {
     char altname[16];
     const size_t prefix_length = snprintf(result, result_size, "Alt%d ", index);
-    if (!rc_validate_condset(alt, result + prefix_length, result_size - prefix_length, max_address))
+    if (!rc_validate_condset_internal(alt, result + prefix_length, result_size - prefix_length, console_id, max_address))
       return 0;
 
     /* compare alt to itself */
@@ -767,3 +835,13 @@ int rc_validate_trigger(const rc_trigger_t* trigger, char result[], const size_t
   return 1;
 }
 
+int rc_validate_trigger(const rc_trigger_t* trigger, char result[], const size_t result_size, unsigned max_address)
+{
+  return rc_validate_trigger_internal(trigger, result, result_size, 0, max_address);
+}
+
+int rc_validate_trigger_for_console(const rc_trigger_t* trigger, char result[], const size_t result_size, int console_id)
+{
+  const unsigned max_address = rc_console_max_address(console_id);
+  return rc_validate_trigger_internal(trigger, result, result_size, console_id, max_address);
+}
