@@ -231,6 +231,7 @@
     <ClInclude Include="..\src\rapi\rc_api_common.h" />
     <ClInclude Include="..\src\rcheevos\rc_libretro.h" />
     <ClInclude Include="..\src\rcheevos\rc_validate.h" />
+    <ClInclude Include="..\src\rcheevos\rc_version.h" />
     <ClInclude Include="..\src\rhash\md5.h" />
     <ClInclude Include="libretro.h" />
     <ClInclude Include="rcheevos\mock_memory.h" />

@@ -359,5 +359,8 @@
     <ClInclude Include="..\src\rcheevos\rc_validate.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\rcheevos\rc_version.h">
+      <Filter>src\rcheevos</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

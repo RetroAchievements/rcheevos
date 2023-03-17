@@ -1,6 +1,8 @@
 #include "rc_api_user.h"
 #include "rc_api_common.h"
 
+#include "../rcheevos/rc_version.h"
+
 #include <string.h>
 
 /* --- Login --- */
@@ -86,6 +88,7 @@ int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_st
      */
     rc_url_builder_append_unum_param(&builder, "a", 3);
     rc_url_builder_append_unum_param(&builder, "m", api_params->game_id);
+    rc_url_builder_append_str_param(&builder, "l", RCHEEVOS_VERSION_STRING);
     request->post_data = rc_url_builder_finalize(&builder);
   }
 
