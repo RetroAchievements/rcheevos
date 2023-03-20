@@ -76,6 +76,7 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
   rc_json_field_t iterator;
   const char* str;
   const char* last_author = "";
+  const char* last_author_field = "";
   size_t last_author_len = 0;
   size_t len;
   unsigned timet;
@@ -199,8 +200,8 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
       if (!rc_json_get_required_string(&achievement->badge_name, &response->response, &achievement_fields[7], "BadgeName"))
         return RC_MISSING_VALUE;
 
-      len = achievement_fields[7].value_end - achievement_fields[7].value_start;
-      if (len == last_author_len && memcmp(achievement_fields[7].value_start, last_author, len) == 0) {
+      len = achievement_fields[6].value_end - achievement_fields[6].value_start;
+      if (len == last_author_len && memcmp(achievement_fields[6].value_start, last_author_field, len) == 0) {
         achievement->author = last_author;
       }
       else {
@@ -208,6 +209,7 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
           return RC_MISSING_VALUE;
 
         last_author = achievement->author;
+        last_author_field = achievement_fields[6].value_start;
         last_author_len = len;
       }
 

@@ -1,5 +1,7 @@
 #include "rc_hash.h"
 
+#include "../rcheevos/rc_compat.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -165,7 +167,7 @@ static void* _mock_cd_open_track(const char* path, uint32_t track)
 
       const size_t file_len = strlen((const char*)file->data);
       memcpy(buffer, file->data, file_len - 4);
-      sprintf(&buffer[file_len - 4], "%d%s", track, &file->data[file_len - 4]);
+      snprintf(&buffer[file_len - 4], sizeof(buffer) - (file_len - 4), "%d%s", track, &file->data[file_len - 4]);
 
       return _mock_file_open(buffer);
     }
@@ -176,7 +178,7 @@ static void* _mock_cd_open_track(const char* path, uint32_t track)
     if (file)
     {
       char buffer[32];
-      sprintf(buffer, "track%02d.bin", track);
+      snprintf(buffer, sizeof(buffer), "track%02d.bin", track);
       return _mock_file_open(buffer);
     }
   }

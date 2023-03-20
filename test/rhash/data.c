@@ -354,6 +354,9 @@ uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size,
   size_t offset = 2048;
   unsigned i;
 
+  if (!image)
+    return NULL;
+
   /* first sector - volume header */
   memcpy(image, volume_header, sizeof(volume_header));
   image[0x5B] = (uint8_t)root_directory_sectors;
@@ -437,6 +440,8 @@ uint8_t* generate_dreamcast_bin(unsigned track_first_sector, unsigned binary_siz
   const size_t binary_sectors = (binary_size + 2047) / 2048;
   const size_t size_needed = (binary_sectors + 18) * 2048;
   uint8_t* image = (uint8_t*)calloc(size_needed, 1);
+  if (!image)
+    return NULL;
 
   /* volume header goes in sector 0 */
   memcpy(&image[0], volume_header, sizeof(volume_header));
@@ -486,6 +491,8 @@ uint8_t* generate_pce_cd_bin(unsigned binary_sectors, size_t* image_size)
 
   size_t size_needed = (binary_sectors + 2) * 2048;
   uint8_t* image = (uint8_t*)calloc(size_needed, 1);
+  if (!image)
+    return NULL;
 
   /* volume header goes in second sector */
   memcpy(&image[2048], volume_header, sizeof(volume_header));
@@ -520,9 +527,11 @@ uint8_t* generate_pcfx_bin(unsigned binary_sectors, size_t* image_size)
 
   size_t size_needed = (binary_sectors + 2) * 2048;
   uint8_t* image = (uint8_t*)calloc(size_needed, 1);
+  if (!image)
+    return NULL;
 
   /* volume header goes in second sector */
-  strcpy((char*)&image[0], "PC-FX:Hu_CD-ROM");
+  strcpy_s((char*)&image[0], size_needed, "PC-FX:Hu_CD-ROM");
   memcpy(&image[2048], volume_header, sizeof(volume_header));
   image[2048 + 0x24] = (uint8_t)binary_sectors;
 
@@ -541,6 +550,9 @@ uint8_t* generate_iso9660_bin(unsigned num_sectors, const char* volume_label, si
   
   *image_size = num_sectors * 2048;
   image = calloc(*image_size, 1);
+  if (!image)
+    return NULL;
+
   volume_descriptor = &image[16 * 2048];
 
   /* CD001 identifier */
@@ -682,6 +694,9 @@ uint8_t* generate_jaguarcd_bin(unsigned header_offset, unsigned binary_size, int
   uint8_t* image = (uint8_t*)calloc(size_needed, 1);
   int i;
 
+  if (!image)
+    return NULL;
+
   /* header is 64 bytes of ATRI repeating followed by approved data message, load address, and binary size */
   for (i = 0; i < 64; i += 4)
       memcpy(&image[header_offset + i], "ATRI", 4);
@@ -764,7 +779,7 @@ uint8_t* generate_generic_file(size_t size)
 
 uint8_t* convert_to_2352(uint8_t* input, size_t* size, uint32_t first_sector)
 {
-    const uint32_t num_sectors = (uint32_t)(*size / 2048);
+    const uint32_t num_sectors = (uint32_t)((*size + 2047) / 2048);
     const uint32_t output_size = num_sectors * 2352;
     const uint8_t sync_pattern[] = {
       0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00
