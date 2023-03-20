@@ -9,8 +9,9 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <string.h> /* memset */
+#include <ctype.h>
 
-#ifdef _CRT_SECURE_NO_WARNINGS /* windows build*/
+#ifdef _MSC_VER /* windows build */
  #define WIN32_LEAN_AND_MEAN
  #include <windows.h>
 #else
@@ -181,6 +182,11 @@ static int validate_trigger(const char* trigger, char result[], size_t result_si
   }
 
   buffer = (char*)malloc(ret + 4);
+  if (!buffer) {
+    snprintf(result, result_size, "malloc failed");
+    return 0;
+  }
+
   memset(buffer + ret, 0xCD, 4);
   compiled = rc_parse_trigger(buffer, trigger, NULL, 0);
   if (compiled == NULL) {
@@ -245,6 +251,11 @@ static int validate_leaderboard(const char* leaderboard, char result[], const si
   }
 
   buffer = (char*)malloc(ret + 4);
+  if (!buffer) {
+    snprintf(result, result_size, "malloc failed");
+    return 0;
+  }
+
   memset(buffer + ret, 0xCD, 4);
   compiled = rc_parse_lboard(buffer, leaderboard, NULL, 0);
   if (compiled == NULL) {
@@ -352,6 +363,11 @@ static int validate_richpresence(const char* script, char result[], const size_t
   }
 
   buffer = (char*)malloc(ret + 4);
+  if (!buffer) {
+    snprintf(result, result_size, "malloc failed");
+    return 0;
+  }
+
   memset(buffer + ret, 0xCD, 4);
   compiled = rc_parse_richpresence(buffer, script, NULL, 0);
   if (compiled == NULL) {
@@ -388,7 +404,7 @@ static void validate_richpresence_file(const char* richpresence_file, char resul
   size_t file_size;
   FILE* file;
 
-  file = fopen(richpresence_file, "rb");
+  fopen_s(&file, richpresence_file, "rb");
   if (!file) {
     snprintf(result, result_size, "could not open file");
     return;
@@ -399,6 +415,11 @@ static void validate_richpresence_file(const char* richpresence_file, char resul
   fseek(file, 0, SEEK_SET);
 
   file_contents = (char*)malloc(file_size + 1);
+  if (!file_contents) {
+    snprintf(result, result_size, "malloc failed");
+    return;
+  }
+
   fread(file_contents, 1, file_size, file);
   file_contents[file_size] = '\0';
   fclose(file);
@@ -421,7 +442,7 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
   int success = 1;
   unsigned max_address = 0xFFFFFFFF;
 
-  file = fopen(patchdata_file, "rb");
+  fopen_s(&file, patchdata_file, "rb");
   if (!file) {
     printf("File: %s: could not open file\n", filename);
     return 0;
@@ -499,14 +520,14 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
   return success;
 }
 
-#ifdef _CRT_SECURE_NO_WARNINGS
+#ifdef _MSC_VER
 static void validate_patchdata_directory(const char* patchdata_directory, int errors_only) {
   WIN32_FIND_DATA fdFile;
   HANDLE hFind = NULL;
   int need_newline = 0;
 
   char filename[MAX_PATH];
-  sprintf(filename, "%s\\*.json", patchdata_directory);
+  snprintf(filename, sizeof(filename), "%s\\*.json", patchdata_directory);
 
   if ((hFind = FindFirstFile(filename, &fdFile)) == INVALID_HANDLE_VALUE) {
     printf("failed to open directory");
@@ -521,7 +542,7 @@ static void validate_patchdata_directory(const char* patchdata_directory, int er
         need_newline = 0;
       }
 
-      sprintf(filename, "%s\\%s", patchdata_directory, fdFile.cFileName);
+      snprintf(filename, sizeof(filename), "%s\\%s", patchdata_directory, fdFile.cFileName);
       if (!validate_patchdata_file(filename, fdFile.cFileName, errors_only) || !errors_only)
         need_newline = 1;
     }

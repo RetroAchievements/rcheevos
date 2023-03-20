@@ -1,5 +1,6 @@
 #include "rc_hash.h"
 
+#include "../rcheevos/rc_compat.h"
 #include "../test_framework.h"
 #include "data.h"
 #include "mock_filereader.h"
@@ -1014,13 +1015,17 @@ static void test_hash_nds()
 
 static void test_hash_nds_supercard()
 {
-  size_t image_size;
+  size_t image_size, image2_size;
   uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
   char hash_file[33], hash_iterator[33];
   const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
+  ASSERT_PTR_NOT_NULL(image);
+  ASSERT_NUM_GREATER(image_size, 0);
 
   /* inject the SuperCard header (512 bytes) */
-  uint8_t* image2 = malloc(image_size + 512);
+  image2_size = image_size + 512;
+  uint8_t* image2 = malloc(image2_size);
+  ASSERT_PTR_NOT_NULL(image2);
   memcpy(&image2[512], &image[0], image_size);
   memset(&image2[0], 0, 512);
   image2[0] = 0x2E;
@@ -1032,7 +1037,7 @@ static void test_hash_nds_supercard()
   image2[0xB2] = 0x96;
   image2[0xB3] = 0x00;
 
-  mock_file(0, "game.nds", image2, image_size);
+  mock_file(0, "game.nds", image2, image2_size);
 
   /* test file hash */
   int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO_DS, "game.nds");
@@ -1905,8 +1910,8 @@ static void test_hash_m3u_relative_path()
 
 static void test_hash_m3u_absolute_path(const char* absolute_path)
 {
-  char m3u_contents[128] = "#EXTM3U\r\n\r\n#EXTBYT:131072\r\n";
-  strcat(m3u_contents, absolute_path);
+  char m3u_contents[128];
+  snprintf(m3u_contents, sizeof(m3u_contents), "#EXTM3U\r\n\r\n#EXTBYT:131072\r\n%s", absolute_path);
 
   assert_valid_m3u(absolute_path, "relative/test.m3u", m3u_contents);
 }

@@ -1,5 +1,6 @@
 #include "rc_hash.h"
 
+#include "../rcheevos/rc_compat.h"
 #include "../test_framework.h"
 #include "data.h"
 #include "mock_filereader.h"
@@ -498,8 +499,10 @@ static void test_open_cue_track_first_data()
 static void test_determine_sector_size_sync(int sector_size)
 {
   cdrom_t* track_handle;
-  const size_t image_size = sector_size * 32;
+  const size_t image_size = (size_t)sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
+  ASSERT_PTR_NOT_NULL(image);
+
   mock_file_text(0, "game.cue", cue_single_track);
   mock_file(1, "game.bin", image, image_size);
 
@@ -523,8 +526,10 @@ static void test_determine_sector_size_sync(int sector_size)
 static void test_determine_sector_size_sync_primary_volume_descriptor(int sector_size)
 {
   cdrom_t* track_handle;
-  const size_t image_size = sector_size * 32;
+  const size_t image_size = (size_t)sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
+  ASSERT_PTR_NOT_NULL(image);
+
   mock_file_text(0, "game.cue", cue_single_track);
   mock_file(1, "game.bin", image, image_size);
 
@@ -555,13 +560,15 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0(int
     "    INDEX 01 00:02:00\n";
 
   cdrom_t* track_handle;
-  const size_t image_size = sector_size * 200;
+  const size_t image_size = (size_t)sector_size * 200;
   unsigned char* image = (unsigned char*)malloc(image_size);
+  ASSERT_PTR_NOT_NULL(image);
+
   mock_file_text(0, "game.cue", cue);
   mock_file(1, "game.bin", image, image_size);
 
   char sector_size_str[16];
-  sprintf(sector_size_str, "%d", sector_size);
+  snprintf(sector_size_str, sizeof(sector_size_str), "%d", sector_size);
   memcpy(&cue[40], sector_size_str, 4);
 
   memset(image, 0, image_size);
@@ -587,8 +594,10 @@ static void test_determine_sector_size_sync_2048()
 {
   cdrom_t* track_handle;
   const int sector_size = 2048;
-  const size_t image_size = sector_size * 32;
+  const size_t image_size = (size_t)sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
+  ASSERT_PTR_NOT_NULL(image);
+
   mock_file_text(0, "game.cue", cue_single_track);
   mock_file(1, "game.bin", image, image_size);
 
@@ -613,8 +622,10 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_2048()
 {
   cdrom_t* track_handle;
   const int sector_size = 2048;
-  const size_t image_size = sector_size * 32;
+  const size_t image_size = (size_t)sector_size * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
+  ASSERT_PTR_NOT_NULL(image);
+
   mock_file_text(0, "game.cue", cue_single_track);
   mock_file(1, "game.bin", image, image_size);
 
@@ -645,13 +656,15 @@ static void test_determine_sector_size_sync_primary_volume_descriptor_index0_204
 
   cdrom_t* track_handle;
   const int sector_size = 2048;
-  const size_t image_size = sector_size * 200;
+  const size_t image_size = (size_t)sector_size * 200;
   unsigned char* image = (unsigned char*)malloc(image_size);
+  ASSERT_PTR_NOT_NULL(image);
+
   mock_file_text(0, "game.cue", cue);
   mock_file(1, "game.bin", image, image_size);
 
   char sector_size_str[16];
-  sprintf(sector_size_str, "%d", sector_size);
+  snprintf(sector_size_str, sizeof(sector_size_str), "%d", sector_size);
   memcpy(&cue[40], sector_size_str, 4);
 
   memset(image, 0, image_size);
@@ -685,11 +698,12 @@ static void test_absolute_sector_to_track_sector_cue_pregap()
 	"    INDEX 01 00:02:00\n";
 
   cdrom_t* track_handle;
-  const size_t image_size = 60 * 200;
+  const size_t image_size = (size_t)60 * 200;
   unsigned char* image = (unsigned char*)malloc(image_size);
+  ASSERT_PTR_NOT_NULL(image);
 
   mock_file_text(0, "game.cue", cue);
-  mock_file(1, "game1.bin", NULL, 500 * 2352);
+  mock_file(1, "game1.bin", NULL, (size_t)500 * 2352);
   mock_file(2, "game2.bin", image, image_size);
 
   track_handle = (cdrom_t*)cdreader->open_track("game.cue", 2);
@@ -731,9 +745,10 @@ static void test_read_sector()
 {
   char buffer[4096];
   cdrom_t* track_handle;
-  const size_t image_size = 2352 * 32;
+  const size_t image_size = (size_t)2352 * 32;
   unsigned char* image = (unsigned char*)malloc(image_size);
   int offset, i;
+  ASSERT_PTR_NOT_NULL(image);
 
   mock_file_text(0, "game.cue", cue_single_track);
   mock_file(1, "game.bin", image, image_size);
