@@ -170,7 +170,7 @@ static void append_invalid_trigger_condition(char result[], size_t result_size, 
   }
 }
 
-static int validate_trigger(const char* trigger, char result[], size_t result_size, unsigned max_address) {
+static int validate_trigger(const char* trigger, char result[], size_t result_size, int console_id) {
   char* buffer;
   rc_trigger_t* compiled;
   int success = 0;
@@ -195,7 +195,7 @@ static int validate_trigger(const char* trigger, char result[], size_t result_si
   else if (*(unsigned*)&buffer[ret] != 0xCDCDCDCD) {
     snprintf(result, result_size, "write past end of buffer");
   }
-  else if (rc_validate_trigger(compiled, result, result_size, max_address)) {
+  else if (rc_validate_trigger_for_console(compiled, result, result_size, console_id)) {
     snprintf(result, result_size, "%d OK", ret);
     success = 1;
   }
@@ -207,7 +207,7 @@ static int validate_trigger(const char* trigger, char result[], size_t result_si
   return success;
 }
 
-static int validate_leaderboard(const char* leaderboard, char result[], const size_t result_size, unsigned max_address)
+static int validate_leaderboard(const char* leaderboard, char result[], const size_t result_size, int console_id)
 {
   char* buffer;
   rc_lboard_t* compiled;
@@ -266,19 +266,19 @@ static int validate_leaderboard(const char* leaderboard, char result[], const si
   }
   else {
     snprintf(result, result_size, "STA: ");
-    success = rc_validate_trigger(&compiled->start, result + 5, result_size - 5, max_address);
+    success = rc_validate_trigger_for_console(&compiled->start, result + 5, result_size - 5, console_id);
     if (!success) {
       append_invalid_trigger_condition(result + 5, result_size - 5, &compiled->start);
     }
     else {
       snprintf(result, result_size, "SUB: ");
-      success = rc_validate_trigger(&compiled->submit, result + 5, result_size - 5, max_address);
+      success = rc_validate_trigger_for_console(&compiled->submit, result + 5, result_size - 5, console_id);
       if (!success) {
         append_invalid_trigger_condition(result + 5, result_size - 5, &compiled->submit);
       }
       else {
         snprintf(result, result_size, "CAN: ");
-        success = rc_validate_trigger(&compiled->cancel, result + 5, result_size - 5, max_address);
+        success = rc_validate_trigger_for_console(&compiled->cancel, result + 5, result_size - 5, console_id);
 
         if (!success) {
           append_invalid_trigger_condition(result + 5, result_size - 5, &compiled->cancel);
@@ -349,7 +349,7 @@ static int validate_macros(const rc_richpresence_t* richpresence, const char* sc
   return 1;
 }
 
-static int validate_richpresence(const char* script, char result[], const size_t result_size, unsigned max_address)
+static int validate_richpresence(const char* script, char result[], const size_t result_size, int console_id)
 {
   char* buffer;
   rc_richpresence_t* compiled;
@@ -381,13 +381,13 @@ static int validate_richpresence(const char* script, char result[], const size_t
     int index = 1;
     for (display = compiled->first_display; display; display = display->next) {
       const size_t prefix_length = snprintf(result, result_size, "Display%d: ", index++);
-      success = rc_validate_trigger(&display->trigger, result + prefix_length, result_size - prefix_length, max_address);
+      success = rc_validate_trigger_for_console(&display->trigger, result + prefix_length, result_size - prefix_length, console_id);
       if (!success)
         break;
     }
 
     if (success)
-      success = rc_validate_memrefs(compiled->memrefs, result, result_size, max_address);
+      success = rc_validate_memrefs_for_console(compiled->memrefs, result, result_size, console_id);
     if (success)
       success = validate_macros(compiled, script, result, result_size);
     if (success)
@@ -424,7 +424,7 @@ static void validate_richpresence_file(const char* richpresence_file, char resul
   file_contents[file_size] = '\0';
   fclose(file);
 
-  validate_richpresence(file_contents, result, result_size, 0xFFFFFFFF);
+  validate_richpresence(file_contents, result, result_size, 0);
 
   free(file_contents);
 }
@@ -434,13 +434,11 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
   size_t file_size;
   FILE* file;
   rc_api_fetch_game_data_response_t fetch_game_data_response;
-  const rc_memory_regions_t* memory_regions;
   int result;
   size_t i;
   char file_title[256];
   char buffer[256];
   int success = 1;
-  unsigned max_address = 0xFFFFFFFF;
 
   fopen_s(&file, patchdata_file, "rb");
   if (!file) {
@@ -457,9 +455,26 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
   file_contents[file_size] = '\0';
   fclose(file);
 
+  /* rc_api_process_fetch_game_data_response expects the PatchData to be
+   * a subobject, but the DLL strips that when writing to the RACache.
+   * if it looks like the nested object, wrap it again */
+  if (strncmp(file_contents, "{\"ID\":", 6) == 0) {
+    char* expanded_contents = (char*)malloc(file_size + 15);
+    memcpy(expanded_contents, "{\"PatchData\":", 13);
+    memcpy(&expanded_contents[13], file_contents, file_size);
+    expanded_contents[file_size + 13] = '}';
+    expanded_contents[file_size + 14] = '\0';
+
+    free(file_contents);
+    file_contents = expanded_contents;
+  }
+
   result = rc_api_process_fetch_game_data_response(&fetch_game_data_response, file_contents);
   if (result != RC_OK) {
-    printf("File: %s: %s\n", filename, rc_error_str(result));
+    if (fetch_game_data_response.response.error_message)
+      printf("File: %s: %s\n", filename, fetch_game_data_response.response.error_message);
+    else
+      printf("File: %s: %s\n", filename, rc_error_str(result));
     return 0;
   }
 
@@ -467,13 +482,9 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
 
   snprintf(file_title, sizeof(file_title), "File: %s: %s\n", filename, fetch_game_data_response.title);
 
-  memory_regions = rc_console_memory_regions(fetch_game_data_response.console_id);
-  if (memory_regions && memory_regions->num_regions > 0)
-    max_address = memory_regions->region[memory_regions->num_regions - 1].end_address;
-
   if (fetch_game_data_response.rich_presence_script && *fetch_game_data_response.rich_presence_script) {
     result = validate_richpresence(fetch_game_data_response.rich_presence_script, 
-                                   buffer, sizeof(buffer), max_address);
+                                   buffer, sizeof(buffer), fetch_game_data_response.console_id);
     success &= result;
 
     if (!result || !errors_only) {
@@ -486,7 +497,7 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
 
   for (i = 0; i < fetch_game_data_response.num_achievements; ++i) {
     const char* trigger = fetch_game_data_response.achievements[i].definition;
-    result = validate_trigger(trigger, buffer, sizeof(buffer), max_address);
+    result = validate_trigger(trigger, buffer, sizeof(buffer), fetch_game_data_response.console_id);
     success &= result;
 
     if (!result || !errors_only) {
@@ -502,7 +513,7 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
 
   for (i = 0; i < fetch_game_data_response.num_leaderboards; ++i) {
     result = validate_leaderboard(fetch_game_data_response.leaderboards[i].definition, 
-                                  buffer, sizeof(buffer), max_address);
+                                  buffer, sizeof(buffer), fetch_game_data_response.console_id);
     success &= result;
 
     if (!result || !errors_only) {
@@ -607,12 +618,12 @@ int main(int argc, char* argv[]) {
   switch (argv[1][0])
   {
     case 'a':
-      validate_trigger(argv[2], buffer, sizeof(buffer), 0xFFFFFFFF);
+      validate_trigger(argv[2], buffer, sizeof(buffer), 0);
       printf("Achievement: %s\n", buffer);
       break;
 
     case 'l':
-      validate_leaderboard(argv[2], buffer, sizeof(buffer), 0xFFFFFFFF);
+      validate_leaderboard(argv[2], buffer, sizeof(buffer), 0);
       printf("Leaderboard: %s\n", buffer);
       break;
 
