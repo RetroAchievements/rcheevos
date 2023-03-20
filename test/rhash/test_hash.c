@@ -727,6 +727,7 @@ static void test_hash_atari_jaguar_cd_homebrew()
   /* cleanup */
   _rc_hash_jaguar_cd_homebrew_hash = NULL;
   free(image);
+  free(image2);
   init_mock_cdreader();
 
   /* validation */
