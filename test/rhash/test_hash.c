@@ -673,6 +673,70 @@ static void test_hash_atari_jaguar_cd_no_sessions()
   ASSERT_NUM_EQUALS(result_iterator, 0);
 }
 
+extern const char* _rc_hash_jaguar_cd_homebrew_hash;
+
+static void test_hash_atari_jaguar_cd_homebrew()
+{
+  /* Jaguar CD homebrew games all appear to have a common bootloader in the primary boot executable space. They only
+   * differ in a secondary executable in the second track (part of the first session). This doesn't appear to be
+   * intentional behavior based on the CD BIOS documentation, which states that all developer code should be in the
+   * first track of the second session. I speculate this is done to work around the authentication logic. */
+  const char* cue_file =
+      "REM SESSION 01\n"
+      "FILE \"track01.bin\" BINARY\n"
+      "  TRACK 01 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "FILE \"track02.bin\" BINARY\n"
+      "  TRACK 02 AUDIO\n"
+      "    INDEX 01 00:00:00\n"
+      "REM SESSION 02\n"
+      "FILE \"track03.bin\" BINARY\n"
+      "  TRACK 03 AUDIO\n"
+      "    INDEX 01 00:00:00\n";
+  size_t image_size, image_size2;
+  uint8_t* image = generate_jaguarcd_bin(2, 45760, 1, &image_size);
+  uint8_t* image2 = generate_jaguarcd_bin(2, 986742, 1, &image_size2);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "3fdf70e362c845524c9e447aacaed0a9";
+
+  image2[0x60] = 0x21; /* ATARI APPROVED DATA HEADER ATRI! */
+  memcpy(&image2[0xA2], &image2[0x62], 8); /* addr / size */
+  memcpy(&image2[0x62], "RTKARTKARTKARTKA", 16); /* KARTKARTKARTKART */
+  memcpy(&image2[0x72], "RTKARTKARTKARTKA", 16);
+  memcpy(&image2[0x82], "RTKARTKARTKARTKA", 16);
+  memcpy(&image2[0x92], "RTKARTKARTKARTKA", 16);
+
+  mock_file(0, "game.cue", (uint8_t*)cue_file, strlen(cue_file));
+  mock_file(2, "track02.bin", image2, image_size2);
+  mock_file(1, "track03.bin", image, image_size);
+
+  rc_hash_init_default_cdreader(); /* want to test actual FIRST_OF_SECOND_SESSION calculation */
+  _rc_hash_jaguar_cd_homebrew_hash = "4e4114b2675eff21bb77dd41e141ddd6"; /* mock the hash of the homebrew bootloader */
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ATARI_JAGUAR_CD, "game.cue");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cue", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  _rc_hash_jaguar_cd_homebrew_hash = NULL;
+  free(image);
+  init_mock_cdreader();
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
 /* ========================================================================= */
 
 static void test_hash_dreamcast_single_bin()
@@ -2031,6 +2095,7 @@ void test_hash(void) {
   TEST(test_hash_atari_jaguar_cd_track3);
   TEST(test_hash_atari_jaguar_cd_no_header);
   TEST(test_hash_atari_jaguar_cd_no_sessions);
+  TEST(test_hash_atari_jaguar_cd_homebrew);
 
   /* Colecovision */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_COLECOVISION, "test.col", 16384, "455f07d8500f3fabc54906737866167f");

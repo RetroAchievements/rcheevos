@@ -750,6 +750,9 @@ static int rc_hash_text(char hash[33], const uint8_t* buffer, size_t buffer_size
   return rc_hash_finalize(&md5, hash);
 }
 
+/* helper variable only used for testing */
+const char* _rc_hash_jaguar_cd_homebrew_hash = NULL;
+
 static int rc_hash_jaguar_cd(char hash[33], const char* path)
 {
   uint8_t buffer[2352];
@@ -801,40 +804,86 @@ static int rc_hash_jaguar_cd(char hash[33], const char* path)
     return rc_hash_error("Not a Jaguar CD");
   }
 
-  md5_init(&md5);
-
-  offset += 4;
-
-  if (verbose_message_callback)
-  {
-    snprintf(message, sizeof(message), "Hashing boot executable (%u bytes starting at %u bytes into sector %u)", size, offset, sector);
-    rc_hash_verbose(message);
-  }
-
+  i = 0; /* only loop once */
   do
   {
-    if (byteswapped)
-      rc_hash_byteswap16(buffer, &buffer[sizeof(buffer)]);
+    md5_init(&md5);
 
-    remaining = sizeof(buffer) - offset;
-    if (remaining >= size)
+    offset += 4;
+
+    if (verbose_message_callback)
     {
-      md5_append(&md5, &buffer[offset], size);
-      size = 0;
-      break;
+      snprintf(message, sizeof(message), "Hashing boot executable (%u bytes starting at %u bytes into sector %u)", size, offset, sector);
+      rc_hash_verbose(message);
     }
 
-    md5_append(&md5, &buffer[offset], remaining);
-    size -= remaining;
-    offset = 0;
-  } while (rc_cd_read_sector(track_handle, ++sector, buffer, sizeof(buffer)) == sizeof(buffer));
+    if (size > MAX_BUFFER_SIZE)
+      size = MAX_BUFFER_SIZE;
 
-  rc_cd_close_track(track_handle);
+    do
+    {
+      if (byteswapped)
+        rc_hash_byteswap16(buffer, &buffer[sizeof(buffer)]);
 
-  if (size > 0)
-    return rc_hash_error("Not enough data");
+      remaining = sizeof(buffer) - offset;
+      if (remaining >= size)
+      {
+        md5_append(&md5, &buffer[offset], size);
+        size = 0;
+        break;
+      }
 
-  return rc_hash_finalize(&md5, hash);
+      md5_append(&md5, &buffer[offset], remaining);
+      size -= remaining;
+      offset = 0;
+    } while (rc_cd_read_sector(track_handle, ++sector, buffer, sizeof(buffer)) == sizeof(buffer));
+
+    rc_cd_close_track(track_handle);
+
+    if (size > 0)
+      return rc_hash_error("Not enough data");
+
+    rc_hash_finalize(&md5, hash);
+
+    /* homebrew games all seem to have the same boot executable and store the actual game code in track 2.
+     * if we generated something other than the homebrew hash, return it. assume all homebrews are byteswapped. */
+    if (strcmp(hash, "254487b59ab21bc005338e85cbf9fd2f") != 0 || !byteswapped) {
+      if (_rc_hash_jaguar_cd_homebrew_hash == NULL || strcmp(hash, _rc_hash_jaguar_cd_homebrew_hash) != 0)
+        return 1;
+    }
+
+    /* if we've already been through the loop a second time, just return the hash */
+    if (i == 1)
+      return 1;
+    ++i;
+
+    if (verbose_message_callback)
+    {
+      snprintf(message, sizeof(message), "Potential homebrew at sector %u, checking for KART data in track 2", sector);
+      rc_hash_verbose(message);
+    }
+
+    track_handle = rc_cd_open_track(path, 2);
+    if (!track_handle)
+      return rc_hash_error("Could not open track");
+
+    /* track 2 of the homebrew code has the 64 bytes or ATRI followed by 32 bytes of "ATARI APPROVED DATA HEADER ATRI!",
+     * then 64 bytes of KART repeating. */
+    sector = rc_cd_first_track_sector(track_handle);
+    rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+    if (memcmp(&buffer[0x5E], "RT!IRTKA", 8) != 0)
+      return rc_hash_error("Homebrew executable not found in track 2");
+
+    /* found KART data*/
+    if (verbose_message_callback)
+    {
+      snprintf(message, sizeof(message), "Found KART data in track 2");
+      rc_hash_verbose(message);
+    }
+
+    offset = 0xA6;
+    size = (buffer[offset] << 16) | (buffer[offset + 1] << 24) | (buffer[offset + 2]) | (buffer[offset + 3] << 8);
+  } while (1);
 }
 
 static int rc_hash_lynx(char hash[33], const uint8_t* buffer, size_t buffer_size)
