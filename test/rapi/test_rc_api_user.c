@@ -2,6 +2,7 @@
 
 #include "../test_framework.h"
 #include "rc_compat.h"
+#include "rc_version.h"
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
 
@@ -17,7 +18,7 @@ static void test_init_start_session_request()
 
   ASSERT_NUM_EQUALS(rc_api_init_start_session_request(&request, &start_session_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data,  "r=postactivity&u=Username&t=API_TOKEN&a=3&m=1234");
+  ASSERT_STR_EQUALS(request.post_data,  "r=postactivity&u=Username&t=API_TOKEN&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING);
 
   rc_api_destroy_request(&request);
 }
