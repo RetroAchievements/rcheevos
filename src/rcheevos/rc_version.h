@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #define RCHEEVOS_VERSION_MAJOR 10
-#define RCHEEVOS_VERSION_MINOR 6
+#define RCHEEVOS_VERSION_MINOR 7
 #define RCHEEVOS_VERSION_PATCH 0
 
 #define RCHEEVOS_MAKE_VERSION(major, minor, patch) (major * 1000000 + minor * 1000 + patch)
