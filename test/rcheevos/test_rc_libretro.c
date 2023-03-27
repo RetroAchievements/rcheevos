@@ -48,6 +48,7 @@ static void test_disallowed_system(const char* library_name, int console_id) {
 
 static void test_memory_init_without_regions() {
   rc_libretro_memory_regions_t regions;
+  unsigned avail;
   unsigned char buffer1[16], buffer2[8];
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = sizeof(buffer1);
@@ -61,6 +62,15 @@ static void test_memory_init_without_regions() {
   ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 2), &buffer1[2]);
   ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, sizeof(buffer1) + 2), &buffer2[2]);
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, sizeof(buffer1) + sizeof(buffer2) + 2));
+
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find_avail(&regions, 2, &avail), &buffer1[2]);
+  ASSERT_NUM_EQUALS(avail, sizeof(buffer1) - 2);
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find_avail(&regions, sizeof(buffer1) - 1, &avail), &buffer1[sizeof(buffer1) - 1]);
+  ASSERT_NUM_EQUALS(avail, 1);
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find_avail(&regions, sizeof(buffer1) + 2, &avail), &buffer2[2]);
+  ASSERT_NUM_EQUALS(avail, sizeof(buffer2) - 2);
+  ASSERT_PTR_NULL(rc_libretro_memory_find_avail(&regions, sizeof(buffer1) + sizeof(buffer2) + 2, &avail));
+  ASSERT_NUM_EQUALS(avail, 0);
 }
 
 static void test_memory_init_without_regions_system_ram_only() {
@@ -128,6 +138,7 @@ static void test_memory_init_from_unmapped_memory() {
 
 static void test_memory_init_from_unmapped_memory_null_filler() {
   rc_libretro_memory_regions_t regions;
+  unsigned avail;
   unsigned char buffer1[16], buffer2[8];
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = sizeof(buffer1);
@@ -143,6 +154,15 @@ static void test_memory_init_from_unmapped_memory_null_filler() {
   ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x10002), &buffer2[2]);
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x1000A));
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x20002));
+
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find_avail(&regions, 0x00002, &avail), &buffer1[2]);
+  ASSERT_NUM_EQUALS(avail, sizeof(buffer1) - 2);
+  ASSERT_PTR_NULL(rc_libretro_memory_find_avail(&regions, 0x00012, &avail));
+  ASSERT_NUM_EQUALS(avail, 0);
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find_avail(&regions, 0x10002, &avail), &buffer2[2]);
+  ASSERT_NUM_EQUALS(avail, sizeof(buffer2) - 2);
+  ASSERT_PTR_NULL(rc_libretro_memory_find_avail(&regions, 0x1000A, &avail));
+  ASSERT_NUM_EQUALS(avail, 0);
 }
 
 static void test_memory_init_from_unmapped_memory_no_save_ram() {
