@@ -51,7 +51,7 @@ rc_api_request_t;
  * Common attributes for all server responses.
  */
 typedef struct rc_api_response_t {
-  /* Server-provided success indicator (non-zero on failure) */
+  /* Server-provided success indicator (non-zero on success, zero on failure) */
   int succeeded;
   /* Server-provided message associated to the failure */
   const char* error_message;
