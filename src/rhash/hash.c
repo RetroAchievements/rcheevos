@@ -1215,6 +1215,8 @@ static int rc_hash_gamecube(char hash[33], const char* path)
   uint32_t ix;
 
   file_handle = rc_file_open(path);
+  if (!file_handle)
+    return rc_hash_error("Could not open file");
 
   /* Verify Gamecube */
   rc_file_seek(file_handle, 0x1c, SEEK_SET);
