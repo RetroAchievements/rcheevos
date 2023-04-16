@@ -36,7 +36,8 @@ enum {
   RC_INVALID_MEASURED_TARGET = -23,
   RC_INVALID_COMPARISON = -24,
   RC_INVALID_STATE = -25,
-  RC_INVALID_JSON = -26
+  RC_INVALID_JSON = -26,
+  RC_API_FAILURE = -27,
 };
 
 const char* rc_error_str(int ret);

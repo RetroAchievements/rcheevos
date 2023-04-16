@@ -189,7 +189,7 @@ const char* rc_error_str(int ret)
     case RC_INVALID_COMPARISON: return "Invalid comparison";
     case RC_INVALID_STATE: return "Invalid state";
     case RC_INVALID_JSON: return "Invalid JSON";
-
+    case RC_API_FAILURE: return "API call failed";
     default: return "Unknown error";
   }
 }

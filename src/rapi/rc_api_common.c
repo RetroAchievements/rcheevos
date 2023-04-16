@@ -857,6 +857,18 @@ void* rc_buf_alloc(rc_api_buffer_t* buffer, size_t amount) {
   return (void*)ptr;
 }
 
+char* rc_buf_strncpy(rc_api_buffer_t* buffer, const char* src, size_t len) {
+  char* dst = rc_buf_reserve(buffer, len + 1);
+  memcpy(dst, src, len);
+  dst[len] = '\0';
+  rc_buf_consume(buffer, dst, dst + len + 2);
+  return dst;
+}
+
+char* rc_buf_strcpy(rc_api_buffer_t* buffer, const char* src) {
+  return rc_buf_strncpy(buffer, src, strlen(src));
+}
+
 void rc_api_destroy_request(rc_api_request_t* request) {
   rc_buf_destroy(&request->buffer);
 }
