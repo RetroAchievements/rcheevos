@@ -255,6 +255,27 @@ int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_jso
 
   if (*json) {
     const char* end = json;
+
+    if (strncmp(json, "<html>", 6) == 0) {
+      const char* title_start = strstr(json, "<title>");
+      if (title_start) {
+        title_start += 7;
+        if (isdigit((int)*title_start)) {
+          const char* title_end = strstr(title_start + 7, "</title>");
+          if (title_end) {
+            char *dst = rc_buf_reserve(&response->buffer, (title_end - title_start) + 1);
+            response->error_message = dst;
+            memcpy(dst, title_start, title_end - title_start);
+            dst += (title_end - title_start);
+            *dst++ = '\0';
+            rc_buf_consume(&response->buffer, response->error_message, dst);
+            response->succeeded = 0;
+            return RC_INVALID_JSON;
+          }
+        }
+      }
+    }
+
     while (*end && *end != '\n' && end - json < 200)
       ++end;
 
