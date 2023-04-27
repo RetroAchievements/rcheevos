@@ -19,10 +19,12 @@ typedef struct rc_mock_api_response
   const char* request_params;
   const char* response_body;
   int http_status_code;
+  rc_runtime2_server_callback_t async_callback;
+  void* async_callback_data;
 } rc_mock_api_response;
 
 static rc_mock_api_response g_mock_api_responses[8];
-static int g_num_mock_api_responses;
+static int g_num_mock_api_responses = 0;
 
 static void rc_runtime2_server_call(const rc_api_request_t* request, rc_runtime2_server_callback_t callback, void* callback_data, rc_runtime2_t* runtime)
 {
@@ -40,6 +42,29 @@ static void rc_runtime2_server_call(const rc_api_request_t* request, rc_runtime2
 
   // still call the callback to prevent memory leak
   callback("", 500, callback_data);
+}
+
+static void rc_runtime2_server_call_async(const rc_api_request_t* request, rc_runtime2_server_callback_t callback, void* callback_data, rc_runtime2_t* runtime)
+{
+  g_mock_api_responses[g_num_mock_api_responses].request_params = request->post_data;
+  g_mock_api_responses[g_num_mock_api_responses].async_callback = callback;
+  g_mock_api_responses[g_num_mock_api_responses].async_callback_data = callback_data;
+  g_num_mock_api_responses++;
+}
+
+static void rc_runtime2_async_api_response(const char* request_params, const char* response_body)
+{
+  int i;
+  for (i = 0; i < g_num_mock_api_responses; i++)
+  {
+    if (strcmp(g_mock_api_responses[i].request_params, request_params) == 0)
+	{
+      g_mock_api_responses[i].async_callback(response_body, 200, g_mock_api_responses[i].async_callback_data);
+	  return;
+	}
+  }
+
+  ASSERT_FAIL("No pending API requst for: %s", request_params);
 }
 
 static void rc_runtime2_reset_api_handlers(void)
@@ -71,7 +96,7 @@ static void rc_runtime2_callback_expect_success(int result, const char* error_me
   ASSERT_PTR_EQUALS(runtime, g_runtime);
 }
 
-// ----- login -----
+/* ----- login ----- */
 
 static void test_login_with_password(void)
 {
@@ -195,6 +220,34 @@ static void test_login_incomplete_response(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_login_with_password_async(void)
+{
+  const rc_runtime2_user_t* user;
+
+  g_runtime = rc_runtime2_create(rc_runtime2_peek, rc_runtime2_server_call_async);
+  rc_runtime2_reset_api_handlers();
+
+  rc_runtime2_start_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_success);
+
+  user = rc_runtime2_user_info(g_runtime);
+  ASSERT_PTR_NULL(user);
+
+  rc_runtime2_async_api_response("r=login&u=User&p=Pa%24%24word",
+	"{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
+
+  user = rc_runtime2_user_info(g_runtime);
+  ASSERT_PTR_NOT_NULL(user);
+  ASSERT_STR_EQUALS(user->username, "User");
+  ASSERT_STR_EQUALS(user->display_name, "User");
+  ASSERT_STR_EQUALS(user->token, "ApiToken");
+  ASSERT_NUM_EQUALS(user->score, 12345);
+  ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+/* ----- login ----- */
+
 void test_runtime2(void) {
   TEST_SUITE_BEGIN();
 
@@ -204,6 +257,7 @@ void test_runtime2(void) {
   TEST(test_login_required_fields);
   TEST(test_login_with_incorrect_password);
   TEST(test_login_incomplete_response);
+  TEST(test_login_with_password_async);
 
   TEST_SUITE_END();
 }
