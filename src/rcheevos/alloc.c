@@ -190,6 +190,8 @@ const char* rc_error_str(int ret)
     case RC_INVALID_STATE: return "Invalid state";
     case RC_INVALID_JSON: return "Invalid JSON";
     case RC_API_FAILURE: return "API call failed";
+    case RC_LOGIN_REQUIRED: return "Login required";
+    case RC_NO_GAME_LOADED: return "No game loaded";
     default: return "Unknown error";
   }
 }

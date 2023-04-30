@@ -92,6 +92,22 @@ typedef struct rc_runtime2_user_t {
  */
 const rc_runtime2_user_t* rc_runtime2_user_info(const rc_runtime2_t* runtime);
 
+/**
+ * Start loading a game.
+ */
+void rc_runtime2_start_load_game(rc_runtime2_t* runtime, const char* hash, rc_runtime2_callback_t callback);
+
+void rc_runtime2_unload_game(rc_runtime2_t* runtime);
+
+typedef struct rc_runtime2_game_t {
+  uint32_t id;
+  uint32_t console_id;
+  const char* title;
+  const char* hash;
+  char badge_name[16];
+} rc_runtime2_game_t;
+
+const rc_runtime2_game_t* rc_runtime2_game_info(const rc_runtime2_t* runtime);
 
 #ifdef __cplusplus
 }

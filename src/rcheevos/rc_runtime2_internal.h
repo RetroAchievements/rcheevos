@@ -15,13 +15,29 @@ typedef struct rc_runtime2_callbacks_t {
   rc_runtime2_message_callback_t log_call;
 } rc_runtime2_callbacks_t;
 
-typedef struct rc_runtime2_state_t {
-  uint8_t hardcore;
-  uint8_t user;
-  uint8_t log_level;
+typedef struct rc_runtime2_game_hash_t {
+  const char* hash;
+  struct rc_runtime2_game_hash_t* next;
+  uint32_t game_id;
+} rc_runtime2_game_hash_t;
 
-  rc_mutex_t mutex;
-} rc_runtime2_state_t;
+typedef struct rc_runtime2_game_info_t {
+  rc_runtime2_game_t public;
+
+  rc_runtime2_game_hash_t* hashes;
+
+  rc_api_buffer_t buffer;
+} rc_runtime2_game_info_t;
+
+enum {
+   RC_RUNTIME2_LOAD_STATE_NONE,
+   RC_RUNTIME2_LOAD_STATE_IDENTIFYING_GAME,
+   RC_RUNTIME2_LOAD_STATE_AWAIT_LOGIN,
+   RC_RUNTIME2_LOAD_STATE_FETCHING_GAME_DATA,
+   RC_RUNTIME2_LOAD_STATE_STARTING_SESSION,
+   RC_RUNTIME2_LOAD_STATE_DONE,
+   RC_RUNTIME2_LOAD_STATE_UNKNOWN_GAME
+};
 
 enum {
   RC_RUNTIME2_USER_STATE_NONE,
@@ -29,7 +45,29 @@ enum {
   RC_RUNTIME2_USER_STATE_LOGGED_IN
 };
 
+typedef struct rc_runtime2_load_state_t {
+  rc_runtime2_t* runtime;
+  rc_runtime2_callback_t callback;
+
+  struct rc_runtime2_game_hash_t* hash;
+
+  uint8_t progress;
+  uint8_t outstanding_requests;
+} rc_runtime2_load_state_t;
+
+typedef struct rc_runtime2_state_t {
+  uint8_t hardcore;
+  uint8_t user;
+  uint8_t log_level;
+
+  struct rc_runtime2_load_state_t* load;
+
+  rc_mutex_t mutex;
+} rc_runtime2_state_t;
+
 typedef struct rc_runtime2_t {
+  rc_runtime2_game_info_t game;
+
   rc_runtime2_user_t user;
 
   rc_runtime2_callbacks_t callbacks;

@@ -38,6 +38,8 @@ enum {
   RC_INVALID_STATE = -25,
   RC_INVALID_JSON = -26,
   RC_API_FAILURE = -27,
+  RC_LOGIN_REQUIRED = -28,
+  RC_NO_GAME_LOADED = -29,
 };
 
 const char* rc_error_str(int ret);
