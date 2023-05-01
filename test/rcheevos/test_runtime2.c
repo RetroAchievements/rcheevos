@@ -10,7 +10,7 @@
 
 static rc_runtime2_t* g_runtime;
 
-static const char* patchdata_2ach = "{\"Success\":true,\"PatchData\":{"
+static const char* patchdata_2ach_1lbd = "{\"Success\":true,\"PatchData\":{"
       "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
       "\"Achievements\":["
        "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
@@ -20,7 +20,10 @@ static const char* patchdata_2ach = "{\"Success\":true,\"PatchData\":{"
         "\"MemAddr\":\"0xH1234!=d0xH1234_0xH3456=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
         "\"Created\":1376970283,\"Modified\":1376970283}"
       "],"
-      "\"Leaderboards\":[]"
+      "\"Leaderboards\":["
+       "{\"ID\":4401,\"Title\":\"Leaderboard1\",\"Description\":\"Desc1\","
+        "\"Mem\":\"STA:0xH1234=1::CAN:0xH5555=5::SUB:0xH1234=2::VAL:0xH2345\",\"Format\":\"SCORE\"}"
+      "]"
       "}}";
 
 static unsigned rc_runtime2_read_memory(unsigned address, uint8_t* buffer, unsigned num_bytes, rc_runtime2_t* runtime)
@@ -353,11 +356,12 @@ static void test_load_game_not_logged_in(void)
 static void test_load_game(void)
 {
   rc_runtime2_achievement_info_t* achievement;
+  rc_runtime2_leaderboard_info_t* leaderboard;
   g_runtime = mock_runtime2_logged_in();
 
   rc_runtime2_reset_api_handlers();
   rc_runtime2_mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  rc_runtime2_mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach);
+  rc_runtime2_mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
   rc_runtime2_mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
   rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
@@ -375,6 +379,7 @@ static void test_load_game(void)
     ASSERT_STR_EQUALS(g_runtime->game->public.hash, "0123456789ABCDEF");
     ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
     ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
 
     achievement = &g_runtime->game->achievements[0];
     ASSERT_NUM_EQUALS(achievement->public.id, 5501);
@@ -397,6 +402,16 @@ static void test_load_game(void)
     ASSERT_NUM_EQUALS(achievement->public.state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
     ASSERT_NUM_EQUALS(achievement->public.is_unofficial, 0);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
+
+    leaderboard = &g_runtime->game->leaderboards[0];
+    ASSERT_NUM_EQUALS(leaderboard->public.id, 4401);
+    ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard1");
+    ASSERT_STR_EQUALS(leaderboard->public.description, "Desc1");
+    ASSERT_NUM_EQUALS(leaderboard->public.format, RC_FORMAT_SCORE);
+    ASSERT_NUM_EQUALS(leaderboard->public.state, RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE);
+    ASSERT_PTR_NOT_NULL(leaderboard->lboard);
+    ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
+    ASSERT_NUM_EQUALS(leaderboard->tracker_id, RC_LEADERBOARD_TRACKER_UNASSIGNED);
   }
 
   rc_runtime2_destroy(g_runtime);

@@ -530,16 +530,20 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
     else
     {
       /* populate the item, using the communal memrefs pool */
-      rc_init_parse_state(&parse, rc_buf_alloc(buffer, trigger_size), NULL, 0);
+      rc_init_parse_state(&parse, rc_buf_reserve(buffer, trigger_size), NULL, 0);
       parse.first_memref = &load_state->game->runtime.memrefs;
+      parse.variables = &load_state->game->runtime.variables;
       achievement->trigger = RC_ALLOC(rc_trigger_t, &parse);
       rc_parse_trigger_internal(achievement->trigger, &memaddr, &parse);
-      rc_destroy_parse_state(&parse);
 
       if (parse.offset < 0) {
         RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing achievement %u", parse.offset, read->id);
         achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED;
+      } else {
+        rc_buf_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
       }
+
+      rc_destroy_parse_state(&parse);
     }
 
     ++achievement;
@@ -547,6 +551,94 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
   } while (read < stop);
 
   return achievements;
+}
+
+static rc_runtime2_leaderboard_info_t* rc_runtime2_copy_leaderboards(rc_runtime2_load_state_t* load_state, rc_api_fetch_game_data_response_t* game_data)
+{
+  const rc_api_leaderboard_definition_t* read;
+  const rc_api_leaderboard_definition_t* stop;
+  rc_runtime2_leaderboard_info_t* leaderboards;
+  rc_runtime2_leaderboard_info_t* leaderboard;
+  rc_api_buffer_t* buffer;
+  rc_parse_state_t parse;
+  const char* memaddr;
+  const char* ptr;
+  size_t size;
+  int lboard_size;
+
+  if (game_data->num_leaderboards == 0)
+    return NULL;
+
+  /* preallocate space for achievements */
+  size = 24 /* assume average title length of 24 */
+      + 48 /* assume average description length of 48 */
+      + sizeof(rc_lboard_t) /* lboard container */
+      + (sizeof(rc_trigger_t) + sizeof(rc_condset_t) * 2) * 3 /* start/submit/cancel */
+      + (sizeof(rc_value_t) + sizeof(rc_condset_t)) /* value */
+      + sizeof(rc_condition_t) * 4 * 4 /* assume average of 4 conditions in each start/submit/cancel/value */
+      + sizeof(rc_runtime2_leaderboard_info_t);
+  rc_buf_reserve(&load_state->game->buffer, size * game_data->num_leaderboards);
+
+  /* allocate the achievement array */
+  size = sizeof(rc_runtime2_leaderboard_info_t) * game_data->num_leaderboards;
+  buffer = &load_state->game->buffer;
+  leaderboard = leaderboards = rc_buf_alloc(buffer, size);
+  memset(leaderboards, 0, size);
+
+  /* copy the achievement data */
+  read = game_data->leaderboards;
+  stop = read + game_data->num_leaderboards;
+  do
+  {
+    leaderboard->public.title = rc_buf_strcpy(buffer, read->title);
+    leaderboard->public.description = rc_buf_strcpy(buffer, read->description);
+    leaderboard->public.id = read->id;
+    leaderboard->public.format = (uint8_t)read->format;
+    leaderboard->tracker_id = RC_LEADERBOARD_TRACKER_UNASSIGNED;
+
+    memaddr = read->definition;
+    rc_runtime_checksum(memaddr, leaderboard->md5);
+
+    ptr = strstr(memaddr, "VAL:");
+    if (ptr != NULL)
+    {
+      /* calculate the DJB2 hash of the VAL portion of the string*/
+      uint32_t hash = 5381;
+      while (*ptr && (ptr[0] != ':' || ptr[1] != ':'))
+         hash = (hash << 5) + hash + *ptr++;
+      leaderboard->value_djb2 = hash;
+    }
+
+    lboard_size = rc_lboard_size(memaddr);
+    if (lboard_size < 0)
+    {
+      RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing leaderboard %u", lboard_size, read->id);
+      leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_DISABLED;
+    }
+    else
+    {
+      /* populate the item, using the communal memrefs pool */
+      rc_init_parse_state(&parse, rc_buf_reserve(buffer, lboard_size), NULL, 0);
+      parse.first_memref = &load_state->game->runtime.memrefs;
+      parse.variables = &load_state->game->runtime.variables;
+      leaderboard->lboard = RC_ALLOC(rc_lboard_t, &parse);
+      rc_parse_lboard_internal(leaderboard->lboard, memaddr, &parse);
+
+      if (parse.offset < 0) {
+        RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing leaderboard %u", parse.offset, read->id);
+        leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_DISABLED;
+      } else {
+        rc_buf_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
+      }
+
+      rc_destroy_parse_state(&parse);
+    }
+
+    ++leaderboard;
+    ++read;
+  } while (read < stop);
+
+  return leaderboards;
 }
 
 static void rc_runtime2_fetch_game_data_callback(const char* server_response_body, int http_status_code, void* callback_data)
@@ -581,7 +673,9 @@ static void rc_runtime2_fetch_game_data_callback(const char* server_response_bod
     load_state->game->achievements = rc_runtime2_copy_achievements(load_state, &fetch_game_data_response);
     load_state->game->public.num_achievements = fetch_game_data_response.num_achievements;
 
-    // TODO: copy leaderboards
+    load_state->game->leaderboards = rc_runtime2_copy_leaderboards(load_state, &fetch_game_data_response);
+    load_state->game->public.num_leaderboards = fetch_game_data_response.num_leaderboards;
+
     // TODO: load rich presence into runtime
 
     outstanding_requests = rc_runtime2_end_load_state(load_state);

@@ -107,6 +107,7 @@ typedef struct rc_runtime2_game_t {
   char badge_name[16];
 
   uint32_t num_achievements;
+  uint32_t num_leaderboards;
 } rc_runtime2_game_t;
 
 const rc_runtime2_game_t* rc_runtime2_game_info(const rc_runtime2_t* runtime);
@@ -128,6 +129,21 @@ typedef struct rc_runtime2_achievement_t {
   uint8_t state;
   uint8_t is_unofficial;
 } rc_runtime2_achievement_t;
+
+enum {
+  RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE,
+  RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE,
+  RC_RUNTIME2_LEADERBOARD_STATE_TRACKING,
+  RC_RUNTIME2_LEADERBOARD_STATE_DISABLED,
+};
+
+typedef struct rc_runtime2_leaderboard_t {
+  const char* title;
+  const char* description;
+  uint32_t id;
+  uint8_t format;
+  uint8_t state;
+} rc_runtime2_leaderboard_t;
 
 #ifdef __cplusplus
 }

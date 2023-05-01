@@ -21,16 +21,24 @@ typedef struct rc_runtime2_achievement_info_t {
   rc_runtime2_achievement_t public;
 
   rc_trigger_t* trigger;
-  unsigned char md5[16];
+  uint8_t md5[16];
 
 } rc_runtime2_achievement_info_t;
 
-typedef struct rc_runtime2_achievement_set_t {
-  rc_runtime2_achievement_t* achievements;
-  uint32_t num_achievements;
+#define RC_LEADERBOARD_TRACKER_UNASSIGNED (uint8_t)-1
 
-  struct rc_runtime2_achievement_set_t* next_set;
-} rc_runtime2_achievement_set_t;
+typedef struct rc_runtime2_leaderboard_info_t {
+  rc_runtime2_leaderboard_t public;
+
+  rc_lboard_t* lboard;
+  uint8_t md5[16];
+
+  uint32_t value_djb2;
+  int value;
+
+  uint8_t tracker_id;
+
+} rc_runtime2_leaderboard_info_t;
 
 typedef struct rc_runtime2_game_hash_t {
   const char* hash;
@@ -42,6 +50,7 @@ typedef struct rc_runtime2_game_info_t {
   rc_runtime2_game_t public;
 
   rc_runtime2_achievement_info_t* achievements;
+  rc_runtime2_leaderboard_info_t* leaderboards;
 
   rc_runtime_t runtime;
 
