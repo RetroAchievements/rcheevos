@@ -388,7 +388,7 @@ static void test_load_game(void)
     ASSERT_STR_EQUALS(achievement->public.badge_name, "00234");
     ASSERT_NUM_EQUALS(achievement->public.points, 5);
     ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
-    ASSERT_NUM_EQUALS(achievement->public.state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public.state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(achievement->public.is_unofficial, 0);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
@@ -399,7 +399,7 @@ static void test_load_game(void)
     ASSERT_STR_EQUALS(achievement->public.badge_name, "00235");
     ASSERT_NUM_EQUALS(achievement->public.points, 2);
     ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
-    ASSERT_NUM_EQUALS(achievement->public.state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public.state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(achievement->public.is_unofficial, 0);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
@@ -408,10 +408,10 @@ static void test_load_game(void)
     ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard1");
     ASSERT_STR_EQUALS(leaderboard->public.description, "Desc1");
     ASSERT_NUM_EQUALS(leaderboard->public.format, RC_FORMAT_SCORE);
-    ASSERT_NUM_EQUALS(leaderboard->public.state, RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(leaderboard->public.state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
     ASSERT_PTR_NOT_NULL(leaderboard->lboard);
     ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
-    ASSERT_NUM_EQUALS(leaderboard->tracker_id, RC_LEADERBOARD_TRACKER_UNASSIGNED);
+    ASSERT_NUM_EQUALS(leaderboard->tracker_id, RC_RUNTIME2_LEADERBOARD_TRACKER_UNASSIGNED);
   }
 
   rc_runtime2_destroy(g_runtime);

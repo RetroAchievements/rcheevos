@@ -137,6 +137,8 @@ enum {
   RC_RUNTIME2_LEADERBOARD_STATE_DISABLED,
 };
 
+const rc_runtime2_achievement_t* rc_runtime2_achievement_info(const rc_runtime2_t* runtime, uint32_t id);
+
 typedef struct rc_runtime2_leaderboard_t {
   const char* title;
   const char* description;

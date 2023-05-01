@@ -8,7 +8,7 @@
 
 #include <stdarg.h>
 
-#define RC_UNKNOWN_GAME_ID (uint32_t)-1
+#define RC_RUNTIME2_UNKNOWN_GAME_ID (uint32_t)-1
 
 typedef struct rc_runtime2_generic_callback_data_t {
   rc_runtime2_t* runtime;
@@ -115,8 +115,7 @@ static void rc_runtime2_login_callback(const char* server_response_body, int htt
 
   int result = rc_api_process_login_response(&login_response, server_response_body);
   const char* error_message = rc_runtime2_server_error_message(&result, http_status_code, &login_response.response);
-  if (error_message)
-  {
+  if (error_message) {
     rc_mutex_lock(&runtime->state.mutex);
     runtime->state.user = RC_RUNTIME2_USER_STATE_NONE;
     rc_mutex_unlock(&runtime->state.mutex);
@@ -125,8 +124,7 @@ static void rc_runtime2_login_callback(const char* server_response_body, int htt
     if (login_callback_data->callback)
       login_callback_data->callback(result, error_message, runtime);
   }
-  else
-  {
+  else {
     rc_runtime2_load_state_t* load_state;
     runtime->user.username = rc_buf_strcpy(&runtime->buffer, login_response.username);
 
@@ -164,8 +162,7 @@ static void rc_runtime2_begin_login(rc_runtime2_t* runtime,
   rc_api_request_t request;
   int result = rc_api_init_login_request(&request, login_request);
 
-  if (result == RC_OK)
-  {
+  if (result == RC_OK) {
     rc_mutex_lock(&runtime->state.mutex);
 
     if (runtime->state.user == RC_RUNTIME2_USER_STATE_LOGIN_REQUESTED)
@@ -175,8 +172,7 @@ static void rc_runtime2_begin_login(rc_runtime2_t* runtime,
     rc_mutex_unlock(&runtime->state.mutex);
   }
 
-  if (result != RC_OK)
-  {
+  if (result != RC_OK) {
     callback(result, rc_error_str(result), runtime);
     return;
   }
@@ -194,14 +190,12 @@ void rc_runtime2_begin_login_with_password(rc_runtime2_t* runtime,
 {
   rc_api_login_request_t login_request;
   
-  if (!username || !username[0])
-  {
+  if (!username || !username[0]) {
     callback(RC_INVALID_STATE, "username is required", runtime);
     return;
   }
 
-  if (!password || !password[0])
-  {
+  if (!password || !password[0]) {
     callback(RC_INVALID_STATE, "password is required", runtime);
     return;
   }
@@ -219,14 +213,12 @@ void rc_runtime2_begin_login_with_token(rc_runtime2_t* runtime,
 {
   rc_api_login_request_t login_request;
 
-  if (!username || !username[0])
-  {
+  if (!username || !username[0]) {
     callback(RC_INVALID_STATE, "username is required", runtime);
     return;
   }
 
-  if (!token || !token[0])
-  {
+  if (!token || !token[0]) {
     callback(RC_INVALID_STATE, "token is required", runtime);
     return;
   }
@@ -308,15 +300,133 @@ static void rc_runtime2_load_error(rc_runtime2_load_state_t* load_state, int res
   rc_runtime2_free_load_state(load_state);
 }
 
+static void rc_runtime2_activate_achievements(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
+{
+  const uint8_t active_bit = (runtime->state.encore_mode) ?
+      RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE : (runtime->state.hardcore) ?
+      RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE;
+
+  rc_runtime2_achievement_info_t* achievement = game->achievements;
+  rc_runtime2_achievement_info_t* stop = achievement + game->public.num_achievements;
+  unsigned active_count = 0;
+
+  for (; achievement < stop; ++achievement) {
+    if ((achievement->unlocked & active_bit) == 0) {
+      switch (achievement->public.state) {
+        case RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE:
+        case RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED:
+          rc_reset_trigger(achievement->trigger);
+          achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE;
+          ++active_count;
+          break;
+
+        case RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE:
+          ++active_count;
+          break;
+      }
+    }
+    else if (achievement->public.state == RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE) {
+      achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE;
+    }
+  }
+
+  if (active_count > 0) {
+    rc_runtime_trigger_t* trigger;
+
+    if (active_count <= game->runtime.trigger_capacity) {
+      if (active_count != 0)
+        memset(game->runtime.triggers, 0, active_count * sizeof(rc_runtime_trigger_t));
+    }
+    else {
+      if (game->runtime.triggers)
+        free(game->runtime.triggers);
+
+      game->runtime.trigger_capacity = active_count;
+      game->runtime.triggers = (rc_runtime_trigger_t*)calloc(1, active_count * sizeof(rc_runtime_trigger_t));
+    }
+
+    trigger = game->runtime.triggers;
+    achievement = game->achievements;
+    for (; achievement < stop; ++achievement) {
+      if (achievement->public.state == RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE) {
+        trigger->id = achievement->public.id;
+        memcpy(trigger->md5, achievement->md5, 16);
+        trigger->trigger = achievement->trigger;
+        ++trigger;
+      }
+    }
+  }
+
+  game->runtime.trigger_count = active_count;
+}
+
+static void rc_runtime2_activate_leaderboards(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
+{
+  unsigned active_count = 0;
+  rc_runtime2_leaderboard_info_t* leaderboard = game->leaderboards;
+  rc_runtime2_leaderboard_info_t* stop = leaderboard + game->public.num_leaderboards;
+
+  for (; leaderboard < stop; ++leaderboard) {
+    switch (leaderboard->public.state) {
+      case RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED:
+        continue;
+
+      case RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE:
+        if (runtime->state.hardcore) {
+          rc_reset_lboard(leaderboard->lboard);
+          leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE;
+          ++active_count;
+        }
+        break;
+
+      default:
+        if (runtime->state.hardcore)
+          ++active_count;
+        else
+          leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE;
+        break;
+    }
+  }
+
+  if (active_count > 0) {
+    rc_runtime_lboard_t* lboard;
+
+    if (active_count <= game->runtime.lboard_capacity) {
+      if (active_count != 0)
+        memset(game->runtime.lboards, 0, active_count * sizeof(rc_runtime_lboard_t));
+    }
+    else {
+      if (game->runtime.lboards)
+        free(game->runtime.lboards);
+
+      game->runtime.lboard_capacity = active_count;
+      game->runtime.lboards = (rc_runtime_lboard_t*)calloc(1, active_count * sizeof(rc_runtime_lboard_t));
+    }
+
+    lboard = game->runtime.lboards;
+    for (; leaderboard < stop; ++leaderboard) {
+      if (leaderboard->public.state == RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE ||
+          leaderboard->public.state == RC_RUNTIME2_LEADERBOARD_STATE_TRACKING) {
+        lboard->id = leaderboard->public.id;
+        memcpy(lboard->md5, leaderboard->md5, 16);
+        lboard->lboard = leaderboard->lboard;
+        ++lboard;
+      }
+    }
+  }
+
+  game->runtime.lboard_count = active_count;
+}
+
 static void rc_runtime2_activate_game(rc_runtime2_load_state_t* load_state)
 {
   rc_runtime2_t* runtime = load_state->runtime;
 
-  rc_mutex_lock(&load_state->runtime->state.mutex);
+  rc_mutex_lock(&runtime->state.mutex);
   load_state->progress = (runtime->state.load == load_state) ?
       RC_RUNTIME2_LOAD_STATE_DONE : RC_RUNTIME2_LOAD_STATE_UNKNOWN_GAME;
   runtime->state.load = NULL;
-  rc_mutex_unlock(&load_state->runtime->state.mutex);
+  rc_mutex_unlock(&runtime->state.mutex);
 
   if (load_state->progress != RC_RUNTIME2_LOAD_STATE_DONE)
   {
@@ -324,12 +434,13 @@ static void rc_runtime2_activate_game(rc_runtime2_load_state_t* load_state)
   }
   else
   {
-    // TODO: activate achievements/leaderboards
+    rc_runtime2_activate_achievements(load_state->game, runtime);
+    rc_runtime2_activate_leaderboards(load_state->game, runtime);
 
-    rc_mutex_lock(&load_state->runtime->state.mutex);
+    rc_mutex_lock(&runtime->state.mutex);
     if (runtime->state.load == NULL)
       runtime->game = load_state->game;
-    rc_mutex_unlock(&load_state->runtime->state.mutex);
+    rc_mutex_unlock(&runtime->state.mutex);
 
     if (runtime->game != load_state->game)
     {
@@ -377,7 +488,7 @@ static void rc_runtime2_start_session_callback(const char* server_response_body,
   rc_api_destroy_start_session_response(&start_session_response);
 }
 
-static void rc_runtime2_unlocks_callback(const char* server_response_body, int http_status_code, void* callback_data, int hardcore)
+static void rc_runtime2_unlocks_callback(const char* server_response_body, int http_status_code, void* callback_data, int mode)
 {
   rc_runtime2_load_state_t* load_state = (rc_runtime2_load_state_t*)callback_data;
   rc_runtime2_t* runtime = load_state->runtime;
@@ -397,7 +508,25 @@ static void rc_runtime2_unlocks_callback(const char* server_response_body, int h
   }
   else
   {
-    // TODO: process unlocks
+    rc_runtime2_achievement_info_t* start = load_state->game->achievements;
+    rc_runtime2_achievement_info_t* stop = start + load_state->game->public.num_achievements;
+    unsigned i;
+
+    for (i = 0; i < fetch_user_unlocks_response.num_achievement_ids; ++i) {
+      rc_runtime2_achievement_info_t* scan;
+      uint32_t id = fetch_user_unlocks_response.achievement_ids[i];
+      for (scan = start; scan < stop; ++scan) {
+        if (scan->public.id == id) {
+          scan->unlocked |= mode;
+
+          if (scan == start)
+            ++start;
+          else if (scan + 1 == stop)
+            --stop;
+          break;
+        }
+      }
+    }
 
     if (outstanding_requests == 0)
       rc_runtime2_activate_game(load_state);
@@ -408,12 +537,12 @@ static void rc_runtime2_unlocks_callback(const char* server_response_body, int h
 
 static void rc_runtime2_hardcore_unlocks_callback(const char* server_response_body, int http_status_code, void* callback_data)
 {
-  rc_runtime2_unlocks_callback(server_response_body, http_status_code, callback_data, 1);
+  rc_runtime2_unlocks_callback(server_response_body, http_status_code, callback_data, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
 }
 
 static void rc_runtime2_softcore_unlocks_callback(const char* server_response_body, int http_status_code, void* callback_data)
 {
-  rc_runtime2_unlocks_callback(server_response_body, http_status_code, callback_data, 0);
+  rc_runtime2_unlocks_callback(server_response_body, http_status_code, callback_data, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
 }
 
 static void rc_runtime2_begin_start_session(rc_runtime2_load_state_t* load_state)
@@ -539,7 +668,8 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
       if (parse.offset < 0) {
         RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing achievement %u", parse.offset, read->id);
         achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED;
-      } else {
+      }
+      else {
         rc_buf_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
       }
 
@@ -594,7 +724,7 @@ static rc_runtime2_leaderboard_info_t* rc_runtime2_copy_leaderboards(rc_runtime2
     leaderboard->public.description = rc_buf_strcpy(buffer, read->description);
     leaderboard->public.id = read->id;
     leaderboard->public.format = (uint8_t)read->format;
-    leaderboard->tracker_id = RC_LEADERBOARD_TRACKER_UNASSIGNED;
+    leaderboard->tracker_id = RC_RUNTIME2_LEADERBOARD_TRACKER_UNASSIGNED;
 
     memaddr = read->definition;
     rc_runtime_checksum(memaddr, leaderboard->md5);
@@ -627,7 +757,8 @@ static rc_runtime2_leaderboard_info_t* rc_runtime2_copy_leaderboards(rc_runtime2
       if (parse.offset < 0) {
         RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing leaderboard %u", parse.offset, read->id);
         leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_DISABLED;
-      } else {
+      }
+      else {
         rc_buf_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
       }
 
@@ -805,7 +936,7 @@ static rc_runtime2_game_hash_t* rc_runtime2_find_game_hash(rc_runtime2_t* runtim
     game_hash = rc_buf_alloc(&runtime->buffer, sizeof(rc_runtime2_game_hash_t));
     memset(game_hash, 0, sizeof(*game_hash));
     game_hash->hash = rc_buf_strcpy(&runtime->buffer, hash);
-    game_hash->game_id = RC_UNKNOWN_GAME_ID;
+    game_hash->game_id = RC_RUNTIME2_UNKNOWN_GAME_ID;
     game_hash->next = runtime->hashes;
     runtime->hashes = game_hash;
   }
@@ -850,7 +981,7 @@ void rc_runtime2_begin_load_game(rc_runtime2_t* runtime, const char* hash, rc_ru
 
   load_state->hash = rc_runtime2_find_game_hash(runtime, hash);
 
-  if (load_state->hash->game_id == RC_UNKNOWN_GAME_ID)
+  if (load_state->hash->game_id == RC_RUNTIME2_UNKNOWN_GAME_ID)
   {
     rc_runtime2_begin_load_state(load_state, RC_RUNTIME2_LOAD_STATE_IDENTIFYING_GAME, 1);
 
@@ -883,4 +1014,25 @@ void rc_runtime2_unload_game(rc_runtime2_t* runtime)
 const rc_runtime2_game_t* rc_runtime2_game_info(const rc_runtime2_t* runtime)
 {
   return (runtime->game != NULL) ? &runtime->game->public : NULL;
+}
+
+const rc_runtime2_achievement_t* rc_runtime2_achievement_info(const rc_runtime2_t* runtime, uint32_t id)
+{
+  rc_runtime2_achievement_info_t* achievement;
+  rc_runtime2_achievement_info_t* stop;
+
+  if (!runtime->game)
+    return NULL;
+
+  achievement = runtime->game->achievements;
+  stop = achievement + runtime->game->public.num_achievements;
+  while (achievement < stop)
+  {
+    if (achievement->public.id == id)
+      return &achievement->public;
+
+    ++achievement;
+  }
+
+  return NULL;
 }
