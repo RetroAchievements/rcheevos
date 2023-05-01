@@ -670,13 +670,18 @@ static void rc_runtime2_fetch_game_data_callback(const char* server_response_bod
     rc_runtime2_begin_load_state(load_state, RC_RUNTIME2_LOAD_STATE_STARTING_SESSION, 1);
     rc_runtime2_begin_start_session(load_state);
 
+    /* process the game data */
     load_state->game->achievements = rc_runtime2_copy_achievements(load_state, &fetch_game_data_response);
     load_state->game->public.num_achievements = fetch_game_data_response.num_achievements;
 
     load_state->game->leaderboards = rc_runtime2_copy_leaderboards(load_state, &fetch_game_data_response);
     load_state->game->public.num_leaderboards = fetch_game_data_response.num_leaderboards;
 
-    // TODO: load rich presence into runtime
+    result = rc_runtime_activate_richpresence(&load_state->game->runtime, fetch_game_data_response.rich_presence_script, NULL, 0);
+    if (result != RC_OK)
+    {
+      RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing rich presence", result);
+    }
 
     outstanding_requests = rc_runtime2_end_load_state(load_state);
     if (outstanding_requests < 0)
