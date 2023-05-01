@@ -2,6 +2,7 @@
 
 #include "rc_internal.h"
 #include "rc_runtime2_internal.h"
+#include "rc_version.h"
 
 #include "mock_memory.h"
 
@@ -9,7 +10,20 @@
 
 static rc_runtime2_t* g_runtime;
 
-static unsigned rc_runtime2_peek(unsigned address, unsigned num_bytes, rc_runtime2_t* runtime)
+static const char* patchdata_2ach = "{\"Success\":true,\"PatchData\":{"
+      "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
+      "\"Achievements\":["
+       "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+        "\"MemAddr\":\"0xH1234=1_0xH2345=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+        "\"Created\":1367266583,\"Modified\":1376929305},"
+       "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
+        "\"MemAddr\":\"0xH1234!=d0xH1234_0xH3456=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
+        "\"Created\":1376970283,\"Modified\":1376970283}"
+      "],"
+      "\"Leaderboards\":[]"
+      "}}";
+
+static unsigned rc_runtime2_read_memory(unsigned address, uint8_t* buffer, unsigned num_bytes, rc_runtime2_t* runtime)
 {
   return 0;
 }
@@ -100,17 +114,17 @@ static void rc_runtime2_callback_expect_success(int result, const char* error_me
 
 static rc_runtime2_t* mock_runtime2_not_logged_in(void)
 {
-  return rc_runtime2_create(rc_runtime2_peek, rc_runtime2_server_call);
+  return rc_runtime2_create(rc_runtime2_read_memory, rc_runtime2_server_call);
 }
 
 static rc_runtime2_t* mock_runtime2_not_logged_in_async(void)
 {
-  return rc_runtime2_create(rc_runtime2_peek, rc_runtime2_server_call_async);
+  return rc_runtime2_create(rc_runtime2_read_memory, rc_runtime2_server_call_async);
 }
 
 static rc_runtime2_t* mock_runtime2_logged_in(void)
 {
-  rc_runtime2_t* runtime = rc_runtime2_create(rc_runtime2_peek, rc_runtime2_server_call);
+  rc_runtime2_t* runtime = rc_runtime2_create(rc_runtime2_read_memory, rc_runtime2_server_call);
   runtime->user.username = "Username";
   runtime->user.display_name = "DisplayName";
   runtime->user.token = "ApiToken";
@@ -131,7 +145,7 @@ static void test_login_with_password(void)
   rc_runtime2_mock_api_response("r=login&u=User&p=Pa%24%24word",
 	  "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
 
-  rc_runtime2_start_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_success);
+  rc_runtime2_begin_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_success);
 
   user = rc_runtime2_user_info(g_runtime);
   ASSERT_PTR_NOT_NULL(user);
@@ -153,7 +167,7 @@ static void test_login_with_token(void)
   rc_runtime2_mock_api_response("r=login&u=User&t=ApiToken",
 	  "{\"Success\":true,\"User\":\"User\",\"DisplayName\":\"Display\",\"Token\":\"ApiToken\",\"Score\":12345,\"Messages\":2}");
 
-  rc_runtime2_start_login_with_token(g_runtime, "User", "ApiToken", rc_runtime2_callback_expect_success);
+  rc_runtime2_begin_login_with_token(g_runtime, "User", "ApiToken", rc_runtime2_callback_expect_success);
 
   user = rc_runtime2_user_info(g_runtime);
   ASSERT_PTR_NOT_NULL(user);
@@ -191,13 +205,13 @@ static void test_login_required_fields(void)
 {
   g_runtime = mock_runtime2_not_logged_in();
 
-  rc_runtime2_start_login_with_password(g_runtime, "User", "", rc_runtime2_callback_expect_password_required);
-  rc_runtime2_start_login_with_password(g_runtime, "", "Pa$$word", rc_runtime2_callback_expect_username_required);
-  rc_runtime2_start_login_with_password(g_runtime, "", "", rc_runtime2_callback_expect_username_required);
+  rc_runtime2_begin_login_with_password(g_runtime, "User", "", rc_runtime2_callback_expect_password_required);
+  rc_runtime2_begin_login_with_password(g_runtime, "", "Pa$$word", rc_runtime2_callback_expect_username_required);
+  rc_runtime2_begin_login_with_password(g_runtime, "", "", rc_runtime2_callback_expect_username_required);
 
-  rc_runtime2_start_login_with_token(g_runtime, "User", "", rc_runtime2_callback_expect_token_required);
-  rc_runtime2_start_login_with_token(g_runtime, "", "ApiToken", rc_runtime2_callback_expect_username_required);
-  rc_runtime2_start_login_with_token(g_runtime, "", "", rc_runtime2_callback_expect_username_required);
+  rc_runtime2_begin_login_with_token(g_runtime, "User", "", rc_runtime2_callback_expect_token_required);
+  rc_runtime2_begin_login_with_token(g_runtime, "", "ApiToken", rc_runtime2_callback_expect_username_required);
+  rc_runtime2_begin_login_with_token(g_runtime, "", "", rc_runtime2_callback_expect_username_required);
 
   ASSERT_NUM_EQUALS(g_runtime->state.user, RC_RUNTIME2_USER_STATE_NONE);
 
@@ -217,7 +231,7 @@ static void test_login_with_incorrect_password(void)
   rc_runtime2_reset_api_handlers();
   rc_runtime2_mock_api_error("r=login&u=User&p=Pa%24%24word", "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\"}", 403);
 
-  rc_runtime2_start_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_credentials_error);
+  rc_runtime2_begin_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_credentials_error);
 
   ASSERT_PTR_NULL(rc_runtime2_user_info(g_runtime));
 
@@ -237,7 +251,7 @@ static void test_login_incomplete_response(void)
   rc_runtime2_reset_api_handlers();
   rc_runtime2_mock_api_response("r=login&u=User&p=Pa%24%24word", "{\"Success\":true,\"User\":\"Username\"}");
 
-  rc_runtime2_start_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_missing_token);
+  rc_runtime2_begin_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_missing_token);
 
   ASSERT_PTR_NULL(rc_runtime2_user_info(g_runtime));
 
@@ -251,7 +265,7 @@ static void test_login_with_password_async(void)
   g_runtime = mock_runtime2_not_logged_in_async();
   rc_runtime2_reset_api_handlers();
 
-  rc_runtime2_start_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_success);
+  rc_runtime2_begin_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_success);
 
   user = rc_runtime2_user_info(g_runtime);
   ASSERT_PTR_NULL(user);
@@ -283,11 +297,11 @@ static void test_load_game_required_fields(void)
 {
   g_runtime = mock_runtime2_logged_in();
 
-  rc_runtime2_start_load_game(g_runtime, NULL, rc_runtime2_callback_expect_hash_required);
-  rc_runtime2_start_load_game(g_runtime, "", rc_runtime2_callback_expect_hash_required);
+  rc_runtime2_begin_load_game(g_runtime, NULL, rc_runtime2_callback_expect_hash_required);
+  rc_runtime2_begin_load_game(g_runtime, "", rc_runtime2_callback_expect_hash_required);
 
   ASSERT_PTR_NULL(g_runtime->state.load);
-  ASSERT_NUM_EQUALS(g_runtime->game.public.id, 0);
+  ASSERT_PTR_NULL(g_runtime->game);
 
   rc_runtime2_destroy(g_runtime);
 }
@@ -306,10 +320,10 @@ static void test_load_game_unknown_hash(void)
   rc_runtime2_reset_api_handlers();
   rc_runtime2_mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
 
-  rc_runtime2_start_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_unknown_game);
+  rc_runtime2_begin_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_unknown_game);
 
   ASSERT_PTR_NULL(g_runtime->state.load);
-  ASSERT_NUM_EQUALS(g_runtime->game.public.id, 0);
+  ASSERT_PTR_NULL(g_runtime->game);
 
   rc_runtime2_destroy(g_runtime);
 }
@@ -328,10 +342,62 @@ static void test_load_game_not_logged_in(void)
   rc_runtime2_reset_api_handlers();
   rc_runtime2_mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
 
-  rc_runtime2_start_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_login_required);
+  rc_runtime2_begin_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_login_required);
 
   ASSERT_PTR_NULL(g_runtime->state.load);
-  ASSERT_NUM_EQUALS(g_runtime->game.public.id, 0);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_load_game(void)
+{
+  rc_runtime2_achievement_info_t* achievement;
+  g_runtime = mock_runtime2_logged_in();
+
+  rc_runtime2_reset_api_handlers();
+  rc_runtime2_mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  rc_runtime2_mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach);
+  rc_runtime2_mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+
+  rc_runtime2_begin_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_success);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+
+    achievement = &g_runtime->game->achievements[0];
+    ASSERT_NUM_EQUALS(achievement->public.id, 5501);
+    ASSERT_STR_EQUALS(achievement->public.title, "Ach1");
+    ASSERT_STR_EQUALS(achievement->public.description, "Desc1");
+    ASSERT_STR_EQUALS(achievement->public.badge_name, "00234");
+    ASSERT_NUM_EQUALS(achievement->public.points, 5);
+    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public.state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public.is_unofficial, 0);
+    ASSERT_PTR_NOT_NULL(achievement->trigger);
+
+    achievement = &g_runtime->game->achievements[1];
+    ASSERT_NUM_EQUALS(achievement->public.id, 5502);
+    ASSERT_STR_EQUALS(achievement->public.title, "Ach2");
+    ASSERT_STR_EQUALS(achievement->public.description, "Desc2");
+    ASSERT_STR_EQUALS(achievement->public.badge_name, "00235");
+    ASSERT_NUM_EQUALS(achievement->public.points, 2);
+    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public.state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public.is_unofficial, 0);
+    ASSERT_PTR_NOT_NULL(achievement->trigger);
+  }
 
   rc_runtime2_destroy(g_runtime);
 }
@@ -351,6 +417,7 @@ void test_runtime2(void) {
   TEST(test_load_game_required_fields);
   TEST(test_load_game_unknown_hash);
   TEST(test_load_game_not_logged_in);
+  TEST(test_load_game);
 
   TEST_SUITE_END();
 }

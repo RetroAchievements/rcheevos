@@ -132,6 +132,8 @@ void* rc_alloc(void* pointer, int* offset, int size, int alignment, rc_scratch_t
 void* rc_alloc_scratch(void* pointer, int* offset, int size, int alignment, rc_scratch_t* scratch, int scratch_object_pointer_offset);
 char* rc_alloc_str(rc_parse_state_t* parse, const char* text, int length);
 
+unsigned rc_djb2(const char* input);
+
 rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, unsigned address, char size, char is_indirect);
 int rc_parse_memref(const char** memaddr, char* size, unsigned* address);
 void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);

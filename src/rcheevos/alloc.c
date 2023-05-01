@@ -159,6 +159,17 @@ void rc_destroy_parse_state(rc_parse_state_t* parse)
   }
 }
 
+unsigned rc_djb2(const char* input)
+{
+  unsigned result = 5381;
+  char c;
+
+  while ((c = *input++) != '\0')
+    result = ((result << 5) + result) + c; /* result = result * 33 + c */
+
+  return result;
+}
+
 const char* rc_error_str(int ret)
 {
   switch (ret) {

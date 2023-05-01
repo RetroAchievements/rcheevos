@@ -8,12 +8,29 @@ extern "C" {
 #include "rc_runtime2.h"
 
 #include "rc_compat.h"
+#include "rc_runtime.h"
+#include "rc_runtime_types.h"
 
 typedef struct rc_runtime2_callbacks_t {
-  rc_runtime2_peek_t peek;
+  rc_runtime2_read_memory_t read_memory;
   rc_runtime2_server_call_t server_call;
   rc_runtime2_message_callback_t log_call;
 } rc_runtime2_callbacks_t;
+
+typedef struct rc_runtime2_achievement_info_t {
+  rc_runtime2_achievement_t public;
+
+  rc_trigger_t* trigger;
+  unsigned char md5[16];
+
+} rc_runtime2_achievement_info_t;
+
+typedef struct rc_runtime2_achievement_set_t {
+  rc_runtime2_achievement_t* achievements;
+  uint32_t num_achievements;
+
+  struct rc_runtime2_achievement_set_t* next_set;
+} rc_runtime2_achievement_set_t;
 
 typedef struct rc_runtime2_game_hash_t {
   const char* hash;
@@ -24,7 +41,9 @@ typedef struct rc_runtime2_game_hash_t {
 typedef struct rc_runtime2_game_info_t {
   rc_runtime2_game_t public;
 
-  rc_runtime2_game_hash_t* hashes;
+  rc_runtime2_achievement_info_t* achievements;
+
+  rc_runtime_t runtime;
 
   rc_api_buffer_t buffer;
 } rc_runtime2_game_info_t;
@@ -49,7 +68,8 @@ typedef struct rc_runtime2_load_state_t {
   rc_runtime2_t* runtime;
   rc_runtime2_callback_t callback;
 
-  struct rc_runtime2_game_hash_t* hash;
+  rc_runtime2_game_info_t* game;
+  rc_runtime2_game_hash_t* hash;
 
   uint8_t progress;
   uint8_t outstanding_requests;
@@ -66,7 +86,8 @@ typedef struct rc_runtime2_state_t {
 } rc_runtime2_state_t;
 
 typedef struct rc_runtime2_t {
-  rc_runtime2_game_info_t game;
+  rc_runtime2_game_info_t* game;
+  rc_runtime2_game_hash_t* hashes;
 
   rc_runtime2_user_t user;
 
@@ -82,6 +103,8 @@ void rc_runtime2_log_message(const rc_runtime2_t* runtime, const char* format, .
 #define RC_RUNTIME2_LOG_WARN(runtime, format, ...) { if (runtime->state.log_level >= RC_RUNTIME2_LOG_LEVEL_WARN) rc_runtime2_log_message(runtime, format, __VA_ARGS__); }
 #define RC_RUNTIME2_LOG_INFO(runtime, format, ...) { if (runtime->state.log_level >= RC_RUNTIME2_LOG_LEVEL_INFO) rc_runtime2_log_message(runtime, format, __VA_ARGS__); }
 #define RC_RUNTIME2_LOG_VERBOSE(runtime, format, ...) { if (runtime->state.log_level >= RC_RUNTIME2_LOG_LEVEL_VERBOSE) rc_runtime2_log_message(runtime, format, __VA_ARGS__); }
+
+void rc_runtime_checksum(const char* memaddr, unsigned char* md5);
 
 #ifdef __cplusplus
 }

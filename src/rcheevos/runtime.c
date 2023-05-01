@@ -50,7 +50,7 @@ void rc_runtime_destroy(rc_runtime_t* self) {
   self->memrefs = 0;
 }
 
-static void rc_runtime_checksum(const char* memaddr, unsigned char* md5) {
+void rc_runtime_checksum(const char* memaddr, unsigned char* md5) {
   md5_state_t state;
   md5_init(&state);
   md5_append(&state, (unsigned char*)memaddr, (int)strlen(memaddr));

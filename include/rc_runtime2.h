@@ -19,10 +19,10 @@ typedef struct rc_runtime2_t rc_runtime2_t;
 \*****************************************************************************/
 
 /**
- * Callback used to read num_bytes bytes from memory starting at address. If
- * num_bytes is greater than 1, the value is read in little-endian from memory.
+ * Callback used to read num_bytes bytes from memory starting at address into buffer.
+ * Returns the number of bytes read. A return value of 0 indicates the address was invalid.
  */
-typedef unsigned (*rc_runtime2_peek_t)(unsigned address, unsigned num_bytes, rc_runtime2_t* runtime);
+typedef unsigned (*rc_runtime2_read_memory_t)(unsigned address, uint8_t* buffer, unsigned num_bytes, rc_runtime2_t* runtime);
 
 /**
  * Internal method passed to rc_runtime2_server_call_t to process the server response.
@@ -52,7 +52,7 @@ typedef void (*rc_runtime2_message_callback_t)(const char* message);
 /**
  * Creates a new rc_runtime2_t object.
  */
-rc_runtime2_t* rc_runtime2_create(rc_runtime2_peek_t peek_function, rc_runtime2_server_call_t server_call_function);
+rc_runtime2_t* rc_runtime2_create(rc_runtime2_read_memory_t read_memory_function, rc_runtime2_server_call_t server_call_function);
 
 /**
  * Releases resources associated to a rc_runtime2_t object.
@@ -76,8 +76,8 @@ enum
 /**
  * Attempt to login a user.
  */
-void rc_runtime2_start_login_with_password(rc_runtime2_t* runtime, const char* username, const char* password, rc_runtime2_callback_t callback);
-void rc_runtime2_start_login_with_token(rc_runtime2_t* runtime, const char* username, const char* token, rc_runtime2_callback_t callback);
+void rc_runtime2_begin_login_with_password(rc_runtime2_t* runtime, const char* username, const char* password, rc_runtime2_callback_t callback);
+void rc_runtime2_begin_login_with_token(rc_runtime2_t* runtime, const char* username, const char* token, rc_runtime2_callback_t callback);
 
 typedef struct rc_runtime2_user_t {
   const char* display_name;
@@ -95,7 +95,7 @@ const rc_runtime2_user_t* rc_runtime2_user_info(const rc_runtime2_t* runtime);
 /**
  * Start loading a game.
  */
-void rc_runtime2_start_load_game(rc_runtime2_t* runtime, const char* hash, rc_runtime2_callback_t callback);
+void rc_runtime2_begin_load_game(rc_runtime2_t* runtime, const char* hash, rc_runtime2_callback_t callback);
 
 void rc_runtime2_unload_game(rc_runtime2_t* runtime);
 
@@ -105,9 +105,29 @@ typedef struct rc_runtime2_game_t {
   const char* title;
   const char* hash;
   char badge_name[16];
+
+  uint32_t num_achievements;
 } rc_runtime2_game_t;
 
 const rc_runtime2_game_t* rc_runtime2_game_info(const rc_runtime2_t* runtime);
+
+enum {
+  RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE,
+  RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE,
+  RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED,
+  RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED,
+};
+
+typedef struct rc_runtime2_achievement_t {
+  const char* title;
+  const char* description;
+  char badge_name[8];
+  uint32_t id;
+  uint32_t points;
+  time_t unlock_time;
+  uint8_t state;
+  uint8_t is_unofficial;
+} rc_runtime2_achievement_t;
 
 #ifdef __cplusplus
 }

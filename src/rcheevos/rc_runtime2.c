@@ -2,10 +2,13 @@
 
 #include "rc_api_runtime.h"
 #include "rc_api_user.h"
+#include "rc_internal.h"
 
 #include "../rapi/rc_api_common.h"
 
 #include <stdarg.h>
+
+#define RC_UNKNOWN_GAME_ID (uint32_t)-1
 
 typedef struct rc_runtime2_generic_callback_data_t {
   rc_runtime2_t* runtime;
@@ -16,13 +19,13 @@ static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* callback
 
 /* ===== Construction/Destruction ===== */
 
-rc_runtime2_t* rc_runtime2_create(rc_runtime2_peek_t peek_function, rc_runtime2_server_call_t server_call_function)
+rc_runtime2_t* rc_runtime2_create(rc_runtime2_read_memory_t read_memory_function, rc_runtime2_server_call_t server_call_function)
 {
   rc_runtime2_t* runtime = (rc_runtime2_t*)calloc(1, sizeof(rc_runtime2_t));
   if (!runtime)
     return NULL;
 
-  runtime->callbacks.peek = peek_function;
+  runtime->callbacks.read_memory = read_memory_function;
   runtime->callbacks.server_call = server_call_function;
   runtime->state.hardcore = 1;
 
@@ -154,7 +157,7 @@ static void rc_runtime2_login_callback(const char* server_response_body, int htt
   free(login_callback_data);
 }
 
-static void rc_runtime2_start_login(rc_runtime2_t* runtime,
+static void rc_runtime2_begin_login(rc_runtime2_t* runtime,
   const rc_api_login_request_t* login_request, rc_runtime2_callback_t callback)
 {
   rc_runtime2_generic_callback_data_t* callback_data;
@@ -186,7 +189,7 @@ static void rc_runtime2_start_login(rc_runtime2_t* runtime,
   rc_api_destroy_request(&request);
 }
 
-void rc_runtime2_start_login_with_password(rc_runtime2_t* runtime,
+void rc_runtime2_begin_login_with_password(rc_runtime2_t* runtime,
   const char* username, const char* password, rc_runtime2_callback_t callback)
 {
   rc_api_login_request_t login_request;
@@ -208,10 +211,10 @@ void rc_runtime2_start_login_with_password(rc_runtime2_t* runtime,
   login_request.password = password;
 
   RC_RUNTIME2_LOG_INFO(runtime, "Attempting to log in %s (with password)", username);
-  rc_runtime2_start_login(runtime, &login_request, callback);
+  rc_runtime2_begin_login(runtime, &login_request, callback);
 }
 
-void rc_runtime2_start_login_with_token(rc_runtime2_t* runtime,
+void rc_runtime2_begin_login_with_token(rc_runtime2_t* runtime,
   const char* username, const char* token, rc_runtime2_callback_t callback)
 {
   rc_api_login_request_t login_request;
@@ -233,7 +236,7 @@ void rc_runtime2_start_login_with_token(rc_runtime2_t* runtime,
   login_request.api_token = token;
 
   RC_RUNTIME2_LOG_INFO(runtime, "Attempting to log in %s (with token)", username);
-  rc_runtime2_start_login(runtime, &login_request, callback);
+  rc_runtime2_begin_login(runtime, &login_request, callback);
 }
 
 const rc_runtime2_user_t* rc_runtime2_user_info(const rc_runtime2_t* runtime)
@@ -242,6 +245,23 @@ const rc_runtime2_user_t* rc_runtime2_user_info(const rc_runtime2_t* runtime)
 }
 
 /* ===== load game ===== */
+
+static void rc_runtime2_free_game(rc_runtime2_game_info_t* game)
+{
+  rc_runtime_destroy(&game->runtime);
+
+  rc_buf_destroy(&game->buffer);
+
+  free(game);
+}
+
+static void rc_runtime2_free_load_state(rc_runtime2_load_state_t* load_state)
+{
+  if (load_state->game)
+    rc_runtime2_free_game(load_state->game);
+
+  free(load_state);
+}
 
 static void rc_runtime2_begin_load_state(rc_runtime2_load_state_t* load_state, uint8_t state, uint8_t num_requests)
 {
@@ -269,7 +289,7 @@ static int rc_runtime2_end_load_state(rc_runtime2_load_state_t* load_state)
   rc_mutex_unlock(&load_state->runtime->state.mutex);
 
   if (remaining_requests < 0)
-    free(load_state);
+    rc_runtime2_free_load_state(load_state);
 
   return remaining_requests;
 }
@@ -282,12 +302,10 @@ static void rc_runtime2_load_error(rc_runtime2_load_state_t* load_state, int res
     load_state->runtime->state.load = NULL;
   rc_mutex_unlock(&load_state->runtime->state.mutex);
 
-  rc_runtime2_unload_game(load_state->runtime);
-
   if (load_state->callback)
     load_state->callback(result, error_message, load_state->runtime);
 
-  free(load_state);
+  rc_runtime2_free_load_state(load_state);
 }
 
 static void rc_runtime2_activate_game(rc_runtime2_load_state_t* load_state)
@@ -306,11 +324,30 @@ static void rc_runtime2_activate_game(rc_runtime2_load_state_t* load_state)
   }
   else
   {
-    // TODO: activate achievements
-    // TODO: raise game loaded event
+    // TODO: activate achievements/leaderboards
+
+    rc_mutex_lock(&load_state->runtime->state.mutex);
+    if (runtime->state.load == NULL)
+      runtime->game = load_state->game;
+    rc_mutex_unlock(&load_state->runtime->state.mutex);
+
+    if (runtime->game != load_state->game)
+    {
+      /* previous load state was aborted, silently quit */
+    }
+    else
+    {
+      if (load_state->callback)
+        load_state->callback(RC_OK, NULL, runtime);
+
+      // TODO: raise game loaded event?
+
+      /* detach the game object so it doesn't get freed by free_load_state */
+      load_state->game = NULL;
+    }
   }
 
-  free(load_state);
+  rc_runtime2_free_load_state(load_state);
 }
 
 static void rc_runtime2_start_session_callback(const char* server_response_body, int http_status_code, void* callback_data)
@@ -389,10 +426,10 @@ static void rc_runtime2_begin_start_session(rc_runtime2_load_state_t* load_state
   rc_api_request_t softcore_unlock_request;
   int result;
 
-  memset(&start_session_params, 0, sizeof(start_session_request));
+  memset(&start_session_params, 0, sizeof(start_session_params));
   start_session_params.username = runtime->user.username;
   start_session_params.api_token = runtime->user.token;
-  start_session_params.game_id = runtime->game.public.id;
+  start_session_params.game_id = load_state->game->public.id;
 
   result = rc_api_init_start_session_request(&start_session_request, &start_session_params);
   if (result != RC_OK)
@@ -404,7 +441,7 @@ static void rc_runtime2_begin_start_session(rc_runtime2_load_state_t* load_state
     memset(&unlock_params, 0, sizeof(unlock_params));
     unlock_params.username = runtime->user.username;
     unlock_params.api_token = runtime->user.token;
-    unlock_params.game_id = runtime->game.public.id;
+    unlock_params.game_id = load_state->game->public.id;
     unlock_params.hardcore = 1;
 
     result = rc_api_init_fetch_user_unlocks_request(&hardcore_unlock_request, &unlock_params);
@@ -440,6 +477,78 @@ static void rc_runtime2_begin_start_session(rc_runtime2_load_state_t* load_state
   }
 }
 
+static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2_load_state_t* load_state, rc_api_fetch_game_data_response_t* game_data)
+{
+  const rc_api_achievement_definition_t* read;
+  const rc_api_achievement_definition_t* stop;
+  rc_runtime2_achievement_info_t* achievements;
+  rc_runtime2_achievement_info_t* achievement;
+  rc_api_buffer_t* buffer;
+  rc_parse_state_t parse;
+  const char* memaddr;
+  size_t size;
+  int trigger_size;
+
+  if (game_data->num_achievements == 0)
+    return NULL;
+
+  /* preallocate space for achievements */
+  size = 24 /* assume average title length of 24 */
+      + 48 /* assume average description length of 48 */
+      + sizeof(rc_trigger_t) + sizeof(rc_condset_t) * 2 /* trigger container */
+      + sizeof(rc_condition_t) * 8 /* assume average trigger length of 8 conditions */
+      + sizeof(rc_runtime2_achievement_info_t);
+  rc_buf_reserve(&load_state->game->buffer, size * game_data->num_achievements);
+
+  /* allocate the achievement array */
+  size = sizeof(rc_runtime2_achievement_info_t) * game_data->num_achievements;
+  buffer = &load_state->game->buffer;
+  achievement = achievements = rc_buf_alloc(buffer, size);
+  memset(achievements, 0, size);
+
+  /* copy the achievement data */
+  read = game_data->achievements;
+  stop = read + game_data->num_achievements;
+  do
+  {
+    achievement->public.title = rc_buf_strcpy(buffer, read->title);
+    achievement->public.description = rc_buf_strcpy(buffer, read->description);
+    snprintf(achievement->public.badge_name, sizeof(achievement->public.badge_name), "%s", read->badge_name);
+    achievement->public.id = read->id;
+    achievement->public.points = read->points;
+    achievement->public.is_unofficial = read->category != RC_ACHIEVEMENT_CATEGORY_CORE;
+
+    memaddr = read->definition;
+    rc_runtime_checksum(memaddr, achievement->md5);
+
+    trigger_size = rc_trigger_size(memaddr);
+    if (trigger_size < 0)
+    {
+      RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing achievement %u", trigger_size, read->id);
+      achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED;
+    }
+    else
+    {
+      /* populate the item, using the communal memrefs pool */
+      rc_init_parse_state(&parse, rc_buf_alloc(buffer, trigger_size), NULL, 0);
+      parse.first_memref = &load_state->game->runtime.memrefs;
+      achievement->trigger = RC_ALLOC(rc_trigger_t, &parse);
+      rc_parse_trigger_internal(achievement->trigger, &memaddr, &parse);
+      rc_destroy_parse_state(&parse);
+
+      if (parse.offset < 0) {
+        RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing achievement %u", parse.offset, read->id);
+        achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED;
+      }
+    }
+
+    ++achievement;
+    ++read;
+  } while (read < stop);
+
+  return achievements;
+}
+
 static void rc_runtime2_fetch_game_data_callback(const char* server_response_body, int http_status_code, void* callback_data)
 {
   rc_runtime2_load_state_t* load_state = (rc_runtime2_load_state_t*)callback_data;
@@ -461,14 +570,30 @@ static void rc_runtime2_fetch_game_data_callback(const char* server_response_bod
   }
   else
   {
-    runtime->game.public.console_id = fetch_game_data_response.console_id;
-    runtime->game.public.title = rc_buf_strcpy(&runtime->game.buffer, fetch_game_data_response.title);
-    snprintf(runtime->game.public.badge_name, sizeof(runtime->game.public.badge_name), "%s", fetch_game_data_response.image_name);
+    load_state->game->public.console_id = fetch_game_data_response.console_id;
+    load_state->game->public.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
+    snprintf(load_state->game->public.badge_name, sizeof(load_state->game->public.badge_name), "%s", fetch_game_data_response.image_name);
 
-    // TODO: copy achievements and leaderboards
-    // TODO: load achievements, leaderboards, and rich presence into runtime
-
+    /* kick off the start session request while we process the game data */
+    rc_runtime2_begin_load_state(load_state, RC_RUNTIME2_LOAD_STATE_STARTING_SESSION, 1);
     rc_runtime2_begin_start_session(load_state);
+
+    load_state->game->achievements = rc_runtime2_copy_achievements(load_state, &fetch_game_data_response);
+    load_state->game->public.num_achievements = fetch_game_data_response.num_achievements;
+
+    // TODO: copy leaderboards
+    // TODO: load rich presence into runtime
+
+    outstanding_requests = rc_runtime2_end_load_state(load_state);
+    if (outstanding_requests < 0)
+    {
+      /* previous load state was aborted, silently quit */
+    }
+    else
+    {
+      if (outstanding_requests == 0)
+        rc_runtime2_activate_game(load_state);
+    }
   }
 
   rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
@@ -480,6 +605,15 @@ static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* load_sta
   rc_runtime2_t* runtime = load_state->runtime;
   rc_api_request_t request;
   int result;
+
+  if (load_state->hash->game_id == 0)
+  {
+    rc_runtime2_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
+    return;
+  }
+
+  load_state->game->public.id = load_state->hash->game_id;
+  load_state->game->public.hash = load_state->hash->hash;
 
   rc_mutex_lock(&runtime->state.mutex);
   result = runtime->state.user;
@@ -493,7 +627,7 @@ static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* load_sta
       break;
 
     case RC_RUNTIME2_USER_STATE_LOGIN_REQUESTED:
-      /* do nothing, this function will be called again after login completes*/
+      /* do nothing, this function will be called again after login completes */
       return;
 
     default:
@@ -504,7 +638,7 @@ static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* load_sta
   memset(&fetch_game_data_request, 0, sizeof(fetch_game_data_request));
   fetch_game_data_request.username = runtime->user.username;
   fetch_game_data_request.api_token = runtime->user.token;
-  fetch_game_data_request.game_id = runtime->game.public.id;
+  fetch_game_data_request.game_id = load_state->game->public.id;
 
   result = rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request);
   if (result != RC_OK)
@@ -534,33 +668,57 @@ static void rc_runtime2_identify_game_callback(const char* server_response_body,
   {
     rc_runtime2_load_error(load_state, result, error_message);
   }
-  else if (outstanding_requests < 0)
-  {
-    /* previous load state was aborted, silently quit */
-  }
-  else if (resolve_hash_response.game_id == 0)
-  {
-    rc_runtime2_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
-  }
   else
   {
-    runtime->game.public.hash = runtime->game.hashes->hash;
-    runtime->game.public.id = resolve_hash_response.game_id;
-    runtime->game.hashes->game_id = resolve_hash_response.game_id;
+    /* hash exists outside the load state - always update it */
+    load_state->hash->game_id = resolve_hash_response.game_id;
+    RC_RUNTIME2_LOG_INFO(runtime, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
 
-    RC_RUNTIME2_LOG_INFO(runtime, "Identified game: %u (%s)", runtime->game.hashes->game_id, runtime->game.hashes->hash);
-
-    rc_runtime2_begin_fetch_game_data(load_state);
+    if (outstanding_requests < 0)
+    {
+      /* previous load state was aborted, silently quit */
+    }
+    else
+    {
+      rc_runtime2_begin_fetch_game_data(load_state);
+    }
   }
 
   rc_api_destroy_resolve_hash_response(&resolve_hash_response);
 }
 
-void rc_runtime2_start_load_game(rc_runtime2_t* runtime, const char* hash, rc_runtime2_callback_t callback)
+static rc_runtime2_game_hash_t* rc_runtime2_find_game_hash(rc_runtime2_t* runtime, const char* hash)
+{
+  rc_runtime2_game_hash_t* game_hash;
+
+  rc_mutex_lock(&runtime->state.mutex);
+  game_hash = runtime->hashes;
+  while (game_hash)
+  {
+    if (strcasecmp(game_hash->hash, hash) == 0)
+      break;
+
+    game_hash = game_hash->next;
+  }
+
+  if (!game_hash)
+  {
+    game_hash = rc_buf_alloc(&runtime->buffer, sizeof(rc_runtime2_game_hash_t));
+    memset(game_hash, 0, sizeof(*game_hash));
+    game_hash->hash = rc_buf_strcpy(&runtime->buffer, hash);
+    game_hash->game_id = RC_UNKNOWN_GAME_ID;
+    game_hash->next = runtime->hashes;
+    runtime->hashes = game_hash;
+  }
+  rc_mutex_unlock(&runtime->state.mutex);
+
+  return game_hash;
+}
+
+void rc_runtime2_begin_load_game(rc_runtime2_t* runtime, const char* hash, rc_runtime2_callback_t callback)
 {
   rc_api_resolve_hash_request_t resolve_hash_request;
   rc_runtime2_load_state_t* load_state;
-  rc_runtime2_game_hash_t* game_hash;
   rc_api_request_t request;
   int result;
 
@@ -582,63 +740,48 @@ void rc_runtime2_start_load_game(rc_runtime2_t* runtime, const char* hash, rc_ru
 
   rc_runtime2_unload_game(runtime);
 
-  memset(&runtime->state.load, sizeof(runtime->state.load), 0);
-
-  rc_buf_init(&runtime->game.buffer);
-
   load_state = (rc_runtime2_load_state_t*)calloc(1, sizeof(*load_state));
   load_state->runtime = runtime;
   load_state->callback = callback;
   runtime->state.load = load_state;
 
-  game_hash = runtime->game.hashes;
-  while (game_hash)
+  load_state->game = (rc_runtime2_game_info_t*)calloc(1, sizeof(*load_state->game));
+  rc_buf_init(&load_state->game->buffer);
+  rc_runtime_init(&load_state->game->runtime);
+
+  load_state->hash = rc_runtime2_find_game_hash(runtime, hash);
+
+  if (load_state->hash->game_id == RC_UNKNOWN_GAME_ID)
   {
-    if (strcasecmp(game_hash->hash, hash) == 0)
-      break;
-
-    game_hash = game_hash->next;
-  }
-
-  if (game_hash)
-  {
-    load_state->hash = game_hash;
-    runtime->game.public.hash = game_hash->hash;
-    runtime->game.public.id = game_hash->game_id;
-
-    RC_RUNTIME2_LOG_INFO(runtime, "Identified game: %u (%s)", game_hash->game_id, game_hash->hash);
-
-    rc_runtime2_begin_fetch_game_data(load_state);
-  }
-  else
-  {
-    game_hash = rc_buf_alloc(&runtime->buffer, sizeof(rc_runtime2_game_hash_t));
-    memset(game_hash, 0, sizeof(*game_hash));
-    game_hash->hash = rc_buf_strcpy(&runtime->buffer, hash);
-    game_hash->next = runtime->game.hashes;
-    runtime->game.hashes = game_hash;
-    load_state->hash = game_hash;
-
     rc_runtime2_begin_load_state(load_state, RC_RUNTIME2_LOAD_STATE_IDENTIFYING_GAME, 1);
 
     runtime->callbacks.server_call(&request, rc_runtime2_identify_game_callback, load_state, runtime);
   }
+  else
+  {
+    RC_RUNTIME2_LOG_INFO(runtime, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
+
+    rc_runtime2_begin_fetch_game_data(load_state);
+  }
+
   rc_api_destroy_request(&request);
 }
 
 void rc_runtime2_unload_game(rc_runtime2_t* runtime)
 {
-  if (runtime->game.public.id == 0)
-    return;
+  rc_runtime2_game_info_t* game;
 
   rc_mutex_lock(&runtime->state.mutex);
-
-  rc_buf_destroy(&runtime->game.buffer);
-  memset(&runtime->game, 0, sizeof(runtime->game));
-
+  game = runtime->game;
+  runtime->game = NULL;
   runtime->state.load = NULL;
-
   rc_mutex_unlock(&runtime->state.mutex);
+
+  if (game != NULL)
+    rc_runtime2_free_game(game);
 }
 
-
+const rc_runtime2_game_t* rc_runtime2_game_info(const rc_runtime2_t* runtime)
+{
+  return (runtime->game != NULL) ? &runtime->game->public : NULL;
+}

@@ -81,17 +81,6 @@ static int rc_runtime_progress_match_md5(rc_runtime_progress_t* progress, unsign
   return result;
 }
 
-static unsigned rc_runtime_progress_djb2(const char* input)
-{
-  unsigned result = 5381;
-  char c;
-
-  while ((c = *input++) != '\0')
-    result = ((result << 5) + result) + c; /* result = result * 33 + c */
-
-  return result;
-}
-
 static void rc_runtime_progress_start_chunk(rc_runtime_progress_t* progress, unsigned chunk_id)
 {
   rc_runtime_progress_write_uint(progress, chunk_id);
@@ -352,7 +341,7 @@ static int rc_runtime_progress_write_variables(rc_runtime_progress_t* progress)
 
   for (variable = progress->runtime->variables; variable; variable = variable->next)
   {
-    unsigned djb2 = rc_runtime_progress_djb2(variable->name);
+    unsigned djb2 = rc_djb2(variable->name);
     rc_runtime_progress_write_uint(progress, djb2);
 
     rc_runtime_progress_write_variable(progress, variable);
@@ -418,7 +407,7 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
   count = 0;
   for (variable = progress->runtime->variables; variable; variable = variable->next) {
     pending_variables[count].variable = variable;
-    pending_variables[count].djb2 = rc_runtime_progress_djb2(variable->name);
+    pending_variables[count].djb2 = rc_djb2(variable->name);
     ++count;
   }
 
