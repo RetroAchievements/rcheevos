@@ -11,20 +11,29 @@
 static rc_runtime2_t* g_runtime;
 
 static const char* patchdata_2ach_1lbd = "{\"Success\":true,\"PatchData\":{"
-      "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
-      "\"Achievements\":["
-       "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
-        "\"MemAddr\":\"0xH1234=1_0xH2345=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
-        "\"Created\":1367266583,\"Modified\":1376929305},"
-       "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
-        "\"MemAddr\":\"0xH1234!=d0xH1234_0xH3456=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
-        "\"Created\":1376970283,\"Modified\":1376970283}"
-      "],"
-      "\"Leaderboards\":["
-       "{\"ID\":4401,\"Title\":\"Leaderboard1\",\"Description\":\"Desc1\","
-        "\"Mem\":\"STA:0xH1234=1::CAN:0xH5555=5::SUB:0xH1234=2::VAL:0xH2345\",\"Format\":\"SCORE\"}"
-      "]"
-      "}}";
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":["
+     "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+      "\"MemAddr\":\"0xH1234=1_0xH2345=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+      "\"Created\":1367266583,\"Modified\":1376929305},"
+     "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
+      "\"MemAddr\":\"0xH1234!=d0xH1234_0xH3456=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
+      "\"Created\":1376970283,\"Modified\":1376970283}"
+    "],"
+    "\"Leaderboards\":["
+     "{\"ID\":4401,\"Title\":\"Leaderboard1\",\"Description\":\"Desc1\","
+      "\"Mem\":\"STA:0xH1234=1::CAN:0xH5555=5::SUB:0xH1234=2::VAL:0xH2345\",\"Format\":\"SCORE\"}"
+    "]"
+    "}}";
+
+static const char* response_429 =
+    "<html>\n"
+    "<head><title>429 Too Many Requests</title></head>\n"
+    "<body>\n"
+    "<center><h1>429 Too Many Requests</h1></center>\n"
+    "<hr><center>nginx</center>\n"
+    "</body>\n"
+    "</html>";
 
 static unsigned rc_runtime2_read_memory(unsigned address, uint8_t* buffer, unsigned num_bytes, rc_runtime2_t* runtime)
 {
@@ -417,6 +426,110 @@ static void test_load_game(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void rc_runtime2_callback_expect_too_many_requests(int result, const char* error_message, rc_runtime2_t* runtime)
+{
+  ASSERT_NUM_EQUALS(result, RC_INVALID_JSON);
+  ASSERT_STR_EQUALS(error_message, "429 Too Many Requests");
+  ASSERT_PTR_EQUALS(runtime, g_runtime);
+}
+
+static void test_load_game_gameid_failure(void)
+{
+  g_runtime = mock_runtime2_logged_in();
+
+  rc_runtime2_reset_api_handlers();
+  rc_runtime2_mock_api_error("r=gameid&m=0123456789ABCDEF", response_429, 429);
+  rc_runtime2_mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  rc_runtime2_mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+
+  rc_runtime2_begin_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_too_many_requests);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_load_game_patch_failure(void)
+{
+  g_runtime = mock_runtime2_logged_in();
+
+  rc_runtime2_reset_api_handlers();
+  rc_runtime2_mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  rc_runtime2_mock_api_error("r=patch&u=Username&t=ApiToken&g=1234", response_429, 429);
+  rc_runtime2_mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+
+  rc_runtime2_begin_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_too_many_requests);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_load_game_postactivity_failure(void)
+{
+  g_runtime = mock_runtime2_logged_in();
+
+  rc_runtime2_reset_api_handlers();
+  rc_runtime2_mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  rc_runtime2_mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  rc_runtime2_mock_api_error("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, response_429, 429);
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+
+  rc_runtime2_begin_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_too_many_requests);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_load_game_softcore_unlocks_failure(void)
+{
+  g_runtime = mock_runtime2_logged_in();
+
+  rc_runtime2_reset_api_handlers();
+  rc_runtime2_mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  rc_runtime2_mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  rc_runtime2_mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  rc_runtime2_mock_api_error("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", response_429, 429);
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+
+  rc_runtime2_begin_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_too_many_requests);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_load_game_hardcore_unlocks_failure(void)
+{
+  g_runtime = mock_runtime2_logged_in();
+
+  rc_runtime2_reset_api_handlers();
+  rc_runtime2_mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  rc_runtime2_mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  rc_runtime2_mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
+  rc_runtime2_mock_api_error("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", response_429, 429);
+
+  rc_runtime2_begin_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_too_many_requests);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+/* ----- harness ----- */
+
 void test_runtime2(void) {
   TEST_SUITE_BEGIN();
 
@@ -433,6 +546,12 @@ void test_runtime2(void) {
   TEST(test_load_game_unknown_hash);
   TEST(test_load_game_not_logged_in);
   TEST(test_load_game);
+  TEST(test_load_game_gameid_failure);
+  TEST(test_load_game_patch_failure);
+  TEST(test_load_game_postactivity_failure);
+  TEST(test_load_game_softcore_unlocks_failure);
+  TEST(test_load_game_hardcore_unlocks_failure)
+
 
   TEST_SUITE_END();
 }

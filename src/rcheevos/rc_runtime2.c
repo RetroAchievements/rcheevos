@@ -105,7 +105,7 @@ static const char* rc_runtime2_server_error_message(int* result, int http_status
   return NULL;
 }
 
-/* ===== Login ===== */
+/* ===== User ===== */
 
 static void rc_runtime2_login_callback(const char* server_response_body, int http_status_code, void* callback_data)
 {
@@ -236,7 +236,7 @@ const rc_runtime2_user_t* rc_runtime2_user_info(const rc_runtime2_t* runtime)
   return (runtime->state.user == RC_RUNTIME2_USER_STATE_LOGGED_IN) ? &runtime->user : NULL;
 }
 
-/* ===== load game ===== */
+/* ===== Game ===== */
 
 static void rc_runtime2_free_game(rc_runtime2_game_info_t* game)
 {
@@ -268,6 +268,7 @@ static void rc_runtime2_begin_load_state(rc_runtime2_load_state_t* load_state, u
 static int rc_runtime2_end_load_state(rc_runtime2_load_state_t* load_state)
 {
   int remaining_requests = 0;
+  int aborted = 0;
 
   rc_mutex_lock(&load_state->runtime->state.mutex);
 
@@ -276,28 +277,45 @@ static int rc_runtime2_end_load_state(rc_runtime2_load_state_t* load_state)
   remaining_requests = load_state->outstanding_requests;
 
   if (load_state->runtime->state.load != load_state)
-    remaining_requests = -1;
+    aborted = 1;
 
   rc_mutex_unlock(&load_state->runtime->state.mutex);
 
-  if (remaining_requests < 0)
-    rc_runtime2_free_load_state(load_state);
+  if (aborted) {
+    /* we can't actually free the load_state itself if there are any outstanding requests
+     * or their callbacks will try to use the free'd memory. as they call end_load_state,
+     * the outstanding_requests count will reach zero and the memory will be free'd then. */
+    if (remaining_requests == 0)
+      rc_runtime2_free_load_state(load_state);
+
+    return -1;
+  }
 
   return remaining_requests;
 }
 
 static void rc_runtime2_load_error(rc_runtime2_load_state_t* load_state, int result, const char* error_message)
 {
+  int remaining_requests = 0;
+
   rc_mutex_lock(&load_state->runtime->state.mutex);
+
   load_state->progress = RC_RUNTIME2_LOAD_STATE_UNKNOWN_GAME;
   if (load_state->runtime->state.load == load_state)
     load_state->runtime->state.load = NULL;
+
+  remaining_requests = load_state->outstanding_requests;
+
   rc_mutex_unlock(&load_state->runtime->state.mutex);
 
   if (load_state->callback)
     load_state->callback(result, error_message, load_state->runtime);
 
-  rc_runtime2_free_load_state(load_state);
+  /* we can't actually free the load_state itself if there are any outstanding requests
+   * or their callbacks will try to use the free'd memory. as they call end_load_state,
+   * the outstanding_requests count will reach zero and the memory will be free'd then. */
+  if (remaining_requests == 0)
+    rc_runtime2_free_load_state(load_state);
 }
 
 static void rc_runtime2_activate_achievements(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
