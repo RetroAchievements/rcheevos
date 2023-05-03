@@ -514,22 +514,22 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   return RC_OK;
 }
 
-int rc_runtime_get_richpresence(const rc_runtime_t* self, char* buffer, unsigned buffersize, rc_runtime_peek_t peek, void* peek_ud, lua_State* L) {
+int rc_runtime_get_richpresence(const rc_runtime_t* self, char* buffer, unsigned buffersize, rc_runtime_peek_t peek, lua_State* L) {
   if (self->richpresence && self->richpresence->richpresence)
-    return rc_get_richpresence_display_string(self->richpresence->richpresence, buffer, buffersize, peek, peek_ud, L);
+    return rc_get_richpresence_display_string(self->richpresence->richpresence, buffer, buffersize, peek, self->userdata, L);
 
   *buffer = '\0';
   return 0;
 }
 
-void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_handler, rc_runtime_peek_t peek, void* ud, lua_State* L) {
+void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_handler, rc_runtime_peek_t peek, lua_State* L) {
   rc_runtime_event_t runtime_event;
   int i;
 
   runtime_event.value = 0;
 
-  rc_update_memref_values(self->memrefs, peek, ud);
-  rc_update_variables(self->variables, peek, ud, L);
+  rc_update_memref_values(self->memrefs, peek, self->userdata);
+  rc_update_variables(self->variables, peek, self->userdata, L);
 
   for (i = self->trigger_count - 1; i >= 0; --i) {
     rc_trigger_t* trigger = self->triggers[i].trigger;
@@ -547,7 +547,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
       trigger->state = RC_TRIGGER_STATE_DISABLED;
       self->triggers[i].invalid_memref = NULL;
 
-      event_handler(&runtime_event);
+      event_handler(&runtime_event, self->userdata);
 
       runtime_event.value = 0; /* achievement loop expects this to stay at 0 */
       continue;
@@ -555,14 +555,14 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 
     old_measured_value = trigger->measured_value;
     old_state = trigger->state;
-    new_state = rc_evaluate_trigger(trigger, peek, ud, L);
+    new_state = rc_evaluate_trigger(trigger, peek, self->userdata, L);
 
     /* trigger->state doesn't actually change to RESET, RESET just serves as a notification.
      * handle the notification, then look at the actual state */
     if (new_state == RC_TRIGGER_STATE_RESET) {
       runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_RESET;
       runtime_event.id = self->triggers[i].id;
-      event_handler(&runtime_event);
+      event_handler(&runtime_event, self->userdata);
 
       new_state = trigger->state;
     }
@@ -582,12 +582,12 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
         unsigned new_percent = (unsigned)(((unsigned long long)trigger->measured_value * 100) / trigger->measured_target);
         if (old_percent != new_percent) {
           runtime_event.value = new_percent;
-          event_handler(&runtime_event);
+          event_handler(&runtime_event, self->userdata);
         }
       }
       else {
         runtime_event.value = trigger->measured_value;
-        event_handler(&runtime_event);
+        event_handler(&runtime_event, self->userdata);
       }
 
       runtime_event.value = 0; /* achievement loop expects this to stay at 0 */
@@ -601,7 +601,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     if (old_state == RC_TRIGGER_STATE_PRIMED) {
       runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED;
       runtime_event.id = self->triggers[i].id;
-      event_handler(&runtime_event);
+      event_handler(&runtime_event, self->userdata);
     }
 
     /* raise events for each of the possible new states */
@@ -610,19 +610,19 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
       case RC_TRIGGER_STATE_TRIGGERED:
         runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED;
         runtime_event.id = self->triggers[i].id;
-        event_handler(&runtime_event);
+        event_handler(&runtime_event, self->userdata);
         break;
 
       case RC_TRIGGER_STATE_PAUSED:
         runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_PAUSED;
         runtime_event.id = self->triggers[i].id;
-        event_handler(&runtime_event);
+        event_handler(&runtime_event, self->userdata);
         break;
 
       case RC_TRIGGER_STATE_PRIMED:
         runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED;
         runtime_event.id = self->triggers[i].id;
-        event_handler(&runtime_event);
+        event_handler(&runtime_event, self->userdata);
         break;
 
       case RC_TRIGGER_STATE_ACTIVE:
@@ -631,7 +631,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
         if (old_state == RC_TRIGGER_STATE_WAITING || old_state == RC_TRIGGER_STATE_PAUSED) {
           runtime_event.type = RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED;
           runtime_event.id = self->triggers[i].id;
-          event_handler(&runtime_event);
+          event_handler(&runtime_event, self->userdata);
         }
         break;
     }
@@ -652,12 +652,12 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
       lboard->state = RC_LBOARD_STATE_DISABLED;
       self->lboards[i].invalid_memref = NULL;
 
-      event_handler(&runtime_event);
+      event_handler(&runtime_event, self->userdata);
       continue;
     }
 
     lboard_state = lboard->state;
-    switch (rc_evaluate_lboard(lboard, &runtime_event.value, peek, ud, L))
+    switch (rc_evaluate_lboard(lboard, &runtime_event.value, peek, self->userdata, L))
     {
       case RC_LBOARD_STATE_STARTED: /* leaderboard is running */
         if (lboard_state != RC_LBOARD_STATE_STARTED) {
@@ -665,14 +665,14 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 
           runtime_event.type = RC_RUNTIME_EVENT_LBOARD_STARTED;
           runtime_event.id = self->lboards[i].id;
-          event_handler(&runtime_event);
+          event_handler(&runtime_event, self->userdata);
         }
         else if (runtime_event.value != self->lboards[i].value) {
           self->lboards[i].value = runtime_event.value;
 
           runtime_event.type = RC_RUNTIME_EVENT_LBOARD_UPDATED;
           runtime_event.id = self->lboards[i].id;
-          event_handler(&runtime_event);
+          event_handler(&runtime_event, self->userdata);
         }
         break;
 
@@ -680,7 +680,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
         if (lboard_state != RC_LBOARD_STATE_CANCELED) {
           runtime_event.type = RC_RUNTIME_EVENT_LBOARD_CANCELED;
           runtime_event.id = self->lboards[i].id;
-          event_handler(&runtime_event);
+          event_handler(&runtime_event, self->userdata);
         }
         break;
 
@@ -688,14 +688,14 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
         if (lboard_state != RC_RUNTIME_EVENT_LBOARD_TRIGGERED) {
           runtime_event.type = RC_RUNTIME_EVENT_LBOARD_TRIGGERED;
           runtime_event.id = self->lboards[i].id;
-          event_handler(&runtime_event);
+          event_handler(&runtime_event, self->userdata);
         }
         break;
     }
   }
 
   if (self->richpresence && self->richpresence->richpresence)
-    rc_update_richpresence(self->richpresence->richpresence, peek, ud, L);
+    rc_update_richpresence(self->richpresence->richpresence, peek, self->userdata, L);
 }
 
 void rc_runtime_reset(rc_runtime_t* self) {
@@ -831,7 +831,7 @@ void rc_runtime_validate_addresses(rc_runtime_t* self, rc_runtime_event_handler_
   int num_invalid = 0;
 
   while (memref) {
-    if (!memref->value.is_indirect && !validate_handler(memref->address)) {
+    if (!memref->value.is_indirect && !validate_handler(memref->address, self->userdata)) {
       /* remove the invalid memref from the chain so we don't try to evaluate it in the future.
        * it's still there, so anything referencing it will continue to fetch 0.
        */
@@ -861,7 +861,7 @@ void rc_runtime_validate_addresses(rc_runtime_t* self, rc_runtime_event_handler_
         trigger->state = RC_TRIGGER_STATE_DISABLED;
         self->triggers[i].invalid_memref = NULL;
 
-        event_handler(&runtime_event);
+        event_handler(&runtime_event, self->userdata);
       }
     }
 
@@ -875,8 +875,12 @@ void rc_runtime_validate_addresses(rc_runtime_t* self, rc_runtime_event_handler_
         lboard->state = RC_LBOARD_STATE_DISABLED;
         self->lboards[i].invalid_memref = NULL;
 
-        event_handler(&runtime_event);
+        event_handler(&runtime_event, self->userdata);
       }
     }
   }
+}
+
+void rc_runtime_set_userdata(rc_runtime_t* self, void* ud) {
+  self->userdata = ud;
 }

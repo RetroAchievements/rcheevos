@@ -88,6 +88,8 @@ typedef struct rc_runtime_t {
 
   rc_value_t* variables;
   rc_value_t** next_variable;
+
+  void* userdata;
 }
 rc_runtime_t;
 
@@ -107,7 +109,9 @@ int rc_runtime_format_lboard_value(char* buffer, int size, int value, int format
 
 
 int rc_runtime_activate_richpresence(rc_runtime_t* runtime, const char* script, lua_State* L, int funcs_idx);
-int rc_runtime_get_richpresence(const rc_runtime_t* runtime, char* buffer, unsigned buffersize, rc_runtime_peek_t peek, void* peek_ud, lua_State* L);
+int rc_runtime_get_richpresence(const rc_runtime_t* runtime, char* buffer, unsigned buffersize, rc_runtime_peek_t peek, lua_State* L);
+
+void rc_runtime_set_userdata(rc_runtime_t* runtime, void* ud);
 
 enum {
   RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, /* from WAITING, PAUSED, or PRIMED to ACTIVE */
@@ -132,12 +136,12 @@ typedef struct rc_runtime_event_t {
 }
 rc_runtime_event_t;
 
-typedef void (*rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_event);
+typedef void (*rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_event, void* ud);
 
-void rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_peek_t peek, void* ud, lua_State* L);
+void rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_peek_t peek, lua_State* L);
 void rc_runtime_reset(rc_runtime_t* runtime);
 
-typedef int (*rc_runtime_validate_address_t)(unsigned address);
+typedef int (*rc_runtime_validate_address_t)(unsigned address, void* ud);
 void rc_runtime_validate_addresses(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_validate_address_t validate_handler);
 void rc_runtime_invalidate_address(rc_runtime_t* runtime, unsigned address);
 

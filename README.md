@@ -183,6 +183,8 @@ typedef struct rc_runtime_t {
 
   rc_value_t* variables;
   rc_value_t** next_variable;
+
+  void* userdata;
 }
 rc_runtime_t;
 ```
@@ -190,6 +192,11 @@ rc_runtime_t;
 The runtime must first be initialized.
 ```c
 void rc_runtime_init(rc_runtime_t* runtime);
+```
+
+Optionally, userdata may then be set. This userdata is used in all future runtime callbacks. If this is not set, then the userdata passed in callbacks will be NULL.
+```c
+void rc_runtime_set_userdata(rc_runtime_t* runtime, void* ud);
 ```
 
 Then individual achievements, leaderboards, and even rich presence can be loaded into the runtime. These functions return RC_OK, or one of the negative value error codes listed above.
@@ -201,7 +208,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* runtime, const char* script, 
 
 The runtime should be called once per frame to evaluate the state of the active achievements/leaderboards:
 ```c
-void rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_peek_t peek, void* ud, lua_State* L);
+void rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_peek_t peek, lua_State* L);
 ```
 
 The `event_handler` is a callback function that is called for each event that occurs when processing the frame.
@@ -213,7 +220,7 @@ typedef struct rc_runtime_event_t {
 }
 rc_runtime_event_t;
 
-typedef void (*rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_event);
+typedef void (*rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_event, void* ud);
 ```
 
 The `event.type` field will be one of the following:
