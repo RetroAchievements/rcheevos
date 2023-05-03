@@ -9,6 +9,7 @@
 #include <stdarg.h>
 
 #define RC_RUNTIME2_UNKNOWN_GAME_ID (uint32_t)-1
+#define RC_RUNTIME2_RECENT_UNLOCK_DELAY_SECONDS (10 * 60) /* ten minutes */
 
 typedef struct rc_runtime2_generic_callback_data_t {
   rc_runtime2_t* runtime;
@@ -252,6 +253,11 @@ static void rc_runtime2_free_load_state(rc_runtime2_load_state_t* load_state)
   if (load_state->game)
     rc_runtime2_free_game(load_state->game);
 
+  if (load_state->hardcore_unlocks)
+    free(load_state->hardcore_unlocks);
+  if (load_state->softcore_unlocks)
+    free(load_state->softcore_unlocks);
+
   free(load_state);
 }
 
@@ -329,7 +335,7 @@ static void rc_runtime2_activate_achievements(rc_runtime2_game_info_t* game, rc_
   unsigned active_count = 0;
 
   for (; achievement < stop; ++achievement) {
-    if ((achievement->unlocked & active_bit) == 0) {
+    if ((achievement->public.unlocked & active_bit) == 0) {
       switch (achievement->public.state) {
         case RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE:
         case RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED:
@@ -436,6 +442,29 @@ static void rc_runtime2_activate_leaderboards(rc_runtime2_game_info_t* game, rc_
   game->runtime.lboard_count = active_count;
 }
 
+static void rc_runtime2_apply_unlocks(rc_runtime2_game_info_t* game, uint32_t* unlocks, uint32_t num_unlocks, uint8_t mode)
+{
+  rc_runtime2_achievement_info_t* start = game->achievements;
+  rc_runtime2_achievement_info_t* stop = start + game->public.num_achievements;
+  rc_runtime2_achievement_info_t* scan;
+  unsigned i;
+
+  for (i = 0; i < num_unlocks; ++i) {
+    uint32_t id = unlocks[i];
+    for (scan = start; scan < stop; ++scan) {
+      if (scan->public.id == id) {
+        scan->public.unlocked |= mode;
+
+        if (scan == start)
+          ++start;
+        else if (scan + 1 == stop)
+          --stop;
+        break;
+      }
+    }
+  }
+}
+
 static void rc_runtime2_activate_game(rc_runtime2_load_state_t* load_state)
 {
   rc_runtime2_t* runtime = load_state->runtime;
@@ -452,6 +481,11 @@ static void rc_runtime2_activate_game(rc_runtime2_load_state_t* load_state)
   }
   else
   {
+    rc_runtime2_apply_unlocks(load_state->game, load_state->softcore_unlocks,
+        load_state->num_softcore_unlocks, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    rc_runtime2_apply_unlocks(load_state->game, load_state->hardcore_unlocks,
+        load_state->num_hardcore_unlocks, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+
     rc_runtime2_activate_achievements(load_state->game, runtime);
     rc_runtime2_activate_leaderboards(load_state->game, runtime);
 
@@ -526,24 +560,17 @@ static void rc_runtime2_unlocks_callback(const char* server_response_body, int h
   }
   else
   {
-    rc_runtime2_achievement_info_t* start = load_state->game->achievements;
-    rc_runtime2_achievement_info_t* stop = start + load_state->game->public.num_achievements;
-    unsigned i;
-
-    for (i = 0; i < fetch_user_unlocks_response.num_achievement_ids; ++i) {
-      rc_runtime2_achievement_info_t* scan;
-      uint32_t id = fetch_user_unlocks_response.achievement_ids[i];
-      for (scan = start; scan < stop; ++scan) {
-        if (scan->public.id == id) {
-          scan->unlocked |= mode;
-
-          if (scan == start)
-            ++start;
-          else if (scan + 1 == stop)
-            --stop;
-          break;
-        }
-      }
+    if (mode == RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE) {
+      const size_t array_size = fetch_user_unlocks_response.num_achievement_ids * sizeof(uint32_t);
+      load_state->num_hardcore_unlocks = fetch_user_unlocks_response.num_achievement_ids;
+      load_state->hardcore_unlocks = (uint32_t*)malloc(array_size);
+      memcpy(load_state->hardcore_unlocks, fetch_user_unlocks_response.achievement_ids, array_size);
+    }
+    else {
+      const size_t array_size = fetch_user_unlocks_response.num_achievement_ids * sizeof(uint32_t);
+      load_state->num_softcore_unlocks = fetch_user_unlocks_response.num_achievement_ids;
+      load_state->softcore_unlocks = (uint32_t*)malloc(array_size);
+      memcpy(load_state->softcore_unlocks, fetch_user_unlocks_response.achievement_ids, array_size);
     }
 
     if (outstanding_requests == 0)
@@ -555,7 +582,7 @@ static void rc_runtime2_unlocks_callback(const char* server_response_body, int h
 
 static void rc_runtime2_hardcore_unlocks_callback(const char* server_response_body, int http_status_code, void* callback_data)
 {
-  rc_runtime2_unlocks_callback(server_response_body, http_status_code, callback_data, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+  rc_runtime2_unlocks_callback(server_response_body, http_status_code, callback_data, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE);
 }
 
 static void rc_runtime2_softcore_unlocks_callback(const char* server_response_body, int http_status_code, void* callback_data)
@@ -663,7 +690,8 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
     snprintf(achievement->public.badge_name, sizeof(achievement->public.badge_name), "%s", read->badge_name);
     achievement->public.id = read->id;
     achievement->public.points = read->points;
-    achievement->public.is_unofficial = read->category != RC_ACHIEVEMENT_CATEGORY_CORE;
+    achievement->public.category = (read->category != RC_ACHIEVEMENT_CATEGORY_CORE) ?
+      RC_RUNTIME2_ACHIEVEMENT_CATEGORY_UNOFFICIAL : RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE;
 
     memaddr = read->definition;
     rc_runtime_checksum(memaddr, achievement->md5);
@@ -673,6 +701,7 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
     {
       RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing achievement %u", trigger_size, read->id);
       achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED;
+      achievement->public.bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED;
     }
     else
     {
@@ -686,6 +715,7 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
       if (parse.offset < 0) {
         RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing achievement %u", parse.offset, read->id);
         achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED;
+        achievement->public.bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED;
       }
       else {
         rc_buf_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
@@ -1034,6 +1064,240 @@ const rc_runtime2_game_t* rc_runtime2_game_info(const rc_runtime2_t* runtime)
   return (runtime->game != NULL) ? &runtime->game->public : NULL;
 }
 
+/* ===== Achievements ===== */
+
+uint32_t rc_runtime2_get_achievement_count(const rc_runtime2_t* runtime, int category)
+{
+  rc_runtime2_achievement_info_t* achievement;
+  rc_runtime2_achievement_info_t* stop;
+  uint32_t count = 0;
+
+  if (!runtime->game)
+    return 0;
+
+  if (category == RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL)
+    return runtime->game->public.num_achievements;
+
+  achievement = runtime->game->achievements;
+  stop = achievement + runtime->game->public.num_achievements;
+  for (; achievement < stop; ++achievement) {
+    if (achievement->public.category == category)
+      ++count;
+  }
+
+  return count;
+}
+
+static void rc_runtime2_update_achievement_display_information(const rc_runtime2_t* runtime, rc_runtime2_achievement_info_t* achievement, time_t recent_unlock_time)
+{
+  uint8_t new_bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNKNOWN;
+  uint32_t new_measured_value = 0;
+  int measured_progress = 0;
+
+  if (achievement->public.bucket == RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED)
+    return;
+
+  if (achievement->public.unlocked & RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE) {
+    /* achievement unlocked in hardcore */
+    new_bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED;
+  }
+  else if (achievement->public.unlocked & RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE && !runtime->state.hardcore) {
+    /* achievement unlocked in softcore while hardcore is disabled */
+    new_bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED;
+  }
+  else {
+    /* active achievement */
+    new_bucket = (achievement->public.category == RC_RUNTIME2_ACHIEVEMENT_CATEGORY_UNOFFICIAL) ?
+        RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNOFFICIAL : RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED;
+
+    if (achievement->trigger) {
+      if (achievement->trigger->measured_target) {
+        if (achievement->trigger->measured_value == RC_MEASURED_UNKNOWN) {
+          /* value hasn't been initialized yet, leave progress string empty */
+          achievement->public.measured_progress[0] = '\0';
+        }
+        else {
+          /* clamp measured value at target (can't get more than 100%) */
+          new_measured_value = (achievement->trigger->measured_value > achievement->trigger->measured_target) ?
+              achievement->trigger->measured_target : achievement->trigger->measured_value;
+
+          measured_progress = (int)(((uint64_t)new_measured_value * 100) / achievement->trigger->measured_target);
+
+          if (!achievement->trigger->measured_as_percent)
+            snprintf(achievement->public.measured_progress, sizeof(achievement->public.measured_progress), "%u/%u", new_measured_value, achievement->trigger->measured_target);
+          else if (measured_progress)
+            snprintf(achievement->public.measured_progress, sizeof(achievement->public.measured_progress), "%u%%", measured_progress);
+          else
+            achievement->public.measured_progress[0] = '\0';
+        }
+      }
+
+      if (achievement->trigger->state == RC_TRIGGER_STATE_PRIMED)
+        new_bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE;
+      else if (measured_progress >= 80)
+        new_bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_ALMOST_THERE;
+    }
+  }
+
+  if (new_bucket == RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED && achievement->public.unlock_time >= recent_unlock_time)
+    new_bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED;
+
+  achievement->public.bucket = new_bucket;
+}
+
+static const char* rc_runtime2_get_bucket_label(uint8_t bucket_type)
+{
+  switch (bucket_type) {
+    case RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED: return "Locked";
+    case RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED: return "Unlocked";
+    case RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED: return "Unsupported";
+    case RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNOFFICIAL: return "Unofficial";
+    case RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED: return "Recently Unlocked";
+    case RC_RUNTIME2_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE: return "Active Challenges";
+    case RC_RUNTIME2_ACHIEVEMENT_BUCKET_ALMOST_THERE: return "Almost There";
+    default: return "Unknown";
+  }
+}
+
+static int rc_runtime2_compare_achievement_unlock_times(const void* a, const void* b)
+{
+  const rc_runtime2_achievement_t* unlock_a = (const rc_runtime2_achievement_t*)a;
+  const rc_runtime2_achievement_t* unlock_b = (const rc_runtime2_achievement_t*)b;
+  return (int)(unlock_a->unlock_time - unlock_b->unlock_time);
+}
+
+rc_runtime2_achievement_list_t* rc_runtime2_get_achievement_list(rc_runtime2_t* runtime, int category, int grouping)
+{
+  rc_runtime2_achievement_info_t* achievement;
+  rc_runtime2_achievement_info_t* stop;
+  rc_runtime2_achievement_t** achievement_ptr;
+  rc_runtime2_achievement_bucket_t* bucket_ptr;
+  rc_runtime2_achievement_list_t* list;
+  const uint32_t list_size = RC_ALIGN(sizeof(*list));
+  uint32_t bucket_counts[16];
+  uint32_t num_buckets;
+  uint32_t num_achievements;
+  size_t buckets_size;
+  uint8_t bucket_type;
+  uint32_t i;
+  const uint8_t progress_bucket_order[] = {
+    RC_RUNTIME2_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE,
+    RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED,
+    RC_RUNTIME2_ACHIEVEMENT_BUCKET_ALMOST_THERE,
+    RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED,
+    RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNOFFICIAL,
+    RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED,
+    RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED,
+  };
+  const time_t recent_unlock_time = time(NULL) - RC_RUNTIME2_RECENT_UNLOCK_DELAY_SECONDS;
+
+  if (!runtime->game)
+    return calloc(1, sizeof(rc_runtime2_achievement_list_t));
+
+  memset(&bucket_counts, 0, sizeof(bucket_counts));
+
+  rc_mutex_lock(&runtime->state.mutex);
+
+  achievement = runtime->game->achievements;
+  stop = achievement + runtime->game->public.num_achievements;
+  for (; achievement < stop; ++achievement) {
+    if (achievement->public.category & category) {
+      rc_runtime2_update_achievement_display_information(runtime, achievement, recent_unlock_time);
+      bucket_counts[achievement->public.bucket]++;
+    }
+  }
+
+  num_buckets = 0;
+  num_achievements = 0;
+  for (i = 0; i < sizeof(bucket_counts) / sizeof(bucket_counts[0]); ++i) {
+    if (bucket_counts[i]) {
+      num_achievements += bucket_counts[i];
+      ++num_buckets;
+    }
+  }
+
+  buckets_size = RC_ALIGN(num_buckets * sizeof(rc_runtime2_achievement_bucket_t));
+
+  list = (rc_runtime2_achievement_list_t*)malloc(list_size + buckets_size + num_achievements * sizeof(rc_runtime2_achievement_t*));
+  bucket_ptr = list->buckets = (rc_runtime2_achievement_bucket_t*)((uint8_t*)list + list_size);
+  achievement_ptr = (rc_runtime2_achievement_t**)((uint8_t*)bucket_ptr + buckets_size);
+
+  for (i = 0; i < sizeof(progress_bucket_order) / sizeof(progress_bucket_order[0]); ++i) {
+    bucket_type = progress_bucket_order[i];
+    if (!bucket_counts[bucket_type])
+      continue;
+
+    bucket_ptr->id = bucket_type;
+    bucket_ptr->achievements = achievement_ptr;
+
+    if (grouping == RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE) {
+      switch (bucket_type) {
+        case RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED:
+        case RC_RUNTIME2_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE:
+        case RC_RUNTIME2_ACHIEVEMENT_BUCKET_ALMOST_THERE:
+          /* these are loaded into LOCKED/UNLOCKED buckets when grouping by lock state */
+          continue;
+
+        default:
+          break;
+      }
+
+      for (achievement = runtime->game->achievements; achievement < stop; ++achievement) {
+        if (!(achievement->public.category & category))
+          continue;
+
+        switch (achievement->public.bucket) {
+          case RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED:
+          case RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED:
+            if (bucket_type == RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED)
+              *achievement_ptr++ = &achievement->public;
+            break;
+
+          case RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED:
+          case RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNOFFICIAL:
+            if (bucket_type == achievement->public.bucket)
+              *achievement_ptr++ = &achievement->public;
+            break;
+
+          default:
+            if (bucket_type == RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED)
+              *achievement_ptr++ = &achievement->public;
+            break;
+        }
+      }
+    }
+    else /* RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_PROGRESS */ {
+      for (achievement = runtime->game->achievements; achievement < stop; ++achievement) {
+        if (achievement->public.bucket == bucket_type && achievement->public.category & category)
+          *achievement_ptr++ = &achievement->public;
+      }
+    }
+
+    bucket_ptr->num_achievements = (uint32_t)(achievement_ptr - bucket_ptr->achievements);
+    bucket_ptr++;
+  }
+
+  rc_mutex_unlock(&runtime->state.mutex);
+
+  list->num_buckets = (uint32_t)(bucket_ptr - list->buckets);
+
+  while (bucket_ptr > list->buckets) {
+    --bucket_ptr;
+    bucket_ptr->label = rc_runtime2_get_bucket_label(bucket_ptr->id);
+
+    if (bucket_ptr->id == RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED)
+      qsort(bucket_ptr->achievements, bucket_ptr->num_achievements, sizeof(rc_runtime2_achievement_t*), rc_runtime2_compare_achievement_unlock_times);
+  }
+
+  return list;
+}
+
+void rc_runtime2_destroy_achievement_list(rc_runtime2_achievement_list_t* list)
+{
+  if (list)
+    free(list);
+}
+
 const rc_runtime2_achievement_t* rc_runtime2_achievement_info(const rc_runtime2_t* runtime, uint32_t id)
 {
   rc_runtime2_achievement_info_t* achievement;
@@ -1044,10 +1308,14 @@ const rc_runtime2_achievement_t* rc_runtime2_achievement_info(const rc_runtime2_
 
   achievement = runtime->game->achievements;
   stop = achievement + runtime->game->public.num_achievements;
-  while (achievement < stop)
-  {
-    if (achievement->public.id == id)
+  while (achievement < stop) {
+    if (achievement->public.id == id) {
+      const time_t recent_unlock_time = time(NULL) - RC_RUNTIME2_RECENT_UNLOCK_DELAY_SECONDS;
+      rc_mutex_lock((rc_mutex_t*)(&runtime->state.mutex));
+      rc_runtime2_update_achievement_display_information(runtime, achievement, recent_unlock_time);
+      rc_mutex_unlock((rc_mutex_t*)(&runtime->state.mutex));
       return &achievement->public;
+    }
 
     ++achievement;
   }

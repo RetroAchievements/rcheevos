@@ -17,20 +17,11 @@ typedef struct rc_runtime2_callbacks_t {
   rc_runtime2_message_callback_t log_call;
 } rc_runtime2_callbacks_t;
 
-enum {
-  RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE = 0,
-  RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE = (1 << 0),
-  RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE = (1 << 1),
-  RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH = RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE | RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE
-};
-
 typedef struct rc_runtime2_achievement_info_t {
   rc_runtime2_achievement_t public;
 
   rc_trigger_t* trigger;
   uint8_t md5[16];
-
-  uint8_t unlocked;
 
 } rc_runtime2_achievement_info_t;
 
@@ -88,6 +79,11 @@ typedef struct rc_runtime2_load_state_t {
 
   rc_runtime2_game_info_t* game;
   rc_runtime2_game_hash_t* hash;
+
+  uint32_t* hardcore_unlocks;
+  uint32_t* softcore_unlocks;
+  uint32_t num_hardcore_unlocks;
+  uint32_t num_softcore_unlocks;
 
   uint8_t progress;
   uint8_t outstanding_requests;

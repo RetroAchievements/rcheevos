@@ -26,6 +26,12 @@ static const char* patchdata_2ach_1lbd = "{\"Success\":true,\"PatchData\":{"
     "]"
     "}}";
 
+static const char* no_unlocks = "{\"Success\":true,\"UserUnlocks\":[]}";
+
+static const char* unlock_5501 = "{\"Success\":true,\"UserUnlocks\":[5501]}";
+static const char* unlock_5502 = "{\"Success\":true,\"UserUnlocks\":[5502]}";
+static const char* unlock_5501_and_5502 = "{\"Success\":true,\"UserUnlocks\":[5501,5502]}";
+
 static const char* response_429 =
     "<html>\n"
     "<head><title>429 Too Many Requests</title></head>\n"
@@ -144,6 +150,25 @@ static rc_runtime2_t* mock_runtime2_logged_in(void)
   runtime->state.user = RC_RUNTIME2_USER_STATE_LOGGED_IN;
 
   return runtime;
+}
+
+static rc_runtime2_t* mock_runtime2_game_loaded(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
+{
+  g_runtime = mock_runtime2_logged_in();
+
+  rc_runtime2_reset_api_handlers();
+  rc_runtime2_mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  rc_runtime2_mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
+  rc_runtime2_mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", softcore_unlocks);
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", hardcore_unlocks);
+
+  rc_runtime2_begin_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_success);
+
+  if (!g_runtime->game)
+    ASSERT_MESSAGE("runtime->game is NULL");
+
+  return g_runtime;
 }
 
 /* ----- login ----- */
@@ -372,8 +397,8 @@ static void test_load_game(void)
   rc_runtime2_mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   rc_runtime2_mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
   rc_runtime2_mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
-  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  rc_runtime2_mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
   rc_runtime2_begin_load_game(g_runtime, "0123456789ABCDEF", rc_runtime2_callback_expect_success);
 
@@ -398,7 +423,7 @@ static void test_load_game(void)
     ASSERT_NUM_EQUALS(achievement->public.points, 5);
     ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->public.state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->public.is_unofficial, 0);
+    ASSERT_NUM_EQUALS(achievement->public.category, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     achievement = &g_runtime->game->achievements[1];
@@ -409,7 +434,7 @@ static void test_load_game(void)
     ASSERT_NUM_EQUALS(achievement->public.points, 2);
     ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->public.state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->public.is_unofficial, 0);
+    ASSERT_NUM_EQUALS(achievement->public.category, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     leaderboard = &g_runtime->game->leaderboards[0];
@@ -528,6 +553,102 @@ static void test_load_game_hardcore_unlocks_failure(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_achievement_list_simple(void)
+{
+  rc_runtime2_achievement_list_t* list;
+  rc_runtime2_achievement_t** iter;
+  rc_runtime2_achievement_t* achievement;
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE), 2);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 0);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 2);
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
+
+    iter = list->buckets[0].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5501);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5502);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 0);
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_achievement_list_simple_with_unlocks(void)
+{
+  rc_runtime2_achievement_list_t* list;
+  rc_runtime2_achievement_t** iter;
+  rc_runtime2_achievement_t* achievement;
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    /* in hardcore mode, 5501 should be unlocked, but 5502 will be locked */
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+
+    iter = list->buckets[0].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5502);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    iter = list->buckets[1].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5501);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  g_runtime->state.hardcore = 0;
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    /* in softcore mode, both should be unlocked */
+    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
+
+    iter = list->buckets[0].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5501);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5502);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
 /* ----- harness ----- */
 
 void test_runtime2(void) {
@@ -550,8 +671,11 @@ void test_runtime2(void) {
   TEST(test_load_game_patch_failure);
   TEST(test_load_game_postactivity_failure);
   TEST(test_load_game_softcore_unlocks_failure);
-  TEST(test_load_game_hardcore_unlocks_failure)
+  TEST(test_load_game_hardcore_unlocks_failure);
 
+  /* achievements */
+  TEST(test_achievement_list_simple);
+  TEST(test_achievement_list_simple_with_unlocks);
 
   TEST_SUITE_END();
 }

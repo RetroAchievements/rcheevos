@@ -36,6 +36,9 @@ RC_ALLOW_ALIGN(char)
 #define RC_ALLOC(t, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
 #define RC_ALLOC_SCRATCH(t, p) ((t*)rc_alloc_scratch((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
 
+/* force alignment to 4 bytes on 32-bit systems, or 8 bytes on 64-bit systems */
+#define RC_ALIGN(n) (((n) + (sizeof(void*)-1)) & ~(sizeof(void*)-1))
+
 typedef struct rc_scratch_buffer {
   struct rc_scratch_buffer* next;
   int offset;
