@@ -8,8 +8,9 @@
 static rc_runtime_event_t events[16];
 static int event_count = 0;
 
-static void event_handler(const rc_runtime_event_t* e)
+static void event_handler(const rc_runtime_event_t* e, void* ud)
 {
+  (void)ud;
   memcpy(&events[event_count++], e, sizeof(rc_runtime_event_t));
 }
 
@@ -47,17 +48,17 @@ static void _assert_activate_richpresence(rc_runtime_t* runtime, const char* scr
 }
 #define assert_activate_richpresence(runtime, script) ASSERT_HELPER(_assert_activate_richpresence(runtime, script), "assert_activate_richpresence")
 
-static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)
+static void assert_do_frame(rc_runtime_t* runtime)
 {
   event_count = 0;
-  rc_runtime_do_frame(runtime, event_handler, peek, memory, NULL);
+  rc_runtime_do_frame(runtime, event_handler, peek, NULL);
 }
 
-static void assert_richpresence_display_string(rc_runtime_t* runtime, memory_t* memory, const char* expected)
+static void assert_richpresence_display_string(rc_runtime_t* runtime, const char* expected)
 {
   char buffer[512];
   const int expected_len = (int)strlen(expected);
-  const int result = rc_runtime_get_richpresence(runtime, buffer, sizeof(buffer), peek, memory, NULL);
+  const int result = rc_runtime_get_richpresence(runtime, buffer, sizeof(buffer), peek, NULL);
   ASSERT_STR_EQUALS(buffer, expected);
   ASSERT_NUM_EQUALS(result, expected_len);
 }
@@ -72,19 +73,20 @@ static void test_two_achievements_activate_and_trigger(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=10");
   assert_activate_achievement(&runtime, 2, "0xH0002=10");
 
   /* both achievements are true, should remain in waiting state */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_WAITING);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* both achievements are false, should activate */
   ram[1] = ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 2);
@@ -93,7 +95,7 @@ static void test_two_achievements_activate_and_trigger(void)
 
   /* second achievement is true, should trigger */
   ram[2] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -101,7 +103,7 @@ static void test_two_achievements_activate_and_trigger(void)
 
   /* first achievement is true, should trigger. second is already triggered */
   ram[1] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -109,14 +111,14 @@ static void test_two_achievements_activate_and_trigger(void)
 
   /* reset second achievement, should go back to WAITING and stay there */
   rc_reset_trigger(runtime.triggers[1].trigger);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_WAITING);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* both achievements are false again. second should active, first should be ignored */
   ram[1] = ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -135,12 +137,13 @@ static void test_deactivate_achievements(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=10");
   assert_activate_achievement(&runtime, 2, "0xH0002=10");
 
   /* both achievements are true, should remain in waiting state */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_WAITING);
   ASSERT_NUM_EQUALS(event_count, 0);
@@ -153,13 +156,13 @@ static void test_deactivate_achievements(void)
 
   /* both achievements are false, deactivated one should not activate */
   ram[1] = ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 2, 0);
 
   /* both achievements are true, deactivated one should not trigger */
   ram[1] = ram[2] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 2, 0);
 
@@ -171,14 +174,14 @@ static void test_deactivate_achievements(void)
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
 
   /* reactivated achievement is waiting and should not trigger */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* both achievements are false. first should activate, second should be ignored */
   ram[1] = ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -200,6 +203,7 @@ static void test_achievement_measured(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* use equality so we can test values greater than the target */
   assert_activate_achievement(&runtime, 1, "0xH0002==10");
@@ -208,7 +212,7 @@ static void test_achievement_measured(void)
   assert_activate_achievement(&runtime, 4, "M:fF0003==f12.56637");
 
   /* achievements are true, should remain in waiting state with no measured value */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0);
@@ -236,7 +240,7 @@ static void test_achievement_measured(void)
   /* achievements are false, should activate */
   ram[2] = 9;
   ram[6] = 0x40;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0);
@@ -261,7 +265,7 @@ static void test_achievement_measured(void)
   /* value greater than target (i.e. "6 >= 5" should report maximum "5/5" or "100%" */
   ram[2] = 12;
   ram[6] = 0x42;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0);
@@ -286,7 +290,7 @@ static void test_achievement_measured(void)
   /* achievements are true, should trigger - triggered achievement is not measurable */
   ram[2] = 10;
   ram[6] = 0x41;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 1, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0);
@@ -323,12 +327,13 @@ static void test_achievement_measured_maxint(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 2, "M:0xX0000==hFFFFFFFF");
   assert_activate_achievement(&runtime, 3, "G:0xX0000==hFFFFFFFF");
 
   /* achievements are true, should remain in waiting state */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0xFFFFFFFF);
@@ -342,7 +347,7 @@ static void test_achievement_measured_maxint(void)
 
   /* achievements are false (value fits in 31-bits), should activate */
   ram[1] = ram[3] = 0x7F;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
   ASSERT_NUM_EQUALS(value, 0x7FFF7FFF);
   ASSERT_NUM_EQUALS(target, 0xFFFFFFFF);
@@ -356,7 +361,7 @@ static void test_achievement_measured_maxint(void)
 
   /* achievements are false (value requires 32-bits) */
   ram[1] = ram[3] = 0xFE;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
   ASSERT_NUM_EQUALS(value, 0xFEFFFEFF);
   ASSERT_NUM_EQUALS(target, 0xFFFFFFFF);
@@ -370,7 +375,7 @@ static void test_achievement_measured_maxint(void)
 
   /* achievements are true, should trigger - triggered achievement is not measurable */
   ram[1] = ram[3] = 0xFF;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_TRUE(rc_runtime_get_achievement_measured(&runtime, 2, &value, &target));
   ASSERT_NUM_EQUALS(value, 0);
   ASSERT_NUM_EQUALS(target, 0);
@@ -395,12 +400,13 @@ static void test_two_achievements_differing_resets_in_alts(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=10S1=1SR:0xH0000!=0");
   assert_activate_achievement(&runtime, 2, "0xH0001=10S1=1SR:0xH0000!=1");
 
   /* first achievement true (stays waiting), second not true because of reset */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -408,7 +414,7 @@ static void test_two_achievements_differing_resets_in_alts(void)
 
   /* both achievements are false, should activate */
   ram[1] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -416,7 +422,7 @@ static void test_two_achievements_differing_resets_in_alts(void)
 
   /* first should fire, second prevented by reset */
   ram[1] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -425,7 +431,7 @@ static void test_two_achievements_differing_resets_in_alts(void)
   /* second can fire, reset first which will be activated due to reset */
   ram[0] = 1;
   rc_reset_trigger(runtime.triggers[0].trigger);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(event_count, 2);
@@ -434,7 +440,7 @@ static void test_two_achievements_differing_resets_in_alts(void)
 
   /* both achievements are false again. second should active, first should be ignored */
   ram[0] = 0;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -455,6 +461,7 @@ static void test_shared_memref(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=10");
   assert_activate_achievement(&runtime, 2, "0xH0001=12");
@@ -464,7 +471,7 @@ static void test_shared_memref(void)
   ASSERT_PTR_EQUALS(memref1, memref2);
 
   /* first is true, should remain waiting. second should activate */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_WAITING);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -478,13 +485,13 @@ static void test_shared_memref(void)
 
   /* second is true, but no longer in runtime. first should activate, expect nothing from second */
   ram[1] = 12;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
 
   /* first is true and should trigger */
   ram[1] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
 
@@ -495,7 +502,7 @@ static void test_shared_memref(void)
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_WAITING);
 
   /* reactivated achievement is waiting and false. should activate */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 2, 0);
 
@@ -507,7 +514,7 @@ static void test_shared_memref(void)
 
   /* second achievement is true. should trigger using memrefs from first */
   ram[1] = 12;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 2, 0);
 
@@ -524,12 +531,13 @@ static void test_replace_active_trigger(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=10");
   assert_activate_achievement(&runtime, 1, "0xH0002=10");
 
   /* both are true, but first should have been overwritten by second */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.trigger_count, 2);
   ASSERT_PTR_NULL(runtime.triggers[0].trigger);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_WAITING);
@@ -537,18 +545,18 @@ static void test_replace_active_trigger(void)
 
   /* both are false. only second should be getting processed, expect single event */
   ram[1] = ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
 
   /* first is true, but should not trigger */
   ram[1] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* second is true and should trigger */
   ram[2] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
 
@@ -562,9 +570,9 @@ static void test_replace_active_trigger(void)
 }
 
 static rc_runtime_t* discarding_event_handler_runtime = NULL;
-static void discarding_event_handler(const rc_runtime_event_t* e)
+static void discarding_event_handler(const rc_runtime_event_t* e, void* ud)
 {
-    event_handler(e);
+    event_handler(e, ud);
     rc_runtime_deactivate_achievement(discarding_event_handler_runtime, e->id);
 }
 
@@ -578,6 +586,7 @@ static void test_trigger_deactivation(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* three identical achievements that should trigger when $1 changes from 9 to 10 */
   assert_activate_achievement(&runtime, 1, "0xH0001=10_d0xH0001=9");
@@ -585,7 +594,7 @@ static void test_trigger_deactivation(void)
   assert_activate_achievement(&runtime, 3, "0xH0001=10_d0xH0001=9");
 
   /* prep the delta and make sure the achievements are active */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.trigger_count, 3);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
@@ -595,7 +604,7 @@ static void test_trigger_deactivation(void)
   ram[1] = 10;
   event_count = 0;
   discarding_event_handler_runtime = &runtime;
-  rc_runtime_do_frame(&runtime, discarding_event_handler, peek, &memory, NULL);
+  rc_runtime_do_frame(&runtime, discarding_event_handler, peek, NULL);
   discarding_event_handler_runtime = NULL;
 
   ASSERT_NUM_EQUALS(event_count, 3);
@@ -620,10 +629,11 @@ static void test_trigger_with_resetif() {
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* never(byte(3)==1) && once(byte(4)==1) && trigger_when(byte(0)==1) */
   assert_activate_achievement(&runtime, 1, "R:0xH0003=1_0xH0004=1.1._T:0xH0000=1");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.trigger_count, 1);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -631,14 +641,14 @@ static void test_trigger_with_resetif() {
 
   /* non-trigger condition is true */
   ram[4] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
 
   /* ResetIf is true */
   ram[3] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 2);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_RESET, 1, 0);
@@ -646,7 +656,7 @@ static void test_trigger_with_resetif() {
 
   /* ResetIf no longer true */
   ram[3] = 0;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
@@ -663,10 +673,11 @@ static void test_trigger_with_resetnextif() {
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* once(byte(4)==1 && never(repeated(2, byte(3)==1 && never(byte(1)==1 || byte(2)==1))) && trigger_when(byte(0)==1) */
   assert_activate_achievement(&runtime, 1, "O:0xH0001=1_Z:0xH0002=1_Z:0xH0003=1.2._0xH0004=1.1._T:0xH0000=1");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.trigger_count, 1);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 1);
@@ -674,32 +685,32 @@ static void test_trigger_with_resetnextif() {
 
   /* non-trigger condition is true */
   ram[4] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
 
   /* second ResetNextIf is true */
   ram[3] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* OrNext resets second ResetNextIf */
   ram[1] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_RESET, 1, 0);
 
   /* OrNext no longer true */
   ram[1] = 0;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_PRIMED);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* second ResetNextIf fires */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 2);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_RESET, 1, 0);
@@ -719,52 +730,53 @@ static void test_reset_event(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=10.2._R:0xH0002=10");
   cond = runtime.triggers[0].trigger->requirement->conditions;
 
   /* reset is true, so achievement is false and should activate, but not notify reset */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
   ASSERT_NUM_EQUALS(cond->current_hits, 0);
 
   /* reset is still true, but since no hits were accumulated there shouldn't be a reset event */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* reset is not true, hits should increment */
   ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
   ASSERT_NUM_EQUALS(cond->current_hits, 1);
 
   /* reset is true. hits will reset. expect event */
   ram[2] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_RESET, 1, 0);
   ASSERT_NUM_EQUALS(cond->current_hits, 0);
 
   /* reset is still true, but since hits were previously reset there shouldn't be a reset event */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* reset is not true, hits should increment */
   ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
   ASSERT_NUM_EQUALS(cond->current_hits, 1);
 
   /* reset is not true, hits should increment, causing achievement to trigger */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
   ASSERT_NUM_EQUALS(cond->current_hits, 2);
 
   /* reset is true, but hits shouldn't reset as achievement is no longer active */
   ram[2] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
   ASSERT_NUM_EQUALS(cond->current_hits, 2);
 
@@ -781,43 +793,44 @@ static void test_paused_event(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=10.2._P:0xH0002=10");
 
   /* pause is true, so achievement is false and should activate, but only notify pause */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PAUSED, 1, 0);
 
   /* pause is still true, but previously paused, so no event */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* pause is not true, expect activate event */
   ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
 
   /* pause is true. expect event */
   ram[2] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PAUSED, 1, 0);
 
   /* pause is still true, but previously paused, so no event */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* pause is not true, expect trigger*/
   ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
 
   /* pause is true, but shouldn't notify as achievement is no longer active */
   ram[2] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   rc_runtime_destroy(&runtime);
@@ -833,63 +846,64 @@ static void test_primed_event(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* byte(0)==1 && trigger(byte(1)==1) && byte(2)==1 && trigger(byte(3)==1) && unless(byte(4)==1) && never(byte(5) == 1) */
   assert_activate_achievement(&runtime, 1, "0xH0000=1_T:0xH0001=1_0xH0002=1_T:0xH0003=1_P:0xH0004=1_R:0xH0005=1");
 
   /* trigger conditions are true, but nothing else */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, 1, 0);
 
   /* primed */
   ram[1] = ram[3] = 0;
   ram[0] = ram[2] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
 
   /* no longer primed */
   ram[0] = 0;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
 
   /* primed */
   ram[0] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
 
   /* paused */
   ram[4] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 2);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PAUSED, 1, 0);
 
   /* unpaused */
   ram[4] = 0;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
 
   /* reset */
   ram[5] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 2);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_RESET, 1, 0);
 
   /* not reset */
   ram[5] = 0;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PRIMED, 1, 0);
 
   /* all conditions are true */
   ram[1] = ram[3] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 2);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_UNPRIMED, 1, 0);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
@@ -907,50 +921,51 @@ static void test_progress_event(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* measured(byte(0x0001) >= 10) */
   assert_activate_achievement(&runtime, 1, "M:0xH0001>=10");
   runtime.triggers[0].trigger->state = RC_TRIGGER_STATE_ACTIVE;
 
   /* should not receive notification when initialized first measured value */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* unchanged */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* increased */
   ram[1] = 2;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 1, 2);
 
   /* unchanged */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* decreased */
   ram[1] = 0;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 1, 0);
 
   /* increased */
   ram[1] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 1, 9);
 
   /* triggered. should not receive change event */
   ram[1] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
 
   /* no longer active */
   ram[1] = 11;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   rc_runtime_destroy(&runtime);
@@ -966,61 +981,62 @@ static void test_progress_event_as_percent(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* measured(byte(0x0001) >= 200, format='percent') */
   assert_activate_achievement(&runtime, 1, "G:0xH0001>=200");
   runtime.triggers[0].trigger->state = RC_TRIGGER_STATE_ACTIVE;
 
   /* should not receive notification when initialized first measured value */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* unchanged */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* increased (0% -> 1%) */
   ram[1] = 2;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 1, 1);
 
   /* unchanged */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* increased (1% -> 1%, no event) */
   ram[1] = 3;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* increased (1% -> 2%) */
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 1, 2);
 
   /* decreased */
   ram[1] = 1;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 1, 0);
 
   /* increased */
   ram[1] = 199;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 1, 99);
 
   /* triggered. should not receive change event */
   ram[1] = 200;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 1);
   assert_event(RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED, 1, 0);
 
   /* no longer active */
   ram[1] = 40;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   rc_runtime_destroy(&runtime);
@@ -1036,26 +1052,27 @@ static void test_lboard(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_lboard(&runtime, 1, "STA:0xH0001=10::SUB:0xH0001=11::CAN:0xH0001=12::VAL:0xH0000");
   assert_activate_lboard(&runtime, 2, "STA:0xH0002=10::SUB:0xH0002=11::CAN:0xH0002=12::VAL:0xH0000*2");
 
   /* both start conditions are true, leaderboards will not be active */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_WAITING);
   ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_WAITING);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* both start conditions are false, leaderboards will activate */
   ram[1] = ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* both start conditions are true, leaderboards will start */
   ram[1] = ram[2] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_STARTED);
   ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_STARTED);
   ASSERT_NUM_EQUALS(event_count, 2);
@@ -1064,14 +1081,14 @@ static void test_lboard(void)
 
   /* start condition no longer true, leaderboard should continue processing */
   ram[1] = ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_STARTED);
   ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_STARTED);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* value changed */
   ram[0] = 3;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_STARTED);
   ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_STARTED);
   ASSERT_NUM_EQUALS(event_count, 2);
@@ -1082,7 +1099,7 @@ static void test_lboard(void)
   ram[0] = 4;
   ram[1] = 11;
   ram[2] = 12;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_CANCELED);
   ASSERT_NUM_EQUALS(event_count, 2);
@@ -1091,21 +1108,21 @@ static void test_lboard(void)
 
   /* both start conditions are true, leaderboards will not be active */
   ram[1] = ram[2] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_CANCELED);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* both start conditions are false, leaderboards will re-activate */
   ram[1] = ram[2] = 9;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(event_count, 0);
 
   /* both start conditions are true, leaderboards will start */
   ram[1] = ram[2] = 10;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ASSERT_NUM_EQUALS(runtime.lboards[0].lboard->state, RC_LBOARD_STATE_STARTED);
   ASSERT_NUM_EQUALS(runtime.lboards[1].lboard->state, RC_LBOARD_STATE_STARTED);
   ASSERT_NUM_EQUALS(event_count, 2);
@@ -1134,26 +1151,27 @@ static void test_richpresence(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* initial value */
-  assert_richpresence_display_string(&runtime, &memory, "");
+  assert_richpresence_display_string(&runtime, "");
 
   /* loading generates a display string with uninitialized memrefs, which ensures a non-empty display string */
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\nScore is @Points(0x 0001) Points");
-  assert_richpresence_display_string(&runtime, &memory, "Score is 0 Points");
+  assert_richpresence_display_string(&runtime, "Score is 0 Points");
 
   /* first frame should update display string with correct memrfs */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2570 Points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "Score is 2570 Points");
 
   /* calling rc_runtime_get_richpresence without calling rc_runtime_do_frame should return the same string as memrefs aren't updated */
   ram[1] = 20;
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2570 Points");
+  assert_richpresence_display_string(&runtime, "Score is 2570 Points");
 
   /* call rc_runtime_do_frame to update memrefs */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2580 Points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "Score is 2580 Points");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1168,11 +1186,12 @@ static void test_richpresence_starts_with_macro(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Points");
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570 Points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "2570 Points");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1187,11 +1206,12 @@ static void test_richpresence_macro_only(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001)");
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "2570");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1206,21 +1226,22 @@ static void test_richpresence_conditional(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* loading generates a display string with uninitialized memrefs, which ensures a non-empty display string */
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n?0xH0000=2?@Points(0x 0001) points\nScore is @Points(0x 0001) Points");
-  assert_richpresence_display_string(&runtime, &memory, "Score is 0 Points");
+  assert_richpresence_display_string(&runtime, "Score is 0 Points");
 
   /* first frame should update display string with correct memrfs */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570 points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "2570 points");
 
   /* update display string */
   ram[0] = 0;
   ram[1] = 20;
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2580 Points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "Score is 2580 Points");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1235,40 +1256,41 @@ static void test_richpresence_conditional_with_hits(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* loading generates a display string with uninitialized memrefs, which ensures a non-empty display string */
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n?0xH0000=1.2.?Score is @Points(0x 0001) Points\n@Points(0x 0001) points");
-  assert_richpresence_display_string(&runtime, &memory, "0 points");
+  assert_richpresence_display_string(&runtime, "0 points");
 
   /* first frame should update display string with correct memrfs */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570 points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "2570 points");
 
   /* one hit is not enough to switch display strings, but the memref does get updated */
   ram[0] = 1;
   ram[1] = 20;
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2580 points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "2580 points");
 
   /* second hit is enough */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2580 Points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "Score is 2580 Points");
 
   /* no more hits are accumulated */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2580 Points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "Score is 2580 Points");
 
   /* same test without intermediary evaluation of display string */
   rc_runtime_reset(&runtime);
   ram[0] = 2;
   ram[1] = 30;
-  assert_do_frame(&runtime, &memory); /* no hits */
+  assert_do_frame(&runtime); /* no hits */
 
   ram[0] = 1;
-  assert_do_frame(&runtime, &memory); /* one hit */
-  assert_do_frame(&runtime, &memory); /* two hits */
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2590 Points");
+  assert_do_frame(&runtime); /* one hit */
+  assert_do_frame(&runtime); /* two hits */
+  assert_richpresence_display_string(&runtime, "Score is 2590 Points");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1283,40 +1305,41 @@ static void test_richpresence_conditional_with_hits_after_match(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* loading generates a display string with uninitialized memrefs, which ensures a non-empty display string */
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n?0xH0002=10?It's @Points(0x 0001)\n?0xH0000=1.2.?Score is @Points(0x 0001) Points\n@Points(0x 0001) points");
-  assert_richpresence_display_string(&runtime, &memory, "0 points");
+  assert_richpresence_display_string(&runtime, "0 points");
 
   /* first frame should update display string with correct memrfs */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "It's 2570");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "It's 2570");
 
   /* first condition is true, but one hit should still be tallied on the second conditional */
   ram[0] = 1;
   ram[1] = 20;
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "It's 2580");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "It's 2580");
 
   /* first conditio no longer true, second condtion will get it's second hit, which is enough */
   ram[2] = 20;
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 5140 Points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "Score is 5140 Points");
 
   /* same test without intermediary evaluation of display string */
   rc_runtime_reset(&runtime);
   ram[0] = 2;
   ram[1] = 10;
   ram[2] = 10;
-  assert_do_frame(&runtime, &memory); /* no hits */
+  assert_do_frame(&runtime); /* no hits */
 
   ram[0] = 1;
   ram[1] = 20;
-  assert_do_frame(&runtime, &memory); /* one hit */
+  assert_do_frame(&runtime); /* one hit */
   ram[2] = 20;
-  assert_do_frame(&runtime, &memory); /* two hits */
-  assert_richpresence_display_string(&runtime, &memory, "Score is 5140 Points");
+  assert_do_frame(&runtime); /* two hits */
+  assert_richpresence_display_string(&runtime, "Score is 5140 Points");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1331,29 +1354,30 @@ static void test_richpresence_reload(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* loading generates a display string with uninitialized memrefs, which ensures a non-empty display string */
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Points");
-  assert_richpresence_display_string(&runtime, &memory, "0 Points");
+  assert_richpresence_display_string(&runtime, "0 Points");
 
   /* first frame should update display string with correct memrfs */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570 Points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "2570 Points");
 
   /* reloading should generate display string with current memrefs */
   ram[1] = 20;
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Bananas");
-  assert_richpresence_display_string(&runtime, &memory, "2570 Bananas");
+  assert_richpresence_display_string(&runtime, "2570 Bananas");
 
   /* memrefs should be reused from first script */
   ASSERT_NUM_EQUALS(runtime.richpresence->owns_memrefs, 0);
   ASSERT_PTR_NOT_NULL(runtime.richpresence->previous);
 
   /* first frame after reloading should update display string */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2580 Bananas");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "2580 Bananas");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1369,30 +1393,31 @@ static void test_richpresence_reload_addaddress(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* loading generates a display string with uninitialized memrefs, which ensures a non-empty display string */
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(I:0xH0000_M:0x 0001) Points");
-  assert_richpresence_display_string(&runtime, &memory, "0 Points");
+  assert_richpresence_display_string(&runtime, "0 Points");
 
   /* first frame should update display string with correct memrfs */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570 Points");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "2570 Points");
 
   /* reloading should generate display string with current memrefs */
   /* the entire AddAddress expression will be a single variable, which will have a current value. */
   ram[2] = 20;
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(I:0xH0000_M:0x 0001) Bananas");
-  assert_richpresence_display_string(&runtime, &memory, "2570 Bananas");
+  assert_richpresence_display_string(&runtime, "2570 Bananas");
 
   /* the AddAddress expression will be owned by the previous script. */
   ASSERT_NUM_EQUALS(runtime.richpresence->owns_memrefs, 0);
   ASSERT_PTR_NOT_NULL(runtime.richpresence->previous);
 
   /* first frame after reloading should update display string */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2580 Bananas");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "2580 Bananas");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1407,14 +1432,15 @@ static void test_richpresence_static(void)
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_richpresence(&runtime, "Display:\nHello, world!");
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Hello, world!");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "Hello, world!");
 
   /* first frame won't affect the display string */
-  assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Hello, world!");
+  assert_do_frame(&runtime);
+  assert_richpresence_display_string(&runtime, "Hello, world!");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1441,7 +1467,7 @@ static void assert_do_frame_invalid(rc_runtime_t* runtime, memory_invalid_t* mem
   event_count = 0;
   memory->runtime = runtime;
   memory->invalid_address = invalid_address;
-  rc_runtime_do_frame(runtime, event_handler, peek_invalid, memory, NULL);
+  rc_runtime_do_frame(runtime, event_handler, peek_invalid, NULL);
 }
 
 static void test_invalidate_address(void)
@@ -1454,6 +1480,7 @@ static void test_invalidate_address(void)
   memory.memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
   event_count = 0;
 
   assert_activate_achievement(&runtime, 1, "0xH0001=10");
@@ -1507,6 +1534,7 @@ static void test_invalidate_address_shared_memref(void)
   memory.memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
   event_count = 0;
 
   assert_activate_achievement(&runtime, 1, "0xH0001=10");
@@ -1541,6 +1569,7 @@ static void test_invalidate_address_leaderboard(void)
   memory.memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
   event_count = 0;
 
   assert_activate_lboard(&runtime, 1, "STA:0xH0001=10::SUB:0xH0001=11::CAN:0xH0001=12::VAL:0xH0001");
@@ -1562,8 +1591,9 @@ static void test_invalidate_address_leaderboard(void)
   rc_runtime_destroy(&runtime);
 }
 
-static int validate_address_handler(unsigned address)
+static int validate_address_handler(unsigned address, void* ud)
 {
+  (void)ud;
   return (address & 1) == 0; /* all even addresses are valid */
 }
 

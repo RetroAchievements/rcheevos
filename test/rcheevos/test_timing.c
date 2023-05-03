@@ -8,8 +8,9 @@
 static rc_runtime_t runtime;
 static int trigger_count[128];
 
-static void event_handler(const rc_runtime_event_t* e)
+static void event_handler(const rc_runtime_event_t* e, void* ud)
 {
+  (void)ud;
   if (e->type == RC_RUNTIME_EVENT_ACHIEVEMENT_TRIGGERED)
   {
     rc_trigger_t* trigger = rc_runtime_get_achievement(&runtime, e->id);
@@ -44,6 +45,7 @@ static void do_timing(void)
   memset(&trigger_count, 0, sizeof(trigger_count));
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0000=1");
   assert_activate_achievement(&runtime, 2, "0xH0001=1");
@@ -122,7 +124,7 @@ static void do_timing(void)
     ram[0x8C] = (i % 10) + '0';
 
     start = clock();
-    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    rc_runtime_do_frame(&runtime, event_handler, peek, NULL);
     end = clock();
 
     total_clocks += (end - start);

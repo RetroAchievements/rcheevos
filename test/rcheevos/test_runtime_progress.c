@@ -26,24 +26,25 @@ static void _assert_activate_rich_presence(rc_runtime_t* runtime, const char* sc
 }
 #define assert_activate_rich_presence(runtime, script) ASSERT_HELPER(_assert_activate_rich_presence(runtime, script), "assert_activate_rich_presence")
 
-static void _assert_richpresence_output(rc_runtime_t* runtime, memory_t* memory, const char* expected_display_string) {
+static void _assert_richpresence_output(rc_runtime_t* runtime, const char* expected_display_string) {
   char output[256];
   int result;
 
-  result = rc_runtime_get_richpresence(runtime, output, sizeof(output), peek, memory, NULL);
+  result = rc_runtime_get_richpresence(runtime, output, sizeof(output), peek, NULL);
   ASSERT_STR_EQUALS(output, expected_display_string);
   ASSERT_NUM_EQUALS(result, strlen(expected_display_string));
 }
-#define assert_richpresence_output(runtime, memory, expected_display_string) ASSERT_HELPER(_assert_richpresence_output(runtime, memory, expected_display_string), "assert_richpresence_output")
+#define assert_richpresence_output(runtime, expected_display_string) ASSERT_HELPER(_assert_richpresence_output(runtime, expected_display_string), "assert_richpresence_output")
 
-static void event_handler(const rc_runtime_event_t* e)
+static void event_handler(const rc_runtime_event_t* e, void* ud)
 {
   (void)e;
+  (void)ud;
 }
 
-static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)
+static void assert_do_frame(rc_runtime_t* runtime)
 {
-  rc_runtime_do_frame(runtime, event_handler, peek, memory, NULL);
+  rc_runtime_do_frame(runtime, event_handler, peek, NULL);
 }
 
 static void _assert_serialize(rc_runtime_t* runtime, unsigned char* buffer, unsigned buffer_size)
@@ -325,16 +326,17 @@ static void test_single_achievement()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0002=5");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -365,16 +367,17 @@ static void test_invalid_marker()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0002=5");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -409,16 +412,17 @@ static void test_invalid_memref_chunk_id()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0002=5");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -453,16 +457,17 @@ static void test_modified_data()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0002=5");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -500,16 +505,17 @@ static void test_single_achievement_deactivated()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0002=5");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -554,16 +560,17 @@ static void test_single_achievement_md5_changed()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0002=5");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -577,10 +584,10 @@ static void test_single_achievement_md5_changed()
   /* new achievement definition - rack up a couple hits */
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0002=5.1.");
   ram[1] = 3;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   assert_hitcount(&runtime, 1, 0, 0, 2);
   assert_hitcount(&runtime, 1, 0, 1, 0);
   assert_memref(&runtime, 1, 4, 4, 3);
@@ -601,20 +608,21 @@ static void test_single_achievement_md5_changed()
 static void setup_multiple_achievements(rc_runtime_t* runtime, memory_t* memory)
 {
   rc_runtime_init(runtime);
+  rc_runtime_set_userdata(runtime, memory);
 
   assert_activate_achievement(runtime, 1, "0xH0001=4_0xH0000=1");
   assert_activate_achievement(runtime, 2, "0xH0002=7_0xH0000=2");
   assert_activate_achievement(runtime, 3, "0xH0003=9_0xH0000=3");
   assert_activate_achievement(runtime, 4, "0xH0004=1_0xH0000=4");
-  assert_do_frame(runtime, memory);
+  assert_do_frame(runtime);
   memory->ram[1] = 4;
-  assert_do_frame(runtime, memory);
+  assert_do_frame(runtime);
   memory->ram[2] = 7;
-  assert_do_frame(runtime, memory);
+  assert_do_frame(runtime);
   memory->ram[3] = 9;
-  assert_do_frame(runtime, memory);
+  assert_do_frame(runtime);
   memory->ram[4] = 1;
-  assert_do_frame(runtime, memory);
+  assert_do_frame(runtime);
 
   assert_memref(runtime, 0, 0, 0, 0);
   assert_memref(runtime, 1, 4, 4, 1);
@@ -638,16 +646,17 @@ static void test_no_core_group()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "S0xH0001=4_0xH0002=5");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -678,18 +687,19 @@ static void test_memref_shared_address()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0x 0001=5_0xX0001=6");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 6;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
 
   assert_sized_memref(&runtime, 1, RC_MEMSIZE_8_BITS, 6, 5, 5);
   assert_sized_memref(&runtime, 1, RC_MEMSIZE_16_BITS, 6, 5, 5);
@@ -725,16 +735,17 @@ static void test_memref_indirect()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* byte(byte(2) + 1) == 5 - third condition just prevents the achievement from triggering*/
   assert_activate_achievement(&runtime, 1, "I:0xH0002_0xH0001=3_0xH0004=99");
-  assert_do_frame(&runtime, &memory); /* $2 = 3, $(3+1) = 5 */
+  assert_do_frame(&runtime); /* $2 = 3, $(3+1) = 5 */
   ram[1] = 3;
   ram[2] = 0;
-  assert_do_frame(&runtime, &memory); /* $2 = 0, $(0+1) = 3 */
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime); /* $2 = 0, $(0+1) = 3 */
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_hitcount(&runtime, 1, 0, 0, 0);
   assert_hitcount(&runtime, 1, 0, 1, 4);
@@ -743,10 +754,10 @@ static void test_memref_indirect()
 
   assert_serialize(&runtime, buffer1, sizeof(buffer1));
 
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 6;
   ram[2] = 1;
-  assert_do_frame(&runtime, &memory); /* $2 = 1, $(1+1) = 1 */
+  assert_do_frame(&runtime); /* $2 = 1, $(1+1) = 1 */
   assert_hitcount(&runtime, 1, 0, 0, 0);
   assert_hitcount(&runtime, 1, 0, 1, 5);
   assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 1);
@@ -783,17 +794,18 @@ static void test_memref_double_indirect()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   /* byte(byte(2) + 1) == byte(byte(2)) - third condition just prevents the achievement from triggering*/
   assert_activate_achievement(&runtime, 1, "I:0xH0002_0xH0001=0xH0000_0xH0004=99");
-  assert_do_frame(&runtime, &memory); /* $2 = 3, $(3+1) = 5, $(3+0) = 4 */
+  assert_do_frame(&runtime); /* $2 = 3, $(3+1) = 5, $(3+0) = 4 */
   ram[0] = 3;
   ram[1] = 3;
   ram[2] = 0;
-  assert_do_frame(&runtime, &memory); /* $2 = 0, $(0+1) = 3, $(0+0) = 3 */
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime); /* $2 = 0, $(0+1) = 3, $(0+0) = 3 */
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_hitcount(&runtime, 1, 0, 0, 0);
   assert_hitcount(&runtime, 1, 0, 1, 4);
@@ -803,10 +815,10 @@ static void test_memref_double_indirect()
 
   assert_serialize(&runtime, buffer1, sizeof(buffer1));
 
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 6;
   ram[2] = 1;
-  assert_do_frame(&runtime, &memory); /* $2 = 1, $(1+1) = 1, $(1+0) = 6 */
+  assert_do_frame(&runtime); /* $2 = 1, $(1+1) = 1, $(1+0) = 6 */
   assert_hitcount(&runtime, 1, 0, 0, 0);
   assert_hitcount(&runtime, 1, 0, 1, 5);
   assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 1);
@@ -882,7 +894,7 @@ static void test_multiple_achievements_ignore_triggered_and_inactive()
 
   /* trigger achievement 3 */
   ram[0] = 3;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   assert_achievement_state(&runtime, 3, RC_TRIGGER_STATE_TRIGGERED);
 
   /* reset achievement 2 to inactive */
@@ -966,7 +978,7 @@ static void test_multiple_achievements_reactivate_waiting()
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
   /* reactivate achievement 2 */
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_ACTIVE);
 
   reset_runtime(&runtime);
@@ -999,19 +1011,20 @@ static void test_multiple_achievements_paused_and_primed()
   memory.ram = ram;
   memory.size = sizeof(ram);
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0000=1");
   assert_activate_achievement(&runtime, 2, "0xH0002=7_0xH0000=2_P:0xH0005=4");
   assert_activate_achievement(&runtime, 3, "0xH0003=9_0xH0000=3");
   assert_activate_achievement(&runtime, 4, "0xH0004=1_T:0xH0000=4");
 
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
   ram[2] = 7;
   ram[3] = 9;
   ram[4] = 1;
   ram[5] = 4;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   assert_achievement_state(&runtime, 1, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_PAUSED);
   assert_achievement_state(&runtime, 3, RC_TRIGGER_STATE_ACTIVE);
@@ -1023,7 +1036,7 @@ static void test_multiple_achievements_paused_and_primed()
   /* unpause achievement 2 and unprime achievement 4 */
   ram[5] = 2;
   ram[4] = 2;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   assert_achievement_state(&runtime, 1, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 3, RC_TRIGGER_STATE_ACTIVE);
@@ -1063,20 +1076,21 @@ static void test_multiple_achievements_deactivated_memrefs()
   memory.ram = ram;
   memory.size = sizeof(ram);
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0000=1");
   assert_activate_achievement(&runtime, 2, "0xH0001=5_0xH0000=2");
   assert_activate_achievement(&runtime, 3, "0xH0001=6_0xH0000=3");
 
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 6;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
 
   assert_hitcount(&runtime, 1, 0, 0, 3);
   assert_hitcount(&runtime, 2, 0, 0, 2);
@@ -1116,20 +1130,21 @@ static void test_multiple_achievements_deactivated_no_memrefs()
   memory.ram = ram;
   memory.size = sizeof(ram);
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0000=1");
   assert_activate_achievement(&runtime, 2, "0xH0001=5_0xH0000=2");
   assert_activate_achievement(&runtime, 3, "0xH0001=6_0xH0000=3");
 
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 6;
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
 
   assert_hitcount(&runtime, 1, 0, 0, 3);
   assert_hitcount(&runtime, 2, 0, 0, 2);
@@ -1170,16 +1185,17 @@ static void test_single_leaderboard()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.4.::VAL:0xH0002");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -1218,17 +1234,18 @@ static void test_multiple_leaderboards()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.4.::VAL:0xH0002");
   assert_activate_leaderboard(&runtime, 2, "STA:0xH0001=5::SUB:0xH0002=5::CAN:0xH0001=0::VAL:0xH0000");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_sta_hitcount(&runtime, 1, 0, 0, 3);
   assert_sub_hitcount(&runtime, 1, 0, 0, 2);
@@ -1243,8 +1260,8 @@ static void test_multiple_leaderboards()
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   assert_deserialize(&runtime, buffer);
 
   assert_sta_hitcount(&runtime, 1, 0, 0, 3);
@@ -1272,17 +1289,18 @@ static void test_multiple_leaderboards_ignore_inactive()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.4.::VAL:0xH0002");
   assert_activate_leaderboard(&runtime, 2, "STA:0xH0001=5::SUB:0xH0002=5::CAN:0xH0001=0::VAL:0xH0000");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   find_lboard(&runtime, 1)->state = RC_LBOARD_STATE_DISABLED;
   assert_sta_hitcount(&runtime, 1, 0, 0, 3);
@@ -1299,8 +1317,8 @@ static void test_multiple_leaderboards_ignore_inactive()
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
   find_lboard(&runtime, 1)->state = RC_LBOARD_STATE_ACTIVE;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   assert_deserialize(&runtime, buffer);
 
   /* non-serialized leaderboard should be reset */
@@ -1331,17 +1349,18 @@ static void test_multiple_leaderboards_ignore_modified()
   memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.4.::VAL:0xH0002");
   assert_activate_leaderboard(&runtime, 2, "STA:0xH0001=5::SUB:0xH0002=5::CAN:0xH0001=0::VAL:0xH0000");
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
   ram[1] = 4;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   ram[1] = 5;
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
 
   assert_sta_hitcount(&runtime, 1, 0, 0, 3);
   assert_sub_hitcount(&runtime, 1, 0, 0, 2);
@@ -1357,8 +1376,8 @@ static void test_multiple_leaderboards_ignore_modified()
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
   assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.3.::VAL:0xH0002");
-  assert_do_frame(&runtime, &memory);
-  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime);
+  assert_do_frame(&runtime);
   assert_deserialize(&runtime, buffer);
 
   /* modified leaderboard should be reset */
@@ -1418,26 +1437,27 @@ static void test_rich_presence_simple_lookup()
   memory.ram = ram;
   memory.size = sizeof(ram);
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_rich_presence(&runtime, "Display:\n@Number(p0xH02)");
-  assert_do_frame(&runtime, &memory); /* prev[2] = 0 */
+  assert_do_frame(&runtime); /* prev[2] = 0 */
 
   ram[2] = 4;
-  assert_do_frame(&runtime, &memory); /* prev[2] = 2 */
+  assert_do_frame(&runtime); /* prev[2] = 2 */
 
   ram[2] = 8;
-  assert_do_frame(&runtime, &memory); /* prev[2] = 4 */
+  assert_do_frame(&runtime); /* prev[2] = 4 */
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
   ram[2] = 12;
-  assert_do_frame(&runtime, &memory); /* prev[2] = 8 */
+  assert_do_frame(&runtime); /* prev[2] = 8 */
 
   reset_runtime(&runtime);
   assert_deserialize(&runtime, buffer);
 
   /* deserialized should remember prev[2] = 4 */
-  assert_richpresence_output(&runtime, &memory, "4");
+  assert_richpresence_output(&runtime, "4");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1452,21 +1472,22 @@ static void test_rich_presence_tracked_hits()
   memory.ram = ram;
   memory.size = sizeof(ram);
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_rich_presence(&runtime, "Display:\n@Number(M:0xH02=2)");
-  assert_do_frame(&runtime, &memory); /* count = 1 */
-  assert_do_frame(&runtime, &memory); /* count = 2 */
-  assert_do_frame(&runtime, &memory); /* count = 3 */
+  assert_do_frame(&runtime); /* count = 1 */
+  assert_do_frame(&runtime); /* count = 2 */
+  assert_do_frame(&runtime); /* count = 3 */
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
-  assert_do_frame(&runtime, &memory); /* count = 4 */
+  assert_do_frame(&runtime); /* count = 4 */
 
   reset_runtime(&runtime);
   assert_deserialize(&runtime, buffer);
 
   /* deserialized should remember count = 3 */
-  assert_richpresence_output(&runtime, &memory, "3");
+  assert_richpresence_output(&runtime, "3");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1481,22 +1502,23 @@ static void test_rich_presence_tracked_hits_md5_changed()
   memory.ram = ram;
   memory.size = sizeof(ram);
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_rich_presence(&runtime, "Display:\n@Number(M:0xH02=2)");
-  assert_do_frame(&runtime, &memory); /* count = 1 */
-  assert_do_frame(&runtime, &memory); /* count = 2 */
-  assert_do_frame(&runtime, &memory); /* count = 3 */
+  assert_do_frame(&runtime); /* count = 1 */
+  assert_do_frame(&runtime); /* count = 2 */
+  assert_do_frame(&runtime); /* count = 3 */
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
-  assert_do_frame(&runtime, &memory); /* count = 4 */
+  assert_do_frame(&runtime); /* count = 4 */
 
   assert_activate_rich_presence(&runtime, "Display:\n@Number(M:0xH02=2)!");
   reset_runtime(&runtime);
   assert_deserialize(&runtime, buffer);
 
   /* md5 changed, but variable is stored external to RP, 3 should be remembered */
-  assert_richpresence_output(&runtime, &memory, "3!");
+  assert_richpresence_output(&runtime, "3!");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1511,22 +1533,23 @@ static void test_rich_presence_conditional_display()
   memory.ram = ram;
   memory.size = sizeof(ram);
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_rich_presence(&runtime, "Display:\n?0xH02=2.3.?Three\nLess");
-  assert_do_frame(&runtime, &memory); /* count = 1 */
-  assert_do_frame(&runtime, &memory); /* count = 2 */
+  assert_do_frame(&runtime); /* count = 1 */
+  assert_do_frame(&runtime); /* count = 2 */
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
-  assert_do_frame(&runtime, &memory); /* count = 3 */
-  assert_do_frame(&runtime, &memory); /* count = 4 */
-  assert_richpresence_output(&runtime, &memory, "Three");
+  assert_do_frame(&runtime); /* count = 3 */
+  assert_do_frame(&runtime); /* count = 4 */
+  assert_richpresence_output(&runtime, "Three");
 
   reset_runtime(&runtime);
   assert_deserialize(&runtime, buffer);
 
   /* deserialized should remember count = 2 */
-  assert_richpresence_output(&runtime, &memory, "Less");
+  assert_richpresence_output(&runtime, "Less");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1541,30 +1564,31 @@ static void test_rich_presence_conditional_display_md5_changed()
   memory.ram = ram;
   memory.size = sizeof(ram);
   rc_runtime_init(&runtime);
+  rc_runtime_set_userdata(&runtime, &memory);
 
   assert_activate_rich_presence(&runtime, "Display:\n?0xH02=2.3.?Three\nLess");
-  assert_do_frame(&runtime, &memory); /* count = 1 */
-  assert_do_frame(&runtime, &memory); /* count = 2 */
+  assert_do_frame(&runtime); /* count = 1 */
+  assert_do_frame(&runtime); /* count = 2 */
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
-  assert_do_frame(&runtime, &memory); /* count = 3 */
-  assert_do_frame(&runtime, &memory); /* count = 4 */
-  assert_richpresence_output(&runtime, &memory, "Three");
+  assert_do_frame(&runtime); /* count = 3 */
+  assert_do_frame(&runtime); /* count = 4 */
+  assert_richpresence_output(&runtime, "Three");
 
   reset_runtime(&runtime);
   assert_activate_rich_presence(&runtime, "Display:\n?0xH02=2.3.?Three!\nLess");
   assert_deserialize(&runtime, buffer);
 
   /* md5 changed, hit count should be discarded */
-  assert_richpresence_output(&runtime, &memory, "Less");
+  assert_richpresence_output(&runtime, "Less");
 
-  assert_do_frame(&runtime, &memory); /* count = 1 */
-  assert_do_frame(&runtime, &memory); /* count = 2 */
-  assert_richpresence_output(&runtime, &memory, "Less");
+  assert_do_frame(&runtime); /* count = 1 */
+  assert_do_frame(&runtime); /* count = 2 */
+  assert_richpresence_output(&runtime, "Less");
 
-  assert_do_frame(&runtime, &memory); /* count = 3 */
-  assert_richpresence_output(&runtime, &memory, "Three!");
+  assert_do_frame(&runtime); /* count = 3 */
+  assert_richpresence_output(&runtime, "Three!");
 
   rc_runtime_destroy(&runtime);
 }
