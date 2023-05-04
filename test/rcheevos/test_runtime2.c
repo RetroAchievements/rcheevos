@@ -1074,6 +1074,107 @@ static void test_do_frame_achievement_measured(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_do_frame_achievement_challenge_indicator(void)
+{
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    const uint32_t num_active = g_runtime->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=7&h=1&m=0123456789ABCDEF&v=c39308ba325ba4a72919b081fb18fdd4",
+        "{\"Success\":true,\"Score\":5432,\"AchievementID\":7,\"AchievementsRemaining\":11}");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[1] = 1; /* show indicator */
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 7));
+
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active);
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[1] = 0; /* hide indicator */
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 7));
+
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active);
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[1] = 1; /* show indicator */
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 7));
+
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active);
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* trigger achievement - expect both hide and trigger events. both should have triggered achievement data */
+    memory[7] = 7;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 7));
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_TRIGGERED, 7);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 7));
+
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active - 1);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
 /* ----- harness ----- */
 
 void test_runtime2(void) {
@@ -1108,6 +1209,7 @@ void test_runtime2(void) {
   TEST(test_do_frame_achievement_trigger);
   TEST(test_do_frame_achievement_trigger_encore);
   TEST(test_do_frame_achievement_measured);
+  TEST(test_do_frame_achievement_challenge_indicator);
 
   TEST_SUITE_END();
 }
