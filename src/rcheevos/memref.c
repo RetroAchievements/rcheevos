@@ -387,7 +387,7 @@ char rc_memref_shared_size(char size) {
   return rc_memref_shared_sizes[index];
 }
 
-static unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void* ud) {
+unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void* ud) {
   if (!peek)
     return 0;
 

@@ -22,7 +22,7 @@ typedef struct rc_runtime2_t rc_runtime2_t;
  * Callback used to read num_bytes bytes from memory starting at address into buffer.
  * Returns the number of bytes read. A return value of 0 indicates the address was invalid.
  */
-typedef unsigned (*rc_runtime2_read_memory_t)(unsigned address, uint8_t* buffer, unsigned num_bytes, rc_runtime2_t* runtime);
+typedef uint32_t (*rc_runtime2_read_memory_t)(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_runtime2_t* runtime);
 
 /**
  * Internal method passed to rc_runtime2_server_call_t to process the server response.
@@ -60,6 +60,10 @@ rc_runtime2_t* rc_runtime2_create(rc_runtime2_read_memory_t read_memory_function
  */
 void rc_runtime2_destroy(rc_runtime2_t* runtime);
 
+/*****************************************************************************\
+| Logging                                                                     |
+\*****************************************************************************/
+
 /**
  * Sets the logging level and provides a callback to be called to do the logging.
  */
@@ -73,10 +77,18 @@ enum
   RC_RUNTIME2_LOG_LEVEL_VERBOSE = 4
 };
 
+/*****************************************************************************\
+| User                                                                        |
+\*****************************************************************************/
+
 /**
  * Attempt to login a user.
  */
 void rc_runtime2_begin_login_with_password(rc_runtime2_t* runtime, const char* username, const char* password, rc_runtime2_callback_t callback);
+
+/**
+ * Attempt to login a user.
+ */
 void rc_runtime2_begin_login_with_token(rc_runtime2_t* runtime, const char* username, const char* token, rc_runtime2_callback_t callback);
 
 typedef struct rc_runtime2_user_t {
@@ -91,6 +103,10 @@ typedef struct rc_runtime2_user_t {
  * Get information about the logged in user. Will return NULL if user is not logged in.
  */
 const rc_runtime2_user_t* rc_runtime2_user_info(const rc_runtime2_t* runtime);
+
+/*****************************************************************************\
+| Game                                                                        |
+\*****************************************************************************/
 
 /**
  * Start loading a game.
@@ -117,6 +133,10 @@ typedef struct rc_runtime2_game_t {
  * Get information about the current game. Returns NULL if no game is loaded.
  */
 const rc_runtime2_game_t* rc_runtime2_game_info(const rc_runtime2_t* runtime);
+
+/*****************************************************************************\
+| Achievements                                                                |
+\*****************************************************************************/
 
 enum {
   RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE = 0,
@@ -167,8 +187,11 @@ typedef struct rc_runtime2_achievement_t {
 /**
  * Get information about an achievement. Returns NULL if not found.
  */
-const rc_runtime2_achievement_t* rc_runtime2_achievement_info(const rc_runtime2_t* runtime, uint32_t id);
+const rc_runtime2_achievement_t* rc_runtime2_get_achievement_info(const rc_runtime2_t* runtime, uint32_t id);
 
+/**
+ * Gets the number of achievements in a category.
+ */
 uint32_t rc_runtime2_get_achievement_count(const rc_runtime2_t* runtime, int category);
 
 typedef struct rc_runtime2_achievement_bucket_t {
@@ -200,6 +223,10 @@ rc_runtime2_achievement_list_t* rc_runtime2_get_achievement_list(rc_runtime2_t* 
  */
 void rc_runtime2_destroy_achievement_list(rc_runtime2_achievement_list_t* list);
 
+/*****************************************************************************\
+| Leaderboards                                                                |
+\*****************************************************************************/
+
 enum {
   RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE = 0,
   RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE = 1,
@@ -214,6 +241,57 @@ typedef struct rc_runtime2_leaderboard_t {
   uint8_t format;
   uint8_t state;
 } rc_runtime2_leaderboard_t;
+
+typedef struct rc_runtime2_leaderboard_tracker_t {
+  char display[24];
+  uint32_t id;
+} rc_runtime2_leaderboard_tracker_t;
+
+/*****************************************************************************\
+| Processing                                                                  |
+\*****************************************************************************/
+
+enum {
+  RC_RUNTIME2_EVENT_TYPE_NONE = 0,
+  RC_RUNTIME2_EVENT_ACHIEVEMENT_TRIGGERED = 1, /* [achievement] was earned by the player */
+  RC_RUNTIME2_EVENT_LBOARD_STARTED = 2, /* [leaderboard] attempt has started */
+  RC_RUNTIME2_EVENT_LBOARD_FAILED = 3, /* [leaderboard] attempt failed */
+  RC_RUNTIME2_EVENT_LBOARD_SUBMITTED = 4, /* [leaderboard] attempt submitted */
+  RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW = 5, /* [achievement] challenge indicator should be shown */
+  RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE = 6, /* [achievement] challenge indicator should be hidden */
+  RC_RUNTIME2_EVENT_ACHIEVEMENT_PROGRESS_UPDATED = 7, /* [achievement] measured_progress has changed */
+  RC_RUNTIME2_EVENT_LBOARD_TRACKER_SHOW = 8, /* [leaderboard_tracker] should be shown */
+  RC_RUNTIME2_EVENT_LBOARD_TRACKER_HIDE = 9, /* [leaderboard_tracker] should be hidden */
+  RC_RUNTIME2_EVENT_LBOARD_TRACKER_UPDATE = 10, /* [leaderboard_tracker] updated */
+  RC_RUNTIME2_EVENT_RESET = 11, /* emulated system should be reset (as the result of enabling hardcore) */
+  RC_RUNTIME2_EVENT_GAME_COMPLETED = 12, /* all achievements for the game have been earned */
+};
+
+typedef struct rc_runtime2_event_t
+{
+  uint32_t type;
+
+  rc_runtime2_achievement_t* achievement;
+  rc_runtime2_leaderboard_t* leaderboard;
+  rc_runtime2_leaderboard_tracker_t* leaderboard_tracker;
+
+  rc_runtime2_t* runtime;
+} rc_runtime2_event_t;
+
+/**
+ * Callback used to notify the client when certain events occur.
+ */
+typedef void (*rc_runtime2_event_handler_t)(const rc_runtime2_event_t* event);
+
+/**
+ * Provides a callback for event handling.
+ */
+void rc_runtime2_set_event_handler(rc_runtime2_t* runtime, rc_runtime2_event_handler_t handler);
+
+/**
+ * Processes achievements for the current frame.
+ */
+void rc_runtime2_do_frame(rc_runtime2_t* runtime);
 
 #ifdef __cplusplus
 }

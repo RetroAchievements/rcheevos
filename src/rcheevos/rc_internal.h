@@ -145,6 +145,7 @@ unsigned rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_stat
 char rc_memref_shared_size(char size);
 unsigned rc_memref_mask(char size);
 void rc_transform_memref_value(rc_typed_value_t* value, char size);
+unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void* ud);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 int rc_trigger_state_active(int state);

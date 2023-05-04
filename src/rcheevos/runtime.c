@@ -739,7 +739,7 @@ static int rc_condset_contains_memref(const rc_condset_t* condset, const rc_memr
   return 0;
 }
 
-static int rc_value_contains_memref(const rc_value_t* value, const rc_memref_t* memref) {
+int rc_value_contains_memref(const rc_value_t* value, const rc_memref_t* memref) {
   rc_condset_t* condset;
   if (!value)
     return 0;
@@ -752,7 +752,7 @@ static int rc_value_contains_memref(const rc_value_t* value, const rc_memref_t* 
   return 0;
 }
 
-static int rc_trigger_contains_memref(const rc_trigger_t* trigger, const rc_memref_t* memref) {
+int rc_trigger_contains_memref(const rc_trigger_t* trigger, const rc_memref_t* memref) {
   rc_condset_t* condset;
   if (!trigger)
     return 0;

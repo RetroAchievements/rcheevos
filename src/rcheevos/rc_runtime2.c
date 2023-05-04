@@ -2,6 +2,7 @@
 
 #include "rc_api_runtime.h"
 #include "rc_api_user.h"
+#include "rc_consoles.h"
 #include "rc_internal.h"
 
 #include "../rapi/rc_api_common.h"
@@ -20,19 +21,27 @@ static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* callback
 
 /* ===== Construction/Destruction ===== */
 
+static void rc_runtime2_dummy_event_handler(const rc_runtime2_event_t* event)
+{
+}
+
 rc_runtime2_t* rc_runtime2_create(rc_runtime2_read_memory_t read_memory_function, rc_runtime2_server_call_t server_call_function)
 {
   rc_runtime2_t* runtime = (rc_runtime2_t*)calloc(1, sizeof(rc_runtime2_t));
   if (!runtime)
     return NULL;
 
+  runtime->state.hardcore = 1;
+
   runtime->callbacks.read_memory = read_memory_function;
   runtime->callbacks.server_call = server_call_function;
-  runtime->state.hardcore = 1;
+  runtime->callbacks.event_handler = rc_runtime2_dummy_event_handler;
+  rc_runtime2_set_legacy_peek(runtime, RC_RUNTIME2_LEGACY_PEEK_AUTO);
 
   rc_mutex_init(&runtime->state.mutex);
 
   rc_buf_init(&runtime->buffer);
+
 
   return runtime;
 }
@@ -324,37 +333,74 @@ static void rc_runtime2_load_error(rc_runtime2_load_state_t* load_state, int res
     rc_runtime2_free_load_state(load_state);
 }
 
-static void rc_runtime2_activate_achievements(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
+static void rc_runtime2_invalidate_memref_achievements(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime, rc_memref_t* memref)
 {
-  const uint8_t active_bit = (runtime->state.encore_mode) ?
-      RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE : (runtime->state.hardcore) ?
-      RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE;
-
   rc_runtime2_achievement_info_t* achievement = game->achievements;
   rc_runtime2_achievement_info_t* stop = achievement + game->public.num_achievements;
-  unsigned active_count = 0;
-
   for (; achievement < stop; ++achievement) {
-    if ((achievement->public.unlocked & active_bit) == 0) {
-      switch (achievement->public.state) {
-        case RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE:
-        case RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED:
-          rc_reset_trigger(achievement->trigger);
-          achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE;
-          ++active_count;
-          break;
+    if (achievement->public.state == RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED)
+      continue;
 
-        case RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE:
-          ++active_count;
-          break;
-      }
-    }
-    else if (achievement->public.state == RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE) {
-      achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE;
+    if (rc_trigger_contains_memref(achievement->trigger, memref)) {
+      achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED;
+      RC_RUNTIME2_LOG_WARN(runtime, "Disabled achievement %u. Invalid address %06X", achievement->public.id, memref->address);
     }
   }
+}
 
+static void rc_runtime2_invalidate_memref_leaderboards(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime, rc_memref_t* memref)
+{
+  rc_runtime2_leaderboard_info_t* leaderboard = game->leaderboards;
+  rc_runtime2_leaderboard_info_t* stop = leaderboard + game->public.num_leaderboards;
+  for (; leaderboard < stop; ++leaderboard) {
+    if (leaderboard->public.state == RC_RUNTIME2_LEADERBOARD_STATE_DISABLED)
+      continue;
+
+    if (rc_trigger_contains_memref(&leaderboard->lboard->start, memref))
+      leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_DISABLED;
+    else if (rc_trigger_contains_memref(&leaderboard->lboard->cancel, memref))
+      leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_DISABLED;
+    else if (rc_trigger_contains_memref(&leaderboard->lboard->submit, memref))
+      leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_DISABLED;
+    else if (rc_value_contains_memref(&leaderboard->lboard->value, memref))
+      leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_DISABLED;
+    else
+      continue;
+
+    RC_RUNTIME2_LOG_WARN(runtime, "Disabled leaderboard %u. Invalid address %06X", leaderboard->public.id, memref->address);
+  }
+}
+
+static void rc_runtime2_validate_addresses(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
+{
+  const rc_memory_regions_t* regions = rc_console_memory_regions(game->public.console_id);
+  const uint32_t max_address = (regions && regions->num_regions > 0) ?
+      regions->region[regions->num_regions - 1].end_address : 0xFFFFFFFF;
+  uint8_t buffer[8];
+
+  rc_memref_t** last_memref = &game->runtime.memrefs;
+  rc_memref_t* memref = game->runtime.memrefs;
+  for (; memref; memref = memref->next) {
+    if (memref->value.is_indirect)
+      continue;
+
+    if (memref->address > max_address ||
+        runtime->callbacks.read_memory(memref->address, buffer, 1, runtime) == 0) {
+      /* invalid address, remove from chain so we don't have to evaluate it in the future.
+       * it's still there, so anything referencing it will always fetch 0. */
+      *last_memref = memref->next;
+
+      rc_runtime2_invalidate_memref_achievements(game, runtime, memref);
+      rc_runtime2_invalidate_memref_leaderboards(game, runtime, memref);
+    }
+  }
+}
+
+static void rc_runtime2_update_legacy_runtime_achievements(rc_runtime2_game_info_t* game, uint32_t active_count)
+{
   if (active_count > 0) {
+    rc_runtime2_achievement_info_t* achievement = game->achievements;
+    rc_runtime2_achievement_info_t* stop = achievement + game->public.num_achievements;
     rc_runtime_trigger_t* trigger;
 
     if (active_count <= game->runtime.trigger_capacity) {
@@ -382,6 +428,53 @@ static void rc_runtime2_activate_achievements(rc_runtime2_game_info_t* game, rc_
   }
 
   game->runtime.trigger_count = active_count;
+}
+
+static void rc_runtime2_update_active_achievements(rc_runtime2_game_info_t* game)
+{
+  rc_runtime2_achievement_info_t* achievement = game->achievements;
+  rc_runtime2_achievement_info_t* stop = achievement + game->public.num_achievements;
+  uint32_t active_count = 0;
+
+  for (; achievement < stop; ++achievement) {
+    if (achievement->public.state == RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE)
+      ++active_count;
+  }
+
+  rc_runtime2_update_legacy_runtime_achievements(game, active_count);
+}
+
+static void rc_runtime2_activate_achievements(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
+{
+  const uint8_t active_bit = (runtime->state.encore_mode) ?
+      RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE : (runtime->state.hardcore) ?
+      RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE;
+
+  rc_runtime2_achievement_info_t* achievement = game->achievements;
+  rc_runtime2_achievement_info_t* stop = achievement + game->public.num_achievements;
+  uint32_t active_count = 0;
+
+  for (; achievement < stop; ++achievement) {
+    if ((achievement->public.unlocked & active_bit) == 0) {
+      switch (achievement->public.state) {
+        case RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE:
+        case RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED:
+          rc_reset_trigger(achievement->trigger);
+          achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE;
+          ++active_count;
+          break;
+
+        case RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE:
+          ++active_count;
+          break;
+      }
+    }
+    else if (achievement->public.state == RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE) {
+      achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE;
+    }
+  }
+
+  rc_runtime2_update_legacy_runtime_achievements(game, active_count);
 }
 
 static void rc_runtime2_activate_leaderboards(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
@@ -485,6 +578,8 @@ static void rc_runtime2_activate_game(rc_runtime2_load_state_t* load_state)
         load_state->num_softcore_unlocks, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
     rc_runtime2_apply_unlocks(load_state->game, load_state->hardcore_unlocks,
         load_state->num_hardcore_unlocks, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+
+    rc_runtime2_validate_addresses(load_state->game, runtime);
 
     rc_runtime2_activate_achievements(load_state->game, runtime);
     rc_runtime2_activate_leaderboards(load_state->game, runtime);
@@ -719,6 +814,7 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
       }
       else {
         rc_buf_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
+        achievement->trigger->memrefs = NULL; /* memrefs managed by runtime */
       }
 
       rc_destroy_parse_state(&parse);
@@ -1298,7 +1394,7 @@ void rc_runtime2_destroy_achievement_list(rc_runtime2_achievement_list_t* list)
     free(list);
 }
 
-const rc_runtime2_achievement_t* rc_runtime2_achievement_info(const rc_runtime2_t* runtime, uint32_t id)
+const rc_runtime2_achievement_t* rc_runtime2_get_achievement_info(const rc_runtime2_t* runtime, uint32_t id)
 {
   rc_runtime2_achievement_info_t* achievement;
   rc_runtime2_achievement_info_t* stop;
@@ -1321,4 +1417,353 @@ const rc_runtime2_achievement_t* rc_runtime2_achievement_info(const rc_runtime2_
   }
 
   return NULL;
+}
+
+typedef struct rc_runtime2_award_achievement_data_t {
+  rc_runtime2_t* runtime;
+  uint32_t achievement_id;
+} rc_runtime2_award_achievement_data_t;
+
+static void rc_runtime2_award_achievement_callback(const char* server_response_body, int http_status_code, void* callback_data)
+{
+  rc_runtime2_award_achievement_data_t* ach_data = (rc_runtime2_award_achievement_data_t*)callback_data;
+  rc_api_award_achievement_response_t award_achievement_response;
+
+  int result = rc_api_process_award_achievement_response(&award_achievement_response, server_response_body);
+  const char* error_message = rc_runtime2_server_error_message(&result, http_status_code, &award_achievement_response.response);
+
+  if (error_message)
+  {
+    RC_RUNTIME2_LOG_ERR(ach_data->runtime, "Error awarding achievement %u: %s", ach_data->achievement_id, error_message);
+    // TODO: report error / queue retry
+  }
+  else
+  {
+    ach_data->runtime->user.score = award_achievement_response.new_player_score;
+
+    if (award_achievement_response.awarded_achievement_id != ach_data->achievement_id)
+    {
+      RC_RUNTIME2_LOG_ERR(ach_data->runtime, "Awarded achievement %u instead of %u", award_achievement_response.awarded_achievement_id, error_message);
+    }
+    else
+    {
+      if (award_achievement_response.response.error_message)
+      {
+        /* previously unlocked achievements are returned as a success with an error message */
+        RC_RUNTIME2_LOG_INFO(ach_data->runtime, "Achievement %u: %s", ach_data->achievement_id, award_achievement_response.response.error_message);
+      }
+
+      if (award_achievement_response.achievements_remaining == 0 &&
+        ach_data->runtime->state.mastery == RC_RUNTIME2_MASTERY_STATE_NONE)
+      {
+        ach_data->runtime->state.mastery = RC_RUNTIME2_MASTERY_STATE_PENDING;
+      }
+    }
+  }
+
+  free(ach_data);
+}
+
+static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_achievement_info_t* achievement)
+{
+  rc_runtime2_award_achievement_data_t* callback_data;
+  rc_api_award_achievement_request_t api_params;
+  rc_api_request_t request;
+  int result;
+
+  rc_mutex_lock(&runtime->state.mutex);
+
+  achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED;
+  achievement->public.unlock_time = time(NULL);
+  achievement->public.unlocked |= (runtime->state.hardcore) ?
+    RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH : RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE;
+
+  rc_mutex_unlock(&runtime->state.mutex);
+
+  if (runtime->state.spectactor_mode)
+    return;
+
+  if (achievement->public.category != RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE)
+    return;
+
+  memset(&api_params, 0, sizeof(api_params));
+  api_params.username = runtime->user.username;
+  api_params.api_token = runtime->user.token;
+  api_params.achievement_id = achievement->public.id;
+  api_params.hardcore = runtime->state.hardcore;
+  api_params.game_hash = runtime->game->public.hash;
+
+  result = rc_api_init_award_achievement_request(&request, &api_params);
+  if (result != RC_OK)
+  {
+    RC_RUNTIME2_LOG_ERR(runtime, "Error constructing unlock request for achievement %u: %s", achievement->public.id, rc_error_str(result));
+    return;
+  }
+
+  callback_data = (rc_runtime2_award_achievement_data_t*)calloc(1, sizeof(*callback_data));
+  callback_data->runtime = runtime;
+  callback_data->achievement_id = achievement->public.id;
+  runtime->callbacks.server_call(&request, rc_runtime2_award_achievement_callback, callback_data, runtime);
+  rc_api_destroy_request(&request);
+}
+
+/* ===== Processing ===== */
+
+void rc_runtime2_set_event_handler(rc_runtime2_t* runtime, rc_runtime2_event_handler_t handler)
+{
+  runtime->callbacks.event_handler = handler;
+}
+
+static void rc_runtime2_invalidate_processing_memref(rc_runtime2_t* runtime)
+{
+  rc_memref_t** next_memref = &runtime->game->runtime.memrefs;
+  rc_memref_t* memref;
+
+  /* invalid memref. remove from chain so we don't have to evaluate it in the future.
+   * it's still there, so anything referencing it will always fetch the current value. */
+  while ((memref = *next_memref) != NULL) {
+    if (memref == runtime->state.processing_memref) {
+      *next_memref = memref->next;
+      break;
+    }
+    next_memref = &memref->next;
+  }
+
+  rc_runtime2_invalidate_memref_achievements(runtime->game, runtime, runtime->state.processing_memref);
+  rc_runtime2_invalidate_memref_leaderboards(runtime->game, runtime, runtime->state.processing_memref);
+
+  runtime->state.processing_memref = NULL;
+}
+
+static unsigned rc_runtime2_peek_le(unsigned address, unsigned num_bytes, void* ud)
+{
+  rc_runtime2_t* runtime = (rc_runtime2_t*)ud;
+  unsigned value = 0;
+  uint32_t num_read = 0;
+
+  if (num_bytes <= sizeof(value)) {
+    num_read = runtime->callbacks.read_memory(address, (uint8_t*)&value, num_bytes, runtime);
+    if (num_read == num_bytes)
+      return value;
+  }
+
+  if (num_read < num_bytes)
+    rc_runtime2_invalidate_processing_memref(runtime);
+
+  return 0;
+}
+
+static unsigned rc_runtime2_peek(unsigned address, unsigned num_bytes, void* ud)
+{
+  rc_runtime2_t* runtime = (rc_runtime2_t*)ud;
+  uint8_t buffer[4];
+  uint32_t num_read = 0;
+
+  switch (num_bytes) {
+    case 1:
+      num_read = runtime->callbacks.read_memory(address, buffer, 1, runtime);
+      if (num_read == 1)
+        return buffer[0];
+      break;
+    case 2:
+      num_read = runtime->callbacks.read_memory(address, buffer, 2, runtime);
+      if (num_read == 2)
+        return buffer[0] | (buffer[1] << 8);
+      break;
+    case 3:
+      num_read = runtime->callbacks.read_memory(address, buffer, 3, runtime);
+      if (num_read == 3)
+        return buffer[0] | (buffer[1] << 8) | (buffer[2] << 16);
+      break;
+    case 4:
+      num_read = runtime->callbacks.read_memory(address, buffer, 4, runtime);
+      if (num_read == 4)
+        return buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+      break;
+    default:
+      break;
+  }
+
+  if (num_read < num_bytes)
+    rc_runtime2_invalidate_processing_memref(runtime);
+
+  return 0;
+}
+
+void rc_runtime2_set_legacy_peek(rc_runtime2_t* runtime, int method)
+{
+  if (method == RC_RUNTIME2_LEGACY_PEEK_AUTO) {
+    uint8_t buffer[4] = { 1,0,0,0 };
+    method = (*((uint32_t*)buffer) == 1) ?
+        RC_RUNTIME2_LEGACY_PEEK_LITTLE_ENDIAN_READS : RC_RUNTIME2_LEGACY_PEEK_CONSTRUCTED;
+  }
+
+  runtime->callbacks.legacy_peek = (method == RC_RUNTIME2_LEGACY_PEEK_LITTLE_ENDIAN_READS) ?
+      rc_runtime2_peek_le : rc_runtime2_peek;
+}
+
+static void rc_runtime2_update_memref_values(rc_runtime2_t* runtime)
+{
+  rc_memref_t* memref = runtime->game->runtime.memrefs;
+  unsigned value;
+  int invalidated_memref = 0;
+
+  for (; memref; memref = memref->next) {
+    if (memref->value.is_indirect)
+      continue;
+
+    runtime->state.processing_memref = memref;
+
+    value = rc_peek_value(memref->address, memref->value.size, runtime->callbacks.legacy_peek, runtime);
+
+    if (runtime->state.processing_memref) {
+      rc_update_memref_value(&memref->value, value);
+    }
+    else {
+      /* if the peek function cleared the processing_memref, the memref was invalidated */
+      invalidated_memref = 1;
+    }
+  }
+
+  runtime->state.processing_memref = NULL;
+
+  if (invalidated_memref)
+    rc_runtime2_update_active_achievements(runtime->game);
+}
+
+static void rc_runtime2_do_frame_process_achievements(rc_runtime2_t* runtime)
+{
+  rc_runtime2_achievement_info_t* achievement = runtime->game->achievements;
+  rc_runtime2_achievement_info_t* stop = achievement + runtime->game->public.num_achievements;
+
+  for (; achievement < stop; ++achievement) {
+    rc_trigger_t* trigger = achievement->trigger;
+    int old_state, new_state;
+    unsigned old_measured_value;
+
+    if (!trigger || achievement->public.state != RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE)
+      continue;
+
+    old_measured_value = trigger->measured_value;
+    old_state = trigger->state;
+    new_state = rc_evaluate_trigger(trigger, runtime->callbacks.legacy_peek, runtime, NULL);
+
+    /* if the measured value changed and the achievement hasn't triggered, send a notification */
+    if (trigger->measured_value != old_measured_value && old_measured_value != RC_MEASURED_UNKNOWN &&
+        trigger->measured_target != 0 && trigger->measured_value <= trigger->measured_target &&
+        new_state != RC_TRIGGER_STATE_TRIGGERED &&
+        new_state != RC_TRIGGER_STATE_INACTIVE && new_state != RC_TRIGGER_STATE_WAITING) {
+
+      if (trigger->measured_as_percent) {
+        /* if reporting measured value as a percentage, only send the notification if the percentage changes */
+        const unsigned old_percent = (unsigned)(((unsigned long long)old_measured_value * 100) / trigger->measured_target);
+        const unsigned new_percent = (unsigned)(((unsigned long long)trigger->measured_value * 100) / trigger->measured_target);
+        if (old_percent != new_percent)
+          achievement->pending_events |= RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_PROGRESS_UPDATED;
+      }
+      else {
+        achievement->pending_events |= RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_PROGRESS_UPDATED;
+      }
+    }
+
+    /* if the state hasn't changed, there won't be any events raised */
+    if (new_state == old_state)
+      continue;
+
+    /* raise a CHALLENGE_INDICATOR_HIDE event when changing from PRIMED to anything else */
+    if (old_state == RC_TRIGGER_STATE_PRIMED)
+      achievement->pending_events |= RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+
+    /* raise events for each of the possible new states */
+    if (new_state == RC_TRIGGER_STATE_TRIGGERED)
+      achievement->pending_events |= RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_TRIGGERED;
+    else if (new_state == RC_TRIGGER_STATE_PRIMED)
+      achievement->pending_events |= RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_SHOW;
+  }
+}
+
+static void rc_runtime2_raise_achievement_events(rc_runtime2_t* runtime)
+{
+  rc_runtime2_achievement_info_t* achievement = runtime->game->achievements;
+  rc_runtime2_achievement_info_t* stop = achievement + runtime->game->public.num_achievements;
+  rc_runtime2_event_t runtime_event;
+  time_t recent_unlock_time = 0;
+  int achievements_unlocked = 0;
+
+  memset(&runtime_event, 0, sizeof(runtime_event));
+  runtime_event.runtime = runtime;
+
+  for (; achievement < stop; ++achievement) {
+    if (achievement->pending_events == RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_NONE)
+      continue;
+
+    /* kick off award achievement request first */
+    if (achievement->pending_events & RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_TRIGGERED) {
+      rc_runtime2_award_achievement(runtime, achievement);
+      achievements_unlocked = 1;
+    }
+
+    /* update display state */
+    if (recent_unlock_time == 0)
+      recent_unlock_time = time(NULL) - RC_RUNTIME2_RECENT_UNLOCK_DELAY_SECONDS;
+    rc_runtime2_update_achievement_display_information(runtime, achievement, recent_unlock_time);
+
+    /* raise events*/
+    runtime_event.achievement = &achievement->public;
+
+    if (achievement->pending_events & RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE) {
+      runtime_event.type = RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE;
+      runtime->callbacks.event_handler(&runtime_event);
+    }
+    else if (achievement->pending_events & RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_SHOW) {
+      runtime_event.type = RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW;
+      runtime->callbacks.event_handler(&runtime_event);
+    }
+
+    if (achievement->pending_events & RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_PROGRESS_UPDATED) {
+      runtime_event.type = RC_RUNTIME2_EVENT_ACHIEVEMENT_PROGRESS_UPDATED;
+      runtime->callbacks.event_handler(&runtime_event);
+    }
+
+    if (achievement->pending_events & RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_TRIGGERED) {
+      runtime_event.type = RC_RUNTIME2_EVENT_ACHIEVEMENT_TRIGGERED;
+      runtime->callbacks.event_handler(&runtime_event);
+    }
+
+    /* clear pending flags */
+    achievement->pending_events = RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_NONE;
+  }
+
+  /* raise mastery event if pending */
+  if (runtime->state.mastery == RC_RUNTIME2_MASTERY_STATE_PENDING) {
+    runtime->state.mastery = RC_RUNTIME2_MASTERY_STATE_SHOWN;
+
+    runtime_event.type = RC_RUNTIME2_EVENT_GAME_COMPLETED;
+    runtime_event.achievement = NULL;
+    runtime->callbacks.event_handler(&runtime_event);
+  }
+
+  /* if any achievements were unlocked, resync the active achievements list */
+  if (achievements_unlocked) {
+    rc_mutex_lock(&runtime->state.mutex);
+    rc_runtime2_update_active_achievements(runtime->game);
+    rc_mutex_unlock(&runtime->state.mutex);
+  }
+}
+
+void rc_runtime2_do_frame(rc_runtime2_t* runtime)
+{
+  if (!runtime->game)
+    return;
+
+  rc_mutex_lock(&runtime->state.mutex);
+
+  rc_runtime2_update_memref_values(runtime);
+  rc_update_variables(runtime->game->runtime.variables, runtime->callbacks.legacy_peek, runtime, NULL);
+
+  rc_runtime2_do_frame_process_achievements(runtime);
+
+  rc_mutex_unlock(&runtime->state.mutex);
+
+  rc_runtime2_raise_achievement_events(runtime);
 }
