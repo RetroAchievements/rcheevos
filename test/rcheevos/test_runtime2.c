@@ -77,7 +77,9 @@ static const char* patchdata_exhaustive = "{\"Success\":true,\"PatchData\":{"
       GENERIC_ACHIEVEMENT_JSON("6", "M:0xH0006=6") ","
       GENERIC_ACHIEVEMENT_JSON("7", "T:0xH0007=7_0xH0001=1") ","
       GENERIC_ACHIEVEMENT_JSON("8", "0xH0008=8") ","
-      GENERIC_ACHIEVEMENT_JSON("9", "0xH0009=9")
+      GENERIC_ACHIEVEMENT_JSON("9", "0xH0009=9") ","
+      GENERIC_ACHIEVEMENT_JSON("70", "M:0xX0010=100000") ","
+      GENERIC_ACHIEVEMENT_JSON("71", "G:0xX0010=100000")
     "],"
     "\"Leaderboards\":[]"
     "}}";
@@ -946,6 +948,132 @@ static void test_do_frame_achievement_trigger_encore(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_do_frame_achievement_measured(void)
+{
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    const uint32_t num_active = g_runtime->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=70&h=1&m=0123456789ABCDEF&v=61e40027573e2cde88b49d27f6804879",
+        "{\"Success\":true,\"Score\":5432,\"AchievementID\":70,\"AchievementsRemaining\":11}");
+    mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=71&h=1&m=0123456789ABCDEF&v=3a8d55b81d391557d5111306599a2b0d",
+        "{\"Success\":true,\"Score\":5432,\"AchievementID\":71,\"AchievementsRemaining\":11}");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[0x10] = 0x39; memory[0x11] = 0x30; /* 12345 */
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 70);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 70));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "12345/100000");
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 71);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 71));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "12%");
+
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active);
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* increment measured value - raw counter will report progress change, percentage will not */
+    memory[0x10] = 0x3A; /* 12346 */
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 70);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 70));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "12346/100000");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* increment measured value - raw counter will report progress change, percentage will not */
+    memory[0x11] = 0x33; /* 13114 */
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 70);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 70));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "13114/100000");
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 71);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 71));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "13%");
+
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active);
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* trigger measured achievements - should get trigger events, but not progress events */
+    memory[0x10] = 0xA0; memory[0x11] = 0x86; memory[0x12] = 0x01; /* 100000 */
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_TRIGGERED, 70);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 70));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "");
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_TRIGGERED, 71);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 71));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "");
+
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active - 2);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
 /* ----- harness ----- */
 
 void test_runtime2(void) {
@@ -979,6 +1107,7 @@ void test_runtime2(void) {
   TEST(test_do_frame_bounds_check_available);
   TEST(test_do_frame_achievement_trigger);
   TEST(test_do_frame_achievement_trigger_encore);
+  TEST(test_do_frame_achievement_measured);
 
   TEST_SUITE_END();
 }

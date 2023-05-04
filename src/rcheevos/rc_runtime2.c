@@ -1193,6 +1193,8 @@ static void rc_runtime2_update_achievement_display_information(const rc_runtime2
   if (achievement->public.bucket == RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED)
     return;
 
+  achievement->public.measured_progress[0] = '\0';
+
   if (achievement->public.unlocked & RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE) {
     /* achievement unlocked in hardcore */
     new_bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED;
@@ -1210,7 +1212,6 @@ static void rc_runtime2_update_achievement_display_information(const rc_runtime2
       if (achievement->trigger->measured_target) {
         if (achievement->trigger->measured_value == RC_MEASURED_UNKNOWN) {
           /* value hasn't been initialized yet, leave progress string empty */
-          achievement->public.measured_progress[0] = '\0';
         }
         else {
           /* clamp measured value at target (can't get more than 100%) */
@@ -1223,8 +1224,6 @@ static void rc_runtime2_update_achievement_display_information(const rc_runtime2
             snprintf(achievement->public.measured_progress, sizeof(achievement->public.measured_progress), "%u/%u", new_measured_value, achievement->trigger->measured_target);
           else if (measured_progress)
             snprintf(achievement->public.measured_progress, sizeof(achievement->public.measured_progress), "%u%%", measured_progress);
-          else
-            achievement->public.measured_progress[0] = '\0';
         }
       }
 
