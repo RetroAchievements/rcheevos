@@ -1606,6 +1606,7 @@ void test_runtime2(void) {
   TEST(test_do_frame_achievement_trigger_while_spectating);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_challenge_indicator);
+  // TODO: leaderboards
   // TODO: test mastery
 
   /* settings */

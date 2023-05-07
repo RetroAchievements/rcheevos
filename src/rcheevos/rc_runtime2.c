@@ -1699,7 +1699,7 @@ void rc_runtime2_set_legacy_peek(rc_runtime2_t* runtime, int method)
         RC_RUNTIME2_LEGACY_PEEK_LITTLE_ENDIAN_READS : RC_RUNTIME2_LEGACY_PEEK_CONSTRUCTED;
   }
 
-  runtime->callbacks.legacy_peek = (method == RC_RUNTIME2_LEGACY_PEEK_LITTLE_ENDIAN_READS) ?
+  runtime->state.legacy_peek = (method == RC_RUNTIME2_LEGACY_PEEK_LITTLE_ENDIAN_READS) ?
       rc_runtime2_peek_le : rc_runtime2_peek;
 }
 
@@ -1715,7 +1715,7 @@ static void rc_runtime2_update_memref_values(rc_runtime2_t* runtime)
 
     runtime->state.processing_memref = memref;
 
-    value = rc_peek_value(memref->address, memref->value.size, runtime->callbacks.legacy_peek, runtime);
+    value = rc_peek_value(memref->address, memref->value.size, runtime->state.legacy_peek, runtime);
 
     if (runtime->state.processing_memref) {
       rc_update_memref_value(&memref->value, value);
@@ -1747,7 +1747,7 @@ static void rc_runtime2_do_frame_process_achievements(rc_runtime2_t* runtime)
 
     old_measured_value = trigger->measured_value;
     old_state = trigger->state;
-    new_state = rc_evaluate_trigger(trigger, runtime->callbacks.legacy_peek, runtime, NULL);
+    new_state = rc_evaluate_trigger(trigger, runtime->state.legacy_peek, runtime, NULL);
 
     /* if the measured value changed and the achievement hasn't triggered, send a notification */
     if (trigger->measured_value != old_measured_value && old_measured_value != RC_MEASURED_UNKNOWN &&
@@ -1858,7 +1858,7 @@ void rc_runtime2_do_frame(rc_runtime2_t* runtime)
     rc_mutex_lock(&runtime->state.mutex);
 
     rc_runtime2_update_memref_values(runtime);
-    rc_update_variables(runtime->game->runtime.variables, runtime->callbacks.legacy_peek, runtime, NULL);
+    rc_update_variables(runtime->game->runtime.variables, runtime->state.legacy_peek, runtime, NULL);
 
     rc_runtime2_do_frame_process_achievements(runtime);
     // TODO: process leaderboards
@@ -1990,11 +1990,16 @@ int rc_runtime2_get_spectator_mode_enabled(const rc_runtime2_t* runtime)
   return runtime->state.spectator_mode;
 }
 
-// TODO: spectator mode toggle (kiosk mode? - disable submissions, keep events)
+void rc_runtime2_set_user_data(rc_runtime2_t* runtime, void* userdata)
+{
+  runtime->callbacks.client_data = userdata;
+}
+
+void* rc_runtime2_get_user_data(const rc_runtime2_t* runtime)
+{
+  return runtime->callbacks.client_data;
+}
 
 // TODO: disk swapping
 
-// TODO: reset
 // TODO: save states (load/save progress)
-
-// TODO: userdata

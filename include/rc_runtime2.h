@@ -97,6 +97,16 @@ void rc_runtime2_set_spectator_mode_enabled(rc_runtime2_t* runtime, int enabled)
  */
 int rc_runtime2_get_spectator_mode_enabled(const rc_runtime2_t* runtime);
 
+/**
+ * Attaches client-specific data to the runtime.
+ */
+void rc_runtime2_set_user_data(rc_runtime2_t* runtime, void* userdata);
+
+/**
+ * Gets the client-specific data attached to the runtime.
+ */
+void* rc_runtime2_get_user_data(const rc_runtime2_t* runtime);
+
 /*****************************************************************************\
 | Logging                                                                     |
 \*****************************************************************************/

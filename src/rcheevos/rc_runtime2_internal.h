@@ -16,8 +16,8 @@ typedef struct rc_runtime2_callbacks_t {
   rc_runtime2_event_handler_t event_handler;
   rc_runtime2_server_call_t server_call;
   rc_runtime2_message_callback_t log_call;
-  rc_peek_t legacy_peek;
 
+  void* client_data;
 } rc_runtime2_callbacks_t;
 
 enum {
@@ -122,8 +122,9 @@ typedef struct rc_runtime2_state_t {
   uint8_t mastery;
 
   struct rc_runtime2_load_state_t* load;
-
   rc_memref_t* processing_memref;
+
+  rc_peek_t legacy_peek;
 } rc_runtime2_state_t;
 
 typedef struct rc_runtime2_t {
