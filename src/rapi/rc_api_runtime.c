@@ -350,6 +350,7 @@ int rc_api_process_award_achievement_response(rc_api_award_achievement_response_
     RC_JSON_NEW_FIELD("Success"),
     RC_JSON_NEW_FIELD("Error"),
     RC_JSON_NEW_FIELD("Score"),
+    RC_JSON_NEW_FIELD("SoftcoreScore"),
     RC_JSON_NEW_FIELD("AchievementID"),
     RC_JSON_NEW_FIELD("AchievementsRemaining")
   };
@@ -375,8 +376,9 @@ int rc_api_process_award_achievement_response(rc_api_award_achievement_response_
   }
 
   rc_json_get_optional_unum(&response->new_player_score, &fields[2], "Score", 0);
-  rc_json_get_optional_unum(&response->awarded_achievement_id, &fields[3], "AchievementID", 0);
-  rc_json_get_optional_unum(&response->achievements_remaining, &fields[4], "AchievementsRemaining", (unsigned)-1);
+  rc_json_get_optional_unum(&response->new_player_score_softcore, &fields[3], "SoftcoreScore", 0);
+  rc_json_get_optional_unum(&response->awarded_achievement_id, &fields[4], "AchievementID", 0);
+  rc_json_get_optional_unum(&response->achievements_remaining, &fields[5], "AchievementsRemaining", (unsigned)-1);
 
   return RC_OK;
 }

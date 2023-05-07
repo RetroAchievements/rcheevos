@@ -84,6 +84,19 @@ void rc_runtime2_set_encore_mode_enabled(rc_runtime2_t* runtime, int enabled);
  */
 int rc_runtime2_get_encore_mode_enabled(const rc_runtime2_t* runtime);
 
+/**
+ * Sets whether spectator mode is enabled (off by default).
+ * If enabled, events for achievement unlocks and leaderboard submissions will be
+ * raised, but server calls to actually perform the unlock/submit will not occur.
+ * Can be modified while a game is loaded. Evaluated at unlock/submit time.
+ */
+void rc_runtime2_set_spectator_mode_enabled(rc_runtime2_t* runtime, int enabled);
+
+/**
+ * Gets whether spectator mode is enabled (off by default).
+ */
+int rc_runtime2_get_spectator_mode_enabled(const rc_runtime2_t* runtime);
+
 /*****************************************************************************\
 | Logging                                                                     |
 \*****************************************************************************/
@@ -120,6 +133,7 @@ typedef struct rc_runtime2_user_t {
   const char* username;
   const char* token;
   uint32_t score;
+  uint32_t score_softcore;
   uint32_t num_unread_messages;
 } rc_runtime2_user_t;
 
@@ -295,7 +309,14 @@ enum {
   RC_RUNTIME2_EVENT_LBOARD_TRACKER_UPDATE = 10, /* [leaderboard_tracker] updated */
   RC_RUNTIME2_EVENT_RESET = 11, /* emulated system should be reset (as the result of enabling hardcore) */
   RC_RUNTIME2_EVENT_GAME_COMPLETED = 12, /* all achievements for the game have been earned */
+  RC_RUNTIME2_EVENT_SERVER_ERROR = 13, /* an API response returned a [server_error] and will not be retried */
 };
+
+typedef struct rc_runtime2_server_error_t
+{
+  const char* error_message;
+  const char* api;
+} rc_runtime2_server_error_t;
 
 typedef struct rc_runtime2_event_t
 {
@@ -304,6 +325,7 @@ typedef struct rc_runtime2_event_t
   rc_runtime2_achievement_t* achievement;
   rc_runtime2_leaderboard_t* leaderboard;
   rc_runtime2_leaderboard_tracker_t* leaderboard_tracker;
+  rc_runtime2_server_error_t* server_error;
 
   rc_runtime2_t* runtime;
 } rc_runtime2_event_t;

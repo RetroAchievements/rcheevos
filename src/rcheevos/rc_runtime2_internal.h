@@ -116,7 +116,7 @@ typedef struct rc_runtime2_state_t {
 
   uint8_t hardcore;
   uint8_t encore_mode;
-  uint8_t spectactor_mode;
+  uint8_t spectator_mode;
   uint8_t log_level;
   uint8_t user;
   uint8_t mastery;

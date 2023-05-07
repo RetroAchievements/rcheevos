@@ -115,6 +115,14 @@ static int event_count = 0;
 static void rc_runtime2_event_handler(const rc_runtime2_event_t* e)
 {
   memcpy(&events[event_count++], e, sizeof(rc_runtime2_event_t));
+
+  if (e->type == RC_RUNTIME2_EVENT_SERVER_ERROR) {
+    static rc_runtime2_server_error_t event_server_error;
+
+    /* server error data is not maintained out of scope, copy it too */
+    memcpy(&event_server_error, e->server_error, sizeof(event_server_error));
+    events[event_count - 1].server_error = &event_server_error;
+  }
 }
 
 static rc_runtime2_event_t* find_event(uint8_t type, uint32_t id)
@@ -148,6 +156,7 @@ static rc_runtime2_event_t* find_event(uint8_t type, uint32_t id)
 
         case RC_RUNTIME2_EVENT_RESET:
         case RC_RUNTIME2_EVENT_GAME_COMPLETED:
+        case RC_RUNTIME2_EVENT_SERVER_ERROR:
           return &events[i];
 
         default:
@@ -202,6 +211,7 @@ typedef struct rc_mock_api_response
   const char* request_params;
   const char* response_body;
   int http_status_code;
+  int seen;
   rc_runtime2_server_callback_t async_callback;
   void* async_callback_data;
 } rc_mock_api_response;
@@ -212,13 +222,12 @@ static int g_num_mock_api_responses = 0;
 static void rc_runtime2_server_call(const rc_api_request_t* request, rc_runtime2_server_callback_t callback, void* callback_data, rc_runtime2_t* runtime)
 {
   int i;
-  for (i = 0; i < g_num_mock_api_responses; i++)
-  {
-    if (strcmp(g_mock_api_responses[i].request_params, request->post_data) == 0)
-	{
+  for (i = 0; i < g_num_mock_api_responses; i++) {
+    if (strcmp(g_mock_api_responses[i].request_params, request->post_data) == 0) {
+      g_mock_api_responses[i].seen++;
       callback(g_mock_api_responses[i].response_body, g_mock_api_responses[i].http_status_code, callback_data);
-	  return;
-	}
+      return;
+    }
   }
 
   ASSERT_FAIL("No API response for: %s", request->post_data);
@@ -242,6 +251,7 @@ static void async_api_response(const char* request_params, const char* response_
   {
     if (strcmp(g_mock_api_responses[i].request_params, request_params) == 0)
     {
+      g_mock_api_responses[i].seen++;
       g_mock_api_responses[i].async_callback(response_body, 200, g_mock_api_responses[i].async_callback_data);
 	    return;
     }
@@ -249,6 +259,21 @@ static void async_api_response(const char* request_params, const char* response_
 
   ASSERT_FAIL("No pending API requst for: %s", request_params);
 }
+
+static void _assert_api_called(const char* request_params, int count)
+{
+  int i;
+  for (i = 0; i < g_num_mock_api_responses; i++) {
+    if (strcmp(g_mock_api_responses[i].request_params, request_params) == 0) {
+      ASSERT_NUM_EQUALS(g_mock_api_responses[i].seen, count);
+      return;
+    }
+  }
+
+  ASSERT_NUM_EQUALS(0, count);
+}
+#define assert_api_called(request_params) ASSERT_HELPER(_assert_api_called(request_params, 1), "assert_api_called")
+#define assert_api_not_called(request_params) ASSERT_HELPER(_assert_api_called(request_params, 0), "assert_api_not_called")
 
 static void reset_mock_api_handlers(void)
 {
@@ -349,6 +374,7 @@ static void test_login_with_password(void)
   ASSERT_STR_EQUALS(user->display_name, "User");
   ASSERT_STR_EQUALS(user->token, "ApiToken");
   ASSERT_NUM_EQUALS(user->score, 12345);
+  ASSERT_NUM_EQUALS(user->score_softcore, 123);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
 
   rc_runtime2_destroy(g_runtime);
@@ -881,7 +907,7 @@ static void test_do_frame_achievement_trigger(void)
     mock_memory(memory, sizeof(memory));
 
     mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=8&h=1&m=0123456789ABCDEF&v=da80b659c2b858e13ddd97077647b217",
-        "{\"Success\":true,\"Score\":5432,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+        "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
 
     event_count = 0;
     rc_runtime2_do_frame(g_runtime);
@@ -901,6 +927,7 @@ static void test_do_frame_achievement_trigger(void)
 
     ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active - 1);
     ASSERT_NUM_EQUALS(g_runtime->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_runtime->user.score_softcore, 777);
 
     event_count = 0;
     rc_runtime2_do_frame(g_runtime);
@@ -910,7 +937,7 @@ static void test_do_frame_achievement_trigger(void)
   rc_runtime2_destroy(g_runtime);
 }
 
-static void test_do_frame_achievement_trigger_encore(void)
+static void test_do_frame_achievement_trigger_already_awarded(void)
 {
   rc_runtime2_event_t* event;
   uint8_t memory[64];
@@ -924,7 +951,7 @@ static void test_do_frame_achievement_trigger_encore(void)
     mock_memory(memory, sizeof(memory));
 
     mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=8&h=1&m=0123456789ABCDEF&v=da80b659c2b858e13ddd97077647b217",
-        "{\"Success\":false,\"Error\":\"User already has hardcore and regular achievements awarded.\",\"Score\":5432,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+        "{\"Success\":false,\"Error\":\"User already has hardcore and regular achievements awarded.\",\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
 
     event_count = 0;
     rc_runtime2_do_frame(g_runtime);
@@ -944,6 +971,108 @@ static void test_do_frame_achievement_trigger_encore(void)
 
     ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active - 1);
     ASSERT_NUM_EQUALS(g_runtime->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_runtime->user.score_softcore, 777);
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_do_frame_achievement_trigger_server_error(void)
+{
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    const uint32_t num_active = g_runtime->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=8&h=1&m=0123456789ABCDEF&v=da80b659c2b858e13ddd97077647b217",
+        "{\"Success\":false,\"Error\":\"Achievement not found\"}");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[8] = 8;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+
+    /* achievement still counts as triggered */
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_TRIGGERED, 8);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 8));
+
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active - 1);
+    ASSERT_NUM_EQUALS(g_runtime->user.score, 12345 + 5); /* score will have been adjusted locally, but not from server */
+
+    /* but an error should have been reported */
+    event = find_event(RC_RUNTIME2_EVENT_SERVER_ERROR, 0);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_STR_EQUALS(event->server_error->api, "award_achievement");
+    ASSERT_STR_EQUALS(event->server_error->error_message, "Achievement not found");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_do_frame_achievement_trigger_while_spectating(void)
+{
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    const uint32_t num_active = g_runtime->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    ASSERT_NUM_EQUALS(rc_runtime2_get_spectator_mode_enabled(g_runtime), 0);
+    rc_runtime2_set_spectator_mode_enabled(g_runtime, 1);
+    ASSERT_NUM_EQUALS(rc_runtime2_get_spectator_mode_enabled(g_runtime), 1);
+
+    mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=8&h=1&m=0123456789ABCDEF&v=da80b659c2b858e13ddd97077647b217",
+        "{\"Success\":false,\"Error\":\"Achievement should not have been unlocked in spectating mode\"}");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[8] = 8;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    /* achievement still counts as triggered */
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_TRIGGERED, 8);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 8));
+
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active - 1);
+    ASSERT_NUM_EQUALS(g_runtime->user.score, 12345 + 5); /* score will have been adjusted locally, but not from server */
+
+    /* expect API not called */
+    assert_api_not_called("r=awardachievement&u=Username&t=ApiToken&a=8&h=1&m=0123456789ABCDEF&v=da80b659c2b858e13ddd97077647b217");
 
     event_count = 0;
     rc_runtime2_do_frame(g_runtime);
@@ -1472,7 +1601,9 @@ void test_runtime2(void) {
   TEST(test_do_frame_bounds_check_system);
   TEST(test_do_frame_bounds_check_available);
   TEST(test_do_frame_achievement_trigger);
-  TEST(test_do_frame_achievement_trigger_encore);
+  TEST(test_do_frame_achievement_trigger_already_awarded);
+  TEST(test_do_frame_achievement_trigger_server_error);
+  TEST(test_do_frame_achievement_trigger_while_spectating);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_challenge_indicator);
   // TODO: test mastery

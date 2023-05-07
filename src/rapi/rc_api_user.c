@@ -39,6 +39,7 @@ int rc_api_process_login_response(rc_api_login_response_t* response, const char*
     RC_JSON_NEW_FIELD("User"),
     RC_JSON_NEW_FIELD("Token"),
     RC_JSON_NEW_FIELD("Score"),
+    RC_JSON_NEW_FIELD("SoftcoreScore"),
     RC_JSON_NEW_FIELD("Messages"),
     RC_JSON_NEW_FIELD("DisplayName")
   };
@@ -56,9 +57,10 @@ int rc_api_process_login_response(rc_api_login_response_t* response, const char*
     return RC_MISSING_VALUE;
 
   rc_json_get_optional_unum(&response->score, &fields[4], "Score", 0);
-  rc_json_get_optional_unum(&response->num_unread_messages, &fields[5], "Messages", 0);
+  rc_json_get_optional_unum(&response->score_softcore, &fields[5], "SoftcoreScore", 0);
+  rc_json_get_optional_unum(&response->num_unread_messages, &fields[6], "Messages", 0);
 
-  rc_json_get_optional_string(&response->display_name, &response->response, &fields[6], "DisplayName", response->username);
+  rc_json_get_optional_string(&response->display_name, &response->response, &fields[7], "DisplayName", response->username);
 
   return RC_OK;
 }

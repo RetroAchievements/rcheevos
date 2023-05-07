@@ -214,6 +214,8 @@ typedef struct rc_api_award_achievement_response_t {
   unsigned awarded_achievement_id;
   /* The updated player score */
   unsigned new_player_score;
+  /* The updated player softcore score */
+  unsigned new_player_score_softcore;
   /* The number of achievements the user has not yet unlocked for this game
    * (in hardcore/non-hardcore per hardcore flag in request) */
   unsigned achievements_remaining;

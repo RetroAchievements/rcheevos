@@ -115,6 +115,21 @@ static const char* rc_runtime2_server_error_message(int* result, int http_status
   return NULL;
 }
 
+static void rc_runtime2_raise_server_error_event(rc_runtime2_t* runtime, const char* api, const char* error_message)
+{
+  rc_runtime2_server_error_t server_error;
+  rc_runtime2_event_t runtime_event;
+
+  server_error.api = api;
+  server_error.error_message = error_message;
+
+  memset(&runtime_event, 0, sizeof(runtime_event));
+  runtime_event.type = RC_RUNTIME2_EVENT_SERVER_ERROR;
+  runtime_event.server_error = &server_error;
+
+  runtime->callbacks.event_handler(&runtime_event);
+}
+
 /* ===== User ===== */
 
 static void rc_runtime2_login_callback(const char* server_response_body, int http_status_code, void* callback_data)
@@ -145,6 +160,7 @@ static void rc_runtime2_login_callback(const char* server_response_body, int htt
 
     runtime->user.token = rc_buf_strcpy(&runtime->buffer, login_response.api_token);
     runtime->user.score = login_response.score;
+    runtime->user.score_softcore = login_response.score_softcore;
     runtime->user.num_unread_messages = login_response.num_unread_messages;
 
     rc_mutex_lock(&runtime->state.mutex);
@@ -1470,11 +1486,18 @@ static void rc_runtime2_award_achievement_callback(const char* server_response_b
   if (error_message)
   {
     RC_RUNTIME2_LOG_ERR(ach_data->runtime, "Error awarding achievement %u: %s", ach_data->achievement_id, error_message);
-    // TODO: report error / queue retry
+
+    if (award_achievement_response.response.error_message) {
+      rc_runtime2_raise_server_error_event(ach_data->runtime, "award_achievement", award_achievement_response.response.error_message);
+    }
+    else {
+      // TODO: queue retry
+    }
   }
   else
   {
     ach_data->runtime->user.score = award_achievement_response.new_player_score;
+    ach_data->runtime->user.score_softcore = award_achievement_response.new_player_score_softcore;
 
     if (award_achievement_response.awarded_achievement_id != ach_data->achievement_id)
     {
@@ -1512,9 +1535,15 @@ static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_ac
     achievement->public.unlock_time = achievement->unlock_time_hardcore = time(NULL);
     if (achievement->unlock_time_softcore == 0)
       achievement->unlock_time_softcore = achievement->unlock_time_hardcore;
+
+    /* adjust score now - will get accurate score back from server */
+    runtime->user.score += achievement->public.points;
   }
   else {
     achievement->public.unlock_time = achievement->unlock_time_softcore = time(NULL);
+
+    /* adjust score now - will get accurate score back from server */
+    runtime->user.score_softcore += achievement->public.points;
   }
 
   achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED;
@@ -1523,11 +1552,17 @@ static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_ac
 
   rc_mutex_unlock(&runtime->state.mutex);
 
-  if (runtime->state.spectactor_mode)
+  /* can't unlock unofficial achievements on the server */
+  if (achievement->public.category != RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE) {
+    RC_RUNTIME2_LOG_INFO(runtime, "Unlocked unofficial achievement %u: %s", achievement->public.id, achievement->public.title);
     return;
+  }
 
-  if (achievement->public.category != RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE)
+  /* don't actually unlock achievements when spectating */
+  if (runtime->state.spectator_mode) {
+    RC_RUNTIME2_LOG_INFO(runtime, "Spectated achievement %u: %s", achievement->public.id, achievement->public.title);
     return;
+  }
 
   memset(&api_params, 0, sizeof(api_params));
   api_params.username = runtime->user.username;
@@ -1537,8 +1572,7 @@ static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_ac
   api_params.game_hash = runtime->game->public.hash;
 
   result = rc_api_init_award_achievement_request(&request, &api_params);
-  if (result != RC_OK)
-  {
+  if (result != RC_OK) {
     RC_RUNTIME2_LOG_ERR(runtime, "Error constructing unlock request for achievement %u: %s", achievement->public.id, rc_error_str(result));
     return;
   }
@@ -1944,6 +1978,16 @@ void rc_runtime2_set_encore_mode_enabled(rc_runtime2_t* runtime, int enabled)
 int rc_runtime2_get_encore_mode_enabled(const rc_runtime2_t* runtime)
 {
   return runtime->state.encore_mode;
+}
+
+void rc_runtime2_set_spectator_mode_enabled(rc_runtime2_t* runtime, int enabled)
+{
+  runtime->state.spectator_mode = enabled ? 1 : 0;
+}
+
+int rc_runtime2_get_spectator_mode_enabled(const rc_runtime2_t* runtime)
+{
+  return runtime->state.spectator_mode;
 }
 
 // TODO: spectator mode toggle (kiosk mode? - disable submissions, keep events)
