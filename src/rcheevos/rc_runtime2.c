@@ -241,7 +241,7 @@ void rc_runtime2_begin_login_with_token(rc_runtime2_t* runtime,
   rc_runtime2_begin_login(runtime, &login_request, callback);
 }
 
-const rc_runtime2_user_t* rc_runtime2_user_info(const rc_runtime2_t* runtime)
+const rc_runtime2_user_t* rc_runtime2_get_user_info(const rc_runtime2_t* runtime)
 {
   return (runtime->state.user == RC_RUNTIME2_USER_STATE_LOGGED_IN) ? &runtime->user : NULL;
 }
@@ -444,12 +444,8 @@ static void rc_runtime2_update_active_achievements(rc_runtime2_game_info_t* game
   rc_runtime2_update_legacy_runtime_achievements(game, active_count);
 }
 
-static void rc_runtime2_activate_achievements(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
+static void rc_runtime2_toggle_hardcore_achievements(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime, uint8_t active_bit)
 {
-  const uint8_t active_bit = (runtime->state.encore_mode) ?
-      RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE : (runtime->state.hardcore) ?
-      RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE;
-
   rc_runtime2_achievement_info_t* achievement = game->achievements;
   rc_runtime2_achievement_info_t* stop = achievement + game->public.num_achievements;
   uint32_t active_count = 0;
@@ -471,10 +467,28 @@ static void rc_runtime2_activate_achievements(rc_runtime2_game_info_t* game, rc_
     }
     else if (achievement->public.state == RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE) {
       achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE;
+
+      if (achievement->trigger && achievement->trigger->state == RC_TRIGGER_STATE_PRIMED) {
+        rc_runtime2_event_t runtime_event;
+        memset(&runtime_event, 0, sizeof(runtime_event));
+        runtime_event.type = RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE;
+        runtime_event.achievement = &achievement->public;
+        runtime_event.runtime = runtime;
+        runtime->callbacks.event_handler(&runtime_event);
+      }
     }
   }
 
   rc_runtime2_update_legacy_runtime_achievements(game, active_count);
+}
+
+static void rc_runtime2_activate_achievements(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
+{
+  const uint8_t active_bit = (runtime->state.encore_mode) ?
+      RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_NONE : (runtime->state.hardcore) ?
+      RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE;
+
+  rc_runtime2_toggle_hardcore_achievements(game, runtime, active_bit);
 }
 
 static void rc_runtime2_activate_leaderboards(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
@@ -485,10 +499,10 @@ static void rc_runtime2_activate_leaderboards(rc_runtime2_game_info_t* game, rc_
 
   for (; leaderboard < stop; ++leaderboard) {
     switch (leaderboard->public.state) {
-      case RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED:
+      case RC_RUNTIME2_LEADERBOARD_STATE_DISABLED:
         continue;
 
-      case RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE:
+      case RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE:
         if (runtime->state.hardcore) {
           rc_reset_lboard(leaderboard->lboard);
           leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE;
@@ -533,6 +547,28 @@ static void rc_runtime2_activate_leaderboards(rc_runtime2_game_info_t* game, rc_
   }
 
   game->runtime.lboard_count = active_count;
+}
+
+static void rc_runtime2_deactivate_leaderboards(rc_runtime2_game_info_t* game, rc_runtime2_t* runtime)
+{
+  rc_runtime2_leaderboard_info_t* leaderboard = game->leaderboards;
+  rc_runtime2_leaderboard_info_t* stop = leaderboard + game->public.num_leaderboards;
+
+  for (; leaderboard < stop; ++leaderboard) {
+    switch (leaderboard->public.state) {
+      case RC_RUNTIME2_LEADERBOARD_STATE_DISABLED:
+      case RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE:
+        continue;
+
+      default:
+        leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE;
+        break;
+    }
+  }
+
+  game->runtime.lboard_count = 0;
+
+  // TODO: hide trackers
 }
 
 static void rc_runtime2_apply_unlocks(rc_runtime2_game_info_t* game, uint32_t* unlocks, uint32_t num_unlocks, uint8_t mode)
@@ -1155,7 +1191,7 @@ void rc_runtime2_unload_game(rc_runtime2_t* runtime)
     rc_runtime2_free_game(game);
 }
 
-const rc_runtime2_game_t* rc_runtime2_game_info(const rc_runtime2_t* runtime)
+const rc_runtime2_game_t* rc_runtime2_get_game_info(const rc_runtime2_t* runtime)
 {
   return (runtime->game != NULL) ? &runtime->game->public : NULL;
 }
@@ -1472,8 +1508,16 @@ static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_ac
 
   rc_mutex_lock(&runtime->state.mutex);
 
+  if (runtime->state.hardcore) {
+    achievement->public.unlock_time = achievement->unlock_time_hardcore = time(NULL);
+    if (achievement->unlock_time_softcore == 0)
+      achievement->unlock_time_softcore = achievement->unlock_time_hardcore;
+  }
+  else {
+    achievement->public.unlock_time = achievement->unlock_time_softcore = time(NULL);
+  }
+
   achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED;
-  achievement->public.unlock_time = time(NULL);
   achievement->public.unlocked |= (runtime->state.hardcore) ?
     RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH : RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE;
 
@@ -1499,11 +1543,35 @@ static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_ac
     return;
   }
 
+  RC_RUNTIME2_LOG_INFO(runtime, "Awarding achievement %u: %s", achievement->public.id, achievement->public.title);
+
   callback_data = (rc_runtime2_award_achievement_data_t*)calloc(1, sizeof(*callback_data));
   callback_data->runtime = runtime;
   callback_data->achievement_id = achievement->public.id;
   runtime->callbacks.server_call(&request, rc_runtime2_award_achievement_callback, callback_data, runtime);
   rc_api_destroy_request(&request);
+}
+
+/* ===== Leaderboards ===== */
+
+const rc_runtime2_leaderboard_t* rc_runtime2_get_leaderboard_info(const rc_runtime2_t* runtime, uint32_t id)
+{
+  rc_runtime2_leaderboard_info_t* leaderboard;
+  rc_runtime2_leaderboard_info_t* stop;
+
+  if (!runtime->game)
+    return NULL;
+
+  leaderboard = runtime->game->leaderboards;
+  stop = leaderboard + runtime->game->public.num_leaderboards;
+  while (leaderboard < stop) {
+    if (leaderboard->public.id == id)
+      return &leaderboard->public;
+
+    ++leaderboard;
+  }
+
+  return NULL;
 }
 
 /* ===== Processing ===== */
@@ -1752,17 +1820,128 @@ static void rc_runtime2_raise_achievement_events(rc_runtime2_t* runtime)
 
 void rc_runtime2_do_frame(rc_runtime2_t* runtime)
 {
+  if (runtime->game && !runtime->game->waiting_for_reset) {
+    rc_mutex_lock(&runtime->state.mutex);
+
+    rc_runtime2_update_memref_values(runtime);
+    rc_update_variables(runtime->game->runtime.variables, runtime->callbacks.legacy_peek, runtime, NULL);
+
+    rc_runtime2_do_frame_process_achievements(runtime);
+    // TODO: process leaderboards
+
+    rc_mutex_unlock(&runtime->state.mutex);
+
+    rc_runtime2_raise_achievement_events(runtime);
+    // TODO: leaderboard events
+  }
+
+  rc_runtime2_idle(runtime);
+}
+
+void rc_runtime2_idle(rc_runtime2_t* runtime)
+{
+  // TODO: rich presence pings
+  // TODO: retry failed requests
+}
+
+static void rc_runtime2_reset_achievements(rc_runtime2_t* runtime)
+{
+  rc_runtime2_achievement_info_t* achievement = runtime->game->achievements;
+  rc_runtime2_achievement_info_t* stop = achievement + runtime->game->public.num_achievements;
+
+  for (; achievement < stop; ++achievement) {
+    rc_trigger_t* trigger = achievement->trigger;
+    if (!trigger || achievement->public.state != RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE)
+      continue;
+
+    if (trigger->state == RC_TRIGGER_STATE_PRIMED)
+      achievement->pending_events |= RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+
+    rc_reset_trigger(trigger);
+  }
+}
+
+void rc_runtime2_reset(rc_runtime2_t* runtime)
+{
   if (!runtime->game)
     return;
 
+  RC_RUNTIME2_LOG_INFO(runtime, "Resetting runtime");
+
   rc_mutex_lock(&runtime->state.mutex);
 
-  rc_runtime2_update_memref_values(runtime);
-  rc_update_variables(runtime->game->runtime.variables, runtime->callbacks.legacy_peek, runtime, NULL);
-
-  rc_runtime2_do_frame_process_achievements(runtime);
+  runtime->game->waiting_for_reset = 0;
+  rc_runtime2_reset_achievements(runtime);
+  // TODO: rc_runtime2_reset_leaderboards(runtime);
 
   rc_mutex_unlock(&runtime->state.mutex);
 
   rc_runtime2_raise_achievement_events(runtime);
+  // TODO: rc_runtime2_raise_leaderboard_events(runtime);
 }
+
+/* ===== Toggles ===== */
+
+static void rc_runtime2_enable_hardcore(rc_runtime2_t* runtime)
+{
+  runtime->state.hardcore = 1;
+
+  if (runtime->game) {
+    rc_runtime2_event_t runtime_event;
+
+    rc_runtime2_toggle_hardcore_achievements(runtime->game, runtime, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE);
+    rc_runtime2_activate_leaderboards(runtime->game, runtime);
+
+    /* disable processing until the client acknowledges the reset event by calling rc_runtime_reset() */
+    RC_RUNTIME2_LOG_INFO(runtime, "Hardcore enabled, waiting for reset");
+    runtime->game->waiting_for_reset = 1;
+
+    memset(&runtime_event, 0, sizeof(runtime_event));
+    runtime_event.type = RC_RUNTIME2_EVENT_RESET;
+    runtime_event.runtime = runtime;
+    runtime->callbacks.event_handler(&runtime_event);
+  }
+  else {
+    RC_RUNTIME2_LOG_INFO(runtime, "Hardcore enabled");
+  }
+}
+
+static void rc_runtime2_disable_hardcore(rc_runtime2_t* runtime)
+{
+  runtime->state.hardcore = 0;
+  RC_RUNTIME2_LOG_INFO(runtime, "Hardcore disabled");
+
+  if (runtime->game) {
+    rc_runtime2_toggle_hardcore_achievements(runtime->game, runtime, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    rc_runtime2_deactivate_leaderboards(runtime->game, runtime);
+  }
+}
+
+void rc_runtime2_set_hardcore_enabled(rc_runtime2_t* runtime, int enabled)
+{
+  rc_mutex_lock(&runtime->state.mutex);
+
+  if (runtime->state.hardcore != enabled) {
+    if (enabled)
+      rc_runtime2_enable_hardcore(runtime);
+    else
+      rc_runtime2_disable_hardcore(runtime);
+  }
+
+  rc_mutex_unlock(&runtime->state.mutex);
+}
+
+int rc_runtime2_get_hardcore_enabled(const rc_runtime2_t* runtime)
+{
+  return runtime->state.hardcore;
+}
+
+// TODO: encore toggle
+// TODO: spectator mode toggle (kiosk mode? - disable submissions, keep events)
+
+// TODO: disk swapping
+
+// TODO: reset
+// TODO: save states (load/save progress)
+
+// TODO: userdata

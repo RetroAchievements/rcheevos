@@ -18,10 +18,10 @@ static const char* patchdata_2ach_1lbd = "{\"Success\":true,\"PatchData\":{"
     "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
     "\"Achievements\":["
      "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
-      "\"MemAddr\":\"0xH1234=1_0xH2345=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+      "\"MemAddr\":\"0xH0001=1_0xH0002=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
       "\"Created\":1367266583,\"Modified\":1376929305},"
      "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
-      "\"MemAddr\":\"0xH1234!=d0xH1234_0xH3456=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
+      "\"MemAddr\":\"0xH0001=2_0x0002=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
       "\"Created\":1376970283,\"Modified\":1376970283}"
     "],"
     "\"Leaderboards\":["
@@ -306,10 +306,8 @@ static rc_runtime2_t* mock_runtime2_logged_in(void)
   return runtime;
 }
 
-static rc_runtime2_t* mock_runtime2_game_loaded(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
+static void mock_runtime2_load_game(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
 {
-  g_runtime = mock_runtime2_logged_in();
-
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
@@ -321,6 +319,13 @@ static rc_runtime2_t* mock_runtime2_game_loaded(const char* patchdata, const cha
 
   if (!g_runtime->game)
     ASSERT_MESSAGE("runtime->game is NULL");
+}
+
+static rc_runtime2_t* mock_runtime2_game_loaded(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
+{
+  g_runtime = mock_runtime2_logged_in();
+
+  mock_runtime2_load_game(patchdata, hardcore_unlocks, softcore_unlocks);
 
   return g_runtime;
 }
@@ -338,7 +343,7 @@ static void test_login_with_password(void)
 
   rc_runtime2_begin_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_success);
 
-  user = rc_runtime2_user_info(g_runtime);
+  user = rc_runtime2_get_user_info(g_runtime);
   ASSERT_PTR_NOT_NULL(user);
   ASSERT_STR_EQUALS(user->username, "User");
   ASSERT_STR_EQUALS(user->display_name, "User");
@@ -360,7 +365,7 @@ static void test_login_with_token(void)
 
   rc_runtime2_begin_login_with_token(g_runtime, "User", "ApiToken", rc_runtime2_callback_expect_success);
 
-  user = rc_runtime2_user_info(g_runtime);
+  user = rc_runtime2_get_user_info(g_runtime);
   ASSERT_PTR_NOT_NULL(user);
   ASSERT_STR_EQUALS(user->username, "User");
   ASSERT_STR_EQUALS(user->display_name, "Display");
@@ -424,7 +429,7 @@ static void test_login_with_incorrect_password(void)
 
   rc_runtime2_begin_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_credentials_error);
 
-  ASSERT_PTR_NULL(rc_runtime2_user_info(g_runtime));
+  ASSERT_PTR_NULL(rc_runtime2_get_user_info(g_runtime));
 
   rc_runtime2_destroy(g_runtime);
 }
@@ -444,7 +449,7 @@ static void test_login_incomplete_response(void)
 
   rc_runtime2_begin_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_missing_token);
 
-  ASSERT_PTR_NULL(rc_runtime2_user_info(g_runtime));
+  ASSERT_PTR_NULL(rc_runtime2_get_user_info(g_runtime));
 
   rc_runtime2_destroy(g_runtime);
 }
@@ -458,13 +463,13 @@ static void test_login_with_password_async(void)
 
   rc_runtime2_begin_login_with_password(g_runtime, "User", "Pa$$word", rc_runtime2_callback_expect_success);
 
-  user = rc_runtime2_user_info(g_runtime);
+  user = rc_runtime2_get_user_info(g_runtime);
   ASSERT_PTR_NULL(user);
 
   async_api_response("r=login&u=User&p=Pa%24%24word",
-	"{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
+	    "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
 
-  user = rc_runtime2_user_info(g_runtime);
+  user = rc_runtime2_get_user_info(g_runtime);
   ASSERT_PTR_NOT_NULL(user);
   ASSERT_STR_EQUALS(user->username, "User");
   ASSERT_STR_EQUALS(user->display_name, "User");
@@ -559,7 +564,7 @@ static void test_load_game(void)
   ASSERT_PTR_NULL(g_runtime->state.load);
   ASSERT_PTR_NOT_NULL(g_runtime->game);
   if (g_runtime->game) {
-    ASSERT_PTR_EQUALS(rc_runtime2_game_info(g_runtime), &g_runtime->game->public);
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
 
     ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
     ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
@@ -1175,6 +1180,179 @@ static void test_do_frame_achievement_challenge_indicator(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+/* ----- settings ----- */
+
+static void test_set_hardcore_disable(void)
+{
+  const rc_runtime2_achievement_t* achievement;
+  const rc_runtime2_leaderboard_t* leaderboard;
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, 1); /* 5502 should be active*/
+  }
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 4401);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  if (leaderboard) {
+    ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.lboard_count, 1);
+  }
+
+  rc_runtime2_set_hardcore_enabled(g_runtime, 0);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 0);
+  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 0);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, 0); /* 5502 should not be active*/
+  }
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 4401);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  if (leaderboard) {
+    ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.lboard_count, 0);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_set_hardcore_enable(void)
+{
+  const rc_runtime2_achievement_t* achievement;
+  const rc_runtime2_leaderboard_t* leaderboard;
+
+  g_runtime = mock_runtime2_logged_in();
+  rc_runtime2_set_hardcore_enabled(g_runtime, 0);
+  mock_runtime2_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 0);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, 0); /* 5502 should not be active*/
+  }
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 4401);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  if (leaderboard) {
+    ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.lboard_count, 0);
+  }
+
+  /* when enabling hardcore, flag waiting_for_reset. this will prevent processing until rc_runtime2_reset is called */
+  rc_runtime2_set_hardcore_enabled(g_runtime, 1);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
+  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 1);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, 1); /* 5502 should be active*/
+  }
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 4401);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  if (leaderboard) {
+    ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.lboard_count, 1);
+  }
+
+  /* resetting clears waiting_for_reset */
+  rc_runtime2_reset(g_runtime);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
+  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 0);
+
+  /* hardcore already enabled, attempting to set it again shouldn't flag waiting_for_reset */
+  rc_runtime2_set_hardcore_enabled(g_runtime, 1);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
+  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 0);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+
+static void test_set_hardcore_enable_no_game_loaded(void)
+{
+  const rc_runtime2_achievement_t* achievement;
+  const rc_runtime2_leaderboard_t* leaderboard;
+
+  g_runtime = mock_runtime2_logged_in();
+  rc_runtime2_set_hardcore_enabled(g_runtime, 0);
+
+  /* when enabling hardcore, flag waiting_for_reset. this will prevent processing until rc_runtime2_reset is called */
+  rc_runtime2_set_hardcore_enabled(g_runtime, 1);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
+  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 1);
+  rc_runtime2_set_hardcore_enabled(g_runtime, 0);
+
+  mock_runtime2_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 0);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, 0); /* 5502 should not be active*/
+  }
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 4401);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  if (leaderboard) {
+    ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.lboard_count, 0);
+  }
+
+  /* when enabling hardcore, flag waiting_for_reset. this will prevent processing until rc_runtime2_reset is called */
+  rc_runtime2_set_hardcore_enabled(g_runtime, 1);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
+  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 1);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, 1); /* 5502 should be active*/
+  }
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 4401);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  if (leaderboard) {
+    ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.lboard_count, 1);
+  }
+
+  /* resetting clears waiting_for_reset */
+  rc_runtime2_reset(g_runtime);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
+  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 0);
+
+  /* hardcore already enabled, attempting to set it again shouldn't flag waiting_for_reset */
+  rc_runtime2_set_hardcore_enabled(g_runtime, 1);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
+  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 0);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
 /* ----- harness ----- */
 
 void test_runtime2(void) {
@@ -1202,6 +1380,7 @@ void test_runtime2(void) {
   /* achievements */
   TEST(test_achievement_list_simple);
   TEST(test_achievement_list_simple_with_unlocks);
+  // TODO: test buckets
 
   /* do frame */
   TEST(test_do_frame_bounds_check_system);
@@ -1210,6 +1389,11 @@ void test_runtime2(void) {
   TEST(test_do_frame_achievement_trigger_encore);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_challenge_indicator);
+  // TODO: test mastery
+
+  /* settings */
+  TEST(test_set_hardcore_disable);
+  TEST(test_set_hardcore_enable);
 
   TEST_SUITE_END();
 }

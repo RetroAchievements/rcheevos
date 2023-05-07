@@ -60,6 +60,17 @@ rc_runtime2_t* rc_runtime2_create(rc_runtime2_read_memory_t read_memory_function
  */
 void rc_runtime2_destroy(rc_runtime2_t* runtime);
 
+/**
+ * Sets whether hardcore is enabled (on by default).
+ */
+void rc_runtime2_set_hardcore_enabled(rc_runtime2_t* runtime, int enabled);
+
+/**
+ * Gets whether hardcore is enabled (on by default).
+ */
+int rc_runtime2_get_hardcore_enabled(const rc_runtime2_t* runtime);
+
+
 /*****************************************************************************\
 | Logging                                                                     |
 \*****************************************************************************/
@@ -100,9 +111,9 @@ typedef struct rc_runtime2_user_t {
 } rc_runtime2_user_t;
 
 /**
- * Get information about the logged in user. Will return NULL if user is not logged in.
+ * Gets information about the logged in user. Will return NULL if the user is not logged in.
  */
-const rc_runtime2_user_t* rc_runtime2_user_info(const rc_runtime2_t* runtime);
+const rc_runtime2_user_t* rc_runtime2_get_user_info(const rc_runtime2_t* runtime);
 
 /*****************************************************************************\
 | Game                                                                        |
@@ -132,7 +143,7 @@ typedef struct rc_runtime2_game_t {
 /**
  * Get information about the current game. Returns NULL if no game is loaded.
  */
-const rc_runtime2_game_t* rc_runtime2_game_info(const rc_runtime2_t* runtime);
+const rc_runtime2_game_t* rc_runtime2_get_game_info(const rc_runtime2_t* runtime);
 
 /*****************************************************************************\
 | Achievements                                                                |
@@ -237,10 +248,16 @@ enum {
 typedef struct rc_runtime2_leaderboard_t {
   const char* title;
   const char* description;
+  const char* tracker_value;
   uint32_t id;
   uint8_t format;
   uint8_t state;
 } rc_runtime2_leaderboard_t;
+
+/**
+ * Get information about a leaderboard. Returns NULL if not found.
+ */
+const rc_runtime2_leaderboard_t* rc_runtime2_get_leaderboard_info(const rc_runtime2_t* runtime, uint32_t id);
 
 typedef struct rc_runtime2_leaderboard_tracker_t {
   char display[24];
@@ -292,6 +309,19 @@ void rc_runtime2_set_event_handler(rc_runtime2_t* runtime, rc_runtime2_event_han
  * Processes achievements for the current frame.
  */
 void rc_runtime2_do_frame(rc_runtime2_t* runtime);
+
+/**
+ * Processes the periodic queue.
+ * Called internally by rc_runtime2_do_frame.
+ * Should be explicitly called if rc_runtime2_do_frame is not being called because emulation is paused.
+ */
+void rc_runtime2_idle(rc_runtime2_t* runtime);
+
+/**
+ * Informs the runtime that the emulator has been reset. Will reset all achievements and leaderboards
+ * to their initial state (includes hiding indicators/trackers).
+ */
+void rc_runtime2_reset(rc_runtime2_t* runtime);
 
 #ifdef __cplusplus
 }

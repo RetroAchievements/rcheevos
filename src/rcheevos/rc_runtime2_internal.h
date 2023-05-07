@@ -34,6 +34,9 @@ typedef struct rc_runtime2_achievement_info_t {
   rc_trigger_t* trigger;
   uint8_t md5[16];
 
+  time_t unlock_time_hardcore;
+  time_t unlock_time_softcore;
+
   uint8_t pending_events;
 } rc_runtime2_achievement_info_t;
 
@@ -65,6 +68,7 @@ typedef struct rc_runtime2_game_info_t {
   rc_runtime2_leaderboard_info_t* leaderboards;
 
   rc_runtime_t runtime;
+  uint8_t waiting_for_reset;
 
   rc_api_buffer_t buffer;
 } rc_runtime2_game_info_t;
