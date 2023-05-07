@@ -12,6 +12,12 @@
 #define RC_RUNTIME2_UNKNOWN_GAME_ID (uint32_t)-1
 #define RC_RUNTIME2_RECENT_UNLOCK_DELAY_SECONDS (10 * 60) /* ten minutes */
 
+typedef struct rc_runtime2_callback_id_t {
+  rc_runtime2_t* runtime;
+  uint32_t id;
+} rc_runtime2_callback_id_t;
+
+
 typedef struct rc_runtime2_generic_callback_data_t {
   rc_runtime2_t* runtime;
   rc_runtime2_callback_t callback;
@@ -267,6 +273,9 @@ const rc_runtime2_user_t* rc_runtime2_get_user_info(const rc_runtime2_t* runtime
 static void rc_runtime2_free_game(rc_runtime2_game_info_t* game)
 {
   rc_runtime_destroy(&game->runtime);
+
+  if (game->leaderboard_trackers)
+    free(game->leaderboard_trackers);
 
   rc_buf_destroy(&game->buffer);
 
@@ -620,12 +629,10 @@ static void rc_runtime2_activate_game(rc_runtime2_load_state_t* load_state)
   runtime->state.load = NULL;
   rc_mutex_unlock(&runtime->state.mutex);
 
-  if (load_state->progress != RC_RUNTIME2_LOAD_STATE_DONE)
-  {
+  if (load_state->progress != RC_RUNTIME2_LOAD_STATE_DONE) {
     /* previous load state was aborted, silently quit */
   }
-  else
-  {
+  else {
     rc_runtime2_apply_unlocks(load_state->game, load_state->softcore_unlocks,
         load_state->num_softcore_unlocks, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
     rc_runtime2_apply_unlocks(load_state->game, load_state->hardcore_unlocks,
@@ -641,12 +648,10 @@ static void rc_runtime2_activate_game(rc_runtime2_load_state_t* load_state)
       runtime->game = load_state->game;
     rc_mutex_unlock(&runtime->state.mutex);
 
-    if (runtime->game != load_state->game)
-    {
+    if (runtime->game != load_state->game) {
       /* previous load state was aborted, silently quit */
     }
-    else
-    {
+    else {
       if (load_state->callback)
         load_state->callback(RC_OK, NULL, runtime);
 
@@ -670,16 +675,13 @@ static void rc_runtime2_start_session_callback(const char* server_response_body,
   const char* error_message = rc_runtime2_server_error_message(&result, http_status_code, &start_session_response.response);
 
   int outstanding_requests = rc_runtime2_end_load_state(load_state);
-  if (error_message)
-  {
+  if (error_message) {
     rc_runtime2_load_error(callback_data, result, error_message);
   }
-  else if (outstanding_requests < 0)
-  {
+  else if (outstanding_requests < 0) {
     /* previous load state was aborted, silently quit */
   }
-  else
-  {
+  else {
     if (outstanding_requests == 0)
       rc_runtime2_activate_game(load_state);
   }
@@ -697,16 +699,13 @@ static void rc_runtime2_unlocks_callback(const char* server_response_body, int h
   const char* error_message = rc_runtime2_server_error_message(&result, http_status_code, &fetch_user_unlocks_response.response);
 
   int outstanding_requests = rc_runtime2_end_load_state(load_state);
-  if (error_message)
-  {
+  if (error_message) {
     rc_runtime2_load_error(callback_data, result, error_message);
   }
-  else if (outstanding_requests < 0)
-  {
+  else if (outstanding_requests < 0) {
     /* previous load state was aborted, silently quit */
   }
-  else
-  {
+  else {
     if (mode == RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE) {
       const size_t array_size = fetch_user_unlocks_response.num_achievement_ids * sizeof(uint32_t);
       load_state->num_hardcore_unlocks = fetch_user_unlocks_response.num_achievement_ids;
@@ -753,12 +752,10 @@ static void rc_runtime2_begin_start_session(rc_runtime2_load_state_t* load_state
   start_session_params.game_id = load_state->game->public.id;
 
   result = rc_api_init_start_session_request(&start_session_request, &start_session_params);
-  if (result != RC_OK)
-  {
+  if (result != RC_OK) {
     rc_runtime2_load_error(load_state, result, rc_error_str(result));
   }
-  else
-  {
+  else {
     memset(&unlock_params, 0, sizeof(unlock_params));
     unlock_params.username = runtime->user.username;
     unlock_params.api_token = runtime->user.token;
@@ -766,21 +763,17 @@ static void rc_runtime2_begin_start_session(rc_runtime2_load_state_t* load_state
     unlock_params.hardcore = 1;
 
     result = rc_api_init_fetch_user_unlocks_request(&hardcore_unlock_request, &unlock_params);
-    if (result != RC_OK)
-    {
+    if (result != RC_OK) {
       rc_runtime2_load_error(load_state, result, rc_error_str(result));
     }
-    else
-    {
+    else {
       unlock_params.hardcore = 0;
 
       result = rc_api_init_fetch_user_unlocks_request(&softcore_unlock_request, &unlock_params);
-      if (result != RC_OK)
-      {
+      if (result != RC_OK) {
         rc_runtime2_load_error(load_state, result, rc_error_str(result));
       }
-      else
-      {
+      else {
         rc_runtime2_begin_load_state(load_state, RC_RUNTIME2_LOAD_STATE_STARTING_SESSION, 3);
 
         // TODO: create single server request to do all three of these
@@ -830,8 +823,7 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
   /* copy the achievement data */
   read = game_data->achievements;
   stop = read + game_data->num_achievements;
-  do
-  {
+  do {
     achievement->public.title = rc_buf_strcpy(buffer, read->title);
     achievement->public.description = rc_buf_strcpy(buffer, read->description);
     snprintf(achievement->public.badge_name, sizeof(achievement->public.badge_name), "%s", read->badge_name);
@@ -844,14 +836,12 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
     rc_runtime_checksum(memaddr, achievement->md5);
 
     trigger_size = rc_trigger_size(memaddr);
-    if (trigger_size < 0)
-    {
+    if (trigger_size < 0) {
       RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing achievement %u", trigger_size, read->id);
       achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED;
       achievement->public.bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED;
     }
-    else
-    {
+    else {
       /* populate the item, using the communal memrefs pool */
       rc_init_parse_state(&parse, rc_buf_reserve(buffer, trigger_size), NULL, 0);
       parse.first_memref = &load_state->game->runtime.memrefs;
@@ -914,20 +904,18 @@ static rc_runtime2_leaderboard_info_t* rc_runtime2_copy_leaderboards(rc_runtime2
   /* copy the achievement data */
   read = game_data->leaderboards;
   stop = read + game_data->num_leaderboards;
-  do
-  {
+  do {
     leaderboard->public.title = rc_buf_strcpy(buffer, read->title);
     leaderboard->public.description = rc_buf_strcpy(buffer, read->description);
     leaderboard->public.id = read->id;
-    leaderboard->public.format = (uint8_t)read->format;
+    leaderboard->format = (uint8_t)read->format;
     leaderboard->tracker_id = RC_RUNTIME2_LEADERBOARD_TRACKER_UNASSIGNED;
 
     memaddr = read->definition;
     rc_runtime_checksum(memaddr, leaderboard->md5);
 
     ptr = strstr(memaddr, "VAL:");
-    if (ptr != NULL)
-    {
+    if (ptr != NULL) {
       /* calculate the DJB2 hash of the VAL portion of the string*/
       uint32_t hash = 5381;
       while (*ptr && (ptr[0] != ':' || ptr[1] != ':'))
@@ -936,13 +924,11 @@ static rc_runtime2_leaderboard_info_t* rc_runtime2_copy_leaderboards(rc_runtime2
     }
 
     lboard_size = rc_lboard_size(memaddr);
-    if (lboard_size < 0)
-    {
+    if (lboard_size < 0) {
       RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing leaderboard %u", lboard_size, read->id);
       leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_DISABLED;
     }
-    else
-    {
+    else {
       /* populate the item, using the communal memrefs pool */
       rc_init_parse_state(&parse, rc_buf_reserve(buffer, lboard_size), NULL, 0);
       parse.first_memref = &load_state->game->runtime.memrefs;
@@ -956,6 +942,7 @@ static rc_runtime2_leaderboard_info_t* rc_runtime2_copy_leaderboards(rc_runtime2
       }
       else {
         rc_buf_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
+        leaderboard->lboard->memrefs = NULL; /* memrefs managed by runtime */
       }
 
       rc_destroy_parse_state(&parse);
@@ -979,16 +966,13 @@ static void rc_runtime2_fetch_game_data_callback(const char* server_response_bod
 
   int outstanding_requests = rc_runtime2_end_load_state(load_state);
 
-  if (error_message)
-  {
+  if (error_message) {
     rc_runtime2_load_error(load_state, result, error_message);
   }
-  else if (outstanding_requests < 0)
-  {
+  else if (outstanding_requests < 0) {
     /* previous load state was aborted, silently quit */
   }
-  else
-  {
+  else {
     load_state->game->public.console_id = fetch_game_data_response.console_id;
     load_state->game->public.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
     snprintf(load_state->game->public.badge_name, sizeof(load_state->game->public.badge_name), "%s", fetch_game_data_response.image_name);
@@ -1005,14 +989,12 @@ static void rc_runtime2_fetch_game_data_callback(const char* server_response_bod
     load_state->game->public.num_leaderboards = fetch_game_data_response.num_leaderboards;
 
     result = rc_runtime_activate_richpresence(&load_state->game->runtime, fetch_game_data_response.rich_presence_script, NULL, 0);
-    if (result != RC_OK)
-    {
+    if (result != RC_OK) {
       RC_RUNTIME2_LOG_WARN(load_state->runtime, "Parse error %d processing rich presence", result);
     }
 
     outstanding_requests = rc_runtime2_end_load_state(load_state);
-    if (outstanding_requests < 0)
-    {
+    if (outstanding_requests < 0) {
       /* previous load state was aborted, silently quit */
     }
     else
@@ -1032,8 +1014,7 @@ static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* load_sta
   rc_api_request_t request;
   int result;
 
-  if (load_state->hash->game_id == 0)
-  {
+  if (load_state->hash->game_id == 0) {
     rc_runtime2_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
     return;
   }
@@ -1047,8 +1028,7 @@ static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* load_sta
     load_state->progress = RC_RUNTIME2_LOAD_STATE_AWAIT_LOGIN;
   rc_mutex_unlock(&runtime->state.mutex);
 
-  switch (result)
-  {
+  switch (result) {
     case RC_RUNTIME2_USER_STATE_LOGGED_IN:
       break;
 
@@ -1067,8 +1047,7 @@ static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* load_sta
   fetch_game_data_request.game_id = load_state->game->public.id;
 
   result = rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request);
-  if (result != RC_OK)
-  {
+  if (result != RC_OK) {
     rc_runtime2_load_error(load_state, result, rc_error_str(result));
     return;
   }
@@ -1090,22 +1069,18 @@ static void rc_runtime2_identify_game_callback(const char* server_response_body,
 
   int outstanding_requests = rc_runtime2_end_load_state(load_state);
 
-  if (error_message)
-  {
+  if (error_message) {
     rc_runtime2_load_error(load_state, result, error_message);
   }
-  else
-  {
+  else {
     /* hash exists outside the load state - always update it */
     load_state->hash->game_id = resolve_hash_response.game_id;
     RC_RUNTIME2_LOG_INFO(runtime, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
 
-    if (outstanding_requests < 0)
-    {
+    if (outstanding_requests < 0) {
       /* previous load state was aborted, silently quit */
     }
-    else
-    {
+    else {
       rc_runtime2_begin_fetch_game_data(load_state);
     }
   }
@@ -1119,16 +1094,14 @@ static rc_runtime2_game_hash_t* rc_runtime2_find_game_hash(rc_runtime2_t* runtim
 
   rc_mutex_lock(&runtime->state.mutex);
   game_hash = runtime->hashes;
-  while (game_hash)
-  {
+  while (game_hash) {
     if (strcasecmp(game_hash->hash, hash) == 0)
       break;
 
     game_hash = game_hash->next;
   }
 
-  if (!game_hash)
-  {
+  if (!game_hash) {
     game_hash = rc_buf_alloc(&runtime->buffer, sizeof(rc_runtime2_game_hash_t));
     memset(game_hash, 0, sizeof(*game_hash));
     game_hash->hash = rc_buf_strcpy(&runtime->buffer, hash);
@@ -1148,8 +1121,7 @@ void rc_runtime2_begin_load_game(rc_runtime2_t* runtime, const char* hash, rc_ru
   rc_api_request_t request;
   int result;
 
-  if (!hash || !hash[0])
-  {
+  if (!hash || !hash[0]) {
     callback(RC_INVALID_STATE, "hash is required", runtime);
     return;
   }
@@ -1158,8 +1130,7 @@ void rc_runtime2_begin_load_game(rc_runtime2_t* runtime, const char* hash, rc_ru
   resolve_hash_request.game_hash = hash;
 
   result = rc_api_init_resolve_hash_request(&request, &resolve_hash_request);
-  if (result != RC_OK)
-  {
+  if (result != RC_OK) {
     callback(result, rc_error_str(result), runtime);
     return;
   }
@@ -1177,14 +1148,12 @@ void rc_runtime2_begin_load_game(rc_runtime2_t* runtime, const char* hash, rc_ru
 
   load_state->hash = rc_runtime2_find_game_hash(runtime, hash);
 
-  if (load_state->hash->game_id == RC_RUNTIME2_UNKNOWN_GAME_ID)
-  {
+  if (load_state->hash->game_id == RC_RUNTIME2_UNKNOWN_GAME_ID) {
     rc_runtime2_begin_load_state(load_state, RC_RUNTIME2_LOAD_STATE_IDENTIFYING_GAME, 1);
 
     runtime->callbacks.server_call(&request, rc_runtime2_identify_game_callback, load_state, runtime);
   }
-  else
-  {
+  else {
     RC_RUNTIME2_LOG_INFO(runtime, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
 
     rc_runtime2_begin_fetch_game_data(load_state);
@@ -1470,22 +1439,16 @@ const rc_runtime2_achievement_t* rc_runtime2_get_achievement_info(const rc_runti
   return NULL;
 }
 
-typedef struct rc_runtime2_award_achievement_data_t {
-  rc_runtime2_t* runtime;
-  uint32_t achievement_id;
-} rc_runtime2_award_achievement_data_t;
-
 static void rc_runtime2_award_achievement_callback(const char* server_response_body, int http_status_code, void* callback_data)
 {
-  rc_runtime2_award_achievement_data_t* ach_data = (rc_runtime2_award_achievement_data_t*)callback_data;
+  rc_runtime2_callback_id_t* ach_data = (rc_runtime2_callback_id_t*)callback_data;
   rc_api_award_achievement_response_t award_achievement_response;
 
   int result = rc_api_process_award_achievement_response(&award_achievement_response, server_response_body);
   const char* error_message = rc_runtime2_server_error_message(&result, http_status_code, &award_achievement_response.response);
 
-  if (error_message)
-  {
-    RC_RUNTIME2_LOG_ERR(ach_data->runtime, "Error awarding achievement %u: %s", ach_data->achievement_id, error_message);
+  if (error_message) {
+    RC_RUNTIME2_LOG_ERR(ach_data->runtime, "Error awarding achievement %u: %s", ach_data->id, error_message);
 
     if (award_achievement_response.response.error_message) {
       rc_runtime2_raise_server_error_event(ach_data->runtime, "award_achievement", award_achievement_response.response.error_message);
@@ -1499,21 +1462,18 @@ static void rc_runtime2_award_achievement_callback(const char* server_response_b
     ach_data->runtime->user.score = award_achievement_response.new_player_score;
     ach_data->runtime->user.score_softcore = award_achievement_response.new_player_score_softcore;
 
-    if (award_achievement_response.awarded_achievement_id != ach_data->achievement_id)
+    if (award_achievement_response.awarded_achievement_id != ach_data->id)
     {
       RC_RUNTIME2_LOG_ERR(ach_data->runtime, "Awarded achievement %u instead of %u", award_achievement_response.awarded_achievement_id, error_message);
     }
-    else
-    {
-      if (award_achievement_response.response.error_message)
-      {
+    else {
+      if (award_achievement_response.response.error_message) {
         /* previously unlocked achievements are returned as a success with an error message */
-        RC_RUNTIME2_LOG_INFO(ach_data->runtime, "Achievement %u: %s", ach_data->achievement_id, award_achievement_response.response.error_message);
+        RC_RUNTIME2_LOG_INFO(ach_data->runtime, "Achievement %u: %s", ach_data->id, award_achievement_response.response.error_message);
       }
 
       if (award_achievement_response.achievements_remaining == 0 &&
-        ach_data->runtime->state.mastery == RC_RUNTIME2_MASTERY_STATE_NONE)
-      {
+          ach_data->runtime->state.mastery == RC_RUNTIME2_MASTERY_STATE_NONE) {
         ach_data->runtime->state.mastery = RC_RUNTIME2_MASTERY_STATE_PENDING;
       }
     }
@@ -1524,7 +1484,7 @@ static void rc_runtime2_award_achievement_callback(const char* server_response_b
 
 static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_achievement_info_t* achievement)
 {
-  rc_runtime2_award_achievement_data_t* callback_data;
+  rc_runtime2_callback_id_t* callback_data;
   rc_api_award_achievement_request_t api_params;
   rc_api_request_t request;
   int result;
@@ -1579,9 +1539,9 @@ static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_ac
 
   RC_RUNTIME2_LOG_INFO(runtime, "Awarding achievement %u: %s", achievement->public.id, achievement->public.title);
 
-  callback_data = (rc_runtime2_award_achievement_data_t*)calloc(1, sizeof(*callback_data));
+  callback_data = (rc_runtime2_callback_id_t*)calloc(1, sizeof(*callback_data));
   callback_data->runtime = runtime;
-  callback_data->achievement_id = achievement->public.id;
+  callback_data->id = achievement->public.id;
   runtime->callbacks.server_call(&request, rc_runtime2_award_achievement_callback, callback_data, runtime);
   rc_api_destroy_request(&request);
 }
@@ -1606,6 +1566,158 @@ const rc_runtime2_leaderboard_t* rc_runtime2_get_leaderboard_info(const rc_runti
   }
 
   return NULL;
+}
+
+static void rc_runtime2_allocate_leaderboard_tracker(rc_runtime2_game_info_t* game, rc_runtime2_leaderboard_info_t* leaderboard)
+{
+  rc_runtime2_leaderboard_tracker_info_t* tracker = game->leaderboard_trackers;
+  rc_runtime2_leaderboard_tracker_info_t* stop = tracker + game->leaderboard_trackers_size;
+  rc_runtime2_leaderboard_tracker_info_t* available_tracker = NULL;
+
+  for (; tracker < stop; ++tracker) {
+    if (tracker->value_djb2 == leaderboard->value_djb2 && tracker->format == leaderboard->format) {
+      ++tracker->reference_count;
+
+      if (tracker->raw_value != leaderboard->value) {
+        tracker->raw_value = leaderboard->value;
+        tracker->pending_events |= RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
+      }
+
+      tracker->pending_events &= ~RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE;
+      leaderboard->tracker_id = (uint8_t)tracker->public.id;
+      leaderboard->public.tracker_value = tracker->public.display;
+      return;
+    }
+    else if (tracker->reference_count == 0) {
+      tracker->reference_count = 1;
+      available_tracker = tracker;
+    }
+  }
+
+  if (!available_tracker) {
+    if (game->leaderboard_trackers_size == game->leaderboard_trackers_capacity) {
+      const uint8_t capacity_increase = 8;
+      const uint8_t new_capacity = game->leaderboard_trackers_capacity + capacity_increase;
+      const size_t new_size = new_capacity * sizeof(game->leaderboard_trackers[0]);
+      uint8_t i;
+
+      /* unexpected, but prevents overflow of uint8_t */
+      if (new_capacity > 0xF0)
+        return;
+
+      if (game->leaderboard_trackers)
+        game->leaderboard_trackers = (rc_runtime2_leaderboard_tracker_info_t*)realloc(game->leaderboard_trackers, new_size);
+      else
+        game->leaderboard_trackers = (rc_runtime2_leaderboard_tracker_info_t*)malloc(new_size);
+
+      tracker = &game->leaderboard_trackers[game->leaderboard_trackers_capacity];
+      memset(tracker, 0, capacity_increase * sizeof(game->leaderboard_trackers[0]));
+
+      for (i = 0; i < capacity_increase; ++i, ++tracker)
+        tracker->public.id = game->leaderboard_trackers_capacity + i + 1;
+      game->leaderboard_trackers_capacity = new_capacity;
+    }
+
+    available_tracker = &game->leaderboard_trackers[game->leaderboard_trackers_size++];
+    available_tracker->reference_count = 1;
+  }
+
+  available_tracker->value_djb2 = leaderboard->value_djb2;
+  available_tracker->format = leaderboard->format;
+  available_tracker->raw_value = leaderboard->value;
+  available_tracker->pending_events = RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW;
+  leaderboard->tracker_id = (uint8_t)available_tracker->public.id;
+  leaderboard->public.tracker_value = available_tracker->public.display;
+}
+
+static void rc_runtime2_release_leaderboard_tracker(rc_runtime2_game_info_t* game, rc_runtime2_leaderboard_info_t* leaderboard)
+{
+  rc_runtime2_leaderboard_tracker_info_t* tracker = &game->leaderboard_trackers[leaderboard->tracker_id - 1];
+  leaderboard->tracker_id = 0;
+
+  if (--tracker->reference_count == 0) {
+    tracker->pending_events |= RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE;
+
+    /* if this is the last tracker in the list, shrink the list */
+    if (leaderboard->tracker_id == game->leaderboard_trackers_size) {
+      while (--game->leaderboard_trackers_size > 0) {
+        --tracker;
+        if (tracker->reference_count != 0)
+          break;
+      }
+    }
+  }
+}
+
+static void rc_runtime2_update_leaderboard_tracker(rc_runtime2_game_info_t* game, rc_runtime2_leaderboard_info_t* leaderboard)
+{
+  rc_runtime2_leaderboard_tracker_info_t* tracker = &game->leaderboard_trackers[leaderboard->tracker_id - 1];
+  if (tracker->raw_value != leaderboard->value) {
+    tracker->raw_value = leaderboard->value;
+    tracker->pending_events |= RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
+  }
+}
+
+static void rc_runtime2_submit_leaderboard_entry_callback(const char* server_response_body, int http_status_code, void* callback_data)
+{
+  rc_runtime2_callback_id_t* lboard_data = (rc_runtime2_callback_id_t*)callback_data;
+  rc_api_submit_lboard_entry_response_t submit_lboard_entry_response;
+
+  int result = rc_api_process_submit_lboard_entry_response(&submit_lboard_entry_response, server_response_body);
+  const char* error_message = rc_runtime2_server_error_message(&result, http_status_code, &submit_lboard_entry_response.response);
+
+  if (error_message) {
+    RC_RUNTIME2_LOG_ERR(lboard_data->runtime, "Error submitting leaderboard entry %u: %s", lboard_data->id, error_message);
+
+    if (submit_lboard_entry_response.response.error_message) {
+      rc_runtime2_raise_server_error_event(lboard_data->runtime, "submit_lboard_entry", submit_lboard_entry_response.response.error_message);
+    }
+    else {
+      // TODO: queue retry
+    }
+  }
+  else {
+    /* not currently doing anything with the response */
+  }
+
+  free(lboard_data);
+}
+
+static void rc_runtime2_submit_leaderboard_entry(rc_runtime2_t* runtime, rc_runtime2_leaderboard_info_t* leaderboard)
+{
+  rc_runtime2_callback_id_t* callback_data;
+  rc_api_submit_lboard_entry_request_t api_params;
+  rc_api_request_t request;
+  int result;
+
+  /* don't actually submit leaderboard entries when spectating */
+  if (runtime->state.spectator_mode) {
+    RC_RUNTIME2_LOG_INFO(runtime, "Spectated %s (%d) for leaderboard %u: %s",
+        leaderboard->public.tracker_value, leaderboard->value, leaderboard->public.id, leaderboard->public.title);
+    return;
+  }
+
+  memset(&api_params, 0, sizeof(api_params));
+  api_params.username = runtime->user.username;
+  api_params.api_token = runtime->user.token;
+  api_params.leaderboard_id = leaderboard->public.id;
+  api_params.score = leaderboard->value;
+  api_params.game_hash = runtime->game->public.hash;
+
+  result = rc_api_init_submit_lboard_entry_request(&request, &api_params);
+  if (result != RC_OK) {
+    RC_RUNTIME2_LOG_ERR(runtime, "Error constructing submit leaderboard entry for leaderboard %u: %s", leaderboard->public.id, rc_error_str(result));
+    return;
+  }
+
+  RC_RUNTIME2_LOG_INFO(runtime, "Submitting %s (%d) for leaderboard %u: %s",
+      leaderboard->public.tracker_value, leaderboard->value, leaderboard->public.id, leaderboard->public.title);
+
+  callback_data = (rc_runtime2_callback_id_t*)calloc(1, sizeof(*callback_data));
+  callback_data->runtime = runtime;
+  callback_data->id = leaderboard->public.id;
+  runtime->callbacks.server_call(&request, rc_runtime2_submit_leaderboard_entry_callback, callback_data, runtime);
+  rc_api_destroy_request(&request);
 }
 
 /* ===== Processing ===== */
@@ -1852,6 +1964,134 @@ static void rc_runtime2_raise_achievement_events(rc_runtime2_t* runtime)
   }
 }
 
+static void rc_runtime2_do_frame_process_leaderboards(rc_runtime2_t* runtime)
+{
+  rc_runtime2_leaderboard_info_t* leaderboard = runtime->game->leaderboards;
+  rc_runtime2_leaderboard_info_t* stop = leaderboard + runtime->game->public.num_leaderboards;
+
+  for (; leaderboard < stop; ++leaderboard) {
+    rc_lboard_t* lboard = leaderboard->lboard;
+    int old_state, new_state;
+
+    switch (leaderboard->public.state) {
+      case RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE:
+      case RC_RUNTIME2_LEADERBOARD_STATE_DISABLED:
+        continue;
+
+      default:
+        if (!lboard)
+          continue;
+
+        break;
+    }
+
+    old_state = lboard->state;
+    new_state = rc_evaluate_lboard(lboard, &leaderboard->value, runtime->state.legacy_peek, runtime, NULL);
+
+    switch (new_state) {
+      case RC_LBOARD_STATE_STARTED: /* leaderboard is running */
+        if (old_state != RC_LBOARD_STATE_STARTED) {
+          leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_TRACKING;
+          leaderboard->pending_events |= RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_STARTED;
+          rc_runtime2_allocate_leaderboard_tracker(runtime->game, leaderboard);
+        }
+        else {
+          rc_runtime2_update_leaderboard_tracker(runtime->game, leaderboard);
+        }
+        break;
+
+      case RC_LBOARD_STATE_CANCELED:
+        if (old_state != RC_LBOARD_STATE_CANCELED) {
+          leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE;
+          leaderboard->pending_events |= RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_FAILED;
+          rc_runtime2_release_leaderboard_tracker(runtime->game, leaderboard);
+        }
+        break;
+
+      case RC_LBOARD_STATE_TRIGGERED:
+        if (old_state != RC_RUNTIME_EVENT_LBOARD_TRIGGERED) {
+          leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE;
+          leaderboard->pending_events |= RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_SUBMITTED;
+          rc_runtime2_release_leaderboard_tracker(runtime->game, leaderboard);
+        }
+        break;
+    }
+  }
+}
+
+static void rc_runtime2_raise_leaderboard_events(rc_runtime2_t* runtime)
+{
+  rc_runtime2_leaderboard_info_t* leaderboard;
+  rc_runtime2_leaderboard_info_t* leaderboard_stop;
+  rc_runtime2_leaderboard_tracker_info_t* tracker;
+  rc_runtime2_leaderboard_tracker_info_t* tracker_stop;
+  rc_runtime2_event_t runtime_event;
+  time_t recent_unlock_time = 0;
+  int leaderboards_unlocked = 0;
+
+  if (runtime->game->public.num_leaderboards == 0)
+    return;
+
+  memset(&runtime_event, 0, sizeof(runtime_event));
+  runtime_event.runtime = runtime;
+
+  /* process tracker events first so formatted values are updated for leaderboard events */
+  tracker = runtime->game->leaderboard_trackers;
+  tracker_stop = tracker + runtime->game->leaderboard_trackers_size;
+  for (; tracker < tracker_stop; ++tracker) {
+    if (tracker->pending_events == RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_NONE)
+      continue;
+
+    runtime_event.leaderboard_tracker = &tracker->public;
+
+    if (tracker->pending_events & RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE) {
+      runtime_event.type = RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE;
+      runtime->callbacks.event_handler(&runtime_event);
+    }
+    else {
+      rc_format_value(tracker->public.display, sizeof(tracker->public.display), tracker->raw_value, tracker->format);
+
+      if (tracker->pending_events & RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW) {
+        runtime_event.type = RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW;
+        runtime->callbacks.event_handler(&runtime_event);
+      }
+      else if (tracker->pending_events & RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE) {
+        runtime_event.type = RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_UPDATE;
+        runtime->callbacks.event_handler(&runtime_event);
+      }
+    }
+
+    tracker->pending_events = RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_NONE;
+  }
+
+  leaderboard = runtime->game->leaderboards;
+  leaderboard_stop = leaderboard + runtime->game->public.num_leaderboards;
+  for (; leaderboard < leaderboard_stop; ++leaderboard) {
+    if (leaderboard->pending_events == RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_NONE)
+      continue;
+
+    runtime_event.leaderboard = &leaderboard->public;
+
+    if (leaderboard->pending_events & RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_FAILED) {
+      runtime_event.type = RC_RUNTIME2_EVENT_LEADERBOARD_FAILED;
+      runtime->callbacks.event_handler(&runtime_event);
+    }
+    else if (leaderboard->pending_events & RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_SUBMITTED) {
+      /* kick off submission request before raising event */
+      rc_runtime2_submit_leaderboard_entry(runtime, leaderboard);
+
+      runtime_event.type = RC_RUNTIME2_EVENT_LEADERBOARD_SUBMITTED;
+      runtime->callbacks.event_handler(&runtime_event);
+    }
+    else if (leaderboard->pending_events & RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_STARTED) {
+      runtime_event.type = RC_RUNTIME2_EVENT_LEADERBOARD_STARTED;
+      runtime->callbacks.event_handler(&runtime_event);
+    }
+
+    leaderboard->pending_events = RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_NONE;
+  }
+}
+
 void rc_runtime2_do_frame(rc_runtime2_t* runtime)
 {
   if (runtime->game && !runtime->game->waiting_for_reset) {
@@ -1861,12 +2101,15 @@ void rc_runtime2_do_frame(rc_runtime2_t* runtime)
     rc_update_variables(runtime->game->runtime.variables, runtime->state.legacy_peek, runtime, NULL);
 
     rc_runtime2_do_frame_process_achievements(runtime);
-    // TODO: process leaderboards
+    if (runtime->state.hardcore)
+      rc_runtime2_do_frame_process_leaderboards(runtime);
+    // TODO: process rich presence
 
     rc_mutex_unlock(&runtime->state.mutex);
 
     rc_runtime2_raise_achievement_events(runtime);
-    // TODO: leaderboard events
+    if (runtime->state.hardcore)
+      rc_runtime2_raise_leaderboard_events(runtime);
   }
 
   rc_runtime2_idle(runtime);

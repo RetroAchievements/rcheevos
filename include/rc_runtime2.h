@@ -287,7 +287,6 @@ typedef struct rc_runtime2_leaderboard_t {
   const char* description;
   const char* tracker_value;
   uint32_t id;
-  uint8_t format;
   uint8_t state;
 } rc_runtime2_leaderboard_t;
 
@@ -308,15 +307,15 @@ typedef struct rc_runtime2_leaderboard_tracker_t {
 enum {
   RC_RUNTIME2_EVENT_TYPE_NONE = 0,
   RC_RUNTIME2_EVENT_ACHIEVEMENT_TRIGGERED = 1, /* [achievement] was earned by the player */
-  RC_RUNTIME2_EVENT_LBOARD_STARTED = 2, /* [leaderboard] attempt has started */
-  RC_RUNTIME2_EVENT_LBOARD_FAILED = 3, /* [leaderboard] attempt failed */
-  RC_RUNTIME2_EVENT_LBOARD_SUBMITTED = 4, /* [leaderboard] attempt submitted */
+  RC_RUNTIME2_EVENT_LEADERBOARD_STARTED = 2, /* [leaderboard] attempt has started */
+  RC_RUNTIME2_EVENT_LEADERBOARD_FAILED = 3, /* [leaderboard] attempt failed */
+  RC_RUNTIME2_EVENT_LEADERBOARD_SUBMITTED = 4, /* [leaderboard] attempt submitted */
   RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW = 5, /* [achievement] challenge indicator should be shown */
   RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE = 6, /* [achievement] challenge indicator should be hidden */
   RC_RUNTIME2_EVENT_ACHIEVEMENT_PROGRESS_UPDATED = 7, /* [achievement] measured_progress has changed */
-  RC_RUNTIME2_EVENT_LBOARD_TRACKER_SHOW = 8, /* [leaderboard_tracker] should be shown */
-  RC_RUNTIME2_EVENT_LBOARD_TRACKER_HIDE = 9, /* [leaderboard_tracker] should be hidden */
-  RC_RUNTIME2_EVENT_LBOARD_TRACKER_UPDATE = 10, /* [leaderboard_tracker] updated */
+  RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW = 8, /* [leaderboard_tracker] should be shown */
+  RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE = 9, /* [leaderboard_tracker] should be hidden */
+  RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_UPDATE = 10, /* [leaderboard_tracker] updated */
   RC_RUNTIME2_EVENT_RESET = 11, /* emulated system should be reset (as the result of enabling hardcore) */
   RC_RUNTIME2_EVENT_GAME_COMPLETED = 12, /* all achievements for the game have been earned */
   RC_RUNTIME2_EVENT_SERVER_ERROR = 13, /* an API response returned a [server_error] and will not be retried */

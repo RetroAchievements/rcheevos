@@ -42,6 +42,13 @@ typedef struct rc_runtime2_achievement_info_t {
 
 #define RC_RUNTIME2_LEADERBOARD_TRACKER_UNASSIGNED (uint8_t)-1
 
+enum {
+  RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_NONE = 0,
+  RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_STARTED = (1 << 1),
+  RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_FAILED = (1 << 2),
+  RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_SUBMITTED = (1 << 3),
+};
+
 typedef struct rc_runtime2_leaderboard_info_t {
   rc_runtime2_leaderboard_t public;
 
@@ -51,9 +58,28 @@ typedef struct rc_runtime2_leaderboard_info_t {
   uint32_t value_djb2;
   int value;
 
+  uint8_t format;
+  uint8_t pending_events;
   uint8_t tracker_id;
-
 } rc_runtime2_leaderboard_info_t;
+
+enum {
+  RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_NONE = 0,
+  RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE = (1 << 1),
+  RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW = (1 << 2),
+  RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE = (1 << 3),
+};
+
+typedef struct rc_runtime2_leaderboard_tracker_info_t {
+  rc_runtime2_leaderboard_tracker_t public;
+  int raw_value;
+
+  uint32_t value_djb2;
+
+  uint8_t format;
+  uint8_t pending_events;
+  uint8_t reference_count;
+} rc_runtime2_leaderboard_tracker_info_t;
 
 typedef struct rc_runtime2_game_hash_t {
   const char* hash;
@@ -66,9 +92,13 @@ typedef struct rc_runtime2_game_info_t {
 
   rc_runtime2_achievement_info_t* achievements;
   rc_runtime2_leaderboard_info_t* leaderboards;
+  rc_runtime2_leaderboard_tracker_info_t* leaderboard_trackers;
 
   rc_runtime_t runtime;
   uint8_t waiting_for_reset;
+
+  uint8_t leaderboard_trackers_capacity;
+  uint8_t leaderboard_trackers_size;
 
   rc_api_buffer_t buffer;
 } rc_runtime2_game_info_t;

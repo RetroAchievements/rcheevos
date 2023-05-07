@@ -14,6 +14,9 @@ static rc_runtime2_t* g_runtime;
       "\"Description\":\"Desc " id "\",\"Flags\":3,\"Points\":5,\"MemAddr\":\"" memaddr "\"," \
       "\"Author\":\"User1\",\"BadgeName\":\"00" id "\",\"Created\":1367266583,\"Modified\":1376929305}"
 
+#define GENERIC_LEADERBOARD_JSON(id, memaddr, format) "{\"ID\":" id ",\"Title\":\"Leaderboard " id "\"," \
+      "\"Description\":\"Desc " id "\",\"Mem\":\"" memaddr "\",\"Format\":\"" format "\"}"
+
 static const char* patchdata_2ach_1lbd = "{\"Success\":true,\"PatchData\":{"
     "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
     "\"Achievements\":["
@@ -26,7 +29,7 @@ static const char* patchdata_2ach_1lbd = "{\"Success\":true,\"PatchData\":{"
     "],"
     "\"Leaderboards\":["
      "{\"ID\":4401,\"Title\":\"Leaderboard1\",\"Description\":\"Desc1\","
-      "\"Mem\":\"STA:0xH1234=1::CAN:0xH5555=5::SUB:0xH1234=2::VAL:0xH2345\",\"Format\":\"SCORE\"}"
+      "\"Mem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"Format\":\"SCORE\"}"
     "]"
     "}}";
 
@@ -81,7 +84,9 @@ static const char* patchdata_exhaustive = "{\"Success\":true,\"PatchData\":{"
       GENERIC_ACHIEVEMENT_JSON("70", "M:0xX0010=100000") ","
       GENERIC_ACHIEVEMENT_JSON("71", "G:0xX0010=100000")
     "],"
-    "\"Leaderboards\":[]"
+    "\"Leaderboards\":["
+      GENERIC_LEADERBOARD_JSON("44", "STA:0xH000B=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE")
+    "]"
     "}}";
 
 static const char* no_unlocks = "{\"Success\":true,\"UserUnlocks\":[]}";
@@ -140,16 +145,16 @@ static rc_runtime2_event_t* find_event(uint8_t type, uint32_t id)
             return &events[i];
           break;
 
-        case RC_RUNTIME2_EVENT_LBOARD_STARTED:
-        case RC_RUNTIME2_EVENT_LBOARD_FAILED:
-        case RC_RUNTIME2_EVENT_LBOARD_SUBMITTED:
+        case RC_RUNTIME2_EVENT_LEADERBOARD_STARTED:
+        case RC_RUNTIME2_EVENT_LEADERBOARD_FAILED:
+        case RC_RUNTIME2_EVENT_LEADERBOARD_SUBMITTED:
           if (events[i].leaderboard->id == id)
             return &events[i];
           break;
 
-        case RC_RUNTIME2_EVENT_LBOARD_TRACKER_SHOW:
-        case RC_RUNTIME2_EVENT_LBOARD_TRACKER_HIDE:
-        case RC_RUNTIME2_EVENT_LBOARD_TRACKER_UPDATE:
+        case RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW:
+        case RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE:
+        case RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_UPDATE:
           if (events[i].leaderboard_tracker->id == id)
             return &events[i];
           break;
@@ -626,8 +631,8 @@ static void test_load_game(void)
     ASSERT_NUM_EQUALS(leaderboard->public.id, 4401);
     ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard1");
     ASSERT_STR_EQUALS(leaderboard->public.description, "Desc1");
-    ASSERT_NUM_EQUALS(leaderboard->public.format, RC_FORMAT_SCORE);
     ASSERT_NUM_EQUALS(leaderboard->public.state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
     ASSERT_PTR_NOT_NULL(leaderboard->lboard);
     ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
     ASSERT_NUM_EQUALS(leaderboard->tracker_id, RC_RUNTIME2_LEADERBOARD_TRACKER_UNASSIGNED);
@@ -1309,6 +1314,324 @@ static void test_do_frame_achievement_challenge_indicator(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_do_frame_leaderboard_started(void)
+{
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[0x0B] = 1;
+    memory[0x0E] = 17;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_STARTED, 44);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_TRACKING);
+    ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+    ASSERT_PTR_EQUALS(event->leaderboard, rc_runtime2_get_leaderboard_info(g_runtime, 44));
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW, 1);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+    ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_do_frame_leaderboard_update(void)
+{
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* start the leaderboard */
+    memory[0x0B] = 1;
+    memory[0x0E] = 17;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_STARTED, 44));
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* update the leaderboard */
+    memory[0x0E] = 18;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_UPDATE, 1);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+    ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000018");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_do_frame_leaderboard_failed(void)
+{
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* start the leaderboard */
+    memory[0x0B] = 1;
+    memory[0x0E] = 17;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_STARTED, 44));
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* cancel the leaderboard */
+    memory[0x0C] = 1;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_FAILED, 44);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+    ASSERT_PTR_EQUALS(event->leaderboard, rc_runtime2_get_leaderboard_info(g_runtime, 44));
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE, 1);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+    ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_do_frame_leaderboard_submit(void)
+{
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    mock_memory(memory, sizeof(memory));
+
+    mock_api_response("r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&v=a27fa205f7f30c8d13d74806ea5425b6",
+        "{\"Success\":true,\"Response\":{\"Score\":17,\"BestScore\":23,"
+        "\"TopEntries\":[{\"User\":\"Player1\",\"Score\":44,\"Rank\":1},{\"User\":\"Username\",\"Score\":23,\"Rank\":2}],"
+        "\"RankInfo\":{\"Rank\":2,\"NumEntries\":\"2\"}}}");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* start the leaderboard */
+    memory[0x0B] = 1;
+    memory[0x0E] = 17;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_STARTED, 44));
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* submit the leaderboard */
+    memory[0x0D] = 1;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_SUBMITTED, 44);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+    ASSERT_PTR_EQUALS(event->leaderboard, rc_runtime2_get_leaderboard_info(g_runtime, 44));
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE, 1);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+    ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_do_frame_leaderboard_submit_server_error(void)
+{
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    mock_memory(memory, sizeof(memory));
+
+    mock_api_response("r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&v=a27fa205f7f30c8d13d74806ea5425b6",
+        "{\"Success\":false,\"Error\":\"Leaderboard not found\"}");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* start the leaderboard */
+    memory[0x0B] = 1;
+    memory[0x0E] = 17;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_STARTED, 44));
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* submit the leaderboard */
+    memory[0x0D] = 1;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 3);
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_SUBMITTED, 44);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+    ASSERT_PTR_EQUALS(event->leaderboard, rc_runtime2_get_leaderboard_info(g_runtime, 44));
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE, 1);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+    ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+    /* an error should have also been reported */
+    event = find_event(RC_RUNTIME2_EVENT_SERVER_ERROR, 0);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_STR_EQUALS(event->server_error->api, "submit_lboard_entry");
+    ASSERT_STR_EQUALS(event->server_error->error_message, "Leaderboard not found");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_do_frame_leaderboard_submit_while_spectating(void)
+{
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    mock_memory(memory, sizeof(memory));
+
+    ASSERT_NUM_EQUALS(rc_runtime2_get_spectator_mode_enabled(g_runtime), 0);
+    rc_runtime2_set_spectator_mode_enabled(g_runtime, 1);
+    ASSERT_NUM_EQUALS(rc_runtime2_get_spectator_mode_enabled(g_runtime), 1);
+
+    mock_api_response("r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&v=a27fa205f7f30c8d13d74806ea5425b6",
+        "{\"Success\":false,\"Error\":\"Leaderboard entry should not have been submitted in spectating mode\"}");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* start the leaderboard */
+    memory[0x0B] = 1;
+    memory[0x0E] = 17;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_STARTED, 44));
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* submit the leaderboard */
+    memory[0x0D] = 1;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_SUBMITTED, 44);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+    ASSERT_PTR_EQUALS(event->leaderboard, rc_runtime2_get_leaderboard_info(g_runtime, 44));
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE, 1);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+    ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* expect API not called */
+    assert_api_not_called("r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&v=a27fa205f7f30c8d13d74806ea5425b6");
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
 /* ----- settings ----- */
 
 static void test_set_hardcore_disable(void)
@@ -1606,8 +1929,14 @@ void test_runtime2(void) {
   TEST(test_do_frame_achievement_trigger_while_spectating);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_challenge_indicator);
-  // TODO: leaderboards
   // TODO: test mastery
+  TEST(test_do_frame_leaderboard_started);
+  TEST(test_do_frame_leaderboard_update);
+  TEST(test_do_frame_leaderboard_failed);
+  TEST(test_do_frame_leaderboard_submit);
+  TEST(test_do_frame_leaderboard_submit_server_error);
+  TEST(test_do_frame_leaderboard_submit_while_spectating);
+  // TODO: shared trackers
 
   /* settings */
   TEST(test_set_hardcore_disable);
