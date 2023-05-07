@@ -1936,7 +1936,16 @@ int rc_runtime2_get_hardcore_enabled(const rc_runtime2_t* runtime)
   return runtime->state.hardcore;
 }
 
-// TODO: encore toggle
+void rc_runtime2_set_encore_mode_enabled(rc_runtime2_t* runtime, int enabled)
+{
+  runtime->state.encore_mode = enabled ? 1 : 0;
+}
+
+int rc_runtime2_get_encore_mode_enabled(const rc_runtime2_t* runtime)
+{
+  return runtime->state.encore_mode;
+}
+
 // TODO: spectator mode toggle (kiosk mode? - disable submissions, keep events)
 
 // TODO: disk swapping

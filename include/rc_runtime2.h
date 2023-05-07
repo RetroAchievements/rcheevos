@@ -62,6 +62,9 @@ void rc_runtime2_destroy(rc_runtime2_t* runtime);
 
 /**
  * Sets whether hardcore is enabled (on by default).
+ * Can be called with a game loaded.
+ * Enabling hardcore with a game loaded will raise an RC_RUNTIME2_EVENT_RESET
+ * event. Processing will be disabled until rc_runtime2_reset is called.
  */
 void rc_runtime2_set_hardcore_enabled(rc_runtime2_t* runtime, int enabled);
 
@@ -70,6 +73,16 @@ void rc_runtime2_set_hardcore_enabled(rc_runtime2_t* runtime, int enabled);
  */
 int rc_runtime2_get_hardcore_enabled(const rc_runtime2_t* runtime);
 
+/**
+ * Sets whether encore mode is enabled (off by default).
+ * Evaluated when loading a game. Has no effect while a game is loaded.
+ */
+void rc_runtime2_set_encore_mode_enabled(rc_runtime2_t* runtime, int enabled);
+
+/**
+ * Gets whether encore mode is enabled (off by default).
+ */
+int rc_runtime2_get_encore_mode_enabled(const rc_runtime2_t* runtime);
 
 /*****************************************************************************\
 | Logging                                                                     |

@@ -1286,7 +1286,6 @@ static void test_set_hardcore_enable(void)
   rc_runtime2_destroy(g_runtime);
 }
 
-
 static void test_set_hardcore_enable_no_game_loaded(void)
 {
   const rc_runtime2_achievement_t* achievement;
@@ -1353,6 +1352,93 @@ static void test_set_hardcore_enable_no_game_loaded(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_set_encore_mode_enable(void)
+{
+  const rc_runtime2_achievement_t* achievement;
+
+  g_runtime = mock_runtime2_logged_in();
+  rc_runtime2_set_encore_mode_enabled(g_runtime, 1);
+  mock_runtime2_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+
+  ASSERT_NUM_EQUALS(rc_runtime2_get_encore_mode_enabled(g_runtime), 1);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5501);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH); /* track unlock state */
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);     /* but still activate */
+  }
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+  }
+
+  /* toggle encore mode with a game loaded has no effect */
+  rc_runtime2_set_encore_mode_enabled(g_runtime, 0);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_encore_mode_enabled(g_runtime), 0);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5501);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+  }
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_set_encore_mode_disable(void)
+{
+  const rc_runtime2_achievement_t* achievement;
+
+  g_runtime = mock_runtime2_logged_in();
+  rc_runtime2_set_encore_mode_enabled(g_runtime, 1);
+  rc_runtime2_set_encore_mode_enabled(g_runtime, 0);
+  mock_runtime2_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+
+  ASSERT_NUM_EQUALS(rc_runtime2_get_encore_mode_enabled(g_runtime), 0);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5501);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
+  }
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+  }
+
+  /* toggle encore mode with a game loaded has no effect */
+  rc_runtime2_set_encore_mode_enabled(g_runtime, 1);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_encore_mode_enabled(g_runtime), 1);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5501);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
+  }
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
 /* ----- harness ----- */
 
 void test_runtime2(void) {
@@ -1394,6 +1480,8 @@ void test_runtime2(void) {
   /* settings */
   TEST(test_set_hardcore_disable);
   TEST(test_set_hardcore_enable);
+  TEST(test_set_encore_mode_enable);
+  TEST(test_set_encore_mode_disable);
 
   TEST_SUITE_END();
 }
