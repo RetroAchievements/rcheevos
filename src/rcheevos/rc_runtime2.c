@@ -1575,26 +1575,37 @@ static void rc_runtime2_allocate_leaderboard_tracker(rc_runtime2_game_info_t* ga
   rc_runtime2_leaderboard_tracker_info_t* available_tracker = NULL;
 
   for (; tracker < stop; ++tracker) {
-    if (tracker->value_djb2 == leaderboard->value_djb2 && tracker->format == leaderboard->format) {
-      ++tracker->reference_count;
+    if (tracker->reference_count == 0) {
+      if (available_tracker == NULL)
+        available_tracker = tracker;
 
-      if (tracker->raw_value != leaderboard->value) {
-        tracker->raw_value = leaderboard->value;
-        tracker->pending_events |= RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
-      }
+      continue;
+    }
 
-      tracker->pending_events &= ~RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE;
-      leaderboard->tracker_id = (uint8_t)tracker->public.id;
-      leaderboard->public.tracker_value = tracker->public.display;
-      return;
+    if (tracker->value_djb2 != leaderboard->value_djb2 || tracker->format != leaderboard->format)
+      continue;
+
+    if (tracker->raw_value != leaderboard->value) {
+      /* if the value comes from tracking hits, we can't assume the trackers started in the
+       * same frame, so we can't share the tracker */
+      if (tracker->value_from_hits)
+        continue;
+
+      /* value has changed. prepare an update event */
+      tracker->raw_value = leaderboard->value;
+      tracker->pending_events |= RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
     }
-    else if (tracker->reference_count == 0) {
-      tracker->reference_count = 1;
-      available_tracker = tracker;
-    }
+
+    /* attach to the existing tracker */
+    ++tracker->reference_count;
+    tracker->pending_events &= ~RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE;
+    leaderboard->tracker_id = (uint8_t)tracker->public.id;
+    leaderboard->public.tracker_value = tracker->public.display;
+    return;
   }
 
   if (!available_tracker) {
+    /* no unused trackers in queue, allocate one */
     if (game->leaderboard_trackers_size == game->leaderboard_trackers_capacity) {
       const uint8_t capacity_increase = 8;
       const uint8_t new_capacity = game->leaderboard_trackers_capacity + capacity_increase;
@@ -1619,13 +1630,15 @@ static void rc_runtime2_allocate_leaderboard_tracker(rc_runtime2_game_info_t* ga
     }
 
     available_tracker = &game->leaderboard_trackers[game->leaderboard_trackers_size++];
-    available_tracker->reference_count = 1;
   }
 
+  /* update the claimed tracker */
+  available_tracker->reference_count = 1;
   available_tracker->value_djb2 = leaderboard->value_djb2;
   available_tracker->format = leaderboard->format;
   available_tracker->raw_value = leaderboard->value;
   available_tracker->pending_events = RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW;
+  available_tracker->value_from_hits = rc_value_from_hits(&leaderboard->lboard->value);
   leaderboard->tracker_id = (uint8_t)available_tracker->public.id;
   leaderboard->public.tracker_value = available_tracker->public.display;
 }
@@ -1635,18 +1648,8 @@ static void rc_runtime2_release_leaderboard_tracker(rc_runtime2_game_info_t* gam
   rc_runtime2_leaderboard_tracker_info_t* tracker = &game->leaderboard_trackers[leaderboard->tracker_id - 1];
   leaderboard->tracker_id = 0;
 
-  if (--tracker->reference_count == 0) {
+  if (--tracker->reference_count == 0)
     tracker->pending_events |= RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE;
-
-    /* if this is the last tracker in the list, shrink the list */
-    if (leaderboard->tracker_id == game->leaderboard_trackers_size) {
-      while (--game->leaderboard_trackers_size > 0) {
-        --tracker;
-        if (tracker->reference_count != 0)
-          break;
-      }
-    }
-  }
 }
 
 static void rc_runtime2_update_leaderboard_tracker(rc_runtime2_game_info_t* game, rc_runtime2_leaderboard_info_t* leaderboard)
@@ -2045,6 +2048,16 @@ static void rc_runtime2_raise_leaderboard_events(rc_runtime2_t* runtime)
     runtime_event.leaderboard_tracker = &tracker->public;
 
     if (tracker->pending_events & RC_RUNTIME2_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE) {
+      /* if this is the last tracker in the list, shrink the list */
+      if (tracker->public.id == runtime->game->leaderboard_trackers_size) {
+        rc_runtime2_leaderboard_tracker_info_t* scan = tracker;
+        while (--runtime->game->leaderboard_trackers_size > 0) {
+          --scan;
+          if (scan->reference_count != 0)
+            break;
+        }
+      }
+
       runtime_event.type = RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE;
       runtime->callbacks.event_handler(&runtime_event);
     }

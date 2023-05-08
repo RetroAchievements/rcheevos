@@ -183,6 +183,7 @@ int rc_operand_is_float(const rc_operand_t* self);
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
 int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 void rc_reset_value(rc_value_t* self);
+int rc_value_from_hits(rc_value_t* self);
 rc_value_t* rc_alloc_helper_variable(const char* memaddr, int memaddr_len, rc_parse_state_t* parse);
 void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L);
 

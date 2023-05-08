@@ -79,6 +79,7 @@ typedef struct rc_runtime2_leaderboard_tracker_info_t {
   uint8_t format;
   uint8_t pending_events;
   uint8_t reference_count;
+  uint8_t value_from_hits;
 } rc_runtime2_leaderboard_tracker_info_t;
 
 typedef struct rc_runtime2_game_hash_t {
