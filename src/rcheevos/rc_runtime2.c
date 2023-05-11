@@ -368,6 +368,7 @@ static void rc_runtime2_invalidate_memref_achievements(rc_runtime2_game_info_t* 
 
     if (rc_trigger_contains_memref(achievement->trigger, memref)) {
       achievement->public.state = RC_RUNTIME2_ACHIEVEMENT_STATE_DISABLED;
+      achievement->public.bucket = RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED;
       RC_RUNTIME2_LOG_WARN(runtime, "Disabled achievement %u. Invalid address %06X", achievement->public.id, memref->address);
     }
   }
@@ -1233,6 +1234,9 @@ static void rc_runtime2_update_achievement_display_information(const rc_runtime2
       if (achievement->trigger->measured_target) {
         if (achievement->trigger->measured_value == RC_MEASURED_UNKNOWN) {
           /* value hasn't been initialized yet, leave progress string empty */
+        }
+        else if (achievement->trigger->measured_value == 0) {
+          /* value is 0, leave progress string empty */
         }
         else {
           /* clamp measured value at target (can't get more than 100%) */

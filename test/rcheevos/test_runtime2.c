@@ -95,11 +95,31 @@ static const char* patchdata_exhaustive = "{\"Success\":true,\"PatchData\":{"
     "]"
     "}}";
 
+static const char* patchdata_unofficial_unsupported = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":["
+     "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+      "\"MemAddr\":\"0xH0001=1_0xH0002=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+      "\"Created\":1367266583,\"Modified\":1376929305},"
+     "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":5,\"Points\":2,"
+      "\"MemAddr\":\"0xH0001=2_0x0002=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
+      "\"Created\":1376970283,\"Modified\":1376970283},"
+     "{\"ID\":5503,\"Title\":\"Ach3\",\"Description\":\"Desc3\",\"Flags\":3,\"Points\":2,"
+      "\"MemAddr\":\"0xHFEFEFEFE=2_0x0002=9\",\"Author\":\"User1\",\"BadgeName\":\"00236\","
+      "\"Created\":1376971283,\"Modified\":1376971283}"
+    "],"
+    "\"Leaderboards\":["
+     "{\"ID\":4401,\"Title\":\"Leaderboard1\",\"Description\":\"Desc1\","
+      "\"Mem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xHFEFEFEFE=2::VAL:0x 000E\",\"Format\":\"SCORE\"}"
+    "]"
+    "}}";
+
 static const char* no_unlocks = "{\"Success\":true,\"UserUnlocks\":[]}";
 
 static const char* unlock_5501 = "{\"Success\":true,\"UserUnlocks\":[5501]}";
 static const char* unlock_5502 = "{\"Success\":true,\"UserUnlocks\":[5502]}";
 static const char* unlock_5501_and_5502 = "{\"Success\":true,\"UserUnlocks\":[5501,5502]}";
+static const char* unlock_8 = "{\"Success\":true,\"UserUnlocks\":[8]}";
 
 static const char* response_429 =
     "<html>\n"
@@ -840,6 +860,213 @@ static void test_achievement_list_simple_with_unlocks(void)
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 5502);
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
+{
+  rc_runtime2_achievement_list_t* list;
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
+
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE), 2);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 1);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 3);
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
+    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5503);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNOFFICIAL);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Unofficial");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5502);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 3);
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
+    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNOFFICIAL);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Unofficial");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5502);
+    ASSERT_NUM_EQUALS(list->buckets[2].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5503);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_achievement_list_buckets(void)
+{
+  rc_runtime2_achievement_list_t* list;
+  rc_runtime2_achievement_t** iter;
+  rc_runtime2_achievement_t* achievement;
+
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, unlock_8, unlock_8);
+  mock_memory(memory, sizeof(memory));
+
+  rc_runtime2_do_frame(g_runtime); /* advance achievements out of waiting state */
+  event_count = 0;
+
+  mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=5&h=1&m=0123456789ABCDEF&v=732f8e30e9c1eb08948dda098c305d8b",
+      "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":5,\"AchievementsRemaining\":6}");
+
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE), 7);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 0);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 7);
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 6);
+    iter = list->buckets[0].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 6);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 7);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 9);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 70);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 71);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+
+    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 8);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  memory[5] = 5; /* trigger achievement 5 */
+  memory[6] = 2; /* start measuring achievement 6 */
+  memory[1] = 1; /* begin challenge achievement 7 */
+  memory[0x11] = 100; /* start measuring achievements 70 and 71 */
+  rc_runtime2_do_frame(g_runtime);
+  event_count = 0;
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 4);
+
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Active Challenges");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 7);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Recently Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 4);
+    iter = list->buckets[2].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 6);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "2/6");
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 9);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 70);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25600/100000");
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 71);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25%");
+
+    ASSERT_NUM_EQUALS(list->buckets[3].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_STR_EQUALS(list->buckets[3].label, "Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 8);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  /* recently unlocked achievement no longer recent */
+  ((rc_runtime2_achievement_t*)rc_runtime2_get_achievement_info(g_runtime, 5))->unlock_time -= 15 * 60;
+  memory[6] = 5; /* almost there achievement 6 */
+  memory[1] = 0; /* stop challenge achievement 7 */
+  rc_runtime2_do_frame(g_runtime);
+  event_count = 0;
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 3);
+
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_ALMOST_THERE);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Almost There");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 6);
+    ASSERT_STR_EQUALS(list->buckets[0].achievements[0]->measured_progress, "5/6");
+
+    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 4);
+    iter = list->buckets[1].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 7);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 9);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 70);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25600/100000");
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 71);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25%");
+
+    ASSERT_NUM_EQUALS(list->buckets[2].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 2);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[1]->id, 8);
 
     rc_runtime2_destroy_achievement_list(list);
   }
@@ -2414,7 +2641,8 @@ void test_runtime2(void) {
   /* achievements */
   TEST(test_achievement_list_simple);
   TEST(test_achievement_list_simple_with_unlocks);
-  // TODO: test buckets
+  TEST(test_achievement_list_simple_with_unofficial_and_unsupported);
+  TEST(test_achievement_list_buckets);
 
   /* do frame */
   TEST(test_do_frame_bounds_check_system);
