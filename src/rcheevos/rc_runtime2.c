@@ -4,6 +4,7 @@
 #include "rc_api_user.h"
 #include "rc_consoles.h"
 #include "rc_internal.h"
+#include "rc_hash.h"
 
 #include "../rapi/rc_api_common.h"
 
@@ -17,13 +18,32 @@ typedef struct rc_runtime2_callback_id_t {
   uint32_t id;
 } rc_runtime2_callback_id_t;
 
-
 typedef struct rc_runtime2_generic_callback_data_t {
   rc_runtime2_t* runtime;
   rc_runtime2_callback_t callback;
 } rc_runtime2_generic_callback_data_t;
 
+typedef struct rc_runtime2_load_state_t
+{
+  rc_runtime2_t* runtime;
+  rc_runtime2_callback_t callback;
+
+  rc_runtime2_game_info_t* game;
+  rc_runtime2_game_hash_t* hash;
+
+  rc_hash_iterator_t hash_iterator;
+
+  uint32_t* hardcore_unlocks;
+  uint32_t* softcore_unlocks;
+  uint32_t num_hardcore_unlocks;
+  uint32_t num_softcore_unlocks;
+
+  uint8_t progress;
+  uint8_t outstanding_requests;
+} rc_runtime2_load_state_t;
+
 static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* callback_data);
+static void rc_runtime2_load_game(rc_runtime2_load_state_t* load_state, const char* hash);
 
 /* ===== Construction/Destruction ===== */
 
@@ -1016,6 +1036,13 @@ static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* load_sta
   int result;
 
   if (load_state->hash->game_id == 0) {
+    char hash[33];
+    if (rc_hash_iterate(hash, &load_state->hash_iterator)) {
+      /* found another hash to try */
+      rc_runtime2_load_game(load_state, hash);
+      return;
+    }
+
     rc_runtime2_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
     return;
   }
@@ -1115,52 +1142,131 @@ static rc_runtime2_game_hash_t* rc_runtime2_find_game_hash(rc_runtime2_t* runtim
   return game_hash;
 }
 
-void rc_runtime2_begin_load_game(rc_runtime2_t* runtime, const char* hash, rc_runtime2_callback_t callback)
+static void rc_runtime2_load_game(rc_runtime2_load_state_t* load_state, const char* hash)
 {
-  rc_api_resolve_hash_request_t resolve_hash_request;
-  rc_runtime2_load_state_t* load_state;
-  rc_api_request_t request;
-  int result;
+  rc_runtime2_t* runtime = load_state->runtime;
 
-  if (!hash || !hash[0]) {
-    callback(RC_INVALID_STATE, "hash is required", runtime);
+  if (runtime->state.load == NULL) {
+    rc_runtime2_unload_game(runtime);
+    runtime->state.load = load_state;
+
+    if (load_state->game == NULL) {
+      load_state->game = (rc_runtime2_game_info_t*)calloc(1, sizeof(*load_state->game));
+      rc_buf_init(&load_state->game->buffer);
+      rc_runtime_init(&load_state->game->runtime);
+    }
+  }
+  else if (runtime->state.load != load_state) {
+    /* previous load was aborted, silently quit */
+    rc_runtime2_free_load_state(load_state);
     return;
   }
-
-  memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
-  resolve_hash_request.game_hash = hash;
-
-  result = rc_api_init_resolve_hash_request(&request, &resolve_hash_request);
-  if (result != RC_OK) {
-    callback(result, rc_error_str(result), runtime);
-    return;
-  }
-
-  rc_runtime2_unload_game(runtime);
-
-  load_state = (rc_runtime2_load_state_t*)calloc(1, sizeof(*load_state));
-  load_state->runtime = runtime;
-  load_state->callback = callback;
-  runtime->state.load = load_state;
-
-  load_state->game = (rc_runtime2_game_info_t*)calloc(1, sizeof(*load_state->game));
-  rc_buf_init(&load_state->game->buffer);
-  rc_runtime_init(&load_state->game->runtime);
 
   load_state->hash = rc_runtime2_find_game_hash(runtime, hash);
 
   if (load_state->hash->game_id == RC_RUNTIME2_UNKNOWN_GAME_ID) {
+    rc_api_resolve_hash_request_t resolve_hash_request;
+    rc_api_request_t request;
+    int result;
+
+    memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
+    resolve_hash_request.game_hash = hash;
+
+    result = rc_api_init_resolve_hash_request(&request, &resolve_hash_request);
+    if (result != RC_OK) {
+      rc_runtime2_load_error(load_state, result, rc_error_str(result));
+      return;
+    }
+
     rc_runtime2_begin_load_state(load_state, RC_RUNTIME2_LOAD_STATE_IDENTIFYING_GAME, 1);
 
     runtime->callbacks.server_call(&request, rc_runtime2_identify_game_callback, load_state, runtime);
+
+    rc_api_destroy_request(&request);
   }
   else {
     RC_RUNTIME2_LOG_INFO(runtime, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
 
     rc_runtime2_begin_fetch_game_data(load_state);
   }
+}
 
-  rc_api_destroy_request(&request);
+void rc_runtime2_begin_load_game(rc_runtime2_t* runtime, const char* hash, rc_runtime2_callback_t callback)
+{
+  rc_runtime2_load_state_t* load_state;
+
+  if (!hash || !hash[0]) {
+    callback(RC_INVALID_STATE, "hash is required", runtime);
+    return;
+  }
+
+  load_state = (rc_runtime2_load_state_t*)calloc(1, sizeof(*load_state));
+  load_state->runtime = runtime;
+  load_state->callback = callback;
+  rc_runtime2_load_game(load_state, hash);
+}
+
+void rc_runtime2_begin_identify_and_load_game(rc_runtime2_t* runtime,
+    uint32_t console_id, const char* file_path,
+    const uint8_t* data, size_t data_size,
+    rc_runtime2_callback_t callback)
+{
+  rc_runtime2_load_state_t* load_state;
+  char hash[33];
+
+  if (data) {
+    if (file_path) {
+      RC_RUNTIME2_LOG_INFO(runtime, "Identifying game: %zu bytes at %p (%s)", data_size, data, file_path);
+    }
+    else {
+      RC_RUNTIME2_LOG_INFO(runtime, "Identifying game: %zu bytes at %p", data_size, data);
+    }
+  }
+  else if (file_path) {
+    RC_RUNTIME2_LOG_INFO(runtime, "Identifying game: %s", file_path);
+  }
+  else {
+    callback(RC_INVALID_STATE, "either data or file_path is required", runtime);
+    return;
+  }
+
+  if (runtime->state.log_level >= RC_RUNTIME2_LOG_LEVEL_INFO)
+    rc_hash_init_verbose_message_callback(runtime->callbacks.log_call);
+
+  if (!file_path)
+    file_path = "?";
+
+  load_state = (rc_runtime2_load_state_t*)calloc(1, sizeof(*load_state));
+  load_state->runtime = runtime;
+  load_state->callback = callback;
+  rc_hash_initialize_iterator(&load_state->hash_iterator, file_path, data, data_size);
+
+  if (console_id == RC_CONSOLE_UNKNOWN) {
+    if (!rc_hash_iterate(hash, &load_state->hash_iterator)) {
+      rc_runtime2_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
+      return;
+    }
+  }
+  else {
+    load_state->hash_iterator.consoles[0] = console_id;
+    load_state->hash_iterator.consoles[1] = 0;
+    load_state->hash_iterator.index = 1;
+
+    if (data != NULL) {
+      if (!rc_hash_generate_from_buffer(hash, console_id, data, data_size)) {
+        rc_runtime2_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
+        return;
+      }
+    }
+    else {
+      if (!rc_hash_generate_from_file(hash, console_id, file_path)) {
+        rc_runtime2_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
+        return;
+      }
+    }
+  }
+
+  rc_runtime2_load_game(load_state, hash);
 }
 
 void rc_runtime2_unload_game(rc_runtime2_t* runtime)

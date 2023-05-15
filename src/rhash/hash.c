@@ -2465,7 +2465,7 @@ static void rc_hash_initialize_dsk_iterator(struct rc_hash_iterator* iterator, c
   rc_hash_iterator_append_console(iterator, RC_CONSOLE_APPLE_II);
 }
 
-void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* path, uint8_t* buffer, size_t buffer_size)
+void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* path, const uint8_t* buffer, size_t buffer_size)
 {
   int need_path = !buffer;
 
@@ -2598,7 +2598,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "d64"))
         {
-            iterator->consoles[0] = RC_CONSOLE_COMMODORE_64;
+          iterator->consoles[0] = RC_CONSOLE_COMMODORE_64;
         }
         else if (rc_path_compare_extension(ext, "d88"))
         {
@@ -2618,7 +2618,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "fd"))
         {
-            iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* disk */
+          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* disk */
         }
         break;
 

@@ -126,21 +126,7 @@ enum {
   RC_RUNTIME2_MASTERY_STATE_SHOWN,
 };
 
-typedef struct rc_runtime2_load_state_t {
-  rc_runtime2_t* runtime;
-  rc_runtime2_callback_t callback;
-
-  rc_runtime2_game_info_t* game;
-  rc_runtime2_game_hash_t* hash;
-
-  uint32_t* hardcore_unlocks;
-  uint32_t* softcore_unlocks;
-  uint32_t num_hardcore_unlocks;
-  uint32_t num_softcore_unlocks;
-
-  uint8_t progress;
-  uint8_t outstanding_requests;
-} rc_runtime2_load_state_t;
+struct rc_runtime2_load_state_t;
 
 typedef struct rc_runtime2_state_t {
   rc_mutex_t mutex;

@@ -157,6 +157,14 @@ const rc_runtime2_user_t* rc_runtime2_get_user_info(const rc_runtime2_t* runtime
 \*****************************************************************************/
 
 /**
+ * Start loading an unidentified game.
+ */
+void rc_runtime2_begin_identify_and_load_game(rc_runtime2_t* runtime,
+    uint32_t console_id, const char* file_path,
+    const uint8_t* data, size_t data_size,
+    rc_runtime2_callback_t callback);
+
+/**
  * Start loading a game.
  */
 void rc_runtime2_begin_load_game(rc_runtime2_t* runtime, const char* hash, rc_runtime2_callback_t callback);

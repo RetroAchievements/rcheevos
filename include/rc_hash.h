@@ -27,20 +27,20 @@ extern "C" {
 
   /* data for rc_hash_iterate
    */
-  struct rc_hash_iterator
+  typedef struct rc_hash_iterator
   {
-    uint8_t* buffer;
+    const uint8_t* buffer;
     size_t buffer_size;
     uint8_t consoles[12];
     int index;
     const char* path;
-  };
+  } rc_hash_iterator_t;
 
   /* initializes a rc_hash_iterator
    * - path must be provided
    * - if buffer and buffer_size are provided, path may be a filename (i.e. for something extracted from a zip file)
    */
-  void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* path, uint8_t* buffer, size_t buffer_size);
+  void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* path, const uint8_t* buffer, size_t buffer_size);
 
   /* releases resources associated to a rc_hash_iterator
    */

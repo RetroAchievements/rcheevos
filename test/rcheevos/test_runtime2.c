@@ -1,11 +1,13 @@
 #include "rc_runtime2.h"
 
+#include "rc_consoles.h"
 #include "rc_internal.h"
 #include "rc_runtime2_internal.h"
 #include "rc_version.h"
 
 #include "mock_memory.h"
 
+#include "../rhash/data.h"
 #include "../test_framework.h"
 
 static rc_runtime2_t* g_runtime;
@@ -307,6 +309,7 @@ static void _assert_api_called(const char* request_params, int count)
 }
 #define assert_api_called(request_params) ASSERT_HELPER(_assert_api_called(request_params, 1), "assert_api_called")
 #define assert_api_not_called(request_params) ASSERT_HELPER(_assert_api_called(request_params, 0), "assert_api_not_called")
+#define assert_api_call_count(request_params, num) ASSERT_HELPER(_assert_api_called(request_params, num), "assert_api_call_count")
 
 static void reset_mock_api_handlers(void)
 {
@@ -769,6 +772,198 @@ static void test_load_game_hardcore_unlocks_failure(void)
   ASSERT_PTR_NULL(g_runtime->game);
 
   rc_runtime2_destroy(g_runtime);
+}
+
+static void rc_runtime2_callback_expect_data_or_file_path_required(int result, const char* error_message, rc_runtime2_t* runtime)
+{
+  ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
+  ASSERT_STR_EQUALS(error_message, "either data or file_path is required");
+  ASSERT_PTR_EQUALS(runtime, g_runtime);
+}
+
+static void test_identify_and_load_game_required_fields(void)
+{
+  g_runtime = mock_runtime2_logged_in();
+
+  rc_runtime2_begin_identify_and_load_game(g_runtime, RC_CONSOLE_UNKNOWN, NULL, NULL, 0, rc_runtime2_callback_expect_data_or_file_path_required);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_identify_and_load_game_console_specified(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_runtime = mock_runtime2_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  rc_runtime2_begin_identify_and_load_game(g_runtime, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+      image, image_size, rc_runtime2_callback_expect_success);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
+static void test_identify_and_load_game_console_not_specified(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_runtime = mock_runtime2_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  rc_runtime2_begin_identify_and_load_game(g_runtime, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
+      image, image_size, rc_runtime2_callback_expect_success);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
+static void test_identify_and_load_game_multihash(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  rc_runtime2_begin_identify_and_load_game(g_runtime, RC_CONSOLE_UNKNOWN, "abc.dsk",
+      image, image_size, rc_runtime2_callback_expect_success);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
+static void test_identify_and_load_game_multihash_unknown_game(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+
+  rc_runtime2_begin_identify_and_load_game(g_runtime, RC_CONSOLE_UNKNOWN, "abc.dsk",
+      image, image_size, rc_runtime2_callback_expect_unknown_game);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  /* same hash generated for all dsk consoles - only one server call should be made */
+  assert_api_call_count("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", 1);
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
+static void test_identify_and_load_game_multihash_differ(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_logged_in();
+  g_runtime->callbacks.server_call = rc_runtime2_server_call_async;
+
+  reset_mock_api_handlers();
+
+  rc_runtime2_begin_identify_and_load_game(g_runtime, RC_CONSOLE_UNKNOWN, "abc.dsk",
+      image, image_size, rc_runtime2_callback_expect_success);
+
+  /* modify the checksum so callback for first lookup will generate a new lookup */
+  memset(&image[256], 0, 32);
+
+  /* first lookup fails */
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+  ASSERT_PTR_NOT_NULL(g_runtime->state.load);
+
+  /* second lookup should succeed */
+  async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "4989b063a40dcfa28291ff8d675050e3");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
 }
 
 static void test_achievement_list_simple(void)
@@ -2636,7 +2831,12 @@ void test_runtime2(void) {
   TEST(test_load_game_softcore_unlocks_failure);
   TEST(test_load_game_hardcore_unlocks_failure);
 
-  // TODO: identify and load game
+  TEST(test_identify_and_load_game_required_fields);
+  TEST(test_identify_and_load_game_console_specified);
+  TEST(test_identify_and_load_game_console_not_specified);
+  TEST(test_identify_and_load_game_multihash);
+  TEST(test_identify_and_load_game_multihash_unknown_game);
+  TEST(test_identify_and_load_game_multihash_differ);
 
   /* achievements */
   TEST(test_achievement_list_simple);
@@ -2669,6 +2869,10 @@ void test_runtime2(void) {
   TEST(test_set_hardcore_enable);
   TEST(test_set_encore_mode_enable);
   TEST(test_set_encore_mode_disable);
+
+  // TODO: switch media
+  // TODO: rich presence ping
+  // TODO: retry unlock
 
   TEST_SUITE_END();
 }
