@@ -966,6 +966,218 @@ static void test_identify_and_load_game_multihash_differ(void)
   free(image);
 }
 
+static void test_change_media_required_fields(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  rc_runtime2_begin_change_media(g_runtime, NULL, NULL, 0, rc_runtime2_callback_expect_data_or_file_path_required);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
+static void rc_runtime2_callback_expect_no_game_loaded(int result, const char* error_message, rc_runtime2_t* runtime)
+{
+  ASSERT_NUM_EQUALS(result, RC_NO_GAME_LOADED);
+  ASSERT_STR_EQUALS(error_message, "No game loaded");
+  ASSERT_PTR_EQUALS(runtime, g_runtime);
+}
+
+static void test_change_media_no_game_loaded(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_logged_in();
+
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo.nes", image, image_size, rc_runtime2_callback_expect_no_game_loaded);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
+static void test_change_media_same_game(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+
+  /* changing known discs within a game set is expected to succeed */
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo.nes", image, image_size, rc_runtime2_callback_expect_success);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  /* resetting with a disc from the current game is allowed */
+  rc_runtime2_reset(g_runtime);
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
+static void test_change_media_known_game(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":5555}");
+
+  /* changing to a known disc from another game is allowed */
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo.nes", image, image_size, rc_runtime2_callback_expect_success);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  /* resetting with a disc from another game will disable the runtime */
+  rc_runtime2_reset(g_runtime);
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
+static void rc_runtime2_callback_expect_hardcore_disabled_undentified_media(int result, const char* error_message, rc_runtime2_t* runtime)
+{
+  ASSERT_NUM_EQUALS(result, RC_HARDCORE_DISABLED);
+  ASSERT_STR_EQUALS(error_message, "Hardcore disabled. Unidentified media inserted.");
+  ASSERT_PTR_EQUALS(runtime, g_runtime);
+}
+
+static void test_change_media_unknown_game(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  ASSERT_TRUE(rc_runtime2_get_hardcore_enabled(g_runtime));
+
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+
+  /* changing to an unknown disc is not allowed - could be a hacked version of one of the game's discs */
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo.nes", image, image_size,
+      rc_runtime2_callback_expect_hardcore_disabled_undentified_media);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  ASSERT_FALSE(rc_runtime2_get_hardcore_enabled(g_runtime));
+
+  /* resetting with a disc not from the current game will disable the runtime */
+  rc_runtime2_reset(g_runtime);
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
+static void test_change_media_unhashable(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  /* N64 hash will fail with Not a Nintendo 64 ROM */
+  g_runtime->game->public.console_id = RC_CONSOLE_NINTENDO_64;
+
+  /* changing to a disc not supported by the system is allowed */
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo.nes", image, image_size, rc_runtime2_callback_expect_success);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "[NO HASH]");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  /* resetting with a disc not from the current game will disable the runtime */
+  rc_runtime2_reset(g_runtime);
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NULL(g_runtime->game);
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
 static void test_achievement_list_simple(void)
 {
   rc_runtime2_achievement_list_t* list;
@@ -2838,6 +3050,13 @@ void test_runtime2(void) {
   TEST(test_identify_and_load_game_multihash_unknown_game);
   TEST(test_identify_and_load_game_multihash_differ);
 
+  TEST(test_change_media_required_fields);
+  TEST(test_change_media_no_game_loaded);
+  TEST(test_change_media_same_game);
+  TEST(test_change_media_known_game);
+  TEST(test_change_media_unknown_game);
+  TEST(test_change_media_unhashable);
+
   /* achievements */
   TEST(test_achievement_list_simple);
   TEST(test_achievement_list_simple_with_unlocks);
@@ -2870,7 +3089,6 @@ void test_runtime2(void) {
   TEST(test_set_encore_mode_enable);
   TEST(test_set_encore_mode_disable);
 
-  // TODO: switch media
   // TODO: rich presence ping
   // TODO: retry unlock
 

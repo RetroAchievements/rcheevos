@@ -203,6 +203,7 @@ const char* rc_error_str(int ret)
     case RC_API_FAILURE: return "API call failed";
     case RC_LOGIN_REQUIRED: return "Login required";
     case RC_NO_GAME_LOADED: return "No game loaded";
+    case RC_HARDCORE_DISABLED: return "Hardcore disabled";
     default: return "Unknown error";
   }
 }

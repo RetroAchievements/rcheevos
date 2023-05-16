@@ -190,6 +190,12 @@ typedef struct rc_runtime2_game_t {
  */
 const rc_runtime2_game_t* rc_runtime2_get_game_info(const rc_runtime2_t* runtime);
 
+/**
+ * Changes the active disc in a multi-disc game.
+ */
+void rc_runtime2_begin_change_media(rc_runtime2_t* runtime, const char* file_path,
+    const uint8_t* data, size_t data_size, rc_runtime2_callback_t callback);
+
 /*****************************************************************************\
 | Achievements                                                                |
 \*****************************************************************************/
@@ -326,7 +332,7 @@ enum {
   RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_UPDATE = 10, /* [leaderboard_tracker] updated */
   RC_RUNTIME2_EVENT_RESET = 11, /* emulated system should be reset (as the result of enabling hardcore) */
   RC_RUNTIME2_EVENT_GAME_COMPLETED = 12, /* all achievements for the game have been earned */
-  RC_RUNTIME2_EVENT_SERVER_ERROR = 13, /* an API response returned a [server_error] and will not be retried */
+  RC_RUNTIME2_EVENT_SERVER_ERROR = 13 /* an API response returned a [server_error] and will not be retried */
 };
 
 typedef struct rc_runtime2_server_error_t

@@ -1279,8 +1279,134 @@ void rc_runtime2_unload_game(rc_runtime2_t* runtime)
   runtime->state.load = NULL;
   rc_mutex_unlock(&runtime->state.mutex);
 
-  if (game != NULL)
+  if (game != NULL) {
+    RC_RUNTIME2_LOG_INFO(runtime, "Unloading game %u", runtime->game->public.id);
     rc_runtime2_free_game(game);
+  }
+}
+
+static void rc_runtime2_change_media(rc_runtime2_t* runtime, rc_runtime2_game_hash_t* game_hash, rc_runtime2_callback_t callback)
+{
+  if (game_hash->game_id == runtime->game->public.id) {
+    RC_RUNTIME2_LOG_INFO(runtime, "Switching to valid media for game %u: %s", game_hash->game_id, game_hash->hash);
+  }
+  else if (game_hash->game_id == RC_RUNTIME2_UNKNOWN_GAME_ID) {
+    RC_RUNTIME2_LOG_INFO(runtime, "Switching to unknown media");
+  }
+  else if (game_hash->game_id == 0) {
+    RC_RUNTIME2_LOG_INFO(runtime, "Switching to unrecognized media: %s", game_hash->hash);
+  }
+  else {
+    RC_RUNTIME2_LOG_INFO(runtime, "Switching to known media for game %u: %s", game_hash->game_id, game_hash->hash);
+  }
+
+  runtime->game->public.hash = game_hash->hash;
+  callback(RC_OK, NULL, runtime);
+}
+
+static void rc_runtime2_identify_changed_media_callback(const char* server_response_body, int http_status_code, void* callback_data)
+{
+  rc_runtime2_load_state_t* load_state = (rc_runtime2_load_state_t*)callback_data;
+  rc_runtime2_t* runtime = load_state->runtime;
+  rc_api_resolve_hash_response_t resolve_hash_response;
+
+  int result = rc_api_process_resolve_hash_response(&resolve_hash_response, server_response_body);
+  const char* error_message = rc_runtime2_server_error_message(&result, http_status_code, &resolve_hash_response.response);
+
+  if (runtime->game != load_state->game) {
+    /* loaded game changed. return success regardless of result */
+    load_state->callback(RC_OK, NULL, runtime);
+  }
+  else if (error_message) {
+    load_state->callback(result, error_message, runtime);
+  }
+  else {
+    load_state->hash->game_id = resolve_hash_response.game_id;
+
+    if (resolve_hash_response.game_id == 0 && runtime->state.hardcore) {
+      RC_RUNTIME2_LOG_WARN(runtime, "Disabling hardcore for unidentified media: %s", load_state->hash->hash);
+      rc_runtime2_set_hardcore_enabled(runtime, 0);
+      runtime->game->public.hash = load_state->hash->hash; /* do still update the loaded hash */
+      load_state->callback(RC_HARDCORE_DISABLED, "Hardcore disabled. Unidentified media inserted.", runtime);
+    }
+    else {
+      RC_RUNTIME2_LOG_INFO(runtime, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
+      rc_runtime2_change_media(runtime, load_state->hash, load_state->callback);
+    }
+  }
+
+  free(load_state);
+  rc_api_destroy_resolve_hash_response(&resolve_hash_response);
+}
+
+void rc_runtime2_begin_change_media(rc_runtime2_t* runtime, const char* file_path,
+    const uint8_t* data, size_t data_size, rc_runtime2_callback_t callback)
+{
+  rc_runtime2_game_hash_t* game_hash;
+  char hash[33];
+  int result;
+
+  if (!data && !file_path) {
+    callback(RC_INVALID_STATE, "either data or file_path is required", runtime);
+    return;
+  }
+
+  if (runtime->state.load) {
+    // TODO: game still loading, delay hash evaluation
+    return;
+  }
+
+  if (!runtime->game) {
+    callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), runtime);
+    return;
+  }
+
+  // TODO: cache hashes per file_path
+
+  if (data != NULL)
+    result = rc_hash_generate_from_buffer(hash, runtime->game->public.console_id, data, data_size);
+  else
+    result = rc_hash_generate_from_file(hash, runtime->game->public.console_id, file_path);
+
+  if (!result) {
+    /* when changing discs, if the disc is not supported by the system, allow it. this is
+     * primarily for games that support user-provided audio CDs, but does allow using discs
+     * from other systems for games that leverage user-provided discs. */
+    game_hash = rc_runtime2_find_game_hash(runtime, "[NO HASH]");
+    rc_runtime2_change_media(runtime, game_hash, callback);
+    return;
+  }
+
+  game_hash = rc_runtime2_find_game_hash(runtime, hash);
+  if (game_hash->game_id != RC_RUNTIME2_UNKNOWN_GAME_ID) {
+    rc_runtime2_change_media(runtime, game_hash, callback);
+  }
+  else {
+    /* call the server to make sure the hash is valid for the loaded game */
+    rc_runtime2_load_state_t* callback_data;
+    rc_api_resolve_hash_request_t resolve_hash_request;
+    rc_api_request_t request;
+    int result;
+
+    memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
+    resolve_hash_request.game_hash = hash;
+
+    result = rc_api_init_resolve_hash_request(&request, &resolve_hash_request);
+    if (result != RC_OK) {
+      callback(result, rc_error_str(result), runtime);
+      return;
+    }
+
+    callback_data = (rc_runtime2_load_state_t*)calloc(1, sizeof(rc_runtime2_load_state_t));
+    callback_data->callback = callback;
+    callback_data->runtime = runtime;
+    callback_data->hash = game_hash;
+    callback_data->game = runtime->game;
+
+    runtime->callbacks.server_call(&request, rc_runtime2_identify_changed_media_callback, callback_data, runtime);
+
+    rc_api_destroy_request(&request);
+  }
 }
 
 const rc_runtime2_game_t* rc_runtime2_get_game_info(const rc_runtime2_t* runtime)
@@ -2263,8 +2389,18 @@ static void rc_runtime2_reset_achievements(rc_runtime2_t* runtime)
 
 void rc_runtime2_reset(rc_runtime2_t* runtime)
 {
+  rc_runtime2_game_hash_t* game_hash;
   if (!runtime->game)
     return;
+
+  game_hash = rc_runtime2_find_game_hash(runtime, runtime->game->public.hash);
+  if (game_hash && game_hash->game_id != runtime->game->public.id) {
+    /* current media is not for loaded game. unload game */
+    RC_RUNTIME2_LOG_WARN(runtime, "Disabling runtime. Reset with non-game media loaded: %u (%s)",
+        (game_hash->game_id == RC_RUNTIME2_UNKNOWN_GAME_ID) ? 0 : game_hash->game_id, game_hash->hash);
+    rc_runtime2_unload_game(runtime);
+    return;
+  }
 
   RC_RUNTIME2_LOG_INFO(runtime, "Resetting runtime");
 
