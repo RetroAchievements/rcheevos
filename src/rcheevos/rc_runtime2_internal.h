@@ -20,6 +20,20 @@ typedef struct rc_runtime2_callbacks_t {
   void* client_data;
 } rc_runtime2_callbacks_t;
 
+struct rc_runtime2_scheduled_callback_data_t;
+typedef void (*rc_runtime2_scheduled_callback_t)(struct rc_runtime2_scheduled_callback_data_t* callback_data, rc_runtime2_t* runtime, time_t now);
+
+typedef struct rc_runtime2_scheduled_callback_data_t
+{
+  time_t when;
+  unsigned related_id;
+  rc_runtime2_scheduled_callback_t callback;
+  void* data;
+  struct rc_runtime2_scheduled_callback_data_t* next;
+} rc_runtime2_scheduled_callback_data_t;
+
+void rc_runtime2_schedule_callback(rc_runtime2_t* runtime, rc_runtime2_scheduled_callback_data_t* scheduled_callback);
+
 enum {
   RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_NONE = 0,
   RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_TRIGGERED = (1 << 1),
@@ -130,6 +144,8 @@ struct rc_runtime2_load_state_t;
 
 typedef struct rc_runtime2_state_t {
   rc_mutex_t mutex;
+
+  rc_runtime2_scheduled_callback_data_t* scheduled_callbacks;
 
   uint8_t hardcore;
   uint8_t encore_mode;

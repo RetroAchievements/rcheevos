@@ -94,7 +94,8 @@ static const char* patchdata_exhaustive = "{\"Success\":true,\"PatchData\":{"
       GENERIC_LEADERBOARD_JSON("48", "STA:0xH000A=2::CAN:0xH000C=5::SUB:0xH000D=1::VAL:0x 000E", "SCORE") ","   /* different start */
       GENERIC_LEADERBOARD_JSON("51", "STA:0xH000A=3::CAN:0xH000C=6::SUB:0xH000D=1::VAL:M:0xH0009=1", "VALUE") "," /* hit count */
       GENERIC_LEADERBOARD_JSON("52", "STA:0xH000B=3::CAN:0xH000C=7::SUB:0xH000D=1::VAL:M:0xH0009=1", "VALUE")     /* hit count */
-    "]"
+    "],"
+    "\"RichPresencePatch\":\"Display:\\r\\nPoints:@Number(0xH0003)\\r\\n\""
     "}}";
 
 static const char* patchdata_unofficial_unsupported = "{\"Success\":true,\"PatchData\":{"
@@ -2760,6 +2761,73 @@ static void test_do_frame_leaderboard_tracker_sharing_hits(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_idle_ping(void)
+{
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    rc_runtime2_scheduled_callback_t ping_callback;
+    ASSERT_PTR_NOT_NULL(g_runtime->state.scheduled_callbacks);
+    g_runtime->state.scheduled_callbacks->when = 0;
+    ping_callback = g_runtime->state.scheduled_callbacks->callback;
+
+    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234", "{\"Success\":true}");
+
+    rc_runtime2_idle(g_runtime);
+
+    ASSERT_PTR_NOT_NULL(g_runtime->state.scheduled_callbacks);
+    ASSERT_NUM_GREATER(g_runtime->state.scheduled_callbacks->when, time(NULL) + 100);
+    ASSERT_NUM_LESS(g_runtime->state.scheduled_callbacks->when, time(NULL) + 150);
+    ASSERT_PTR_EQUALS(g_runtime->state.scheduled_callbacks->callback, ping_callback);
+  }
+
+  /* unloading game should unschedule ping */
+  rc_runtime2_unload_game(g_runtime);
+  ASSERT_PTR_NULL(g_runtime->state.scheduled_callbacks);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_do_frame_ping_rich_presence(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    rc_runtime2_scheduled_callback_t ping_callback;
+    ASSERT_PTR_NOT_NULL(g_runtime->state.scheduled_callbacks);
+    g_runtime->state.scheduled_callbacks->when = 0;
+    ping_callback = g_runtime->state.scheduled_callbacks->callback;
+
+    mock_memory(memory, sizeof(memory));
+    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a0", "{\"Success\":true}");
+
+    rc_runtime2_do_frame(g_runtime);
+
+    ASSERT_PTR_NOT_NULL(g_runtime->state.scheduled_callbacks);
+    ASSERT_NUM_GREATER(g_runtime->state.scheduled_callbacks->when, time(NULL) + 100);
+    ASSERT_PTR_EQUALS(g_runtime->state.scheduled_callbacks->callback, ping_callback);
+
+    g_runtime->state.scheduled_callbacks->when = 0;
+    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25", "{\"Success\":true}");
+    memory[0x03] = 25;
+
+    rc_runtime2_do_frame(g_runtime);
+
+    ASSERT_PTR_NOT_NULL(g_runtime->state.scheduled_callbacks);
+    ASSERT_NUM_GREATER(g_runtime->state.scheduled_callbacks->when, time(NULL) + 100);
+    ASSERT_PTR_EQUALS(g_runtime->state.scheduled_callbacks->callback, ping_callback);
+
+    assert_api_called("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25");
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
 /* ----- settings ----- */
 
 static void test_set_hardcore_disable(void)
@@ -3083,13 +3151,15 @@ void test_runtime2(void) {
   TEST(test_do_frame_leaderboard_tracker_sharing);
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
 
+  TEST(test_idle_ping);
+  TEST(test_do_frame_ping_rich_presence);
+
   /* settings */
   TEST(test_set_hardcore_disable);
   TEST(test_set_hardcore_enable);
   TEST(test_set_encore_mode_enable);
   TEST(test_set_encore_mode_disable);
 
-  // TODO: rich presence ping
   // TODO: retry unlock
 
   TEST_SUITE_END();

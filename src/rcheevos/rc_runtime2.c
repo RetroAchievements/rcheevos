@@ -290,6 +290,48 @@ const rc_runtime2_user_t* rc_runtime2_get_user_info(const rc_runtime2_t* runtime
 
 /* ===== Game ===== */
 
+static void rc_runtime2_ping_callback(const char* server_response_body, int http_status_code, void* callback_data)
+{
+  rc_runtime2_t* runtime = (rc_runtime2_t*)callback_data;
+  rc_api_ping_response_t response;
+
+  int result = rc_api_process_ping_response(&response, server_response_body);
+  const char* error_message = rc_runtime2_server_error_message(&result, http_status_code, &response.response);
+  if (error_message) {
+    RC_RUNTIME2_LOG_WARN(runtime, "Ping response error: %s", error_message);
+  }
+
+  rc_api_destroy_ping_response(&response);
+}
+
+static void rc_runtime2_ping(rc_runtime2_scheduled_callback_data_t* callback_data, rc_runtime2_t* runtime, time_t now)
+{
+  rc_api_ping_request_t api_params;
+  rc_api_request_t request;
+  char buffer[256];
+  int result;
+
+  rc_runtime_get_richpresence(&runtime->game->runtime, buffer, sizeof(buffer),
+      runtime->state.legacy_peek, runtime, NULL);
+
+  memset(&api_params, 0, sizeof(api_params));
+  api_params.username = runtime->user.username;
+  api_params.api_token = runtime->user.token;
+  api_params.game_id = runtime->game->public.id;
+  api_params.rich_presence = buffer;
+
+  result = rc_api_init_ping_request(&request, &api_params);
+  if (result != RC_OK) {
+    RC_RUNTIME2_LOG_WARN(runtime, "Error generating ping request: %s", rc_error_str(result));
+  }
+  else {
+    runtime->callbacks.server_call(&request, rc_runtime2_ping_callback, runtime, runtime);
+  }
+
+  callback_data->when = now + 120;
+  rc_runtime2_schedule_callback(runtime, callback_data);
+}
+
 static void rc_runtime2_free_game(rc_runtime2_game_info_t* game)
 {
   rc_runtime_destroy(&game->runtime);
@@ -673,6 +715,13 @@ static void rc_runtime2_activate_game(rc_runtime2_load_state_t* load_state)
       /* previous load state was aborted, silently quit */
     }
     else {
+      rc_runtime2_scheduled_callback_data_t* callback_data = rc_buf_alloc(&load_state->game->buffer, sizeof(rc_runtime2_scheduled_callback_data_t));
+      memset(callback_data, 0, sizeof(*callback_data));
+      callback_data->callback = rc_runtime2_ping;
+      callback_data->related_id = load_state->game->public.id;
+      callback_data->when = time(NULL) + 30;
+      rc_runtime2_schedule_callback(runtime, callback_data);
+
       if (load_state->callback)
         load_state->callback(RC_OK, NULL, runtime);
 
@@ -1272,11 +1321,30 @@ void rc_runtime2_begin_identify_and_load_game(rc_runtime2_t* runtime,
 void rc_runtime2_unload_game(rc_runtime2_t* runtime)
 {
   rc_runtime2_game_info_t* game;
+  rc_runtime2_scheduled_callback_data_t** last;
+  rc_runtime2_scheduled_callback_data_t* next;
 
   rc_mutex_lock(&runtime->state.mutex);
+
   game = runtime->game;
   runtime->game = NULL;
   runtime->state.load = NULL;
+
+  last = &runtime->state.scheduled_callbacks;
+  do {
+    next = *last;
+    if (!next)
+      break;
+
+    /* remove rich presence ping scheduled event for game */
+    if (next->callback == rc_runtime2_ping && next->related_id == game->public.id) {
+      *last = next->next;
+      continue;
+    }
+
+    last = &next->next;
+  } while (1);
+
   rc_mutex_unlock(&runtime->state.mutex);
 
   if (game != NULL) {
@@ -2344,6 +2412,8 @@ static void rc_runtime2_raise_leaderboard_events(rc_runtime2_t* runtime)
 void rc_runtime2_do_frame(rc_runtime2_t* runtime)
 {
   if (runtime->game && !runtime->game->waiting_for_reset) {
+    rc_runtime_richpresence_t* richpresence;
+
     rc_mutex_lock(&runtime->state.mutex);
 
     rc_runtime2_update_memref_values(runtime);
@@ -2352,7 +2422,10 @@ void rc_runtime2_do_frame(rc_runtime2_t* runtime)
     rc_runtime2_do_frame_process_achievements(runtime);
     if (runtime->state.hardcore)
       rc_runtime2_do_frame_process_leaderboards(runtime);
-    // TODO: process rich presence
+
+    richpresence = runtime->game->runtime.richpresence;
+    if (richpresence && richpresence->richpresence)
+      rc_update_richpresence(richpresence->richpresence, runtime->state.legacy_peek, runtime, NULL);
 
     rc_mutex_unlock(&runtime->state.mutex);
 
@@ -2366,8 +2439,58 @@ void rc_runtime2_do_frame(rc_runtime2_t* runtime)
 
 void rc_runtime2_idle(rc_runtime2_t* runtime)
 {
-  // TODO: rich presence pings
+  rc_runtime2_scheduled_callback_data_t* scheduled_callback = runtime->state.scheduled_callbacks;
+
+  if (scheduled_callback) {
+    const time_t now = time(NULL);
+
+    do
+    {
+      rc_mutex_lock(&runtime->state.mutex);
+      scheduled_callback = runtime->state.scheduled_callbacks;
+      if (scheduled_callback) {
+        if (scheduled_callback->when > now) {
+          /* not time for next callback yet, ignore it */
+          scheduled_callback = NULL;
+        }
+        else {
+          /* remove the callback from the queue while we process it. callback can requeue if desired */
+          runtime->state.scheduled_callbacks = scheduled_callback->next;
+        }
+      }
+      rc_mutex_unlock(&runtime->state.mutex);
+
+      if (!scheduled_callback)
+        break;
+
+      scheduled_callback->callback(scheduled_callback, runtime, now);
+    } while (1);
+  }
+
   // TODO: retry failed requests
+}
+
+void rc_runtime2_schedule_callback(rc_runtime2_t* runtime, rc_runtime2_scheduled_callback_data_t* scheduled_callback)
+{
+  rc_runtime2_scheduled_callback_data_t** last;
+  rc_runtime2_scheduled_callback_data_t* next;
+
+  rc_mutex_lock(&runtime->state.mutex);
+
+  last = &runtime->state.scheduled_callbacks;
+  do
+  {
+    next = *last;
+    if (next == NULL || next->when > scheduled_callback->when) {
+      scheduled_callback->next = next;
+      *last = scheduled_callback;
+      break;
+    }
+
+    last = &next->next;
+  } while (1);
+
+  rc_mutex_unlock(&runtime->state.mutex);
 }
 
 static void rc_runtime2_reset_achievements(rc_runtime2_t* runtime)
