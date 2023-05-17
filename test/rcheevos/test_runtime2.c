@@ -250,7 +250,7 @@ typedef struct rc_mock_api_response
   void* async_callback_data;
 } rc_mock_api_response;
 
-static rc_mock_api_response g_mock_api_responses[8];
+static rc_mock_api_response g_mock_api_responses[12];
 static int g_num_mock_api_responses = 0;
 
 static void rc_runtime2_server_call(const rc_api_request_t* request, rc_runtime2_server_callback_t callback, void* callback_data, rc_runtime2_t* runtime)
@@ -275,6 +275,7 @@ static void rc_runtime2_server_call_async(const rc_api_request_t* request, rc_ru
   g_mock_api_responses[g_num_mock_api_responses].request_params = strdup(request->post_data);
   g_mock_api_responses[g_num_mock_api_responses].async_callback = callback;
   g_mock_api_responses[g_num_mock_api_responses].async_callback_data = callback_data;
+  g_mock_api_responses[g_num_mock_api_responses].seen = -1;
   g_num_mock_api_responses++;
 }
 
@@ -289,6 +290,9 @@ static void async_api_response(const char* request_params, const char* response_
       g_mock_api_responses[i].async_callback(response_body, 200, g_mock_api_responses[i].async_callback_data);
       free((void*)g_mock_api_responses[i].request_params);
       g_mock_api_responses[i].request_params = NULL;
+
+      while (g_num_mock_api_responses > 0 && g_mock_api_responses[g_num_mock_api_responses - 1].request_params == NULL)
+        --g_num_mock_api_responses;
 	    return;
     }
   }
@@ -300,7 +304,8 @@ static void _assert_api_called(const char* request_params, int count)
 {
   int i;
   for (i = 0; i < g_num_mock_api_responses; i++) {
-    if (strcmp(g_mock_api_responses[i].request_params, request_params) == 0) {
+    if (g_mock_api_responses[i].request_params &&
+        strcmp(g_mock_api_responses[i].request_params, request_params) == 0) {
       ASSERT_NUM_EQUALS(g_mock_api_responses[i].seen, count);
       return;
     }
@@ -311,6 +316,7 @@ static void _assert_api_called(const char* request_params, int count)
 #define assert_api_called(request_params) ASSERT_HELPER(_assert_api_called(request_params, 1), "assert_api_called")
 #define assert_api_not_called(request_params) ASSERT_HELPER(_assert_api_called(request_params, 0), "assert_api_not_called")
 #define assert_api_call_count(request_params, num) ASSERT_HELPER(_assert_api_called(request_params, num), "assert_api_call_count")
+#define assert_api_pending(request_params) ASSERT_HELPER(_assert_api_called(request_params, -1), "assert_api_pending")
 
 static void reset_mock_api_handlers(void)
 {
@@ -1730,6 +1736,84 @@ static void test_do_frame_achievement_trigger_while_spectating(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_do_frame_achievement_trigger_automatic_retry(void)
+{
+  const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_runtime->callbacks.server_call = rc_runtime2_server_call_async;
+
+  /* discard the queued ping to make finding the retry easier */
+  g_runtime->state.scheduled_callbacks = NULL;
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    const uint32_t num_active = g_runtime->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[1] = 1;
+    memory[2] = 7;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_TRIGGERED, 5501);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_RUNTIME2_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_runtime2_get_achievement_info(g_runtime, 5501));
+
+    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, num_active - 1);
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* first failure will immediately requeue the request */
+    async_api_response(unlock_request_params, "");
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_runtime->state.scheduled_callbacks);
+
+    /* second failure will queue it */
+    async_api_response(unlock_request_params, "");
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_runtime->state.scheduled_callbacks);
+
+    g_runtime->state.scheduled_callbacks->when = 0;
+    rc_runtime2_idle(g_runtime);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_runtime->state.scheduled_callbacks);
+
+    /* third failure will requeue it */
+    async_api_response(unlock_request_params, "");
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_runtime->state.scheduled_callbacks);
+
+    g_runtime->state.scheduled_callbacks->when = 0;
+    rc_runtime2_idle(g_runtime);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_runtime->state.scheduled_callbacks);
+
+    /* success should not requeue it and update player score */
+    async_api_response(unlock_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+    ASSERT_PTR_NULL(g_runtime->state.scheduled_callbacks);
+
+    ASSERT_NUM_EQUALS(g_runtime->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_runtime->user.score_softcore, 777);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+
 static void test_do_frame_achievement_measured(void)
 {
   rc_runtime2_event_t* event;
@@ -3138,6 +3222,7 @@ void test_runtime2(void) {
   TEST(test_do_frame_achievement_trigger_already_awarded);
   TEST(test_do_frame_achievement_trigger_server_error);
   TEST(test_do_frame_achievement_trigger_while_spectating);
+  TEST(test_do_frame_achievement_trigger_automatic_retry);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_challenge_indicator);
   TEST(test_do_frame_mastery);
@@ -3160,7 +3245,7 @@ void test_runtime2(void) {
   TEST(test_set_encore_mode_enable);
   TEST(test_set_encore_mode_disable);
 
-  // TODO: retry unlock
+  // TODO: serialize/deserialize state
 
   TEST_SUITE_END();
 }

@@ -1743,9 +1743,31 @@ const rc_runtime2_achievement_t* rc_runtime2_get_achievement_info(const rc_runti
   return NULL;
 }
 
+typedef struct rc_runtime2_award_achievement_callback_data_t
+{
+  uint32_t id;
+  uint32_t retry_count;
+  uint8_t hardcore;
+  const char* game_hash;
+  time_t unlock_time;
+  rc_runtime2_t* runtime;
+  rc_runtime2_scheduled_callback_data_t* scheduled_callback_data;
+} rc_runtime2_award_achievement_callback_data_t;
+
+static void rc_runtime2_award_achievement_server_call(rc_runtime2_award_achievement_callback_data_t* ach_data);
+
+static void rc_runtime2_award_achievement_retry(rc_runtime2_scheduled_callback_data_t* callback_data, rc_runtime2_t* runtime, time_t now)
+{
+  rc_runtime2_award_achievement_callback_data_t* ach_data =
+    (rc_runtime2_award_achievement_callback_data_t*)callback_data->data;
+
+  rc_runtime2_award_achievement_server_call(ach_data);
+}
+
 static void rc_runtime2_award_achievement_callback(const char* server_response_body, int http_status_code, void* callback_data)
 {
-  rc_runtime2_callback_id_t* ach_data = (rc_runtime2_callback_id_t*)callback_data;
+  rc_runtime2_award_achievement_callback_data_t* ach_data =
+      (rc_runtime2_award_achievement_callback_data_t*)callback_data;
   rc_api_award_achievement_response_t award_achievement_response;
 
   int result = rc_api_process_award_achievement_response(&award_achievement_response, server_response_body);
@@ -1757,8 +1779,28 @@ static void rc_runtime2_award_achievement_callback(const char* server_response_b
     if (award_achievement_response.response.error_message) {
       rc_runtime2_raise_server_error_event(ach_data->runtime, "award_achievement", award_achievement_response.response.error_message);
     }
+    else if (ach_data->retry_count++ == 0) {
+      /* first retry is immediate */
+      rc_runtime2_award_achievement_server_call(ach_data);
+      return;
+    }
     else {
-      // TODO: queue retry
+      if (!ach_data->scheduled_callback_data) {
+        ach_data->scheduled_callback_data = (rc_runtime2_scheduled_callback_data_t*)calloc(1, sizeof(*ach_data->scheduled_callback_data));
+        ach_data->scheduled_callback_data->callback = rc_runtime2_award_achievement_retry;
+        ach_data->scheduled_callback_data->data = ach_data;
+        ach_data->scheduled_callback_data->related_id = ach_data->id;
+      }
+
+      /* double wait time between each attempt until we hit a maximum delay of two minutes */
+      /* 1s -> 2s -> 4s -> 8s -> 16s -> 32s -> 64s -> 120s -> 120s -> 120s ...*/
+      if (ach_data->retry_count > 8)
+        ach_data->scheduled_callback_data->when = time(NULL) + 120;
+      else
+        ach_data->scheduled_callback_data->when = time(NULL) + (time_t)(1 << (ach_data->retry_count - 1));
+
+      rc_runtime2_schedule_callback(ach_data->runtime, ach_data->scheduled_callback_data);
+      return;
     }
   }
   else
@@ -1775,6 +1817,9 @@ static void rc_runtime2_award_achievement_callback(const char* server_response_b
         /* previously unlocked achievements are returned as a success with an error message */
         RC_RUNTIME2_LOG_INFO(ach_data->runtime, "Achievement %u: %s", ach_data->id, award_achievement_response.response.error_message);
       }
+      else if (ach_data->retry_count) {
+        RC_RUNTIME2_LOG_INFO(ach_data->runtime, "Achievement %u awarded after %u attempts", ach_data->id, ach_data->retry_count + 1);
+      }
 
       if (award_achievement_response.achievements_remaining == 0 &&
           ach_data->runtime->state.mastery == RC_RUNTIME2_MASTERY_STATE_NONE) {
@@ -1783,15 +1828,39 @@ static void rc_runtime2_award_achievement_callback(const char* server_response_b
     }
   }
 
+  if (ach_data->scheduled_callback_data)
+    free(ach_data->scheduled_callback_data);
   free(ach_data);
+}
+
+static void rc_runtime2_award_achievement_server_call(rc_runtime2_award_achievement_callback_data_t* ach_data)
+{ 
+  rc_api_award_achievement_request_t api_params;
+  rc_api_request_t request;
+  int result;
+
+  memset(&api_params, 0, sizeof(api_params));
+  api_params.username = ach_data->runtime->user.username;
+  api_params.api_token = ach_data->runtime->user.token;
+  api_params.achievement_id = ach_data->id;
+  api_params.hardcore = ach_data->hardcore;
+  api_params.game_hash = ach_data->game_hash;
+
+  result = rc_api_init_award_achievement_request(&request, &api_params);
+  if (result != RC_OK) {
+    RC_RUNTIME2_LOG_ERR(ach_data->runtime, "Error constructing unlock request for achievement %u: %s", ach_data->id, rc_error_str(result));
+    free(ach_data);
+    return;
+  }
+
+  ach_data->runtime->callbacks.server_call(&request, rc_runtime2_award_achievement_callback, ach_data, ach_data->runtime);
+
+  rc_api_destroy_request(&request);
 }
 
 static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_achievement_info_t* achievement)
 {
-  rc_runtime2_callback_id_t* callback_data;
-  rc_api_award_achievement_request_t api_params;
-  rc_api_request_t request;
-  int result;
+  rc_runtime2_award_achievement_callback_data_t* callback_data;
 
   rc_mutex_lock(&runtime->state.mutex);
 
@@ -1828,26 +1897,15 @@ static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_ac
     return;
   }
 
-  memset(&api_params, 0, sizeof(api_params));
-  api_params.username = runtime->user.username;
-  api_params.api_token = runtime->user.token;
-  api_params.achievement_id = achievement->public.id;
-  api_params.hardcore = runtime->state.hardcore;
-  api_params.game_hash = runtime->game->public.hash;
-
-  result = rc_api_init_award_achievement_request(&request, &api_params);
-  if (result != RC_OK) {
-    RC_RUNTIME2_LOG_ERR(runtime, "Error constructing unlock request for achievement %u: %s", achievement->public.id, rc_error_str(result));
-    return;
-  }
-
-  RC_RUNTIME2_LOG_INFO(runtime, "Awarding achievement %u: %s", achievement->public.id, achievement->public.title);
-
-  callback_data = (rc_runtime2_callback_id_t*)calloc(1, sizeof(*callback_data));
+  callback_data = (rc_runtime2_award_achievement_callback_data_t*)calloc(1, sizeof(*callback_data));
   callback_data->runtime = runtime;
   callback_data->id = achievement->public.id;
-  runtime->callbacks.server_call(&request, rc_runtime2_award_achievement_callback, callback_data, runtime);
-  rc_api_destroy_request(&request);
+  callback_data->hardcore = runtime->state.hardcore;
+  callback_data->game_hash = runtime->game->public.hash;
+  callback_data->unlock_time = achievement->public.unlock_time;
+
+  RC_RUNTIME2_LOG_INFO(runtime, "Awarding achievement %u: %s", achievement->public.id, achievement->public.title);
+  rc_runtime2_award_achievement_server_call(callback_data);
 }
 
 /* ===== Leaderboards ===== */
@@ -2466,8 +2524,6 @@ void rc_runtime2_idle(rc_runtime2_t* runtime)
       scheduled_callback->callback(scheduled_callback, runtime, now);
     } while (1);
   }
-
-  // TODO: retry failed requests
 }
 
 void rc_runtime2_schedule_callback(rc_runtime2_t* runtime, rc_runtime2_scheduled_callback_data_t* scheduled_callback)
