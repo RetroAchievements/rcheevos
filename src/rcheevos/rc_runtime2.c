@@ -1906,6 +1906,23 @@ static void rc_runtime2_award_achievement(rc_runtime2_t* runtime, rc_runtime2_ac
   rc_runtime2_award_achievement_server_call(callback_data);
 }
 
+static void rc_runtime2_reset_achievements(rc_runtime2_t* runtime)
+{
+  rc_runtime2_achievement_info_t* achievement = runtime->game->achievements;
+  rc_runtime2_achievement_info_t* stop = achievement + runtime->game->public.num_achievements;
+
+  for (; achievement < stop; ++achievement) {
+    rc_trigger_t* trigger = achievement->trigger;
+    if (!trigger || achievement->public.state != RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE)
+      continue;
+
+    if (trigger->state == RC_TRIGGER_STATE_PRIMED)
+      achievement->pending_events |= RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+
+    rc_reset_trigger(trigger);
+  }
+}
+
 /* ===== Leaderboards ===== */
 
 const rc_runtime2_leaderboard_t* rc_runtime2_get_leaderboard_info(const rc_runtime2_t* runtime, uint32_t id)
@@ -2139,6 +2156,33 @@ static void rc_runtime2_submit_leaderboard_entry(rc_runtime2_t* runtime, rc_runt
   RC_RUNTIME2_LOG_INFO(runtime, "Submitting %s (%d) for leaderboard %u: %s",
       leaderboard->public.tracker_value, leaderboard->value, leaderboard->public.id, leaderboard->public.title);
   rc_runtime2_submit_leaderboard_entry_server_call(callback_data);
+}
+
+static void rc_runtime2_reset_leaderboards(rc_runtime2_t* runtime)
+{
+  rc_runtime2_leaderboard_info_t* leaderboard = runtime->game->leaderboards;
+  rc_runtime2_leaderboard_info_t* stop = leaderboard + runtime->game->public.num_leaderboards;
+
+  for (; leaderboard < stop; ++leaderboard) {
+    rc_lboard_t* lboard = leaderboard->lboard;
+    if (!lboard)
+      continue;
+
+    switch (leaderboard->public.state)
+    {
+      case RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE:
+      case RC_RUNTIME2_LEADERBOARD_STATE_DISABLED:
+        continue;
+
+      case RC_RUNTIME2_LEADERBOARD_STATE_TRACKING:
+        rc_runtime2_release_leaderboard_tracker(runtime->game, leaderboard);
+        /* fallthrough to default */
+      default:
+        leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE;
+        rc_reset_lboard(lboard);
+        break;
+    }
+  }
 }
 
 /* ===== Processing ===== */
@@ -2605,21 +2649,18 @@ void rc_runtime2_schedule_callback(rc_runtime2_t* runtime, rc_runtime2_scheduled
   rc_mutex_unlock(&runtime->state.mutex);
 }
 
-static void rc_runtime2_reset_achievements(rc_runtime2_t* runtime)
+static void rc_runtime2_reset_richpresence(rc_runtime2_t* runtime)
 {
-  rc_runtime2_achievement_info_t* achievement = runtime->game->achievements;
-  rc_runtime2_achievement_info_t* stop = achievement + runtime->game->public.num_achievements;
+  rc_runtime_richpresence_t* richpresence = runtime->game->runtime.richpresence;
+  if (richpresence && richpresence->richpresence)
+    rc_reset_richpresence(richpresence->richpresence);
+}
 
-  for (; achievement < stop; ++achievement) {
-    rc_trigger_t* trigger = achievement->trigger;
-    if (!trigger || achievement->public.state != RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE)
-      continue;
-
-    if (trigger->state == RC_TRIGGER_STATE_PRIMED)
-      achievement->pending_events |= RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
-
-    rc_reset_trigger(trigger);
-  }
+static void rc_runtime2_reset_variables(rc_runtime2_t* runtime)
+{
+  rc_value_t* variable = runtime->game->runtime.variables;
+  for (; variable; variable = variable->next)
+    rc_reset_value(variable);
 }
 
 void rc_runtime2_reset(rc_runtime2_t* runtime)
@@ -2643,12 +2684,14 @@ void rc_runtime2_reset(rc_runtime2_t* runtime)
 
   runtime->game->waiting_for_reset = 0;
   rc_runtime2_reset_achievements(runtime);
-  // TODO: rc_runtime2_reset_leaderboards(runtime);
+  rc_runtime2_reset_leaderboards(runtime);
+  rc_runtime2_reset_richpresence(runtime);
+  rc_runtime2_reset_variables(runtime);
 
   rc_mutex_unlock(&runtime->state.mutex);
 
   rc_runtime2_raise_achievement_events(runtime);
-  // TODO: rc_runtime2_raise_leaderboard_events(runtime);
+  rc_runtime2_raise_leaderboard_events(runtime);
 }
 
 /* ===== Toggles ===== */

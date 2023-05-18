@@ -712,13 +712,8 @@ void rc_runtime_reset(rc_runtime_t* self) {
       rc_reset_lboard(self->lboards[i].lboard);
   }
 
-  if (self->richpresence && self->richpresence->richpresence) {
-    rc_richpresence_display_t* display = self->richpresence->richpresence->first_display;
-    while (display != 0) {
-      rc_reset_trigger(&display->trigger);
-      display = display->next;
-    }
-  }
+  if (self->richpresence && self->richpresence->richpresence)
+    rc_reset_richpresence(self->richpresence->richpresence);
 
   for (variable = self->variables; variable; variable = variable->next)
     rc_reset_value(variable);
