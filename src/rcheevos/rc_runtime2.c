@@ -655,8 +655,6 @@ static void rc_runtime2_deactivate_leaderboards(rc_runtime2_game_info_t* game, r
   }
 
   game->runtime.lboard_count = 0;
-
-  rc_runtime2_raise_leaderboard_events(runtime);
 }
 
 static void rc_runtime2_apply_unlocks(rc_runtime2_game_info_t* game, uint32_t* unlocks, uint32_t num_unlocks, uint8_t mode)
@@ -2660,19 +2658,12 @@ static void rc_runtime2_enable_hardcore(rc_runtime2_t* runtime)
   runtime->state.hardcore = 1;
 
   if (runtime->game) {
-    rc_runtime2_event_t runtime_event;
-
     rc_runtime2_toggle_hardcore_achievements(runtime->game, runtime, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_HARDCORE);
     rc_runtime2_activate_leaderboards(runtime->game, runtime);
 
     /* disable processing until the client acknowledges the reset event by calling rc_runtime_reset() */
     RC_RUNTIME2_LOG_INFO(runtime, "Hardcore enabled, waiting for reset");
     runtime->game->waiting_for_reset = 1;
-
-    memset(&runtime_event, 0, sizeof(runtime_event));
-    runtime_event.type = RC_RUNTIME2_EVENT_RESET;
-    runtime_event.runtime = runtime;
-    runtime->callbacks.event_handler(&runtime_event);
   }
   else {
     RC_RUNTIME2_LOG_INFO(runtime, "Hardcore enabled");
@@ -2692,6 +2683,7 @@ static void rc_runtime2_disable_hardcore(rc_runtime2_t* runtime)
 
 void rc_runtime2_set_hardcore_enabled(rc_runtime2_t* runtime, int enabled)
 {
+  int changed = 0;
   rc_mutex_lock(&runtime->state.mutex);
 
   if (runtime->state.hardcore != enabled) {
@@ -2699,9 +2691,29 @@ void rc_runtime2_set_hardcore_enabled(rc_runtime2_t* runtime, int enabled)
       rc_runtime2_enable_hardcore(runtime);
     else
       rc_runtime2_disable_hardcore(runtime);
+
+    changed = 1;
   }
 
   rc_mutex_unlock(&runtime->state.mutex);
+
+  /* events must be raised outside of lock */
+  if (changed && runtime->game) {
+    if (enabled) {
+      /* if enabling hardcore, notify client that a reset is requested */
+      if (runtime->game->waiting_for_reset) {
+        rc_runtime2_event_t runtime_event;
+        memset(&runtime_event, 0, sizeof(runtime_event));
+        runtime_event.type = RC_RUNTIME2_EVENT_RESET;
+        runtime_event.runtime = runtime;
+        runtime->callbacks.event_handler(&runtime_event);
+      }
+    }
+    else {
+      /* if disabling hardcore, leaderboards will be deactivated. raise events for hiding trackers */
+      rc_runtime2_raise_leaderboard_events(runtime);
+    }
+  }
 }
 
 int rc_runtime2_get_hardcore_enabled(const rc_runtime2_t* runtime)
