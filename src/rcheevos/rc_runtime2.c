@@ -13,11 +13,6 @@
 #define RC_RUNTIME2_UNKNOWN_GAME_ID (uint32_t)-1
 #define RC_RUNTIME2_RECENT_UNLOCK_DELAY_SECONDS (10 * 60) /* ten minutes */
 
-typedef struct rc_runtime2_callback_id_t {
-  rc_runtime2_t* runtime;
-  uint32_t id;
-} rc_runtime2_callback_id_t;
-
 typedef struct rc_runtime2_generic_callback_data_t {
   rc_runtime2_t* runtime;
   rc_runtime2_callback_t callback;
@@ -2023,9 +2018,31 @@ static void rc_runtime2_update_leaderboard_tracker(rc_runtime2_game_info_t* game
   }
 }
 
+typedef struct rc_runtime2_submit_leaderboard_entry_callback_data_t
+{
+  uint32_t id;
+  int32_t score;
+  uint32_t retry_count;
+  const char* game_hash;
+  time_t submit_time;
+  rc_runtime2_t* runtime;
+  rc_runtime2_scheduled_callback_data_t* scheduled_callback_data;
+} rc_runtime2_submit_leaderboard_entry_callback_data_t;
+
+static void rc_runtime2_submit_leaderboard_entry_server_call(rc_runtime2_submit_leaderboard_entry_callback_data_t* lboard_data);
+
+static void rc_runtime2_submit_leaderboard_entry_retry(rc_runtime2_scheduled_callback_data_t* callback_data, rc_runtime2_t* runtime, time_t now)
+{
+  rc_runtime2_submit_leaderboard_entry_callback_data_t* lboard_data =
+      (rc_runtime2_submit_leaderboard_entry_callback_data_t*)callback_data->data;
+
+  rc_runtime2_submit_leaderboard_entry_server_call(lboard_data);
+}
+
 static void rc_runtime2_submit_leaderboard_entry_callback(const char* server_response_body, int http_status_code, void* callback_data)
 {
-  rc_runtime2_callback_id_t* lboard_data = (rc_runtime2_callback_id_t*)callback_data;
+  rc_runtime2_submit_leaderboard_entry_callback_data_t* lboard_data =
+      (rc_runtime2_submit_leaderboard_entry_callback_data_t*)callback_data;
   rc_api_submit_lboard_entry_response_t submit_lboard_entry_response;
 
   int result = rc_api_process_submit_lboard_entry_response(&submit_lboard_entry_response, server_response_body);
@@ -2037,23 +2054,70 @@ static void rc_runtime2_submit_leaderboard_entry_callback(const char* server_res
     if (submit_lboard_entry_response.response.error_message) {
       rc_runtime2_raise_server_error_event(lboard_data->runtime, "submit_lboard_entry", submit_lboard_entry_response.response.error_message);
     }
+    else if (lboard_data->retry_count++ == 0) {
+      /* first retry is immediate */
+      rc_runtime2_submit_leaderboard_entry_server_call(lboard_data);
+      return;
+    }
     else {
-      // TODO: queue retry
+      if (!lboard_data->scheduled_callback_data) {
+        lboard_data->scheduled_callback_data = (rc_runtime2_scheduled_callback_data_t*)calloc(1, sizeof(*lboard_data->scheduled_callback_data));
+        lboard_data->scheduled_callback_data->callback = rc_runtime2_submit_leaderboard_entry_retry;
+        lboard_data->scheduled_callback_data->data = lboard_data;
+        lboard_data->scheduled_callback_data->related_id = lboard_data->id;
+      }
+
+      /* double wait time between each attempt until we hit a maximum delay of two minutes */
+      /* 1s -> 2s -> 4s -> 8s -> 16s -> 32s -> 64s -> 120s -> 120s -> 120s ...*/
+      if (lboard_data->retry_count > 8)
+        lboard_data->scheduled_callback_data->when = time(NULL) + 120;
+      else
+        lboard_data->scheduled_callback_data->when = time(NULL) + (time_t)(1 << (lboard_data->retry_count - 1));
+
+      rc_runtime2_schedule_callback(lboard_data->runtime, lboard_data->scheduled_callback_data);
+      return;
     }
   }
   else {
     /* not currently doing anything with the response */
+    if (lboard_data->retry_count) {
+      RC_RUNTIME2_LOG_INFO(lboard_data->runtime, "Leaderboard %u submission %d completed after %u attempts",
+          lboard_data->id, lboard_data->score, lboard_data->retry_count);
+    }
   }
 
+  if (lboard_data->scheduled_callback_data)
+    free(lboard_data->scheduled_callback_data);
   free(lboard_data);
+}
+
+static void rc_runtime2_submit_leaderboard_entry_server_call(rc_runtime2_submit_leaderboard_entry_callback_data_t* lboard_data)
+{
+  rc_api_submit_lboard_entry_request_t api_params;
+  rc_api_request_t request;
+  int result;
+
+  memset(&api_params, 0, sizeof(api_params));
+  api_params.username = lboard_data->runtime->user.username;
+  api_params.api_token = lboard_data->runtime->user.token;
+  api_params.leaderboard_id = lboard_data->id;
+  api_params.score = lboard_data->score;
+  api_params.game_hash = lboard_data->game_hash;
+
+  result = rc_api_init_submit_lboard_entry_request(&request, &api_params);
+  if (result != RC_OK) {
+    RC_RUNTIME2_LOG_ERR(lboard_data->runtime, "Error constructing submit leaderboard entry for leaderboard %u: %s", lboard_data->id, rc_error_str(result));
+    return;
+  }
+
+  lboard_data->runtime->callbacks.server_call(&request, rc_runtime2_submit_leaderboard_entry_callback, lboard_data, lboard_data->runtime);
+
+  rc_api_destroy_request(&request);
 }
 
 static void rc_runtime2_submit_leaderboard_entry(rc_runtime2_t* runtime, rc_runtime2_leaderboard_info_t* leaderboard)
 {
-  rc_runtime2_callback_id_t* callback_data;
-  rc_api_submit_lboard_entry_request_t api_params;
-  rc_api_request_t request;
-  int result;
+  rc_runtime2_submit_leaderboard_entry_callback_data_t* callback_data;
 
   /* don't actually submit leaderboard entries when spectating */
   if (runtime->state.spectator_mode) {
@@ -2062,27 +2126,16 @@ static void rc_runtime2_submit_leaderboard_entry(rc_runtime2_t* runtime, rc_runt
     return;
   }
 
-  memset(&api_params, 0, sizeof(api_params));
-  api_params.username = runtime->user.username;
-  api_params.api_token = runtime->user.token;
-  api_params.leaderboard_id = leaderboard->public.id;
-  api_params.score = leaderboard->value;
-  api_params.game_hash = runtime->game->public.hash;
-
-  result = rc_api_init_submit_lboard_entry_request(&request, &api_params);
-  if (result != RC_OK) {
-    RC_RUNTIME2_LOG_ERR(runtime, "Error constructing submit leaderboard entry for leaderboard %u: %s", leaderboard->public.id, rc_error_str(result));
-    return;
-  }
+  callback_data = (rc_runtime2_submit_leaderboard_entry_callback_data_t*)calloc(1, sizeof(*callback_data));
+  callback_data->runtime = runtime;
+  callback_data->id = leaderboard->public.id;
+  callback_data->score = leaderboard->value;
+  callback_data->game_hash = runtime->game->public.hash;
+  callback_data->submit_time = time(NULL);
 
   RC_RUNTIME2_LOG_INFO(runtime, "Submitting %s (%d) for leaderboard %u: %s",
       leaderboard->public.tracker_value, leaderboard->value, leaderboard->public.id, leaderboard->public.title);
-
-  callback_data = (rc_runtime2_callback_id_t*)calloc(1, sizeof(*callback_data));
-  callback_data->runtime = runtime;
-  callback_data->id = leaderboard->public.id;
-  runtime->callbacks.server_call(&request, rc_runtime2_submit_leaderboard_entry_callback, callback_data, runtime);
-  rc_api_destroy_request(&request);
+  rc_runtime2_submit_leaderboard_entry_server_call(callback_data);
 }
 
 /* ===== Processing ===== */

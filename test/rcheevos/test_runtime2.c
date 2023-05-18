@@ -2845,6 +2845,95 @@ static void test_do_frame_leaderboard_tracker_sharing_hits(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_do_frame_leaderboard_submit_automatic_retry(void)
+{
+  const char* submit_entry_params = "r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&v=a27fa205f7f30c8d13d74806ea5425b6";
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_runtime->callbacks.server_call = rc_runtime2_server_call_async;
+
+  /* discard the queued ping to make finding the retry easier */
+  g_runtime->state.scheduled_callbacks = NULL;
+
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* start the leaderboard */
+    memory[0x0B] = 1;
+    memory[0x0E] = 17;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_STARTED, 44));
+    ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* submit the leaderboard */
+    memory[0x0D] = 1;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 2);
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_SUBMITTED, 44);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+    ASSERT_PTR_EQUALS(event->leaderboard, rc_runtime2_get_leaderboard_info(g_runtime, 44));
+
+    event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE, 1);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+    ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+    event_count = 0;
+    rc_runtime2_do_frame(g_runtime);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* first failure will immediately requeue the request */
+    async_api_response(submit_entry_params, "");
+    assert_api_pending(submit_entry_params);
+    ASSERT_PTR_NULL(g_runtime->state.scheduled_callbacks);
+
+    /* second failure will queue it */
+    async_api_response(submit_entry_params, "");
+    assert_api_call_count(submit_entry_params, 0);
+    ASSERT_PTR_NOT_NULL(g_runtime->state.scheduled_callbacks);
+
+    g_runtime->state.scheduled_callbacks->when = 0;
+    rc_runtime2_idle(g_runtime);
+    assert_api_pending(submit_entry_params);
+    ASSERT_PTR_NULL(g_runtime->state.scheduled_callbacks);
+
+    /* third failure will requeue it */
+    async_api_response(submit_entry_params, "");
+    assert_api_call_count(submit_entry_params, 0);
+    ASSERT_PTR_NOT_NULL(g_runtime->state.scheduled_callbacks);
+
+    g_runtime->state.scheduled_callbacks->when = 0;
+    rc_runtime2_idle(g_runtime);
+    assert_api_pending(submit_entry_params);
+    ASSERT_PTR_NULL(g_runtime->state.scheduled_callbacks);
+
+    /* success should not requeue it and update player score */
+    async_api_response(submit_entry_params,
+        "{\"Success\":true,\"Response\":{\"Score\":17,\"BestScore\":23,"
+        "\"TopEntries\":[{\"User\":\"Player1\",\"Score\":44,\"Rank\":1},{\"User\":\"Username\",\"Score\":23,\"Rank\":2}],"
+        "\"RankInfo\":{\"Rank\":2,\"NumEntries\":\"2\"}}}");
+    ASSERT_PTR_NULL(g_runtime->state.scheduled_callbacks);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
 static void test_idle_ping(void)
 {
   g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
@@ -3235,6 +3324,7 @@ void test_runtime2(void) {
   TEST(test_do_frame_leaderboard_submit_while_spectating);
   TEST(test_do_frame_leaderboard_tracker_sharing);
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
+  TEST(test_do_frame_leaderboard_submit_automatic_retry);
 
   TEST(test_idle_ping);
   TEST(test_do_frame_ping_rich_presence);
