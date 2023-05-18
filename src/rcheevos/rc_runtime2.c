@@ -620,7 +620,7 @@ static void rc_runtime2_activate_leaderboards(rc_runtime2_game_info_t* game, rc_
     }
 
     lboard = game->runtime.lboards;
-    for (; leaderboard < stop; ++leaderboard) {
+    for (leaderboard = game->leaderboards; leaderboard < stop; ++leaderboard) {
       if (leaderboard->public.state == RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE ||
           leaderboard->public.state == RC_RUNTIME2_LEADERBOARD_STATE_TRACKING) {
         lboard->id = leaderboard->public.id;
@@ -2692,6 +2692,129 @@ void rc_runtime2_reset(rc_runtime2_t* runtime)
 
   rc_runtime2_raise_achievement_events(runtime);
   rc_runtime2_raise_leaderboard_events(runtime);
+}
+
+size_t rc_runtime2_progress_size(rc_runtime2_t* runtime)
+{
+  size_t result;
+
+  if (!runtime->game)
+    return 0;
+
+  rc_mutex_lock(&runtime->state.mutex);
+  result = rc_runtime_progress_size(&runtime->game->runtime, NULL);
+  rc_mutex_unlock(&runtime->state.mutex);
+
+  return result;
+}
+
+int rc_runtime2_serialize_progress(rc_runtime2_t* runtime, uint8_t* buffer)
+{
+  int result;
+
+  if (!runtime->game)
+    return RC_NO_GAME_LOADED;
+
+  if (!buffer)
+    return RC_INVALID_STATE;
+
+  rc_mutex_lock(&runtime->state.mutex);
+  result = rc_runtime_serialize_progress(buffer, &runtime->game->runtime, NULL);
+  rc_mutex_unlock(&runtime->state.mutex);
+
+  return result;
+}
+
+int rc_runtime2_deserialize_progress(rc_runtime2_t* runtime, const uint8_t* serialized)
+{
+  rc_runtime2_achievement_info_t* achievement;
+  rc_runtime2_achievement_info_t* achievement_stop;
+  rc_runtime2_leaderboard_info_t* leaderboard;
+  rc_runtime2_leaderboard_info_t* leaderboard_stop;
+  int result;
+
+  if (!runtime->game)
+    return RC_NO_GAME_LOADED;
+
+  rc_mutex_lock(&runtime->state.mutex);
+
+  /* flag any visible challenge indicators to be hidden */
+  achievement = runtime->game->achievements;
+  achievement_stop = achievement + runtime->game->public.num_achievements;
+  for (; achievement < achievement_stop; ++achievement) {
+    rc_trigger_t* trigger = achievement->trigger;
+    if (trigger && trigger->state == RC_TRIGGER_STATE_PRIMED &&
+        achievement->public.state == RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE) {
+      achievement->pending_events |= RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+    }
+  }
+
+  /* flag any visible trackers to be hidden */
+  leaderboard = runtime->game->leaderboards;
+  leaderboard_stop = leaderboard + runtime->game->public.num_leaderboards;
+  for (; leaderboard < leaderboard_stop; ++leaderboard) {
+    rc_lboard_t* lboard = leaderboard->lboard;
+    if (lboard && lboard->state == RC_LBOARD_STATE_STARTED &&
+        leaderboard->public.state == RC_RUNTIME2_LEADERBOARD_STATE_TRACKING) {
+      leaderboard->pending_events |= RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_FAILED;
+    }
+  }
+
+  /* deserialize the runtime state */
+  result = rc_runtime_deserialize_progress(&runtime->game->runtime, serialized, NULL);
+
+  /* flag any challenge indicators that should be shown */
+  for (achievement = runtime->game->achievements; achievement < achievement_stop; ++achievement) {
+    rc_trigger_t* trigger = achievement->trigger;
+    if (!trigger || achievement->public.state != RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE)
+      continue;
+
+    if (trigger->state == RC_TRIGGER_STATE_PRIMED) {
+      /* if it's already shown, just keep it. otherwise flag it to be shown */
+      if (achievement->pending_events & RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE)
+        achievement->pending_events &= ~RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+      else
+        achievement->pending_events |= RC_RUNTIME2_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_SHOW;
+    }
+    /* ASSERT: only active achievements are serialized, so we don't have to worry about
+     *         deserialization deactiving them. */
+  }
+
+  /* flag any trackers that need to be shown */
+  for (leaderboard = runtime->game->leaderboards; leaderboard < leaderboard_stop; ++leaderboard) {
+    rc_lboard_t* lboard = leaderboard->lboard;
+    if (!lboard ||
+        leaderboard->public.state == RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE ||
+        leaderboard->public.state == RC_RUNTIME2_LEADERBOARD_STATE_DISABLED)
+      continue;
+
+    if (lboard->state == RC_LBOARD_STATE_STARTED) {
+      leaderboard->value = (int)lboard->value.value.value;
+      leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_TRACKING;
+
+      /* if it's already being tracked, just update tracker. otherwise, allocate one */
+      if (leaderboard->pending_events & RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_FAILED) {
+        leaderboard->pending_events &= ~RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_FAILED;
+        rc_runtime2_update_leaderboard_tracker(runtime->game, leaderboard);
+      }
+      else {
+        rc_runtime2_allocate_leaderboard_tracker(runtime->game, leaderboard);
+      }
+    }
+    else if (leaderboard->pending_events & RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_FAILED) {
+      /* deallocate the tracker (don't actually raise the failed event) */
+      leaderboard->pending_events &= ~RC_RUNTIME2_LEADERBOARD_PENDING_EVENT_FAILED;
+      leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE;
+      rc_runtime2_release_leaderboard_tracker(runtime->game, leaderboard);
+    }
+  }
+
+  rc_mutex_unlock(&runtime->state.mutex);
+
+  rc_runtime2_raise_achievement_events(runtime);
+  rc_runtime2_raise_leaderboard_events(runtime);
+
+  return result;
 }
 
 /* ===== Toggles ===== */

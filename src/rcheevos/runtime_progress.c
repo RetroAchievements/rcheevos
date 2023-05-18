@@ -17,7 +17,7 @@
 #define RC_RUNTIME_CHUNK_DONE         0x454E4F44 /* DONE */
 
 typedef struct rc_runtime_progress_t {
-  rc_runtime_t* runtime;
+  const rc_runtime_t* runtime;
 
   int offset;
   unsigned char* buffer;
@@ -109,7 +109,7 @@ static void rc_runtime_progress_end_chunk(rc_runtime_progress_t* progress)
   }
 }
 
-static void rc_runtime_progress_init(rc_runtime_progress_t* progress, rc_runtime_t* runtime, lua_State* L)
+static void rc_runtime_progress_init(rc_runtime_progress_t* progress, const rc_runtime_t* runtime, lua_State* L)
 {
   memset(progress, 0, sizeof(rc_runtime_progress_t));
   progress->runtime = runtime;
@@ -740,7 +740,7 @@ int rc_runtime_progress_size(const rc_runtime_t* runtime, lua_State* L)
   rc_runtime_progress_t progress;
   int result;
 
-  rc_runtime_progress_init(&progress, (rc_runtime_t*)runtime, L);
+  rc_runtime_progress_init(&progress, runtime, L);
 
   result = rc_runtime_progress_serialize_internal(&progress);
   if (result != RC_OK)
@@ -753,7 +753,10 @@ int rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua
 {
   rc_runtime_progress_t progress;
 
-  rc_runtime_progress_init(&progress, (rc_runtime_t*)runtime, L);
+  if (!buffer)
+    return RC_INVALID_STATE;
+
+  rc_runtime_progress_init(&progress, runtime, L);
   progress.buffer = (unsigned char*)buffer;
 
   return rc_runtime_progress_serialize_internal(&progress);

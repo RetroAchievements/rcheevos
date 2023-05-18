@@ -381,6 +381,23 @@ void rc_runtime2_idle(rc_runtime2_t* runtime);
  */
 void rc_runtime2_reset(rc_runtime2_t* runtime);
 
+/**
+ * Gets the number of bytes needed to serialized the runtime state.
+ */
+size_t rc_runtime2_progress_size(rc_runtime2_t* runtime);
+
+/**
+ * Serializes the runtime state into a buffer.
+ * Returns RC_OK on success, or an error indicator.
+ */
+int rc_runtime2_serialize_progress(rc_runtime2_t* runtime, uint8_t* buffer);
+
+/**
+ * Deserializes the runtime state from a buffer.
+ * Returns RC_OK on success, or an error indicator.
+ */
+int rc_runtime2_deserialize_progress(rc_runtime2_t* runtime, const uint8_t* serialized);
+
 #ifdef __cplusplus
 }
 #endif

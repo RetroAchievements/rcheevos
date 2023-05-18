@@ -3067,6 +3067,135 @@ static void test_reset_hides_widgets(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_deserialize_progress_updates_widgets(void)
+{
+  const rc_runtime2_leaderboard_t* leaderboard;
+  const rc_runtime2_achievement_t* achievement;
+  const rc_runtime2_event_t* event;
+  uint8_t* serialized1;
+  uint8_t* serialized2;
+  size_t serialize_size;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
+  mock_memory(memory, sizeof(memory));
+
+  rc_runtime2_do_frame(g_runtime);
+
+  /* create an initial checkpoint */
+  serialize_size = rc_runtime2_progress_size(g_runtime);
+  serialized1 = (uint8_t*)malloc(serialize_size);
+  serialized2 = (uint8_t*)malloc(serialize_size);
+  ASSERT_NUM_EQUALS(rc_runtime2_serialize_progress(g_runtime, serialized1), RC_OK);
+
+  /* activate some widgets */
+  memory[0x01] = 1; /* challenge indicator for achievement 7 */
+  memory[0x0A] = 2; /* tracker for leaderboard 48 */
+  memory[0x0E] = 25; /* leaderboard 48 value */
+  event_count = 0;
+  rc_runtime2_do_frame(g_runtime);
+
+  ASSERT_NUM_EQUALS(event_count, 3); /* challenge indicator show, leaderboard start, tracker show */
+  ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  event_count = 0;
+  rc_runtime2_do_frame(g_runtime);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 7);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_runtime2_achievement_info_t*)achievement)->trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(((rc_runtime2_achievement_info_t*)achievement)->trigger->requirement->conditions->next->current_hits, 2);
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 48);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_TRACKING);
+  ASSERT_NUM_EQUALS(((rc_runtime2_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_STARTED);
+
+  /* capture the state with the widgets visible */
+  ASSERT_NUM_EQUALS(rc_runtime2_serialize_progress(g_runtime, serialized2), RC_OK);
+
+  /* deserialize current state. expect no changes */
+  ASSERT_NUM_EQUALS(rc_runtime2_deserialize_progress(g_runtime, serialized2), RC_OK);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 7);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_runtime2_achievement_info_t*)achievement)->trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(((rc_runtime2_achievement_info_t*)achievement)->trigger->requirement->conditions->next->current_hits, 2);
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 48);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_TRACKING);
+  ASSERT_NUM_EQUALS(((rc_runtime2_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_STARTED);
+
+  /* deserialize original state. expect challenge indicator hide, tracker hide */
+  ASSERT_NUM_EQUALS(rc_runtime2_deserialize_progress(g_runtime, serialized1), RC_OK);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 7);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_runtime2_achievement_info_t*)achievement)->trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_runtime2_achievement_info_t*)achievement)->trigger->requirement->conditions->next->current_hits, 0);
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 48);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_runtime2_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_ACTIVE);
+
+  /* deserialize second state. expect challenge indicator show, tracker show */
+  event_count = 0;
+  ASSERT_NUM_EQUALS(rc_runtime2_deserialize_progress(g_runtime, serialized2), RC_OK);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  achievement = rc_runtime2_get_achievement_info(g_runtime, 7);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_runtime2_achievement_info_t*)achievement)->trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(((rc_runtime2_achievement_info_t*)achievement)->trigger->requirement->conditions->next->current_hits, 2);
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 48);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_TRACKING);
+  ASSERT_NUM_EQUALS(((rc_runtime2_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_STARTED);
+
+  /* update tracker value */
+  memory[0x0E] = 30;
+  event_count = 0;
+  rc_runtime2_do_frame(g_runtime);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_UPDATE, 1);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000030");
+
+  /* deserialize second state. expect challenge tracker update to old value */
+  event_count = 0;
+  ASSERT_NUM_EQUALS(rc_runtime2_deserialize_progress(g_runtime, serialized2), RC_OK);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_UPDATE, 1);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000025");
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 48);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_TRACKING);
+  ASSERT_NUM_EQUALS(((rc_runtime2_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_STARTED);
+
+  free(serialized2);
+  free(serialized1);
+  rc_runtime2_destroy(g_runtime);
+}
+
 /* ----- settings ----- */
 
 static void test_set_hardcore_disable(void)
@@ -3394,6 +3523,7 @@ void test_runtime2(void) {
   TEST(test_do_frame_ping_rich_presence);
 
   TEST(test_reset_hides_widgets);
+  TEST(test_deserialize_progress_updates_widgets);
 
   /* settings */
   TEST(test_set_hardcore_disable);
@@ -3402,8 +3532,6 @@ void test_runtime2(void) {
   TEST(test_set_hardcore_enable_no_game_loaded);
   TEST(test_set_encore_mode_enable);
   TEST(test_set_encore_mode_disable);
-
-  // TODO: serialize/deserialize state
 
   TEST_SUITE_END();
 }
