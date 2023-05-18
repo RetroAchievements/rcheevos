@@ -3048,6 +3048,54 @@ static void test_set_hardcore_disable(void)
   rc_runtime2_destroy(g_runtime);
 }
 
+static void test_set_hardcore_disable_active_tracker(void)
+{
+  const rc_runtime2_leaderboard_t* leaderboard;
+  rc_runtime2_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
+  mock_memory(memory, sizeof(memory));
+
+  rc_runtime2_do_frame(g_runtime);
+
+  memory[0x0C] = 1;
+  memory[0x0E] = 25;
+  event_count = 0;
+  rc_runtime2_do_frame(g_runtime);
+  ASSERT_NUM_EQUALS(event_count, 2);
+
+  event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_STARTED, 4401);
+  ASSERT_PTR_NOT_NULL(event);
+
+  event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_SHOW, 1);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+  ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000025");
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 4401);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_TRACKING);
+
+  event_count = 0;
+  rc_runtime2_set_hardcore_enabled(g_runtime, 0);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 0);
+  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 0);
+  ASSERT_NUM_EQUALS(event_count, 1);
+
+  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 4401);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE);
+
+  event = find_event(RC_RUNTIME2_EVENT_LEADERBOARD_TRACKER_HIDE, 1);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+
+  rc_runtime2_destroy(g_runtime);
+}
+
 static void test_set_hardcore_enable(void)
 {
   const rc_runtime2_achievement_t* achievement;
@@ -3075,9 +3123,11 @@ static void test_set_hardcore_enable(void)
   }
 
   /* when enabling hardcore, flag waiting_for_reset. this will prevent processing until rc_runtime2_reset is called */
+  event_count = 0;
   rc_runtime2_set_hardcore_enabled(g_runtime, 1);
   ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
   ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_RUNTIME2_EVENT_RESET, 0));
 
   achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
@@ -3109,66 +3159,14 @@ static void test_set_hardcore_enable(void)
 
 static void test_set_hardcore_enable_no_game_loaded(void)
 {
-  const rc_runtime2_achievement_t* achievement;
-  const rc_runtime2_leaderboard_t* leaderboard;
-
   g_runtime = mock_runtime2_logged_in();
   rc_runtime2_set_hardcore_enabled(g_runtime, 0);
 
-  /* when enabling hardcore, flag waiting_for_reset. this will prevent processing until rc_runtime2_reset is called */
+  /* enabling hardcore before a game is loaded just toggles the flag  */
+  event_count = 0;
   rc_runtime2_set_hardcore_enabled(g_runtime, 1);
   ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
-  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 1);
-  rc_runtime2_set_hardcore_enabled(g_runtime, 0);
-
-  mock_runtime2_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
-
-  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 0);
-
-  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
-  ASSERT_PTR_NOT_NULL(achievement);
-  if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_INACTIVE);
-    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, 0); /* 5502 should not be active*/
-  }
-
-  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 4401);
-  ASSERT_PTR_NOT_NULL(leaderboard);
-  if (leaderboard) {
-    ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE);
-    ASSERT_NUM_EQUALS(g_runtime->game->runtime.lboard_count, 0);
-  }
-
-  /* when enabling hardcore, flag waiting_for_reset. this will prevent processing until rc_runtime2_reset is called */
-  rc_runtime2_set_hardcore_enabled(g_runtime, 1);
-  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
-  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 1);
-
-  achievement = rc_runtime2_get_achievement_info(g_runtime, 5502);
-  ASSERT_PTR_NOT_NULL(achievement);
-  if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_RUNTIME2_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    ASSERT_NUM_EQUALS(achievement->state, RC_RUNTIME2_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(g_runtime->game->runtime.trigger_count, 1); /* 5502 should be active*/
-  }
-
-  leaderboard = rc_runtime2_get_leaderboard_info(g_runtime, 4401);
-  ASSERT_PTR_NOT_NULL(leaderboard);
-  if (leaderboard) {
-    ASSERT_NUM_EQUALS(leaderboard->state, RC_RUNTIME2_LEADERBOARD_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(g_runtime->game->runtime.lboard_count, 1);
-  }
-
-  /* resetting clears waiting_for_reset */
-  rc_runtime2_reset(g_runtime);
-  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
-  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 0);
-
-  /* hardcore already enabled, attempting to set it again shouldn't flag waiting_for_reset */
-  rc_runtime2_set_hardcore_enabled(g_runtime, 1);
-  ASSERT_NUM_EQUALS(rc_runtime2_get_hardcore_enabled(g_runtime), 1);
-  ASSERT_NUM_EQUALS(g_runtime->game->waiting_for_reset, 0);
+  ASSERT_NUM_EQUALS(event_count, 0);
 
   rc_runtime2_destroy(g_runtime);
 }
@@ -3331,7 +3329,9 @@ void test_runtime2(void) {
 
   /* settings */
   TEST(test_set_hardcore_disable);
+  TEST(test_set_hardcore_disable_active_tracker);
   TEST(test_set_hardcore_enable);
+  TEST(test_set_hardcore_enable_no_game_loaded);
   TEST(test_set_encore_mode_enable);
   TEST(test_set_encore_mode_disable);
 

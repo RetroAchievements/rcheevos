@@ -39,6 +39,8 @@ typedef struct rc_runtime2_load_state_t
 
 static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* callback_data);
 static void rc_runtime2_load_game(rc_runtime2_load_state_t* load_state, const char* hash);
+static void rc_runtime2_raise_leaderboard_events(rc_runtime2_t* runtime);
+static void rc_runtime2_release_leaderboard_tracker(rc_runtime2_game_info_t* game, rc_runtime2_leaderboard_info_t* leaderboard);
 
 /* ===== Construction/Destruction ===== */
 
@@ -643,6 +645,9 @@ static void rc_runtime2_deactivate_leaderboards(rc_runtime2_game_info_t* game, r
       case RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE:
         continue;
 
+      case RC_RUNTIME2_LEADERBOARD_STATE_TRACKING:
+        rc_runtime2_release_leaderboard_tracker(runtime->game, leaderboard);
+        /* fallthrough to default */
       default:
         leaderboard->public.state = RC_RUNTIME2_LEADERBOARD_STATE_INACTIVE;
         break;
@@ -651,7 +656,7 @@ static void rc_runtime2_deactivate_leaderboards(rc_runtime2_game_info_t* game, r
 
   game->runtime.lboard_count = 0;
 
-  // TODO: hide trackers
+  rc_runtime2_raise_leaderboard_events(runtime);
 }
 
 static void rc_runtime2_apply_unlocks(rc_runtime2_game_info_t* game, uint32_t* unlocks, uint32_t num_unlocks, uint8_t mode)
