@@ -1185,6 +1185,45 @@ static void test_change_media_unhashable(void)
   free(image);
 }
 
+static void test_change_media_back_and_forth(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+  uint8_t* image2 = generate_generic_file(image_size);
+  memset(&image2[256], 0, 32); /* force image2 to be different */
+
+  g_runtime = mock_runtime2_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
+
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo.nes", image, image_size, rc_runtime2_callback_expect_success);
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo2.nes", image2, image_size, rc_runtime2_callback_expect_success);
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo.nes", image, image_size, rc_runtime2_callback_expect_success);
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo2.nes", image2, image_size, rc_runtime2_callback_expect_success);
+
+  assert_api_call_count("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", 1);
+  assert_api_call_count("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", 1);
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "4989b063a40dcfa28291ff8d675050e3");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+  free(image2);
+  free(image);
+}
+
 static void test_achievement_list_simple(void)
 {
   rc_runtime2_achievement_list_t* list;
@@ -3490,6 +3529,7 @@ void test_runtime2(void) {
   TEST(test_change_media_known_game);
   TEST(test_change_media_unknown_game);
   TEST(test_change_media_unhashable);
+  TEST(test_change_media_back_and_forth);
 
   /* achievements */
   TEST(test_achievement_list_simple);

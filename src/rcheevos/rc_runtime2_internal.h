@@ -97,10 +97,16 @@ typedef struct rc_runtime2_leaderboard_tracker_info_t {
 } rc_runtime2_leaderboard_tracker_info_t;
 
 typedef struct rc_runtime2_game_hash_t {
-  const char* hash;
-  struct rc_runtime2_game_hash_t* next;
+  char hash[33];
   uint32_t game_id;
+  struct rc_runtime2_game_hash_t* next;
 } rc_runtime2_game_hash_t;
+
+typedef struct rc_runtime2_media_hash_t {
+  rc_runtime2_game_hash_t* game_hash;
+  struct rc_runtime2_media_hash_t* next;
+  uint32_t path_djb2;
+} rc_runtime2_media_hash_t;
 
 typedef struct rc_runtime2_game_info_t {
   rc_runtime2_game_t public;
@@ -108,6 +114,8 @@ typedef struct rc_runtime2_game_info_t {
   rc_runtime2_achievement_info_t* achievements;
   rc_runtime2_leaderboard_info_t* leaderboards;
   rc_runtime2_leaderboard_tracker_info_t* leaderboard_trackers;
+
+  rc_runtime2_media_hash_t* media_hash;
 
   rc_runtime_t runtime;
   uint8_t waiting_for_reset;
