@@ -120,6 +120,8 @@ typedef struct rc_runtime2_game_info_t {
   rc_runtime_t runtime;
   uint8_t waiting_for_reset;
 
+  uint8_t mastery;
+
   uint8_t leaderboard_trackers_capacity;
   uint8_t leaderboard_trackers_size;
 
@@ -160,7 +162,6 @@ typedef struct rc_runtime2_state_t {
   uint8_t spectator_mode;
   uint8_t log_level;
   uint8_t user;
-  uint8_t mastery;
 
   struct rc_runtime2_load_state_t* load;
   rc_memref_t* processing_memref;

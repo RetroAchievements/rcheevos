@@ -315,6 +315,16 @@ typedef struct rc_runtime2_leaderboard_tracker_t {
 } rc_runtime2_leaderboard_tracker_t;
 
 /*****************************************************************************\
+| Rich Presence                                                               |
+\*****************************************************************************/
+
+/**
+ * Gets the current rich presence message.
+ * Returns the number of characters written to buffer.
+ */
+size_t rc_runtime2_get_rich_presence_message(rc_runtime2_t* runtime, char buffer[], size_t buffer_size);
+
+/*****************************************************************************\
 | Processing                                                                  |
 \*****************************************************************************/
 

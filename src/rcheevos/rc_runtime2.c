@@ -39,6 +39,7 @@ typedef struct rc_runtime2_load_state_t
 
 static void rc_runtime2_begin_fetch_game_data(rc_runtime2_load_state_t* callback_data);
 static void rc_runtime2_load_game(rc_runtime2_load_state_t* load_state, const char* hash, const char* file_path);
+static void rc_runtime2_ping(rc_runtime2_scheduled_callback_data_t* callback_data, rc_runtime2_t* runtime, time_t now);
 static void rc_runtime2_raise_leaderboard_events(rc_runtime2_t* runtime);
 static void rc_runtime2_release_leaderboard_tracker(rc_runtime2_game_info_t* game, rc_runtime2_leaderboard_info_t* leaderboard);
 
@@ -286,48 +287,6 @@ const rc_runtime2_user_t* rc_runtime2_get_user_info(const rc_runtime2_t* runtime
 }
 
 /* ===== Game ===== */
-
-static void rc_runtime2_ping_callback(const char* server_response_body, int http_status_code, void* callback_data)
-{
-  rc_runtime2_t* runtime = (rc_runtime2_t*)callback_data;
-  rc_api_ping_response_t response;
-
-  int result = rc_api_process_ping_response(&response, server_response_body);
-  const char* error_message = rc_runtime2_server_error_message(&result, http_status_code, &response.response);
-  if (error_message) {
-    RC_RUNTIME2_LOG_WARN(runtime, "Ping response error: %s", error_message);
-  }
-
-  rc_api_destroy_ping_response(&response);
-}
-
-static void rc_runtime2_ping(rc_runtime2_scheduled_callback_data_t* callback_data, rc_runtime2_t* runtime, time_t now)
-{
-  rc_api_ping_request_t api_params;
-  rc_api_request_t request;
-  char buffer[256];
-  int result;
-
-  rc_runtime_get_richpresence(&runtime->game->runtime, buffer, sizeof(buffer),
-      runtime->state.legacy_peek, runtime, NULL);
-
-  memset(&api_params, 0, sizeof(api_params));
-  api_params.username = runtime->user.username;
-  api_params.api_token = runtime->user.token;
-  api_params.game_id = runtime->game->public.id;
-  api_params.rich_presence = buffer;
-
-  result = rc_api_init_ping_request(&request, &api_params);
-  if (result != RC_OK) {
-    RC_RUNTIME2_LOG_WARN(runtime, "Error generating ping request: %s", rc_error_str(result));
-  }
-  else {
-    runtime->callbacks.server_call(&request, rc_runtime2_ping_callback, runtime, runtime);
-  }
-
-  callback_data->when = now + 120;
-  rc_runtime2_schedule_callback(runtime, callback_data);
-}
 
 static void rc_runtime2_free_game(rc_runtime2_game_info_t* game)
 {
@@ -1859,8 +1818,8 @@ static void rc_runtime2_award_achievement_callback(const char* server_response_b
       }
 
       if (award_achievement_response.achievements_remaining == 0 &&
-          ach_data->runtime->state.mastery == RC_RUNTIME2_MASTERY_STATE_NONE) {
-        ach_data->runtime->state.mastery = RC_RUNTIME2_MASTERY_STATE_PENDING;
+          ach_data->runtime->game->mastery == RC_RUNTIME2_MASTERY_STATE_NONE) {
+        ach_data->runtime->game->mastery = RC_RUNTIME2_MASTERY_STATE_PENDING;
       }
     }
   }
@@ -2224,6 +2183,59 @@ static void rc_runtime2_reset_leaderboards(rc_runtime2_t* runtime)
   }
 }
 
+/* ===== Rich Presence ===== */
+
+static void rc_runtime2_ping_callback(const char* server_response_body, int http_status_code, void* callback_data)
+{
+  rc_runtime2_t* runtime = (rc_runtime2_t*)callback_data;
+  rc_api_ping_response_t response;
+
+  int result = rc_api_process_ping_response(&response, server_response_body);
+  const char* error_message = rc_runtime2_server_error_message(&result, http_status_code, &response.response);
+  if (error_message) {
+    RC_RUNTIME2_LOG_WARN(runtime, "Ping response error: %s", error_message);
+  }
+
+  rc_api_destroy_ping_response(&response);
+}
+
+static void rc_runtime2_ping(rc_runtime2_scheduled_callback_data_t* callback_data, rc_runtime2_t* runtime, time_t now)
+{
+  rc_api_ping_request_t api_params;
+  rc_api_request_t request;
+  char buffer[256];
+  int result;
+
+  rc_runtime_get_richpresence(&runtime->game->runtime, buffer, sizeof(buffer),
+      runtime->state.legacy_peek, runtime, NULL);
+
+  memset(&api_params, 0, sizeof(api_params));
+  api_params.username = runtime->user.username;
+  api_params.api_token = runtime->user.token;
+  api_params.game_id = runtime->game->public.id;
+  api_params.rich_presence = buffer;
+
+  result = rc_api_init_ping_request(&request, &api_params);
+  if (result != RC_OK) {
+    RC_RUNTIME2_LOG_WARN(runtime, "Error generating ping request: %s", rc_error_str(result));
+  }
+  else {
+    runtime->callbacks.server_call(&request, rc_runtime2_ping_callback, runtime, runtime);
+  }
+
+  callback_data->when = now + 120;
+  rc_runtime2_schedule_callback(runtime, callback_data);
+}
+
+size_t rc_runtime2_get_rich_presence_message(rc_runtime2_t* runtime, char buffer[], size_t buffer_size)
+{
+  if (!runtime->game || !buffer)
+    return 0;
+
+  return rc_runtime_get_richpresence(&runtime->game->runtime, buffer, (unsigned)buffer_size,
+      runtime->state.legacy_peek, runtime, NULL);
+}
+
 /* ===== Processing ===== */
 
 void rc_runtime2_set_event_handler(rc_runtime2_t* runtime, rc_runtime2_event_handler_t handler)
@@ -2452,8 +2464,8 @@ static void rc_runtime2_raise_achievement_events(rc_runtime2_t* runtime)
   }
 
   /* raise mastery event if pending */
-  if (runtime->state.mastery == RC_RUNTIME2_MASTERY_STATE_PENDING) {
-    runtime->state.mastery = RC_RUNTIME2_MASTERY_STATE_SHOWN;
+  if (runtime->game->mastery == RC_RUNTIME2_MASTERY_STATE_PENDING) {
+    runtime->game->mastery = RC_RUNTIME2_MASTERY_STATE_SHOWN;
 
     runtime_event.type = RC_RUNTIME2_EVENT_GAME_COMPLETED;
     runtime_event.achievement = NULL;
