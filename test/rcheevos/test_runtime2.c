@@ -1224,6 +1224,95 @@ static void test_change_media_back_and_forth(void)
   free(image);
 }
 
+static void test_change_media_while_loading(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_logged_in();
+  g_runtime->callbacks.server_call = rc_runtime2_server_call_async;
+
+  reset_mock_api_handlers();
+
+  rc_runtime2_begin_load_game(g_runtime, "4989b063a40dcfa28291ff8d675050e3", rc_runtime2_callback_expect_success);
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo.nes", image, image_size, rc_runtime2_callback_expect_success);
+
+  /* load game lookup */
+  async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
+
+  /* media request won't occur until patch data is received */
+  assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857")
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+
+  /* finish loading game */
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
+static void test_change_media_while_loading_later(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_runtime = mock_runtime2_logged_in();
+  g_runtime->callbacks.server_call = rc_runtime2_server_call_async;
+
+  reset_mock_api_handlers();
+
+  rc_runtime2_begin_load_game(g_runtime, "4989b063a40dcfa28291ff8d675050e3", rc_runtime2_callback_expect_success);
+
+  /* get past fetching the patch data so there's a valid console for the change media call */
+  async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+
+  /* change_media should immediately attempt to resolve the new hash */
+  rc_runtime2_begin_change_media(g_runtime, "foo.zip#foo.nes", image, image_size, rc_runtime2_callback_expect_success);
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+
+  /* finish loading game */
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+
+  ASSERT_PTR_NULL(g_runtime->state.load);
+  ASSERT_PTR_NOT_NULL(g_runtime->game);
+  if (g_runtime->game) {
+    ASSERT_PTR_EQUALS(rc_runtime2_get_game_info(g_runtime), &g_runtime->game->public);
+
+    ASSERT_NUM_EQUALS(g_runtime->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_runtime->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_runtime->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_runtime->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_runtime->game->public.num_leaderboards, 1);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+  free(image);
+}
+
 static void test_achievement_list_simple(void)
 {
   rc_runtime2_achievement_list_t* list;
@@ -3530,6 +3619,8 @@ void test_runtime2(void) {
   TEST(test_change_media_unknown_game);
   TEST(test_change_media_unhashable);
   TEST(test_change_media_back_and_forth);
+  TEST(test_change_media_while_loading);
+  TEST(test_change_media_while_loading_later);
 
   /* achievements */
   TEST(test_achievement_list_simple);

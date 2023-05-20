@@ -18,6 +18,14 @@ typedef struct rc_runtime2_generic_callback_data_t {
   rc_runtime2_callback_t callback;
 } rc_runtime2_generic_callback_data_t;
 
+typedef struct rc_runtime2_pending_media_t
+{
+  const char* file_path;
+  uint8_t* data;
+  size_t data_size;
+  rc_runtime2_callback_t callback;
+} rc_runtime2_pending_media_t;
+
 typedef struct rc_runtime2_load_state_t
 {
   rc_runtime2_t* runtime;
@@ -27,6 +35,7 @@ typedef struct rc_runtime2_load_state_t
   rc_runtime2_game_hash_t* hash;
 
   rc_hash_iterator_t hash_iterator;
+  rc_runtime2_pending_media_t* pending_media;
 
   uint32_t* hardcore_unlocks;
   uint32_t* softcore_unlocks;
@@ -998,15 +1007,32 @@ static void rc_runtime2_fetch_game_data_callback(const char* server_response_bod
     /* previous load state was aborted, silently quit */
   }
   else {
+    /* if a change media request is pending, kick it off */
+    rc_runtime2_pending_media_t* pending_media;
+
+    rc_mutex_lock(&load_state->runtime->state.mutex);
+    pending_media = load_state->pending_media;
+    load_state->pending_media = NULL;
     load_state->game->public.console_id = fetch_game_data_response.console_id;
-    load_state->game->public.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
-    snprintf(load_state->game->public.badge_name, sizeof(load_state->game->public.badge_name), "%s", fetch_game_data_response.image_name);
+    rc_mutex_unlock(&load_state->runtime->state.mutex);
+
+    if (pending_media) {
+      rc_runtime2_begin_change_media(runtime, pending_media->file_path,
+          pending_media->data, pending_media->data_size, pending_media->callback);
+      if (pending_media->data)
+        free(pending_media->data);
+      free((void*)pending_media->file_path);
+      free(pending_media);
+    }
 
     /* kick off the start session request while we process the game data */
     rc_runtime2_begin_load_state(load_state, RC_RUNTIME2_LOAD_STATE_STARTING_SESSION, 1);
     rc_runtime2_begin_start_session(load_state);
 
     /* process the game data */
+    load_state->game->public.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
+    snprintf(load_state->game->public.badge_name, sizeof(load_state->game->public.badge_name), "%s", fetch_game_data_response.image_name);
+
     load_state->game->achievements = rc_runtime2_copy_achievements(load_state, &fetch_game_data_response);
     load_state->game->public.num_achievements = fetch_game_data_response.num_achievements;
 
@@ -1381,6 +1407,8 @@ void rc_runtime2_begin_change_media(rc_runtime2_t* runtime, const char* file_pat
 {
   rc_runtime2_game_hash_t* game_hash = NULL;
   rc_runtime2_media_hash_t* media_hash;
+  rc_runtime2_game_info_t* game;
+  rc_runtime2_pending_media_t* pending_media = NULL;
   uint32_t path_djb2;
 
   if (!data && !file_path) {
@@ -1388,20 +1416,49 @@ void rc_runtime2_begin_change_media(rc_runtime2_t* runtime, const char* file_pat
     return;
   }
 
+  rc_mutex_lock(&runtime->state.mutex);
   if (runtime->state.load) {
-    /* TODO: game still loading, delay hash evaluation */
-    return;
-  }
+    game = runtime->state.load->game;
+    if (game->public.console_id == 0) {
+      /* still waiting for game data */
+      pending_media = runtime->state.load->pending_media;
+      if (pending_media) {
+        if (pending_media->data)
+          free(pending_media->data);
+        free((void*)pending_media->file_path);
+        free(pending_media);
+      }
 
-  if (!runtime->game) {
+      pending_media = (rc_runtime2_pending_media_t*)calloc(1, sizeof(*pending_media));
+      pending_media->file_path = strdup(file_path);
+      pending_media->callback = callback;
+      if (data && data_size) {
+        pending_media->data_size = data_size;
+        pending_media->data = (uint8_t*)malloc(data_size);
+        memcpy(pending_media->data, data, data_size);
+      }
+
+      runtime->state.load->pending_media = pending_media;
+    }
+  }
+  else {
+    game = runtime->game;
+  }
+  rc_mutex_unlock(&runtime->state.mutex);
+
+  if (!game) {
     callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), runtime);
     return;
   }
 
+  /* still waiting for game data */
+  if (pending_media) 
+    return;
+
   /* check to see if we've already hashed this file */
   path_djb2 = rc_djb2(file_path);
   rc_mutex_lock(&runtime->state.mutex);
-  for (media_hash = runtime->game->media_hash; media_hash; media_hash = media_hash->next) {
+  for (media_hash = game->media_hash; media_hash; media_hash = media_hash->next) {
     if (media_hash->path_djb2 == path_djb2) {
       game_hash = media_hash->game_hash;
       break;
@@ -1414,9 +1471,9 @@ void rc_runtime2_begin_change_media(rc_runtime2_t* runtime, const char* file_pat
     int result;
 
     if (data != NULL)
-      result = rc_hash_generate_from_buffer(hash, runtime->game->public.console_id, data, data_size);
+      result = rc_hash_generate_from_buffer(hash, game->public.console_id, data, data_size);
     else
-      result = rc_hash_generate_from_file(hash, runtime->game->public.console_id, file_path);
+      result = rc_hash_generate_from_file(hash, game->public.console_id, file_path);
 
     if (!result) {
       /* when changing discs, if the disc is not supported by the system, allow it. this is
@@ -1427,13 +1484,13 @@ void rc_runtime2_begin_change_media(rc_runtime2_t* runtime, const char* file_pat
 
     game_hash = rc_runtime2_find_game_hash(runtime, hash);
 
-    media_hash = (rc_runtime2_media_hash_t*)rc_buf_alloc(&runtime->game->buffer, sizeof(*media_hash));
+    media_hash = (rc_runtime2_media_hash_t*)rc_buf_alloc(&game->buffer, sizeof(*media_hash));
     media_hash->game_hash = game_hash;
     media_hash->path_djb2 = path_djb2;
 
     rc_mutex_lock(&runtime->state.mutex);
-    media_hash->next = runtime->game->media_hash;
-    runtime->game->media_hash = media_hash;
+    media_hash->next = game->media_hash;
+    game->media_hash = media_hash;
     rc_mutex_unlock(&runtime->state.mutex);
 
     if (!result) {
@@ -1465,7 +1522,7 @@ void rc_runtime2_begin_change_media(rc_runtime2_t* runtime, const char* file_pat
     callback_data->callback = callback;
     callback_data->runtime = runtime;
     callback_data->hash = game_hash;
-    callback_data->game = runtime->game;
+    callback_data->game = game;
 
     runtime->callbacks.server_call(&request, rc_runtime2_identify_changed_media_callback, callback_data, runtime);
 
@@ -2937,6 +2994,8 @@ int rc_runtime2_get_hardcore_enabled(const rc_runtime2_t* runtime)
 {
   return runtime->state.hardcore;
 }
+
+// TODO: set_test_unofficial
 
 void rc_runtime2_set_encore_mode_enabled(rc_runtime2_t* runtime, int enabled)
 {
