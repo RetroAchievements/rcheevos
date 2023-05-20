@@ -1413,7 +1413,9 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
 {
   rc_runtime2_achievement_list_t* list;
 
-  g_runtime = mock_runtime2_game_loaded(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
+  g_runtime = mock_runtime2_logged_in();
+  rc_runtime2_set_test_unofficial(g_runtime, 1);
+  mock_runtime2_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
 
   ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE), 2);
   ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 1);
@@ -1463,6 +1465,60 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
     ASSERT_STR_EQUALS(list->buckets[2].label, "Unsupported");
     ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5503);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  rc_runtime2_destroy(g_runtime);
+}
+
+static void test_achievement_list_simple_with_unofficial_off(void)
+{
+  rc_runtime2_achievement_list_t* list;
+
+  g_runtime = mock_runtime2_logged_in();
+  rc_runtime2_set_test_unofficial(g_runtime, 0);
+  mock_runtime2_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
+
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE), 2);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 0);
+  ASSERT_NUM_EQUALS(rc_runtime2_get_achievement_count(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 2);
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
+    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5503);
+
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 0);
+    rc_runtime2_destroy_achievement_list(list);
+  }
+
+  list = rc_runtime2_get_achievement_list(g_runtime, RC_RUNTIME2_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL, RC_RUNTIME2_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
+    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_RUNTIME2_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5503);
 
     rc_runtime2_destroy_achievement_list(list);
   }
@@ -3626,6 +3682,7 @@ void test_runtime2(void) {
   TEST(test_achievement_list_simple);
   TEST(test_achievement_list_simple_with_unlocks);
   TEST(test_achievement_list_simple_with_unofficial_and_unsupported);
+  TEST(test_achievement_list_simple_with_unofficial_off);
   TEST(test_achievement_list_buckets);
 
   /* do frame */

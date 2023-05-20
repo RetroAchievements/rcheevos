@@ -825,7 +825,8 @@ static void rc_runtime2_begin_start_session(rc_runtime2_load_state_t* load_state
   }
 }
 
-static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2_load_state_t* load_state, rc_api_fetch_game_data_response_t* game_data)
+static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(
+    rc_runtime2_load_state_t* load_state, const rc_api_fetch_game_data_response_t* game_data)
 {
   const rc_api_achievement_definition_t* read;
   const rc_api_achievement_definition_t* stop;
@@ -836,9 +837,26 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
   const char* memaddr;
   size_t size;
   int trigger_size;
+  uint32_t num_achievements = game_data->num_achievements;
 
-  if (game_data->num_achievements == 0)
+  if (num_achievements == 0)
     return NULL;
+
+  stop = game_data->achievements + num_achievements;
+
+  /* if not testing unofficial, filter them out */
+  if (!load_state->runtime->state.test_unofficial) {
+    read = game_data->achievements;
+    for (; read < stop; ++read) {
+      if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE)
+        --num_achievements;
+    }
+
+    load_state->game->public.num_achievements = num_achievements;
+
+    if (num_achievements == 0)
+      return NULL;
+  }
 
   /* preallocate space for achievements */
   size = 24 /* assume average title length of 24 */
@@ -846,18 +864,22 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
       + sizeof(rc_trigger_t) + sizeof(rc_condset_t) * 2 /* trigger container */
       + sizeof(rc_condition_t) * 8 /* assume average trigger length of 8 conditions */
       + sizeof(rc_runtime2_achievement_info_t);
-  rc_buf_reserve(&load_state->game->buffer, size * game_data->num_achievements);
+  rc_buf_reserve(&load_state->game->buffer, size * num_achievements);
 
   /* allocate the achievement array */
-  size = sizeof(rc_runtime2_achievement_info_t) * game_data->num_achievements;
+  size = sizeof(rc_runtime2_achievement_info_t) * num_achievements;
   buffer = &load_state->game->buffer;
   achievement = achievements = rc_buf_alloc(buffer, size);
   memset(achievements, 0, size);
 
   /* copy the achievement data */
   read = game_data->achievements;
-  stop = read + game_data->num_achievements;
   do {
+    if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE && !load_state->runtime->state.test_unofficial) {
+      ++read;
+      continue;
+    }
+
     achievement->public.title = rc_buf_strcpy(buffer, read->title);
     achievement->public.description = rc_buf_strcpy(buffer, read->description);
     snprintf(achievement->public.badge_name, sizeof(achievement->public.badge_name), "%s", read->badge_name);
@@ -903,7 +925,8 @@ static rc_runtime2_achievement_info_t* rc_runtime2_copy_achievements(rc_runtime2
   return achievements;
 }
 
-static rc_runtime2_leaderboard_info_t* rc_runtime2_copy_leaderboards(rc_runtime2_load_state_t* load_state, rc_api_fetch_game_data_response_t* game_data)
+static rc_runtime2_leaderboard_info_t* rc_runtime2_copy_leaderboards(
+    rc_runtime2_load_state_t* load_state, const rc_api_fetch_game_data_response_t* game_data)
 {
   const rc_api_leaderboard_definition_t* read;
   const rc_api_leaderboard_definition_t* stop;
@@ -1033,11 +1056,11 @@ static void rc_runtime2_fetch_game_data_callback(const char* server_response_bod
     load_state->game->public.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
     snprintf(load_state->game->public.badge_name, sizeof(load_state->game->public.badge_name), "%s", fetch_game_data_response.image_name);
 
-    load_state->game->achievements = rc_runtime2_copy_achievements(load_state, &fetch_game_data_response);
     load_state->game->public.num_achievements = fetch_game_data_response.num_achievements;
+    load_state->game->achievements = rc_runtime2_copy_achievements(load_state, &fetch_game_data_response);
 
-    load_state->game->leaderboards = rc_runtime2_copy_leaderboards(load_state, &fetch_game_data_response);
     load_state->game->public.num_leaderboards = fetch_game_data_response.num_leaderboards;
+    load_state->game->leaderboards = rc_runtime2_copy_leaderboards(load_state, &fetch_game_data_response);
 
     result = rc_runtime_activate_richpresence(&load_state->game->runtime, fetch_game_data_response.rich_presence_script, NULL, 0);
     if (result != RC_OK) {
@@ -2995,7 +3018,15 @@ int rc_runtime2_get_hardcore_enabled(const rc_runtime2_t* runtime)
   return runtime->state.hardcore;
 }
 
-// TODO: set_test_unofficial
+void rc_runtime2_set_test_unofficial(rc_runtime2_t* runtime, int enabled)
+{
+  runtime->state.test_unofficial = enabled ? 1 : 0;
+}
+
+int rc_runtime2_get_test_unofficial(const rc_runtime2_t* runtime)
+{
+  return runtime->state.test_unofficial;
+}
 
 void rc_runtime2_set_encore_mode_enabled(rc_runtime2_t* runtime, int enabled)
 {

@@ -85,6 +85,17 @@ void rc_runtime2_set_encore_mode_enabled(rc_runtime2_t* runtime, int enabled);
 int rc_runtime2_get_encore_mode_enabled(const rc_runtime2_t* runtime);
 
 /**
+ * Sets whether unofficial achievements should be loaded.
+ * Evaluated when loading a game. Has no effect while a game is loaded.
+ */
+void rc_runtime2_set_test_unofficial(rc_runtime2_t* runtime, int enabled);
+
+/**
+ * Gets whether unofficial achievements should be loaded.
+ */
+int rc_runtime2_get_test_unofficial(const rc_runtime2_t* runtime);
+
+/**
  * Sets whether spectator mode is enabled (off by default).
  * If enabled, events for achievement unlocks and leaderboard submissions will be
  * raised, but server calls to actually perform the unlock/submit will not occur.
