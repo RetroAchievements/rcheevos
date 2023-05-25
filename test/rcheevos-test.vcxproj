@@ -144,7 +144,7 @@
     <ClCompile Include="..\src\rcheevos\memref.c" />
     <ClCompile Include="..\src\rcheevos\operand.c" />
     <ClCompile Include="..\src\rcheevos\rc_libretro.c" />
-    <ClCompile Include="..\src\rcheevos\rc_runtime2.c" />
+    <ClCompile Include="..\src\rcheevos\rc_client.c" />
     <ClCompile Include="..\src\rcheevos\rc_validate.c" />
     <ClCompile Include="..\src\rcheevos\richpresence.c" />
     <ClCompile Include="..\src\rcheevos\runtime.c" />
@@ -204,7 +204,7 @@
     <ClCompile Include="rcheevos\test_rc_validate.c" />
     <ClCompile Include="rcheevos\test_richpresence.c" />
     <ClCompile Include="rcheevos\test_runtime.c" />
-    <ClCompile Include="rcheevos\test_runtime2.c" />
+    <ClCompile Include="rcheevos\test_client.c" />
     <ClCompile Include="rcheevos\test_runtime_progress.c" />
     <ClCompile Include="rcheevos\test_timing.c" />
     <ClCompile Include="rcheevos\test_trigger.c" />
@@ -224,7 +224,7 @@
     <ClInclude Include="..\include\rc_consoles.h" />
     <ClInclude Include="..\include\rc_hash.h" />
     <ClInclude Include="..\include\rc_runtime.h" />
-    <ClInclude Include="..\include\rc_runtime2.h" />
+    <ClInclude Include="..\include\rc_client.h" />
     <ClInclude Include="..\include\rc_runtime_types.h" />
     <ClInclude Include="..\include\rc_url.h" />
     <ClInclude Include="..\src\rcheevos\rc_compat.h" />
@@ -232,7 +232,7 @@
     <ClInclude Include="..\include\rc_error.h" />
     <ClInclude Include="..\src\rapi\rc_api_common.h" />
     <ClInclude Include="..\src\rcheevos\rc_libretro.h" />
-    <ClInclude Include="..\src\rcheevos\rc_runtime2_internal.h" />
+    <ClInclude Include="..\src\rcheevos\rc_client_internal.h" />
     <ClInclude Include="..\src\rcheevos\rc_validate.h" />
     <ClInclude Include="..\src\rcheevos\rc_version.h" />
     <ClInclude Include="..\src\rhash\md5.h" />

@@ -288,10 +288,10 @@
     <ClCompile Include="rcheevos\test_timing.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\rcheevos\rc_runtime2.c">
+    <ClCompile Include="..\src\rcheevos\rc_client.c">
       <Filter>src\rcheevos</Filter>
     </ClCompile>
-    <ClCompile Include="rcheevos\test_runtime2.c">
+    <ClCompile Include="rcheevos\test_client.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
   </ItemGroup>
@@ -368,10 +368,10 @@
     <ClInclude Include="..\src\rcheevos\rc_version.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\rc_runtime2.h">
+    <ClInclude Include="..\include\rc_client.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\rcheevos\rc_runtime2_internal.h">
+    <ClInclude Include="..\src\rcheevos\rc_client_internal.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
   </ItemGroup>
