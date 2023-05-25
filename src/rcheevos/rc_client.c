@@ -162,6 +162,25 @@ static void rc_client_raise_server_error_event(rc_client_t* runtime, const char*
   runtime->callbacks.event_handler(&client_event);
 }
 
+static int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_type, const char* image_name)
+{
+  rc_api_fetch_image_request_t image_request;
+  rc_api_request_t request;
+  int result;
+
+  if (!buffer)
+    return RC_INVALID_STATE;
+
+  memset(&image_request, 0, sizeof(image_request));
+  image_request.image_type = image_type;
+  image_request.image_name = image_name;
+  result = rc_api_init_fetch_image_request(&request, &image_request);
+  if (result == RC_OK)
+    snprintf(buffer, buffer_size, "%s", request.url);
+
+  return result;
+}
+
 /* ===== User ===== */
 
 static void rc_client_login_callback(const char* server_response_body, int http_status_code, void* callback_data)
@@ -292,6 +311,14 @@ void rc_client_begin_login_with_token(rc_client_t* runtime,
 const rc_client_user_t* rc_client_get_user_info(const rc_client_t* client)
 {
   return (client->state.user == RC_CLIENT_USER_STATE_LOGGED_IN) ? &client->user : NULL;
+}
+
+int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], size_t buffer_size)
+{
+  if (!user)
+    return RC_INVALID_STATE;
+
+  return rc_client_get_image_url(buffer, buffer_size, RC_IMAGE_TYPE_USER, user->display_name);
 }
 
 /* ===== Game ===== */
@@ -518,7 +545,7 @@ static void rc_client_toggle_hardcore_achievements(rc_client_game_info_t* game, 
       }
     }
     else if (achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE) {
-      achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE;
+      achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED;
 
       if (achievement->trigger && achievement->trigger->state == RC_TRIGGER_STATE_PRIMED) {
         rc_client_event_t client_event;
@@ -1559,23 +1586,11 @@ const rc_client_game_t* rc_client_get_game_info(const rc_client_t* client)
 
 int rc_client_game_get_badge_url(const rc_client_game_t* game, char buffer[], size_t buffer_size)
 {
-  rc_api_fetch_image_request_t image_request;
-  rc_api_request_t request;
-  int result;
-
-  if (!game || !buffer)
+  if (!game)
     return RC_INVALID_STATE;
 
-  memset(&image_request, 0, sizeof(image_request));
-  image_request.image_type = RC_IMAGE_TYPE_GAME;
-  image_request.image_name = game->badge_name;
-  result = rc_api_init_fetch_image_request(&request, &image_request);
-  if (result == RC_OK)
-    snprintf(buffer, buffer_size, "%s", request.url);
-
-  return result;
+  return rc_client_get_image_url(buffer, buffer_size, RC_IMAGE_TYPE_GAME, game->badge_name);
 }
-
 
 /* ===== Achievements ===== */
 
@@ -1836,6 +1851,17 @@ const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* clien
   }
 
   return NULL;
+}
+
+int rc_client_achievement_get_badge_url(const rc_client_achievement_t* achievement, int state, char buffer[], size_t buffer_size)
+{
+  const int image_type = (state == RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED) ?
+      RC_IMAGE_TYPE_ACHIEVEMENT : RC_IMAGE_TYPE_ACHIEVEMENT_LOCKED;
+
+  if (!achievement)
+    return RC_INVALID_STATE;
+
+  return rc_client_get_image_url(buffer, buffer_size, image_type, achievement->badge_name);
 }
 
 typedef struct rc_client_award_achievement_callback_data_t

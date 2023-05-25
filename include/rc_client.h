@@ -168,6 +168,12 @@ typedef struct rc_client_user_t {
  */
 const rc_client_user_t* rc_client_get_user_info(const rc_client_t* client);
 
+/**
+ * Gets the URL for the user's profile picture.
+ * Returns RC_OK on success.
+ */
+int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], size_t buffer_size);
+
 /*****************************************************************************\
 | Game                                                                        |
 \*****************************************************************************/
@@ -223,10 +229,10 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
 \*****************************************************************************/
 
 enum {
-  RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE = 0,
-  RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE = 1,
-  RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED = 2,
-  RC_CLIENT_ACHIEVEMENT_STATE_DISABLED = 3
+  RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE = 0, /* unprocessed */
+  RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE = 1,   /* eligible to trigger */
+  RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED = 2, /* earned by user */
+  RC_CLIENT_ACHIEVEMENT_STATE_DISABLED = 3  /* not supported by this version of the runtime */
 };
 
 enum {
@@ -272,6 +278,12 @@ typedef struct rc_client_achievement_t {
  * Get information about an achievement. Returns NULL if not found.
  */
 const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* client, uint32_t id);
+
+/**
+ * Gets the URL for the game badge.
+ * Returns RC_OK on success.
+ */
+int rc_client_achievement_get_badge_url(const rc_client_achievement_t* achievement, int state, char buffer[], size_t buffer_size);
 
 /**
  * Gets the number of achievements in a category.

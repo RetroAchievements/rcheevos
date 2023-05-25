@@ -552,6 +552,15 @@ static void test_login_with_password_async(void)
   rc_client_destroy(g_client);
 }
 
+static void test_user_get_image_url(void)
+{
+  char buffer[256];
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  ASSERT_NUM_EQUALS(rc_client_user_get_image_url(rc_client_get_user_info(g_client), buffer, sizeof(buffer)), RC_OK);
+  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/UserPic/DisplayName.png");
+}
+
 /* ----- load game ----- */
 
 static void rc_client_callback_expect_hash_required(int result, const char* error_message, rc_client_t* client)
@@ -1710,6 +1719,28 @@ static void test_achievement_list_buckets(void)
   }
 
   rc_client_destroy(g_client);
+}
+
+static void test_achievement_get_badge_url(void)
+{
+  char buffer[256];
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  ASSERT_NUM_EQUALS(rc_client_achievement_get_badge_url(rc_client_get_achievement_info(g_client, 5501),
+      RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED, buffer, sizeof(buffer)), RC_OK);
+  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233.png");
+
+  ASSERT_NUM_EQUALS(rc_client_achievement_get_badge_url(rc_client_get_achievement_info(g_client, 5501),
+      RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE, buffer, sizeof(buffer)), RC_OK);
+  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233_lock.png");
+
+  ASSERT_NUM_EQUALS(rc_client_achievement_get_badge_url(rc_client_get_achievement_info(g_client, 5501),
+      RC_CLIENT_ACHIEVEMENT_STATE_DISABLED, buffer, sizeof(buffer)), RC_OK);
+  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233_lock.png");
+
+  ASSERT_NUM_EQUALS(rc_client_achievement_get_badge_url(rc_client_get_achievement_info(g_client, 5501),
+      RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE, buffer, sizeof(buffer)), RC_OK);
+  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233_lock.png");
 }
 
 /* ----- do frame ----- */
@@ -3458,7 +3489,7 @@ static void test_set_hardcore_disable(void)
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 0); /* 5502 should not be active*/
   }
 
@@ -3694,6 +3725,8 @@ void test_client(void) {
   TEST(test_login_with_incorrect_password);
   TEST(test_login_incomplete_response);
   TEST(test_login_with_password_async);
+
+  TEST(test_user_get_image_url);
 
   /* load game */
   TEST(test_load_game_required_fields);
