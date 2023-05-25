@@ -1374,7 +1374,7 @@ static void test_achievement_list_simple(void)
   ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 0);
   ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 2);
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 1);
@@ -1391,7 +1391,7 @@ static void test_achievement_list_simple(void)
     rc_client_destroy_achievement_list(list);
   }
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 0);
@@ -1409,7 +1409,7 @@ static void test_achievement_list_simple_with_unlocks(void)
 
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     /* in hardcore mode, 5501 should be unlocked, but 5502 will be locked */
@@ -1435,7 +1435,7 @@ static void test_achievement_list_simple_with_unlocks(void)
 
   g_client->state.hardcore = 0;
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     /* in softcore mode, both should be unlocked */
@@ -1470,7 +1470,7 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
   ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 1);
   ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 3);
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 2);
@@ -1486,7 +1486,7 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
     rc_client_destroy_achievement_list(list);
   }
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 1);
@@ -1498,7 +1498,7 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
     rc_client_destroy_achievement_list(list);
   }
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 3);
@@ -1533,7 +1533,7 @@ static void test_achievement_list_simple_with_unofficial_off(void)
   ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 0);
   ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 2);
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 2);
@@ -1549,14 +1549,14 @@ static void test_achievement_list_simple_with_unofficial_off(void)
     rc_client_destroy_achievement_list(list);
   }
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 0);
     rc_client_destroy_achievement_list(list);
   }
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 2);
@@ -1597,7 +1597,7 @@ static void test_achievement_list_buckets(void)
   ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 0);
   ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 7);
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 2);
@@ -1637,7 +1637,7 @@ static void test_achievement_list_buckets(void)
   rc_client_do_frame(g_client);
   event_count = 0;
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 4);
@@ -1683,7 +1683,7 @@ static void test_achievement_list_buckets(void)
   rc_client_do_frame(g_client);
   event_count = 0;
 
-  list = rc_client_get_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 3);

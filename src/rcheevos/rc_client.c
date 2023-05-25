@@ -94,7 +94,7 @@ void rc_client_destroy(rc_client_t* client)
 
 /* ===== Logging ===== */
 
-void rc_client_log_message(rc_client_t* client, const char* format, ...)
+void rc_client_log_message(const rc_client_t* client, const char* format, ...)
 {
   char buffer[256];
   int result;
@@ -219,7 +219,7 @@ static void rc_client_login_callback(const char* server_response_body, int http_
     load_state = runtime->state.load;
     rc_mutex_unlock(&runtime->state.mutex);
 
-    RC_CLIENT_LOG_INFO(runtime, "Login succeeded: %s", error_message);
+    RC_CLIENT_LOG_INFO(runtime, "%s logged in successfully", login_response.display_name);
 
     if (load_state && load_state->progress == RC_CLIENT_LOAD_STATE_AWAIT_LOGIN)
       rc_client_begin_fetch_game_data(load_state);
@@ -707,12 +707,16 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
       /* previous load state was aborted, silently quit */
     }
     else {
+      /* schedule the periodic ping */
       rc_client_scheduled_callback_data_t* callback_data = rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_scheduled_callback_data_t));
       memset(callback_data, 0, sizeof(*callback_data));
       callback_data->callback = rc_client_ping;
       callback_data->related_id = load_state->game->public.id;
       callback_data->when = time(NULL) + 30;
       rc_client_schedule_callback(runtime, callback_data);
+
+      RC_CLIENT_LOG_INFO(runtime, "Game %u loaded, hardcode %s", load_state->game->public.id,
+          runtime->state.hardcore ? "enabled" : "disabled");
 
       if (load_state->callback)
         load_state->callback(RC_OK, NULL, runtime);
@@ -1696,7 +1700,7 @@ static int rc_client_compare_achievement_unlock_times(const void* a, const void*
   return (int)(unlock_a->unlock_time - unlock_b->unlock_time);
 }
 
-rc_client_achievement_list_t* rc_client_get_achievement_list(rc_client_t* runtime, int category, int grouping)
+rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* runtime, int category, int grouping)
 {
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* stop;
@@ -3113,5 +3117,8 @@ void rc_client_set_host(const rc_client_t* client, const char* host)
   rc_api_set_image_host(NULL);
 
   /* set the custom host */
+  if (host) {
+    RC_CLIENT_LOG_VERBOSE(client, "Using host: %s", host);
+  }
   rc_api_set_host(host);
 }

@@ -312,7 +312,7 @@ enum {
  * Gets a list of achievements matching the specified category and grouping.
  * Returns an allocated list that must be free'd by calling rc_client_destroy_achievement_list.
  */
-rc_client_achievement_list_t* rc_client_get_achievement_list(rc_client_t* client, int category, int grouping);
+rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* client, int category, int grouping);
 
 /**
  * Destroys a list allocated by rc_client_get_achievement_list.

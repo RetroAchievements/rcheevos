@@ -183,11 +183,11 @@ typedef struct rc_client_t {
   rc_api_buffer_t buffer;
 } rc_client_t;
 
-void rc_client_log_message(rc_client_t* client, const char* format, ...);
-#define RC_CLIENT_LOG_ERR(runtime, format, ...) { if (runtime->state.log_level >= RC_CLIENT_LOG_LEVEL_ERROR) rc_client_log_message(runtime, format, __VA_ARGS__); }
-#define RC_CLIENT_LOG_WARN(runtime, format, ...) { if (runtime->state.log_level >= RC_CLIENT_LOG_LEVEL_WARN) rc_client_log_message(runtime, format, __VA_ARGS__); }
-#define RC_CLIENT_LOG_INFO(runtime, format, ...) { if (runtime->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO) rc_client_log_message(runtime, format, __VA_ARGS__); }
-#define RC_CLIENT_LOG_VERBOSE(runtime, format, ...) { if (runtime->state.log_level >= RC_CLIENT_LOG_LEVEL_VERBOSE) rc_client_log_message(runtime, format, __VA_ARGS__); }
+void rc_client_log_message(const rc_client_t* client, const char* format, ...);
+#define RC_CLIENT_LOG_ERR(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_ERROR) rc_client_log_message(client, format, __VA_ARGS__); }
+#define RC_CLIENT_LOG_WARN(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_WARN) rc_client_log_message(client, format, __VA_ARGS__); }
+#define RC_CLIENT_LOG_INFO(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO) rc_client_log_message(client, format, __VA_ARGS__); }
+#define RC_CLIENT_LOG_VERBOSE(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_VERBOSE) rc_client_log_message(client, format, __VA_ARGS__); }
 
 /* internals pulled from runtime.c */
 void rc_runtime_checksum(const char* memaddr, unsigned char* md5);
