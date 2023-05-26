@@ -688,10 +688,12 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
     /* previous load state was aborted, silently quit */
   }
   else {
-    rc_client_apply_unlocks(load_state->game, load_state->softcore_unlocks,
-        load_state->num_softcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    rc_client_apply_unlocks(load_state->game, load_state->hardcore_unlocks,
-        load_state->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    if (!runtime->state.encore_mode) {
+      rc_client_apply_unlocks(load_state->game, load_state->softcore_unlocks,
+          load_state->num_softcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+      rc_client_apply_unlocks(load_state->game, load_state->hardcore_unlocks,
+          load_state->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    }
 
     rc_client_validate_addresses(load_state->game, runtime);
 

@@ -3639,13 +3639,13 @@ static void test_set_encore_mode_enable(void)
   achievement = rc_client_get_achievement_info(g_client, 5501);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH); /* track unlock state */
-    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);     /* but still activate */
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
 
@@ -3656,13 +3656,13 @@ static void test_set_encore_mode_enable(void)
   achievement = rc_client_get_achievement_info(g_client, 5501);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
 
