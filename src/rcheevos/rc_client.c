@@ -266,7 +266,12 @@ void rc_client_begin_login_with_password(rc_client_t* client,
   const char* username, const char* password, rc_client_callback_t callback)
 {
   rc_api_login_request_t login_request;
-  
+
+  if (!client) {
+    callback(RC_INVALID_STATE, "client is required", client);
+    return;
+  }
+
   if (!username || !username[0]) {
     callback(RC_INVALID_STATE, "username is required", client);
     return;
@@ -290,6 +295,11 @@ void rc_client_begin_login_with_token(rc_client_t* client,
 {
   rc_api_login_request_t login_request;
 
+  if (!client) {
+    callback(RC_INVALID_STATE, "client is required", client);
+    return;
+  }
+
   if (!username || !username[0]) {
     callback(RC_INVALID_STATE, "username is required", client);
     return;
@@ -310,7 +320,7 @@ void rc_client_begin_login_with_token(rc_client_t* client,
 
 const rc_client_user_t* rc_client_get_user_info(const rc_client_t* client)
 {
-  return (client->state.user == RC_CLIENT_USER_STATE_LOGGED_IN) ? &client->user : NULL;
+  return (client && client->state.user == RC_CLIENT_USER_STATE_LOGGED_IN) ? &client->user : NULL;
 }
 
 int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], size_t buffer_size)
@@ -1307,6 +1317,11 @@ void rc_client_begin_load_game(rc_client_t* client, const char* hash, rc_client_
 {
   rc_client_load_state_t* load_state;
 
+  if (!client) {
+    callback(RC_INVALID_STATE, "client is required", client);
+    return;
+  }
+
   if (!hash || !hash[0]) {
     callback(RC_INVALID_STATE, "hash is required", client);
     return;
@@ -1325,6 +1340,11 @@ void rc_client_begin_identify_and_load_game(rc_client_t* client,
 {
   rc_client_load_state_t* load_state;
   char hash[33];
+
+  if (!client) {
+    callback(RC_INVALID_STATE, "client is required", client);
+    return;
+  }
 
   if (data) {
     if (file_path) {
@@ -1386,6 +1406,9 @@ void rc_client_unload_game(rc_client_t* client)
   rc_client_game_info_t* game;
   rc_client_scheduled_callback_data_t** last;
   rc_client_scheduled_callback_data_t* next;
+
+  if (!client)
+    return;
 
   rc_mutex_lock(&client->state.mutex);
 
@@ -1478,6 +1501,11 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
   rc_client_game_info_t* game;
   rc_client_pending_media_t* pending_media = NULL;
   uint32_t path_djb2;
+
+  if (!client) {
+    callback(RC_INVALID_STATE, "client is required", client);
+    return;
+  }
 
   if (!data && !file_path) {
     callback(RC_INVALID_STATE, "either data or file_path is required", client);
@@ -1600,7 +1628,7 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
 
 const rc_client_game_t* rc_client_get_game_info(const rc_client_t* client)
 {
-  return (client->game != NULL) ? &client->game->public : NULL;
+  return (client && client->game) ? &client->game->public : NULL;
 }
 
 int rc_client_game_get_badge_url(const rc_client_game_t* game, char buffer[], size_t buffer_size)
@@ -1619,7 +1647,7 @@ uint32_t rc_client_get_achievement_count(const rc_client_t* client, int category
   rc_client_achievement_info_t* stop;
   uint32_t count = 0;
 
-  if (!client->game)
+  if (!client || !client->game)
     return 0;
 
   if (category == RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL)
@@ -1740,7 +1768,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   };
   const time_t recent_unlock_time = time(NULL) - RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS;
 
-  if (!client->game)
+  if (!client || !client->game)
     return calloc(1, sizeof(rc_client_achievement_list_t));
 
   memset(&bucket_counts, 0, sizeof(bucket_counts));
@@ -1852,7 +1880,7 @@ const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* clien
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* stop;
 
-  if (!client->game)
+  if (!client || !client->game)
     return NULL;
 
   achievement = client->game->achievements;
@@ -1877,8 +1905,8 @@ int rc_client_achievement_get_badge_url(const rc_client_achievement_t* achieveme
   const int image_type = (state == RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED) ?
       RC_IMAGE_TYPE_ACHIEVEMENT : RC_IMAGE_TYPE_ACHIEVEMENT_LOCKED;
 
-  if (!achievement)
-    return RC_INVALID_STATE;
+  if (!achievement || !achievement->badge_name[0])
+    return rc_client_get_image_url(buffer, buffer_size, image_type, "00000");
 
   return rc_client_get_image_url(buffer, buffer_size, image_type, achievement->badge_name);
 }
@@ -2074,7 +2102,7 @@ const rc_client_leaderboard_t* rc_client_get_leaderboard_info(const rc_client_t*
   rc_client_leaderboard_info_t* leaderboard;
   rc_client_leaderboard_info_t* stop;
 
-  if (!client->game)
+  if (!client || !client->game)
     return NULL;
 
   leaderboard = client->game->leaderboards;
@@ -2377,18 +2405,26 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
 
 size_t rc_client_get_rich_presence_message(rc_client_t* client, char buffer[], size_t buffer_size)
 {
-  if (!client->game || !buffer)
+  int result;
+
+  if (!client || !client->game || !buffer)
     return 0;
 
-  return rc_runtime_get_richpresence(&client->game->runtime, buffer, (unsigned)buffer_size,
+  result = rc_runtime_get_richpresence(&client->game->runtime, buffer, (unsigned)buffer_size,
       client->state.legacy_peek, client, NULL);
+
+  if (result == 0)
+    result = snprintf(buffer, buffer_size, "Playing %s", client->game->public.title);
+
+  return result;
 }
 
 /* ===== Processing ===== */
 
 void rc_client_set_event_handler(rc_client_t* client, rc_client_event_handler_t handler)
 {
-  client->callbacks.event_handler = handler;
+  if (client)
+    client->callbacks.event_handler = handler;
 }
 
 static void rc_client_invalidate_processing_memref(rc_client_t* client)
@@ -2780,6 +2816,9 @@ static void rc_client_raise_leaderboard_events(rc_client_t* client)
 
 void rc_client_do_frame(rc_client_t* client)
 {
+  if (!client)
+    return;
+
   if (client->game && !client->game->waiting_for_reset) {
     rc_runtime_richpresence_t* richpresence;
 
@@ -2808,8 +2847,12 @@ void rc_client_do_frame(rc_client_t* client)
 
 void rc_client_idle(rc_client_t* client)
 {
-  rc_client_scheduled_callback_data_t* scheduled_callback = client->state.scheduled_callbacks;
+  rc_client_scheduled_callback_data_t* scheduled_callback;
 
+  if (!client)
+    return;
+
+  scheduled_callback = client->state.scheduled_callbacks;
   if (scheduled_callback) {
     const time_t now = time(NULL);
 
@@ -2877,7 +2920,7 @@ static void rc_client_reset_variables(rc_client_t* client)
 void rc_client_reset(rc_client_t* client)
 {
   rc_client_game_hash_t* game_hash;
-  if (!client->game)
+  if (!client || !client->game)
     return;
 
   game_hash = rc_client_find_game_hash(client, client->game->public.hash);
@@ -2909,7 +2952,7 @@ size_t rc_client_progress_size(rc_client_t* client)
 {
   size_t result;
 
-  if (!client->game)
+  if (!client || !client->game)
     return 0;
 
   rc_mutex_lock(&client->state.mutex);
@@ -2923,7 +2966,7 @@ int rc_client_serialize_progress(rc_client_t* client, uint8_t* buffer)
 {
   int result;
 
-  if (!client->game)
+  if (!client || !client->game)
     return RC_NO_GAME_LOADED;
 
   if (!buffer)
@@ -2944,7 +2987,7 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
   rc_client_leaderboard_info_t* leaderboard_stop;
   int result;
 
-  if (!client->game)
+  if (!client || !client->game)
     return RC_NO_GAME_LOADED;
 
   rc_mutex_lock(&client->state.mutex);
@@ -3061,6 +3104,10 @@ static void rc_client_disable_hardcore(rc_client_t* client)
 void rc_client_set_hardcore_enabled(rc_client_t* client, int enabled)
 {
   int changed = 0;
+
+  if (!client)
+    return;
+
   rc_mutex_lock(&client->state.mutex);
 
   if (client->state.hardcore != enabled) {
@@ -3095,47 +3142,51 @@ void rc_client_set_hardcore_enabled(rc_client_t* client, int enabled)
 
 int rc_client_get_hardcore_enabled(const rc_client_t* client)
 {
-  return client->state.hardcore;
+  return client && client->state.hardcore;
 }
 
 void rc_client_set_test_unofficial(rc_client_t* client, int enabled)
 {
-  client->state.test_unofficial = enabled ? 1 : 0;
+  if (client)
+    client->state.test_unofficial = enabled ? 1 : 0;
 }
 
 int rc_client_get_test_unofficial(const rc_client_t* client)
 {
-  return client->state.test_unofficial;
+  return client && client->state.test_unofficial;
 }
 
 void rc_client_set_encore_mode_enabled(rc_client_t* client, int enabled)
 {
-  client->state.encore_mode = enabled ? 1 : 0;
+  if (client)
+    client->state.encore_mode = enabled ? 1 : 0;
 }
 
 int rc_client_get_encore_mode_enabled(const rc_client_t* client)
 {
-  return client->state.encore_mode;
+  return client && client->state.encore_mode;
 }
 
 void rc_client_set_spectator_mode_enabled(rc_client_t* client, int enabled)
 {
-  client->state.spectator_mode = enabled ? 1 : 0;
+  if (client)
+    client->state.spectator_mode = enabled ? 1 : 0;
 }
 
 int rc_client_get_spectator_mode_enabled(const rc_client_t* client)
 {
-  return client->state.spectator_mode;
+  return client && client->state.spectator_mode;
 }
 
 void rc_client_set_user_data(rc_client_t* client, void* userdata)
 {
-  client->callbacks.client_data = userdata;
+  if (client)
+    client->callbacks.client_data = userdata;
 }
 
 void* rc_client_get_user_data(const rc_client_t* client)
 {
-  return client->callbacks.client_data;
+  return client ? client->callbacks.client_data : NULL;
 }
 
 void rc_client_set_host(const rc_client_t* client, const char* host)
@@ -3148,7 +3199,7 @@ void rc_client_set_host(const rc_client_t* client, const char* host)
   rc_api_set_image_host(NULL);
 
   /* set the custom host */
-  if (host) {
+  if (host && client) {
     RC_CLIENT_LOG_VERBOSE(client, "Using host: %s", host);
   }
   rc_api_set_host(host);
