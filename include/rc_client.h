@@ -409,6 +409,11 @@ typedef void (*rc_client_event_handler_t)(const rc_client_event_t* event);
 void rc_client_set_event_handler(rc_client_t* client, rc_client_event_handler_t handler);
 
 /**
+ * Provides a callback for reading memory.
+ */
+void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memory_t handler);
+
+/**
  * Processes achievements for the current frame.
  */
 void rc_client_do_frame(rc_client_t* client);

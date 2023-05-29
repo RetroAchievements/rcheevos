@@ -154,6 +154,7 @@ struct rc_client_load_state_t;
 
 typedef struct rc_client_state_t {
   rc_mutex_t mutex;
+  rc_api_buffer_t buffer;
 
   rc_client_scheduled_callback_data_t* scheduled_callbacks;
 
@@ -179,8 +180,6 @@ typedef struct rc_client_t {
   rc_client_callbacks_t callbacks;
 
   rc_client_state_t state;
-
-  rc_api_buffer_t buffer;
 } rc_client_t;
 
 void rc_client_log_message(const rc_client_t* client, const char* format, ...);

@@ -73,7 +73,7 @@ rc_client_t* rc_client_create(rc_client_read_memory_t read_memory_function, rc_c
 
   rc_mutex_init(&client->state.mutex);
 
-  rc_buf_init(&client->buffer);
+  rc_buf_init(&client->state.buffer);
 
   return client;
 }
@@ -85,7 +85,7 @@ void rc_client_destroy(rc_client_t* client)
 
   rc_client_unload_game(client);
 
-  rc_buf_destroy(&client->buffer);
+  rc_buf_destroy(&client->state.buffer);
 
   rc_mutex_destroy(&client->state.mutex);
 
@@ -202,14 +202,14 @@ static void rc_client_login_callback(const char* server_response_body, int http_
   }
   else {
     rc_client_load_state_t* load_state;
-    client->user.username = rc_buf_strcpy(&client->buffer, login_response.username);
+    client->user.username = rc_buf_strcpy(&client->state.buffer, login_response.username);
 
     if (strcmp(login_response.username, login_response.display_name) == 0)
       client->user.display_name = client->user.username;
     else
-      client->user.display_name = rc_buf_strcpy(&client->buffer, login_response.display_name);
+      client->user.display_name = rc_buf_strcpy(&client->state.buffer, login_response.display_name);
 
-    client->user.token = rc_buf_strcpy(&client->buffer, login_response.api_token);
+    client->user.token = rc_buf_strcpy(&client->state.buffer, login_response.api_token);
     client->user.score = login_response.score;
     client->user.score_softcore = login_response.score_softcore;
     client->user.num_unread_messages = login_response.num_unread_messages;
@@ -715,11 +715,6 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
           load_state->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
     }
 
-    rc_client_validate_addresses(load_state->game, client);
-
-    rc_client_activate_achievements(load_state->game, client);
-    rc_client_activate_leaderboards(load_state->game, client);
-
     rc_mutex_lock(&client->state.mutex);
     if (client->state.load == NULL)
       client->game = load_state->game;
@@ -729,6 +724,12 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
       /* previous load state was aborted, silently quit */
     }
     else {
+      /* client->game must be set before calling this function so it can query the console_id */
+      rc_client_validate_addresses(load_state->game, client);
+
+      rc_client_activate_achievements(load_state->game, client);
+      rc_client_activate_leaderboards(load_state->game, client);
+
       /* schedule the periodic ping */
       rc_client_scheduled_callback_data_t* callback_data = rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_scheduled_callback_data_t));
       memset(callback_data, 0, sizeof(*callback_data));
@@ -1238,7 +1239,7 @@ static rc_client_game_hash_t* rc_client_find_game_hash(rc_client_t* client, cons
   }
 
   if (!game_hash) {
-    game_hash = rc_buf_alloc(&client->buffer, sizeof(rc_client_game_hash_t));
+    game_hash = rc_buf_alloc(&client->state.buffer, sizeof(rc_client_game_hash_t));
     memset(game_hash, 0, sizeof(*game_hash));
     snprintf(game_hash->hash, sizeof(game_hash->hash), "%s", hash);
     game_hash->game_id = RC_CLIENT_UNKNOWN_GAME_ID;
@@ -2425,6 +2426,12 @@ void rc_client_set_event_handler(rc_client_t* client, rc_client_event_handler_t 
 {
   if (client)
     client->callbacks.event_handler = handler;
+}
+
+void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memory_t handler)
+{
+  if (client)
+    client->callbacks.read_memory = handler;
 }
 
 static void rc_client_invalidate_processing_memref(rc_client_t* client)
