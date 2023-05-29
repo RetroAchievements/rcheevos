@@ -21,7 +21,7 @@ typedef struct rc_client_callbacks_t {
 } rc_client_callbacks_t;
 
 struct rc_client_scheduled_callback_data_t;
-typedef void (*rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* runtime, time_t now);
+typedef void (*rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, time_t now);
 
 typedef struct rc_client_scheduled_callback_data_t
 {
@@ -32,7 +32,7 @@ typedef struct rc_client_scheduled_callback_data_t
   struct rc_client_scheduled_callback_data_t* next;
 } rc_client_scheduled_callback_data_t;
 
-void rc_client_schedule_callback(rc_client_t* runtime, rc_client_scheduled_callback_data_t* scheduled_callback);
+void rc_client_schedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* scheduled_callback);
 
 enum {
   RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_NONE = 0,
@@ -201,7 +201,7 @@ enum {
   RC_CLIENT_LEGACY_PEEK_LITTLE_ENDIAN_READS
 };
 
-void rc_client_set_legacy_peek(rc_client_t* runtime, int method);
+void rc_client_set_legacy_peek(rc_client_t* client, int method);
 
 #ifdef __cplusplus
 }
