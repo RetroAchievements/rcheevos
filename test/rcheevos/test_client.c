@@ -169,7 +169,7 @@ static rc_client_event_t* find_event(uint8_t type, uint32_t id)
         case RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED:
         case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW:
         case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE:
-        case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_UPDATED:
+        case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW:
           if (events[i].achievement->id == id)
             return &events[i];
           break;
@@ -2072,7 +2072,7 @@ static void test_do_frame_achievement_trigger_automatic_retry(void)
 
 static void test_do_frame_achievement_measured(void)
 {
-  rc_client_event_t* event;
+  const rc_client_achievement_t* achievement;
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
@@ -2094,25 +2094,23 @@ static void test_do_frame_achievement_measured(void)
 
     memory[0x10] = 0x39; memory[0x11] = 0x30; /* 12345 */
     rc_client_do_frame(g_client);
-    ASSERT_NUM_EQUALS(event_count, 2);
+    ASSERT_NUM_EQUALS(event_count, 1); /* one PROGRESS_INDICATOR_SHOW event */
 
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 70);
-    ASSERT_PTR_NOT_NULL(event);
-    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
-    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
-    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 70));
-    ASSERT_STR_EQUALS(event->achievement->measured_progress, "12345/100000");
+    achievement = rc_client_get_achievement_info(g_client, 70);
+    ASSERT_PTR_NOT_NULL(achievement);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "12345/100000");
 
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 71);
-    ASSERT_PTR_NOT_NULL(event);
-    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
-    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
-    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 71));
-    ASSERT_STR_EQUALS(event->achievement->measured_progress, "12%");
+    achievement = rc_client_get_achievement_info(g_client, 71);
+    ASSERT_PTR_NOT_NULL(achievement);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "12%");
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active);
 
@@ -2123,16 +2121,15 @@ static void test_do_frame_achievement_measured(void)
     /* increment measured value - raw counter will report progress change, percentage will not */
     memory[0x10] = 0x3A; /* 12346 */
     rc_client_do_frame(g_client);
-    ASSERT_NUM_EQUALS(event_count, 1);
+    ASSERT_NUM_EQUALS(event_count, 1); /* one PROGRESS_INDICATOR_SHOW event */
 
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 70);
-    ASSERT_PTR_NOT_NULL(event);
-    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
-    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
-    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 70));
-    ASSERT_STR_EQUALS(event->achievement->measured_progress, "12346/100000");
+    achievement = rc_client_get_achievement_info(g_client, 70);
+    ASSERT_PTR_NOT_NULL(achievement);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "12346/100000");
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -2141,25 +2138,23 @@ static void test_do_frame_achievement_measured(void)
     /* increment measured value - raw counter will report progress change, percentage will not */
     memory[0x11] = 0x33; /* 13114 */
     rc_client_do_frame(g_client);
-    ASSERT_NUM_EQUALS(event_count, 2);
+    ASSERT_NUM_EQUALS(event_count, 1); /* one PROGRESS_INDICATOR_SHOW event */
 
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 70);
-    ASSERT_PTR_NOT_NULL(event);
-    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
-    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
-    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 70));
-    ASSERT_STR_EQUALS(event->achievement->measured_progress, "13114/100000");
+    achievement = rc_client_get_achievement_info(g_client, 70);
+    ASSERT_PTR_NOT_NULL(achievement);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "13114/100000");
 
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_UPDATED, 71);
-    ASSERT_PTR_NOT_NULL(event);
-    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
-    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
-    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 71));
-    ASSERT_STR_EQUALS(event->achievement->measured_progress, "13%");
+    achievement = rc_client_get_achievement_info(g_client, 71);
+    ASSERT_PTR_NOT_NULL(achievement);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "13%");
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active);
 
@@ -2167,30 +2162,163 @@ static void test_do_frame_achievement_measured(void)
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 0);
 
-    /* trigger measured achievements - should get trigger events, but not progress events */
+    /* trigger measured achievements - progress becomes blank */
     memory[0x10] = 0xA0; memory[0x11] = 0x86; memory[0x12] = 0x01; /* 100000 */
     rc_client_do_frame(g_client);
-    ASSERT_NUM_EQUALS(event_count, 2);
+    ASSERT_NUM_EQUALS(event_count, 2); /* two TRIGGERED events, and no PROGRESS_INDICATOR_SHOW events */
 
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 70);
-    ASSERT_PTR_NOT_NULL(event);
-    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
-    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
-    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
-    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
-    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 70));
-    ASSERT_STR_EQUALS(event->achievement->measured_progress, "");
+    achievement = rc_client_get_achievement_info(g_client, 70);
+    ASSERT_PTR_NOT_NULL(achievement);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "");
 
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 71);
-    ASSERT_PTR_NOT_NULL(event);
-    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
-    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
-    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
-    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
-    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 71));
-    ASSERT_STR_EQUALS(event->achievement->measured_progress, "");
+    achievement = rc_client_get_achievement_info(g_client, 71);
+    ASSERT_PTR_NOT_NULL(achievement);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "");
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 2);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_achievement_measured_progress_event(void)
+{
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    const uint32_t num_active = g_client->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=6&h=1&m=0123456789ABCDEF&v=65206f4290098ecd30c7845e895057d0",
+        "{\"Success\":true,\"Score\":5432,\"AchievementID\":6,\"AchievementsRemaining\":11}");
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[0x06] = 3;                         /* 3/6 */
+    memory[0x11] = 0xC3; memory[0x10] = 0x4F; /* 49999/100000 */
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    /* 3/6 = 50%, 49999/100000 = 49.999% */
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 6));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "3/6");
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* any change will trigger the popup - even dropping */
+    memory[0x10] = 0x4E; /* 49998 */
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 70);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 70));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "49998/100000");
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* any change will trigger the popup - even dropping to 0 */
+    memory[0x06] = 0; /* 0 */
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 6));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "");
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* both at 50%, only report first */
+    memory[0x06] = 3;                         /* 3/6 */
+    memory[0x11] = 0xC3; memory[0x10] = 0x50; /* 50000/100000 */
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 6));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "3/6");
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* second slightly ahead */
+    memory[0x6] = 4;                                             /* 4/6 */
+    memory[0x12] = 1;  memory[0x11] = 0x04; memory[0x10] = 0x6B; /* 66667/100000 */
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 70);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 70));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "66667/100000");
+    
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* don't show popup on trigger */
+    memory[0x06] = 6;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 6);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 6));
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "");
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
   }
 
   rc_client_destroy(g_client);
@@ -3776,6 +3904,7 @@ void test_client(void) {
   TEST(test_do_frame_achievement_trigger_while_spectating);
   TEST(test_do_frame_achievement_trigger_automatic_retry);
   TEST(test_do_frame_achievement_measured);
+  TEST(test_do_frame_achievement_measured_progress_event);
   TEST(test_do_frame_achievement_challenge_indicator);
   TEST(test_do_frame_mastery);
   TEST(test_do_frame_mastery_encore);

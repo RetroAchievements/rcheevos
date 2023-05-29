@@ -205,6 +205,7 @@ typedef struct rc_client_game_t {
 
   uint32_t num_achievements;
   uint32_t num_leaderboards;
+  uint8_t has_rich_presence;
 } rc_client_game_t;
 
 /**
@@ -370,7 +371,7 @@ enum {
   RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED = 4, /* [leaderboard] attempt submitted */
   RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW = 5, /* [achievement] challenge indicator should be shown */
   RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE = 6, /* [achievement] challenge indicator should be hidden */
-  RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_UPDATED = 7, /* [achievement] measured_progress has changed */
+  RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW = 7, /* progress indicator should be shown for [achievement] for two seconds, replacing any currently visible progress indicator */
   RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW = 8, /* [leaderboard_tracker] should be shown */
   RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE = 9, /* [leaderboard_tracker] should be hidden */
   RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE = 10, /* [leaderboard_tracker] updated */

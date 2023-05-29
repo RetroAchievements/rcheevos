@@ -456,23 +456,33 @@ static void rc_client_validate_addresses(rc_client_game_info_t* game, rc_client_
   const uint32_t max_address = (regions && regions->num_regions > 0) ?
       regions->region[regions->num_regions - 1].end_address : 0xFFFFFFFF;
   uint8_t buffer[8];
+  uint32_t total_count = 0;
+  uint32_t invalid_count = 0;
 
   rc_memref_t** last_memref = &game->runtime.memrefs;
   rc_memref_t* memref = game->runtime.memrefs;
   for (; memref; memref = memref->next) {
-    if (memref->value.is_indirect)
-      continue;
+    if (!memref->value.is_indirect) {
+      total_count++;
 
-    if (memref->address > max_address ||
+      if (memref->address > max_address ||
         client->callbacks.read_memory(memref->address, buffer, 1, client) == 0) {
-      /* invalid address, remove from chain so we don't have to evaluate it in the future.
-       * it's still there, so anything referencing it will always fetch 0. */
-      *last_memref = memref->next;
+        /* invalid address, remove from chain so we don't have to evaluate it in the future.
+         * it's still there, so anything referencing it will always fetch 0. */
+        *last_memref = memref->next;
 
-      rc_client_invalidate_memref_achievements(game, client, memref);
-      rc_client_invalidate_memref_leaderboards(game, client, memref);
+        rc_client_invalidate_memref_achievements(game, client, memref);
+        rc_client_invalidate_memref_leaderboards(game, client, memref);
+
+        invalid_count++;
+        continue;
+      }
     }
+
+    last_memref = &memref->next;
   }
+
+  RC_CLIENT_LOG_VERBOSE(client, "%u/%u memory addresses valid", total_count - invalid_count, total_count);
 }
 
 static void rc_client_update_legacy_runtime_achievements(rc_client_game_info_t* game, uint32_t active_count)
@@ -1098,6 +1108,9 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
     if (result != RC_OK) {
       RC_CLIENT_LOG_WARN(load_state->client, "Parse error %d processing rich presence", result);
     }
+    else if (load_state->game->runtime.richpresence->richpresence) {
+      load_state->game->public.has_rich_presence = 1;
+    }
 
     outstanding_requests = rc_client_end_load_state(load_state);
     if (outstanding_requests < 0) {
@@ -1398,7 +1411,7 @@ void rc_client_unload_game(rc_client_t* client)
   rc_mutex_unlock(&client->state.mutex);
 
   if (game != NULL) {
-    RC_CLIENT_LOG_INFO(client, "Unloading game %u", client->game->public.id);
+    RC_CLIENT_LOG_INFO(client, "Unloading game %u", game->public.id);
     rc_client_free_game(game);
   }
 }
@@ -1950,6 +1963,8 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
 
       if (award_achievement_response.achievements_remaining == 0 &&
           ach_data->client->game->mastery == RC_CLIENT_MASTERY_STATE_NONE) {
+        RC_CLIENT_LOG_INFO(ach_data->client, "Game %u %s", ach_data->client->game->public.id,
+          ach_data->client->state.hardcore ? "mastered" : "completed");
         ach_data->client->game->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
       }
     }
@@ -2228,6 +2243,8 @@ static void rc_client_submit_leaderboard_entry_callback(const char* server_respo
     }
   }
   else {
+    /* TODO: raise event for scoreboard */
+
     /* not currently doing anything with the response */
     if (lboard_data->retry_count) {
       RC_CLIENT_LOG_INFO(lboard_data->client, "Leaderboard %u submission %d completed after %u attempts",
@@ -2495,6 +2512,8 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client)
 {
   rc_client_achievement_info_t* achievement = client->game->achievements;
   rc_client_achievement_info_t* stop = achievement + client->game->public.num_achievements;
+  float best_progress = -1.0;
+  rc_client_achievement_info_t* best_progress_achievement = NULL;
 
   for (; achievement < stop; ++achievement) {
     rc_trigger_t* trigger = achievement->trigger;
@@ -2508,21 +2527,29 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client)
     old_state = trigger->state;
     new_state = rc_evaluate_trigger(trigger, client->state.legacy_peek, client, NULL);
 
-    /* if the measured value changed and the achievement hasn't triggered, send a notification */
+    /* if the measured value changed and the achievement hasn't triggered, show a progress indicator */
     if (trigger->measured_value != old_measured_value && old_measured_value != RC_MEASURED_UNKNOWN &&
-        trigger->measured_target != 0 && trigger->measured_value <= trigger->measured_target &&
-        new_state != RC_TRIGGER_STATE_TRIGGERED &&
-        new_state != RC_TRIGGER_STATE_INACTIVE && new_state != RC_TRIGGER_STATE_WAITING) {
+        trigger->measured_value <= trigger->measured_target &&
+        rc_trigger_state_active(new_state) && new_state != RC_TRIGGER_STATE_WAITING) {
+      /* only show a popup for the achievement closest to triggering */
+      float progress = (float)trigger->measured_value / (float)trigger->measured_target;
 
       if (trigger->measured_as_percent) {
-        /* if reporting measured value as a percentage, only send the notification if the percentage changes */
+        /* if reporting the measured value as a percentage, only show the popup if the percentage changes */
         const unsigned old_percent = (unsigned)(((unsigned long long)old_measured_value * 100) / trigger->measured_target);
         const unsigned new_percent = (unsigned)(((unsigned long long)trigger->measured_value * 100) / trigger->measured_target);
-        if (old_percent != new_percent)
-          achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_UPDATED;
+        if (old_percent == new_percent)
+          progress = -1.0;
       }
-      else {
-        achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_UPDATED;
+
+      if (progress > best_progress) {
+        best_progress = progress;
+
+        if (best_progress_achievement)
+          best_progress_achievement->pending_events &= ~RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW;
+
+        achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW;
+        best_progress_achievement = achievement;
       }
     }
 
@@ -2580,8 +2607,8 @@ static void rc_client_raise_achievement_events(rc_client_t* client)
       client->callbacks.event_handler(&client_event);
     }
 
-    if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_UPDATED) {
-      client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_UPDATED;
+    if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW) {
+      client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW;
       client->callbacks.event_handler(&client_event);
     }
 
