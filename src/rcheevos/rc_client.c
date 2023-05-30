@@ -240,19 +240,22 @@ static void rc_client_begin_login(rc_client_t* client,
   rc_client_generic_callback_data_t* callback_data;
   rc_api_request_t request;
   int result = rc_api_init_login_request(&request, login_request);
+  const char* error_message = rc_error_str(result);
 
   if (result == RC_OK) {
     rc_mutex_lock(&client->state.mutex);
 
-    if (client->state.user == RC_CLIENT_USER_STATE_LOGIN_REQUESTED)
+    if (client->state.user == RC_CLIENT_USER_STATE_LOGIN_REQUESTED) {
+      error_message = "Login already in progress";
       result = RC_INVALID_STATE;
+    }
     client->state.user = RC_CLIENT_USER_STATE_LOGIN_REQUESTED;
 
     rc_mutex_unlock(&client->state.mutex);
   }
 
   if (result != RC_OK) {
-    callback(result, rc_error_str(result), client);
+    callback(result, error_message, client);
     return;
   }
 
@@ -388,10 +391,17 @@ static int rc_client_end_load_state(rc_client_load_state_t* load_state)
 
   if (aborted) {
     /* we can't actually free the load_state itself if there are any outstanding requests
-     * or their callbacks will try to use the free'd memory. as they call end_load_state,
+     * or their callbacks will try to use the free'd memory. As they call end_load_state,
      * the outstanding_requests count will reach zero and the memory will be free'd then. */
-    if (remaining_requests == 0)
+    if (remaining_requests == 0) {
+      /* if one of the callbacks called rc_client_load_error, progress will be set to
+       * RC_CLIENT_LOAD_STATE_UNKNOWN. There's no need to call the callback with RC_ABORTED
+       * in that case, as it will have already been called with something more appropriate. */
+      if (load_state->progress != RC_CLIENT_LOAD_STATE_UNKNOWN_GAME && load_state->callback)
+        load_state->callback(RC_ABORTED, "The requested game is no longer active", load_state->client);
+
       rc_client_free_load_state(load_state);
+    }
 
     return -1;
   }
@@ -707,7 +717,9 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
   rc_mutex_unlock(&client->state.mutex);
 
   if (load_state->progress != RC_CLIENT_LOAD_STATE_DONE) {
-    /* previous load state was aborted, silently quit */
+    /* previous load state was aborted */
+    if (load_state->callback)
+      load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
   }
   else {
     if (!client->state.encore_mode) {
@@ -723,7 +735,9 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
     rc_mutex_unlock(&client->state.mutex);
 
     if (client->game != load_state->game) {
-      /* previous load state was aborted, silently quit */
+      /* previous load state was aborted */
+      if (load_state->callback)
+        load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
     }
     else {
       /* client->game must be set before calling this function so it can query the console_id */
@@ -768,7 +782,7 @@ static void rc_client_start_session_callback(const char* server_response_body, i
     rc_client_load_error(callback_data, result, error_message);
   }
   else if (outstanding_requests < 0) {
-    /* previous load state was aborted, silently quit */
+    /* previous load state was aborted, load_state was free'd */
   }
   else {
     if (outstanding_requests == 0)
@@ -792,7 +806,7 @@ static void rc_client_unlocks_callback(const char* server_response_body, int htt
     rc_client_load_error(callback_data, result, error_message);
   }
   else if (outstanding_requests < 0) {
-    /* previous load state was aborted, silently quit */
+    /* previous load state was aborted, load_state was free'd */
   }
   else {
     if (mode == RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE) {
@@ -1083,7 +1097,7 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
     rc_client_load_error(load_state, result, error_message);
   }
   else if (outstanding_requests < 0) {
-    /* previous load state was aborted, silently quit */
+    /* previous load state was aborted, load_state was free'd */
   }
   else {
     /* if a change media request is pending, kick it off */
@@ -1128,7 +1142,7 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
 
     outstanding_requests = rc_client_end_load_state(load_state);
     if (outstanding_requests < 0) {
-      /* previous load state was aborted, silently quit */
+      /* previous load state was aborted, load_state was free'd */
     }
     else
     {
@@ -1242,8 +1256,7 @@ static void rc_client_identify_game_callback(const char* server_response_body, i
 
   int result = rc_api_process_resolve_hash_response(&resolve_hash_response, server_response_body);
   const char* error_message = rc_client_server_error_message(&result, http_status_code, &resolve_hash_response.response);
-
-  int outstanding_requests = rc_client_end_load_state(load_state);
+  int outstanding_requests;
 
   if (error_message) {
     rc_client_load_error(load_state, result, error_message);
@@ -1253,8 +1266,9 @@ static void rc_client_identify_game_callback(const char* server_response_body, i
     load_state->hash->game_id = resolve_hash_response.game_id;
     RC_CLIENT_LOG_INFO(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
 
+    outstanding_requests = rc_client_end_load_state(load_state);
     if (outstanding_requests < 0) {
-      /* previous load state was aborted, silently quit */
+      /* previous load state was aborted, load_state was free'd */
     }
     else {
       rc_client_begin_fetch_game_data(load_state);
@@ -1306,7 +1320,10 @@ static void rc_client_load_game(rc_client_load_state_t* load_state, const char* 
     }
   }
   else if (client->state.load != load_state) {
-    /* previous load was aborted, silently quit */
+    /* previous load was aborted */
+    if (load_state->callback)
+      load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
+
     rc_client_free_load_state(load_state);
     return;
   }
@@ -1509,7 +1526,7 @@ static void rc_client_identify_changed_media_callback(const char* server_respons
 
   if (client->game != load_state->game) {
     /* loaded game changed. return success regardless of result */
-    load_state->callback(RC_OK, NULL, client);
+    load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
   }
   else if (error_message) {
     load_state->callback(result, error_message, client);
@@ -3156,6 +3173,7 @@ void rc_client_set_hardcore_enabled(rc_client_t* client, int enabled)
 
   rc_mutex_lock(&client->state.mutex);
 
+  enabled = enabled ? 1 : 0;
   if (client->state.hardcore != enabled) {
     if (enabled)
       rc_client_enable_hardcore(client);
@@ -3224,29 +3242,29 @@ int rc_client_get_spectator_mode_enabled(const rc_client_t* client)
   return client && client->state.spectator_mode;
 }
 
-void rc_client_set_user_data(rc_client_t* client, void* userdata)
+void rc_client_set_userdata(rc_client_t* client, void* userdata)
 {
   if (client)
     client->callbacks.client_data = userdata;
 }
 
-void* rc_client_get_user_data(const rc_client_t* client)
+void* rc_client_get_userdata(const rc_client_t* client)
 {
   return client ? client->callbacks.client_data : NULL;
 }
 
-void rc_client_set_host(const rc_client_t* client, const char* host)
+void rc_client_set_host(const rc_client_t* client, const char* hostname)
 {
   /* if empty, just pass NULL */
-  if (host && !host[0])
-    host = NULL;
+  if (hostname && !hostname[0])
+    hostname = NULL;
 
   /* clear the image host so it'll use the custom host for images too */
   rc_api_set_image_host(NULL);
 
   /* set the custom host */
-  if (host && client) {
-    RC_CLIENT_LOG_VERBOSE(client, "Using host: %s", host);
+  if (hostname && client) {
+    RC_CLIENT_LOG_VERBOSE(client, "Using host: %s", hostname);
   }
-  rc_api_set_host(host);
+  rc_api_set_host(hostname);
 }

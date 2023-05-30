@@ -111,17 +111,17 @@ int rc_client_get_spectator_mode_enabled(const rc_client_t* client);
 /**
  * Attaches client-specific data to the runtime.
  */
-void rc_client_set_user_data(rc_client_t* client, void* userdata);
+void rc_client_set_userdata(rc_client_t* client, void* userdata);
 
 /**
  * Gets the client-specific data attached to the runtime.
  */
-void* rc_client_get_user_data(const rc_client_t* client);
+void* rc_client_get_userdata(const rc_client_t* client);
 
 /**
  * Sets the name of the server to use.
  */
-void rc_client_set_host(const rc_client_t* client, const char* host);
+void rc_client_set_host(const rc_client_t* client, const char* hostname);
 
 /*****************************************************************************\
 | Logging                                                                     |

@@ -41,6 +41,7 @@ enum {
   RC_LOGIN_REQUIRED = -28,
   RC_NO_GAME_LOADED = -29,
   RC_HARDCORE_DISABLED = -30,
+  RC_ABORTED = -31,
 };
 
 const char* rc_error_str(int ret);

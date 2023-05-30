@@ -204,6 +204,7 @@ const char* rc_error_str(int ret)
     case RC_LOGIN_REQUIRED: return "Login required";
     case RC_NO_GAME_LOADED: return "No game loaded";
     case RC_HARDCORE_DISABLED: return "Hardcore disabled";
+    case RC_ABORTED: return "Aborted";
     default: return "Unknown error";
   }
 }
