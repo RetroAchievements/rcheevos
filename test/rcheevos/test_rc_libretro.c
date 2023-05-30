@@ -49,7 +49,7 @@ static void test_disallowed_system(const char* library_name, int console_id) {
 static void test_memory_init_without_regions() {
   rc_libretro_memory_regions_t regions;
   unsigned avail;
-  unsigned char buffer1[16], buffer2[8];
+  unsigned char buffer1[16], buffer2[8], buffer3[4];
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = sizeof(buffer1);
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
@@ -71,6 +71,13 @@ static void test_memory_init_without_regions() {
   ASSERT_NUM_EQUALS(avail, sizeof(buffer2) - 2);
   ASSERT_PTR_NULL(rc_libretro_memory_find_avail(&regions, sizeof(buffer1) + sizeof(buffer2) + 2, &avail));
   ASSERT_NUM_EQUALS(avail, 0);
+
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 2, buffer3, 1), 1);
+  ASSERT_TRUE(memcmp(buffer3, &buffer1[2], 1) == 0);
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 7, buffer3, 4), 4);
+  ASSERT_TRUE(memcmp(buffer3, &buffer1[7], 4) == 0);
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, sizeof(buffer1) - 2, buffer3, 3), 2);
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, sizeof(buffer1) + sizeof(buffer2) + 2, buffer3, 1), 0);
 }
 
 static void test_memory_init_without_regions_system_ram_only() {

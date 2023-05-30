@@ -316,6 +316,31 @@ unsigned char* rc_libretro_memory_find(const rc_libretro_memory_regions_t* regio
   return rc_libretro_memory_find_avail(regions, address, NULL);
 }
 
+uint32_t rc_libretro_memory_read(const rc_libretro_memory_regions_t* regions, unsigned address,
+      uint8_t* buffer, uint32_t num_bytes) {
+  unsigned i;
+  uint32_t avail;
+
+  for (i = 0; i < regions->count; ++i) {
+    const size_t size = regions->size[i];
+    if (address < size) {
+      if (regions->data[i] == NULL)
+        break;
+
+      avail = (unsigned)(size - address);
+      if (avail < num_bytes)
+         return avail;
+
+      memcpy(buffer, &regions->data[i][address], num_bytes);
+      return num_bytes;
+    }
+
+    address -= (unsigned)size;
+  }
+
+  return 0;
+}
+
 void rc_libretro_init_verbose_message_callback(rc_libretro_message_callback callback) {
   rc_libretro_verbose_message_callback = callback;
 }
