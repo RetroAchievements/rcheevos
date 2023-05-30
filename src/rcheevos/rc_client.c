@@ -44,6 +44,7 @@ typedef struct rc_client_load_state_t
 
   uint8_t progress;
   uint8_t outstanding_requests;
+  uint8_t hash_console_id;
 } rc_client_load_state_t;
 
 static void rc_client_begin_fetch_game_data(rc_client_load_state_t* callback_data);
@@ -178,6 +179,7 @@ static int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_
   if (result == RC_OK)
     snprintf(buffer, buffer_size, "%s", request.url);
 
+  rc_api_destroy_request(&request);
   return result;
 }
 
@@ -864,6 +866,7 @@ static void rc_client_begin_start_session(rc_client_load_state_t* load_state)
         rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_STARTING_SESSION, 3);
 
         /* TODO: create single server request to do all three of these */
+        RC_CLIENT_LOG_VERBOSE(client, "Starting session for game %u", start_session_params.game_id);
         client->callbacks.server_call(&start_session_request, rc_client_start_session_callback, load_state, client);
         client->callbacks.server_call(&hardcore_unlock_request, rc_client_hardcore_unlocks_callback, load_state, client);
         client->callbacks.server_call(&softcore_unlock_request, rc_client_softcore_unlocks_callback, load_state, client);
@@ -1146,11 +1149,46 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
 
   if (load_state->hash->game_id == 0) {
     char hash[33];
+
     if (rc_hash_iterate(hash, &load_state->hash_iterator)) {
       /* found another hash to try */
+      load_state->hash_console_id = load_state->hash_iterator.consoles[load_state->hash_iterator.index - 1];
       rc_client_load_game(load_state, hash, NULL);
       return;
     }
+
+    if (load_state->game->media_hash && load_state->game->media_hash->next) {
+      /* multiple hashes were tried, create a CSV */
+      struct rc_client_media_hash_t* media_hash = load_state->game->media_hash;
+      int count = 1;
+      char* ptr;
+      size_t size, len;
+
+      while (media_hash->next) {
+        media_hash = media_hash->next;
+        count++;
+      }
+
+      size = count * 33;
+      load_state->game->public.hash = ptr = (char*)rc_buf_alloc(&load_state->game->buffer, size);
+      for (media_hash = load_state->game->media_hash; media_hash; media_hash = media_hash->next) {
+        if (ptr != load_state->game->public.hash) {
+          *ptr++ = ',';
+          size--;
+        }
+        len = snprintf(ptr, size, "%s", media_hash->game_hash->hash);
+        ptr += len;
+        size -= len;
+      }
+    } else {
+      /* only a single hash was tried, capture it */
+      load_state->game->public.console_id = load_state->hash_console_id;
+      load_state->game->public.hash = load_state->hash->hash;
+    }
+
+    load_state->game->public.title = "Unknown Game";
+    client->game = load_state->game;
+    load_state->game = NULL;
 
     rc_client_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
     return;
@@ -1191,6 +1229,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
 
   rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_FETCHING_GAME_DATA, 1);
 
+  RC_CLIENT_LOG_VERBOSE(client, "Fetching data for game %u", fetch_game_data_request.game_id);
   client->callbacks.server_call(&request, rc_client_fetch_game_data_callback, load_state, client);
   rc_api_destroy_request(&request);
 }
@@ -1379,11 +1418,11 @@ void rc_client_begin_identify_and_load_game(rc_client_t* client,
       rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
       return;
     }
+
+    load_state->hash_console_id = load_state->hash_iterator.consoles[load_state->hash_iterator.index - 1];
   }
   else {
-    load_state->hash_iterator.consoles[0] = console_id;
-    load_state->hash_iterator.consoles[1] = 0;
-    load_state->hash_iterator.index = 1;
+    load_state->hash_console_id = console_id;
 
     if (data != NULL) {
       if (!rc_hash_generate_from_buffer(hash, console_id, data, data_size)) {

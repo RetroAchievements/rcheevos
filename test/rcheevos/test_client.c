@@ -600,8 +600,18 @@ static void test_load_game_unknown_hash(void)
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game);
 
   ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NULL(g_client->game);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
 
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, RC_CONSOLE_UNKNOWN);
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
+    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 0);
+  }
   rc_client_destroy(g_client);
 }
 
@@ -884,6 +894,37 @@ static void test_identify_and_load_game_console_not_specified(void)
   free(image);
 }
 
+static void test_identify_and_load_game_unknown_hash(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
+      image, image_size, rc_client_callback_expect_unknown_game);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, RC_CONSOLE_NINTENDO);
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
+    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 0);
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
 static void test_identify_and_load_game_multihash(void)
 {
   const size_t image_size = 32768;
@@ -933,7 +974,18 @@ static void test_identify_and_load_game_multihash_unknown_game(void)
       image, image_size, rc_client_callback_expect_unknown_game);
 
   ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NULL(g_client->game);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, RC_CONSOLE_APPLE_II);
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
+    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 0);
+  }
 
   /* same hash generated for all dsk consoles - only one server call should be made */
   assert_api_call_count("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", 1);
@@ -3861,6 +3913,8 @@ void test_client(void) {
   TEST(test_load_game_unknown_hash);
   TEST(test_load_game_not_logged_in);
   TEST(test_load_game);
+  // TODO: load_game_async_login
+  // TODO: load_game_async_login_failure
   TEST(test_load_game_gameid_failure);
   TEST(test_load_game_patch_failure);
   TEST(test_load_game_postactivity_failure);
@@ -3870,6 +3924,7 @@ void test_client(void) {
   TEST(test_identify_and_load_game_required_fields);
   TEST(test_identify_and_load_game_console_specified);
   TEST(test_identify_and_load_game_console_not_specified);
+  TEST(test_identify_and_load_game_unknown_hash);
   TEST(test_identify_and_load_game_multihash);
   TEST(test_identify_and_load_game_multihash_unknown_game);
   TEST(test_identify_and_load_game_multihash_differ);
