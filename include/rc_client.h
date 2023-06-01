@@ -266,6 +266,7 @@ typedef struct rc_client_achievement_t {
   const char* description;
   char badge_name[8];
   char measured_progress[24];
+  float measured_percent;
   uint32_t id;
   uint32_t points;
   time_t unlock_time;

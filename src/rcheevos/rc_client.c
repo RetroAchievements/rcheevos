@@ -1724,7 +1724,6 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
 {
   uint8_t new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNKNOWN;
   uint32_t new_measured_value = 0;
-  int measured_progress = 0;
 
   if (achievement->public.bucket == RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED)
     return;
@@ -1757,18 +1756,22 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
           new_measured_value = (achievement->trigger->measured_value > achievement->trigger->measured_target) ?
               achievement->trigger->measured_target : achievement->trigger->measured_value;
 
-          measured_progress = (int)(((uint64_t)new_measured_value * 100) / achievement->trigger->measured_target);
+          achievement->public.measured_percent = ((float)new_measured_value * 100) / (float)achievement->trigger->measured_target;
 
-          if (!achievement->trigger->measured_as_percent)
-            snprintf(achievement->public.measured_progress, sizeof(achievement->public.measured_progress), "%u/%u", new_measured_value, achievement->trigger->measured_target);
-          else if (measured_progress)
-            snprintf(achievement->public.measured_progress, sizeof(achievement->public.measured_progress), "%u%%", measured_progress);
+          if (!achievement->trigger->measured_as_percent) {
+            snprintf(achievement->public.measured_progress, sizeof(achievement->public.measured_progress),
+                "%u/%u", new_measured_value, achievement->trigger->measured_target);
+          }
+          else if (achievement->public.measured_percent >= 1.0) {
+            snprintf(achievement->public.measured_progress, sizeof(achievement->public.measured_progress),
+                "%u%%", (uint32_t)achievement->public.measured_percent);
+          }
         }
       }
 
       if (achievement->trigger->state == RC_TRIGGER_STATE_PRIMED)
         new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE;
-      else if (measured_progress >= 80)
+      else if (achievement->public.measured_percent >= 80.0)
         new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE;
     }
   }
@@ -2028,13 +2031,11 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
       return;
     }
   }
-  else
-  {
+  else {
     ach_data->client->user.score = award_achievement_response.new_player_score;
     ach_data->client->user.score_softcore = award_achievement_response.new_player_score_softcore;
 
-    if (award_achievement_response.awarded_achievement_id != ach_data->id)
-    {
+    if (award_achievement_response.awarded_achievement_id != ach_data->id) {
       RC_CLIENT_LOG_ERR(ach_data->client, "Awarded achievement %u instead of %u", award_achievement_response.awarded_achievement_id, error_message);
     }
     else {
@@ -2043,13 +2044,20 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
         RC_CLIENT_LOG_INFO(ach_data->client, "Achievement %u: %s", ach_data->id, award_achievement_response.response.error_message);
       }
       else if (ach_data->retry_count) {
-        RC_CLIENT_LOG_INFO(ach_data->client, "Achievement %u awarded after %u attempts", ach_data->id, ach_data->retry_count + 1);
+        RC_CLIENT_LOG_INFO(ach_data->client, "Achievement %u awarded after %u attempts, new score: %u",
+            ach_data->id, ach_data->retry_count + 1,
+            ach_data->hardcore ? award_achievement_response.new_player_score : award_achievement_response.new_player_score_softcore);
+      }
+      else {
+        RC_CLIENT_LOG_INFO(ach_data->client, "Achievement %u awarded, new score: %u",
+            ach_data->id,
+            ach_data->hardcore ? award_achievement_response.new_player_score : award_achievement_response.new_player_score_softcore);
       }
 
       if (award_achievement_response.achievements_remaining == 0 &&
           ach_data->client->game->mastery == RC_CLIENT_MASTERY_STATE_NONE) {
         RC_CLIENT_LOG_INFO(ach_data->client, "Game %u %s", ach_data->client->game->public.id,
-          ach_data->client->state.hardcore ? "mastered" : "completed");
+            ach_data->client->state.hardcore ? "mastered" : "completed");
         ach_data->client->game->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
       }
     }

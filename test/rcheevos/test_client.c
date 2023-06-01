@@ -1663,6 +1663,7 @@ static void test_achievement_list_buckets(void)
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 6);
     ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 7);
     achievement = *iter++;
@@ -1670,9 +1671,11 @@ static void test_achievement_list_buckets(void)
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 70);
     ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 71);
     ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
 
     ASSERT_NUM_EQUALS(list->buckets[1].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Unlocked");
@@ -1711,14 +1714,17 @@ static void test_achievement_list_buckets(void)
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 6);
     ASSERT_STR_EQUALS(achievement->measured_progress, "2/6");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 33.333333);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 9);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 70);
     ASSERT_STR_EQUALS(achievement->measured_progress, "25600/100000");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 71);
     ASSERT_STR_EQUALS(achievement->measured_progress, "25%");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
 
     ASSERT_NUM_EQUALS(list->buckets[3].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
     ASSERT_STR_EQUALS(list->buckets[3].label, "Unlocked");
@@ -1745,6 +1751,7 @@ static void test_achievement_list_buckets(void)
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 6);
     ASSERT_STR_EQUALS(list->buckets[0].achievements[0]->measured_progress, "5/6");
+    ASSERT_FLOAT_EQUALS(list->buckets[0].achievements[0] ->measured_percent, 83.333333);
 
     ASSERT_NUM_EQUALS(list->buckets[1].id, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Locked");
@@ -1757,9 +1764,11 @@ static void test_achievement_list_buckets(void)
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 70);
     ASSERT_STR_EQUALS(achievement->measured_progress, "25600/100000");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 71);
     ASSERT_STR_EQUALS(achievement->measured_progress, "25%");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
 
     ASSERT_NUM_EQUALS(list->buckets[2].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
     ASSERT_STR_EQUALS(list->buckets[2].label, "Unlocked");
