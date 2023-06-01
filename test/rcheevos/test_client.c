@@ -123,6 +123,7 @@ static const char* unlock_5501 = "{\"Success\":true,\"UserUnlocks\":[5501]}";
 static const char* unlock_5502 = "{\"Success\":true,\"UserUnlocks\":[5502]}";
 static const char* unlock_5501_and_5502 = "{\"Success\":true,\"UserUnlocks\":[5501,5502]}";
 static const char* unlock_8 = "{\"Success\":true,\"UserUnlocks\":[8]}";
+static const char* unlock_6_8_and_9 = "{\"Success\":true,\"UserUnlocks\":[6,8,9]}";
 
 static const char* response_429 =
     "<html>\n"
@@ -560,6 +561,84 @@ static void test_user_get_image_url(void)
   ASSERT_NUM_EQUALS(rc_client_user_get_image_url(rc_client_get_user_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/UserPic/DisplayName.png");
 }
+
+static void test_get_user_game_summary(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_test_unofficial(g_client, 1);
+  mock_client_load_game(patchdata_exhaustive, unlock_8, unlock_6_8_and_9);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 7);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 1);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_softcore(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_test_unofficial(g_client, 1);
+  mock_client_load_game(patchdata_exhaustive, unlock_8, unlock_6_8_and_9);
+  rc_client_set_hardcore_enabled(g_client, 0);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 7);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 3);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_encore_mode(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_test_unofficial(g_client, 1);
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
+  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", unlock_6_8_and_9);
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", unlock_8);
+
+  rc_client_set_encore_mode_enabled(g_client, 1);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 7);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 1);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_with_unsupported_and_unofficial(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_test_unofficial(g_client, 1);
+  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 2);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 1);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 1);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 0);
+
+  rc_client_destroy(g_client);
+}
+
 
 /* ----- load game ----- */
 
@@ -1381,34 +1460,34 @@ static void test_change_media_while_loading_later(void)
   free(image);
 }
 
-/* ----- get game badge ----- */
+/* ----- get game image ----- */
 
-static void test_game_get_badge_url(void)
+static void test_game_get_image_url(void)
 {
   char buffer[256];
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
 
-  ASSERT_NUM_EQUALS(rc_client_game_get_badge_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
+  ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233.png");
 }
 
-static void test_game_get_badge_url_non_ssl(void)
+static void test_game_get_image_url_non_ssl(void)
 {
   char buffer[256];
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
   rc_client_set_host(g_client, "http://retroachievements.org");
 
-  ASSERT_NUM_EQUALS(rc_client_game_get_badge_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
+  ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "http://media.retroachievements.org/Images/112233.png");
 }
 
-static void test_game_get_badge_url_custom(void)
+static void test_game_get_image_url_custom(void)
 {
   char buffer[256];
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
   rc_client_set_host(g_client, "localhost");
 
-  ASSERT_NUM_EQUALS(rc_client_game_get_badge_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
+  ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "http://localhost/Images/112233.png");
 }
 
@@ -1782,26 +1861,26 @@ static void test_achievement_list_buckets(void)
   rc_client_destroy(g_client);
 }
 
-static void test_achievement_get_badge_url(void)
+static void test_achievement_get_image_url(void)
 {
   char buffer[256];
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
 
-  ASSERT_NUM_EQUALS(rc_client_achievement_get_badge_url(rc_client_get_achievement_info(g_client, 5501),
+  ASSERT_NUM_EQUALS(rc_client_achievement_get_image_url(rc_client_get_achievement_info(g_client, 5501),
       RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED, buffer, sizeof(buffer)), RC_OK);
-  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233.png");
+  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Badge/00234.png");
 
-  ASSERT_NUM_EQUALS(rc_client_achievement_get_badge_url(rc_client_get_achievement_info(g_client, 5501),
+  ASSERT_NUM_EQUALS(rc_client_achievement_get_image_url(rc_client_get_achievement_info(g_client, 5501),
       RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE, buffer, sizeof(buffer)), RC_OK);
-  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233_lock.png");
+  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Badge/00234_lock.png");
 
-  ASSERT_NUM_EQUALS(rc_client_achievement_get_badge_url(rc_client_get_achievement_info(g_client, 5501),
+  ASSERT_NUM_EQUALS(rc_client_achievement_get_image_url(rc_client_get_achievement_info(g_client, 5501),
       RC_CLIENT_ACHIEVEMENT_STATE_DISABLED, buffer, sizeof(buffer)), RC_OK);
-  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233_lock.png");
+  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Badge/00234_lock.png");
 
-  ASSERT_NUM_EQUALS(rc_client_achievement_get_badge_url(rc_client_get_achievement_info(g_client, 5501),
+  ASSERT_NUM_EQUALS(rc_client_achievement_get_image_url(rc_client_get_achievement_info(g_client, 5501),
       RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE, buffer, sizeof(buffer)), RC_OK);
-  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233_lock.png");
+  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Badge/00234_lock.png");
 }
 
 /* ----- do frame ----- */
@@ -3755,7 +3834,7 @@ static void test_set_hardcore_enable(void)
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 0); /* 5502 should not be active*/
   }
 
@@ -3828,13 +3907,13 @@ static void test_set_encore_mode_enable(void)
   achievement = rc_client_get_achievement_info(g_client, 5501);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
-    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH); /* unlock information still tracked */
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);     /* but achievement remains active */
   }
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
 
@@ -3845,13 +3924,13 @@ static void test_set_encore_mode_enable(void)
   achievement = rc_client_get_achievement_info(g_client, 5501);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
 
@@ -3873,7 +3952,7 @@ static void test_set_encore_mode_disable(void)
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
-    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
   }
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
@@ -3890,7 +3969,7 @@ static void test_set_encore_mode_disable(void)
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
-    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
   }
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
@@ -3915,7 +3994,13 @@ void test_client(void) {
   TEST(test_login_incomplete_response);
   TEST(test_login_with_password_async);
 
+  /* user */
   TEST(test_user_get_image_url);
+
+  TEST(test_get_user_game_summary);
+  TEST(test_get_user_game_summary_softcore);
+  TEST(test_get_user_game_summary_encore_mode);
+  TEST(test_get_user_game_summary_with_unsupported_and_unofficial);
 
   /* load game */
   TEST(test_load_game_required_fields);
@@ -3948,9 +4033,10 @@ void test_client(void) {
   TEST(test_change_media_while_loading);
   TEST(test_change_media_while_loading_later);
 
-  TEST(test_game_get_badge_url);
-  TEST(test_game_get_badge_url_non_ssl);
-  TEST(test_game_get_badge_url_custom);
+  /* game */
+  TEST(test_game_get_image_url);
+  TEST(test_game_get_image_url_non_ssl);
+  TEST(test_game_get_image_url_custom);
 
   /* achievements */
   TEST(test_achievement_list_simple);
@@ -3958,6 +4044,8 @@ void test_client(void) {
   TEST(test_achievement_list_simple_with_unofficial_and_unsupported);
   TEST(test_achievement_list_simple_with_unofficial_off);
   TEST(test_achievement_list_buckets);
+
+  TEST(test_achievement_get_image_url);
 
   /* do frame */
   TEST(test_do_frame_bounds_check_system);

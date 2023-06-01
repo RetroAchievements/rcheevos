@@ -174,6 +174,20 @@ const rc_client_user_t* rc_client_get_user_info(const rc_client_t* client);
  */
 int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], size_t buffer_size);
 
+typedef struct rc_client_user_game_summary_t
+{
+  uint32_t num_core_achievements;
+  uint32_t num_unofficial_achievements;
+  uint32_t num_unlocked_achievements;
+  uint32_t num_unsupported_achievements;
+} rc_client_user_game_summary_t;
+
+/**
+ * Gets a breakdown of the number of achievements in the game, and how many the user has unlocked.
+ * Used for the "You have unlocked X of Y achievements" message shown when the game starts.
+ */
+void rc_client_get_user_game_summary(const rc_client_t* client, rc_client_user_game_summary_t* summary);
+
 /*****************************************************************************\
 | Game                                                                        |
 \*****************************************************************************/
@@ -214,10 +228,10 @@ typedef struct rc_client_game_t {
 const rc_client_game_t* rc_client_get_game_info(const rc_client_t* client);
 
 /**
- * Gets the URL for the game badge.
+ * Gets the URL for the game image.
  * Returns RC_OK on success.
  */
-int rc_client_game_get_badge_url(const rc_client_game_t* game, char buffer[], size_t buffer_size);
+int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], size_t buffer_size);
 
 /**
  * Changes the active disc in a multi-disc game.
@@ -282,10 +296,10 @@ typedef struct rc_client_achievement_t {
 const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* client, uint32_t id);
 
 /**
- * Gets the URL for the game badge.
+ * Gets the URL for the achievement image.
  * Returns RC_OK on success.
  */
-int rc_client_achievement_get_badge_url(const rc_client_achievement_t* achievement, int state, char buffer[], size_t buffer_size);
+int rc_client_achievement_get_image_url(const rc_client_achievement_t* achievement, int state, char buffer[], size_t buffer_size);
 
 /**
  * Gets the number of achievements in a category.

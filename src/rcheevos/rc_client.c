@@ -336,6 +336,48 @@ int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], si
   return rc_client_get_image_url(buffer, buffer_size, RC_IMAGE_TYPE_USER, user->display_name);
 }
 
+void rc_client_get_user_game_summary(const rc_client_t* client, rc_client_user_game_summary_t* summary)
+{
+  rc_client_achievement_info_t* achievement;
+  rc_client_achievement_info_t* stop;
+  const uint8_t unlock_bit = (client->state.hardcore) ?
+      RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE;
+
+  if (!summary)
+    return;
+
+  memset(summary, 0, sizeof(*summary));
+  if (!client || !client->game)
+    return;
+
+  rc_mutex_lock((rc_mutex_t*)&client->state.mutex); /* remove const cast for mutex access */
+
+  achievement = client->game->achievements;
+  stop = achievement + client->game->public.num_achievements;
+  for (; achievement < stop; ++achievement) {
+    switch (achievement->public.category) {
+      case RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE:
+        ++summary->num_core_achievements;
+
+        if (achievement->public.unlocked & unlock_bit)
+          ++summary->num_unlocked_achievements;
+        else if (achievement->public.bucket == RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED)
+          ++summary->num_unsupported_achievements;
+
+        break;
+
+      case RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL:
+        ++summary->num_unofficial_achievements;
+        break;
+
+      default:
+        continue;
+    }
+  }
+
+  rc_mutex_unlock((rc_mutex_t*)&client->state.mutex); /* remove const cast for mutex access */
+}
+
 /* ===== Game ===== */
 
 static void rc_client_free_game(rc_client_game_info_t* game)
@@ -576,8 +618,11 @@ static void rc_client_toggle_hardcore_achievements(rc_client_game_info_t* game, 
           break;
       }
     }
-    else if (achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE) {
+    else if (achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE ||
+             achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE) {
       achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED;
+      achievement->public.unlock_time = (active_bit == RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE) ?
+          achievement->unlock_time_hardcore : achievement->unlock_time_softcore;
 
       if (achievement->trigger && achievement->trigger->state == RC_TRIGGER_STATE_PRIMED) {
         rc_client_event_t client_event;
@@ -722,12 +767,10 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
       load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
   }
   else {
-    if (!client->state.encore_mode) {
-      rc_client_apply_unlocks(load_state->game, load_state->softcore_unlocks,
-          load_state->num_softcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-      rc_client_apply_unlocks(load_state->game, load_state->hardcore_unlocks,
-          load_state->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
-    }
+    rc_client_apply_unlocks(load_state->game, load_state->softcore_unlocks,
+        load_state->num_softcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    rc_client_apply_unlocks(load_state->game, load_state->hardcore_unlocks,
+        load_state->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
 
     rc_mutex_lock(&client->state.mutex);
     if (client->state.load == NULL)
@@ -1688,7 +1731,7 @@ const rc_client_game_t* rc_client_get_game_info(const rc_client_t* client)
   return (client && client->game) ? &client->game->public : NULL;
 }
 
-int rc_client_game_get_badge_url(const rc_client_game_t* game, char buffer[], size_t buffer_size)
+int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], size_t buffer_size)
 {
   if (!game)
     return RC_INVALID_STATE;
@@ -1960,7 +2003,7 @@ const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* clien
   return NULL;
 }
 
-int rc_client_achievement_get_badge_url(const rc_client_achievement_t* achievement, int state, char buffer[], size_t buffer_size)
+int rc_client_achievement_get_image_url(const rc_client_achievement_t* achievement, int state, char buffer[], size_t buffer_size)
 {
   const int image_type = (state == RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED) ?
       RC_IMAGE_TYPE_ACHIEVEMENT : RC_IMAGE_TYPE_ACHIEVEMENT_LOCKED;
