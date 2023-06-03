@@ -59,7 +59,7 @@ static void rc_client_dummy_event_handler(const rc_client_event_t* event)
 {
 }
 
-rc_client_t* rc_client_create(rc_client_read_memory_t read_memory_function, rc_client_server_call_t server_call_function)
+rc_client_t* rc_client_create(rc_client_read_memory_func_t read_memory_function, rc_client_server_call_t server_call_function)
 {
   rc_client_t* client = (rc_client_t*)calloc(1, sizeof(rc_client_t));
   if (!client)
@@ -190,20 +190,24 @@ static void rc_client_login_callback(const char* server_response_body, int http_
   rc_client_generic_callback_data_t* login_callback_data = (rc_client_generic_callback_data_t*)callback_data;
   rc_client_t* client = login_callback_data->client;
   rc_api_login_response_t login_response;
+  rc_client_load_state_t* load_state;
 
   int result = rc_api_process_login_response(&login_response, server_response_body);
   const char* error_message = rc_client_server_error_message(&result, http_status_code, &login_response.response);
   if (error_message) {
     rc_mutex_lock(&client->state.mutex);
     client->state.user = RC_CLIENT_USER_STATE_NONE;
+    load_state = client->state.load;
     rc_mutex_unlock(&client->state.mutex);
 
     RC_CLIENT_LOG_ERR(client, "Login failed: %s", error_message);
     if (login_callback_data->callback)
       login_callback_data->callback(result, error_message, client);
+
+    if (load_state && load_state->progress == RC_CLIENT_LOAD_STATE_AWAIT_LOGIN)
+      rc_client_begin_fetch_game_data(load_state);
   }
   else {
-    rc_client_load_state_t* load_state;
     client->user.username = rc_buf_strcpy(&client->state.buffer, login_response.username);
 
     if (strcmp(login_response.username, login_response.display_name) == 0)
@@ -1078,6 +1082,7 @@ static rc_client_leaderboard_info_t* rc_client_copy_leaderboards(
     leaderboard->public.title = rc_buf_strcpy(buffer, read->title);
     leaderboard->public.description = rc_buf_strcpy(buffer, read->description);
     leaderboard->public.id = read->id;
+    leaderboard->public.lower_is_better = read->lower_is_better;
     leaderboard->format = (uint8_t)read->format;
     leaderboard->tracker_id = RC_CLIENT_LEADERBOARD_TRACKER_UNASSIGNED;
 
@@ -2535,7 +2540,7 @@ void rc_client_set_event_handler(rc_client_t* client, rc_client_event_handler_t 
     client->callbacks.event_handler = handler;
 }
 
-void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memory_t handler)
+void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memory_func_t handler)
 {
   if (client)
     client->callbacks.read_memory = handler;

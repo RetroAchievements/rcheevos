@@ -12,7 +12,7 @@ extern "C" {
 #include "rc_runtime_types.h"
 
 typedef struct rc_client_callbacks_t {
-  rc_client_read_memory_t read_memory;
+  rc_client_read_memory_func_t read_memory;
   rc_client_event_handler_t event_handler;
   rc_client_server_call_t server_call;
   rc_client_message_callback_t log_call;

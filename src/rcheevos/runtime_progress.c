@@ -774,6 +774,9 @@ int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const unsigned char* 
   int seen_rich_presence = 0;
   int result = RC_OK;
 
+  if (!serialized)
+    return RC_INVALID_STATE;
+
   rc_runtime_progress_init(&progress, runtime, L);
   progress.buffer = (unsigned char*)serialized;
 

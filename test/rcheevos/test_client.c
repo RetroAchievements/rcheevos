@@ -280,7 +280,7 @@ static void rc_client_server_call_async(const rc_api_request_t* request, rc_clie
   g_num_mock_api_responses++;
 }
 
-static void async_api_response(const char* request_params, const char* response_body)
+static void _async_api_response(const char* request_params, const char* response_body, int http_status_code)
 {
   int i;
   for (i = 0; i < g_num_mock_api_responses; i++)
@@ -288,7 +288,7 @@ static void async_api_response(const char* request_params, const char* response_
     if (g_mock_api_responses[i].request_params && strcmp(g_mock_api_responses[i].request_params, request_params) == 0)
     {
       g_mock_api_responses[i].seen++;
-      g_mock_api_responses[i].async_callback(response_body, 200, g_mock_api_responses[i].async_callback_data);
+      g_mock_api_responses[i].async_callback(response_body, http_status_code, g_mock_api_responses[i].async_callback_data);
       free((void*)g_mock_api_responses[i].request_params);
       g_mock_api_responses[i].request_params = NULL;
 
@@ -299,6 +299,16 @@ static void async_api_response(const char* request_params, const char* response_
   }
 
   ASSERT_FAIL("No pending API request for: %s", request_params);
+}
+
+static void async_api_response(const char* request_params, const char* response_body)
+{
+  _async_api_response(request_params, response_body, 200);
+}
+
+static void async_api_error(const char* request_params, const char* response_body, int http_status_code)
+{
+  _async_api_response(request_params, response_body, http_status_code);
 }
 
 static void _assert_api_called(const char* request_params, int count)
@@ -776,6 +786,72 @@ static void test_load_game(void)
     ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
     ASSERT_NUM_EQUALS(leaderboard->tracker_id, RC_CLIENT_LEADERBOARD_TRACKER_UNASSIGNED);
   }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_game_async_login(void)
+{
+  g_client = mock_client_not_logged_in_async();
+  reset_mock_api_handlers();
+
+  rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_success);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  // game load process will stop here waiting for the login to complete
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+
+  // login completion will trigger process to continue
+  async_api_response("r=login&u=Username&p=Pa%24%24word",
+	    "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
+  assert_api_pending("r=patch&u=Username&t=ApiToken&g=1234");
+
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  ASSERT_STR_EQUALS(g_client->user.username, "Username");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_game_async_login_with_incorrect_password(void)
+{
+  g_client = mock_client_not_logged_in_async();
+  reset_mock_api_handlers();
+
+  rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_credentials_error);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  // game load process will stop here waiting for the login to complete
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+
+  // login failure will trigger process to continue
+  async_api_error("r=login&u=Username&p=Pa%24%24word",
+      "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\"}", 403);
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+
+  ASSERT_PTR_NULL(g_client->user.username);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
 
   rc_client_destroy(g_client);
 }
@@ -4007,8 +4083,8 @@ void test_client(void) {
   TEST(test_load_game_unknown_hash);
   TEST(test_load_game_not_logged_in);
   TEST(test_load_game);
-  // TODO: load_game_async_login
-  // TODO: load_game_async_login_failure
+  TEST(test_load_game_async_login);
+  TEST(test_load_game_async_login_with_incorrect_password);
   TEST(test_load_game_gameid_failure);
   TEST(test_load_game_patch_failure);
   TEST(test_load_game_postactivity_failure);

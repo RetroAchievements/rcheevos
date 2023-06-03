@@ -22,7 +22,7 @@ typedef struct rc_client_t rc_client_t;
  * Callback used to read num_bytes bytes from memory starting at address into buffer.
  * Returns the number of bytes read. A return value of 0 indicates the address was invalid.
  */
-typedef uint32_t (*rc_client_read_memory_t)(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client);
+typedef uint32_t (*rc_client_read_memory_func_t)(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client);
 
 /**
  * Internal method passed to rc_client_server_call_t to process the server response.
@@ -52,7 +52,7 @@ typedef void (*rc_client_message_callback_t)(const char* message);
 /**
  * Creates a new rc_client_t object.
  */
-rc_client_t* rc_client_create(rc_client_read_memory_t read_memory_function, rc_client_server_call_t server_call_function);
+rc_client_t* rc_client_create(rc_client_read_memory_func_t read_memory_function, rc_client_server_call_t server_call_function);
 
 /**
  * Releases resources associated to a rc_client_t object.
@@ -325,7 +325,7 @@ enum {
 };
 
 /**
- * Gets a list of achievements matching the specified category and grouping.
+ * Creates a list of achievement matching the specified category and grouping.
  * Returns an allocated list that must be free'd by calling rc_client_destroy_achievement_list.
  */
 rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* client, int category, int grouping);
@@ -352,6 +352,7 @@ typedef struct rc_client_leaderboard_t {
   const char* tracker_value;
   uint32_t id;
   uint8_t state;
+  uint8_t lower_is_better;
 } rc_client_leaderboard_t;
 
 /**
@@ -426,7 +427,7 @@ void rc_client_set_event_handler(rc_client_t* client, rc_client_event_handler_t 
 /**
  * Provides a callback for reading memory.
  */
-void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memory_t handler);
+void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memory_func_t handler);
 
 /**
  * Processes achievements for the current frame.
