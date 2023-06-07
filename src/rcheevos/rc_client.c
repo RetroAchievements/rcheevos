@@ -388,9 +388,6 @@ static void rc_client_free_game(rc_client_game_info_t* game)
 {
   rc_runtime_destroy(&game->runtime);
 
-  if (game->leaderboard_trackers)
-    free(game->leaderboard_trackers);
-
   rc_buf_destroy(&game->buffer);
 
   free(game);
@@ -1084,7 +1081,6 @@ static rc_client_leaderboard_info_t* rc_client_copy_leaderboards(
     leaderboard->public.id = read->id;
     leaderboard->public.lower_is_better = read->lower_is_better;
     leaderboard->format = (uint8_t)read->format;
-    leaderboard->tracker_id = RC_CLIENT_LEADERBOARD_TRACKER_UNASSIGNED;
 
     memaddr = read->definition;
     rc_runtime_checksum(memaddr, leaderboard->md5);
@@ -2201,8 +2197,10 @@ static void rc_client_reset_achievements(rc_client_t* client)
     if (!trigger || achievement->public.state != RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE)
       continue;
 
-    if (trigger->state == RC_TRIGGER_STATE_PRIMED)
+    if (trigger->state == RC_TRIGGER_STATE_PRIMED) {
       achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+      client->game->pending_achievement_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+    }
 
     rc_reset_trigger(trigger);
   }
@@ -2232,11 +2230,10 @@ const rc_client_leaderboard_t* rc_client_get_leaderboard_info(const rc_client_t*
 
 static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
 {
-  rc_client_leaderboard_tracker_info_t* tracker = game->leaderboard_trackers;
-  rc_client_leaderboard_tracker_info_t* stop = tracker + game->leaderboard_trackers_size;
+  rc_client_leaderboard_tracker_info_t* tracker;
   rc_client_leaderboard_tracker_info_t* available_tracker = NULL;
 
-  for (; tracker < stop; ++tracker) {
+  for (tracker = game->leaderboard_trackers; tracker; tracker = tracker->next) {
     if (tracker->reference_count == 0) {
       if (available_tracker == NULL)
         available_tracker = tracker;
@@ -2256,42 +2253,28 @@ static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, 
       /* value has changed. prepare an update event */
       tracker->raw_value = leaderboard->value;
       tracker->pending_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
+      game->pending_leaderboard_tracker_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
     }
 
     /* attach to the existing tracker */
     ++tracker->reference_count;
     tracker->pending_events &= ~RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE;
-    leaderboard->tracker_id = (uint8_t)tracker->public.id;
+    leaderboard->tracker = tracker;
     leaderboard->public.tracker_value = tracker->public.display;
     return;
   }
 
   if (!available_tracker) {
-    /* no unused trackers in queue, allocate one */
-    if (game->leaderboard_trackers_size == game->leaderboard_trackers_capacity) {
-      const uint8_t capacity_increase = 8;
-      const uint8_t new_capacity = game->leaderboard_trackers_capacity + capacity_increase;
-      const size_t new_size = new_capacity * sizeof(game->leaderboard_trackers[0]);
-      uint8_t i;
+    rc_client_leaderboard_tracker_info_t** next = &game->leaderboard_trackers;
 
-      /* unexpected, but prevents overflow of uint8_t */
-      if (new_capacity > 0xF0)
-        return;
+    available_tracker = (rc_client_leaderboard_tracker_info_t*)rc_buf_alloc(&game->buffer, sizeof(*available_tracker));
+    memset(available_tracker, 0, sizeof(*available_tracker));
+    available_tracker->public.id = 1;
 
-      if (game->leaderboard_trackers)
-        game->leaderboard_trackers = (rc_client_leaderboard_tracker_info_t*)realloc(game->leaderboard_trackers, new_size);
-      else
-        game->leaderboard_trackers = (rc_client_leaderboard_tracker_info_t*)malloc(new_size);
+    for (tracker = *next; tracker; next = &tracker->next, tracker = *next)
+      available_tracker->public.id++;
 
-      tracker = &game->leaderboard_trackers[game->leaderboard_trackers_capacity];
-      memset(tracker, 0, capacity_increase * sizeof(game->leaderboard_trackers[0]));
-
-      for (i = 0; i < capacity_increase; ++i, ++tracker)
-        tracker->public.id = game->leaderboard_trackers_capacity + i + 1;
-      game->leaderboard_trackers_capacity = new_capacity;
-    }
-
-    available_tracker = &game->leaderboard_trackers[game->leaderboard_trackers_size++];
+    *next = available_tracker;
   }
 
   /* update the claimed tracker */
@@ -2301,25 +2284,29 @@ static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, 
   available_tracker->raw_value = leaderboard->value;
   available_tracker->pending_events = RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW;
   available_tracker->value_from_hits = rc_value_from_hits(&leaderboard->lboard->value);
-  leaderboard->tracker_id = (uint8_t)available_tracker->public.id;
+  leaderboard->tracker = available_tracker;
   leaderboard->public.tracker_value = available_tracker->public.display;
+  game->pending_leaderboard_tracker_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW;
 }
 
 static void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
 {
-  rc_client_leaderboard_tracker_info_t* tracker = &game->leaderboard_trackers[leaderboard->tracker_id - 1];
-  leaderboard->tracker_id = 0;
+  rc_client_leaderboard_tracker_info_t* tracker = leaderboard->tracker;
+  leaderboard->tracker = NULL;
 
-  if (--tracker->reference_count == 0)
+  if (tracker && --tracker->reference_count == 0) {
     tracker->pending_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE;
+    game->pending_leaderboard_tracker_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE;
+  }
 }
 
 static void rc_client_update_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
 {
-  rc_client_leaderboard_tracker_info_t* tracker = &game->leaderboard_trackers[leaderboard->tracker_id - 1];
-  if (tracker->raw_value != leaderboard->value) {
+  rc_client_leaderboard_tracker_info_t* tracker = leaderboard->tracker;
+  if (tracker && tracker->raw_value != leaderboard->value) {
     tracker->raw_value = leaderboard->value;
     tracker->pending_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
+    game->pending_leaderboard_tracker_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
   }
 }
 
@@ -2686,6 +2673,7 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client)
     if (trigger->measured_value != old_measured_value && old_measured_value != RC_MEASURED_UNKNOWN &&
         trigger->measured_value <= trigger->measured_target &&
         rc_trigger_state_active(new_state) && new_state != RC_TRIGGER_STATE_WAITING) {
+
       /* only show a popup for the achievement closest to triggering */
       float progress = (float)trigger->measured_value / (float)trigger->measured_target;
 
@@ -2704,6 +2692,7 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client)
           best_progress_achievement->pending_events &= ~RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW;
 
         achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW;
+        client->game->pending_achievement_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW;
         best_progress_achievement = achievement;
       }
     }
@@ -2721,6 +2710,8 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client)
       achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_TRIGGERED;
     else if (new_state == RC_TRIGGER_STATE_PRIMED)
       achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_SHOW;
+
+    client->game->pending_achievement_events |= achievement->pending_events;
   }
 }
 
@@ -2776,21 +2767,25 @@ static void rc_client_raise_achievement_events(rc_client_t* client)
     achievement->pending_events = RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_NONE;
   }
 
-  /* raise mastery event if pending */
-  if (client->game->mastery == RC_CLIENT_MASTERY_STATE_PENDING) {
-    client->game->mastery = RC_CLIENT_MASTERY_STATE_SHOWN;
-
-    client_event.type = RC_CLIENT_EVENT_GAME_COMPLETED;
-    client_event.achievement = NULL;
-    client->callbacks.event_handler(&client_event);
-  }
-
   /* if any achievements were unlocked, resync the active achievements list */
   if (achievements_unlocked) {
     rc_mutex_lock(&client->state.mutex);
     rc_client_update_active_achievements(client->game);
     rc_mutex_unlock(&client->state.mutex);
   }
+}
+
+static void rc_client_raise_mastery_event(rc_client_t* client)
+{
+  rc_client_event_t client_event;
+
+  memset(&client_event, 0, sizeof(client_event));
+  client_event.client = client;
+  client_event.type = RC_CLIENT_EVENT_GAME_COMPLETED;
+
+  client->game->mastery = RC_CLIENT_MASTERY_STATE_SHOWN;
+
+  client->callbacks.event_handler(&client_event);
 }
 
 static void rc_client_do_frame_process_leaderboards(rc_client_t* client)
@@ -2845,45 +2840,27 @@ static void rc_client_do_frame_process_leaderboards(rc_client_t* client)
         }
         break;
     }
+
+    client->game->pending_leaderboard_events |= leaderboard->pending_events;
   }
 }
 
-static void rc_client_raise_leaderboard_events(rc_client_t* client)
+static void rc_client_raise_leaderboard_tracker_events(rc_client_t* client)
 {
-  rc_client_leaderboard_info_t* leaderboard;
-  rc_client_leaderboard_info_t* leaderboard_stop;
-  rc_client_leaderboard_tracker_info_t* tracker;
-  rc_client_leaderboard_tracker_info_t* tracker_stop;
+  rc_client_leaderboard_tracker_info_t* tracker = client->game->leaderboard_trackers;
   rc_client_event_t client_event;
-  time_t recent_unlock_time = 0;
-  int leaderboards_unlocked = 0;
-
-  if (client->game->public.num_leaderboards == 0)
-    return;
 
   memset(&client_event, 0, sizeof(client_event));
   client_event.client = client;
 
-  /* process tracker events first so formatted values are updated for leaderboard events */
   tracker = client->game->leaderboard_trackers;
-  tracker_stop = tracker + client->game->leaderboard_trackers_size;
-  for (; tracker < tracker_stop; ++tracker) {
+  for (; tracker; tracker = tracker->next) {
     if (tracker->pending_events == RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE)
       continue;
 
     client_event.leaderboard_tracker = &tracker->public;
 
     if (tracker->pending_events & RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE) {
-      /* if this is the last tracker in the list, shrink the list */
-      if (tracker->public.id == client->game->leaderboard_trackers_size) {
-        rc_client_leaderboard_tracker_info_t* scan = tracker;
-        while (--client->game->leaderboard_trackers_size > 0) {
-          --scan;
-          if (scan->reference_count != 0)
-            break;
-        }
-      }
-
       client_event.type = RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE;
       client->callbacks.event_handler(&client_event);
     }
@@ -2900,11 +2877,19 @@ static void rc_client_raise_leaderboard_events(rc_client_t* client)
       }
     }
 
-    tracker->pending_events = RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE;
+    tracker->pending_events = RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE;
   }
+}
 
-  leaderboard = client->game->leaderboards;
-  leaderboard_stop = leaderboard + client->game->public.num_leaderboards;
+static void rc_client_raise_leaderboard_events(rc_client_t* client)
+{
+  rc_client_leaderboard_info_t* leaderboard = client->game->leaderboards;
+  rc_client_leaderboard_info_t* leaderboard_stop = leaderboard + client->game->public.num_leaderboards;
+  rc_client_event_t client_event;
+
+  memset(&client_event, 0, sizeof(client_event));
+  client_event.client = client;
+
   for (; leaderboard < leaderboard_stop; ++leaderboard) {
     if (leaderboard->pending_events == RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE)
       continue;
@@ -2933,6 +2918,32 @@ static void rc_client_raise_leaderboard_events(rc_client_t* client)
   }
 }
 
+static void rc_client_reset_pending_events(rc_client_t* client)
+{
+  client->game->pending_achievement_events = RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_NONE;
+  client->game->pending_leaderboard_events = RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE;
+  client->game->pending_leaderboard_tracker_events = RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE;
+}
+
+static void rc_client_raise_pending_events(rc_client_t* client)
+{
+  /* raise any pending achievement events */
+  if (client->game->pending_achievement_events != RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_NONE)
+    rc_client_raise_achievement_events(client);
+
+  /* raise tracker events before leaderboard events so formatted values are updated for leaderboard events */
+  if (client->game->pending_leaderboard_tracker_events != RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE)
+    rc_client_raise_leaderboard_tracker_events(client);
+
+  /* raise any pending leaderboard events */
+  if (client->game->pending_leaderboard_events != RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE)
+    rc_client_raise_leaderboard_events(client);
+
+  /* raise mastery event if pending */
+  if (client->game->mastery == RC_CLIENT_MASTERY_STATE_PENDING)
+    rc_client_raise_mastery_event(client);
+}
+
 void rc_client_do_frame(rc_client_t* client)
 {
   if (!client)
@@ -2942,6 +2953,8 @@ void rc_client_do_frame(rc_client_t* client)
     rc_runtime_richpresence_t* richpresence;
 
     rc_mutex_lock(&client->state.mutex);
+
+    rc_client_reset_pending_events(client);
 
     rc_client_update_memref_values(client);
     rc_update_variables(client->game->runtime.variables, client->state.legacy_peek, client, NULL);
@@ -2956,9 +2969,7 @@ void rc_client_do_frame(rc_client_t* client)
 
     rc_mutex_unlock(&client->state.mutex);
 
-    rc_client_raise_achievement_events(client);
-    if (client->state.hardcore)
-      rc_client_raise_leaderboard_events(client);
+    rc_client_raise_pending_events(client);
   }
 
   rc_client_idle(client);
@@ -3056,6 +3067,8 @@ void rc_client_reset(rc_client_t* client)
   rc_mutex_lock(&client->state.mutex);
 
   client->game->waiting_for_reset = 0;
+  rc_client_reset_pending_events(client);
+
   rc_client_reset_achievements(client);
   rc_client_reset_leaderboards(client);
   rc_client_reset_richpresence(client);
@@ -3063,8 +3076,7 @@ void rc_client_reset(rc_client_t* client)
 
   rc_mutex_unlock(&client->state.mutex);
 
-  rc_client_raise_achievement_events(client);
-  rc_client_raise_leaderboard_events(client);
+  rc_client_raise_pending_events(client);
 }
 
 size_t rc_client_progress_size(rc_client_t* client)
@@ -3111,6 +3123,8 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
 
   rc_mutex_lock(&client->state.mutex);
 
+  rc_client_reset_pending_events(client);
+
   /* flag any visible challenge indicators to be hidden */
   achievement = client->game->achievements;
   achievement_stop = achievement + client->game->public.num_achievements;
@@ -3119,6 +3133,7 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
     if (trigger && trigger->state == RC_TRIGGER_STATE_PRIMED &&
         achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE) {
       achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+      client->game->pending_achievement_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
     }
   }
 
@@ -3130,6 +3145,7 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
     if (lboard && lboard->state == RC_LBOARD_STATE_STARTED &&
         leaderboard->public.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING) {
       leaderboard->pending_events |= RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED;
+      client->game->pending_leaderboard_events |= RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED;
     }
   }
 
@@ -3151,6 +3167,8 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
     }
     /* ASSERT: only active achievements are serialized, so we don't have to worry about
      *         deserialization deactiving them. */
+
+    client->game->pending_achievement_events |= achievement->pending_events;
   }
 
   /* flag any trackers that need to be shown */
@@ -3184,8 +3202,7 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
 
   rc_mutex_unlock(&client->state.mutex);
 
-  rc_client_raise_achievement_events(client);
-  rc_client_raise_leaderboard_events(client);
+  rc_client_raise_pending_events(client);
 
   return result;
 }
@@ -3255,7 +3272,7 @@ void rc_client_set_hardcore_enabled(rc_client_t* client, int enabled)
     }
     else {
       /* if disabling hardcore, leaderboards will be deactivated. raise events for hiding trackers */
-      rc_client_raise_leaderboard_events(client);
+      rc_client_raise_pending_events(client);
     }
   }
 }

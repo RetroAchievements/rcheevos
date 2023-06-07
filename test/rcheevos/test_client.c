@@ -784,7 +784,7 @@ static void test_load_game(void)
     ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
     ASSERT_PTR_NOT_NULL(leaderboard->lboard);
     ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
-    ASSERT_NUM_EQUALS(leaderboard->tracker_id, RC_CLIENT_LEADERBOARD_TRACKER_UNASSIGNED);
+    ASSERT_PTR_NULL(leaderboard->tracker);
   }
 
   rc_client_destroy(g_client);

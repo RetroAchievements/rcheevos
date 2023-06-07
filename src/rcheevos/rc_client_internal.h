@@ -54,7 +54,25 @@ typedef struct rc_client_achievement_info_t {
   uint8_t pending_events;
 } rc_client_achievement_info_t;
 
-#define RC_CLIENT_LEADERBOARD_TRACKER_UNASSIGNED (uint8_t)-1
+enum {
+  RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE = 0,
+  RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE = (1 << 1),
+  RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW = (1 << 2),
+  RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE = (1 << 3),
+};
+
+typedef struct rc_client_leaderboard_tracker_info_t {
+  rc_client_leaderboard_tracker_t public;
+  struct rc_client_leaderboard_tracker_info_t* next;
+  int raw_value;
+
+  uint32_t value_djb2;
+
+  uint8_t format;
+  uint8_t pending_events;
+  uint8_t reference_count;
+  uint8_t value_from_hits;
+} rc_client_leaderboard_tracker_info_t;
 
 enum {
   RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE = 0,
@@ -69,32 +87,14 @@ typedef struct rc_client_leaderboard_info_t {
   rc_lboard_t* lboard;
   uint8_t md5[16];
 
+  rc_client_leaderboard_tracker_info_t* tracker;
+
   uint32_t value_djb2;
   int value;
 
   uint8_t format;
   uint8_t pending_events;
-  uint8_t tracker_id;
 } rc_client_leaderboard_info_t;
-
-enum {
-  RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE = 0,
-  RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE = (1 << 1),
-  RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW = (1 << 2),
-  RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE = (1 << 3),
-};
-
-typedef struct rc_client_leaderboard_tracker_info_t {
-  rc_client_leaderboard_tracker_t public;
-  int raw_value;
-
-  uint32_t value_djb2;
-
-  uint8_t format;
-  uint8_t pending_events;
-  uint8_t reference_count;
-  uint8_t value_from_hits;
-} rc_client_leaderboard_tracker_info_t;
 
 typedef struct rc_client_game_hash_t {
   char hash[33];
@@ -122,8 +122,9 @@ typedef struct rc_client_game_info_t {
 
   uint8_t mastery;
 
-  uint8_t leaderboard_trackers_capacity;
-  uint8_t leaderboard_trackers_size;
+  uint8_t pending_achievement_events;
+  uint8_t pending_leaderboard_events;
+  uint8_t pending_leaderboard_tracker_events;
 
   rc_api_buffer_t buffer;
 } rc_client_game_info_t;
