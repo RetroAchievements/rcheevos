@@ -116,6 +116,11 @@ typedef struct rc_client_subset_info_t {
 
   struct rc_client_subset_info_t* next;
 
+  const char* locked_label;
+  const char* unlocked_label;
+  const char* unofficial_label;
+  const char* unsupported_label;
+
   uint8_t active;
   uint8_t mastery;
   uint8_t pending_events;

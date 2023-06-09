@@ -322,7 +322,8 @@ typedef struct rc_client_achievement_bucket_t {
   uint32_t num_achievements;
 
   const char* label;
-  uint8_t id;
+  uint32_t subset_id;
+  uint8_t bucket_type;
 } rc_client_achievement_bucket_t;
 
 typedef struct rc_client_achievement_list_t {

@@ -129,6 +129,17 @@ static const char* patchdata_subset = "{\"Success\":true,\"PatchData\":{"
     "]"
     "}}";
 
+static const char* patchdata_subset2 = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":2345,\"Title\":\"Sample Game [Subset - Multi]\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112234.png\","
+    "\"Achievements\":["
+      GENERIC_ACHIEVEMENT_JSON("5501", "0xH0017=7") ","
+      GENERIC_ACHIEVEMENT_JSON("5502", "0xH0018=8") ","
+      GENERIC_ACHIEVEMENT_JSON("5503", "0xH0019=9")
+    "],"
+    "\"Leaderboards\":["
+    "]"
+    "}}";
+
 static const char* no_unlocks = "{\"Success\":true,\"UserUnlocks\":[]}";
 
 static const char* unlock_5501 = "{\"Success\":true,\"UserUnlocks\":[5501]}";
@@ -1706,7 +1717,8 @@ static void test_achievement_list_simple(void)
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 1);
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
 
@@ -1742,10 +1754,12 @@ static void test_achievement_list_simple_with_unlocks(void)
   if (list) {
     /* in hardcore mode, 5501 should be unlocked, but 5502 will be locked */
     ASSERT_NUM_EQUALS(list->num_buckets, 2);
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
-    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Unlocked");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
 
@@ -1768,7 +1782,8 @@ static void test_achievement_list_simple_with_unlocks(void)
   if (list) {
     /* in softcore mode, both should be unlocked */
     ASSERT_NUM_EQUALS(list->num_buckets, 1);
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Unlocked");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
 
@@ -1802,11 +1817,13 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 2);
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
-    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Unsupported");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5503);
@@ -1818,7 +1835,8 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 1);
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Unofficial");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5502);
@@ -1830,15 +1848,18 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 3);
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
-    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL);
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Unofficial");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5502);
-    ASSERT_NUM_EQUALS(list->buckets[2].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[2].label, "Unsupported");
     ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5503);
@@ -1865,11 +1886,13 @@ static void test_achievement_list_simple_with_unofficial_off(void)
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 2);
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
-    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Unsupported");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5503);
@@ -1888,11 +1911,13 @@ static void test_achievement_list_simple_with_unofficial_off(void)
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 2);
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
-    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Unsupported");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5503);
@@ -1930,7 +1955,8 @@ static void test_achievement_list_buckets(void)
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 2);
 
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 6);
     iter = list->buckets[0].achievements;
@@ -1953,7 +1979,8 @@ static void test_achievement_list_buckets(void)
     ASSERT_STR_EQUALS(achievement->measured_progress, "");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
 
-    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Unlocked");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 8);
@@ -1973,17 +2000,20 @@ static void test_achievement_list_buckets(void)
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 4);
 
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Active Challenges");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 7);
 
-    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Recently Unlocked");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5);
 
-    ASSERT_NUM_EQUALS(list->buckets[2].id, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[2].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 4);
     iter = list->buckets[2].achievements;
@@ -2002,7 +2032,8 @@ static void test_achievement_list_buckets(void)
     ASSERT_STR_EQUALS(achievement->measured_progress, "25%");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
 
-    ASSERT_NUM_EQUALS(list->buckets[3].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[3].label, "Unlocked");
     ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 8);
@@ -2022,14 +2053,16 @@ static void test_achievement_list_buckets(void)
   if (list) {
     ASSERT_NUM_EQUALS(list->num_buckets, 3);
 
-    ASSERT_NUM_EQUALS(list->buckets[0].id, RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Almost There");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 6);
     ASSERT_STR_EQUALS(list->buckets[0].achievements[0]->measured_progress, "5/6");
     ASSERT_FLOAT_EQUALS(list->buckets[0].achievements[0] ->measured_percent, 83.333333);
 
-    ASSERT_NUM_EQUALS(list->buckets[1].id, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 4);
     iter = list->buckets[1].achievements;
@@ -2046,11 +2079,309 @@ static void test_achievement_list_buckets(void)
     ASSERT_STR_EQUALS(achievement->measured_progress, "25%");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
 
-    ASSERT_NUM_EQUALS(list->buckets[2].id, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[2].label, "Unlocked");
     ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 2);
     ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5);
     ASSERT_NUM_EQUALS(list->buckets[2].achievements[1]->id, 8);
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_achievement_list_subset_with_unofficial_and_unsupported(void)
+{
+  rc_client_achievement_list_t* list;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_test_unofficial(g_client, 1);
+  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
+  mock_client_load_subset(patchdata_subset, no_unlocks, no_unlocks);
+
+  /* rc_client_get_achievement_count only counts achievements in the main set */
+  ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE), 2);
+  ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 1);
+  ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 3);
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 3);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Sample Game - Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Sample Game - Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5503);
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Bonus - Locked");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 3);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 7);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[1]->id, 8);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[2]->id, 9);
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Sample Game - Unofficial");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5502);
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 4);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Sample Game - Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Sample Game - Unofficial");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5502);
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Sample Game - Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5503);
+    ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[3].label, "Bonus - Locked");
+    ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 3);
+    ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 7);
+    ASSERT_NUM_EQUALS(list->buckets[3].achievements[1]->id, 8);
+    ASSERT_NUM_EQUALS(list->buckets[3].achievements[2]->id, 9);
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_achievement_list_subset_buckets(void)
+{
+  rc_client_achievement_list_t* list;
+  rc_client_achievement_t** iter;
+  rc_client_achievement_t* achievement;
+
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, unlock_8, unlock_8);
+  mock_client_load_subset(patchdata_subset2, unlock_5502, unlock_5502);
+  mock_memory(memory, sizeof(memory));
+
+  rc_client_do_frame(g_client); /* advance achievements out of waiting state */
+  event_count = 0;
+
+  mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=5&h=1&m=0123456789ABCDEF&v=732f8e30e9c1eb08948dda098c305d8b",
+      "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":5,\"AchievementsRemaining\":6}");
+  mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6",
+      "{\"Success\":true,\"Score\":5437,\"SoftcoreScore\":777,\"AchievementID\":5,\"AchievementsRemaining\":6}");
+
+  /* rc_client_get_achievement_count only counts achievements in main set */
+  ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE), 7);
+  ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL), 0);
+  ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 7);
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 4);
+
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Sample Game - Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 6);
+    iter = list->buckets[0].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 6);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 7);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 9);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 70);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 71);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Sample Game - Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 8);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Multi - Locked");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 2);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5501);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[1]->id, 5503);
+
+    ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[3].label, "Multi - Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 5502);
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  memory[5] = 5; /* trigger achievement 5 */
+  memory[6] = 2; /* start measuring achievement 6 */
+  memory[1] = 1; /* begin challenge achievement 7 */
+  memory[0x11] = 100; /* start measuring achievements 70 and 71 */
+  memory[0x17] = 7; /* trigger achievement 5501 */
+  rc_client_do_frame(g_client);
+  event_count = 0;
+
+  /* set the unlock time for achievement 5 back one second to ensure consistent sorting */
+  ((rc_client_achievement_t*)rc_client_get_achievement_info(g_client, 5))->unlock_time--;
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 6);
+
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Active Challenges");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 7);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Recently Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 2);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5501);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[1]->id, 5);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Sample Game - Locked");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 4);
+    iter = list->buckets[2].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 6);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "2/6");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 33.333333);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 9);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 70);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25600/100000");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 71);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25%");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
+
+    ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[3].label, "Sample Game - Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 8);
+
+    ASSERT_NUM_EQUALS(list->buckets[4].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[4].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[4].label, "Multi - Locked");
+    ASSERT_NUM_EQUALS(list->buckets[4].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[4].achievements[0]->id, 5503);
+
+    ASSERT_NUM_EQUALS(list->buckets[5].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[5].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[5].label, "Multi - Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[5].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[5].achievements[0]->id, 5502);
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  /* recently unlocked achievements no longer recent */
+  ((rc_client_achievement_t*)rc_client_get_achievement_info(g_client, 5))->unlock_time -= 15 * 60;
+  ((rc_client_achievement_t*)rc_client_get_achievement_info(g_client, 5501))->unlock_time -= 15 * 60;
+  memory[6] = 5; /* almost there achievement 6 */
+  memory[1] = 0; /* stop challenge achievement 7 */
+  rc_client_do_frame(g_client);
+  event_count = 0;
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 5);
+
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Almost There");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 6);
+    ASSERT_STR_EQUALS(list->buckets[0].achievements[0]->measured_progress, "5/6");
+    ASSERT_FLOAT_EQUALS(list->buckets[0].achievements[0] ->measured_percent, 83.333333);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Sample Game - Locked");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 4);
+    iter = list->buckets[1].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 7);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 9);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 70);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25600/100000");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 71);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25%");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Sample Game - Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 2);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[1]->id, 8);
+
+    ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[3].label, "Multi - Locked");
+    ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 5503);
+
+    ASSERT_NUM_EQUALS(list->buckets[4].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[4].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[4].label, "Multi - Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[4].num_achievements, 2);
+    ASSERT_NUM_EQUALS(list->buckets[4].achievements[0]->id, 5501);
+    ASSERT_NUM_EQUALS(list->buckets[4].achievements[1]->id, 5502);
 
     rc_client_destroy_achievement_list(list);
   }
@@ -4310,6 +4641,8 @@ void test_client(void) {
   TEST(test_achievement_list_simple_with_unofficial_and_unsupported);
   TEST(test_achievement_list_simple_with_unofficial_off);
   TEST(test_achievement_list_buckets);
+  TEST(test_achievement_list_subset_with_unofficial_and_unsupported);
+  TEST(test_achievement_list_subset_buckets);
 
   TEST(test_achievement_get_image_url);
 

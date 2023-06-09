@@ -32,6 +32,7 @@ typedef struct rc_client_load_state_t
   rc_client_callback_t callback;
 
   rc_client_game_info_t* game;
+  rc_client_subset_info_t* subset;
   rc_client_game_hash_t* hash;
 
   rc_hash_iterator_t hash_iterator;
@@ -838,9 +839,9 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
       load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
   }
   else {
-    rc_client_apply_unlocks(load_state->game->subsets, load_state->softcore_unlocks,
+    rc_client_apply_unlocks(load_state->subset, load_state->softcore_unlocks,
         load_state->num_softcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    rc_client_apply_unlocks(load_state->game->subsets, load_state->hardcore_unlocks,
+    rc_client_apply_unlocks(load_state->subset, load_state->hardcore_unlocks,
         load_state->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
 
     rc_mutex_lock(&client->state.mutex);
@@ -978,7 +979,7 @@ static void rc_client_begin_start_session(rc_client_load_state_t* load_state)
     memset(&unlock_params, 0, sizeof(unlock_params));
     unlock_params.username = client->user.username;
     unlock_params.api_token = client->user.token;
-    unlock_params.game_id = load_state->game->public.id;
+    unlock_params.game_id = load_state->hash->game_id;
     unlock_params.hardcore = 1;
 
     result = rc_api_init_fetch_user_unlocks_request(&hardcore_unlock_request, &unlock_params);
@@ -1271,6 +1272,8 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
         fetch_game_data_response.achievements, fetch_game_data_response.num_achievements);
     rc_client_copy_leaderboards(load_state, subset,
         fetch_game_data_response.leaderboards, fetch_game_data_response.num_leaderboards);
+
+    load_state->subset = subset;
 
     if (!load_state->game->subsets) {
       /* core set */
@@ -2017,17 +2020,64 @@ static const char* rc_client_get_bucket_label(uint8_t bucket_type)
   }
 }
 
+static const char* rc_client_get_subset_bucket_label(uint8_t bucket_type, rc_client_game_info_t* game, rc_client_subset_info_t* subset)
+{
+  const char** ptr;
+  const char* label;
+  char* new_label;
+  size_t new_label_len;
+
+  switch (bucket_type) {
+    case RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED: ptr = &subset->locked_label; break;
+    case RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED: ptr = &subset->unlocked_label; break;
+    case RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED: ptr = &subset->unsupported_label; break;
+    case RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL: ptr = &subset->unofficial_label; break;
+    default: return rc_client_get_bucket_label(bucket_type);
+  }
+
+  if (*ptr)
+    return *ptr;
+
+  label = rc_client_get_bucket_label(bucket_type);
+  new_label_len = strlen(subset->public.title) + strlen(label) + 4;
+  new_label = (char*)rc_buf_alloc(&game->buffer, new_label_len);
+  snprintf(new_label, new_label_len, "%s - %s", subset->public.title, label);
+
+  *ptr = new_label;
+  return new_label;
+}
+
 static int rc_client_compare_achievement_unlock_times(const void* a, const void* b)
 {
   const rc_client_achievement_t* unlock_a = (const rc_client_achievement_t*)a;
   const rc_client_achievement_t* unlock_b = (const rc_client_achievement_t*)b;
-  return (int)(unlock_a->unlock_time - unlock_b->unlock_time);
+  return (int)(unlock_b->unlock_time - unlock_a->unlock_time);
+}
+
+static uint8_t rc_client_map_bucket(uint8_t bucket, int grouping)
+{
+  if (grouping == RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE) {
+    switch (bucket) {
+      case RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED:
+        return RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED;
+
+      case RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE:
+      case RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE:
+        return RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
+
+      default:
+        return bucket;
+    }
+  }
+
+  return bucket;
 }
 
 rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* client, int category, int grouping)
 {
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* stop;
+  rc_client_achievement_t** bucket_achievements;
   rc_client_achievement_t** achievement_ptr;
   rc_client_achievement_bucket_t* bucket_ptr;
   rc_client_achievement_list_t* list;
@@ -2038,11 +2088,14 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   uint32_t num_achievements;
   size_t buckets_size;
   uint8_t bucket_type;
-  uint32_t i;
-  const uint8_t progress_bucket_order[] = {
+  uint32_t num_subsets = 0;
+  uint32_t i, j;
+  const uint8_t shared_bucket_order[] = {
     RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE,
     RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED,
-    RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE,
+    RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE
+  };
+  const uint8_t subset_bucket_order[] = {
     RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED,
     RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL,
     RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED,
@@ -2057,10 +2110,12 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
   rc_mutex_lock(&client->state.mutex);
 
-  for (subset = client->game->subsets; subset; subset = subset->next) {
+  subset = client->game->subsets;
+  for (; subset; subset = subset->next) {
     if (!subset->active)
       continue;
 
+    num_subsets++;
     achievement = subset->achievements;
     stop = achievement + subset->public.num_achievements;
     for (; achievement < stop; ++achievement) {
@@ -2075,8 +2130,40 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   num_achievements = 0;
   for (i = 0; i < sizeof(bucket_counts) / sizeof(bucket_counts[0]); ++i) {
     if (bucket_counts[i]) {
+      int needs_split = 0;
+
       num_achievements += bucket_counts[i];
-      ++num_buckets;
+
+      if (num_subsets > 1) {
+        for (j = 0; j < sizeof(subset_bucket_order) / sizeof(subset_bucket_order[0]); ++j) {
+          if (subset_bucket_order[j] == i) {
+            needs_split = 1;
+            break;
+          }
+        }
+      }
+
+      if (!needs_split) {
+        ++num_buckets;
+        continue;
+      }
+
+      subset = client->game->subsets;
+      for (; subset; subset = subset->next) {
+        if (!subset->active)
+          continue;
+
+        achievement = subset->achievements;
+        stop = achievement + subset->public.num_achievements;
+        for (; achievement < stop; ++achievement) {
+          if (achievement->public.category & category) {
+            if (achievement->public.bucket == i) {
+              ++num_buckets;
+              break;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -2086,58 +2173,13 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   bucket_ptr = list->buckets = (rc_client_achievement_bucket_t*)((uint8_t*)list + list_size);
   achievement_ptr = (rc_client_achievement_t**)((uint8_t*)bucket_ptr + buckets_size);
 
-  for (i = 0; i < sizeof(progress_bucket_order) / sizeof(progress_bucket_order[0]); ++i) {
-    bucket_type = progress_bucket_order[i];
-    if (!bucket_counts[bucket_type])
-      continue;
+  if (grouping == RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS) {
+    for (i = 0; i < sizeof(shared_bucket_order) / sizeof(shared_bucket_order[0]); ++i) {
+      bucket_type = shared_bucket_order[i];
+      if (!bucket_counts[bucket_type])
+        continue;
 
-    bucket_ptr->id = bucket_type;
-    bucket_ptr->achievements = achievement_ptr;
-
-    if (grouping == RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE) {
-      switch (bucket_type) {
-        case RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED:
-        case RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE:
-        case RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE:
-          /* these are loaded into LOCKED/UNLOCKED buckets when grouping by lock state */
-          continue;
-
-        default:
-          break;
-      }
-
-      for (subset = client->game->subsets; subset; subset = subset->next) {
-        if (!subset->active)
-          continue;
-
-        achievement = subset->achievements;
-        stop = achievement + subset->public.num_achievements;
-        for (; achievement < stop; ++achievement) {
-          if (!(achievement->public.category & category))
-            continue;
-
-          switch (achievement->public.bucket) {
-            case RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED:
-            case RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED:
-              if (bucket_type == RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED)
-                *achievement_ptr++ = &achievement->public;
-              break;
-
-            case RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED:
-            case RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL:
-              if (bucket_type == achievement->public.bucket)
-                *achievement_ptr++ = &achievement->public;
-              break;
-
-            default:
-              if (bucket_type == RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED)
-                *achievement_ptr++ = &achievement->public;
-              break;
-          }
-        }
-      }
-    }
-    else /* RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS */ {
+      bucket_achievements = achievement_ptr;
       for (subset = client->game->subsets; subset; subset = subset->next) {
         if (!subset->active)
           continue;
@@ -2149,24 +2191,61 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
             *achievement_ptr++ = &achievement->public;
         }
       }
-    }
 
-    bucket_ptr->num_achievements = (uint32_t)(achievement_ptr - bucket_ptr->achievements);
-    bucket_ptr++;
+      if (achievement_ptr > bucket_achievements) {
+        bucket_ptr->achievements = bucket_achievements;
+        bucket_ptr->num_achievements = (uint32_t)(achievement_ptr - bucket_achievements);
+        bucket_ptr->subset_id = 0;
+        bucket_ptr->label = rc_client_get_bucket_label(bucket_type);
+        bucket_ptr->bucket_type = bucket_type;
+
+        if (bucket_type == RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED)
+          qsort(bucket_ptr->achievements, bucket_ptr->num_achievements, sizeof(rc_client_achievement_t*), rc_client_compare_achievement_unlock_times);
+
+        ++bucket_ptr;
+      }
+    }
+  }
+
+  for (subset = client->game->subsets; subset; subset = subset->next) {
+    if (!subset->active)
+      continue;
+
+    for (i = 0; i < sizeof(subset_bucket_order) / sizeof(subset_bucket_order[0]); ++i) {
+      bucket_type = subset_bucket_order[i];
+      if (!bucket_counts[bucket_type])
+        continue;
+
+      bucket_achievements = achievement_ptr;
+
+      achievement = subset->achievements;
+      stop = achievement + subset->public.num_achievements;
+      for (; achievement < stop; ++achievement) {
+        if (achievement->public.category & category &&
+            rc_client_map_bucket(achievement->public.bucket, grouping) == bucket_type) {
+          *achievement_ptr++ = &achievement->public;
+        }
+      }
+
+      if (achievement_ptr > bucket_achievements) {
+        bucket_ptr->achievements = bucket_achievements;
+        bucket_ptr->num_achievements = (uint32_t)(achievement_ptr - bucket_achievements);
+        bucket_ptr->subset_id = (num_subsets > 1) ? subset->public.id : 0;
+        bucket_ptr->bucket_type = bucket_type;
+
+        if (num_subsets > 1)
+          bucket_ptr->label = rc_client_get_subset_bucket_label(bucket_type, client->game, subset);
+        else
+          bucket_ptr->label = rc_client_get_bucket_label(bucket_type);
+
+        ++bucket_ptr;
+      }
+    }
   }
 
   rc_mutex_unlock(&client->state.mutex);
 
   list->num_buckets = (uint32_t)(bucket_ptr - list->buckets);
-
-  while (bucket_ptr > list->buckets) {
-    --bucket_ptr;
-    bucket_ptr->label = rc_client_get_bucket_label(bucket_ptr->id);
-
-    if (bucket_ptr->id == RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED)
-      qsort(bucket_ptr->achievements, bucket_ptr->num_achievements, sizeof(rc_client_achievement_t*), rc_client_compare_achievement_unlock_times);
-  }
-
   return list;
 }
 
