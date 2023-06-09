@@ -39,7 +39,7 @@ enum {
   RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_TRIGGERED = (1 << 1),
   RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_SHOW = (1 << 2),
   RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE = (1 << 3),
-  RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW = (1 << 4),
+  RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW = (1 << 4)
 };
 
 typedef struct rc_client_achievement_info_t {
@@ -58,7 +58,7 @@ enum {
   RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE = 0,
   RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE = (1 << 1),
   RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW = (1 << 2),
-  RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE = (1 << 3),
+  RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE = (1 << 3)
 };
 
 typedef struct rc_client_leaderboard_tracker_info_t {
@@ -78,7 +78,7 @@ enum {
   RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE = 0,
   RC_CLIENT_LEADERBOARD_PENDING_EVENT_STARTED = (1 << 1),
   RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED = (1 << 2),
-  RC_CLIENT_LEADERBOARD_PENDING_EVENT_SUBMITTED = (1 << 3),
+  RC_CLIENT_LEADERBOARD_PENDING_EVENT_SUBMITTED = (1 << 3)
 };
 
 typedef struct rc_client_leaderboard_info_t {
@@ -96,6 +96,31 @@ typedef struct rc_client_leaderboard_info_t {
   uint8_t pending_events;
 } rc_client_leaderboard_info_t;
 
+enum {
+  RC_CLIENT_SUBSET_PENDING_EVENT_NONE = 0,
+  RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT = (1 << 1),
+  RC_CLIENT_SUBSET_PENDING_EVENT_LEADERBOARD = (1 << 2)
+};
+
+enum {
+  RC_CLIENT_GAME_PENDING_EVENT_NONE = 0,
+  RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER = (1 << 1),
+  RC_CLIENT_GAME_PENDING_EVENT_UPDATE_ACTIVE_ACHIEVEMENTS = (1 << 2)
+};
+
+typedef struct rc_client_subset_info_t {
+  rc_client_subset_t public;
+
+  rc_client_achievement_info_t* achievements;
+  rc_client_leaderboard_info_t* leaderboards;
+
+  struct rc_client_subset_info_t* next;
+
+  uint8_t active;
+  uint8_t mastery;
+  uint8_t pending_events;
+} rc_client_subset_info_t;
+
 typedef struct rc_client_game_hash_t {
   char hash[33];
   uint32_t game_id;
@@ -110,21 +135,16 @@ typedef struct rc_client_media_hash_t {
 
 typedef struct rc_client_game_info_t {
   rc_client_game_t public;
-
-  rc_client_achievement_info_t* achievements;
-  rc_client_leaderboard_info_t* leaderboards;
   rc_client_leaderboard_tracker_info_t* leaderboard_trackers;
+
+  rc_client_subset_info_t* subsets;
 
   rc_client_media_hash_t* media_hash;
 
   rc_runtime_t runtime;
   uint8_t waiting_for_reset;
 
-  uint8_t mastery;
-
-  uint8_t pending_achievement_events;
-  uint8_t pending_leaderboard_events;
-  uint8_t pending_leaderboard_tracker_events;
+  uint8_t pending_events;
 
   rc_api_buffer_t buffer;
 } rc_client_game_info_t;
@@ -202,6 +222,8 @@ enum {
 };
 
 void rc_client_set_legacy_peek(rc_client_t* client, int method);
+
+void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback);
 
 #ifdef __cplusplus
 }

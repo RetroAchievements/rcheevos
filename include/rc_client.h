@@ -215,11 +215,7 @@ typedef struct rc_client_game_t {
   uint32_t console_id;
   const char* title;
   const char* hash;
-  char badge_name[16];
-
-  uint32_t num_achievements;
-  uint32_t num_leaderboards;
-  uint8_t has_rich_presence;
+  const char* badge_name;
 } rc_client_game_t;
 
 /**
@@ -238,6 +234,21 @@ int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], si
  */
 void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
     const uint8_t* data, size_t data_size, rc_client_callback_t callback);
+
+/*****************************************************************************\
+| Subsets                                                                     |
+\*****************************************************************************/
+
+typedef struct rc_client_subset_t {
+  uint32_t id;
+  const char* title;
+  char badge_name[16];
+
+  uint32_t num_achievements;
+  uint32_t num_leaderboards;
+} rc_client_subset_t;
+
+const rc_client_subset_t* rc_client_get_subset_info(rc_client_t* client, uint32_t subset_id);
 
 /*****************************************************************************\
 | Achievements                                                                |

@@ -23,7 +23,7 @@ static const char* patchdata_2ach_1lbd = "{\"Success\":true,\"PatchData\":{"
     "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
     "\"Achievements\":["
      "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
-      "\"MemAddr\":\"0xH0001=1_0xH0002=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+      "\"MemAddr\":\"0xH0001=3_0xH0002=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
       "\"Created\":1367266583,\"Modified\":1376929305},"
      "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
       "\"MemAddr\":\"0xH0001=2_0x0002=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
@@ -117,6 +117,18 @@ static const char* patchdata_unofficial_unsupported = "{\"Success\":true,\"Patch
     "]"
     "}}";
 
+static const char* patchdata_subset = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":2345,\"Title\":\"Sample Game [Subset - Bonus]\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112234.png\","
+    "\"Achievements\":["
+      GENERIC_ACHIEVEMENT_JSON("7", "0xH0007=7") ","
+      GENERIC_ACHIEVEMENT_JSON("8", "0xH0008=8") ","
+      GENERIC_ACHIEVEMENT_JSON("9", "0xH0009=9")
+    "],"
+    "\"Leaderboards\":["
+      GENERIC_LEADERBOARD_JSON("44", "STA:0xH000B=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE")
+    "]"
+    "}}";
+
 static const char* no_unlocks = "{\"Success\":true,\"UserUnlocks\":[]}";
 
 static const char* unlock_5501 = "{\"Success\":true,\"UserUnlocks\":[5501]}";
@@ -189,8 +201,8 @@ static rc_client_event_t* find_event(uint8_t type, uint32_t id)
             return &events[i];
           break;
 
-        case RC_CLIENT_EVENT_RESET:
         case RC_CLIENT_EVENT_GAME_COMPLETED:
+        case RC_CLIENT_EVENT_RESET:
         case RC_CLIENT_EVENT_SERVER_ERROR:
           return &events[i];
 
@@ -410,6 +422,16 @@ static rc_client_t* mock_client_game_loaded(const char* patchdata, const char* h
   mock_client_load_game(patchdata, hardcore_unlocks, softcore_unlocks);
 
   return g_client;
+}
+
+static mock_client_load_subset(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
+{
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata);
+  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", softcore_unlocks);
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", hardcore_unlocks);
+
+  rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success);
 }
 
 /* ----- login ----- */
@@ -698,8 +720,8 @@ static void test_load_game_unknown_hash(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 0);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 0);
+
+    ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 0);
   }
   rc_client_destroy(g_client);
 }
@@ -751,10 +773,10 @@ static void test_load_game(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
 
-    achievement = &g_client->game->achievements[0];
+    achievement = &g_client->game->subsets->achievements[0];
     ASSERT_NUM_EQUALS(achievement->public.id, 5501);
     ASSERT_STR_EQUALS(achievement->public.title, "Ach1");
     ASSERT_STR_EQUALS(achievement->public.description, "Desc1");
@@ -765,7 +787,7 @@ static void test_load_game(void)
     ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
-    achievement = &g_client->game->achievements[1];
+    achievement = &g_client->game->subsets->achievements[1];
     ASSERT_NUM_EQUALS(achievement->public.id, 5502);
     ASSERT_STR_EQUALS(achievement->public.title, "Ach2");
     ASSERT_STR_EQUALS(achievement->public.description, "Desc2");
@@ -776,7 +798,7 @@ static void test_load_game(void)
     ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
-    leaderboard = &g_client->game->leaderboards[0];
+    leaderboard = &g_client->game->subsets->leaderboards[0];
     ASSERT_NUM_EQUALS(leaderboard->public.id, 4401);
     ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard1");
     ASSERT_STR_EQUALS(leaderboard->public.description, "Desc1");
@@ -824,8 +846,8 @@ static void test_load_game_async_login(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1006,8 +1028,8 @@ static void test_identify_and_load_game_console_specified(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1041,8 +1063,8 @@ static void test_identify_and_load_game_console_not_specified(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1072,8 +1094,8 @@ static void test_identify_and_load_game_unknown_hash(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 0);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 0);
+
+    ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 0);
   }
 
   rc_client_destroy(g_client);
@@ -1107,8 +1129,8 @@ static void test_identify_and_load_game_multihash(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1138,8 +1160,8 @@ static void test_identify_and_load_game_multihash_unknown_game(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 0);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 0);
+
+    ASSERT_NUM_EQUALS(rc_client_get_achievement_count(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL), 0);
   }
 
   /* same hash generated for all dsk consoles - only one server call should be made */
@@ -1186,8 +1208,8 @@ static void test_identify_and_load_game_multihash_differ(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "4989b063a40dcfa28291ff8d675050e3");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1215,8 +1237,8 @@ static void test_change_media_required_fields(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1268,8 +1290,8 @@ static void test_change_media_same_game(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   /* resetting with a disc from the current game is allowed */
@@ -1284,8 +1306,8 @@ static void test_change_media_same_game(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1314,8 +1336,8 @@ static void test_change_media_known_game(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   /* resetting with a disc from another game will disable the client */
@@ -1358,8 +1380,8 @@ static void test_change_media_unknown_game(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   ASSERT_FALSE(rc_client_get_hardcore_enabled(g_client));
@@ -1395,8 +1417,8 @@ static void test_change_media_unhashable(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "[NO HASH]");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   /* resetting with a disc not from the current game will disable the client */
@@ -1438,8 +1460,8 @@ static void test_change_media_back_and_forth(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "4989b063a40dcfa28291ff8d675050e3");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1484,8 +1506,8 @@ static void test_change_media_while_loading(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1528,8 +1550,8 @@ static void test_change_media_while_loading_later(void)
     ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1565,6 +1587,105 @@ static void test_game_get_image_url_custom(void)
 
   ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "http://localhost/Images/112233.png");
+}
+
+/* ----- subset ----- */
+
+static void test_load_subset(void)
+{
+  rc_client_achievement_info_t* achievement;
+  rc_client_leaderboard_info_t* leaderboard;
+  rc_client_subset_info_t* subset_info;
+  const rc_client_subset_t* subset;
+  g_client = mock_client_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata_subset);
+  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", no_unlocks);
+  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", no_unlocks);
+
+  rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+  }
+
+  subset = rc_client_get_subset_info(g_client, 2345);
+  ASSERT_PTR_NOT_NULL(subset);
+  if (subset) {
+    subset_info = g_client->game->subsets->next;
+    ASSERT_PTR_EQUALS(subset, &subset_info->public);
+
+    ASSERT_NUM_EQUALS(subset->id, 2345);
+    ASSERT_STR_EQUALS(subset->title, "Bonus");
+    ASSERT_STR_EQUALS(subset->badge_name, "112234");
+    ASSERT_NUM_EQUALS(subset->num_achievements, 3);
+    ASSERT_NUM_EQUALS(subset->num_leaderboards, 1);
+
+    achievement = &subset_info->achievements[0];
+    ASSERT_NUM_EQUALS(achievement->public.id, 7);
+    ASSERT_STR_EQUALS(achievement->public.title, "Achievement 7");
+    ASSERT_STR_EQUALS(achievement->public.description, "Desc 7");
+    ASSERT_STR_EQUALS(achievement->public.badge_name, "007");
+    ASSERT_NUM_EQUALS(achievement->public.points, 5);
+    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_PTR_NOT_NULL(achievement->trigger);
+
+    achievement = &subset_info->achievements[1];
+    ASSERT_NUM_EQUALS(achievement->public.id, 8);
+    ASSERT_STR_EQUALS(achievement->public.title, "Achievement 8");
+    ASSERT_STR_EQUALS(achievement->public.description, "Desc 8");
+    ASSERT_STR_EQUALS(achievement->public.badge_name, "008");
+    ASSERT_NUM_EQUALS(achievement->public.points, 5);
+    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_PTR_NOT_NULL(achievement->trigger);
+
+    achievement = &subset_info->achievements[2];
+    ASSERT_NUM_EQUALS(achievement->public.id, 9);
+    ASSERT_STR_EQUALS(achievement->public.title, "Achievement 9");
+    ASSERT_STR_EQUALS(achievement->public.description, "Desc 9");
+    ASSERT_STR_EQUALS(achievement->public.badge_name, "009");
+    ASSERT_NUM_EQUALS(achievement->public.points, 5);
+    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_PTR_NOT_NULL(achievement->trigger);
+
+    leaderboard = &subset_info->leaderboards[0];
+    ASSERT_NUM_EQUALS(leaderboard->public.id, 44);
+    ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard 44");
+    ASSERT_STR_EQUALS(leaderboard->public.description, "Desc 44");
+    ASSERT_NUM_EQUALS(leaderboard->public.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
+    ASSERT_PTR_NOT_NULL(leaderboard->lboard);
+    ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
+    ASSERT_PTR_NULL(leaderboard->tracker);
+  }
+
+  rc_client_destroy(g_client);
 }
 
 /* ----- achievement list ----- */
@@ -2231,7 +2352,7 @@ static void test_do_frame_achievement_trigger_automatic_retry(void)
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 0);
 
-    memory[1] = 1;
+    memory[1] = 3;
     memory[2] = 7;
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 1);
@@ -2285,6 +2406,72 @@ static void test_do_frame_achievement_trigger_automatic_retry(void)
 
   rc_client_destroy(g_client);
 }
+
+static void test_do_frame_achievement_trigger_subset(void)
+{
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  mock_client_load_subset(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    const uint32_t num_active = g_client->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=8&h=1&m=0123456789ABCDEF&v=da80b659c2b858e13ddd97077647b217",
+        "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[8] = 8;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 8);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 8));
+
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
+    ASSERT_NUM_EQUALS(g_client->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6",
+        "{\"Success\":true,\"Score\":5437,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+
+    memory[1] = 3;
+    memory[2] = 7;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5501);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 5501));
+
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 2);
+    ASSERT_NUM_EQUALS(g_client->user.score, 5437);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+  }
+
+  rc_client_destroy(g_client);
+}
+
 
 static void test_do_frame_achievement_measured(void)
 {
@@ -2690,7 +2877,7 @@ static void test_do_frame_mastery(void)
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 1);
 
-    event = find_event(RC_CLIENT_EVENT_GAME_COMPLETED, 0);
+    event = find_event(RC_CLIENT_EVENT_GAME_COMPLETED, 1234);
     ASSERT_PTR_NOT_NULL(event);
 
     memory[9] = 9;
@@ -2777,7 +2964,7 @@ static void test_do_frame_mastery_encore(void)
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 1);
 
-    event = find_event(RC_CLIENT_EVENT_GAME_COMPLETED, 0);
+    event = find_event(RC_CLIENT_EVENT_GAME_COMPLETED, 1234);
     ASSERT_PTR_NOT_NULL(event);
 
     memory[9] = 9;
@@ -4114,6 +4301,9 @@ void test_client(void) {
   TEST(test_game_get_image_url_non_ssl);
   TEST(test_game_get_image_url_custom);
 
+  /* subset */
+  TEST(test_load_subset);
+
   /* achievements */
   TEST(test_achievement_list_simple);
   TEST(test_achievement_list_simple_with_unlocks);
@@ -4131,6 +4321,7 @@ void test_client(void) {
   TEST(test_do_frame_achievement_trigger_server_error);
   TEST(test_do_frame_achievement_trigger_while_spectating);
   TEST(test_do_frame_achievement_trigger_automatic_retry);
+  TEST(test_do_frame_achievement_trigger_subset);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_measured_progress_event);
   TEST(test_do_frame_achievement_challenge_indicator);

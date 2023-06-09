@@ -50,7 +50,7 @@ typedef struct rc_client_load_state_t
 static void rc_client_begin_fetch_game_data(rc_client_load_state_t* callback_data);
 static void rc_client_load_game(rc_client_load_state_t* load_state, const char* hash, const char* file_path);
 static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, time_t now);
-static void rc_client_raise_leaderboard_events(rc_client_t* client);
+static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_subset_info_t* subset);
 static void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 
 /* ===== Construction/Destruction ===== */
@@ -340,24 +340,11 @@ int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], si
   return rc_client_get_image_url(buffer, buffer_size, RC_IMAGE_TYPE_USER, user->display_name);
 }
 
-void rc_client_get_user_game_summary(const rc_client_t* client, rc_client_user_game_summary_t* summary)
+static void rc_client_subset_get_user_game_summary(const rc_client_subset_info_t* subset,
+    rc_client_user_game_summary_t* summary, const uint8_t unlock_bit)
 {
-  rc_client_achievement_info_t* achievement;
-  rc_client_achievement_info_t* stop;
-  const uint8_t unlock_bit = (client->state.hardcore) ?
-      RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE;
-
-  if (!summary)
-    return;
-
-  memset(summary, 0, sizeof(*summary));
-  if (!client || !client->game)
-    return;
-
-  rc_mutex_lock((rc_mutex_t*)&client->state.mutex); /* remove const cast for mutex access */
-
-  achievement = client->game->achievements;
-  stop = achievement + client->game->public.num_achievements;
+  rc_client_achievement_info_t* achievement = subset->achievements;
+  rc_client_achievement_info_t* stop = achievement + subset->public.num_achievements;
   for (; achievement < stop; ++achievement) {
     switch (achievement->public.category) {
       case RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE:
@@ -378,6 +365,23 @@ void rc_client_get_user_game_summary(const rc_client_t* client, rc_client_user_g
         continue;
     }
   }
+}
+
+void rc_client_get_user_game_summary(const rc_client_t* client, rc_client_user_game_summary_t* summary)
+{
+  const uint8_t unlock_bit = (client->state.hardcore) ?
+    RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE;
+
+  if (!summary)
+    return;
+
+  memset(summary, 0, sizeof(*summary));
+  if (!client || !client->game)
+    return;
+
+  rc_mutex_lock((rc_mutex_t*)&client->state.mutex); /* remove const cast for mutex access */
+
+  rc_client_subset_get_user_game_summary(client->game->subsets, summary, unlock_bit);
 
   rc_mutex_unlock((rc_mutex_t*)&client->state.mutex); /* remove const cast for mutex access */
 }
@@ -478,40 +482,46 @@ static void rc_client_load_error(rc_client_load_state_t* load_state, int result,
 
 static void rc_client_invalidate_memref_achievements(rc_client_game_info_t* game, rc_client_t* client, rc_memref_t* memref)
 {
-  rc_client_achievement_info_t* achievement = game->achievements;
-  rc_client_achievement_info_t* stop = achievement + game->public.num_achievements;
-  for (; achievement < stop; ++achievement) {
-    if (achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_DISABLED)
-      continue;
+  rc_client_subset_info_t* subset = game->subsets;
+  for (; subset; subset = subset->next) {
+    rc_client_achievement_info_t* achievement = subset->achievements;
+    rc_client_achievement_info_t* stop = achievement + subset->public.num_achievements;
+    for (; achievement < stop; ++achievement) {
+      if (achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_DISABLED)
+        continue;
 
-    if (rc_trigger_contains_memref(achievement->trigger, memref)) {
-      achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_DISABLED;
-      achievement->public.bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED;
-      RC_CLIENT_LOG_WARN(client, "Disabled achievement %u. Invalid address %06X", achievement->public.id, memref->address);
+      if (rc_trigger_contains_memref(achievement->trigger, memref)) {
+        achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_DISABLED;
+        achievement->public.bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED;
+        RC_CLIENT_LOG_WARN(client, "Disabled achievement %u. Invalid address %06X", achievement->public.id, memref->address);
+      }
     }
   }
 }
 
 static void rc_client_invalidate_memref_leaderboards(rc_client_game_info_t* game, rc_client_t* client, rc_memref_t* memref)
 {
-  rc_client_leaderboard_info_t* leaderboard = game->leaderboards;
-  rc_client_leaderboard_info_t* stop = leaderboard + game->public.num_leaderboards;
-  for (; leaderboard < stop; ++leaderboard) {
-    if (leaderboard->public.state == RC_CLIENT_LEADERBOARD_STATE_DISABLED)
-      continue;
+  rc_client_subset_info_t* subset = game->subsets;
+  for (; subset; subset = subset->next) {
+    rc_client_leaderboard_info_t* leaderboard = subset->leaderboards;
+    rc_client_leaderboard_info_t* stop = leaderboard + subset->public.num_leaderboards;
+    for (; leaderboard < stop; ++leaderboard) {
+      if (leaderboard->public.state == RC_CLIENT_LEADERBOARD_STATE_DISABLED)
+        continue;
 
-    if (rc_trigger_contains_memref(&leaderboard->lboard->start, memref))
-      leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
-    else if (rc_trigger_contains_memref(&leaderboard->lboard->cancel, memref))
-      leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
-    else if (rc_trigger_contains_memref(&leaderboard->lboard->submit, memref))
-      leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
-    else if (rc_value_contains_memref(&leaderboard->lboard->value, memref))
-      leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
-    else
-      continue;
+      if (rc_trigger_contains_memref(&leaderboard->lboard->start, memref))
+        leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
+      else if (rc_trigger_contains_memref(&leaderboard->lboard->cancel, memref))
+        leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
+      else if (rc_trigger_contains_memref(&leaderboard->lboard->submit, memref))
+        leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
+      else if (rc_value_contains_memref(&leaderboard->lboard->value, memref))
+        leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
+      else
+        continue;
 
-    RC_CLIENT_LOG_WARN(client, "Disabled leaderboard %u. Invalid address %06X", leaderboard->public.id, memref->address);
+      RC_CLIENT_LOG_WARN(client, "Disabled leaderboard %u. Invalid address %06X", leaderboard->public.id, memref->address);
+    }
   }
 }
 
@@ -553,30 +563,39 @@ static void rc_client_validate_addresses(rc_client_game_info_t* game, rc_client_
 static void rc_client_update_legacy_runtime_achievements(rc_client_game_info_t* game, uint32_t active_count)
 {
   if (active_count > 0) {
-    rc_client_achievement_info_t* achievement = game->achievements;
-    rc_client_achievement_info_t* stop = achievement + game->public.num_achievements;
+    rc_client_achievement_info_t* achievement;
+    rc_client_achievement_info_t* stop;
     rc_runtime_trigger_t* trigger;
 
-    if (active_count <= game->runtime.trigger_capacity) {
-      if (active_count != 0)
-        memset(game->runtime.triggers, 0, active_count * sizeof(rc_runtime_trigger_t));
-    }
-    else {
-      if (game->runtime.triggers)
-        free(game->runtime.triggers);
+    rc_client_subset_info_t* subset = game->subsets;
+    for (; subset; subset = subset->next) {
+      if (!subset->active)
+        continue;
 
-      game->runtime.trigger_capacity = active_count;
-      game->runtime.triggers = (rc_runtime_trigger_t*)calloc(1, active_count * sizeof(rc_runtime_trigger_t));
-    }
+      achievement = subset->achievements;
+      stop = achievement + subset->public.num_achievements;
 
-    trigger = game->runtime.triggers;
-    achievement = game->achievements;
-    for (; achievement < stop; ++achievement) {
-      if (achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE) {
-        trigger->id = achievement->public.id;
-        memcpy(trigger->md5, achievement->md5, 16);
-        trigger->trigger = achievement->trigger;
-        ++trigger;
+      if (active_count <= game->runtime.trigger_capacity) {
+        if (active_count != 0)
+          memset(game->runtime.triggers, 0, active_count * sizeof(rc_runtime_trigger_t));
+      }
+      else {
+        if (game->runtime.triggers)
+          free(game->runtime.triggers);
+
+        game->runtime.trigger_capacity = active_count;
+        game->runtime.triggers = (rc_runtime_trigger_t*)calloc(1, active_count * sizeof(rc_runtime_trigger_t));
+      }
+
+      trigger = game->runtime.triggers;
+      achievement = subset->achievements;
+      for (; achievement < stop; ++achievement) {
+        if (achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE) {
+          trigger->id = achievement->public.id;
+          memcpy(trigger->md5, achievement->md5, 16);
+          trigger->trigger = achievement->trigger;
+          ++trigger;
+        }
       }
     }
   }
@@ -584,10 +603,10 @@ static void rc_client_update_legacy_runtime_achievements(rc_client_game_info_t* 
   game->runtime.trigger_count = active_count;
 }
 
-static void rc_client_update_active_achievements(rc_client_game_info_t* game)
+static uint32_t rc_client_subset_count_active_achievements(const rc_client_subset_info_t* subset)
 {
-  rc_client_achievement_info_t* achievement = game->achievements;
-  rc_client_achievement_info_t* stop = achievement + game->public.num_achievements;
+  rc_client_achievement_info_t* achievement = subset->achievements;
+  rc_client_achievement_info_t* stop = achievement + subset->public.num_achievements;
   uint32_t active_count = 0;
 
   for (; achievement < stop; ++achievement) {
@@ -595,13 +614,25 @@ static void rc_client_update_active_achievements(rc_client_game_info_t* game)
       ++active_count;
   }
 
+  return active_count;
+}
+
+static void rc_client_update_active_achievements(rc_client_game_info_t* game)
+{
+  uint32_t active_count = 0;
+  rc_client_subset_info_t* subset = game->subsets;
+  for (; subset; subset = subset->next) {
+    if (subset->active)
+      active_count += rc_client_subset_count_active_achievements(subset);
+  }
+
   rc_client_update_legacy_runtime_achievements(game, active_count);
 }
 
-static void rc_client_toggle_hardcore_achievements(rc_client_game_info_t* game, rc_client_t* client, uint8_t active_bit)
+static uint32_t rc_client_subset_toggle_hardcore_achievements(rc_client_subset_info_t* subset, rc_client_t* client, uint8_t active_bit)
 {
-  rc_client_achievement_info_t* achievement = game->achievements;
-  rc_client_achievement_info_t* stop = achievement + game->public.num_achievements;
+  rc_client_achievement_info_t* achievement = subset->achievements;
+  rc_client_achievement_info_t* stop = achievement + subset->public.num_achievements;
   uint32_t active_count = 0;
 
   for (; achievement < stop; ++achievement) {
@@ -623,7 +654,7 @@ static void rc_client_toggle_hardcore_achievements(rc_client_game_info_t* game, 
              achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE) {
       achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED;
       achievement->public.unlock_time = (active_bit == RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE) ?
-          achievement->unlock_time_hardcore : achievement->unlock_time_softcore;
+        achievement->unlock_time_hardcore : achievement->unlock_time_softcore;
 
       if (achievement->trigger && achievement->trigger->state == RC_TRIGGER_STATE_PRIMED) {
         rc_client_event_t client_event;
@@ -634,6 +665,18 @@ static void rc_client_toggle_hardcore_achievements(rc_client_game_info_t* game, 
         client->callbacks.event_handler(&client_event);
       }
     }
+  }
+
+  return active_count;
+}
+
+static void rc_client_toggle_hardcore_achievements(rc_client_game_info_t* game, rc_client_t* client, uint8_t active_bit)
+{
+  uint32_t active_count = 0;
+  rc_client_subset_info_t* subset = game->subsets;
+  for (; subset; subset = subset->next) {
+    if (subset->active)
+      active_count += rc_client_subset_toggle_hardcore_achievements(subset, client, active_bit);
   }
 
   rc_client_update_legacy_runtime_achievements(game, active_count);
@@ -650,29 +693,38 @@ static void rc_client_activate_achievements(rc_client_game_info_t* game, rc_clie
 
 static void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_client_t* client)
 {
+  rc_client_leaderboard_info_t* leaderboard;
+  rc_client_leaderboard_info_t* stop;
+
   unsigned active_count = 0;
-  rc_client_leaderboard_info_t* leaderboard = game->leaderboards;
-  rc_client_leaderboard_info_t* stop = leaderboard + game->public.num_leaderboards;
+  rc_client_subset_info_t* subset = game->subsets;
+  for (; subset; subset = subset->next) {
+    if (!subset->active)
+      continue;
 
-  for (; leaderboard < stop; ++leaderboard) {
-    switch (leaderboard->public.state) {
-      case RC_CLIENT_LEADERBOARD_STATE_DISABLED:
-        continue;
+    leaderboard = subset->leaderboards;
+    stop = leaderboard + subset->public.num_leaderboards;
 
-      case RC_CLIENT_LEADERBOARD_STATE_INACTIVE:
-        if (client->state.hardcore) {
-          rc_reset_lboard(leaderboard->lboard);
-          leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_ACTIVE;
-          ++active_count;
-        }
-        break;
+    for (; leaderboard < stop; ++leaderboard) {
+      switch (leaderboard->public.state) {
+        case RC_CLIENT_LEADERBOARD_STATE_DISABLED:
+          continue;
 
-      default:
-        if (client->state.hardcore)
-          ++active_count;
-        else
-          leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_INACTIVE;
-        break;
+        case RC_CLIENT_LEADERBOARD_STATE_INACTIVE:
+          if (client->state.hardcore) {
+            rc_reset_lboard(leaderboard->lboard);
+            leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_ACTIVE;
+            ++active_count;
+          }
+          break;
+
+        default:
+          if (client->state.hardcore)
+            ++active_count;
+          else
+            leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_INACTIVE;
+          break;
+      }
     }
   }
 
@@ -692,13 +744,22 @@ static void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_clie
     }
 
     lboard = game->runtime.lboards;
-    for (leaderboard = game->leaderboards; leaderboard < stop; ++leaderboard) {
-      if (leaderboard->public.state == RC_CLIENT_LEADERBOARD_STATE_ACTIVE ||
-          leaderboard->public.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING) {
-        lboard->id = leaderboard->public.id;
-        memcpy(lboard->md5, leaderboard->md5, 16);
-        lboard->lboard = leaderboard->lboard;
-        ++lboard;
+
+    subset = game->subsets;
+    for (; subset; subset = subset->next) {
+      if (!subset->active)
+        continue;
+
+      leaderboard = subset->leaderboards;
+      stop = leaderboard + subset->public.num_leaderboards;
+      for (; leaderboard < stop; ++leaderboard) {
+        if (leaderboard->public.state == RC_CLIENT_LEADERBOARD_STATE_ACTIVE ||
+            leaderboard->public.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING) {
+          lboard->id = leaderboard->public.id;
+          memcpy(lboard->md5, leaderboard->md5, 16);
+          lboard->lboard = leaderboard->lboard;
+          ++lboard;
+        }
       }
     }
   }
@@ -708,31 +769,40 @@ static void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_clie
 
 static void rc_client_deactivate_leaderboards(rc_client_game_info_t* game, rc_client_t* client)
 {
-  rc_client_leaderboard_info_t* leaderboard = game->leaderboards;
-  rc_client_leaderboard_info_t* stop = leaderboard + game->public.num_leaderboards;
+  rc_client_leaderboard_info_t* leaderboard;
+  rc_client_leaderboard_info_t* stop;
 
-  for (; leaderboard < stop; ++leaderboard) {
-    switch (leaderboard->public.state) {
-      case RC_CLIENT_LEADERBOARD_STATE_DISABLED:
-      case RC_CLIENT_LEADERBOARD_STATE_INACTIVE:
-        continue;
+  rc_client_subset_info_t* subset = game->subsets;
+  for (; subset; subset = subset->next) {
+    if (!subset->active)
+      continue;
 
-      case RC_CLIENT_LEADERBOARD_STATE_TRACKING:
-        rc_client_release_leaderboard_tracker(client->game, leaderboard);
-        /* fallthrough to default */
-      default:
-        leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_INACTIVE;
-        break;
+    leaderboard = subset->leaderboards;
+    stop = leaderboard + subset->public.num_leaderboards;
+
+    for (; leaderboard < stop; ++leaderboard) {
+      switch (leaderboard->public.state) {
+        case RC_CLIENT_LEADERBOARD_STATE_DISABLED:
+        case RC_CLIENT_LEADERBOARD_STATE_INACTIVE:
+          continue;
+
+        case RC_CLIENT_LEADERBOARD_STATE_TRACKING:
+          rc_client_release_leaderboard_tracker(client->game, leaderboard);
+          /* fallthrough to default */
+        default:
+          leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_INACTIVE;
+          break;
+      }
     }
   }
 
   game->runtime.lboard_count = 0;
 }
 
-static void rc_client_apply_unlocks(rc_client_game_info_t* game, uint32_t* unlocks, uint32_t num_unlocks, uint8_t mode)
+static void rc_client_apply_unlocks(rc_client_subset_info_t* subset, uint32_t* unlocks, uint32_t num_unlocks, uint8_t mode)
 {
-  rc_client_achievement_info_t* start = game->achievements;
-  rc_client_achievement_info_t* stop = start + game->public.num_achievements;
+  rc_client_achievement_info_t* start = subset->achievements;
+  rc_client_achievement_info_t* stop = start + subset->public.num_achievements;
   rc_client_achievement_info_t* scan;
   unsigned i;
 
@@ -768,9 +838,9 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
       load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
   }
   else {
-    rc_client_apply_unlocks(load_state->game, load_state->softcore_unlocks,
+    rc_client_apply_unlocks(load_state->game->subsets, load_state->softcore_unlocks,
         load_state->num_softcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    rc_client_apply_unlocks(load_state->game, load_state->hardcore_unlocks,
+    rc_client_apply_unlocks(load_state->game->subsets, load_state->hardcore_unlocks,
         load_state->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
 
     rc_mutex_lock(&client->state.mutex);
@@ -791,12 +861,14 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
       rc_client_activate_leaderboards(load_state->game, client);
 
       /* schedule the periodic ping */
-      rc_client_scheduled_callback_data_t* callback_data = rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_scheduled_callback_data_t));
-      memset(callback_data, 0, sizeof(*callback_data));
-      callback_data->callback = rc_client_ping;
-      callback_data->related_id = load_state->game->public.id;
-      callback_data->when = time(NULL) + 30;
-      rc_client_schedule_callback(client, callback_data);
+      if (load_state->hash->hash[0] != '[') {
+        rc_client_scheduled_callback_data_t* callback_data = rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_scheduled_callback_data_t));
+        memset(callback_data, 0, sizeof(*callback_data));
+        callback_data->callback = rc_client_ping;
+        callback_data->related_id = load_state->game->public.id;
+        callback_data->when = time(NULL) + 30;
+        rc_client_schedule_callback(client, callback_data);
+      }
 
       RC_CLIENT_LOG_INFO(client, "Game %u loaded, hardcode %s", load_state->game->public.id,
           client->state.hardcore ? "enabled" : "disabled");
@@ -939,8 +1011,9 @@ static void rc_client_begin_start_session(rc_client_load_state_t* load_state)
   }
 }
 
-static rc_client_achievement_info_t* rc_client_copy_achievements(
-    rc_client_load_state_t* load_state, const rc_api_fetch_game_data_response_t* game_data)
+static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
+    rc_client_subset_info_t* subset,
+    const rc_api_achievement_definition_t* achievement_definitions, uint32_t num_achievements)
 {
   const rc_api_achievement_definition_t* read;
   const rc_api_achievement_definition_t* stop;
@@ -951,25 +1024,26 @@ static rc_client_achievement_info_t* rc_client_copy_achievements(
   const char* memaddr;
   size_t size;
   int trigger_size;
-  uint32_t num_achievements = game_data->num_achievements;
+
+  subset->achievements = NULL;
+  subset->public.num_achievements = num_achievements;
 
   if (num_achievements == 0)
-    return NULL;
+    return;
 
-  stop = game_data->achievements + num_achievements;
+  stop = achievement_definitions + num_achievements;
 
   /* if not testing unofficial, filter them out */
   if (!load_state->client->state.test_unofficial) {
-    read = game_data->achievements;
-    for (; read < stop; ++read) {
+    for (read = achievement_definitions; read < stop; ++read) {
       if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE)
         --num_achievements;
     }
 
-    load_state->game->public.num_achievements = num_achievements;
+    subset->public.num_achievements = num_achievements;
 
     if (num_achievements == 0)
-      return NULL;
+      return;
   }
 
   /* preallocate space for achievements */
@@ -987,12 +1061,9 @@ static rc_client_achievement_info_t* rc_client_copy_achievements(
   memset(achievements, 0, size);
 
   /* copy the achievement data */
-  read = game_data->achievements;
-  do {
-    if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE && !load_state->client->state.test_unofficial) {
-      ++read;
+  for (read = achievement_definitions; read < stop; ++read) {
+    if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE && !load_state->client->state.test_unofficial)
       continue;
-    }
 
     achievement->public.title = rc_buf_strcpy(buffer, read->title);
     achievement->public.description = rc_buf_strcpy(buffer, read->description);
@@ -1033,14 +1104,14 @@ static rc_client_achievement_info_t* rc_client_copy_achievements(
     }
 
     ++achievement;
-    ++read;
-  } while (read < stop);
+  }
 
-  return achievements;
+  subset->achievements = achievements;
 }
 
-static rc_client_leaderboard_info_t* rc_client_copy_leaderboards(
-    rc_client_load_state_t* load_state, const rc_api_fetch_game_data_response_t* game_data)
+static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
+    rc_client_subset_info_t* subset,
+    const rc_api_leaderboard_definition_t* leaderboard_definitions, uint32_t num_leaderboards)
 {
   const rc_api_leaderboard_definition_t* read;
   const rc_api_leaderboard_definition_t* stop;
@@ -1053,8 +1124,11 @@ static rc_client_leaderboard_info_t* rc_client_copy_leaderboards(
   size_t size;
   int lboard_size;
 
-  if (game_data->num_leaderboards == 0)
-    return NULL;
+  subset->leaderboards = NULL;
+  subset->public.num_leaderboards = num_leaderboards;
+
+  if (num_leaderboards == 0)
+    return;
 
   /* preallocate space for achievements */
   size = 24 /* assume average title length of 24 */
@@ -1064,17 +1138,17 @@ static rc_client_leaderboard_info_t* rc_client_copy_leaderboards(
       + (sizeof(rc_value_t) + sizeof(rc_condset_t)) /* value */
       + sizeof(rc_condition_t) * 4 * 4 /* assume average of 4 conditions in each start/submit/cancel/value */
       + sizeof(rc_client_leaderboard_info_t);
-  rc_buf_reserve(&load_state->game->buffer, size * game_data->num_leaderboards);
+  rc_buf_reserve(&load_state->game->buffer, size * num_leaderboards);
 
   /* allocate the achievement array */
-  size = sizeof(rc_client_leaderboard_info_t) * game_data->num_leaderboards;
+  size = sizeof(rc_client_leaderboard_info_t) * num_leaderboards;
   buffer = &load_state->game->buffer;
   leaderboard = leaderboards = rc_buf_alloc(buffer, size);
   memset(leaderboards, 0, size);
 
   /* copy the achievement data */
-  read = game_data->leaderboards;
-  stop = read + game_data->num_leaderboards;
+  read = leaderboard_definitions;
+  stop = read + num_leaderboards;
   do {
     leaderboard->public.title = rc_buf_strcpy(buffer, read->title);
     leaderboard->public.description = rc_buf_strcpy(buffer, read->description);
@@ -1089,6 +1163,7 @@ static rc_client_leaderboard_info_t* rc_client_copy_leaderboards(
     if (ptr != NULL) {
       /* calculate the DJB2 hash of the VAL portion of the string*/
       uint32_t hash = 5381;
+      ptr += 4; /* skip 'VAL:' */
       while (*ptr && (ptr[0] != ':' || ptr[1] != ':'))
          hash = (hash << 5) + hash + *ptr++;
       leaderboard->value_djb2 = hash;
@@ -1123,7 +1198,24 @@ static rc_client_leaderboard_info_t* rc_client_copy_leaderboards(
     ++read;
   } while (read < stop);
 
-  return leaderboards;
+  subset->leaderboards = leaderboards;
+}
+
+static const char* rc_client_subset_extract_title(rc_client_game_info_t* game, const char* title)
+{
+  const char* subset_prefix = strstr(title, "[Subset - ");
+  if (subset_prefix) {
+    const char* start = subset_prefix + 10;
+    const char* stop = strstr(start, "]");
+    const size_t len = stop - start;
+    char* result = (char*)rc_buf_alloc(&game->buffer, len + 1);
+
+    memcpy(result, start, len);
+    result[len] = '\0';
+    return result;
+  }
+
+  return NULL;
 }
 
 static void rc_client_fetch_game_data_callback(const char* server_response_body, int http_status_code, void* callback_data)
@@ -1146,10 +1238,12 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
   else {
     /* if a change media request is pending, kick it off */
     rc_client_pending_media_t* pending_media;
+    rc_client_subset_info_t* subset;
 
     rc_mutex_lock(&load_state->client->state.mutex);
     pending_media = load_state->pending_media;
     load_state->pending_media = NULL;
+    /* console_id must be set before checking pending_media - this is redundant for subset */
     load_state->game->public.console_id = fetch_game_data_response.console_id;
     rc_mutex_unlock(&load_state->client->state.mutex);
 
@@ -1167,21 +1261,48 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
     rc_client_begin_start_session(load_state);
 
     /* process the game data */
-    load_state->game->public.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
-    snprintf(load_state->game->public.badge_name, sizeof(load_state->game->public.badge_name), "%s", fetch_game_data_response.image_name);
+    subset = (rc_client_subset_info_t*)rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
+    memset(subset, 0, sizeof(*subset));
+    subset->public.id = fetch_game_data_response.id;
+    subset->active = 1;
+    snprintf(subset->public.badge_name, sizeof(subset->public.badge_name), "%s", fetch_game_data_response.image_name);
 
-    load_state->game->public.num_achievements = fetch_game_data_response.num_achievements;
-    load_state->game->achievements = rc_client_copy_achievements(load_state, &fetch_game_data_response);
+    rc_client_copy_achievements(load_state, subset,
+        fetch_game_data_response.achievements, fetch_game_data_response.num_achievements);
+    rc_client_copy_leaderboards(load_state, subset,
+        fetch_game_data_response.leaderboards, fetch_game_data_response.num_leaderboards);
 
-    load_state->game->public.num_leaderboards = fetch_game_data_response.num_leaderboards;
-    load_state->game->leaderboards = rc_client_copy_leaderboards(load_state, &fetch_game_data_response);
+    if (!load_state->game->subsets) {
+      /* core set */
+      rc_mutex_lock(&load_state->client->state.mutex);
+      load_state->game->public.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
+      load_state->game->subsets = subset;
+      load_state->game->public.badge_name = subset->public.badge_name;
+      rc_mutex_unlock(&load_state->client->state.mutex);
 
-    result = rc_runtime_activate_richpresence(&load_state->game->runtime, fetch_game_data_response.rich_presence_script, NULL, 0);
-    if (result != RC_OK) {
-      RC_CLIENT_LOG_WARN(load_state->client, "Parse error %d processing rich presence", result);
+      subset->public.title = load_state->game->public.title;
+
+      result = rc_runtime_activate_richpresence(&load_state->game->runtime, fetch_game_data_response.rich_presence_script, NULL, 0);
+      if (result != RC_OK) {
+        RC_CLIENT_LOG_WARN(load_state->client, "Parse error %d processing rich presence", result);
+      }
     }
-    else if (load_state->game->runtime.richpresence->richpresence) {
-      load_state->game->public.has_rich_presence = 1;
+    else {
+      /* subset - extract subset title */
+      subset->public.title = rc_client_subset_extract_title(load_state->game, fetch_game_data_response.title);
+      if (!subset->public.title) {
+        const char* core_subset_title = rc_client_subset_extract_title(load_state->game, load_state->game->public.title);
+        if (core_subset_title)
+          load_state->game->public.title = core_subset_title;
+
+        subset->public.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
+      }
+
+      /* append to subset list */
+      rc_client_subset_info_t* scan = load_state->game->subsets;
+      while (scan->next)
+        scan = scan->next;
+      scan->next = subset;
     }
 
     outstanding_requests = rc_client_end_load_state(load_state);
@@ -1245,6 +1366,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
     }
 
     load_state->game->public.title = "Unknown Game";
+    load_state->game->public.badge_name = "";
     client->game = load_state->game;
     load_state->game = NULL;
 
@@ -1252,8 +1374,10 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
     return;
   }
 
-  load_state->game->public.id = load_state->hash->game_id;
-  load_state->game->public.hash = load_state->hash->hash;
+  if (load_state->hash->hash[0] != '[') {
+    load_state->game->public.id = load_state->hash->game_id;
+    load_state->game->public.hash = load_state->hash->hash;
+  }
 
   rc_mutex_lock(&client->state.mutex);
   result = client->state.user;
@@ -1277,7 +1401,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   memset(&fetch_game_data_request, 0, sizeof(fetch_game_data_request));
   fetch_game_data_request.username = client->user.username;
   fetch_game_data_request.api_token = client->user.token;
-  fetch_game_data_request.game_id = load_state->game->public.id;
+  fetch_game_data_request.game_id = load_state->hash->game_id;
 
   result = rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request);
   if (result != RC_OK) {
@@ -1740,28 +1864,81 @@ int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], si
   return rc_client_get_image_url(buffer, buffer_size, RC_IMAGE_TYPE_GAME, game->badge_name);
 }
 
+/* ===== Subsets ===== */
+
+void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback)
+{
+  char buffer[32];
+  rc_client_load_state_t* load_state;
+
+  if (!client) {
+    callback(RC_INVALID_STATE, "client is required", client);
+    return;
+  }
+
+  if (!client->game) {
+    callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client);
+    return;
+  }
+
+  snprintf(buffer, sizeof(buffer), "[SUBSET%u]", subset_id);
+
+  load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
+  load_state->client = client;
+  load_state->callback = callback;
+  load_state->game = client->game;
+  load_state->hash = rc_client_find_game_hash(client, buffer);
+  load_state->hash->game_id = subset_id;
+  client->state.load = load_state;
+
+  rc_client_begin_fetch_game_data(load_state);
+}
+
+const rc_client_subset_t* rc_client_get_subset_info(rc_client_t* client, uint32_t subset_id)
+{
+  rc_client_subset_info_t* subset;
+
+  if (!client || !client->game)
+    return NULL;
+
+  for (subset = client->game->subsets; subset; subset = subset->next) {
+    if (subset->public.id == subset_id)
+      return &subset->public;
+  }
+
+  return NULL;
+}
+
 /* ===== Achievements ===== */
 
-uint32_t rc_client_get_achievement_count(const rc_client_t* client, int category)
+static uint32_t rc_client_subset_get_achievement_count(const rc_client_subset_info_t* subset, int category)
 {
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* stop;
   uint32_t count = 0;
 
-  if (!client || !client->game)
+  if (!subset)
     return 0;
 
   if (category == RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL)
-    return client->game->public.num_achievements;
+    return subset->public.num_achievements;
 
-  achievement = client->game->achievements;
-  stop = achievement + client->game->public.num_achievements;
+  achievement = subset->achievements;
+  stop = achievement + subset->public.num_achievements;
   for (; achievement < stop; ++achievement) {
     if (achievement->public.category == category)
       ++count;
   }
 
   return count;
+}
+
+uint32_t rc_client_get_achievement_count(const rc_client_t* client, int category)
+{
+  if (!client || !client->game)
+    return 0;
+
+  return rc_client_subset_get_achievement_count(client->game->subsets, category);
 }
 
 static void rc_client_update_achievement_display_information(rc_client_t* client, rc_client_achievement_info_t* achievement, time_t recent_unlock_time)
@@ -1854,6 +2031,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   rc_client_achievement_t** achievement_ptr;
   rc_client_achievement_bucket_t* bucket_ptr;
   rc_client_achievement_list_t* list;
+  rc_client_subset_info_t* subset;
   const uint32_t list_size = RC_ALIGN(sizeof(*list));
   uint32_t bucket_counts[16];
   uint32_t num_buckets;
@@ -1879,12 +2057,17 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
   rc_mutex_lock(&client->state.mutex);
 
-  achievement = client->game->achievements;
-  stop = achievement + client->game->public.num_achievements;
-  for (; achievement < stop; ++achievement) {
-    if (achievement->public.category & category) {
-      rc_client_update_achievement_display_information(client, achievement, recent_unlock_time);
-      bucket_counts[achievement->public.bucket]++;
+  for (subset = client->game->subsets; subset; subset = subset->next) {
+    if (!subset->active)
+      continue;
+
+    achievement = subset->achievements;
+    stop = achievement + subset->public.num_achievements;
+    for (; achievement < stop; ++achievement) {
+      if (achievement->public.category & category) {
+        rc_client_update_achievement_display_information(client, achievement, recent_unlock_time);
+        bucket_counts[achievement->public.bucket]++;
+      }
     }
   }
 
@@ -1923,34 +2106,48 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
           break;
       }
 
-      for (achievement = client->game->achievements; achievement < stop; ++achievement) {
-        if (!(achievement->public.category & category))
+      for (subset = client->game->subsets; subset; subset = subset->next) {
+        if (!subset->active)
           continue;
 
-        switch (achievement->public.bucket) {
-          case RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED:
-          case RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED:
-            if (bucket_type == RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED)
-              *achievement_ptr++ = &achievement->public;
-            break;
+        achievement = subset->achievements;
+        stop = achievement + subset->public.num_achievements;
+        for (; achievement < stop; ++achievement) {
+          if (!(achievement->public.category & category))
+            continue;
 
-          case RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED:
-          case RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL:
-            if (bucket_type == achievement->public.bucket)
-              *achievement_ptr++ = &achievement->public;
-            break;
+          switch (achievement->public.bucket) {
+            case RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED:
+            case RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED:
+              if (bucket_type == RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED)
+                *achievement_ptr++ = &achievement->public;
+              break;
 
-          default:
-            if (bucket_type == RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED)
-              *achievement_ptr++ = &achievement->public;
-            break;
+            case RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED:
+            case RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL:
+              if (bucket_type == achievement->public.bucket)
+                *achievement_ptr++ = &achievement->public;
+              break;
+
+            default:
+              if (bucket_type == RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED)
+                *achievement_ptr++ = &achievement->public;
+              break;
+          }
         }
       }
     }
     else /* RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS */ {
-      for (achievement = client->game->achievements; achievement < stop; ++achievement) {
-        if (achievement->public.bucket == bucket_type && achievement->public.category & category)
-          *achievement_ptr++ = &achievement->public;
+      for (subset = client->game->subsets; subset; subset = subset->next) {
+        if (!subset->active)
+          continue;
+
+        achievement = subset->achievements;
+        stop = achievement + subset->public.num_achievements;
+        for (; achievement < stop; ++achievement) {
+          if (achievement->public.bucket == bucket_type && achievement->public.category & category)
+            *achievement_ptr++ = &achievement->public;
+        }
       }
     }
 
@@ -1979,17 +2176,13 @@ void rc_client_destroy_achievement_list(rc_client_achievement_list_t* list)
     free(list);
 }
 
-const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* client, uint32_t id)
+static const rc_client_achievement_t* rc_client_subset_get_achievement_info(
+    rc_client_t* client, rc_client_subset_info_t* subset, uint32_t id)
 {
-  rc_client_achievement_info_t* achievement;
-  rc_client_achievement_info_t* stop;
+  rc_client_achievement_info_t* achievement = subset->achievements;
+  rc_client_achievement_info_t* stop = achievement + subset->public.num_achievements;
 
-  if (!client || !client->game)
-    return NULL;
-
-  achievement = client->game->achievements;
-  stop = achievement + client->game->public.num_achievements;
-  while (achievement < stop) {
+  for (; achievement < stop; ++achievement) {
     if (achievement->public.id == id) {
       const time_t recent_unlock_time = time(NULL) - RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS;
       rc_mutex_lock((rc_mutex_t*)(&client->state.mutex));
@@ -1997,8 +2190,22 @@ const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* clien
       rc_mutex_unlock((rc_mutex_t*)(&client->state.mutex));
       return &achievement->public;
     }
+  }
 
-    ++achievement;
+  return NULL;
+}
+
+const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* client, uint32_t id)
+{
+  rc_client_subset_info_t* subset;
+
+  if (!client || !client->game)
+    return NULL;
+
+  for (subset = client->game->subsets; subset; subset = subset->next) {
+    const rc_client_achievement_t* achievement = rc_client_subset_get_achievement_info(client, subset, id);
+    if (achievement != NULL)
+      return achievement;
   }
 
   return NULL;
@@ -2098,11 +2305,16 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
             ach_data->hardcore ? award_achievement_response.new_player_score : award_achievement_response.new_player_score_softcore);
       }
 
-      if (award_achievement_response.achievements_remaining == 0 &&
-          ach_data->client->game->mastery == RC_CLIENT_MASTERY_STATE_NONE) {
-        RC_CLIENT_LOG_INFO(ach_data->client, "Game %u %s", ach_data->client->game->public.id,
-            ach_data->client->state.hardcore ? "mastered" : "completed");
-        ach_data->client->game->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
+      if (award_achievement_response.achievements_remaining == 0) {
+        rc_client_subset_info_t* subset;
+        for (subset = ach_data->client->game->subsets; subset; subset = subset->next) {
+          if (subset->mastery == RC_CLIENT_MASTERY_STATE_NONE &&
+              rc_client_subset_get_achievement_info(ach_data->client, subset, ach_data->id)) {
+            RC_CLIENT_LOG_INFO(ach_data->client, "Game %u %s", ach_data->client->game->public.id,
+                ach_data->client->state.hardcore ? "mastered" : "completed");
+            subset->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
+          }
+        }
       }
     }
   }
@@ -2187,10 +2399,10 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
   rc_client_award_achievement_server_call(callback_data);
 }
 
-static void rc_client_reset_achievements(rc_client_t* client)
+static void rc_client_subset_reset_achievements(rc_client_subset_info_t* subset)
 {
-  rc_client_achievement_info_t* achievement = client->game->achievements;
-  rc_client_achievement_info_t* stop = achievement + client->game->public.num_achievements;
+  rc_client_achievement_info_t* achievement = subset->achievements;
+  rc_client_achievement_info_t* stop = achievement + subset->public.num_achievements;
 
   for (; achievement < stop; ++achievement) {
     rc_trigger_t* trigger = achievement->trigger;
@@ -2199,32 +2411,48 @@ static void rc_client_reset_achievements(rc_client_t* client)
 
     if (trigger->state == RC_TRIGGER_STATE_PRIMED) {
       achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
-      client->game->pending_achievement_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+      subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
     }
 
     rc_reset_trigger(trigger);
   }
 }
 
+static void rc_client_reset_achievements(rc_client_t* client)
+{
+  rc_client_subset_info_t* subset;
+  for (subset = client->game->subsets; subset; subset = subset->next)
+    rc_client_subset_reset_achievements(subset);
+}
+
 /* ===== Leaderboards ===== */
+
+static const rc_client_leaderboard_t* rc_client_subset_get_leaderboard_info(const rc_client_subset_info_t* subset, uint32_t id)
+{
+  rc_client_leaderboard_info_t* leaderboard = subset->leaderboards;
+  rc_client_leaderboard_info_t* stop = leaderboard + subset->public.num_leaderboards;
+
+  for (; leaderboard < stop; ++leaderboard) {
+    if (leaderboard->public.id == id)
+      return &leaderboard->public;
+  }
+
+  return NULL;
+}
 
 const rc_client_leaderboard_t* rc_client_get_leaderboard_info(const rc_client_t* client, uint32_t id)
 {
-  rc_client_leaderboard_info_t* leaderboard;
-  rc_client_leaderboard_info_t* stop;
+  rc_client_subset_info_t* subset;
 
   if (!client || !client->game)
     return NULL;
 
-  leaderboard = client->game->leaderboards;
-  stop = leaderboard + client->game->public.num_leaderboards;
-  while (leaderboard < stop) {
-    if (leaderboard->public.id == id)
-      return &leaderboard->public;
-
-    ++leaderboard;
+  for (subset = client->game->subsets; subset; subset = subset->next) {
+    const rc_client_leaderboard_t* leaderboard = rc_client_subset_get_leaderboard_info(subset, id);
+    if (leaderboard != NULL)
+      return leaderboard;
   }
-
+ 
   return NULL;
 }
 
@@ -2253,7 +2481,7 @@ static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, 
       /* value has changed. prepare an update event */
       tracker->raw_value = leaderboard->value;
       tracker->pending_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
-      game->pending_leaderboard_tracker_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
+      game->pending_events |= RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER;
     }
 
     /* attach to the existing tracker */
@@ -2286,7 +2514,7 @@ static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, 
   available_tracker->value_from_hits = rc_value_from_hits(&leaderboard->lboard->value);
   leaderboard->tracker = available_tracker;
   leaderboard->public.tracker_value = available_tracker->public.display;
-  game->pending_leaderboard_tracker_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW;
+  game->pending_events |= RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER;
 }
 
 static void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
@@ -2296,7 +2524,7 @@ static void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, r
 
   if (tracker && --tracker->reference_count == 0) {
     tracker->pending_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE;
-    game->pending_leaderboard_tracker_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE;
+    game->pending_events |= RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER;
   }
 }
 
@@ -2306,7 +2534,7 @@ static void rc_client_update_leaderboard_tracker(rc_client_game_info_t* game, rc
   if (tracker && tracker->raw_value != leaderboard->value) {
     tracker->raw_value = leaderboard->value;
     tracker->pending_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
-    game->pending_leaderboard_tracker_events |= RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE;
+    game->pending_events |= RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER;
   }
 }
 
@@ -2432,10 +2660,10 @@ static void rc_client_submit_leaderboard_entry(rc_client_t* client, rc_client_le
   rc_client_submit_leaderboard_entry_server_call(callback_data);
 }
 
-static void rc_client_reset_leaderboards(rc_client_t* client)
+static void rc_client_subset_reset_leaderboards(rc_client_game_info_t* game, rc_client_subset_info_t* subset)
 {
-  rc_client_leaderboard_info_t* leaderboard = client->game->leaderboards;
-  rc_client_leaderboard_info_t* stop = leaderboard + client->game->public.num_leaderboards;
+  rc_client_leaderboard_info_t* leaderboard = subset->leaderboards;
+  rc_client_leaderboard_info_t* stop = leaderboard + subset->public.num_leaderboards;
 
   for (; leaderboard < stop; ++leaderboard) {
     rc_lboard_t* lboard = leaderboard->lboard;
@@ -2449,7 +2677,7 @@ static void rc_client_reset_leaderboards(rc_client_t* client)
         continue;
 
       case RC_CLIENT_LEADERBOARD_STATE_TRACKING:
-        rc_client_release_leaderboard_tracker(client->game, leaderboard);
+        rc_client_release_leaderboard_tracker(game, leaderboard);
         /* fallthrough to default */
       default:
         leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_ACTIVE;
@@ -2457,6 +2685,13 @@ static void rc_client_reset_leaderboards(rc_client_t* client)
         break;
     }
   }
+}
+
+static void rc_client_reset_leaderboards(rc_client_t* client)
+{
+  rc_client_subset_info_t* subset;
+  for (subset = client->game->subsets; subset; subset = subset->next)
+    rc_client_subset_reset_leaderboards(client->game, subset);
 }
 
 /* ===== Rich Presence ===== */
@@ -2650,10 +2885,10 @@ static void rc_client_update_memref_values(rc_client_t* client)
     rc_client_update_active_achievements(client->game);
 }
 
-static void rc_client_do_frame_process_achievements(rc_client_t* client)
+static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_client_subset_info_t* subset)
 {
-  rc_client_achievement_info_t* achievement = client->game->achievements;
-  rc_client_achievement_info_t* stop = achievement + client->game->public.num_achievements;
+  rc_client_achievement_info_t* achievement = subset->achievements;
+  rc_client_achievement_info_t* stop = achievement + subset->public.num_achievements;
   float best_progress = -1.0;
   rc_client_achievement_info_t* best_progress_achievement = NULL;
 
@@ -2692,7 +2927,7 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client)
           best_progress_achievement->pending_events &= ~RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW;
 
         achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW;
-        client->game->pending_achievement_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW;
+        subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
         best_progress_achievement = achievement;
       }
     }
@@ -2711,14 +2946,14 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client)
     else if (new_state == RC_TRIGGER_STATE_PRIMED)
       achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_SHOW;
 
-    client->game->pending_achievement_events |= achievement->pending_events;
+    subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
   }
 }
 
-static void rc_client_raise_achievement_events(rc_client_t* client)
+static void rc_client_raise_achievement_events(rc_client_t* client, rc_client_subset_info_t* subset)
 {
-  rc_client_achievement_info_t* achievement = client->game->achievements;
-  rc_client_achievement_info_t* stop = achievement + client->game->public.num_achievements;
+  rc_client_achievement_info_t* achievement = subset->achievements;
+  rc_client_achievement_info_t* stop = achievement + subset->public.num_achievements;
   rc_client_event_t client_event;
   time_t recent_unlock_time = 0;
   int achievements_unlocked = 0;
@@ -2733,7 +2968,7 @@ static void rc_client_raise_achievement_events(rc_client_t* client)
     /* kick off award achievement request first */
     if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_TRIGGERED) {
       rc_client_award_achievement(client, achievement);
-      achievements_unlocked = 1;
+      client->game->pending_events |= RC_CLIENT_GAME_PENDING_EVENT_UPDATE_ACTIVE_ACHIEVEMENTS;
     }
 
     /* update display state */
@@ -2766,16 +3001,9 @@ static void rc_client_raise_achievement_events(rc_client_t* client)
     /* clear pending flags */
     achievement->pending_events = RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_NONE;
   }
-
-  /* if any achievements were unlocked, resync the active achievements list */
-  if (achievements_unlocked) {
-    rc_mutex_lock(&client->state.mutex);
-    rc_client_update_active_achievements(client->game);
-    rc_mutex_unlock(&client->state.mutex);
-  }
 }
 
-static void rc_client_raise_mastery_event(rc_client_t* client)
+static void rc_client_raise_mastery_event(rc_client_t* client, rc_client_subset_info_t* subset)
 {
   rc_client_event_t client_event;
 
@@ -2783,15 +3011,15 @@ static void rc_client_raise_mastery_event(rc_client_t* client)
   client_event.client = client;
   client_event.type = RC_CLIENT_EVENT_GAME_COMPLETED;
 
-  client->game->mastery = RC_CLIENT_MASTERY_STATE_SHOWN;
+  subset->mastery = RC_CLIENT_MASTERY_STATE_SHOWN;
 
   client->callbacks.event_handler(&client_event);
 }
 
-static void rc_client_do_frame_process_leaderboards(rc_client_t* client)
+static void rc_client_do_frame_process_leaderboards(rc_client_t* client, rc_client_subset_info_t* subset)
 {
-  rc_client_leaderboard_info_t* leaderboard = client->game->leaderboards;
-  rc_client_leaderboard_info_t* stop = leaderboard + client->game->public.num_leaderboards;
+  rc_client_leaderboard_info_t* leaderboard = subset->leaderboards;
+  rc_client_leaderboard_info_t* stop = leaderboard + subset->public.num_leaderboards;
 
   for (; leaderboard < stop; ++leaderboard) {
     rc_lboard_t* lboard = leaderboard->lboard;
@@ -2841,7 +3069,8 @@ static void rc_client_do_frame_process_leaderboards(rc_client_t* client)
         break;
     }
 
-    client->game->pending_leaderboard_events |= leaderboard->pending_events;
+    if (leaderboard->pending_events)
+      subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_LEADERBOARD;
   }
 }
 
@@ -2881,10 +3110,10 @@ static void rc_client_raise_leaderboard_tracker_events(rc_client_t* client)
   }
 }
 
-static void rc_client_raise_leaderboard_events(rc_client_t* client)
+static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_subset_info_t* subset)
 {
-  rc_client_leaderboard_info_t* leaderboard = client->game->leaderboards;
-  rc_client_leaderboard_info_t* leaderboard_stop = leaderboard + client->game->public.num_leaderboards;
+  rc_client_leaderboard_info_t* leaderboard = subset->leaderboards;
+  rc_client_leaderboard_info_t* leaderboard_stop = leaderboard + subset->public.num_leaderboards;
   rc_client_event_t client_event;
 
   memset(&client_event, 0, sizeof(client_event));
@@ -2920,28 +3149,46 @@ static void rc_client_raise_leaderboard_events(rc_client_t* client)
 
 static void rc_client_reset_pending_events(rc_client_t* client)
 {
-  client->game->pending_achievement_events = RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_NONE;
-  client->game->pending_leaderboard_events = RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE;
-  client->game->pending_leaderboard_tracker_events = RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE;
+  rc_client_subset_info_t* subset;
+
+  client->game->pending_events = RC_CLIENT_GAME_PENDING_EVENT_NONE;
+
+  for (subset = client->game->subsets; subset; subset = subset->next)
+    subset->pending_events = RC_CLIENT_SUBSET_PENDING_EVENT_NONE;
+}
+
+static void rc_client_subset_raise_pending_events(rc_client_t* client, rc_client_subset_info_t* subset)
+{
+  /* raise any pending achievement events */
+  if (subset->pending_events & RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT)
+    rc_client_raise_achievement_events(client, subset);
+
+  /* raise any pending leaderboard events */
+  if (subset->pending_events & RC_CLIENT_SUBSET_PENDING_EVENT_LEADERBOARD)
+    rc_client_raise_leaderboard_events(client, subset);
+
+  /* raise mastery event if pending */
+  if (subset->mastery == RC_CLIENT_MASTERY_STATE_PENDING)
+    rc_client_raise_mastery_event(client, subset);
 }
 
 static void rc_client_raise_pending_events(rc_client_t* client)
 {
-  /* raise any pending achievement events */
-  if (client->game->pending_achievement_events != RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_NONE)
-    rc_client_raise_achievement_events(client);
+  rc_client_subset_info_t* subset;
 
   /* raise tracker events before leaderboard events so formatted values are updated for leaderboard events */
-  if (client->game->pending_leaderboard_tracker_events != RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE)
+  if (client->game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER)
     rc_client_raise_leaderboard_tracker_events(client);
 
-  /* raise any pending leaderboard events */
-  if (client->game->pending_leaderboard_events != RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE)
-    rc_client_raise_leaderboard_events(client);
+  for (subset = client->game->subsets; subset; subset = subset->next)
+    rc_client_subset_raise_pending_events(client, subset);
 
-  /* raise mastery event if pending */
-  if (client->game->mastery == RC_CLIENT_MASTERY_STATE_PENDING)
-    rc_client_raise_mastery_event(client);
+  /* if any achievements were unlocked, resync the active achievements list */
+  if (client->game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_UPDATE_ACTIVE_ACHIEVEMENTS) {
+    rc_mutex_lock(&client->state.mutex);
+    rc_client_update_active_achievements(client->game);
+    rc_mutex_unlock(&client->state.mutex);
+  }
 }
 
 void rc_client_do_frame(rc_client_t* client)
@@ -2951,6 +3198,7 @@ void rc_client_do_frame(rc_client_t* client)
 
   if (client->game && !client->game->waiting_for_reset) {
     rc_runtime_richpresence_t* richpresence;
+    rc_client_subset_info_t* subset;
 
     rc_mutex_lock(&client->state.mutex);
 
@@ -2959,9 +3207,17 @@ void rc_client_do_frame(rc_client_t* client)
     rc_client_update_memref_values(client);
     rc_update_variables(client->game->runtime.variables, client->state.legacy_peek, client, NULL);
 
-    rc_client_do_frame_process_achievements(client);
-    if (client->state.hardcore)
-      rc_client_do_frame_process_leaderboards(client);
+    for (subset = client->game->subsets; subset; subset = subset->next) {
+      if (subset->active)
+        rc_client_do_frame_process_achievements(client, subset);
+    }
+
+    if (client->state.hardcore) {
+      for (subset = client->game->subsets; subset; subset = subset->next) {
+        if (subset->active)
+          rc_client_do_frame_process_leaderboards(client, subset);
+      }
+    }
 
     richpresence = client->game->runtime.richpresence;
     if (richpresence && richpresence->richpresence)
@@ -3110,69 +3366,71 @@ int rc_client_serialize_progress(rc_client_t* client, uint8_t* buffer)
   return result;
 }
 
-int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialized)
+static void rc_client_subset_before_deserialize_progress(rc_client_subset_info_t* subset)
 {
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* achievement_stop;
   rc_client_leaderboard_info_t* leaderboard;
   rc_client_leaderboard_info_t* leaderboard_stop;
-  int result;
-
-  if (!client || !client->game)
-    return RC_NO_GAME_LOADED;
-
-  rc_mutex_lock(&client->state.mutex);
-
-  rc_client_reset_pending_events(client);
 
   /* flag any visible challenge indicators to be hidden */
-  achievement = client->game->achievements;
-  achievement_stop = achievement + client->game->public.num_achievements;
+  achievement = subset->achievements;
+  achievement_stop = achievement + subset->public.num_achievements;
   for (; achievement < achievement_stop; ++achievement) {
     rc_trigger_t* trigger = achievement->trigger;
     if (trigger && trigger->state == RC_TRIGGER_STATE_PRIMED &&
         achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE) {
       achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
-      client->game->pending_achievement_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+      subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
     }
   }
 
   /* flag any visible trackers to be hidden */
-  leaderboard = client->game->leaderboards;
-  leaderboard_stop = leaderboard + client->game->public.num_leaderboards;
+  leaderboard = subset->leaderboards;
+  leaderboard_stop = leaderboard + subset->public.num_leaderboards;
   for (; leaderboard < leaderboard_stop; ++leaderboard) {
     rc_lboard_t* lboard = leaderboard->lboard;
     if (lboard && lboard->state == RC_LBOARD_STATE_STARTED &&
         leaderboard->public.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING) {
       leaderboard->pending_events |= RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED;
-      client->game->pending_leaderboard_events |= RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED;
+      subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
     }
   }
+}
 
-  /* deserialize the runtime state */
-  result = rc_runtime_deserialize_progress(&client->game->runtime, serialized, NULL);
+static void rc_client_subset_after_deserialize_progress(rc_client_game_info_t* game, rc_client_subset_info_t* subset)
+{
+  rc_client_achievement_info_t* achievement;
+  rc_client_achievement_info_t* achievement_stop;
+  rc_client_leaderboard_info_t* leaderboard;
+  rc_client_leaderboard_info_t* leaderboard_stop;
 
   /* flag any challenge indicators that should be shown */
-  for (achievement = client->game->achievements; achievement < achievement_stop; ++achievement) {
+  achievement = subset->achievements;
+  achievement_stop = achievement + subset->public.num_achievements;
+  for (; achievement < achievement_stop; ++achievement) {
     rc_trigger_t* trigger = achievement->trigger;
     if (!trigger || achievement->public.state != RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE)
       continue;
 
     if (trigger->state == RC_TRIGGER_STATE_PRIMED) {
       /* if it's already shown, just keep it. otherwise flag it to be shown */
-      if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE)
+      if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE) {
         achievement->pending_events &= ~RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
-      else
+      }
+      else {
         achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_SHOW;
+        subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
+      }
     }
     /* ASSERT: only active achievements are serialized, so we don't have to worry about
      *         deserialization deactiving them. */
-
-    client->game->pending_achievement_events |= achievement->pending_events;
   }
 
   /* flag any trackers that need to be shown */
-  for (leaderboard = client->game->leaderboards; leaderboard < leaderboard_stop; ++leaderboard) {
+  leaderboard = subset->leaderboards;
+  leaderboard_stop = leaderboard + subset->public.num_leaderboards;
+  for (; leaderboard < leaderboard_stop; ++leaderboard) {
     rc_lboard_t* lboard = leaderboard->lboard;
     if (!lboard ||
         leaderboard->public.state == RC_CLIENT_LEADERBOARD_STATE_INACTIVE ||
@@ -3186,19 +3444,40 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
       /* if it's already being tracked, just update tracker. otherwise, allocate one */
       if (leaderboard->pending_events & RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED) {
         leaderboard->pending_events &= ~RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED;
-        rc_client_update_leaderboard_tracker(client->game, leaderboard);
+        rc_client_update_leaderboard_tracker(game, leaderboard);
       }
       else {
-        rc_client_allocate_leaderboard_tracker(client->game, leaderboard);
+        rc_client_allocate_leaderboard_tracker(game, leaderboard);
       }
     }
     else if (leaderboard->pending_events & RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED) {
       /* deallocate the tracker (don't actually raise the failed event) */
       leaderboard->pending_events &= ~RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED;
       leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_ACTIVE;
-      rc_client_release_leaderboard_tracker(client->game, leaderboard);
+      rc_client_release_leaderboard_tracker(game, leaderboard);
     }
   }
+}
+
+int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialized)
+{
+  rc_client_subset_info_t* subset;
+  int result;
+
+  if (!client || !client->game)
+    return RC_NO_GAME_LOADED;
+
+  rc_mutex_lock(&client->state.mutex);
+
+  rc_client_reset_pending_events(client);
+
+  for (subset = client->game->subsets; subset; subset = subset->next)
+    rc_client_subset_before_deserialize_progress(subset);
+
+  result = rc_runtime_deserialize_progress(&client->game->runtime, serialized, NULL);
+
+  for (subset = client->game->subsets; subset; subset = subset->next)
+  rc_client_subset_after_deserialize_progress(client->game, subset);
 
   rc_mutex_unlock(&client->state.mutex);
 
