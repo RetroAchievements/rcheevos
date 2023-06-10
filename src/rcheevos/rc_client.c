@@ -869,10 +869,13 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
         callback_data->related_id = load_state->game->public.id;
         callback_data->when = time(NULL) + 30;
         rc_client_schedule_callback(client, callback_data);
-      }
 
-      RC_CLIENT_LOG_INFO(client, "Game %u loaded, hardcode %s", load_state->game->public.id,
-          client->state.hardcore ? "enabled" : "disabled");
+        RC_CLIENT_LOG_INFO(client, "Game %u loaded, hardcode %s", load_state->game->public.id,
+            client->state.hardcore ? "enabled" : "disabled");
+      }
+      else {
+        RC_CLIENT_LOG_INFO(client, "Subset %u loaded", load_state->subset->public.id);
+      }
 
       if (load_state->callback)
         load_state->callback(RC_OK, NULL, client);
@@ -969,7 +972,7 @@ static void rc_client_begin_start_session(rc_client_load_state_t* load_state)
   memset(&start_session_params, 0, sizeof(start_session_params));
   start_session_params.username = client->user.username;
   start_session_params.api_token = client->user.token;
-  start_session_params.game_id = load_state->game->public.id;
+  start_session_params.game_id = load_state->hash->game_id;
 
   result = rc_api_init_start_session_request(&start_session_request, &start_session_params);
   if (result != RC_OK) {
@@ -1257,23 +1260,22 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
       free(pending_media);
     }
 
-    /* kick off the start session request while we process the game data */
-    rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_STARTING_SESSION, 1);
-    rc_client_begin_start_session(load_state);
-
-    /* process the game data */
     subset = (rc_client_subset_info_t*)rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
     memset(subset, 0, sizeof(*subset));
     subset->public.id = fetch_game_data_response.id;
     subset->active = 1;
     snprintf(subset->public.badge_name, sizeof(subset->public.badge_name), "%s", fetch_game_data_response.image_name);
+    load_state->subset = subset;
 
+    /* kick off the start session request while we process the game data */
+    rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_STARTING_SESSION, 1);
+    rc_client_begin_start_session(load_state);
+
+    /* process the game data */
     rc_client_copy_achievements(load_state, subset,
         fetch_game_data_response.achievements, fetch_game_data_response.num_achievements);
     rc_client_copy_leaderboards(load_state, subset,
         fetch_game_data_response.leaderboards, fetch_game_data_response.num_leaderboards);
-
-    load_state->subset = subset;
 
     if (!load_state->game->subsets) {
       /* core set */
@@ -1295,8 +1297,15 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
       subset->public.title = rc_client_subset_extract_title(load_state->game, fetch_game_data_response.title);
       if (!subset->public.title) {
         const char* core_subset_title = rc_client_subset_extract_title(load_state->game, load_state->game->public.title);
-        if (core_subset_title)
-          load_state->game->public.title = core_subset_title;
+        if (core_subset_title) {
+           rc_client_subset_info_t* scan = load_state->game->subsets;
+           for (; scan; scan = scan->next) {
+              if (scan->public.title == load_state->game->public.title) {
+                 scan->public.title = core_subset_title;
+                 break;
+              }
+           }
+        }
 
         subset->public.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
       }
