@@ -2935,6 +2935,17 @@ void rc_client_set_legacy_peek(rc_client_t* client, int method)
       rc_client_peek_le : rc_client_peek;
 }
 
+int rc_client_is_processing_required(rc_client_t* client)
+{
+  if (!client || !client->game)
+    return 0;
+
+  if (client->game->runtime.trigger_count || client->game->runtime.lboard_count)
+    return 1;
+
+  return (client->game->runtime.richpresence && client->game->runtime.richpresence->richpresence);
+}
+
 static void rc_client_update_memref_values(rc_client_t* client)
 {
   rc_memref_t* memref = client->game->runtime.memrefs;

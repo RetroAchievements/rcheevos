@@ -442,6 +442,11 @@ void rc_client_set_event_handler(rc_client_t* client, rc_client_event_handler_t 
 void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memory_func_t handler);
 
 /**
+ * Determines if there are any active achievements/leaderboards/rich presence that need processing.
+ */
+int rc_client_is_processing_required(rc_client_t* client);
+
+/**
  * Processes achievements for the current frame.
  */
 void rc_client_do_frame(rc_client_t* client);

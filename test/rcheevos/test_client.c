@@ -19,6 +19,25 @@ static rc_client_t* g_client;
 #define GENERIC_LEADERBOARD_JSON(id, memaddr, format) "{\"ID\":" id ",\"Title\":\"Leaderboard " id "\"," \
       "\"Description\":\"Desc " id "\",\"Mem\":\"" memaddr "\",\"Format\":\"" format "\"}"
 
+static const char* patchdata_empty = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":[],"
+    "\"Leaderboards\":[]"
+    "}}";
+
+static const char* patchdata_2ach_0lbd = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":["
+     "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+      "\"MemAddr\":\"0xH0001=3_0xH0002=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+      "\"Created\":1367266583,\"Modified\":1376929305},"
+     "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
+      "\"MemAddr\":\"0xH0001=2_0x0002=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
+      "\"Created\":1376970283,\"Modified\":1376970283}"
+    "],"
+    "\"Leaderboards\":[]"
+    "}}";
+
 static const char* patchdata_2ach_1lbd = "{\"Success\":true,\"PatchData\":{"
     "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
     "\"Achievements\":["
@@ -32,6 +51,21 @@ static const char* patchdata_2ach_1lbd = "{\"Success\":true,\"PatchData\":{"
     "\"Leaderboards\":["
      "{\"ID\":4401,\"Title\":\"Leaderboard1\",\"Description\":\"Desc1\","
       "\"Mem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"Format\":\"SCORE\"}"
+    "]"
+    "}}";
+
+static const char* patchdata_rich_presence_only = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":[],"
+    "\"Leaderboards\":[],"
+    "\"RichPresencePatch\":\"Display:\\r\\n@Number(0xH0001)\""
+    "}}";
+
+static const char* patchdata_leaderboard_only = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":[],"
+    "\"Leaderboards\":["
+      GENERIC_LEADERBOARD_JSON("44", "STA:0xH000B=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE")
     "]"
     "}}";
 
@@ -4318,6 +4352,62 @@ static void test_deserialize_progress_updates_widgets(void)
   rc_client_destroy(g_client);
 }
 
+/* ----- processing required ----- */
+
+static void test_processing_required(void)
+{
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+
+  ASSERT_TRUE(rc_client_is_processing_required(g_client));
+
+  rc_client_destroy(g_client);
+}
+
+static void test_processing_required_empty_game(void)
+{
+  g_client = mock_client_game_loaded(patchdata_empty, no_unlocks, no_unlocks);
+
+  ASSERT_FALSE(rc_client_is_processing_required(g_client));
+
+  rc_client_destroy(g_client);
+}
+
+static void test_processing_required_rich_presence_only(void)
+{
+  g_client = mock_client_game_loaded(patchdata_rich_presence_only, no_unlocks, no_unlocks);
+
+  ASSERT_TRUE(rc_client_is_processing_required(g_client));
+
+  rc_client_destroy(g_client);
+}
+
+static void test_processing_required_leaderboard_only(void)
+{
+  g_client = mock_client_game_loaded(patchdata_leaderboard_only, no_unlocks, no_unlocks);
+
+  ASSERT_TRUE(rc_client_is_processing_required(g_client));
+
+  rc_client_destroy(g_client);
+}
+
+static void test_processing_required_after_mastery(void)
+{
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501_and_5502, unlock_5501_and_5502);
+
+  ASSERT_TRUE(rc_client_is_processing_required(g_client));
+
+  rc_client_destroy(g_client);
+}
+
+static void test_processing_required_after_mastery_no_leaderboards(void)
+{
+  g_client = mock_client_game_loaded(patchdata_2ach_0lbd, unlock_5501_and_5502, unlock_5501_and_5502);
+
+  ASSERT_FALSE(rc_client_is_processing_required(g_client));
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- settings ----- */
 
 static void test_set_hardcore_disable(void)
@@ -4675,6 +4765,14 @@ void test_client(void) {
 
   TEST(test_reset_hides_widgets);
   TEST(test_deserialize_progress_updates_widgets);
+
+  /* processing required */
+  TEST(test_processing_required);
+  TEST(test_processing_required_empty_game);
+  TEST(test_processing_required_rich_presence_only);
+  TEST(test_processing_required_leaderboard_only);
+  TEST(test_processing_required_after_mastery);
+  TEST(test_processing_required_after_mastery_no_leaderboards);
 
   /* settings */
   TEST(test_set_hardcore_disable);
