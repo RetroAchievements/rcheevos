@@ -608,7 +608,7 @@ static void test_process_award_achievement_response_empty() {
 
   memset(&award_achievement_response, 0, sizeof(award_achievement_response));
 
-  ASSERT_NUM_EQUALS(rc_api_process_award_achievement_response(&award_achievement_response, server_response), RC_INVALID_JSON);
+  ASSERT_NUM_EQUALS(rc_api_process_award_achievement_response(&award_achievement_response, server_response), RC_NO_RESPONSE);
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
   ASSERT_PTR_NULL(award_achievement_response.response.error_message);
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);

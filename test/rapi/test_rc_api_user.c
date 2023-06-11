@@ -255,7 +255,7 @@ static void test_process_login_response_empty()
 
   memset(&login_response, 0, sizeof(login_response));
 
-  ASSERT_NUM_EQUALS(rc_api_process_login_response(&login_response, server_response), RC_INVALID_JSON);
+  ASSERT_NUM_EQUALS(rc_api_process_login_response(&login_response, server_response), RC_NO_RESPONSE);
   ASSERT_NUM_EQUALS(login_response.response.succeeded, 0);
   ASSERT_PTR_NULL(login_response.response.error_message);
   ASSERT_PTR_NULL(login_response.username);

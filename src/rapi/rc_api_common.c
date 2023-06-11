@@ -242,9 +242,9 @@ int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_jso
     return RC_INVALID_STATE;
 #endif
 
-  if (!json) {
+  if (!json || !*json) {
     response->succeeded = 0;
-    return RC_INVALID_JSON;
+    return RC_NO_RESPONSE;
   }
 
   if (*json == '{') {

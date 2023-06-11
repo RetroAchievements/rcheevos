@@ -205,6 +205,7 @@ const char* rc_error_str(int ret)
     case RC_NO_GAME_LOADED: return "No game loaded";
     case RC_HARDCORE_DISABLED: return "Hardcore disabled";
     case RC_ABORTED: return "Aborted";
+    case RC_NO_RESPONSE: return "No response";
     default: return "Unknown error";
   }
 }

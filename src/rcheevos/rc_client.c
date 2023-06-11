@@ -2342,17 +2342,23 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
   const char* error_message = rc_client_server_error_message(&result, http_status_code, &award_achievement_response.response);
 
   if (error_message) {
-    RC_CLIENT_LOG_ERR(ach_data->client, "Error awarding achievement %u: %s", ach_data->id, error_message);
-
     if (award_achievement_response.response.error_message) {
+      /* actual error from server */
+      RC_CLIENT_LOG_ERR(ach_data->client, "Error awarding achievement %u: %s", ach_data->id, error_message);
       rc_client_raise_server_error_event(ach_data->client, "award_achievement", award_achievement_response.response.error_message);
     }
     else if (ach_data->retry_count++ == 0) {
       /* first retry is immediate */
+      RC_CLIENT_LOG_ERR(ach_data->client, "Error awarding achievement %u: %s, retrying immediately", ach_data->id, error_message);
       rc_client_award_achievement_server_call(ach_data);
       return;
     }
     else {
+      /* double wait time between each attempt until we hit a maximum delay of two minutes */
+      /* 1s -> 2s -> 4s -> 8s -> 16s -> 32s -> 64s -> 120s -> 120s -> 120s ...*/
+      const uint32_t delay = (ach_data->retry_count > 7) ? 120 : (1 << (ach_data->retry_count - 1));
+      RC_CLIENT_LOG_ERR(ach_data->client, "Error awarding achievement %u: %s, retrying in %u seconds", ach_data->id, error_message, delay);
+
       if (!ach_data->scheduled_callback_data) {
         ach_data->scheduled_callback_data = (rc_client_scheduled_callback_data_t*)calloc(1, sizeof(*ach_data->scheduled_callback_data));
         ach_data->scheduled_callback_data->callback = rc_client_award_achievement_retry;
@@ -2360,12 +2366,7 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
         ach_data->scheduled_callback_data->related_id = ach_data->id;
       }
 
-      /* double wait time between each attempt until we hit a maximum delay of two minutes */
-      /* 1s -> 2s -> 4s -> 8s -> 16s -> 32s -> 64s -> 120s -> 120s -> 120s ...*/
-      if (ach_data->retry_count > 8)
-        ach_data->scheduled_callback_data->when = time(NULL) + 120;
-      else
-        ach_data->scheduled_callback_data->when = time(NULL) + (time_t)(1 << (ach_data->retry_count - 1));
+      ach_data->scheduled_callback_data->when = time(NULL) + delay;
 
       rc_client_schedule_callback(ach_data->client, ach_data->scheduled_callback_data);
       return;
@@ -2667,17 +2668,23 @@ static void rc_client_submit_leaderboard_entry_callback(const char* server_respo
   const char* error_message = rc_client_server_error_message(&result, http_status_code, &submit_lboard_entry_response.response);
 
   if (error_message) {
-    RC_CLIENT_LOG_ERR(lboard_data->client, "Error submitting leaderboard entry %u: %s", lboard_data->id, error_message);
-
     if (submit_lboard_entry_response.response.error_message) {
+      /* actual error from server */
+      RC_CLIENT_LOG_ERR(lboard_data->client, "Error submitting leaderboard entry %u: %s", lboard_data->id, error_message);
       rc_client_raise_server_error_event(lboard_data->client, "submit_lboard_entry", submit_lboard_entry_response.response.error_message);
     }
     else if (lboard_data->retry_count++ == 0) {
       /* first retry is immediate */
+      RC_CLIENT_LOG_ERR(lboard_data->client, "Error submitting leaderboard entry %u: %s, retrying immediately", lboard_data->id, error_message);
       rc_client_submit_leaderboard_entry_server_call(lboard_data);
       return;
     }
     else {
+      /* double wait time between each attempt until we hit a maximum delay of two minutes */
+      /* 1s -> 2s -> 4s -> 8s -> 16s -> 32s -> 64s -> 120s -> 120s -> 120s ...*/
+      const uint32_t delay = (lboard_data->retry_count > 7) ? 120 : (1 << (lboard_data->retry_count - 1));
+      RC_CLIENT_LOG_ERR(lboard_data->client, "Error submitting leaderboard entry %u: %s, retrying in %u seconds", lboard_data->id, error_message, delay);
+
       if (!lboard_data->scheduled_callback_data) {
         lboard_data->scheduled_callback_data = (rc_client_scheduled_callback_data_t*)calloc(1, sizeof(*lboard_data->scheduled_callback_data));
         lboard_data->scheduled_callback_data->callback = rc_client_submit_leaderboard_entry_retry;
@@ -2685,19 +2692,14 @@ static void rc_client_submit_leaderboard_entry_callback(const char* server_respo
         lboard_data->scheduled_callback_data->related_id = lboard_data->id;
       }
 
-      /* double wait time between each attempt until we hit a maximum delay of two minutes */
-      /* 1s -> 2s -> 4s -> 8s -> 16s -> 32s -> 64s -> 120s -> 120s -> 120s ...*/
-      if (lboard_data->retry_count > 8)
-        lboard_data->scheduled_callback_data->when = time(NULL) + 120;
-      else
-        lboard_data->scheduled_callback_data->when = time(NULL) + (time_t)(1 << (lboard_data->retry_count - 1));
+      lboard_data->scheduled_callback_data->when = time(NULL) + delay;
 
       rc_client_schedule_callback(lboard_data->client, lboard_data->scheduled_callback_data);
       return;
     }
   }
   else {
-    /* TODO: raise event for scoreboard */
+    /* TODO: raise event for scoreboard (if retry_count < 2) */
 
     /* not currently doing anything with the response */
     if (lboard_data->retry_count) {
