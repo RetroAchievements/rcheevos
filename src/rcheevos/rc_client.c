@@ -2399,9 +2399,18 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
         for (subset = ach_data->client->game->subsets; subset; subset = subset->next) {
           if (subset->mastery == RC_CLIENT_MASTERY_STATE_NONE &&
               rc_client_subset_get_achievement_info(ach_data->client, subset, ach_data->id)) {
-            RC_CLIENT_LOG_INFO(ach_data->client, "Game %u %s", ach_data->client->game->public.id,
+            if (subset->public.id == ach_data->client->game->public.id) {
+              RC_CLIENT_LOG_INFO(ach_data->client, "Game %u %s", ach_data->client->game->public.id,
                 ach_data->client->state.hardcore ? "mastered" : "completed");
-            subset->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
+              subset->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
+            }
+            else {
+              RC_CLIENT_LOG_INFO(ach_data->client, "Subset %u %s", ach_data->client->game->public.id,
+                ach_data->client->state.hardcore ? "mastered" : "completed");
+
+              /* TODO: subset mastery notification */
+              subset->mastery = RC_CLIENT_MASTERY_STATE_SHOWN;
+            }
           }
         }
       }
