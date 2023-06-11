@@ -3879,21 +3879,21 @@ static void test_do_frame_leaderboard_tracker_sharing(void)
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_TRACKING);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 45));
-    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers[1].reference_count, 1); /* 45 */
+    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers->next->reference_count, 1); /* 45 */
 
     event = find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 46);
     ASSERT_PTR_NOT_NULL(event);
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_TRACKING);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "273");
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 46));
-    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers[1].reference_count, 1); /* 46 */
+    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers->next->reference_count, 1); /* 46 */
 
     event = find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 47);
     ASSERT_PTR_NOT_NULL(event);
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_TRACKING);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000273");
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 47));
-    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers[0].reference_count, 2); /* 44,47 */
+    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers->reference_count, 2); /* 44,47 */
 
     event = find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 2);
     ASSERT_PTR_NOT_NULL(event);
@@ -3919,7 +3919,7 @@ static void test_do_frame_leaderboard_tracker_sharing(void)
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_TRACKING);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000273");
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 48));
-    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers[0].reference_count, 3); /* 44,47,48 */
+    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers->reference_count, 3); /* 44,47,48 */
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -3935,7 +3935,7 @@ static void test_do_frame_leaderboard_tracker_sharing(void)
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000273");
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 44));
-    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers[0].reference_count, 2); /* 47,48 */
+    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers->reference_count, 2); /* 47,48 */
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -3951,7 +3951,7 @@ static void test_do_frame_leaderboard_tracker_sharing(void)
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 45));
-    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers[1].reference_count, 0); /* */
+    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers->next->reference_count, 0); /* */
 
     event = find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 2);
     ASSERT_PTR_NOT_NULL(event);
@@ -3972,7 +3972,7 @@ static void test_do_frame_leaderboard_tracker_sharing(void)
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "273");
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 46));
-    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers[1].reference_count, 0); /* */
+    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers->next->reference_count, 0); /* */
 
     event = find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 3);
     ASSERT_PTR_NOT_NULL(event);
@@ -3995,14 +3995,14 @@ static void test_do_frame_leaderboard_tracker_sharing(void)
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000273");
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 47));
-    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers[0].reference_count, 1); /* 48 */
+    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers->reference_count, 1); /* 48 */
 
     event = find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 51);
     ASSERT_PTR_NOT_NULL(event);
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_TRACKING);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "0");
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 51));
-    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers[1].reference_count, 1); /* 51 */
+    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers->next->reference_count, 1); /* 51 */
 
     event = find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 2);
     ASSERT_PTR_NOT_NULL(event);
@@ -4023,7 +4023,7 @@ static void test_do_frame_leaderboard_tracker_sharing(void)
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000273");
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 48));
-    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers[0].reference_count, 0); /*  */
+    ASSERT_NUM_EQUALS(g_client->game->leaderboard_trackers->reference_count, 0); /*  */
 
     event = find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1);
     ASSERT_PTR_NOT_NULL(event);

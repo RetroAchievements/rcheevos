@@ -675,7 +675,7 @@ void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
   file_len = rc_file_tell(file_handle);
   rc_file_seek(file_handle, 0, SEEK_SET);
 
-  m3u_contents = (char*)malloc(file_len + 1);
+  m3u_contents = (char*)malloc((size_t)file_len + 1);
   rc_file_read(file_handle, m3u_contents, (int)file_len);
   m3u_contents[file_len] = '\0';
 
