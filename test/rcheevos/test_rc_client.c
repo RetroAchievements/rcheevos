@@ -207,10 +207,13 @@ static void rc_client_event_handler(const rc_client_event_t* e)
   memcpy(&events[event_count++], e, sizeof(rc_client_event_t));
 
   if (e->type == RC_CLIENT_EVENT_SERVER_ERROR) {
+    static char event_server_error_message[128];
     static rc_client_server_error_t event_server_error;
 
     /* server error data is not maintained out of scope, copy it too */
     memcpy(&event_server_error, e->server_error, sizeof(event_server_error));
+    strcpy(event_server_error_message, e->server_error->error_message);
+    event_server_error.error_message = event_server_error_message;
     events[event_count - 1].server_error = &event_server_error;
   }
 }
@@ -626,6 +629,8 @@ static void test_user_get_image_url(void)
 
   ASSERT_NUM_EQUALS(rc_client_user_get_image_url(rc_client_get_user_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/UserPic/DisplayName.png");
+
+  rc_client_destroy(g_client);
 }
 
 static void test_get_user_game_summary(void)
@@ -1601,6 +1606,8 @@ static void test_game_get_image_url(void)
 
   ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233.png");
+
+  rc_client_destroy(g_client);
 }
 
 static void test_game_get_image_url_non_ssl(void)
@@ -1611,6 +1618,8 @@ static void test_game_get_image_url_non_ssl(void)
 
   ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "http://media.retroachievements.org/Images/112233.png");
+
+  rc_client_destroy(g_client);
 }
 
 static void test_game_get_image_url_custom(void)
@@ -1621,6 +1630,8 @@ static void test_game_get_image_url_custom(void)
 
   ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "http://localhost/Images/112233.png");
+
+  rc_client_destroy(g_client);
 }
 
 /* ----- subset ----- */
@@ -2577,6 +2588,8 @@ static void test_achievement_get_image_url(void)
   ASSERT_NUM_EQUALS(rc_client_achievement_get_image_url(rc_client_get_achievement_info(g_client, 5501),
       RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE, buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Badge/00234_lock.png");
+
+  rc_client_destroy(g_client);
 }
 
 /* ----- do frame ----- */

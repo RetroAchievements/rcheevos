@@ -50,6 +50,15 @@ static void test_memory_init_without_regions() {
   rc_libretro_memory_regions_t regions;
   unsigned avail;
   unsigned char buffer1[16], buffer2[8], buffer3[4];
+  int i;
+
+  for (i = 0; i < sizeof(buffer1); ++i)
+      buffer1[i] = i;
+  for (i = 0; i < sizeof(buffer2); ++i)
+      buffer2[i] = i;
+  for (i = 0; i < sizeof(buffer3); ++i)
+      buffer3[i] = i;
+
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = sizeof(buffer1);
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
