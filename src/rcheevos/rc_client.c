@@ -639,8 +639,8 @@ static uint32_t rc_client_subset_toggle_hardcore_achievements(rc_client_subset_i
   for (; achievement < stop; ++achievement) {
     if ((achievement->public.unlocked & active_bit) == 0) {
       switch (achievement->public.state) {
-        case RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE:
         case RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED:
+        case RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE:
           rc_reset_trigger(achievement->trigger);
           achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE;
           ++active_count;
@@ -653,6 +653,11 @@ static uint32_t rc_client_subset_toggle_hardcore_achievements(rc_client_subset_i
     }
     else if (achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE ||
              achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE) {
+
+      /* if it's active despite being unlocked, and we're in encore mode, leave it active */
+      if (client->state.encore_mode)
+        continue;
+
       achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED;
       achievement->public.unlock_time = (active_bit == RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE) ?
         achievement->unlock_time_hardcore : achievement->unlock_time_softcore;
@@ -1963,12 +1968,8 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
 
   achievement->public.measured_progress[0] = '\0';
 
-  if (achievement->public.unlocked & RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE) {
-    /* achievement unlocked in hardcore */
-    new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED;
-  }
-  else if (achievement->public.unlocked & RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE && !client->state.hardcore) {
-    /* achievement unlocked in softcore while hardcore is disabled */
+  if (achievement->public.state == RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED) {
+    /* achievement unlocked */
     new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED;
   }
   else {

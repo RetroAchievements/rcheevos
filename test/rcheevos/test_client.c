@@ -1809,7 +1809,7 @@ static void test_achievement_list_simple_with_unlocks(void)
     rc_client_destroy_achievement_list(list);
   }
 
-  g_client->state.hardcore = 0;
+  rc_client_set_hardcore_enabled(g_client, 0);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -1819,6 +1819,63 @@ static void test_achievement_list_simple_with_unlocks(void)
     ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
     ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
+
+    iter = list->buckets[0].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5501);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5502);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_achievement_list_simple_with_unlocks_encore_mode(void)
+{
+  rc_client_achievement_list_t* list;
+  rc_client_achievement_t** iter;
+  rc_client_achievement_t* achievement;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_encore_mode_enabled(g_client, 1);
+  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    /* in hardcore mode, 5501 should be unlocked, but both will appear locked due to encore mode */
+    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
+
+    iter = list->buckets[0].achievements;
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5501);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    achievement = *iter++;
+    ASSERT_NUM_EQUALS(achievement->id, 5502);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  rc_client_set_hardcore_enabled(g_client, 0);
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    /* in softcore mode, both should be unlocked, but will appear locked due to encore mode */
+    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
 
     iter = list->buckets[0].achievements;
@@ -4816,6 +4873,7 @@ void test_client(void) {
   /* achievements */
   TEST(test_achievement_list_simple);
   TEST(test_achievement_list_simple_with_unlocks);
+  TEST(test_achievement_list_simple_with_unlocks_encore_mode);
   TEST(test_achievement_list_simple_with_unofficial_and_unsupported);
   TEST(test_achievement_list_simple_with_unofficial_off);
   TEST(test_achievement_list_buckets);
