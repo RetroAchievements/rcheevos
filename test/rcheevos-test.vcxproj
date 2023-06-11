@@ -204,7 +204,7 @@
     <ClCompile Include="rcheevos\test_rc_validate.c" />
     <ClCompile Include="rcheevos\test_richpresence.c" />
     <ClCompile Include="rcheevos\test_runtime.c" />
-    <ClCompile Include="rcheevos\test_client.c" />
+    <ClCompile Include="rcheevos\test_rc_client.c" />
     <ClCompile Include="rcheevos\test_runtime_progress.c" />
     <ClCompile Include="rcheevos\test_timing.c" />
     <ClCompile Include="rcheevos\test_trigger.c" />

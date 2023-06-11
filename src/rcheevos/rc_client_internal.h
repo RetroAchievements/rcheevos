@@ -173,7 +173,7 @@ enum {
 enum {
   RC_CLIENT_MASTERY_STATE_NONE,
   RC_CLIENT_MASTERY_STATE_PENDING,
-  RC_CLIENT_MASTERY_STATE_SHOWN,
+  RC_CLIENT_MASTERY_STATE_SHOWN
 };
 
 struct rc_client_load_state_t;
@@ -197,7 +197,7 @@ typedef struct rc_client_state_t {
   rc_peek_t legacy_peek;
 } rc_client_state_t;
 
-typedef struct rc_client_t {
+struct rc_client_t {
   rc_client_game_info_t* game;
   rc_client_game_hash_t* hashes;
 
@@ -206,13 +206,20 @@ typedef struct rc_client_t {
   rc_client_callbacks_t callbacks;
 
   rc_client_state_t state;
-} rc_client_t;
+};
 
+#ifdef RC_C89_HELPERS
+void RC_CLIENT_LOG_ERR(const rc_client_t* client, const char* format, ...);
+void RC_CLIENT_LOG_WARN(const rc_client_t* client, const char* format, ...);
+void RC_CLIENT_LOG_INFO(const rc_client_t* client, const char* format, ...);
+void RC_CLIENT_LOG_VERBOSE(const rc_client_t* client, const char* format, ...);
+#else
 void rc_client_log_message(const rc_client_t* client, const char* format, ...);
 #define RC_CLIENT_LOG_ERR(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_ERROR) rc_client_log_message(client, format, __VA_ARGS__); }
 #define RC_CLIENT_LOG_WARN(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_WARN) rc_client_log_message(client, format, __VA_ARGS__); }
 #define RC_CLIENT_LOG_INFO(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO) rc_client_log_message(client, format, __VA_ARGS__); }
 #define RC_CLIENT_LOG_VERBOSE(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_VERBOSE) rc_client_log_message(client, format, __VA_ARGS__); }
+#endif
 
 /* internals pulled from runtime.c */
 void rc_runtime_checksum(const char* memaddr, unsigned char* md5);

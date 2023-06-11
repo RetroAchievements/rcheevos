@@ -65,19 +65,28 @@ extern "C" {
  #define gmtime_s rc_gmtime_s
 #endif
 
-#ifdef _WIN32
- typedef struct rc_mutex_t {
-   void* handle; /* HANDLE is defined as "void*" */
- } rc_mutex_t;
-#else
- #include <pthread.h>
- typedef pthread_mutex_t rc_mutex_t;
-#endif
+#ifdef RC_NO_THREADS
+ typedef int rc_mutex_t;
 
-void rc_mutex_init(rc_mutex_t* mutex);
-void rc_mutex_destroy(rc_mutex_t* mutex);
-void rc_mutex_lock(rc_mutex_t* mutex);
-void rc_mutex_unlock(rc_mutex_t* mutex);
+ #define rc_mutex_init(mutex)
+ #define rc_mutex_destroy(mutex)
+ #define rc_mutex_lock(mutex)
+ #define rc_mutex_unlock(mutex)
+#else
+ #ifdef _WIN32
+  typedef struct rc_mutex_t {
+    void* handle; /* HANDLE is defined as "void*" */
+  } rc_mutex_t;
+ #else
+  #include <pthread.h>
+  typedef pthread_mutex_t rc_mutex_t;
+ #endif
+
+ void rc_mutex_init(rc_mutex_t* mutex);
+ void rc_mutex_destroy(rc_mutex_t* mutex);
+ void rc_mutex_lock(rc_mutex_t* mutex);
+ void rc_mutex_unlock(rc_mutex_t* mutex);
+#endif
 
 #ifdef __cplusplus
 }

@@ -10,6 +10,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include <time.h>
 
 /* implementation abstracted in rc_client_internal.h */
 typedef struct rc_client_t rc_client_t;
@@ -333,7 +334,7 @@ typedef struct rc_client_achievement_list_t {
 
 enum {
   RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE = 0,
-  RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS = 1,
+  RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS = 1
 };
 
 /**

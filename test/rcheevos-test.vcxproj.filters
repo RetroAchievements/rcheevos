@@ -291,7 +291,7 @@
     <ClCompile Include="..\src\rcheevos\rc_client.c">
       <Filter>src\rcheevos</Filter>
     </ClCompile>
-    <ClCompile Include="rcheevos\test_client.c">
+    <ClCompile Include="rcheevos\test_rc_client.c">
       <Filter>tests\rcheevos</Filter>
     </ClCompile>
   </ItemGroup>

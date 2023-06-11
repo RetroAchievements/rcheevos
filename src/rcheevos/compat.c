@@ -84,6 +84,7 @@ struct tm* rc_gmtime_s(struct tm* buf, const time_t* timer)
 
 #endif
 
+#ifndef RC_NO_THREADS
 #ifdef _WIN32
 
 /* https://gist.github.com/roxlu/1c1af99f92bafff9d8d9 */
@@ -135,3 +136,4 @@ void rc_mutex_unlock(rc_mutex_t* mutex)
 }
 
 #endif
+#endif /* RC_NO_THREADS */

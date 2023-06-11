@@ -96,29 +96,79 @@ void rc_client_destroy(rc_client_t* client)
 
 /* ===== Logging ===== */
 
-void rc_client_log_message(const rc_client_t* client, const char* format, ...)
+void rc_client_log_message_va(const rc_client_t* client, const char* format, va_list args)
 {
-  char buffer[256];
-  int result;
-  va_list args;
-
-  if (!client->callbacks.log_call)
-    return;
-
-  va_start(args, format);
+  if (client->callbacks.log_call)
+  {
+    char buffer[256];
 
 #ifdef __STDC_WANT_SECURE_LIB__
-  result = vsprintf_s(buffer, sizeof(buffer), format, args);
+    vsprintf_s(buffer, sizeof(buffer), format, args);
 #else
-  /* assume buffer is large enough and ignore size */
-  (void)size;
-  result = vsprintf(buffer, format, args);
+    vsprintf(buffer, format, args);
 #endif
 
-  va_end(args);
-
-  client->callbacks.log_call(buffer);
+    client->callbacks.log_call(buffer);
+  }
 }
+
+#ifdef RC_C89_HELPERS
+
+void RC_CLIENT_LOG_ERR(const rc_client_t* client, const char* format, ...)
+{
+  if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_ERROR)
+  {
+    va_list args;
+    va_start(args, format);
+    rc_client_log_message_va(client, format, args);
+    va_end(args);
+  }
+}
+
+void RC_CLIENT_LOG_WARN(const rc_client_t* client, const char* format, ...)
+{
+  if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_WARN)
+  {
+    va_list args;
+    va_start(args, format);
+    rc_client_log_message_va(client, format, args);
+    va_end(args);
+  }
+}
+
+void RC_CLIENT_LOG_INFO(const rc_client_t* client, const char* format, ...)
+{
+  if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO)
+  {
+    va_list args;
+    va_start(args, format);
+    rc_client_log_message_va(client, format, args);
+    va_end(args);
+  }
+}
+
+void RC_CLIENT_LOG_VERBOSE(const rc_client_t* client, const char* format, ...)
+{
+  if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_VERBOSE)
+  {
+    va_list args;
+    va_start(args, format);
+    rc_client_log_message_va(client, format, args);
+    va_end(args);
+  }
+}
+
+#else
+
+void rc_client_log_message(const rc_client_t* client, const char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  rc_client_log_message_va(client, format, args);
+  va_end(args);
+}
+
+#endif /* RC_C89_HELPERS */
 
 void rc_client_enable_logging(rc_client_t* client, int level, rc_client_message_callback_t callback)
 {
@@ -896,7 +946,6 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
 static void rc_client_start_session_callback(const char* server_response_body, int http_status_code, void* callback_data)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
-  rc_client_t* client = load_state->client;
   rc_api_start_session_response_t start_session_response;
 
   int result = rc_api_process_start_session_response(&start_session_response, server_response_body);
@@ -920,7 +969,6 @@ static void rc_client_start_session_callback(const char* server_response_body, i
 static void rc_client_unlocks_callback(const char* server_response_body, int http_status_code, void* callback_data, int mode)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
-  rc_client_t* client = load_state->client;
   rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
 
   int result = rc_api_process_fetch_user_unlocks_response(&fetch_user_unlocks_response, server_response_body);
@@ -1298,6 +1346,8 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
       }
     }
     else {
+      rc_client_subset_info_t* scan;
+
       /* subset - extract subset title */
       subset->public.title = rc_client_subset_extract_title(load_state->game, fetch_game_data_response.title);
       if (!subset->public.title) {
@@ -1316,7 +1366,7 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
       }
 
       /* append to subset list */
-      rc_client_subset_info_t* scan = load_state->game->subsets;
+      scan = load_state->game->subsets;
       while (scan->next)
         scan = scan->next;
       scan->next = subset;
@@ -3067,7 +3117,6 @@ static void rc_client_raise_achievement_events(rc_client_t* client, rc_client_su
   rc_client_achievement_info_t* stop = achievement + subset->public.num_achievements;
   rc_client_event_t client_event;
   time_t recent_unlock_time = 0;
-  int achievements_unlocked = 0;
 
   memset(&client_event, 0, sizeof(client_event));
   client_event.client = client;

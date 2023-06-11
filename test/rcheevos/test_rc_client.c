@@ -5,8 +5,6 @@
 #include "rc_client_internal.h"
 #include "rc_version.h"
 
-#include "mock_memory.h"
-
 #include "../rhash/data.h"
 #include "../test_framework.h"
 
@@ -260,15 +258,6 @@ static rc_client_event_t* find_event(uint8_t type, uint32_t id)
   return NULL;
 }
 
-static void _assert_event(uint8_t type, uint32_t id)
-{
-  if (find_event(type, id) != NULL)
-    return;
-
-  ASSERT_FAIL("expected event not found");
-}
-#define assert_event(type, id, value) ASSERT_HELPER(_assert_event(type, id, value), "assert_event")
-
 static uint8_t* g_memory = NULL;
 static uint32_t g_memory_size = 0;
 
@@ -324,7 +313,7 @@ static void rc_client_server_call(const rc_api_request_t* request, rc_client_ser
 
   ASSERT_FAIL("No API response for: %s", request->post_data);
 
-  // still call the callback to prevent memory leak
+  /* still call the callback to prevent memory leak */
   callback("", 500, callback_data);
 }
 
@@ -469,7 +458,7 @@ static rc_client_t* mock_client_game_loaded(const char* patchdata, const char* h
   return g_client;
 }
 
-static mock_client_load_subset(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
+static void mock_client_load_subset(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
 {
   mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata);
   mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
@@ -866,10 +855,10 @@ static void test_load_game_async_login(void)
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  // game load process will stop here waiting for the login to complete
+  /* game load process will stop here waiting for the login to complete */
   assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
 
-  // login completion will trigger process to continue
+  /* login completion will trigger process to continue */
   async_api_response("r=login&u=Username&p=Pa%24%24word",
 	    "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
   assert_api_pending("r=patch&u=Username&t=ApiToken&g=1234");
@@ -907,10 +896,10 @@ static void test_load_game_async_login_with_incorrect_password(void)
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  // game load process will stop here waiting for the login to complete
+  /* game load process will stop here waiting for the login to complete */
   assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
 
-  // login failure will trigger process to continue
+  /* login failure will trigger process to continue */
   async_api_error("r=login&u=Username&p=Pa%24%24word",
       "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\"}", 403);
   assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
@@ -3112,7 +3101,6 @@ static void test_do_frame_achievement_measured_progress_event(void)
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    const uint32_t num_active = g_client->game->runtime.trigger_count;
     mock_memory(memory, sizeof(memory));
 
     mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=6&h=1&m=0123456789ABCDEF&v=65206f4290098ecd30c7845e895057d0",
