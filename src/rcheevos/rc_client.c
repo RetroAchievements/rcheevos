@@ -2059,8 +2059,8 @@ static const char* rc_client_get_subset_bucket_label(uint8_t bucket_type, rc_cli
 
 static int rc_client_compare_achievement_unlock_times(const void* a, const void* b)
 {
-  const rc_client_achievement_t* unlock_a = (const rc_client_achievement_t*)a;
-  const rc_client_achievement_t* unlock_b = (const rc_client_achievement_t*)b;
+  const rc_client_achievement_t* unlock_a = *(const rc_client_achievement_t**)a;
+  const rc_client_achievement_t* unlock_b = *(const rc_client_achievement_t**)b;
   return (int)(unlock_b->unlock_time - unlock_a->unlock_time);
 }
 
