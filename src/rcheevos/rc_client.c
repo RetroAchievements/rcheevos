@@ -96,7 +96,13 @@ void rc_client_destroy(rc_client_t* client)
 
 /* ===== Logging ===== */
 
-void rc_client_log_message_va(const rc_client_t* client, const char* format, va_list args)
+void rc_client_log_message(const rc_client_t* client, const char* message)
+{
+  if (client->callbacks.log_call)
+    client->callbacks.log_call(message);
+}
+
+static void rc_client_log_message_va(const rc_client_t* client, const char* format, va_list args)
 {
   if (client->callbacks.log_call)
   {
@@ -112,9 +118,9 @@ void rc_client_log_message_va(const rc_client_t* client, const char* format, va_
   }
 }
 
-#ifdef RC_C89_HELPERS
+#ifdef RC_NO_VARIADIC_MACROS
 
-void RC_CLIENT_LOG_ERR(const rc_client_t* client, const char* format, ...)
+void RC_CLIENT_LOG_ERR_FORMATTED(const rc_client_t* client, const char* format, ...)
 {
   if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_ERROR)
   {
@@ -125,7 +131,7 @@ void RC_CLIENT_LOG_ERR(const rc_client_t* client, const char* format, ...)
   }
 }
 
-void RC_CLIENT_LOG_WARN(const rc_client_t* client, const char* format, ...)
+void RC_CLIENT_LOG_WARN_FORMATTED(const rc_client_t* client, const char* format, ...)
 {
   if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_WARN)
   {
@@ -136,7 +142,7 @@ void RC_CLIENT_LOG_WARN(const rc_client_t* client, const char* format, ...)
   }
 }
 
-void RC_CLIENT_LOG_INFO(const rc_client_t* client, const char* format, ...)
+void RC_CLIENT_LOG_INFO_FORMATTED(const rc_client_t* client, const char* format, ...)
 {
   if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO)
   {
@@ -147,7 +153,7 @@ void RC_CLIENT_LOG_INFO(const rc_client_t* client, const char* format, ...)
   }
 }
 
-void RC_CLIENT_LOG_VERBOSE(const rc_client_t* client, const char* format, ...)
+void RC_CLIENT_LOG_VERBOSE_FORMATTED(const rc_client_t* client, const char* format, ...)
 {
   if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_VERBOSE)
   {
@@ -160,7 +166,7 @@ void RC_CLIENT_LOG_VERBOSE(const rc_client_t* client, const char* format, ...)
 
 #else
 
-void rc_client_log_message(const rc_client_t* client, const char* format, ...)
+void rc_client_log_message_formatted(const rc_client_t* client, const char* format, ...)
 {
   va_list args;
   va_start(args, format);
@@ -168,7 +174,7 @@ void rc_client_log_message(const rc_client_t* client, const char* format, ...)
   va_end(args);
 }
 
-#endif /* RC_C89_HELPERS */
+#endif /* RC_NO_VARIADIC_MACROS */
 
 void rc_client_enable_logging(rc_client_t* client, int level, rc_client_message_callback_t callback)
 {
@@ -251,7 +257,7 @@ static void rc_client_login_callback(const char* server_response_body, int http_
     load_state = client->state.load;
     rc_mutex_unlock(&client->state.mutex);
 
-    RC_CLIENT_LOG_ERR(client, "Login failed: %s", error_message);
+    RC_CLIENT_LOG_ERR_FORMATTED(client, "Login failed: %s", error_message);
     if (login_callback_data->callback)
       login_callback_data->callback(result, error_message, client);
 
@@ -276,7 +282,7 @@ static void rc_client_login_callback(const char* server_response_body, int http_
     load_state = client->state.load;
     rc_mutex_unlock(&client->state.mutex);
 
-    RC_CLIENT_LOG_INFO(client, "%s logged in successfully", login_response.display_name);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "%s logged in successfully", login_response.display_name);
 
     if (load_state && load_state->progress == RC_CLIENT_LOAD_STATE_AWAIT_LOGIN)
       rc_client_begin_fetch_game_data(load_state);
@@ -346,7 +352,7 @@ void rc_client_begin_login_with_password(rc_client_t* client,
   login_request.username = username;
   login_request.password = password;
 
-  RC_CLIENT_LOG_INFO(client, "Attempting to log in %s (with password)", username);
+  RC_CLIENT_LOG_INFO_FORMATTED(client, "Attempting to log in %s (with password)", username);
   rc_client_begin_login(client, &login_request, callback);
 }
 
@@ -374,7 +380,7 @@ void rc_client_begin_login_with_token(rc_client_t* client,
   login_request.username = username;
   login_request.api_token = token;
 
-  RC_CLIENT_LOG_INFO(client, "Attempting to log in %s (with token)", username);
+  RC_CLIENT_LOG_INFO_FORMATTED(client, "Attempting to log in %s (with token)", username);
   rc_client_begin_login(client, &login_request, callback);
 }
 
@@ -544,7 +550,7 @@ static void rc_client_invalidate_memref_achievements(rc_client_game_info_t* game
       if (rc_trigger_contains_memref(achievement->trigger, memref)) {
         achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_DISABLED;
         achievement->public.bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED;
-        RC_CLIENT_LOG_WARN(client, "Disabled achievement %u. Invalid address %06X", achievement->public.id, memref->address);
+        RC_CLIENT_LOG_WARN_FORMATTED(client, "Disabled achievement %u. Invalid address %06X", achievement->public.id, memref->address);
       }
     }
   }
@@ -571,7 +577,7 @@ static void rc_client_invalidate_memref_leaderboards(rc_client_game_info_t* game
       else
         continue;
 
-      RC_CLIENT_LOG_WARN(client, "Disabled leaderboard %u. Invalid address %06X", leaderboard->public.id, memref->address);
+      RC_CLIENT_LOG_WARN_FORMATTED(client, "Disabled leaderboard %u. Invalid address %06X", leaderboard->public.id, memref->address);
     }
   }
 }
@@ -608,7 +614,7 @@ static void rc_client_validate_addresses(rc_client_game_info_t* game, rc_client_
     last_memref = &memref->next;
   }
 
-  RC_CLIENT_LOG_VERBOSE(client, "%u/%u memory addresses valid", total_count - invalid_count, total_count);
+  RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "%u/%u memory addresses valid", total_count - invalid_count, total_count);
 }
 
 static void rc_client_update_legacy_runtime_achievements(rc_client_game_info_t* game, uint32_t active_count)
@@ -925,11 +931,11 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
         callback_data->when = time(NULL) + 30;
         rc_client_schedule_callback(client, callback_data);
 
-        RC_CLIENT_LOG_INFO(client, "Game %u loaded, hardcode %s", load_state->game->public.id,
+        RC_CLIENT_LOG_INFO_FORMATTED(client, "Game %u loaded, hardcode %s", load_state->game->public.id,
             client->state.hardcore ? "enabled" : "disabled");
       }
       else {
-        RC_CLIENT_LOG_INFO(client, "Subset %u loaded", load_state->subset->public.id);
+        RC_CLIENT_LOG_INFO_FORMATTED(client, "Subset %u loaded", load_state->subset->public.id);
       }
 
       if (load_state->callback)
@@ -1053,7 +1059,7 @@ static void rc_client_begin_start_session(rc_client_load_state_t* load_state)
         rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_STARTING_SESSION, 3);
 
         /* TODO: create single server request to do all three of these */
-        RC_CLIENT_LOG_VERBOSE(client, "Starting session for game %u", start_session_params.game_id);
+        RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Starting session for game %u", start_session_params.game_id);
         client->callbacks.server_call(&start_session_request, rc_client_start_session_callback, load_state, client);
         client->callbacks.server_call(&hardcore_unlock_request, rc_client_hardcore_unlocks_callback, load_state, client);
         client->callbacks.server_call(&softcore_unlock_request, rc_client_softcore_unlocks_callback, load_state, client);
@@ -1135,7 +1141,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
 
     trigger_size = rc_trigger_size(memaddr);
     if (trigger_size < 0) {
-      RC_CLIENT_LOG_WARN(load_state->client, "Parse error %d processing achievement %u", trigger_size, read->id);
+      RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing achievement %u", trigger_size, read->id);
       achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_DISABLED;
       achievement->public.bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED;
     }
@@ -1148,7 +1154,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
       rc_parse_trigger_internal(achievement->trigger, &memaddr, &parse);
 
       if (parse.offset < 0) {
-        RC_CLIENT_LOG_WARN(load_state->client, "Parse error %d processing achievement %u", parse.offset, read->id);
+        RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing achievement %u", parse.offset, read->id);
         achievement->public.state = RC_CLIENT_ACHIEVEMENT_STATE_DISABLED;
         achievement->public.bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED;
       }
@@ -1228,7 +1234,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
 
     lboard_size = rc_lboard_size(memaddr);
     if (lboard_size < 0) {
-      RC_CLIENT_LOG_WARN(load_state->client, "Parse error %d processing leaderboard %u", lboard_size, read->id);
+      RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing leaderboard %u", lboard_size, read->id);
       leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
     }
     else {
@@ -1240,7 +1246,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
       rc_parse_lboard_internal(leaderboard->lboard, memaddr, &parse);
 
       if (parse.offset < 0) {
-        RC_CLIENT_LOG_WARN(load_state->client, "Parse error %d processing leaderboard %u", parse.offset, read->id);
+        RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing leaderboard %u", parse.offset, read->id);
         leaderboard->public.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
       }
       else {
@@ -1342,7 +1348,7 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
 
       result = rc_runtime_activate_richpresence(&load_state->game->runtime, fetch_game_data_response.rich_presence_script, NULL, 0);
       if (result != RC_OK) {
-        RC_CLIENT_LOG_WARN(load_state->client, "Parse error %d processing rich presence", result);
+        RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing rich presence", result);
       }
     }
     else {
@@ -1478,7 +1484,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
 
   rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_FETCHING_GAME_DATA, 1);
 
-  RC_CLIENT_LOG_VERBOSE(client, "Fetching data for game %u", fetch_game_data_request.game_id);
+  RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Fetching data for game %u", fetch_game_data_request.game_id);
   client->callbacks.server_call(&request, rc_client_fetch_game_data_callback, load_state, client);
   rc_api_destroy_request(&request);
 }
@@ -1499,7 +1505,7 @@ static void rc_client_identify_game_callback(const char* server_response_body, i
   else {
     /* hash exists outside the load state - always update it */
     load_state->hash->game_id = resolve_hash_response.game_id;
-    RC_CLIENT_LOG_INFO(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
 
     outstanding_requests = rc_client_end_load_state(load_state);
     if (outstanding_requests < 0) {
@@ -1599,7 +1605,7 @@ static void rc_client_load_game(rc_client_load_state_t* load_state, const char* 
     rc_api_destroy_request(&request);
   }
   else {
-    RC_CLIENT_LOG_INFO(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
 
     rc_client_begin_fetch_game_data(load_state);
   }
@@ -1640,14 +1646,14 @@ void rc_client_begin_identify_and_load_game(rc_client_t* client,
 
   if (data) {
     if (file_path) {
-      RC_CLIENT_LOG_INFO(client, "Identifying game: %zu bytes at %p (%s)", data_size, data, file_path);
+      RC_CLIENT_LOG_INFO_FORMATTED(client, "Identifying game: %zu bytes at %p (%s)", data_size, data, file_path);
     }
     else {
-      RC_CLIENT_LOG_INFO(client, "Identifying game: %zu bytes at %p", data_size, data);
+      RC_CLIENT_LOG_INFO_FORMATTED(client, "Identifying game: %zu bytes at %p", data_size, data);
     }
   }
   else if (file_path) {
-    RC_CLIENT_LOG_INFO(client, "Identifying game: %s", file_path);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Identifying game: %s", file_path);
   }
   else {
     callback(RC_INVALID_STATE, "either data or file_path is required", client);
@@ -1726,7 +1732,7 @@ void rc_client_unload_game(rc_client_t* client)
   rc_mutex_unlock(&client->state.mutex);
 
   if (game != NULL) {
-    RC_CLIENT_LOG_INFO(client, "Unloading game %u", game->public.id);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Unloading game %u", game->public.id);
     rc_client_free_game(game);
   }
 }
@@ -1734,16 +1740,16 @@ void rc_client_unload_game(rc_client_t* client)
 static void rc_client_change_media(rc_client_t* client, const rc_client_game_hash_t* game_hash, rc_client_callback_t callback)
 {
   if (game_hash->game_id == client->game->public.id) {
-    RC_CLIENT_LOG_INFO(client, "Switching to valid media for game %u: %s", game_hash->game_id, game_hash->hash);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Switching to valid media for game %u: %s", game_hash->game_id, game_hash->hash);
   }
   else if (game_hash->game_id == RC_CLIENT_UNKNOWN_GAME_ID) {
     RC_CLIENT_LOG_INFO(client, "Switching to unknown media");
   }
   else if (game_hash->game_id == 0) {
-    RC_CLIENT_LOG_INFO(client, "Switching to unrecognized media: %s", game_hash->hash);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Switching to unrecognized media: %s", game_hash->hash);
   }
   else {
-    RC_CLIENT_LOG_INFO(client, "Switching to known media for game %u: %s", game_hash->game_id, game_hash->hash);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Switching to known media for game %u: %s", game_hash->game_id, game_hash->hash);
   }
 
   client->game->public.hash = game_hash->hash;
@@ -1770,13 +1776,13 @@ static void rc_client_identify_changed_media_callback(const char* server_respons
     load_state->hash->game_id = resolve_hash_response.game_id;
 
     if (resolve_hash_response.game_id == 0 && client->state.hardcore) {
-      RC_CLIENT_LOG_WARN(client, "Disabling hardcore for unidentified media: %s", load_state->hash->hash);
+      RC_CLIENT_LOG_WARN_FORMATTED(client, "Disabling hardcore for unidentified media: %s", load_state->hash->hash);
       rc_client_set_hardcore_enabled(client, 0);
       client->game->public.hash = load_state->hash->hash; /* do still update the loaded hash */
       load_state->callback(RC_HARDCORE_DISABLED, "Hardcore disabled. Unidentified media inserted.", client);
     }
     else {
-      RC_CLIENT_LOG_INFO(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
+      RC_CLIENT_LOG_INFO_FORMATTED(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
       rc_client_change_media(client, load_state->hash, load_state->callback);
     }
   }
@@ -2394,12 +2400,12 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
   if (error_message) {
     if (award_achievement_response.response.error_message) {
       /* actual error from server */
-      RC_CLIENT_LOG_ERR(ach_data->client, "Error awarding achievement %u: %s", ach_data->id, error_message);
+      RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Error awarding achievement %u: %s", ach_data->id, error_message);
       rc_client_raise_server_error_event(ach_data->client, "award_achievement", award_achievement_response.response.error_message);
     }
     else if (ach_data->retry_count++ == 0) {
       /* first retry is immediate */
-      RC_CLIENT_LOG_ERR(ach_data->client, "Error awarding achievement %u: %s, retrying immediately", ach_data->id, error_message);
+      RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Error awarding achievement %u: %s, retrying immediately", ach_data->id, error_message);
       rc_client_award_achievement_server_call(ach_data);
       return;
     }
@@ -2407,7 +2413,7 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
       /* double wait time between each attempt until we hit a maximum delay of two minutes */
       /* 1s -> 2s -> 4s -> 8s -> 16s -> 32s -> 64s -> 120s -> 120s -> 120s ...*/
       const uint32_t delay = (ach_data->retry_count > 7) ? 120 : (1 << (ach_data->retry_count - 1));
-      RC_CLIENT_LOG_ERR(ach_data->client, "Error awarding achievement %u: %s, retrying in %u seconds", ach_data->id, error_message, delay);
+      RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Error awarding achievement %u: %s, retrying in %u seconds", ach_data->id, error_message, delay);
 
       if (!ach_data->scheduled_callback_data) {
         ach_data->scheduled_callback_data = (rc_client_scheduled_callback_data_t*)calloc(1, sizeof(*ach_data->scheduled_callback_data));
@@ -2427,20 +2433,20 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
     ach_data->client->user.score_softcore = award_achievement_response.new_player_score_softcore;
 
     if (award_achievement_response.awarded_achievement_id != ach_data->id) {
-      RC_CLIENT_LOG_ERR(ach_data->client, "Awarded achievement %u instead of %u", award_achievement_response.awarded_achievement_id, error_message);
+      RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Awarded achievement %u instead of %u", award_achievement_response.awarded_achievement_id, error_message);
     }
     else {
       if (award_achievement_response.response.error_message) {
         /* previously unlocked achievements are returned as a success with an error message */
-        RC_CLIENT_LOG_INFO(ach_data->client, "Achievement %u: %s", ach_data->id, award_achievement_response.response.error_message);
+        RC_CLIENT_LOG_INFO_FORMATTED(ach_data->client, "Achievement %u: %s", ach_data->id, award_achievement_response.response.error_message);
       }
       else if (ach_data->retry_count) {
-        RC_CLIENT_LOG_INFO(ach_data->client, "Achievement %u awarded after %u attempts, new score: %u",
+        RC_CLIENT_LOG_INFO_FORMATTED(ach_data->client, "Achievement %u awarded after %u attempts, new score: %u",
             ach_data->id, ach_data->retry_count + 1,
             ach_data->hardcore ? award_achievement_response.new_player_score : award_achievement_response.new_player_score_softcore);
       }
       else {
-        RC_CLIENT_LOG_INFO(ach_data->client, "Achievement %u awarded, new score: %u",
+        RC_CLIENT_LOG_INFO_FORMATTED(ach_data->client, "Achievement %u awarded, new score: %u",
             ach_data->id,
             ach_data->hardcore ? award_achievement_response.new_player_score : award_achievement_response.new_player_score_softcore);
       }
@@ -2451,12 +2457,12 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
           if (subset->mastery == RC_CLIENT_MASTERY_STATE_NONE &&
               rc_client_subset_get_achievement_info(ach_data->client, subset, ach_data->id)) {
             if (subset->public.id == ach_data->client->game->public.id) {
-              RC_CLIENT_LOG_INFO(ach_data->client, "Game %u %s", ach_data->client->game->public.id,
+              RC_CLIENT_LOG_INFO_FORMATTED(ach_data->client, "Game %u %s", ach_data->client->game->public.id,
                 ach_data->client->state.hardcore ? "mastered" : "completed");
               subset->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
             }
             else {
-              RC_CLIENT_LOG_INFO(ach_data->client, "Subset %u %s", ach_data->client->game->public.id,
+              RC_CLIENT_LOG_INFO_FORMATTED(ach_data->client, "Subset %u %s", ach_data->client->game->public.id,
                 ach_data->client->state.hardcore ? "mastered" : "completed");
 
               /* TODO: subset mastery notification */
@@ -2488,7 +2494,7 @@ static void rc_client_award_achievement_server_call(rc_client_award_achievement_
 
   result = rc_api_init_award_achievement_request(&request, &api_params);
   if (result != RC_OK) {
-    RC_CLIENT_LOG_ERR(ach_data->client, "Error constructing unlock request for achievement %u: %s", ach_data->id, rc_error_str(result));
+    RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Error constructing unlock request for achievement %u: %s", ach_data->id, rc_error_str(result));
     free(ach_data);
     return;
   }
@@ -2527,13 +2533,13 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
 
   /* can't unlock unofficial achievements on the server */
   if (achievement->public.category != RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE) {
-    RC_CLIENT_LOG_INFO(client, "Unlocked unofficial achievement %u: %s", achievement->public.id, achievement->public.title);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Unlocked unofficial achievement %u: %s", achievement->public.id, achievement->public.title);
     return;
   }
 
   /* don't actually unlock achievements when spectating */
   if (client->state.spectator_mode) {
-    RC_CLIENT_LOG_INFO(client, "Spectated achievement %u: %s", achievement->public.id, achievement->public.title);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Spectated achievement %u: %s", achievement->public.id, achievement->public.title);
     return;
   }
 
@@ -2544,7 +2550,7 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
   callback_data->game_hash = client->game->public.hash;
   callback_data->unlock_time = achievement->public.unlock_time;
 
-  RC_CLIENT_LOG_INFO(client, "Awarding achievement %u: %s", achievement->public.id, achievement->public.title);
+  RC_CLIENT_LOG_INFO_FORMATTED(client, "Awarding achievement %u: %s", achievement->public.id, achievement->public.title);
   rc_client_award_achievement_server_call(callback_data);
 }
 
@@ -2720,12 +2726,12 @@ static void rc_client_submit_leaderboard_entry_callback(const char* server_respo
   if (error_message) {
     if (submit_lboard_entry_response.response.error_message) {
       /* actual error from server */
-      RC_CLIENT_LOG_ERR(lboard_data->client, "Error submitting leaderboard entry %u: %s", lboard_data->id, error_message);
+      RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Error submitting leaderboard entry %u: %s", lboard_data->id, error_message);
       rc_client_raise_server_error_event(lboard_data->client, "submit_lboard_entry", submit_lboard_entry_response.response.error_message);
     }
     else if (lboard_data->retry_count++ == 0) {
       /* first retry is immediate */
-      RC_CLIENT_LOG_ERR(lboard_data->client, "Error submitting leaderboard entry %u: %s, retrying immediately", lboard_data->id, error_message);
+      RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Error submitting leaderboard entry %u: %s, retrying immediately", lboard_data->id, error_message);
       rc_client_submit_leaderboard_entry_server_call(lboard_data);
       return;
     }
@@ -2733,7 +2739,7 @@ static void rc_client_submit_leaderboard_entry_callback(const char* server_respo
       /* double wait time between each attempt until we hit a maximum delay of two minutes */
       /* 1s -> 2s -> 4s -> 8s -> 16s -> 32s -> 64s -> 120s -> 120s -> 120s ...*/
       const uint32_t delay = (lboard_data->retry_count > 7) ? 120 : (1 << (lboard_data->retry_count - 1));
-      RC_CLIENT_LOG_ERR(lboard_data->client, "Error submitting leaderboard entry %u: %s, retrying in %u seconds", lboard_data->id, error_message, delay);
+      RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Error submitting leaderboard entry %u: %s, retrying in %u seconds", lboard_data->id, error_message, delay);
 
       if (!lboard_data->scheduled_callback_data) {
         lboard_data->scheduled_callback_data = (rc_client_scheduled_callback_data_t*)calloc(1, sizeof(*lboard_data->scheduled_callback_data));
@@ -2753,7 +2759,7 @@ static void rc_client_submit_leaderboard_entry_callback(const char* server_respo
 
     /* not currently doing anything with the response */
     if (lboard_data->retry_count) {
-      RC_CLIENT_LOG_INFO(lboard_data->client, "Leaderboard %u submission %d completed after %u attempts",
+      RC_CLIENT_LOG_INFO_FORMATTED(lboard_data->client, "Leaderboard %u submission %d completed after %u attempts",
           lboard_data->id, lboard_data->score, lboard_data->retry_count);
     }
   }
@@ -2778,7 +2784,7 @@ static void rc_client_submit_leaderboard_entry_server_call(rc_client_submit_lead
 
   result = rc_api_init_submit_lboard_entry_request(&request, &api_params);
   if (result != RC_OK) {
-    RC_CLIENT_LOG_ERR(lboard_data->client, "Error constructing submit leaderboard entry for leaderboard %u: %s", lboard_data->id, rc_error_str(result));
+    RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Error constructing submit leaderboard entry for leaderboard %u: %s", lboard_data->id, rc_error_str(result));
     return;
   }
 
@@ -2793,7 +2799,7 @@ static void rc_client_submit_leaderboard_entry(rc_client_t* client, rc_client_le
 
   /* don't actually submit leaderboard entries when spectating */
   if (client->state.spectator_mode) {
-    RC_CLIENT_LOG_INFO(client, "Spectated %s (%d) for leaderboard %u: %s",
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Spectated %s (%d) for leaderboard %u: %s",
         leaderboard->public.tracker_value, leaderboard->value, leaderboard->public.id, leaderboard->public.title);
     return;
   }
@@ -2805,7 +2811,7 @@ static void rc_client_submit_leaderboard_entry(rc_client_t* client, rc_client_le
   callback_data->game_hash = client->game->public.hash;
   callback_data->submit_time = time(NULL);
 
-  RC_CLIENT_LOG_INFO(client, "Submitting %s (%d) for leaderboard %u: %s",
+  RC_CLIENT_LOG_INFO_FORMATTED(client, "Submitting %s (%d) for leaderboard %u: %s",
       leaderboard->public.tracker_value, leaderboard->value, leaderboard->public.id, leaderboard->public.title);
   rc_client_submit_leaderboard_entry_server_call(callback_data);
 }
@@ -2854,7 +2860,7 @@ static void rc_client_ping_callback(const char* server_response_body, int http_s
   int result = rc_api_process_ping_response(&response, server_response_body);
   const char* error_message = rc_client_server_error_message(&result, http_status_code, &response.response);
   if (error_message) {
-    RC_CLIENT_LOG_WARN(client, "Ping response error: %s", error_message);
+    RC_CLIENT_LOG_WARN_FORMATTED(client, "Ping response error: %s", error_message);
   }
 
   rc_api_destroy_ping_response(&response);
@@ -2878,7 +2884,7 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
 
   result = rc_api_init_ping_request(&request, &api_params);
   if (result != RC_OK) {
-    RC_CLIENT_LOG_WARN(client, "Error generating ping request: %s", rc_error_str(result));
+    RC_CLIENT_LOG_WARN_FORMATTED(client, "Error generating ping request: %s", rc_error_str(result));
   }
   else {
     client->callbacks.server_call(&request, rc_client_ping_callback, client, client);
@@ -3286,7 +3292,7 @@ static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_su
     client_event.leaderboard = &leaderboard->public;
 
     if (leaderboard->pending_events & RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED) {
-      RC_CLIENT_LOG_VERBOSE(client, "Leaderboard %u canceled: %s", leaderboard->public.id, leaderboard->public.title);
+      RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Leaderboard %u canceled: %s", leaderboard->public.id, leaderboard->public.title);
       client_event.type = RC_CLIENT_EVENT_LEADERBOARD_FAILED;
       client->callbacks.event_handler(&client_event);
     }
@@ -3298,7 +3304,7 @@ static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_su
       client->callbacks.event_handler(&client_event);
     }
     else if (leaderboard->pending_events & RC_CLIENT_LEADERBOARD_PENDING_EVENT_STARTED) {
-      RC_CLIENT_LOG_VERBOSE(client, "Leaderboard %u started: %s", leaderboard->public.id, leaderboard->public.title);
+      RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Leaderboard %u started: %s", leaderboard->public.id, leaderboard->public.title);
       client_event.type = RC_CLIENT_EVENT_LEADERBOARD_STARTED;
       client->callbacks.event_handler(&client_event);
     }
@@ -3472,7 +3478,7 @@ void rc_client_reset(rc_client_t* client)
   game_hash = rc_client_find_game_hash(client, client->game->public.hash);
   if (game_hash && game_hash->game_id != client->game->public.id) {
     /* current media is not for loaded game. unload game */
-    RC_CLIENT_LOG_WARN(client, "Disabling runtime. Reset with non-game media loaded: %u (%s)",
+    RC_CLIENT_LOG_WARN_FORMATTED(client, "Disabling runtime. Reset with non-game media loaded: %u (%s)",
         (game_hash->game_id == RC_CLIENT_UNKNOWN_GAME_ID) ? 0 : game_hash->game_id, game_hash->hash);
     rc_client_unload_game(client);
     return;
@@ -3776,7 +3782,7 @@ void rc_client_set_host(const rc_client_t* client, const char* hostname)
 
   /* set the custom host */
   if (hostname && client) {
-    RC_CLIENT_LOG_VERBOSE(client, "Using host: %s", hostname);
+    RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Using host: %s", hostname);
   }
   rc_api_set_host(hostname);
 }

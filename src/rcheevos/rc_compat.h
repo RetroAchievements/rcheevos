@@ -13,6 +13,8 @@ extern "C" {
 
 /* MinGW redefinitions */
 
+#define RC_NO_VARIADIC_MACROS 1
+
 #elif defined(_MSC_VER)
 
 /* Visual Studio redefinitions */
@@ -31,6 +33,8 @@ extern "C" {
 
 /* C89 redefinitions */
 #define RC_C89_HELPERS 1
+
+#define RC_NO_VARIADIC_MACROS 1
 
 #ifndef snprintf
  extern int rc_snprintf(char* buffer, size_t size, const char* format, ...);

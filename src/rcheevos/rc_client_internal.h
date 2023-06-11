@@ -208,18 +208,24 @@ struct rc_client_t {
   rc_client_state_t state;
 };
 
-#ifdef RC_C89_HELPERS
-void RC_CLIENT_LOG_ERR(const rc_client_t* client, const char* format, ...);
-void RC_CLIENT_LOG_WARN(const rc_client_t* client, const char* format, ...);
-void RC_CLIENT_LOG_INFO(const rc_client_t* client, const char* format, ...);
-void RC_CLIENT_LOG_VERBOSE(const rc_client_t* client, const char* format, ...);
+#ifdef RC_NO_VARIADIC_MACROS
+ void RC_CLIENT_LOG_ERR_FORMATTED(const rc_client_t* client, const char* format, ...);
+ void RC_CLIENT_LOG_WARN_FORMATTED(const rc_client_t* client, const char* format, ...);
+ void RC_CLIENT_LOG_INFO_FORMATTED(const rc_client_t* client, const char* format, ...);
+ void RC_CLIENT_LOG_VERBOSE_FORMATTED(const rc_client_t* client, const char* format, ...);
 #else
-void rc_client_log_message(const rc_client_t* client, const char* format, ...);
-#define RC_CLIENT_LOG_ERR(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_ERROR) rc_client_log_message(client, format, __VA_ARGS__); }
-#define RC_CLIENT_LOG_WARN(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_WARN) rc_client_log_message(client, format, __VA_ARGS__); }
-#define RC_CLIENT_LOG_INFO(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO) rc_client_log_message(client, format, __VA_ARGS__); }
-#define RC_CLIENT_LOG_VERBOSE(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_VERBOSE) rc_client_log_message(client, format, __VA_ARGS__); }
+ void rc_client_log_message_formatted(const rc_client_t* client, const char* format, ...);
+ #define RC_CLIENT_LOG_ERR_FORMATTED(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_ERROR) rc_client_log_message_formatted(client, format, __VA_ARGS__); }
+ #define RC_CLIENT_LOG_WARN_FORMATTED(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_WARN) rc_client_log_message_formatted(client, format, __VA_ARGS__); }
+ #define RC_CLIENT_LOG_INFO_FORMATTED(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO) rc_client_log_message_formatted(client, format, __VA_ARGS__); }
+ #define RC_CLIENT_LOG_VERBOSE_FORMATTED(client, format, ...) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_VERBOSE) rc_client_log_message_formatted(client, format, __VA_ARGS__); }
 #endif
+
+void rc_client_log_message(const rc_client_t* client, const char* message);
+#define RC_CLIENT_LOG_ERR(client, message) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_ERROR) rc_client_log_message(client, message); }
+#define RC_CLIENT_LOG_WARN(client, message) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_WARN) rc_client_log_message(client, message); }
+#define RC_CLIENT_LOG_INFO(client, message) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO) rc_client_log_message(client, message); }
+#define RC_CLIENT_LOG_VERBOSE(client, message) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_VERBOSE) rc_client_log_message(client, message); }
 
 /* internals pulled from runtime.c */
 void rc_runtime_checksum(const char* memaddr, unsigned char* md5);
