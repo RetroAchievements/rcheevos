@@ -1500,6 +1500,7 @@ static void rc_client_identify_game_callback(const char* server_response_body, i
   int outstanding_requests;
 
   if (error_message) {
+    rc_client_end_load_state(load_state);
     rc_client_load_error(load_state, result, error_message);
   }
   else {

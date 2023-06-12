@@ -212,7 +212,7 @@ static void rc_client_event_handler(const rc_client_event_t* e)
 
     /* server error data is not maintained out of scope, copy it too */
     memcpy(&event_server_error, e->server_error, sizeof(event_server_error));
-    strcpy(event_server_error_message, e->server_error->error_message);
+    strcpy_s(event_server_error_message, sizeof(event_server_error_message), e->server_error->error_message);
     event_server_error.error_message = event_server_error_message;
     events[event_count - 1].server_error = &event_server_error;
   }
