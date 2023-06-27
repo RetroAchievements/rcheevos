@@ -321,6 +321,11 @@ static void rc_client_begin_login(rc_client_t* client,
   }
 
   callback_data = (rc_client_generic_callback_data_t*)malloc(sizeof(*callback_data));
+  if (!callback_data) {
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+    return;
+  }
+
   callback_data->client = client;
   callback_data->callback = callback;
 
@@ -642,6 +647,10 @@ static void rc_client_update_legacy_runtime_achievements(rc_client_game_info_t* 
 
         game->runtime.trigger_capacity = active_count;
         game->runtime.triggers = (rc_runtime_trigger_t*)calloc(1, active_count * sizeof(rc_runtime_trigger_t));
+        if (!game->runtime.triggers) {
+          /* Unexpected, no callback available, just fail */
+          break;
+        }
       }
 
       trigger = game->runtime.triggers;
@@ -899,6 +908,11 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
     if (load_state->callback)
       load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
   }
+  else if (!load_state->softcore_unlocks || !load_state->hardcore_unlocks) {
+    /* unlocks not available - assume malloc failed */
+    if (load_state->callback)
+      load_state->callback(RC_INVALID_STATE, "Unlock arrays were not allocated", client);
+  }
   else {
     rc_client_apply_unlocks(load_state->subset, load_state->softcore_unlocks,
         load_state->num_softcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
@@ -992,13 +1006,15 @@ static void rc_client_unlocks_callback(const char* server_response_body, int htt
       const size_t array_size = fetch_user_unlocks_response.num_achievement_ids * sizeof(uint32_t);
       load_state->num_hardcore_unlocks = fetch_user_unlocks_response.num_achievement_ids;
       load_state->hardcore_unlocks = (uint32_t*)malloc(array_size);
-      memcpy(load_state->hardcore_unlocks, fetch_user_unlocks_response.achievement_ids, array_size);
+      if (load_state->hardcore_unlocks)
+        memcpy(load_state->hardcore_unlocks, fetch_user_unlocks_response.achievement_ids, array_size);
     }
     else {
       const size_t array_size = fetch_user_unlocks_response.num_achievement_ids * sizeof(uint32_t);
       load_state->num_softcore_unlocks = fetch_user_unlocks_response.num_achievement_ids;
       load_state->softcore_unlocks = (uint32_t*)malloc(array_size);
-      memcpy(load_state->softcore_unlocks, fetch_user_unlocks_response.achievement_ids, array_size);
+      if (load_state->softcore_unlocks)
+        memcpy(load_state->softcore_unlocks, fetch_user_unlocks_response.achievement_ids, array_size);
     }
 
     if (outstanding_requests == 0)
@@ -1557,6 +1573,14 @@ static void rc_client_load_game(rc_client_load_state_t* load_state, const char* 
 
     if (load_state->game == NULL) {
       load_state->game = (rc_client_game_info_t*)calloc(1, sizeof(*load_state->game));
+      if (!load_state->game) {
+        if (load_state->callback)
+          load_state->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+
+        rc_client_free_load_state(load_state);
+        return;
+      }
+
       rc_buf_init(&load_state->game->buffer);
       rc_runtime_init(&load_state->game->runtime);
     }
@@ -1627,6 +1651,11 @@ void rc_client_begin_load_game(rc_client_t* client, const char* hash, rc_client_
   }
 
   load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
+  if (!load_state) {
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+    return;
+  }
+
   load_state->client = client;
   load_state->callback = callback;
   rc_client_load_game(load_state, hash, NULL);
@@ -1668,6 +1697,10 @@ void rc_client_begin_identify_and_load_game(rc_client_t* client,
     file_path = "?";
 
   load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
+  if (!load_state) {
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+    return;
+  }
   load_state->client = client;
   load_state->callback = callback;
   rc_hash_initialize_iterator(&load_state->hash_iterator, file_path, data, data_size);
@@ -1825,11 +1858,22 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
       }
 
       pending_media = (rc_client_pending_media_t*)calloc(1, sizeof(*pending_media));
+      if (!pending_media) {
+        rc_mutex_unlock(&client->state.mutex);
+        callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+        return;
+      }
+
       pending_media->file_path = strdup(file_path);
       pending_media->callback = callback;
       if (data && data_size) {
         pending_media->data_size = data_size;
         pending_media->data = (uint8_t*)malloc(data_size);
+        if (!pending_media->data) {
+          rc_mutex_unlock(&client->state.mutex);
+          callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+          return;
+        }
         memcpy(pending_media->data, data, data_size);
       }
 
@@ -1914,6 +1958,11 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
     }
 
     callback_data = (rc_client_load_state_t*)calloc(1, sizeof(rc_client_load_state_t));
+    if (!callback_data) {
+      callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+      return;
+    }
+
     callback_data->callback = callback;
     callback_data->client = client;
     callback_data->hash = game_hash;
@@ -1958,6 +2007,11 @@ void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_cli
   snprintf(buffer, sizeof(buffer), "[SUBSET%u]", subset_id);
 
   load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
+  if (!load_state) {
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+    return;
+  }
+
   load_state->client = client;
   load_state->callback = callback;
   load_state->game = client->game;
@@ -2418,6 +2472,11 @@ static void rc_client_award_achievement_callback(const char* server_response_bod
 
       if (!ach_data->scheduled_callback_data) {
         ach_data->scheduled_callback_data = (rc_client_scheduled_callback_data_t*)calloc(1, sizeof(*ach_data->scheduled_callback_data));
+        if (!ach_data->scheduled_callback_data) {
+          RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Failed to allocate scheduled callback data for reattempt to unlock achievement %u", ach_data->id);
+          rc_client_raise_server_error_event(ach_data->client, "award_achievement", rc_error_str(RC_OUT_OF_MEMORY));
+          return;
+        }
         ach_data->scheduled_callback_data->callback = rc_client_award_achievement_retry;
         ach_data->scheduled_callback_data->data = ach_data;
         ach_data->scheduled_callback_data->related_id = ach_data->id;
@@ -2545,6 +2604,11 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
   }
 
   callback_data = (rc_client_award_achievement_callback_data_t*)calloc(1, sizeof(*callback_data));
+  if (!callback_data) {
+    RC_CLIENT_LOG_ERR_FORMATTED(client, "Failed to allocate callback data for unlocking achievement %u", achievement->public.id);
+    rc_client_raise_server_error_event(client, "award_achievement", rc_error_str(RC_OUT_OF_MEMORY));
+    return;
+  }
   callback_data->client = client;
   callback_data->id = achievement->public.id;
   callback_data->hardcore = client->state.hardcore;
@@ -2744,6 +2808,11 @@ static void rc_client_submit_leaderboard_entry_callback(const char* server_respo
 
       if (!lboard_data->scheduled_callback_data) {
         lboard_data->scheduled_callback_data = (rc_client_scheduled_callback_data_t*)calloc(1, sizeof(*lboard_data->scheduled_callback_data));
+        if (!lboard_data->scheduled_callback_data) {
+          RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Failed to allocate scheduled callback data for reattempt to submit entry for leaderboard %u", lboard_data->id);
+          rc_client_raise_server_error_event(lboard_data->client, "submit_lboard_entry", rc_error_str(RC_OUT_OF_MEMORY));
+          return;
+        }
         lboard_data->scheduled_callback_data->callback = rc_client_submit_leaderboard_entry_retry;
         lboard_data->scheduled_callback_data->data = lboard_data;
         lboard_data->scheduled_callback_data->related_id = lboard_data->id;
@@ -2806,6 +2875,11 @@ static void rc_client_submit_leaderboard_entry(rc_client_t* client, rc_client_le
   }
 
   callback_data = (rc_client_submit_leaderboard_entry_callback_data_t*)calloc(1, sizeof(*callback_data));
+  if (!callback_data) {
+    RC_CLIENT_LOG_ERR_FORMATTED(client, "Failed to allocate callback data for submitting entry for leaderboard %u", leaderboard->public.id);
+    rc_client_raise_server_error_event(client, "submit_lboard_entry", rc_error_str(RC_OUT_OF_MEMORY));
+    return;
+  }
   callback_data->client = client;
   callback_data->id = leaderboard->public.id;
   callback_data->score = leaderboard->value;
