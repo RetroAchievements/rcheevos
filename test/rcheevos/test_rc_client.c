@@ -647,6 +647,9 @@ static void test_get_user_game_summary(void)
   ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
   ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 1);
 
+  ASSERT_NUM_EQUALS(summary.points_core, 35);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 5);
+
   rc_client_destroy(g_client);
 }
 
@@ -664,6 +667,9 @@ static void test_get_user_game_summary_softcore(void)
   ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
   ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
   ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 3);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 35);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 15);
 
   rc_client_destroy(g_client);
 }
@@ -690,6 +696,9 @@ static void test_get_user_game_summary_encore_mode(void)
   ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
   ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 1);
 
+  ASSERT_NUM_EQUALS(summary.points_core, 35);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 5);
+
   rc_client_destroy(g_client);
 }
 
@@ -706,6 +715,9 @@ static void test_get_user_game_summary_with_unsupported_and_unofficial(void)
   ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 1);
   ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 1);
   ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 0);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 7);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
 
   rc_client_destroy(g_client);
 }

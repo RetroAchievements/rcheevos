@@ -411,11 +411,15 @@ static void rc_client_subset_get_user_game_summary(const rc_client_subset_info_t
     switch (achievement->public.category) {
       case RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE:
         ++summary->num_core_achievements;
+        summary->points_core += achievement->public.points;
 
-        if (achievement->public.unlocked & unlock_bit)
+        if (achievement->public.unlocked & unlock_bit) {
           ++summary->num_unlocked_achievements;
-        else if (achievement->public.bucket == RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED)
+          summary->points_unlocked += achievement->public.points;
+        }
+        else if (achievement->public.bucket == RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED) {
           ++summary->num_unsupported_achievements;
+        }
 
         break;
 

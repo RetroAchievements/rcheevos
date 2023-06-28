@@ -181,6 +181,9 @@ typedef struct rc_client_user_game_summary_t
   uint32_t num_unofficial_achievements;
   uint32_t num_unlocked_achievements;
   uint32_t num_unsupported_achievements;
+
+  uint32_t points_core;
+  uint32_t points_unlocked;
 } rc_client_user_game_summary_t;
 
 /**
