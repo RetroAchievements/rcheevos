@@ -1317,7 +1317,6 @@ static const char* rc_client_subset_extract_title(rc_client_game_info_t* game, c
 static void rc_client_fetch_game_data_callback(const char* server_response_body, int http_status_code, void* callback_data)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
-  rc_client_t* client = load_state->client;
   rc_api_fetch_game_data_response_t fetch_game_data_response;
 
   int result = rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response_body);
