@@ -912,16 +912,19 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
     if (load_state->callback)
       load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
   }
-  else if (!load_state->softcore_unlocks || !load_state->hardcore_unlocks) {
+  else if ((!load_state->softcore_unlocks || !load_state->hardcore_unlocks) &&
+            client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_OFF) {
     /* unlocks not available - assume malloc failed */
     if (load_state->callback)
       load_state->callback(RC_INVALID_STATE, "Unlock arrays were not allocated", client);
   }
   else {
-    rc_client_apply_unlocks(load_state->subset, load_state->softcore_unlocks,
-        load_state->num_softcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    rc_client_apply_unlocks(load_state->subset, load_state->hardcore_unlocks,
-        load_state->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    if (client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_OFF) {
+      rc_client_apply_unlocks(load_state->subset, load_state->softcore_unlocks,
+          load_state->num_softcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+      rc_client_apply_unlocks(load_state->subset, load_state->hardcore_unlocks,
+          load_state->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    }
 
     rc_mutex_lock(&client->state.mutex);
     if (client->state.load == NULL)
@@ -957,17 +960,20 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
       rc_client_activate_achievements(load_state->game, client);
       rc_client_activate_leaderboards(load_state->game, client);
 
-      /* schedule the periodic ping */
       if (load_state->hash->hash[0] != '[') {
-        rc_client_scheduled_callback_data_t* callback_data = rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_scheduled_callback_data_t));
-        memset(callback_data, 0, sizeof(*callback_data));
-        callback_data->callback = rc_client_ping;
-        callback_data->related_id = load_state->game->public.id;
-        callback_data->when = time(NULL) + 30;
-        rc_client_schedule_callback(client, callback_data);
+        if (load_state->client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_LOCKED) {
+          /* schedule the periodic ping */
+          rc_client_scheduled_callback_data_t* callback_data = rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_scheduled_callback_data_t));
+          memset(callback_data, 0, sizeof(*callback_data));
+          callback_data->callback = rc_client_ping;
+          callback_data->related_id = load_state->game->public.id;
+          callback_data->when = time(NULL) + 30;
+          rc_client_schedule_callback(client, callback_data);
+        }
 
-        RC_CLIENT_LOG_INFO_FORMATTED(client, "Game %u loaded, hardcode %s", load_state->game->public.id,
-            client->state.hardcore ? "enabled" : "disabled");
+        RC_CLIENT_LOG_INFO_FORMATTED(client, "Game %u loaded, hardcode %s%s", load_state->game->public.id,
+            client->state.hardcore ? "enabled" : "disabled",
+            (client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) ? ", spectating" : "");
       }
       else {
         RC_CLIENT_LOG_INFO_FORMATTED(client, "Subset %u loaded", load_state->subset->public.id);
@@ -1346,7 +1352,13 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
 
     /* kick off the start session request while we process the game data */
     rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_STARTING_SESSION, 1);
-    rc_client_begin_start_session(load_state);
+    if (load_state->client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) {
+      /* we can't unlock achievements without a session, lock spectator mode for the game */
+      load_state->client->state.spectator_mode = RC_CLIENT_SPECTATOR_MODE_LOCKED;
+    }
+    else {
+      rc_client_begin_start_session(load_state);
+    }
 
     /* process the game data */
     rc_client_copy_achievements(load_state, subset,
@@ -1365,9 +1377,11 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
 
       subset->public.title = load_state->game->public.title;
 
-      result = rc_runtime_activate_richpresence(&load_state->game->runtime, fetch_game_data_response.rich_presence_script, NULL, 0);
-      if (result != RC_OK) {
-        RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing rich presence", result);
+      if (fetch_game_data_response.rich_presence_script && fetch_game_data_response.rich_presence_script[0]) {
+        result = rc_runtime_activate_richpresence(&load_state->game->runtime, fetch_game_data_response.rich_presence_script, NULL, 0);
+        if (result != RC_OK) {
+          RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing rich presence", result);
+        }
       }
     }
     else {
@@ -1750,6 +1764,9 @@ void rc_client_unload_game(rc_client_t* client)
   game = client->game;
   client->game = NULL;
   client->state.load = NULL;
+
+  if (client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_LOCKED)
+    client->state.spectator_mode = RC_CLIENT_SPECTATOR_MODE_ON;
 
   last = &client->state.scheduled_callbacks;
   do {
@@ -2571,7 +2588,7 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
   }
 
   /* don't actually unlock achievements when spectating */
-  if (client->state.spectator_mode) {
+  if (client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) {
     RC_CLIENT_LOG_INFO_FORMATTED(client, "Spectated achievement %u: %s", achievement->public.id, achievement->public.title);
     return;
   }
@@ -2841,7 +2858,7 @@ static void rc_client_submit_leaderboard_entry(rc_client_t* client, rc_client_le
   rc_client_submit_leaderboard_entry_callback_data_t* callback_data;
 
   /* don't actually submit leaderboard entries when spectating */
-  if (client->state.spectator_mode) {
+  if (client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) {
     RC_CLIENT_LOG_INFO_FORMATTED(client, "Spectated %s (%d) for leaderboard %u: %s",
         leaderboard->public.tracker_value, leaderboard->value, leaderboard->public.id, leaderboard->public.title);
     return;
@@ -3799,13 +3816,19 @@ int rc_client_get_encore_mode_enabled(const rc_client_t* client)
 
 void rc_client_set_spectator_mode_enabled(rc_client_t* client, int enabled)
 {
-  if (client)
-    client->state.spectator_mode = enabled ? 1 : 0;
+  if (client) {
+    if (!enabled && client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_LOCKED) {
+      RC_CLIENT_LOG_WARN(client, "Spectator mode cannot be disabled if it was enabled prior to loading game.");
+      return;
+    }
+
+    client->state.spectator_mode = enabled ? RC_CLIENT_SPECTATOR_MODE_ON : RC_CLIENT_SPECTATOR_MODE_OFF;
+  }
 }
 
 int rc_client_get_spectator_mode_enabled(const rc_client_t* client)
 {
-  return client && client->state.spectator_mode;
+  return client && (client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_OFF) ? 0 : 1;
 }
 
 void rc_client_set_userdata(rc_client_t* client, void* userdata)

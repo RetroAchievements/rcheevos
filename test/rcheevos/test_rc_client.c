@@ -1029,6 +1029,79 @@ static void test_load_game_hardcore_unlocks_failure(void)
   rc_client_destroy(g_client);
 }
 
+static void test_load_game_while_spectating(void)
+{
+  rc_client_achievement_info_t* achievement;
+  rc_client_leaderboard_info_t* leaderboard;
+  g_client = mock_client_logged_in();
+  rc_client_set_spectator_mode_enabled(g_client, 1);
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  /* spectator mode should not start a session or fetch unlocks */
+
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+
+    achievement = &g_client->game->subsets->achievements[0];
+    ASSERT_NUM_EQUALS(achievement->public.id, 5501);
+    ASSERT_STR_EQUALS(achievement->public.title, "Ach1");
+    ASSERT_STR_EQUALS(achievement->public.description, "Desc1");
+    ASSERT_STR_EQUALS(achievement->public.badge_name, "00234");
+    ASSERT_NUM_EQUALS(achievement->public.points, 5);
+    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_PTR_NOT_NULL(achievement->trigger);
+
+    achievement = &g_client->game->subsets->achievements[1];
+    ASSERT_NUM_EQUALS(achievement->public.id, 5502);
+    ASSERT_STR_EQUALS(achievement->public.title, "Ach2");
+    ASSERT_STR_EQUALS(achievement->public.description, "Desc2");
+    ASSERT_STR_EQUALS(achievement->public.badge_name, "00235");
+    ASSERT_NUM_EQUALS(achievement->public.points, 2);
+    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_PTR_NOT_NULL(achievement->trigger);
+
+    leaderboard = &g_client->game->subsets->leaderboards[0];
+    ASSERT_NUM_EQUALS(leaderboard->public.id, 4401);
+    ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard1");
+    ASSERT_STR_EQUALS(leaderboard->public.description, "Desc1");
+    ASSERT_NUM_EQUALS(leaderboard->public.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
+    ASSERT_PTR_NOT_NULL(leaderboard->lboard);
+    ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
+    ASSERT_PTR_NULL(leaderboard->tracker);
+  }
+
+  /* spectator mode cannot be disabled if it was enabled before loading the game */
+  rc_client_set_spectator_mode_enabled(g_client, 0);
+  ASSERT_TRUE(rc_client_get_spectator_mode_enabled(g_client));
+
+  rc_client_unload_game(g_client);
+
+  /* spectator mode can be disabled after unloading game */
+  rc_client_set_spectator_mode_enabled(g_client, 0);
+  ASSERT_FALSE(rc_client_get_spectator_mode_enabled(g_client));
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- identify and load game ----- */
 
 static void rc_client_callback_expect_data_or_file_path_required(int result, const char* error_message, rc_client_t* client)
@@ -2784,9 +2857,9 @@ static void test_do_frame_achievement_trigger_while_spectating(void)
     const uint32_t num_active = g_client->game->runtime.trigger_count;
     mock_memory(memory, sizeof(memory));
 
-    ASSERT_NUM_EQUALS(rc_client_get_spectator_mode_enabled(g_client), 0);
+    ASSERT_FALSE(rc_client_get_spectator_mode_enabled(g_client));
     rc_client_set_spectator_mode_enabled(g_client, 1);
-    ASSERT_NUM_EQUALS(rc_client_get_spectator_mode_enabled(g_client), 1);
+    ASSERT_TRUE(rc_client_get_spectator_mode_enabled(g_client));
 
     mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=8&h=1&m=0123456789ABCDEF&v=da80b659c2b858e13ddd97077647b217",
         "{\"Success\":false,\"Error\":\"Achievement should not have been unlocked in spectating mode\"}");
@@ -2817,6 +2890,9 @@ static void test_do_frame_achievement_trigger_while_spectating(void)
     event_count = 0;
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 0);
+
+    rc_client_set_spectator_mode_enabled(g_client, 0);
+    ASSERT_FALSE(rc_client_get_spectator_mode_enabled(g_client));
   }
 
   rc_client_destroy(g_client);
@@ -3761,9 +3837,9 @@ static void test_do_frame_leaderboard_submit_while_spectating(void)
   if (g_client->game) {
     mock_memory(memory, sizeof(memory));
 
-    ASSERT_NUM_EQUALS(rc_client_get_spectator_mode_enabled(g_client), 0);
+    ASSERT_FALSE(rc_client_get_spectator_mode_enabled(g_client));
     rc_client_set_spectator_mode_enabled(g_client, 1);
-    ASSERT_NUM_EQUALS(rc_client_get_spectator_mode_enabled(g_client), 1);
+    ASSERT_TRUE(rc_client_get_spectator_mode_enabled(g_client));
 
     mock_api_response("r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&v=a27fa205f7f30c8d13d74806ea5425b6",
         "{\"Success\":false,\"Error\":\"Leaderboard entry should not have been submitted in spectating mode\"}");
@@ -4824,6 +4900,7 @@ void test_client(void) {
   TEST(test_load_game_postactivity_failure);
   TEST(test_load_game_softcore_unlocks_failure);
   TEST(test_load_game_hardcore_unlocks_failure);
+  TEST(test_load_game_while_spectating);
 
   TEST(test_identify_and_load_game_required_fields);
   TEST(test_identify_and_load_game_console_specified);

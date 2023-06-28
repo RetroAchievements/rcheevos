@@ -101,6 +101,7 @@ int rc_client_get_test_unofficial(const rc_client_t* client);
  * If enabled, events for achievement unlocks and leaderboard submissions will be
  * raised, but server calls to actually perform the unlock/submit will not occur.
  * Can be modified while a game is loaded. Evaluated at unlock/submit time.
+ * Cannot be modified if disabled before a game is loaded.
  */
 void rc_client_set_spectator_mode_enabled(rc_client_t* client, int enabled);
 

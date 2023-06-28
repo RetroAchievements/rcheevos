@@ -176,6 +176,12 @@ enum {
   RC_CLIENT_MASTERY_STATE_SHOWN
 };
 
+enum {
+  RC_CLIENT_SPECTATOR_MODE_OFF,
+  RC_CLIENT_SPECTATOR_MODE_ON,
+  RC_CLIENT_SPECTATOR_MODE_LOCKED
+};
+
 struct rc_client_load_state_t;
 
 typedef struct rc_client_state_t {
