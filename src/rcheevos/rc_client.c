@@ -930,6 +930,23 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
         load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
     }
     else {
+      /* if a change media request is pending, kick it off */
+      rc_client_pending_media_t* pending_media;
+
+      rc_mutex_lock(&load_state->client->state.mutex);
+      pending_media = load_state->pending_media;
+      load_state->pending_media = NULL;
+      rc_mutex_unlock(&load_state->client->state.mutex);
+
+      if (pending_media) {
+        rc_client_begin_change_media(client, pending_media->file_path,
+          pending_media->data, pending_media->data_size, pending_media->callback);
+        if (pending_media->data)
+          free(pending_media->data);
+        free((void*)pending_media->file_path);
+        free(pending_media);
+      }
+
       /* client->game must be set before calling this function so it can query the console_id */
       rc_client_validate_addresses(load_state->game, client);
 
@@ -1315,25 +1332,7 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
     /* previous load state was aborted, load_state was free'd */
   }
   else {
-    /* if a change media request is pending, kick it off */
-    rc_client_pending_media_t* pending_media;
     rc_client_subset_info_t* subset;
-
-    rc_mutex_lock(&load_state->client->state.mutex);
-    pending_media = load_state->pending_media;
-    load_state->pending_media = NULL;
-    /* console_id must be set before checking pending_media - this is redundant for subset */
-    load_state->game->public.console_id = fetch_game_data_response.console_id;
-    rc_mutex_unlock(&load_state->client->state.mutex);
-
-    if (pending_media) {
-      rc_client_begin_change_media(client, pending_media->file_path,
-          pending_media->data, pending_media->data_size, pending_media->callback);
-      if (pending_media->data)
-        free(pending_media->data);
-      free((void*)pending_media->file_path);
-      free(pending_media);
-    }
 
     subset = (rc_client_subset_info_t*)rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
     memset(subset, 0, sizeof(*subset));
@@ -1358,6 +1357,7 @@ static void rc_client_fetch_game_data_callback(const char* server_response_body,
       load_state->game->public.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
       load_state->game->subsets = subset;
       load_state->game->public.badge_name = subset->public.badge_name;
+      load_state->game->public.console_id = fetch_game_data_response.console_id;
       rc_mutex_unlock(&load_state->client->state.mutex);
 
       subset->public.title = load_state->game->public.title;

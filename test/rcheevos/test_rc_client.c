@@ -1525,14 +1525,19 @@ static void test_change_media_while_loading(void)
   async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
 
   /* media request won't occur until patch data is received */
-  assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857")
+  assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
   async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  /* secondary hash resolution does not occur until game is fully loaded or hash can't be compared to loaded game */
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
   async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
 
   ASSERT_PTR_NULL(g_client->state.load);
