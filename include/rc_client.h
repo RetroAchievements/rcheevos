@@ -337,7 +337,7 @@ enum {
 };
 
 /**
- * Creates a list of achievement matching the specified category and grouping.
+ * Creates a list of achievements matching the specified category and grouping.
  * Returns an allocated list that must be free'd by calling rc_client_destroy_achievement_list.
  */
 rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* client, int category, int grouping);
@@ -371,6 +371,44 @@ typedef struct rc_client_leaderboard_t {
  * Get information about a leaderboard. Returns NULL if not found.
  */
 const rc_client_leaderboard_t* rc_client_get_leaderboard_info(const rc_client_t* client, uint32_t id);
+
+typedef struct rc_client_leaderboard_bucket_t {
+  rc_client_leaderboard_t** leaderboards;
+  uint32_t num_leaderboards;
+
+  const char* label;
+  uint32_t subset_id;
+  uint8_t bucket_type;
+} rc_client_leaderboard_bucket_t;
+
+typedef struct rc_client_leaderboard_list_t {
+  rc_client_leaderboard_bucket_t* buckets;
+  uint32_t num_buckets;
+} rc_client_leaderboard_list_t;
+
+enum {
+  RC_CLIENT_LEADERBOARD_BUCKET_UNKNOWN = 0,
+  RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE = 1,
+  RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE = 2,
+  RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED = 3,
+  RC_CLIENT_LEADERBOARD_BUCKET_ALL = 4
+};
+
+enum {
+  RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE = 0,
+  RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING = 1
+};
+
+/**
+ * Creates a list of leaderboards matching the specified grouping.
+ * Returns an allocated list that must be free'd by calling rc_client_destroy_leaderboard_list.
+ */
+rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* client, int grouping);
+
+/**
+ * Destroys a list allocated by rc_client_get_leaderboard_list.
+ */
+void rc_client_destroy_leaderboard_list(rc_client_leaderboard_list_t* list);
 
 typedef struct rc_client_leaderboard_tracker_t {
   char display[24];

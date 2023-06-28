@@ -2136,7 +2136,7 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
   achievement->public.bucket = new_bucket;
 }
 
-static const char* rc_client_get_bucket_label(uint8_t bucket_type)
+static const char* rc_client_get_achievement_bucket_label(uint8_t bucket_type)
 {
   switch (bucket_type) {
     case RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED: return "Locked";
@@ -2150,7 +2150,7 @@ static const char* rc_client_get_bucket_label(uint8_t bucket_type)
   }
 }
 
-static const char* rc_client_get_subset_bucket_label(uint8_t bucket_type, rc_client_game_info_t* game, rc_client_subset_info_t* subset)
+static const char* rc_client_get_subset_achievement_bucket_label(uint8_t bucket_type, rc_client_game_info_t* game, rc_client_subset_info_t* subset)
 {
   const char** ptr;
   const char* label;
@@ -2162,13 +2162,13 @@ static const char* rc_client_get_subset_bucket_label(uint8_t bucket_type, rc_cli
     case RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED: ptr = &subset->unlocked_label; break;
     case RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED: ptr = &subset->unsupported_label; break;
     case RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL: ptr = &subset->unofficial_label; break;
-    default: return rc_client_get_bucket_label(bucket_type);
+    default: return rc_client_get_achievement_bucket_label(bucket_type);
   }
 
   if (*ptr)
     return *ptr;
 
-  label = rc_client_get_bucket_label(bucket_type);
+  label = rc_client_get_achievement_bucket_label(bucket_type);
   new_label_len = strlen(subset->public.title) + strlen(label) + 4;
   new_label = (char*)rc_buf_alloc(&game->buffer, new_label_len);
   snprintf(new_label, new_label_len, "%s - %s", subset->public.title, label);
@@ -2229,7 +2229,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
     RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED,
     RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL,
     RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED,
-    RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED,
+    RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED
   };
   const time_t recent_unlock_time = time(NULL) - RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS;
 
@@ -2326,7 +2326,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
         bucket_ptr->achievements = bucket_achievements;
         bucket_ptr->num_achievements = (uint32_t)(achievement_ptr - bucket_achievements);
         bucket_ptr->subset_id = 0;
-        bucket_ptr->label = rc_client_get_bucket_label(bucket_type);
+        bucket_ptr->label = rc_client_get_achievement_bucket_label(bucket_type);
         bucket_ptr->bucket_type = bucket_type;
 
         if (bucket_type == RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED)
@@ -2364,9 +2364,9 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
         bucket_ptr->bucket_type = bucket_type;
 
         if (num_subsets > 1)
-          bucket_ptr->label = rc_client_get_subset_bucket_label(bucket_type, client->game, subset);
+          bucket_ptr->label = rc_client_get_subset_achievement_bucket_label(bucket_type, client->game, subset);
         else
-          bucket_ptr->label = rc_client_get_bucket_label(bucket_type);
+          bucket_ptr->label = rc_client_get_achievement_bucket_label(bucket_type);
 
         ++bucket_ptr;
       }
@@ -2683,6 +2683,227 @@ const rc_client_leaderboard_t* rc_client_get_leaderboard_info(const rc_client_t*
   }
  
   return NULL;
+}
+
+static const char* rc_client_get_leaderboard_bucket_label(uint8_t bucket_type)
+{
+  switch (bucket_type) {
+    case RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE: return "Inactive";
+    case RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE: return "Active";
+    case RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED: return "Unsupported";
+    case RC_CLIENT_LEADERBOARD_BUCKET_ALL: return "All";
+    default: return "Unknown";
+  }
+}
+
+static const char* rc_client_get_subset_leaderboard_bucket_label(uint8_t bucket_type, rc_client_game_info_t* game, rc_client_subset_info_t* subset)
+{
+  const char** ptr;
+  const char* label;
+  char* new_label;
+  size_t new_label_len;
+
+  switch (bucket_type) {
+    case RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE: ptr = &subset->inactive_label; break;
+    case RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED: ptr = &subset->unsupported_label; break;
+    case RC_CLIENT_LEADERBOARD_BUCKET_ALL: ptr = &subset->all_label; break;
+    default: return rc_client_get_achievement_bucket_label(bucket_type);
+  }
+
+  if (*ptr)
+    return *ptr;
+
+  label = rc_client_get_leaderboard_bucket_label(bucket_type);
+  new_label_len = strlen(subset->public.title) + strlen(label) + 4;
+  new_label = (char*)rc_buf_alloc(&game->buffer, new_label_len);
+  snprintf(new_label, new_label_len, "%s - %s", subset->public.title, label);
+
+  *ptr = new_label;
+  return new_label;
+}
+
+static uint8_t rc_client_get_leaderboard_bucket(const rc_client_leaderboard_info_t* leaderboard, int grouping)
+{
+  switch (leaderboard->public.state) {
+    case RC_CLIENT_LEADERBOARD_STATE_TRACKING:
+      return (grouping == RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE) ?
+        RC_CLIENT_LEADERBOARD_BUCKET_ALL : RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE;
+
+    case RC_CLIENT_LEADERBOARD_STATE_DISABLED:
+      return RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED;
+
+    default:
+      return (grouping == RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE) ?
+        RC_CLIENT_LEADERBOARD_BUCKET_ALL : RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE;
+  }
+}
+
+rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* client, int grouping)
+{
+  rc_client_leaderboard_info_t* leaderboard;
+  rc_client_leaderboard_info_t* stop;
+  rc_client_leaderboard_t** bucket_leaderboards;
+  rc_client_leaderboard_t** leaderboard_ptr;
+  rc_client_leaderboard_bucket_t* bucket_ptr;
+  rc_client_leaderboard_list_t* list;
+  rc_client_subset_info_t* subset;
+  const uint32_t list_size = RC_ALIGN(sizeof(*list));
+  uint32_t bucket_counts[8];
+  uint32_t num_buckets;
+  uint32_t num_leaderboards;
+  size_t buckets_size;
+  uint8_t bucket_type;
+  uint32_t num_subsets = 0;
+  uint32_t i, j;
+  const uint8_t shared_bucket_order[] = {
+    RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE
+  };
+  const uint8_t subset_bucket_order[] = {
+    RC_CLIENT_LEADERBOARD_BUCKET_ALL,
+    RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE,
+    RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED
+  };
+
+  if (!client || !client->game)
+    return calloc(1, sizeof(rc_client_leaderboard_list_t));
+
+  memset(&bucket_counts, 0, sizeof(bucket_counts));
+
+  rc_mutex_lock(&client->state.mutex);
+
+  subset = client->game->subsets;
+  for (; subset; subset = subset->next) {
+    if (!subset->active)
+      continue;
+
+    num_subsets++;
+    leaderboard = subset->leaderboards;
+    stop = leaderboard + subset->public.num_leaderboards;
+    for (; leaderboard < stop; ++leaderboard) {
+      leaderboard->bucket = rc_client_get_leaderboard_bucket(leaderboard, grouping);
+      bucket_counts[leaderboard->bucket]++;
+    }
+  }
+
+  num_buckets = 0;
+  num_leaderboards = 0;
+  for (i = 0; i < sizeof(bucket_counts) / sizeof(bucket_counts[0]); ++i) {
+    if (bucket_counts[i]) {
+      int needs_split = 0;
+
+      num_leaderboards += bucket_counts[i];
+
+      if (num_subsets > 1) {
+        for (j = 0; j < sizeof(subset_bucket_order) / sizeof(subset_bucket_order[0]); ++j) {
+          if (subset_bucket_order[j] == i) {
+            needs_split = 1;
+            break;
+          }
+        }
+      }
+
+      if (!needs_split) {
+        ++num_buckets;
+        continue;
+      }
+
+      subset = client->game->subsets;
+      for (; subset; subset = subset->next) {
+        if (!subset->active)
+          continue;
+
+        leaderboard = subset->leaderboards;
+        stop = leaderboard + subset->public.num_leaderboards;
+        for (; leaderboard < stop; ++leaderboard) {
+          if (leaderboard->bucket == i) {
+            ++num_buckets;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  buckets_size = RC_ALIGN(num_buckets * sizeof(rc_client_leaderboard_bucket_t));
+
+  list = (rc_client_leaderboard_list_t*)malloc(list_size + buckets_size + num_leaderboards * sizeof(rc_client_leaderboard_t*));
+  bucket_ptr = list->buckets = (rc_client_leaderboard_bucket_t*)((uint8_t*)list + list_size);
+  leaderboard_ptr = (rc_client_leaderboard_t**)((uint8_t*)bucket_ptr + buckets_size);
+
+  if (grouping == RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING) {
+    for (i = 0; i < sizeof(shared_bucket_order) / sizeof(shared_bucket_order[0]); ++i) {
+      bucket_type = shared_bucket_order[i];
+      if (!bucket_counts[bucket_type])
+        continue;
+
+      bucket_leaderboards = leaderboard_ptr;
+      for (subset = client->game->subsets; subset; subset = subset->next) {
+        if (!subset->active)
+          continue;
+
+        leaderboard = subset->leaderboards;
+        stop = leaderboard + subset->public.num_leaderboards;
+        for (; leaderboard < stop; ++leaderboard) {
+          if (leaderboard->bucket == bucket_type)
+            *leaderboard_ptr++ = &leaderboard->public;
+        }
+      }
+
+      if (leaderboard_ptr > bucket_leaderboards) {
+        bucket_ptr->leaderboards = bucket_leaderboards;
+        bucket_ptr->num_leaderboards = (uint32_t)(leaderboard_ptr - bucket_leaderboards);
+        bucket_ptr->subset_id = 0;
+        bucket_ptr->label = rc_client_get_leaderboard_bucket_label(bucket_type);
+        bucket_ptr->bucket_type = bucket_type;
+        ++bucket_ptr;
+      }
+    }
+  }
+
+  for (subset = client->game->subsets; subset; subset = subset->next) {
+    if (!subset->active)
+      continue;
+
+    for (i = 0; i < sizeof(subset_bucket_order) / sizeof(subset_bucket_order[0]); ++i) {
+      bucket_type = subset_bucket_order[i];
+      if (!bucket_counts[bucket_type])
+        continue;
+
+      bucket_leaderboards = leaderboard_ptr;
+
+      leaderboard = subset->leaderboards;
+      stop = leaderboard + subset->public.num_leaderboards;
+      for (; leaderboard < stop; ++leaderboard) {
+        if (leaderboard->bucket == bucket_type)
+          *leaderboard_ptr++ = &leaderboard->public;
+      }
+
+      if (leaderboard_ptr > bucket_leaderboards) {
+        bucket_ptr->leaderboards = bucket_leaderboards;
+        bucket_ptr->num_leaderboards = (uint32_t)(leaderboard_ptr - bucket_leaderboards);
+        bucket_ptr->subset_id = (num_subsets > 1) ? subset->public.id : 0;
+        bucket_ptr->bucket_type = bucket_type;
+
+        if (num_subsets > 1)
+          bucket_ptr->label = rc_client_get_subset_leaderboard_bucket_label(bucket_type, client->game, subset);
+        else
+          bucket_ptr->label = rc_client_get_leaderboard_bucket_label(bucket_type);
+
+        ++bucket_ptr;
+      }
+    }
+  }
+
+  rc_mutex_unlock(&client->state.mutex);
+
+  list->num_buckets = (uint32_t)(bucket_ptr - list->buckets);
+  return list;
+}
+
+void rc_client_destroy_leaderboard_list(rc_client_leaderboard_list_t* list)
+{
+  if (list)
+    free(list);
 }
 
 static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)

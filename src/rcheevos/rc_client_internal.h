@@ -94,6 +94,7 @@ typedef struct rc_client_leaderboard_info_t {
 
   uint8_t format;
   uint8_t pending_events;
+  uint8_t bucket;
 } rc_client_leaderboard_info_t;
 
 enum {
@@ -116,6 +117,8 @@ typedef struct rc_client_subset_info_t {
 
   struct rc_client_subset_info_t* next;
 
+  const char* all_label;
+  const char* inactive_label;
   const char* locked_label;
   const char* unlocked_label;
   const char* unofficial_label;

@@ -157,7 +157,8 @@ static const char* patchdata_subset = "{\"Success\":true,\"PatchData\":{"
       GENERIC_ACHIEVEMENT_JSON("9", "0xH0009=9")
     "],"
     "\"Leaderboards\":["
-      GENERIC_LEADERBOARD_JSON("44", "STA:0xH000B=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE")
+      GENERIC_LEADERBOARD_JSON("81", "STA:0xH0008=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE") ","
+      GENERIC_LEADERBOARD_JSON("82", "STA:0xH0008=2::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE")
     "]"
     "}}";
 
@@ -1768,7 +1769,7 @@ static void test_load_subset(void)
     ASSERT_STR_EQUALS(subset->title, "Bonus");
     ASSERT_STR_EQUALS(subset->badge_name, "112234");
     ASSERT_NUM_EQUALS(subset->num_achievements, 3);
-    ASSERT_NUM_EQUALS(subset->num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(subset->num_leaderboards, 2);
 
     achievement = &subset_info->achievements[0];
     ASSERT_NUM_EQUALS(achievement->public.id, 7);
@@ -1804,9 +1805,19 @@ static void test_load_subset(void)
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     leaderboard = &subset_info->leaderboards[0];
-    ASSERT_NUM_EQUALS(leaderboard->public.id, 44);
-    ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard 44");
-    ASSERT_STR_EQUALS(leaderboard->public.description, "Desc 44");
+    ASSERT_NUM_EQUALS(leaderboard->public.id, 81);
+    ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard 81");
+    ASSERT_STR_EQUALS(leaderboard->public.description, "Desc 81");
+    ASSERT_NUM_EQUALS(leaderboard->public.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
+    ASSERT_PTR_NOT_NULL(leaderboard->lboard);
+    ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
+    ASSERT_PTR_NULL(leaderboard->tracker);
+
+    leaderboard = &subset_info->leaderboards[1];
+    ASSERT_NUM_EQUALS(leaderboard->public.id, 82);
+    ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard 82");
+    ASSERT_STR_EQUALS(leaderboard->public.description, "Desc 82");
     ASSERT_NUM_EQUALS(leaderboard->public.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
     ASSERT_PTR_NOT_NULL(leaderboard->lboard);
@@ -2641,6 +2652,414 @@ static void test_achievement_get_image_url(void)
   ASSERT_NUM_EQUALS(rc_client_achievement_get_image_url(rc_client_get_achievement_info(g_client, 5501),
       RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE, buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Badge/00234_lock.png");
+
+  rc_client_destroy(g_client);
+}
+
+/* ----- leaderboards ----- */
+
+static void test_leaderboard_list_simple(void)
+{
+  rc_client_leaderboard_list_t* list;
+  rc_client_leaderboard_t** iter;
+  rc_client_leaderboard_t* leaderboard;
+  uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
+
+  g_client = mock_client_logged_in();
+  mock_memory(memory, sizeof(memory));
+  mock_client_load_game(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_ALL);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "All");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 7);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 45);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 48);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 51);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 52);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
+
+  memory[0x0A] = 1; /* start 45,46,47 */
+  rc_client_do_frame(g_client);
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_ALL);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "All");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 7);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 45);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 48);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 51);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 52);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_leaderboard_list_simple_with_unsupported(void)
+{
+  rc_client_leaderboard_list_t* list;
+  rc_client_leaderboard_t** iter;
+  rc_client_leaderboard_t* leaderboard;
+  uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
+
+  g_client = mock_client_logged_in();
+  mock_memory(memory, 0x0E); /* 0x0E address is now invalid (44,45,46,47,48)*/
+  mock_client_load_game(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_ALL);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "All");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 2);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 51);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 52);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_leaderboards, 5);
+
+    iter = list->buckets[1].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 45);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 48);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_leaderboard_list_buckets(void)
+{
+  rc_client_leaderboard_list_t* list;
+  rc_client_leaderboard_t** iter;
+  rc_client_leaderboard_t* leaderboard;
+  uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
+
+  g_client = mock_client_logged_in();
+  mock_memory(memory, sizeof(memory));
+  mock_client_load_game(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  rc_client_do_frame(g_client);
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Inactive");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 7);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 45);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 48);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 51);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 52);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
+
+  memory[0x0A] = 1; /* start 45,46,47 */
+  rc_client_do_frame(g_client);
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Active");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 3);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 45);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Inactive");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_leaderboards, 4);
+
+    iter = list->buckets[1].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 48);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 51);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 52);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_leaderboard_list_buckets_with_unsupported(void)
+{
+  rc_client_leaderboard_list_t* list;
+  rc_client_leaderboard_t** iter;
+  rc_client_leaderboard_t* leaderboard;
+  uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
+
+  g_client = mock_client_logged_in();
+  mock_memory(memory, 0x0E); /* 0x0E address is now invalid (44,45,46,47,48)*/
+  mock_client_load_game(patchdata_exhaustive, no_unlocks, no_unlocks);
+
+  rc_client_do_frame(g_client);
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Inactive");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 2);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 51);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 52);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_leaderboards, 5);
+
+    iter = list->buckets[1].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 45);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 48);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
+
+  memory[0x0B] = 3; /* start 52 */
+  rc_client_do_frame(g_client);
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 3);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Active");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 1);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 52);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Inactive");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_leaderboards, 1);
+
+    iter = list->buckets[1].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 51);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_leaderboards, 5);
+
+    iter = list->buckets[2].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 45);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 48);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_leaderboard_list_subset(void)
+{
+  rc_client_leaderboard_list_t* list;
+  rc_client_leaderboard_t** iter;
+  rc_client_leaderboard_t* leaderboard;
+  uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
+
+  g_client = mock_client_logged_in();
+  mock_memory(memory, sizeof(memory));
+  mock_client_load_game(patchdata_exhaustive, no_unlocks, no_unlocks);
+  mock_client_load_subset(patchdata_subset, no_unlocks, no_unlocks);
+
+  rc_client_do_frame(g_client);
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Sample Game - Inactive");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 7);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 45);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 48);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 51);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 52);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Bonus - Inactive");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_leaderboards, 2);
+
+    iter = list->buckets[1].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 81);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 82);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
+
+  memory[0x0A] = 1; /* start 45,46,47 */
+  memory[0x08] = 2; /* start 82 */
+  rc_client_do_frame(g_client);
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 3);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Active");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 4);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 45);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 82);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 1234);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Sample Game - Inactive");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_leaderboards, 4);
+
+    iter = list->buckets[1].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 48);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 51);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 52);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Bonus - Inactive");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_leaderboards, 1);
+
+    iter = list->buckets[2].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 81);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
 
   rc_client_destroy(g_client);
 }
@@ -4940,6 +5359,13 @@ void test_client(void) {
   TEST(test_achievement_list_subset_buckets_subset_first);
 
   TEST(test_achievement_get_image_url);
+
+  /* leaderboards */
+  TEST(test_leaderboard_list_simple);
+  TEST(test_leaderboard_list_simple_with_unsupported);
+  TEST(test_leaderboard_list_buckets);
+  TEST(test_leaderboard_list_buckets_with_unsupported);
+  TEST(test_leaderboard_list_subset);
 
   /* do frame */
   TEST(test_do_frame_bounds_check_system);
