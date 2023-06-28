@@ -96,10 +96,16 @@ void rc_client_destroy(rc_client_t* client)
 
 /* ===== Logging ===== */
 
+static rc_client_t* g_hash_client = NULL;
+
+static void rc_client_log_hash_message(const char* message) {
+  rc_client_log_message(g_hash_client, message);
+}
+
 void rc_client_log_message(const rc_client_t* client, const char* message)
 {
   if (client->callbacks.log_call)
-    client->callbacks.log_call(message);
+    client->callbacks.log_call(message, client);
 }
 
 static void rc_client_log_message_va(const rc_client_t* client, const char* format, va_list args)
@@ -114,7 +120,7 @@ static void rc_client_log_message_va(const rc_client_t* client, const char* form
     vsprintf(buffer, format, args);
 #endif
 
-    client->callbacks.log_call(buffer);
+    client->callbacks.log_call(buffer, client);
   }
 }
 
@@ -1485,6 +1491,9 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
     load_state->game->public.hash = load_state->hash->hash;
   }
 
+  /* done with the hashing code, release the global pointer */
+  g_hash_client = NULL;
+
   rc_mutex_lock(&client->state.mutex);
   result = client->state.user;
   if (result == RC_CLIENT_USER_STATE_LOGIN_REQUESTED)
@@ -1707,8 +1716,11 @@ void rc_client_begin_identify_and_load_game(rc_client_t* client,
     return;
   }
 
-  if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO)
-    rc_hash_init_verbose_message_callback(client->callbacks.log_call);
+  if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO) {
+    g_hash_client = client;
+    rc_hash_init_error_message_callback(rc_client_log_hash_message);
+    rc_hash_init_verbose_message_callback(rc_client_log_hash_message);
+  }
 
   if (!file_path)
     file_path = "?";
@@ -1929,10 +1941,18 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
     char hash[33];
     int result;
 
+    if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO) {
+      g_hash_client = client;
+      rc_hash_init_error_message_callback(rc_client_log_hash_message);
+      rc_hash_init_verbose_message_callback(rc_client_log_hash_message);
+    }
+
     if (data != NULL)
       result = rc_hash_generate_from_buffer(hash, game->public.console_id, data, data_size);
     else
       result = rc_hash_generate_from_file(hash, game->public.console_id, file_path);
+
+    g_hash_client = NULL;
 
     if (!result) {
       /* when changing discs, if the disc is not supported by the system, allow it. this is

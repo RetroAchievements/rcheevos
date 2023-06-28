@@ -44,7 +44,7 @@ typedef void (*rc_client_callback_t)(int result, const char* error_message, rc_c
 /**
  * Callback for logging or displaying a message.
  */
-typedef void (*rc_client_message_callback_t)(const char* message);
+typedef void (*rc_client_message_callback_t)(const char* message, const rc_client_t* client);
 
 /*****************************************************************************\
 | Runtime                                                                     |
