@@ -56,7 +56,7 @@ static void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, r
 
 /* ===== Construction/Destruction ===== */
 
-static void rc_client_dummy_event_handler(const rc_client_event_t* event)
+static void rc_client_dummy_event_handler(const rc_client_event_t* event, rc_client_t* client)
 {
 }
 
@@ -223,7 +223,7 @@ static void rc_client_raise_server_error_event(rc_client_t* client, const char* 
   client_event.type = RC_CLIENT_EVENT_SERVER_ERROR;
   client_event.server_error = &server_error;
 
-  client->callbacks.event_handler(&client_event);
+  client->callbacks.event_handler(&client_event, client);
 }
 
 static int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_type, const char* image_name)
@@ -742,8 +742,7 @@ static uint32_t rc_client_subset_toggle_hardcore_achievements(rc_client_subset_i
         memset(&client_event, 0, sizeof(client_event));
         client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE;
         client_event.achievement = &achievement->public;
-        client_event.client = client;
-        client->callbacks.event_handler(&client_event);
+        client->callbacks.event_handler(&client_event, client);
       }
     }
   }
@@ -3210,7 +3209,6 @@ static void rc_client_raise_achievement_events(rc_client_t* client, rc_client_su
   time_t recent_unlock_time = 0;
 
   memset(&client_event, 0, sizeof(client_event));
-  client_event.client = client;
 
   for (; achievement < stop; ++achievement) {
     if (achievement->pending_events == RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_NONE)
@@ -3232,21 +3230,21 @@ static void rc_client_raise_achievement_events(rc_client_t* client, rc_client_su
 
     if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE) {
       client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE;
-      client->callbacks.event_handler(&client_event);
+      client->callbacks.event_handler(&client_event, client);
     }
     else if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_SHOW) {
       client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW;
-      client->callbacks.event_handler(&client_event);
+      client->callbacks.event_handler(&client_event, client);
     }
 
     if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW) {
       client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW;
-      client->callbacks.event_handler(&client_event);
+      client->callbacks.event_handler(&client_event, client);
     }
 
     if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_TRIGGERED) {
       client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED;
-      client->callbacks.event_handler(&client_event);
+      client->callbacks.event_handler(&client_event, client);
     }
 
     /* clear pending flags */
@@ -3259,12 +3257,11 @@ static void rc_client_raise_mastery_event(rc_client_t* client, rc_client_subset_
   rc_client_event_t client_event;
 
   memset(&client_event, 0, sizeof(client_event));
-  client_event.client = client;
   client_event.type = RC_CLIENT_EVENT_GAME_COMPLETED;
 
   subset->mastery = RC_CLIENT_MASTERY_STATE_SHOWN;
 
-  client->callbacks.event_handler(&client_event);
+  client->callbacks.event_handler(&client_event, client);
 }
 
 static void rc_client_do_frame_process_leaderboards(rc_client_t* client, rc_client_subset_info_t* subset)
@@ -3331,7 +3328,6 @@ static void rc_client_raise_leaderboard_tracker_events(rc_client_t* client)
   rc_client_event_t client_event;
 
   memset(&client_event, 0, sizeof(client_event));
-  client_event.client = client;
 
   tracker = client->game->leaderboard_trackers;
   for (; tracker; tracker = tracker->next) {
@@ -3342,18 +3338,18 @@ static void rc_client_raise_leaderboard_tracker_events(rc_client_t* client)
 
     if (tracker->pending_events & RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE) {
       client_event.type = RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE;
-      client->callbacks.event_handler(&client_event);
+      client->callbacks.event_handler(&client_event, client);
     }
     else {
       rc_format_value(tracker->public.display, sizeof(tracker->public.display), tracker->raw_value, tracker->format);
 
       if (tracker->pending_events & RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW) {
         client_event.type = RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW;
-        client->callbacks.event_handler(&client_event);
+        client->callbacks.event_handler(&client_event, client);
       }
       else if (tracker->pending_events & RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE) {
         client_event.type = RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE;
-        client->callbacks.event_handler(&client_event);
+        client->callbacks.event_handler(&client_event, client);
       }
     }
 
@@ -3368,7 +3364,6 @@ static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_su
   rc_client_event_t client_event;
 
   memset(&client_event, 0, sizeof(client_event));
-  client_event.client = client;
 
   for (; leaderboard < leaderboard_stop; ++leaderboard) {
     if (leaderboard->pending_events == RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE)
@@ -3379,19 +3374,19 @@ static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_su
     if (leaderboard->pending_events & RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED) {
       RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Leaderboard %u canceled: %s", leaderboard->public.id, leaderboard->public.title);
       client_event.type = RC_CLIENT_EVENT_LEADERBOARD_FAILED;
-      client->callbacks.event_handler(&client_event);
+      client->callbacks.event_handler(&client_event, client);
     }
     else if (leaderboard->pending_events & RC_CLIENT_LEADERBOARD_PENDING_EVENT_SUBMITTED) {
       /* kick off submission request before raising event */
       rc_client_submit_leaderboard_entry(client, leaderboard);
 
       client_event.type = RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED;
-      client->callbacks.event_handler(&client_event);
+      client->callbacks.event_handler(&client_event, client);
     }
     else if (leaderboard->pending_events & RC_CLIENT_LEADERBOARD_PENDING_EVENT_STARTED) {
       RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Leaderboard %u started: %s", leaderboard->public.id, leaderboard->public.title);
       client_event.type = RC_CLIENT_EVENT_LEADERBOARD_STARTED;
-      client->callbacks.event_handler(&client_event);
+      client->callbacks.event_handler(&client_event, client);
     }
 
     leaderboard->pending_events = RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE;
@@ -3796,8 +3791,7 @@ void rc_client_set_hardcore_enabled(rc_client_t* client, int enabled)
         rc_client_event_t client_event;
         memset(&client_event, 0, sizeof(client_event));
         client_event.type = RC_CLIENT_EVENT_RESET;
-        client_event.client = client;
-        client->callbacks.event_handler(&client_event);
+        client->callbacks.event_handler(&client_event, client);
       }
     }
     else {

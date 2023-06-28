@@ -423,13 +423,12 @@ typedef struct rc_client_event_t
   rc_client_leaderboard_tracker_t* leaderboard_tracker;
   rc_client_server_error_t* server_error;
 
-  rc_client_t* client;
 } rc_client_event_t;
 
 /**
  * Callback used to notify the client when certain events occur.
  */
-typedef void (*rc_client_event_handler_t)(const rc_client_event_t* event);
+typedef void (*rc_client_event_handler_t)(const rc_client_event_t* event, rc_client_t* client);
 
 /**
  * Provides a callback for event handling.

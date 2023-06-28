@@ -202,7 +202,7 @@ static void _assert_achievement_state(rc_client_t* client, uint32_t id, int expe
 static rc_client_event_t events[16];
 static int event_count = 0;
 
-static void rc_client_event_handler(const rc_client_event_t* e)
+static void rc_client_event_handler(const rc_client_event_t* e, rc_client_t* client)
 {
   memcpy(&events[event_count++], e, sizeof(rc_client_event_t));
 
