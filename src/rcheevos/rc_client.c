@@ -2038,36 +2038,6 @@ const rc_client_subset_t* rc_client_get_subset_info(rc_client_t* client, uint32_
 
 /* ===== Achievements ===== */
 
-static uint32_t rc_client_subset_get_achievement_count(const rc_client_subset_info_t* subset, int category)
-{
-  rc_client_achievement_info_t* achievement;
-  rc_client_achievement_info_t* stop;
-  uint32_t count = 0;
-
-  if (!subset)
-    return 0;
-
-  if (category == RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL)
-    return subset->public.num_achievements;
-
-  achievement = subset->achievements;
-  stop = achievement + subset->public.num_achievements;
-  for (; achievement < stop; ++achievement) {
-    if (achievement->public.category == category)
-      ++count;
-  }
-
-  return count;
-}
-
-uint32_t rc_client_get_achievement_count(const rc_client_t* client, int category)
-{
-  if (!client || !client->game)
-    return 0;
-
-  return rc_client_subset_get_achievement_count(client->game->subsets, category);
-}
-
 static void rc_client_update_achievement_display_information(rc_client_t* client, rc_client_achievement_info_t* achievement, time_t recent_unlock_time)
 {
   uint8_t new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNKNOWN;

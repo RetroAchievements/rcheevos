@@ -313,11 +313,6 @@ const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* clien
  */
 int rc_client_achievement_get_image_url(const rc_client_achievement_t* achievement, int state, char buffer[], size_t buffer_size);
 
-/**
- * Gets the number of achievements in a category.
- */
-uint32_t rc_client_get_achievement_count(const rc_client_t* client, int category);
-
 typedef struct rc_client_achievement_bucket_t {
   rc_client_achievement_t** achievements;
   uint32_t num_achievements;
