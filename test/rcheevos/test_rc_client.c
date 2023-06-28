@@ -638,7 +638,7 @@ static void test_get_user_game_summary(void)
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_test_unofficial(g_client, 1);
+  rc_client_set_unofficial_enabled(g_client, 1);
   mock_client_load_game(patchdata_exhaustive, unlock_8, unlock_6_8_and_9);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -658,7 +658,7 @@ static void test_get_user_game_summary_softcore(void)
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_test_unofficial(g_client, 1);
+  rc_client_set_unofficial_enabled(g_client, 1);
   mock_client_load_game(patchdata_exhaustive, unlock_8, unlock_6_8_and_9);
   rc_client_set_hardcore_enabled(g_client, 0);
 
@@ -679,7 +679,7 @@ static void test_get_user_game_summary_encore_mode(void)
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_test_unofficial(g_client, 1);
+  rc_client_set_unofficial_enabled(g_client, 1);
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
@@ -707,7 +707,7 @@ static void test_get_user_game_summary_with_unsupported_and_unofficial(void)
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_test_unofficial(g_client, 1);
+  rc_client_set_unofficial_enabled(g_client, 1);
   mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -1977,7 +1977,7 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
   rc_client_achievement_list_t* list;
 
   g_client = mock_client_logged_in();
-  rc_client_set_test_unofficial(g_client, 1);
+  rc_client_set_unofficial_enabled(g_client, 1);
   mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
@@ -2042,7 +2042,7 @@ static void test_achievement_list_simple_with_unofficial_off(void)
   rc_client_achievement_list_t* list;
 
   g_client = mock_client_logged_in();
-  rc_client_set_test_unofficial(g_client, 0);
+  rc_client_set_unofficial_enabled(g_client, 0);
   mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
@@ -2256,7 +2256,7 @@ static void test_achievement_list_subset_with_unofficial_and_unsupported(void)
   rc_client_achievement_list_t* list;
 
   g_client = mock_client_logged_in();
-  rc_client_set_test_unofficial(g_client, 1);
+  rc_client_set_unofficial_enabled(g_client, 1);
   mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
   mock_client_load_subset(patchdata_subset, no_unlocks, no_unlocks);
 

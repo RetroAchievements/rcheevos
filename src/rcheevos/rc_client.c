@@ -1145,7 +1145,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
   stop = achievement_definitions + num_achievements;
 
   /* if not testing unofficial, filter them out */
-  if (!load_state->client->state.test_unofficial) {
+  if (!load_state->client->state.unofficial_enabled) {
     for (read = achievement_definitions; read < stop; ++read) {
       if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE)
         --num_achievements;
@@ -1173,7 +1173,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
 
   /* copy the achievement data */
   for (read = achievement_definitions; read < stop; ++read) {
-    if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE && !load_state->client->state.test_unofficial)
+    if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE && !load_state->client->state.unofficial_enabled)
       continue;
 
     achievement->public.title = rc_buf_strcpy(buffer, read->title);
@@ -3806,15 +3806,15 @@ int rc_client_get_hardcore_enabled(const rc_client_t* client)
   return client && client->state.hardcore;
 }
 
-void rc_client_set_test_unofficial(rc_client_t* client, int enabled)
+void rc_client_set_unofficial_enabled(rc_client_t* client, int enabled)
 {
   if (client)
-    client->state.test_unofficial = enabled ? 1 : 0;
+    client->state.unofficial_enabled = enabled ? 1 : 0;
 }
 
-int rc_client_get_test_unofficial(const rc_client_t* client)
+int rc_client_get_unofficial_enabled(const rc_client_t* client)
 {
-  return client && client->state.test_unofficial;
+  return client && client->state.unofficial_enabled;
 }
 
 void rc_client_set_encore_mode_enabled(rc_client_t* client, int enabled)

@@ -89,12 +89,12 @@ int rc_client_get_encore_mode_enabled(const rc_client_t* client);
  * Sets whether unofficial achievements should be loaded.
  * Evaluated when loading a game. Has no effect while a game is loaded.
  */
-void rc_client_set_test_unofficial(rc_client_t* client, int enabled);
+void rc_client_set_unofficial_enabled(rc_client_t* client, int enabled);
 
 /**
  * Gets whether unofficial achievements should be loaded.
  */
-int rc_client_get_test_unofficial(const rc_client_t* client);
+int rc_client_get_unofficial_enabled(const rc_client_t* client);
 
 /**
  * Sets whether spectator mode is enabled (off by default).
