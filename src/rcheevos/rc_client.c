@@ -1,5 +1,6 @@
 #include "rc_client_internal.h"
 
+#include "rc_api_info.h"
 #include "rc_api_runtime.h"
 #include "rc_api_user.h"
 #include "rc_consoles.h"
@@ -3153,6 +3154,147 @@ static void rc_client_reset_leaderboards(rc_client_t* client)
   rc_client_subset_info_t* subset;
   for (subset = client->game->subsets; subset; subset = subset->next)
     rc_client_subset_reset_leaderboards(client->game, subset);
+}
+
+typedef struct rc_client_fetch_leaderboard_entries_callback_data_t {
+  rc_client_t* client;
+  rc_client_fetch_leaderboard_entries_callback_t callback;
+  uint32_t leaderboard_id;
+} rc_client_fetch_leaderboard_entries_callback_data_t;
+
+static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_response_t* server_response, void* callback_data)
+{
+  rc_client_fetch_leaderboard_entries_callback_data_t* lbinfo_callback_data = (rc_client_fetch_leaderboard_entries_callback_data_t*)callback_data;
+  rc_client_t* client = lbinfo_callback_data->client;
+  rc_api_fetch_leaderboard_info_response_t lbinfo_response;
+
+  int result = rc_api_process_fetch_leaderboard_info_response(&lbinfo_response, server_response->body);
+  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &lbinfo_response.response);
+  if (error_message) {
+    RC_CLIENT_LOG_ERR_FORMATTED(client, "Fetch leaderboard %u info failed: %s", lbinfo_callback_data->leaderboard_id, error_message);
+    lbinfo_callback_data->callback(result, error_message, NULL, client);
+  }
+  else {
+    rc_client_leaderboard_entry_list_t* list;
+    const size_t list_size = sizeof(*list) + sizeof(rc_client_leaderboard_entry_t) * lbinfo_response.num_entries;
+    size_t needed_size = list_size;
+    unsigned i;
+
+    for (i = 0; i < lbinfo_response.num_entries; i++)
+      needed_size += strlen(lbinfo_response.entries[i].username) + 1;
+
+    list = (rc_client_leaderboard_entry_list_t*)malloc(needed_size);
+    if (!list) {
+      lbinfo_callback_data->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), NULL, client);
+    }
+    else {
+      rc_client_leaderboard_entry_t* entry = list->entries = (rc_client_leaderboard_entry_t*)((uint8_t*)list + sizeof(*list));
+      char* user = (char*)((uint8_t*)list + list_size);
+      const rc_api_lboard_info_entry_t* lbentry = lbinfo_response.entries;
+      const rc_api_lboard_info_entry_t* stop = lbentry + lbinfo_response.num_entries;
+      const size_t logged_in_user_len = strlen(client->user.display_name) + 1;
+      list->user_index = -1;
+
+      for (; lbentry < stop; ++lbentry, ++entry) {
+        const size_t len = strlen(lbentry->username) + 1;
+        entry->user = user;
+        memcpy(user, lbentry->username, len);
+        user += len;
+
+        if (len == logged_in_user_len && memcmp(entry->user, client->user.display_name, len) == 0)
+          list->user_index = (int)(entry - list->entries);
+
+        entry->index = lbentry->index;
+        entry->rank = lbentry->rank;
+        entry->submitted = lbentry->submitted;
+
+        rc_format_value(entry->display, sizeof(entry->display), lbentry->score, lbinfo_response.format);
+      }
+
+      list->num_entries = lbinfo_response.num_entries;
+
+      lbinfo_callback_data->callback(RC_OK, NULL, list, client);
+    }
+  }
+
+  rc_api_destroy_fetch_leaderboard_info_response(&lbinfo_response);
+  free(lbinfo_callback_data);
+}
+
+static void rc_client_begin_fetch_leaderboard_info(rc_client_t* client,
+    const rc_api_fetch_leaderboard_info_request_t* lbinfo_request,
+    rc_client_fetch_leaderboard_entries_callback_t callback)
+{
+  rc_client_fetch_leaderboard_entries_callback_data_t* callback_data;
+  rc_api_request_t request;
+  int result;
+  const char* error_message;
+
+  result = rc_api_init_fetch_leaderboard_info_request(&request, lbinfo_request);
+
+  if (result != RC_OK) {
+    error_message = rc_error_str(result);
+    callback(result, error_message, NULL, client);
+    return;
+  }
+
+  callback_data = (rc_client_fetch_leaderboard_entries_callback_data_t*)malloc(sizeof(*callback_data));
+  if (!callback_data) {
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), NULL, client);
+    return;
+  }
+
+  callback_data->client = client;
+  callback_data->callback = callback;
+  callback_data->leaderboard_id = lbinfo_request->leaderboard_id;
+
+  client->callbacks.server_call(&request, rc_client_fetch_leaderboard_entries_callback, callback_data, client);
+  rc_api_destroy_request(&request);
+}
+
+void rc_client_begin_fetch_leaderboard_entries(rc_client_t* client, uint32_t leaderboard_id,
+    uint32_t first_entry, uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback)
+{
+  rc_api_fetch_leaderboard_info_request_t lbinfo_request;
+
+  memset(&lbinfo_request, 0, sizeof(lbinfo_request));
+  lbinfo_request.leaderboard_id = leaderboard_id;
+  lbinfo_request.first_entry = first_entry;
+  lbinfo_request.count = count;
+
+  rc_client_begin_fetch_leaderboard_info(client, &lbinfo_request, callback);
+}
+
+void rc_client_begin_fetch_leaderboard_entries_around_user(rc_client_t* client, uint32_t leaderboard_id,
+  uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback)
+{
+  rc_api_fetch_leaderboard_info_request_t lbinfo_request;
+
+  memset(&lbinfo_request, 0, sizeof(lbinfo_request));
+  lbinfo_request.leaderboard_id = leaderboard_id;
+  lbinfo_request.username = client->user.username;
+  lbinfo_request.count = count;
+
+  if (!lbinfo_request.username) {
+    callback(RC_LOGIN_REQUIRED, rc_error_str(RC_LOGIN_REQUIRED), NULL, client);
+    return;
+  }
+
+  rc_client_begin_fetch_leaderboard_info(client, &lbinfo_request, callback);
+}
+
+void rc_client_destroy_leaderboard_entry_list(rc_client_leaderboard_entry_list_t* list)
+{
+  if (list)
+    free(list);
+}
+
+int rc_client_leaderboard_entry_get_user_image_url(const rc_client_leaderboard_entry_t* entry, char buffer[], size_t buffer_size)
+{
+  if (!entry)
+    return RC_INVALID_STATE;
+
+  return rc_client_get_image_url(buffer, buffer_size, RC_IMAGE_TYPE_USER, entry->user);
 }
 
 /* ===== Rich Presence ===== */

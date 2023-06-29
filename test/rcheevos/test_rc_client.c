@@ -421,6 +421,7 @@ static rc_client_t* mock_client_not_logged_in(void)
 {
   mock_memory(NULL, 0);
   rc_api_set_host(NULL);
+  reset_mock_api_handlers();
   return rc_client_create(rc_client_read_memory, rc_client_server_call);
 }
 
@@ -441,6 +442,7 @@ static rc_client_t* mock_client_logged_in(void)
   client->state.user = RC_CLIENT_USER_STATE_LOGGED_IN;
 
   rc_client_set_event_handler(client, rc_client_event_handler);
+  reset_mock_api_handlers();
 
   mock_memory(NULL, 0);
   rc_api_set_host(NULL);
@@ -3073,6 +3075,320 @@ static void test_leaderboard_list_subset(void)
   rc_client_destroy(g_client);
 }
 
+static const char* lbinfo_4401_top_10 = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":4401,\"GameID\":1234,"
+    "\"LowerIsBetter\":1,\"LBTitle\":\"Leaderboard1\",\"LBDesc\":\"Desc1\",\"LBFormat\":\"SCORE\","
+    "\"LBMem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"LBAuthor\":null,"
+    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
+    "\"Entries\":["
+      "{\"User\":\"PlayerG\",\"Score\":3524,\"Rank\":1,\"Index\":1,\"DateSubmitted\":1615654895},"
+      "{\"User\":\"PlayerB\",\"Score\":3645,\"Rank\":2,\"Index\":2,\"DateSubmitted\":1615634566},"
+      "{\"User\":\"DisplayName\",\"Score\":3754,\"Rank\":3,\"Index\":3,\"DateSubmitted\":1615234553},"
+      "{\"User\":\"PlayerC\",\"Score\":3811,\"Rank\":4,\"Index\":4,\"DateSubmitted\":1615653844},"
+      "{\"User\":\"PlayerF\",\"Score\":3811,\"Rank\":4,\"Index\":5,\"DateSubmitted\":1615623878},"
+      "{\"User\":\"PlayerA\",\"Score\":3811,\"Rank\":4,\"Index\":6,\"DateSubmitted\":1615653284},"
+      "{\"User\":\"PlayerI\",\"Score\":3902,\"Rank\":7,\"Index\":7,\"DateSubmitted\":1615632174},"
+      "{\"User\":\"PlayerE\",\"Score\":3956,\"Rank\":8,\"Index\":8,\"DateSubmitted\":1616384834},"
+      "{\"User\":\"PlayerD\",\"Score\":3985,\"Rank\":9,\"Index\":9,\"DateSubmitted\":1615238383},"
+      "{\"User\":\"PlayerH\",\"Score\":4012,\"Rank\":10,\"Index\":10,\"DateSubmitted\":1615638984}"
+    "]"
+  "}}";
+
+static const char* lbinfo_4401_top_10_no_user = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":4401,\"GameID\":1234,"
+    "\"LowerIsBetter\":1,\"LBTitle\":\"Leaderboard1\",\"LBDesc\":\"Desc1\",\"LBFormat\":\"SCORE\","
+    "\"LBMem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"LBAuthor\":null,"
+    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
+    "\"Entries\":["
+      "{\"User\":\"PlayerG\",\"Score\":3524,\"Rank\":1,\"Index\":1,\"DateSubmitted\":1615654895},"
+      "{\"User\":\"PlayerB\",\"Score\":3645,\"Rank\":2,\"Index\":2,\"DateSubmitted\":1615634566},"
+      "{\"User\":\"PlayerJ\",\"Score\":3754,\"Rank\":3,\"Index\":3,\"DateSubmitted\":1615234553},"
+      "{\"User\":\"PlayerC\",\"Score\":3811,\"Rank\":4,\"Index\":4,\"DateSubmitted\":1615653844},"
+      "{\"User\":\"PlayerF\",\"Score\":3811,\"Rank\":4,\"Index\":5,\"DateSubmitted\":1615623878},"
+      "{\"User\":\"PlayerA\",\"Score\":3811,\"Rank\":4,\"Index\":6,\"DateSubmitted\":1615653284},"
+      "{\"User\":\"PlayerI\",\"Score\":3902,\"Rank\":7,\"Index\":7,\"DateSubmitted\":1615632174},"
+      "{\"User\":\"PlayerE\",\"Score\":3956,\"Rank\":8,\"Index\":8,\"DateSubmitted\":1616384834},"
+      "{\"User\":\"PlayerD\",\"Score\":3985,\"Rank\":9,\"Index\":9,\"DateSubmitted\":1615238383},"
+      "{\"User\":\"PlayerH\",\"Score\":4012,\"Rank\":10,\"Index\":10,\"DateSubmitted\":1615638984}"
+    "]"
+  "}}";
+
+static const char* lbinfo_4401_near_user = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":4401,\"GameID\":1234,"
+    "\"LowerIsBetter\":1,\"LBTitle\":\"Leaderboard1\",\"LBDesc\":\"Desc1\",\"LBFormat\":\"SCORE\","
+    "\"LBMem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"LBAuthor\":null,"
+    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
+    "\"Entries\":["
+      "{\"User\":\"PlayerG\",\"Score\":3524,\"Rank\":17,\"Index\":17,\"DateSubmitted\":1615654895},"
+      "{\"User\":\"PlayerB\",\"Score\":3645,\"Rank\":18,\"Index\":18,\"DateSubmitted\":1615634566},"
+      "{\"User\":\"PlayerC\",\"Score\":3811,\"Rank\":19,\"Index\":19,\"DateSubmitted\":1615653844},"
+      "{\"User\":\"PlayerF\",\"Score\":3811,\"Rank\":19,\"Index\":20,\"DateSubmitted\":1615623878},"
+      "{\"User\":\"DisplayName\",\"Score\":3811,\"Rank\":19,\"Index\":21,\"DateSubmitted\":1615234553},"
+      "{\"User\":\"PlayerA\",\"Score\":3811,\"Rank\":19,\"Index\":22,\"DateSubmitted\":1615653284},"
+      "{\"User\":\"PlayerI\",\"Score\":3902,\"Rank\":23,\"Index\":23,\"DateSubmitted\":1615632174},"
+      "{\"User\":\"PlayerE\",\"Score\":3956,\"Rank\":24,\"Index\":24,\"DateSubmitted\":1616384834},"
+      "{\"User\":\"PlayerD\",\"Score\":3985,\"Rank\":25,\"Index\":25,\"DateSubmitted\":1615238383},"
+      "{\"User\":\"PlayerH\",\"Score\":4012,\"Rank\":26,\"Index\":26,\"DateSubmitted\":1615638984}"
+    "]"
+  "}}";
+
+static rc_client_leaderboard_entry_list_t* g_leaderboard_entries = NULL;
+static void rc_client_callback_expect_leaderboard_entry_list(int result, const char* error_message, rc_client_leaderboard_entry_list_t* list, rc_client_t* client)
+{
+  ASSERT_NUM_EQUALS(result, RC_OK);
+  ASSERT_PTR_NULL(error_message);
+  ASSERT_PTR_EQUALS(client, g_client);
+
+  ASSERT_PTR_NOT_NULL(list);
+  g_leaderboard_entries = list;
+}
+
+static void test_fetch_leaderboard_entries(void)
+{
+  rc_client_leaderboard_entry_t* entry;
+  char url[256];
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_leaderboard_entries = NULL;
+
+  mock_api_response("r=lbinfo&i=4401&c=10", lbinfo_4401_top_10);
+
+  rc_client_begin_fetch_leaderboard_entries(g_client, 4401, 1, 10, rc_client_callback_expect_leaderboard_entry_list);
+  ASSERT_PTR_NOT_NULL(g_leaderboard_entries);
+
+  ASSERT_NUM_EQUALS(g_leaderboard_entries->num_entries, 10);
+
+  entry = g_leaderboard_entries->entries;
+  ASSERT_STR_EQUALS(entry->user, "PlayerG");
+  ASSERT_STR_EQUALS(entry->display, "003524");
+  ASSERT_NUM_EQUALS(entry->index, 1);
+  ASSERT_NUM_EQUALS(entry->rank, 1);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615654895);
+
+  ASSERT_NUM_EQUALS(rc_client_leaderboard_entry_get_user_image_url(entry, url, sizeof(url)), RC_OK);
+  ASSERT_STR_EQUALS(url, "https://media.retroachievements.org/UserPic/PlayerG.png");
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerB");
+  ASSERT_STR_EQUALS(entry->display, "003645");
+  ASSERT_NUM_EQUALS(entry->index, 2);
+  ASSERT_NUM_EQUALS(entry->rank, 2);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615634566);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "DisplayName");
+  ASSERT_STR_EQUALS(entry->display, "003754");
+  ASSERT_NUM_EQUALS(entry->index, 3);
+  ASSERT_NUM_EQUALS(entry->rank, 3);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615234553);
+
+  ASSERT_NUM_EQUALS(rc_client_leaderboard_entry_get_user_image_url(entry, url, sizeof(url)), RC_OK);
+  ASSERT_STR_EQUALS(url, "https://media.retroachievements.org/UserPic/DisplayName.png");
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerC");
+  ASSERT_STR_EQUALS(entry->display, "003811");
+  ASSERT_NUM_EQUALS(entry->index, 4);
+  ASSERT_NUM_EQUALS(entry->rank, 4);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615653844);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerF");
+  ASSERT_STR_EQUALS(entry->display, "003811");
+  ASSERT_NUM_EQUALS(entry->index, 5);
+  ASSERT_NUM_EQUALS(entry->rank, 4);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615623878);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerA");
+  ASSERT_STR_EQUALS(entry->display, "003811");
+  ASSERT_NUM_EQUALS(entry->index, 6);
+  ASSERT_NUM_EQUALS(entry->rank, 4);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615653284);
+
+  ASSERT_NUM_EQUALS(rc_client_leaderboard_entry_get_user_image_url(entry, url, sizeof(url)), RC_OK);
+  ASSERT_STR_EQUALS(url, "https://media.retroachievements.org/UserPic/PlayerA.png");
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerI");
+  ASSERT_STR_EQUALS(entry->display, "003902");
+  ASSERT_NUM_EQUALS(entry->index, 7);
+  ASSERT_NUM_EQUALS(entry->rank, 7);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615632174);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerE");
+  ASSERT_STR_EQUALS(entry->display, "003956");
+  ASSERT_NUM_EQUALS(entry->index, 8);
+  ASSERT_NUM_EQUALS(entry->rank, 8);
+  ASSERT_NUM_EQUALS(entry->submitted, 1616384834);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerD");
+  ASSERT_STR_EQUALS(entry->display, "003985");
+  ASSERT_NUM_EQUALS(entry->index, 9);
+  ASSERT_NUM_EQUALS(entry->rank, 9);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615238383);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerH");
+  ASSERT_STR_EQUALS(entry->display, "004012");
+  ASSERT_NUM_EQUALS(entry->index, 10);
+  ASSERT_NUM_EQUALS(entry->rank, 10);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615638984);
+
+  ASSERT_NUM_EQUALS(g_leaderboard_entries->user_index, 2);
+
+  rc_client_destroy_leaderboard_entry_list(g_leaderboard_entries);
+}
+
+static void test_fetch_leaderboard_entries_no_user(void)
+{
+  rc_client_leaderboard_entry_t* entry;
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_leaderboard_entries = NULL;
+
+  mock_api_response("r=lbinfo&i=4401&c=10", lbinfo_4401_top_10_no_user);
+
+  rc_client_begin_fetch_leaderboard_entries(g_client, 4401, 1, 10, rc_client_callback_expect_leaderboard_entry_list);
+  ASSERT_PTR_NOT_NULL(g_leaderboard_entries);
+
+  ASSERT_NUM_EQUALS(g_leaderboard_entries->num_entries, 10);
+
+  entry = g_leaderboard_entries->entries;
+  ASSERT_STR_EQUALS(entry->user, "PlayerG");
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerB");
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerJ");
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerC");
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerF");
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerA");
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerI");
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerE");
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerD");
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerH");
+
+  ASSERT_NUM_EQUALS(g_leaderboard_entries->user_index, -1);
+
+  rc_client_destroy_leaderboard_entry_list(g_leaderboard_entries);
+}
+
+static void test_fetch_leaderboard_entries_around_user(void)
+{
+  rc_client_leaderboard_entry_t* entry;
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_leaderboard_entries = NULL;
+
+  mock_api_response("r=lbinfo&i=4401&u=Username&c=10", lbinfo_4401_near_user);
+
+  rc_client_begin_fetch_leaderboard_entries_around_user(g_client, 4401, 10, rc_client_callback_expect_leaderboard_entry_list);
+  ASSERT_PTR_NOT_NULL(g_leaderboard_entries);
+
+  ASSERT_NUM_EQUALS(g_leaderboard_entries->num_entries, 10);
+
+  entry = g_leaderboard_entries->entries;
+  ASSERT_STR_EQUALS(entry->user, "PlayerG");
+  ASSERT_STR_EQUALS(entry->display, "003524");
+  ASSERT_NUM_EQUALS(entry->index, 17);
+  ASSERT_NUM_EQUALS(entry->rank, 17);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615654895);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerB");
+  ASSERT_STR_EQUALS(entry->display, "003645");
+  ASSERT_NUM_EQUALS(entry->index, 18);
+  ASSERT_NUM_EQUALS(entry->rank, 18);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615634566);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerC");
+  ASSERT_STR_EQUALS(entry->display, "003811");
+  ASSERT_NUM_EQUALS(entry->index, 19);
+  ASSERT_NUM_EQUALS(entry->rank, 19);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615653844);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerF");
+  ASSERT_STR_EQUALS(entry->display, "003811");
+  ASSERT_NUM_EQUALS(entry->index, 20);
+  ASSERT_NUM_EQUALS(entry->rank, 19);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615623878);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "DisplayName");
+  ASSERT_STR_EQUALS(entry->display, "003811");
+  ASSERT_NUM_EQUALS(entry->index, 21);
+  ASSERT_NUM_EQUALS(entry->rank, 19);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615234553);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerA");
+  ASSERT_STR_EQUALS(entry->display, "003811");
+  ASSERT_NUM_EQUALS(entry->index, 22);
+  ASSERT_NUM_EQUALS(entry->rank, 19);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615653284);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerI");
+  ASSERT_STR_EQUALS(entry->display, "003902");
+  ASSERT_NUM_EQUALS(entry->index, 23);
+  ASSERT_NUM_EQUALS(entry->rank, 23);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615632174);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerE");
+  ASSERT_STR_EQUALS(entry->display, "003956");
+  ASSERT_NUM_EQUALS(entry->index, 24);
+  ASSERT_NUM_EQUALS(entry->rank, 24);
+  ASSERT_NUM_EQUALS(entry->submitted, 1616384834);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerD");
+  ASSERT_STR_EQUALS(entry->display, "003985");
+  ASSERT_NUM_EQUALS(entry->index, 25);
+  ASSERT_NUM_EQUALS(entry->rank, 25);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615238383);
+
+  ++entry;
+  ASSERT_STR_EQUALS(entry->user, "PlayerH");
+  ASSERT_STR_EQUALS(entry->display, "004012");
+  ASSERT_NUM_EQUALS(entry->index, 26);
+  ASSERT_NUM_EQUALS(entry->rank, 26);
+  ASSERT_NUM_EQUALS(entry->submitted, 1615638984);
+
+  ASSERT_NUM_EQUALS(g_leaderboard_entries->user_index, 4);
+
+  rc_client_destroy_leaderboard_entry_list(g_leaderboard_entries);
+}
+
+static void rc_client_callback_expect_leaderboard_entry_list_login_required(int result, const char* error_message, rc_client_leaderboard_entry_list_t* list, rc_client_t* client)
+{
+  ASSERT_NUM_EQUALS(result, RC_LOGIN_REQUIRED);
+  ASSERT_STR_EQUALS(error_message, "Login required");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_NULL(list);
+}
+
+static void test_fetch_leaderboard_entries_around_user_not_logged_in(void)
+{
+  g_client = mock_client_not_logged_in();
+  g_leaderboard_entries = NULL;
+
+  mock_api_response("r=lbinfo&i=4401&u=Username&c=10", lbinfo_4401_near_user);
+
+  rc_client_begin_fetch_leaderboard_entries_around_user(g_client, 4401, 10, rc_client_callback_expect_leaderboard_entry_list_login_required);
+  ASSERT_PTR_NULL(g_leaderboard_entries);
+
+  assert_api_not_called("r=lbinfo&i=4401&u=Username&c=10");
+}
+
 /* ----- do frame ----- */
 
 static void test_do_frame_bounds_check_system(void)
@@ -5375,6 +5691,11 @@ void test_client(void) {
   TEST(test_leaderboard_list_buckets);
   TEST(test_leaderboard_list_buckets_with_unsupported);
   TEST(test_leaderboard_list_subset);
+
+  TEST(test_fetch_leaderboard_entries);
+  TEST(test_fetch_leaderboard_entries_no_user);
+  TEST(test_fetch_leaderboard_entries_around_user);
+  TEST(test_fetch_leaderboard_entries_around_user_not_logged_in);
 
   /* do frame */
   TEST(test_do_frame_bounds_check_system);

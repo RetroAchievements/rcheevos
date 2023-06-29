@@ -372,6 +372,11 @@ typedef struct rc_client_leaderboard_t {
  */
 const rc_client_leaderboard_t* rc_client_get_leaderboard_info(const rc_client_t* client, uint32_t id);
 
+typedef struct rc_client_leaderboard_tracker_t {
+  char display[24];
+  uint32_t id;
+} rc_client_leaderboard_tracker_t;
+
 typedef struct rc_client_leaderboard_bucket_t {
   rc_client_leaderboard_t** leaderboards;
   uint32_t num_leaderboards;
@@ -410,10 +415,46 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
  */
 void rc_client_destroy_leaderboard_list(rc_client_leaderboard_list_t* list);
 
-typedef struct rc_client_leaderboard_tracker_t {
+typedef struct rc_client_leaderboard_entry_t {
+  const char* user;
   char display[24];
-  uint32_t id;
-} rc_client_leaderboard_tracker_t;
+  time_t submitted;
+  uint32_t rank;
+  uint32_t index;
+} rc_client_leaderboard_entry_t;
+
+typedef struct rc_client_leaderboard_entry_list_t {
+  rc_client_leaderboard_entry_t* entries;
+  uint32_t num_entries;
+  int32_t user_index;
+} rc_client_leaderboard_entry_list_t;
+
+typedef void (*rc_client_fetch_leaderboard_entries_callback_t)(int result, const char* error_message, rc_client_leaderboard_entry_list_t* list, rc_client_t* client);
+
+/**
+ * Fetches a list of leaderboard entries from the server.
+ * Callback receives an allocated list that must be free'd by calling rc_client_destroy_leaderboard_entry_list.
+ */
+void rc_client_begin_fetch_leaderboard_entries(rc_client_t* client, uint32_t leaderboard_id,
+    uint32_t first_entry, uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback);
+
+/**
+ * Fetches a list of leaderboard entries from the server containing the logged-in user.
+ * Callback receives an allocated list that must be free'd by calling rc_client_destroy_leaderboard_entry_list.
+ */
+void rc_client_begin_fetch_leaderboard_entries_around_user(rc_client_t* client, uint32_t leaderboard_id,
+    uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback);
+
+/**
+ * Gets the URL for the profile picture of the user associated to a leaderboard entry.
+ * Returns RC_OK on success.
+ */
+int rc_client_leaderboard_entry_get_user_image_url(const rc_client_leaderboard_entry_t* entry, char buffer[], size_t buffer_size);
+
+/**
+ * Destroys a list allocated by rc_client_begin_fetch_leaderboard_entries or rc_client_begin_fetch_leaderboard_entries_around_user.
+ */
+void rc_client_destroy_leaderboard_entry_list(rc_client_leaderboard_entry_list_t* list);
 
 /*****************************************************************************\
 | Rich Presence                                                               |
