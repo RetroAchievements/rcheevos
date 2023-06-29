@@ -248,15 +248,15 @@ static int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_
 
 /* ===== User ===== */
 
-static void rc_client_login_callback(const char* server_response_body, int http_status_code, void* callback_data)
+static void rc_client_login_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_generic_callback_data_t* login_callback_data = (rc_client_generic_callback_data_t*)callback_data;
   rc_client_t* client = login_callback_data->client;
   rc_api_login_response_t login_response;
   rc_client_load_state_t* load_state;
 
-  int result = rc_api_process_login_response(&login_response, server_response_body);
-  const char* error_message = rc_client_server_error_message(&result, http_status_code, &login_response.response);
+  int result = rc_api_process_login_response(&login_response, server_response->body);
+  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &login_response.response);
   if (error_message) {
     rc_mutex_lock(&client->state.mutex);
     client->state.user = RC_CLIENT_USER_STATE_NONE;
@@ -995,13 +995,13 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
   rc_client_free_load_state(load_state);
 }
 
-static void rc_client_start_session_callback(const char* server_response_body, int http_status_code, void* callback_data)
+static void rc_client_start_session_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
   rc_api_start_session_response_t start_session_response;
 
-  int result = rc_api_process_start_session_response(&start_session_response, server_response_body);
-  const char* error_message = rc_client_server_error_message(&result, http_status_code, &start_session_response.response);
+  int result = rc_api_process_start_session_response(&start_session_response, server_response->body);
+  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &start_session_response.response);
 
   int outstanding_requests = rc_client_end_load_state(load_state);
   if (error_message) {
@@ -1018,13 +1018,13 @@ static void rc_client_start_session_callback(const char* server_response_body, i
   rc_api_destroy_start_session_response(&start_session_response);
 }
 
-static void rc_client_unlocks_callback(const char* server_response_body, int http_status_code, void* callback_data, int mode)
+static void rc_client_unlocks_callback(const rc_api_server_response_t* server_response, void* callback_data, int mode)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
   rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
 
-  int result = rc_api_process_fetch_user_unlocks_response(&fetch_user_unlocks_response, server_response_body);
-  const char* error_message = rc_client_server_error_message(&result, http_status_code, &fetch_user_unlocks_response.response);
+  int result = rc_api_process_fetch_user_unlocks_response(&fetch_user_unlocks_response, server_response->body);
+  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &fetch_user_unlocks_response.response);
 
   int outstanding_requests = rc_client_end_load_state(load_state);
   if (error_message) {
@@ -1056,14 +1056,14 @@ static void rc_client_unlocks_callback(const char* server_response_body, int htt
   rc_api_destroy_fetch_user_unlocks_response(&fetch_user_unlocks_response);
 }
 
-static void rc_client_hardcore_unlocks_callback(const char* server_response_body, int http_status_code, void* callback_data)
+static void rc_client_hardcore_unlocks_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
-  rc_client_unlocks_callback(server_response_body, http_status_code, callback_data, RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE);
+  rc_client_unlocks_callback(server_response, callback_data, RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE);
 }
 
-static void rc_client_softcore_unlocks_callback(const char* server_response_body, int http_status_code, void* callback_data)
+static void rc_client_softcore_unlocks_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
-  rc_client_unlocks_callback(server_response_body, http_status_code, callback_data, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+  rc_client_unlocks_callback(server_response, callback_data, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
 }
 
 static void rc_client_begin_start_session(rc_client_load_state_t* load_state)
@@ -1329,13 +1329,13 @@ static const char* rc_client_subset_extract_title(rc_client_game_info_t* game, c
   return NULL;
 }
 
-static void rc_client_fetch_game_data_callback(const char* server_response_body, int http_status_code, void* callback_data)
+static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
   rc_api_fetch_game_data_response_t fetch_game_data_response;
 
-  int result = rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response_body);
-  const char* error_message = rc_client_server_error_message(&result, http_status_code, &fetch_game_data_response.response);
+  int result = rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response->body);
+  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &fetch_game_data_response.response);
 
   int outstanding_requests = rc_client_end_load_state(load_state);
 
@@ -1530,14 +1530,14 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   rc_api_destroy_request(&request);
 }
 
-static void rc_client_identify_game_callback(const char* server_response_body, int http_status_code, void* callback_data)
+static void rc_client_identify_game_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
   rc_client_t* client = load_state->client;
   rc_api_resolve_hash_response_t resolve_hash_response;
 
-  int result = rc_api_process_resolve_hash_response(&resolve_hash_response, server_response_body);
-  const char* error_message = rc_client_server_error_message(&result, http_status_code, &resolve_hash_response.response);
+  int result = rc_api_process_resolve_hash_response(&resolve_hash_response, server_response->body);
+  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &resolve_hash_response.response);
   int outstanding_requests;
 
   if (error_message) {
@@ -1821,14 +1821,14 @@ static void rc_client_change_media(rc_client_t* client, const rc_client_game_has
   callback(RC_OK, NULL, client);
 }
 
-static void rc_client_identify_changed_media_callback(const char* server_response_body, int http_status_code, void* callback_data)
+static void rc_client_identify_changed_media_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
   rc_client_t* client = load_state->client;
   rc_api_resolve_hash_response_t resolve_hash_response;
 
-  int result = rc_api_process_resolve_hash_response(&resolve_hash_response, server_response_body);
-  const char* error_message = rc_client_server_error_message(&result, http_status_code, &resolve_hash_response.response);
+  int result = rc_api_process_resolve_hash_response(&resolve_hash_response, server_response->body);
+  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &resolve_hash_response.response);
 
   if (client->game != load_state->game) {
     /* loaded game changed. return success regardless of result */
@@ -2452,14 +2452,14 @@ static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_
   rc_client_award_achievement_server_call(ach_data);
 }
 
-static void rc_client_award_achievement_callback(const char* server_response_body, int http_status_code, void* callback_data)
+static void rc_client_award_achievement_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_award_achievement_callback_data_t* ach_data =
       (rc_client_award_achievement_callback_data_t*)callback_data;
   rc_api_award_achievement_response_t award_achievement_response;
 
-  int result = rc_api_process_award_achievement_response(&award_achievement_response, server_response_body);
-  const char* error_message = rc_client_server_error_message(&result, http_status_code, &award_achievement_response.response);
+  int result = rc_api_process_award_achievement_response(&award_achievement_response, server_response->body);
+  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &award_achievement_response.response);
 
   if (error_message) {
     if (award_achievement_response.response.error_message) {
@@ -3009,14 +3009,14 @@ static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callbac
   rc_client_submit_leaderboard_entry_server_call(lboard_data);
 }
 
-static void rc_client_submit_leaderboard_entry_callback(const char* server_response_body, int http_status_code, void* callback_data)
+static void rc_client_submit_leaderboard_entry_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_submit_leaderboard_entry_callback_data_t* lboard_data =
       (rc_client_submit_leaderboard_entry_callback_data_t*)callback_data;
   rc_api_submit_lboard_entry_response_t submit_lboard_entry_response;
 
-  int result = rc_api_process_submit_lboard_entry_response(&submit_lboard_entry_response, server_response_body);
-  const char* error_message = rc_client_server_error_message(&result, http_status_code, &submit_lboard_entry_response.response);
+  int result = rc_api_process_submit_lboard_entry_response(&submit_lboard_entry_response, server_response->body);
+  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &submit_lboard_entry_response.response);
 
   if (error_message) {
     if (submit_lboard_entry_response.response.error_message) {
@@ -3157,13 +3157,13 @@ static void rc_client_reset_leaderboards(rc_client_t* client)
 
 /* ===== Rich Presence ===== */
 
-static void rc_client_ping_callback(const char* server_response_body, int http_status_code, void* callback_data)
+static void rc_client_ping_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_t* client = (rc_client_t*)callback_data;
   rc_api_ping_response_t response;
 
-  int result = rc_api_process_ping_response(&response, server_response_body);
-  const char* error_message = rc_client_server_error_message(&result, http_status_code, &response.response);
+  int result = rc_api_process_ping_response(&response, server_response->body);
+  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &response.response);
   if (error_message) {
     RC_CLIENT_LOG_WARN_FORMATTED(client, "Ping response error: %s", error_message);
   }

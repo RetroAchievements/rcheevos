@@ -294,8 +294,7 @@ static uint32_t rc_client_read_memory(uint32_t address, uint8_t* buffer, uint32_
 typedef struct rc_mock_api_response
 {
   const char* request_params;
-  const char* response_body;
-  int http_status_code;
+  rc_api_server_response_t server_response;
   int seen;
   rc_client_server_callback_t async_callback;
   void* async_callback_data;
@@ -306,11 +305,13 @@ static int g_num_mock_api_responses = 0;
 
 static void rc_client_server_call(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client)
 {
+  rc_api_server_response_t server_response;
+
   int i;
   for (i = 0; i < g_num_mock_api_responses; i++) {
     if (strcmp(g_mock_api_responses[i].request_params, request->post_data) == 0) {
       g_mock_api_responses[i].seen++;
-      callback(g_mock_api_responses[i].response_body, g_mock_api_responses[i].http_status_code, callback_data);
+      callback(&g_mock_api_responses[i].server_response, callback_data);
       return;
     }
   }
@@ -318,7 +319,10 @@ static void rc_client_server_call(const rc_api_request_t* request, rc_client_ser
   ASSERT_FAIL("No API response for: %s", request->post_data);
 
   /* still call the callback to prevent memory leak */
-  callback("", 500, callback_data);
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = "";
+  server_response.http_status_code = 500;
+  callback(&server_response, callback_data);
 }
 
 static void rc_client_server_call_async(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client)
@@ -338,7 +342,10 @@ static void _async_api_response(const char* request_params, const char* response
     if (g_mock_api_responses[i].request_params && strcmp(g_mock_api_responses[i].request_params, request_params) == 0)
     {
       g_mock_api_responses[i].seen++;
-      g_mock_api_responses[i].async_callback(response_body, http_status_code, g_mock_api_responses[i].async_callback_data);
+      g_mock_api_responses[i].server_response.body = response_body;
+      g_mock_api_responses[i].server_response.body_length = strlen(response_body);
+      g_mock_api_responses[i].server_response.http_status_code = http_status_code;
+      g_mock_api_responses[i].async_callback(&g_mock_api_responses[i].server_response, g_mock_api_responses[i].async_callback_data);
       free((void*)g_mock_api_responses[i].request_params);
       g_mock_api_responses[i].request_params = NULL;
 
@@ -388,16 +395,18 @@ static void reset_mock_api_handlers(void)
 static void mock_api_response(const char* request_params, const char* response_body)
 {
   g_mock_api_responses[g_num_mock_api_responses].request_params = request_params;
-  g_mock_api_responses[g_num_mock_api_responses].response_body = response_body;
-  g_mock_api_responses[g_num_mock_api_responses].http_status_code = 200;
+  g_mock_api_responses[g_num_mock_api_responses].server_response.body = response_body;
+  g_mock_api_responses[g_num_mock_api_responses].server_response.body_length = strlen(response_body);
+  g_mock_api_responses[g_num_mock_api_responses].server_response.http_status_code = 200;
   g_num_mock_api_responses++;
 }
 
 static void mock_api_error(const char* request_params, const char* response_body, int http_status_code)
 {
   g_mock_api_responses[g_num_mock_api_responses].request_params = request_params;
-  g_mock_api_responses[g_num_mock_api_responses].response_body = response_body;
-  g_mock_api_responses[g_num_mock_api_responses].http_status_code = http_status_code;
+  g_mock_api_responses[g_num_mock_api_responses].server_response.body = response_body;
+  g_mock_api_responses[g_num_mock_api_responses].server_response.body_length = strlen(response_body);
+  g_mock_api_responses[g_num_mock_api_responses].server_response.http_status_code = http_status_code;
   g_num_mock_api_responses++;
 }
 

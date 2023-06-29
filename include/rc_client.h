@@ -28,7 +28,7 @@ typedef uint32_t (*rc_client_read_memory_func_t)(uint32_t address, uint8_t* buff
 /**
  * Internal method passed to rc_client_server_call_t to process the server response.
  */
-typedef void (*rc_client_server_callback_t)(const char* server_response_body, int http_status_code, void* callback_data);
+typedef void (*rc_client_server_callback_t)(const rc_api_server_response_t* server_response, void* callback_data);
 
 /**
  * Callback used to issue a request to the server.
