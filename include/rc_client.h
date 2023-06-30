@@ -14,6 +14,7 @@ extern "C" {
 
 /* implementation abstracted in rc_client_internal.h */
 typedef struct rc_client_t rc_client_t;
+typedef struct rc_client_async_handle_t rc_client_async_handle_t;
 
 /*****************************************************************************\
 | Callbacks                                                                   |
@@ -44,6 +45,11 @@ typedef void (*rc_client_callback_t)(int result, const char* error_message, rc_c
  * Callback for logging or displaying a message.
  */
 typedef void (*rc_client_message_callback_t)(const char* message, const rc_client_t* client);
+
+/**
+ * Marks an async process as aborted. The associated callback will not be called.
+ */
+void rc_client_abort_async(rc_client_t* client, rc_client_async_handle_t* async_handle);
 
 /*****************************************************************************\
 | Runtime                                                                     |
@@ -148,13 +154,15 @@ enum
 /**
  * Attempt to login a user.
  */
-void rc_client_begin_login_with_password(rc_client_t* client, const char* username, const char* password,
+rc_client_async_handle_t* rc_client_begin_login_with_password(rc_client_t* client,
+    const char* username, const char* password,
     rc_client_callback_t callback, void* callback_userdata);
 
 /**
  * Attempt to login a user.
  */
-void rc_client_begin_login_with_token(rc_client_t* client, const char* username, const char* token,
+rc_client_async_handle_t* rc_client_begin_login_with_token(rc_client_t* client,
+    const char* username, const char* token,
     rc_client_callback_t callback, void* callback_userdata);
 
 typedef struct rc_client_user_t {
@@ -201,7 +209,7 @@ void rc_client_get_user_game_summary(const rc_client_t* client, rc_client_user_g
 /**
  * Start loading an unidentified game.
  */
-void rc_client_begin_identify_and_load_game(rc_client_t* client,
+rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* client,
     uint32_t console_id, const char* file_path,
     const uint8_t* data, size_t data_size,
     rc_client_callback_t callback, void* callback_userdata);
@@ -209,7 +217,7 @@ void rc_client_begin_identify_and_load_game(rc_client_t* client,
 /**
  * Start loading a game.
  */
-void rc_client_begin_load_game(rc_client_t* client, const char* hash,
+rc_client_async_handle_t* rc_client_begin_load_game(rc_client_t* client, const char* hash,
     rc_client_callback_t callback, void* callback_userdata);
 
 /**
@@ -239,7 +247,7 @@ int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], si
 /**
  * Changes the active disc in a multi-disc game.
  */
-void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
+rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, const char* file_path,
     const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata);
 
 /*****************************************************************************\
@@ -438,14 +446,14 @@ typedef void (*rc_client_fetch_leaderboard_entries_callback_t)(int result, const
  * Fetches a list of leaderboard entries from the server.
  * Callback receives an allocated list that must be free'd by calling rc_client_destroy_leaderboard_entry_list.
  */
-void rc_client_begin_fetch_leaderboard_entries(rc_client_t* client, uint32_t leaderboard_id,
+rc_client_async_handle_t* rc_client_begin_fetch_leaderboard_entries(rc_client_t* client, uint32_t leaderboard_id,
     uint32_t first_entry, uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback, void* callback_userdata);
 
 /**
  * Fetches a list of leaderboard entries from the server containing the logged-in user.
  * Callback receives an allocated list that must be free'd by calling rc_client_destroy_leaderboard_entry_list.
  */
-void rc_client_begin_fetch_leaderboard_entries_around_user(rc_client_t* client, uint32_t leaderboard_id,
+rc_client_async_handle_t* rc_client_begin_fetch_leaderboard_entries_around_user(rc_client_t* client, uint32_t leaderboard_id,
     uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback, void* callback_userdata);
 
 /**

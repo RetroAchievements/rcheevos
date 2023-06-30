@@ -419,6 +419,11 @@ static void rc_client_callback_expect_success(int result, const char* error_mess
   ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
+static void rc_client_callback_expect_uncalled(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_FAIL("Callback should not have been called.");
+}
+
 static rc_client_t* mock_client_not_logged_in(void)
 {
   mock_memory(NULL, 0);
@@ -637,6 +642,31 @@ static void test_login_with_password_async(void)
   ASSERT_STR_EQUALS(user->token, "ApiToken");
   ASSERT_NUM_EQUALS(user->score, 12345);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_login_with_password_async_aborted(void)
+{
+  const rc_client_user_t* user;
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_not_logged_in_async();
+  reset_mock_api_handlers();
+
+  handle = rc_client_begin_login_with_password(g_client, "User", "Pa$$word",
+      rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  user = rc_client_get_user_info(g_client);
+  ASSERT_PTR_NULL(user);
+
+  rc_client_abort_async(g_client, handle);
+
+  async_api_response("r=login&u=User&p=Pa%24%24word",
+    "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
+
+  user = rc_client_get_user_info(g_client);
+  ASSERT_PTR_NULL(user);
 
   rc_client_destroy(g_client);
 }
@@ -1045,6 +1075,135 @@ static void test_load_game_hardcore_unlocks_failure(void)
   mock_api_error("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", response_429, 429);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_game_gameid_aborted(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
+    rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  rc_client_abort_async(g_client, handle);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_game_patch_aborted(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
+    rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+
+  rc_client_abort_async(g_client, handle);
+
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  assert_api_not_called("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_game_postactivity_aborted(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
+    rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+
+  rc_client_abort_async(g_client, handle);
+
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_game_softcore_unlocks_aborted(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
+    rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+
+  rc_client_abort_async(g_client, handle);
+
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_game_hardcore_unlocks_aborted(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
+    rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
+
+  rc_client_abort_async(g_client, handle);
+
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -1716,6 +1875,52 @@ static void test_change_media_while_loading_later(void)
     ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
     ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
   }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_change_media_aborted(void)
+{
+  rc_client_async_handle_t* handle;
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  /* changing known discs within a game set is expected to succeed */
+  handle = rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+    rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  rc_client_abort_async(g_client, handle);
+
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF"); /* old hash retained */
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+  }
+
+  /* hash should still have been captured and lookup should succeed without having to call server again */
+  reset_mock_api_handlers();
+
+  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+    rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+  assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   rc_client_destroy(g_client);
   free(image);
@@ -3425,6 +3630,32 @@ static void test_fetch_leaderboard_entries_around_user_not_logged_in(void)
   ASSERT_PTR_NULL(g_leaderboard_entries);
 
   assert_api_not_called("r=lbinfo&i=4401&u=Username&c=10");
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_callback_expect_leaderboard_uncalled(int result, const char* error_message,
+  rc_client_leaderboard_entry_list_t* list, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_FAIL("Callback should not have been called.")
+}
+
+static void test_fetch_leaderboard_entries_aborted(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  g_leaderboard_entries = NULL;
+
+  handle = rc_client_begin_fetch_leaderboard_entries(g_client, 4401, 1, 10,
+    rc_client_callback_expect_leaderboard_uncalled, g_callback_userdata);
+
+  rc_client_abort_async(g_client, handle);
+
+  async_api_response("r=lbinfo&i=4401&c=10", lbinfo_4401_top_10);
+  ASSERT_PTR_NULL(g_leaderboard_entries);
 
   rc_client_destroy(g_client);
 }
@@ -5663,6 +5894,7 @@ void test_client(void) {
   TEST(test_login_with_incorrect_password);
   TEST(test_login_incomplete_response);
   TEST(test_login_with_password_async);
+  TEST(test_login_with_password_async_aborted);
 
   /* user */
   TEST(test_user_get_image_url);
@@ -5684,6 +5916,11 @@ void test_client(void) {
   TEST(test_load_game_postactivity_failure);
   TEST(test_load_game_softcore_unlocks_failure);
   TEST(test_load_game_hardcore_unlocks_failure);
+  TEST(test_load_game_gameid_aborted);
+  TEST(test_load_game_patch_aborted);
+  TEST(test_load_game_postactivity_aborted);
+  TEST(test_load_game_softcore_unlocks_aborted);
+  TEST(test_load_game_hardcore_unlocks_aborted);
   TEST(test_load_game_while_spectating);
 
   TEST(test_identify_and_load_game_required_fields);
@@ -5703,6 +5940,7 @@ void test_client(void) {
   TEST(test_change_media_back_and_forth);
   TEST(test_change_media_while_loading);
   TEST(test_change_media_while_loading_later);
+  TEST(test_change_media_aborted);
 
   /* game */
   TEST(test_game_get_image_url);
@@ -5736,6 +5974,7 @@ void test_client(void) {
   TEST(test_fetch_leaderboard_entries_no_user);
   TEST(test_fetch_leaderboard_entries_around_user);
   TEST(test_fetch_leaderboard_entries_around_user_not_logged_in);
+  TEST(test_fetch_leaderboard_entries_aborted);
 
   /* do frame */
   TEST(test_do_frame_bounds_check_system);
