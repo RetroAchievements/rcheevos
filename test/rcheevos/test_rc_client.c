@@ -9,6 +9,7 @@
 #include "../test_framework.h"
 
 static rc_client_t* g_client;
+static void* g_callback_userdata = &g_client; /* dummy object to use for callback userdata validation */
 
 #define GENERIC_ACHIEVEMENT_JSON(id, memaddr) "{\"ID\":" id ",\"Title\":\"Achievement " id "\"," \
       "\"Description\":\"Desc " id "\",\"Flags\":3,\"Points\":5,\"MemAddr\":\"" memaddr "\"," \
@@ -410,11 +411,12 @@ static void mock_api_error(const char* request_params, const char* response_body
   g_num_mock_api_responses++;
 }
 
-static void rc_client_callback_expect_success(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_success(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_OK);
   ASSERT_PTR_NULL(error_message);
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static rc_client_t* mock_client_not_logged_in(void)
@@ -458,7 +460,7 @@ static void mock_client_load_game(const char* patchdata, const char* hardcore_un
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", softcore_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", hardcore_unlocks);
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   if (!g_client->game)
     ASSERT_MESSAGE("client->game is NULL");
@@ -480,7 +482,7 @@ static void mock_client_load_subset(const char* patchdata, const char* hardcore_
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", softcore_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", hardcore_unlocks);
 
-  rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success);
+  rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success, g_callback_userdata);
 }
 
 /* ----- login ----- */
@@ -494,7 +496,7 @@ static void test_login_with_password(void)
   mock_api_response("r=login&u=User&p=Pa%24%24word",
 	  "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
 
-  rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_success);
+  rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_success, g_callback_userdata);
 
   user = rc_client_get_user_info(g_client);
   ASSERT_PTR_NOT_NULL(user);
@@ -517,7 +519,7 @@ static void test_login_with_token(void)
   mock_api_response("r=login&u=User&t=ApiToken",
 	  "{\"Success\":true,\"User\":\"User\",\"DisplayName\":\"Display\",\"Token\":\"ApiToken\",\"Score\":12345,\"Messages\":2}");
 
-  rc_client_begin_login_with_token(g_client, "User", "ApiToken", rc_client_callback_expect_success);
+  rc_client_begin_login_with_token(g_client, "User", "ApiToken", rc_client_callback_expect_success, g_callback_userdata);
 
   user = rc_client_get_user_info(g_client);
   ASSERT_PTR_NOT_NULL(user);
@@ -530,49 +532,53 @@ static void test_login_with_token(void)
   rc_client_destroy(g_client);
 }
 
-static void rc_client_callback_expect_username_required(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_username_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
   ASSERT_STR_EQUALS(error_message, "username is required");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
-static void rc_client_callback_expect_password_required(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_password_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
   ASSERT_STR_EQUALS(error_message, "password is required");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
-static void rc_client_callback_expect_token_required(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_token_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
   ASSERT_STR_EQUALS(error_message, "token is required");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static void test_login_required_fields(void)
 {
   g_client = mock_client_not_logged_in();
 
-  rc_client_begin_login_with_password(g_client, "User", "", rc_client_callback_expect_password_required);
-  rc_client_begin_login_with_password(g_client, "", "Pa$$word", rc_client_callback_expect_username_required);
-  rc_client_begin_login_with_password(g_client, "", "", rc_client_callback_expect_username_required);
+  rc_client_begin_login_with_password(g_client, "User", "", rc_client_callback_expect_password_required, g_callback_userdata);
+  rc_client_begin_login_with_password(g_client, "", "Pa$$word", rc_client_callback_expect_username_required, g_callback_userdata);
+  rc_client_begin_login_with_password(g_client, "", "", rc_client_callback_expect_username_required, g_callback_userdata);
 
-  rc_client_begin_login_with_token(g_client, "User", "", rc_client_callback_expect_token_required);
-  rc_client_begin_login_with_token(g_client, "", "ApiToken", rc_client_callback_expect_username_required);
-  rc_client_begin_login_with_token(g_client, "", "", rc_client_callback_expect_username_required);
+  rc_client_begin_login_with_token(g_client, "User", "", rc_client_callback_expect_token_required, g_callback_userdata);
+  rc_client_begin_login_with_token(g_client, "", "ApiToken", rc_client_callback_expect_username_required, g_callback_userdata);
+  rc_client_begin_login_with_token(g_client, "", "", rc_client_callback_expect_username_required, g_callback_userdata);
 
   ASSERT_NUM_EQUALS(g_client->state.user, RC_CLIENT_USER_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
 
-static void rc_client_callback_expect_credentials_error(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_credentials_error(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_API_FAILURE);
   ASSERT_STR_EQUALS(error_message, "Invalid User/Password combination. Please try again");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static void test_login_with_incorrect_password(void)
@@ -581,18 +587,19 @@ static void test_login_with_incorrect_password(void)
   reset_mock_api_handlers();
   mock_api_error("r=login&u=User&p=Pa%24%24word", "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\"}", 403);
 
-  rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_credentials_error);
+  rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_credentials_error, g_callback_userdata);
 
   ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
 
   rc_client_destroy(g_client);
 }
 
-static void rc_client_callback_expect_missing_token(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_missing_token(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_MISSING_VALUE);
   ASSERT_STR_EQUALS(error_message, "Token not found in response");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static void test_login_incomplete_response(void)
@@ -601,7 +608,7 @@ static void test_login_incomplete_response(void)
   reset_mock_api_handlers();
   mock_api_response("r=login&u=User&p=Pa%24%24word", "{\"Success\":true,\"User\":\"Username\"}");
 
-  rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_missing_token);
+  rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_missing_token, g_callback_userdata);
 
   ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
 
@@ -615,7 +622,7 @@ static void test_login_with_password_async(void)
   g_client = mock_client_not_logged_in_async();
   reset_mock_api_handlers();
 
-  rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_success);
+  rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_success, g_callback_userdata);
 
   user = rc_client_get_user_info(g_client);
   ASSERT_PTR_NULL(user);
@@ -700,7 +707,7 @@ static void test_get_user_game_summary_encore_mode(void)
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", unlock_8);
 
   rc_client_set_encore_mode_enabled(g_client, 1);
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   rc_client_get_user_game_summary(g_client, &summary);
   ASSERT_NUM_EQUALS(summary.num_core_achievements, 7);
@@ -737,19 +744,20 @@ static void test_get_user_game_summary_with_unsupported_and_unofficial(void)
 
 /* ----- load game ----- */
 
-static void rc_client_callback_expect_hash_required(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_hash_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
   ASSERT_STR_EQUALS(error_message, "hash is required");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static void test_load_game_required_fields(void)
 {
   g_client = mock_client_logged_in();
 
-  rc_client_begin_load_game(g_client, NULL, rc_client_callback_expect_hash_required);
-  rc_client_begin_load_game(g_client, "", rc_client_callback_expect_hash_required);
+  rc_client_begin_load_game(g_client, NULL, rc_client_callback_expect_hash_required, g_callback_userdata);
+  rc_client_begin_load_game(g_client, "", rc_client_callback_expect_hash_required, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -757,11 +765,12 @@ static void test_load_game_required_fields(void)
   rc_client_destroy(g_client);
 }
 
-static void rc_client_callback_expect_unknown_game(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_unknown_game(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_NO_GAME_LOADED);
   ASSERT_STR_EQUALS(error_message, "Unknown game");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static void test_load_game_unknown_hash(void)
@@ -771,7 +780,7 @@ static void test_load_game_unknown_hash(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -787,11 +796,12 @@ static void test_load_game_unknown_hash(void)
   rc_client_destroy(g_client);
 }
 
-static void rc_client_callback_expect_login_required(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_login_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_LOGIN_REQUIRED);
   ASSERT_STR_EQUALS(error_message, "Login required");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static void test_load_game_not_logged_in(void)
@@ -801,7 +811,7 @@ static void test_load_game_not_logged_in(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -822,7 +832,7 @@ static void test_load_game(void)
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -878,8 +888,8 @@ static void test_load_game_async_login(void)
   g_client = mock_client_not_logged_in_async();
   reset_mock_api_handlers();
 
-  rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_success);
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+  rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_success, g_callback_userdata);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   /* game load process will stop here waiting for the login to complete */
@@ -919,8 +929,8 @@ static void test_load_game_async_login_with_incorrect_password(void)
   g_client = mock_client_not_logged_in_async();
   reset_mock_api_handlers();
 
-  rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_credentials_error);
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required);
+  rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_credentials_error, g_callback_userdata);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required, g_callback_userdata);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   /* game load process will stop here waiting for the login to complete */
@@ -939,11 +949,12 @@ static void test_load_game_async_login_with_incorrect_password(void)
   rc_client_destroy(g_client);
 }
 
-static void rc_client_callback_expect_too_many_requests(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_too_many_requests(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_INVALID_JSON);
   ASSERT_STR_EQUALS(error_message, "429 Too Many Requests");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static void test_load_game_gameid_failure(void)
@@ -957,7 +968,7 @@ static void test_load_game_gameid_failure(void)
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -976,7 +987,7 @@ static void test_load_game_patch_failure(void)
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -995,7 +1006,7 @@ static void test_load_game_postactivity_failure(void)
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -1014,7 +1025,7 @@ static void test_load_game_softcore_unlocks_failure(void)
   mock_api_error("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", response_429, 429);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -1033,7 +1044,7 @@ static void test_load_game_hardcore_unlocks_failure(void)
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
   mock_api_error("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", response_429, 429);
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -1053,7 +1064,7 @@ static void test_load_game_while_spectating(void)
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
   /* spectator mode should not start a session or fetch unlocks */
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1116,18 +1127,20 @@ static void test_load_game_while_spectating(void)
 
 /* ----- identify and load game ----- */
 
-static void rc_client_callback_expect_data_or_file_path_required(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_data_or_file_path_required(int result, const char* error_message, rc_client_t* client, void* callback_data)
 {
   ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
   ASSERT_STR_EQUALS(error_message, "either data or file_path is required");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_data, g_callback_userdata);
 }
 
 static void test_identify_and_load_game_required_fields(void)
 {
   g_client = mock_client_logged_in();
 
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, NULL, NULL, 0, rc_client_callback_expect_data_or_file_path_required);
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, NULL, NULL, 0,
+      rc_client_callback_expect_data_or_file_path_required, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -1150,7 +1163,7 @@ static void test_identify_and_load_game_console_specified(void)
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
-      image, image_size, rc_client_callback_expect_success);
+      image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1185,7 +1198,7 @@ static void test_identify_and_load_game_console_not_specified(void)
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
-      image, image_size, rc_client_callback_expect_success);
+      image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1216,7 +1229,7 @@ static void test_identify_and_load_game_unknown_hash(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
-      image, image_size, rc_client_callback_expect_unknown_game);
+      image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1249,7 +1262,7 @@ static void test_identify_and_load_game_multihash(void)
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "abc.dsk",
-      image, image_size, rc_client_callback_expect_success);
+      image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1280,7 +1293,7 @@ static void test_identify_and_load_game_multihash_unknown_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "abc.dsk",
-      image, image_size, rc_client_callback_expect_unknown_game);
+      image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1312,7 +1325,7 @@ static void test_identify_and_load_game_multihash_differ(void)
   reset_mock_api_handlers();
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "abc.dsk",
-      image, image_size, rc_client_callback_expect_success);
+      image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   /* modify the checksum so callback for first lookup will generate a new lookup */
   memset(&image[256], 0, 32);
@@ -1355,7 +1368,8 @@ static void test_change_media_required_fields(void)
 
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
 
-  rc_client_begin_change_media(g_client, NULL, NULL, 0, rc_client_callback_expect_data_or_file_path_required);
+  rc_client_begin_change_media(g_client, NULL, NULL, 0,
+      rc_client_callback_expect_data_or_file_path_required, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1375,11 +1389,12 @@ static void test_change_media_required_fields(void)
   free(image);
 }
 
-static void rc_client_callback_expect_no_game_loaded(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_no_game_loaded(int result, const char* error_message, rc_client_t* client, void* callback_data)
 {
   ASSERT_NUM_EQUALS(result, RC_NO_GAME_LOADED);
   ASSERT_STR_EQUALS(error_message, "No game loaded");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_data, g_callback_userdata);
 }
 
 static void test_change_media_no_game_loaded(void)
@@ -1389,7 +1404,8 @@ static void test_change_media_no_game_loaded(void)
 
   g_client = mock_client_logged_in();
 
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size, rc_client_callback_expect_no_game_loaded);
+  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_no_game_loaded, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -1408,7 +1424,8 @@ static void test_change_media_same_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
 
   /* changing known discs within a game set is expected to succeed */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size, rc_client_callback_expect_success);
+  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1454,7 +1471,8 @@ static void test_change_media_known_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":5555}");
 
   /* changing to a known disc from another game is allowed */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size, rc_client_callback_expect_success);
+  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1479,11 +1497,12 @@ static void test_change_media_known_game(void)
   free(image);
 }
 
-static void rc_client_callback_expect_hardcore_disabled_undentified_media(int result, const char* error_message, rc_client_t* client)
+static void rc_client_callback_expect_hardcore_disabled_undentified_media(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_HARDCORE_DISABLED);
   ASSERT_STR_EQUALS(error_message, "Hardcore disabled. Unidentified media inserted.");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static void test_change_media_unknown_game(void)
@@ -1498,7 +1517,7 @@ static void test_change_media_unknown_game(void)
 
   /* changing to an unknown disc is not allowed - could be a hacked version of one of the game's discs */
   rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
-      rc_client_callback_expect_hardcore_disabled_undentified_media);
+      rc_client_callback_expect_hardcore_disabled_undentified_media, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1536,7 +1555,8 @@ static void test_change_media_unhashable(void)
   g_client->game->public.console_id = RC_CONSOLE_NINTENDO_64;
 
   /* changing to a disc not supported by the system is allowed */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size, rc_client_callback_expect_success);
+  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1572,10 +1592,14 @@ static void test_change_media_back_and_forth(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
 
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size, rc_client_callback_expect_success);
-  rc_client_begin_change_media(g_client, "foo.zip#foo2.nes", image2, image_size, rc_client_callback_expect_success);
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size, rc_client_callback_expect_success);
-  rc_client_begin_change_media(g_client, "foo.zip#foo2.nes", image2, image_size, rc_client_callback_expect_success);
+  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_success, g_callback_userdata);
+  rc_client_begin_change_media(g_client, "foo.zip#foo2.nes", image2, image_size,
+      rc_client_callback_expect_success, g_callback_userdata);
+  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_success, g_callback_userdata);
+  rc_client_begin_change_media(g_client, "foo.zip#foo2.nes", image2, image_size,
+      rc_client_callback_expect_success, g_callback_userdata);
 
   assert_api_call_count("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", 1);
   assert_api_call_count("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", 1);
@@ -1609,8 +1633,10 @@ static void test_change_media_while_loading(void)
 
   reset_mock_api_handlers();
 
-  rc_client_begin_load_game(g_client, "4989b063a40dcfa28291ff8d675050e3", rc_client_callback_expect_success);
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size, rc_client_callback_expect_success);
+  rc_client_begin_load_game(g_client, "4989b063a40dcfa28291ff8d675050e3",
+      rc_client_callback_expect_success, g_callback_userdata);
+  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_success, g_callback_userdata);
 
   /* load game lookup */
   async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
@@ -1659,14 +1685,16 @@ static void test_change_media_while_loading_later(void)
 
   reset_mock_api_handlers();
 
-  rc_client_begin_load_game(g_client, "4989b063a40dcfa28291ff8d675050e3", rc_client_callback_expect_success);
+  rc_client_begin_load_game(g_client, "4989b063a40dcfa28291ff8d675050e3",
+      rc_client_callback_expect_success, g_callback_userdata);
 
   /* get past fetching the patch data so there's a valid console for the change media call */
   async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
 
   /* change_media should immediately attempt to resolve the new hash */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size, rc_client_callback_expect_success);
+  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_success, g_callback_userdata);
   assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
@@ -1747,14 +1775,14 @@ static void test_load_subset(void)
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata_subset);
   mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", no_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", no_unlocks);
 
-  rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success);
+  rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2576,13 +2604,13 @@ static void test_achievement_list_subset_buckets_subset_first(void)
   mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", unlock_5502);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", unlock_5502);
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
   mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", unlock_8);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", unlock_8);
-  rc_client_begin_load_subset(g_client, 1234, rc_client_callback_expect_success);
+  rc_client_begin_load_subset(g_client, 1234, rc_client_callback_expect_success, g_callback_userdata);
 
   mock_memory(memory, sizeof(memory));
 
@@ -3130,11 +3158,12 @@ static const char* lbinfo_4401_near_user = "{\"Success\":true,\"LeaderboardData\
   "}}";
 
 static rc_client_leaderboard_entry_list_t* g_leaderboard_entries = NULL;
-static void rc_client_callback_expect_leaderboard_entry_list(int result, const char* error_message, rc_client_leaderboard_entry_list_t* list, rc_client_t* client)
+static void rc_client_callback_expect_leaderboard_entry_list(int result, const char* error_message, rc_client_leaderboard_entry_list_t* list, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_OK);
   ASSERT_PTR_NULL(error_message);
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 
   ASSERT_PTR_NOT_NULL(list);
   g_leaderboard_entries = list;
@@ -3150,7 +3179,8 @@ static void test_fetch_leaderboard_entries(void)
 
   mock_api_response("r=lbinfo&i=4401&c=10", lbinfo_4401_top_10);
 
-  rc_client_begin_fetch_leaderboard_entries(g_client, 4401, 1, 10, rc_client_callback_expect_leaderboard_entry_list);
+  rc_client_begin_fetch_leaderboard_entries(g_client, 4401, 1, 10,
+      rc_client_callback_expect_leaderboard_entry_list, g_callback_userdata);
   ASSERT_PTR_NOT_NULL(g_leaderboard_entries);
 
   ASSERT_NUM_EQUALS(g_leaderboard_entries->num_entries, 10);
@@ -3249,7 +3279,8 @@ static void test_fetch_leaderboard_entries_no_user(void)
 
   mock_api_response("r=lbinfo&i=4401&c=10", lbinfo_4401_top_10_no_user);
 
-  rc_client_begin_fetch_leaderboard_entries(g_client, 4401, 1, 10, rc_client_callback_expect_leaderboard_entry_list);
+  rc_client_begin_fetch_leaderboard_entries(g_client, 4401, 1, 10,
+      rc_client_callback_expect_leaderboard_entry_list, g_callback_userdata);
   ASSERT_PTR_NOT_NULL(g_leaderboard_entries);
 
   ASSERT_NUM_EQUALS(g_leaderboard_entries->num_entries, 10);
@@ -3290,7 +3321,8 @@ static void test_fetch_leaderboard_entries_around_user(void)
 
   mock_api_response("r=lbinfo&i=4401&u=Username&c=10", lbinfo_4401_near_user);
 
-  rc_client_begin_fetch_leaderboard_entries_around_user(g_client, 4401, 10, rc_client_callback_expect_leaderboard_entry_list);
+  rc_client_begin_fetch_leaderboard_entries_around_user(g_client, 4401, 10,
+      rc_client_callback_expect_leaderboard_entry_list, g_callback_userdata);
   ASSERT_PTR_NOT_NULL(g_leaderboard_entries);
 
   ASSERT_NUM_EQUALS(g_leaderboard_entries->num_entries, 10);
@@ -3371,11 +3403,13 @@ static void test_fetch_leaderboard_entries_around_user(void)
   rc_client_destroy(g_client);
 }
 
-static void rc_client_callback_expect_leaderboard_entry_list_login_required(int result, const char* error_message, rc_client_leaderboard_entry_list_t* list, rc_client_t* client)
+static void rc_client_callback_expect_leaderboard_entry_list_login_required(int result, const char* error_message,
+    rc_client_leaderboard_entry_list_t* list, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_LOGIN_REQUIRED);
   ASSERT_STR_EQUALS(error_message, "Login required");
   ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
   ASSERT_PTR_NULL(list);
 }
 
@@ -3386,7 +3420,8 @@ static void test_fetch_leaderboard_entries_around_user_not_logged_in(void)
 
   mock_api_response("r=lbinfo&i=4401&u=Username&c=10", lbinfo_4401_near_user);
 
-  rc_client_begin_fetch_leaderboard_entries_around_user(g_client, 4401, 10, rc_client_callback_expect_leaderboard_entry_list_login_required);
+  rc_client_begin_fetch_leaderboard_entries_around_user(g_client, 4401, 10,
+      rc_client_callback_expect_leaderboard_entry_list_login_required, g_callback_userdata);
   ASSERT_PTR_NULL(g_leaderboard_entries);
 
   assert_api_not_called("r=lbinfo&i=4401&u=Username&c=10");

@@ -250,7 +250,7 @@ enum {
 
 void rc_client_set_legacy_peek(rc_client_t* client, int method);
 
-void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback);
+void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata);
 
 #ifdef __cplusplus
 }

@@ -17,6 +17,7 @@
 typedef struct rc_client_generic_callback_data_t {
   rc_client_t* client;
   rc_client_callback_t callback;
+  void* callback_userdata;
 } rc_client_generic_callback_data_t;
 
 typedef struct rc_client_pending_media_t
@@ -25,12 +26,14 @@ typedef struct rc_client_pending_media_t
   uint8_t* data;
   size_t data_size;
   rc_client_callback_t callback;
+  void* callback_userdata;
 } rc_client_pending_media_t;
 
 typedef struct rc_client_load_state_t
 {
   rc_client_t* client;
   rc_client_callback_t callback;
+  void* callback_userdata;
 
   rc_client_game_info_t* game;
   rc_client_subset_info_t* subset;
@@ -266,7 +269,7 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
 
     RC_CLIENT_LOG_ERR_FORMATTED(client, "Login failed: %s", error_message);
     if (login_callback_data->callback)
-      login_callback_data->callback(result, error_message, client);
+      login_callback_data->callback(result, error_message, client, login_callback_data->callback_userdata);
 
     if (load_state && load_state->progress == RC_CLIENT_LOAD_STATE_AWAIT_LOGIN)
       rc_client_begin_fetch_game_data(load_state);
@@ -295,7 +298,7 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
       rc_client_begin_fetch_game_data(load_state);
 
     if (login_callback_data->callback)
-      login_callback_data->callback(RC_OK, NULL, client);
+      login_callback_data->callback(RC_OK, NULL, client, login_callback_data->callback_userdata);
   }
 
   rc_api_destroy_login_response(&login_response);
@@ -303,7 +306,7 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
 }
 
 static void rc_client_begin_login(rc_client_t* client,
-  const rc_api_login_request_t* login_request, rc_client_callback_t callback)
+  const rc_api_login_request_t* login_request, rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_generic_callback_data_t* callback_data;
   rc_api_request_t request;
@@ -323,40 +326,41 @@ static void rc_client_begin_login(rc_client_t* client,
   }
 
   if (result != RC_OK) {
-    callback(result, error_message, client);
+    callback(result, error_message, client, callback_userdata);
     return;
   }
 
   callback_data = (rc_client_generic_callback_data_t*)malloc(sizeof(*callback_data));
   if (!callback_data) {
-    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
     return;
   }
 
   callback_data->client = client;
   callback_data->callback = callback;
+  callback_data->callback_userdata = callback_userdata;
 
   client->callbacks.server_call(&request, rc_client_login_callback, callback_data, client);
   rc_api_destroy_request(&request);
 }
 
 void rc_client_begin_login_with_password(rc_client_t* client,
-  const char* username, const char* password, rc_client_callback_t callback)
+  const char* username, const char* password, rc_client_callback_t callback, void* callback_userdata)
 {
   rc_api_login_request_t login_request;
 
   if (!client) {
-    callback(RC_INVALID_STATE, "client is required", client);
+    callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
     return;
   }
 
   if (!username || !username[0]) {
-    callback(RC_INVALID_STATE, "username is required", client);
+    callback(RC_INVALID_STATE, "username is required", client, callback_userdata);
     return;
   }
 
   if (!password || !password[0]) {
-    callback(RC_INVALID_STATE, "password is required", client);
+    callback(RC_INVALID_STATE, "password is required", client, callback_userdata);
     return;
   }
 
@@ -365,26 +369,26 @@ void rc_client_begin_login_with_password(rc_client_t* client,
   login_request.password = password;
 
   RC_CLIENT_LOG_INFO_FORMATTED(client, "Attempting to log in %s (with password)", username);
-  rc_client_begin_login(client, &login_request, callback);
+  rc_client_begin_login(client, &login_request, callback, callback_userdata);
 }
 
 void rc_client_begin_login_with_token(rc_client_t* client,
-  const char* username, const char* token, rc_client_callback_t callback)
+  const char* username, const char* token, rc_client_callback_t callback, void* callback_userdata)
 {
   rc_api_login_request_t login_request;
 
   if (!client) {
-    callback(RC_INVALID_STATE, "client is required", client);
+    callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
     return;
   }
 
   if (!username || !username[0]) {
-    callback(RC_INVALID_STATE, "username is required", client);
+    callback(RC_INVALID_STATE, "username is required", client, callback_userdata);
     return;
   }
 
   if (!token || !token[0]) {
-    callback(RC_INVALID_STATE, "token is required", client);
+    callback(RC_INVALID_STATE, "token is required", client, callback_userdata);
     return;
   }
 
@@ -393,7 +397,7 @@ void rc_client_begin_login_with_token(rc_client_t* client,
   login_request.api_token = token;
 
   RC_CLIENT_LOG_INFO_FORMATTED(client, "Attempting to log in %s (with token)", username);
-  rc_client_begin_login(client, &login_request, callback);
+  rc_client_begin_login(client, &login_request, callback, callback_userdata);
 }
 
 const rc_client_user_t* rc_client_get_user_info(const rc_client_t* client)
@@ -518,7 +522,7 @@ static int rc_client_end_load_state(rc_client_load_state_t* load_state)
        * RC_CLIENT_LOAD_STATE_UNKNOWN. There's no need to call the callback with RC_ABORTED
        * in that case, as it will have already been called with something more appropriate. */
       if (load_state->progress != RC_CLIENT_LOAD_STATE_UNKNOWN_GAME && load_state->callback)
-        load_state->callback(RC_ABORTED, "The requested game is no longer active", load_state->client);
+        load_state->callback(RC_ABORTED, "The requested game is no longer active", load_state->client, load_state->callback_userdata);
 
       rc_client_free_load_state(load_state);
     }
@@ -544,7 +548,7 @@ static void rc_client_load_error(rc_client_load_state_t* load_state, int result,
   rc_mutex_unlock(&load_state->client->state.mutex);
 
   if (load_state->callback)
-    load_state->callback(result, error_message, load_state->client);
+    load_state->callback(result, error_message, load_state->client, load_state->callback_userdata);
 
   /* we can't actually free the load_state itself if there are any outstanding requests
    * or their callbacks will try to use the free'd memory. as they call end_load_state,
@@ -916,13 +920,13 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
   if (load_state->progress != RC_CLIENT_LOAD_STATE_DONE) {
     /* previous load state was aborted */
     if (load_state->callback)
-      load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
+      load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
   }
   else if ((!load_state->softcore_unlocks || !load_state->hardcore_unlocks) &&
             client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_OFF) {
     /* unlocks not available - assume malloc failed */
     if (load_state->callback)
-      load_state->callback(RC_INVALID_STATE, "Unlock arrays were not allocated", client);
+      load_state->callback(RC_INVALID_STATE, "Unlock arrays were not allocated", client, load_state->callback_userdata);
   }
   else {
     if (client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_OFF) {
@@ -940,7 +944,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
     if (client->game != load_state->game) {
       /* previous load state was aborted */
       if (load_state->callback)
-        load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
+        load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
     }
     else {
       /* if a change media request is pending, kick it off */
@@ -953,7 +957,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
 
       if (pending_media) {
         rc_client_begin_change_media(client, pending_media->file_path,
-          pending_media->data, pending_media->data_size, pending_media->callback);
+          pending_media->data, pending_media->data_size, pending_media->callback, pending_media->callback_userdata);
         if (pending_media->data)
           free(pending_media->data);
         free((void*)pending_media->file_path);
@@ -986,7 +990,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
       }
 
       if (load_state->callback)
-        load_state->callback(RC_OK, NULL, client);
+        load_state->callback(RC_OK, NULL, client, load_state->callback_userdata);
 
       /* detach the game object so it doesn't get freed by free_load_state */
       load_state->game = NULL;
@@ -1601,7 +1605,7 @@ static void rc_client_load_game(rc_client_load_state_t* load_state, const char* 
       load_state->game = (rc_client_game_info_t*)calloc(1, sizeof(*load_state->game));
       if (!load_state->game) {
         if (load_state->callback)
-          load_state->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+          load_state->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, load_state->callback_userdata);
 
         rc_client_free_load_state(load_state);
         return;
@@ -1614,7 +1618,7 @@ static void rc_client_load_game(rc_client_load_state_t* load_state, const char* 
   else if (client->state.load != load_state) {
     /* previous load was aborted */
     if (load_state->callback)
-      load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
+      load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
 
     rc_client_free_load_state(load_state);
     return;
@@ -1662,41 +1666,42 @@ static void rc_client_load_game(rc_client_load_state_t* load_state, const char* 
   }
 }
 
-void rc_client_begin_load_game(rc_client_t* client, const char* hash, rc_client_callback_t callback)
+void rc_client_begin_load_game(rc_client_t* client, const char* hash, rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_load_state_t* load_state;
 
   if (!client) {
-    callback(RC_INVALID_STATE, "client is required", client);
+    callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
     return;
   }
 
   if (!hash || !hash[0]) {
-    callback(RC_INVALID_STATE, "hash is required", client);
+    callback(RC_INVALID_STATE, "hash is required", client, callback_userdata);
     return;
   }
 
   load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
   if (!load_state) {
-    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
     return;
   }
 
   load_state->client = client;
   load_state->callback = callback;
+  load_state->callback_userdata = callback_userdata;
   rc_client_load_game(load_state, hash, NULL);
 }
 
 void rc_client_begin_identify_and_load_game(rc_client_t* client,
     uint32_t console_id, const char* file_path,
     const uint8_t* data, size_t data_size,
-    rc_client_callback_t callback)
+    rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_load_state_t* load_state;
   char hash[33];
 
   if (!client) {
-    callback(RC_INVALID_STATE, "client is required", client);
+    callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
     return;
   }
 
@@ -1712,7 +1717,7 @@ void rc_client_begin_identify_and_load_game(rc_client_t* client,
     RC_CLIENT_LOG_INFO_FORMATTED(client, "Identifying game: %s", file_path);
   }
   else {
-    callback(RC_INVALID_STATE, "either data or file_path is required", client);
+    callback(RC_INVALID_STATE, "either data or file_path is required", client, callback_userdata);
     return;
   }
 
@@ -1727,11 +1732,12 @@ void rc_client_begin_identify_and_load_game(rc_client_t* client,
 
   load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
   if (!load_state) {
-    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
     return;
   }
   load_state->client = client;
   load_state->callback = callback;
+  load_state->callback_userdata = callback_userdata;
   rc_hash_initialize_iterator(&load_state->hash_iterator, file_path, data, data_size);
 
   if (console_id == RC_CONSOLE_UNKNOWN) {
@@ -1803,7 +1809,7 @@ void rc_client_unload_game(rc_client_t* client)
   }
 }
 
-static void rc_client_change_media(rc_client_t* client, const rc_client_game_hash_t* game_hash, rc_client_callback_t callback)
+static void rc_client_change_media(rc_client_t* client, const rc_client_game_hash_t* game_hash, rc_client_callback_t callback, void* callback_userdata)
 {
   if (game_hash->game_id == client->game->public.id) {
     RC_CLIENT_LOG_INFO_FORMATTED(client, "Switching to valid media for game %u: %s", game_hash->game_id, game_hash->hash);
@@ -1819,7 +1825,7 @@ static void rc_client_change_media(rc_client_t* client, const rc_client_game_has
   }
 
   client->game->public.hash = game_hash->hash;
-  callback(RC_OK, NULL, client);
+  callback(RC_OK, NULL, client, callback_userdata);
 }
 
 static void rc_client_identify_changed_media_callback(const rc_api_server_response_t* server_response, void* callback_data)
@@ -1833,10 +1839,10 @@ static void rc_client_identify_changed_media_callback(const rc_api_server_respon
 
   if (client->game != load_state->game) {
     /* loaded game changed. return success regardless of result */
-    load_state->callback(RC_ABORTED, "The requested game is no longer active", client);
+    load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
   }
   else if (error_message) {
-    load_state->callback(result, error_message, client);
+    load_state->callback(result, error_message, client, load_state->callback_userdata);
   }
   else {
     load_state->hash->game_id = resolve_hash_response.game_id;
@@ -1845,11 +1851,11 @@ static void rc_client_identify_changed_media_callback(const rc_api_server_respon
       RC_CLIENT_LOG_WARN_FORMATTED(client, "Disabling hardcore for unidentified media: %s", load_state->hash->hash);
       rc_client_set_hardcore_enabled(client, 0);
       client->game->public.hash = load_state->hash->hash; /* do still update the loaded hash */
-      load_state->callback(RC_HARDCORE_DISABLED, "Hardcore disabled. Unidentified media inserted.", client);
+      load_state->callback(RC_HARDCORE_DISABLED, "Hardcore disabled. Unidentified media inserted.", client, load_state->callback_userdata);
     }
     else {
       RC_CLIENT_LOG_INFO_FORMATTED(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
-      rc_client_change_media(client, load_state->hash, load_state->callback);
+      rc_client_change_media(client, load_state->hash, load_state->callback, load_state->callback_userdata);
     }
   }
 
@@ -1858,7 +1864,7 @@ static void rc_client_identify_changed_media_callback(const rc_api_server_respon
 }
 
 void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
-    const uint8_t* data, size_t data_size, rc_client_callback_t callback)
+    const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_game_hash_t* game_hash = NULL;
   rc_client_media_hash_t* media_hash;
@@ -1867,12 +1873,12 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
   uint32_t path_djb2;
 
   if (!client) {
-    callback(RC_INVALID_STATE, "client is required", client);
+    callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
     return;
   }
 
   if (!data && !file_path) {
-    callback(RC_INVALID_STATE, "either data or file_path is required", client);
+    callback(RC_INVALID_STATE, "either data or file_path is required", client, callback_userdata);
     return;
   }
 
@@ -1892,18 +1898,19 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
       pending_media = (rc_client_pending_media_t*)calloc(1, sizeof(*pending_media));
       if (!pending_media) {
         rc_mutex_unlock(&client->state.mutex);
-        callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+        callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
         return;
       }
 
       pending_media->file_path = strdup(file_path);
       pending_media->callback = callback;
+      pending_media->callback_userdata = callback_userdata;
       if (data && data_size) {
         pending_media->data_size = data_size;
         pending_media->data = (uint8_t*)malloc(data_size);
         if (!pending_media->data) {
           rc_mutex_unlock(&client->state.mutex);
-          callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+          callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
           return;
         }
         memcpy(pending_media->data, data, data_size);
@@ -1918,7 +1925,7 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
   rc_mutex_unlock(&client->state.mutex);
 
   if (!game) {
-    callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client);
+    callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client, callback_userdata);
     return;
   }
 
@@ -1973,13 +1980,13 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
     rc_mutex_unlock(&client->state.mutex);
 
     if (!result) {
-      rc_client_change_media(client, game_hash, callback);
+      rc_client_change_media(client, game_hash, callback, callback_userdata);
       return;
     }
   }
 
   if (game_hash->game_id != RC_CLIENT_UNKNOWN_GAME_ID) {
-    rc_client_change_media(client, game_hash, callback);
+    rc_client_change_media(client, game_hash, callback, callback_userdata);
   }
   else {
     /* call the server to make sure the hash is valid for the loaded game */
@@ -1993,17 +2000,18 @@ void rc_client_begin_change_media(rc_client_t* client, const char* file_path,
 
     result = rc_api_init_resolve_hash_request(&request, &resolve_hash_request);
     if (result != RC_OK) {
-      callback(result, rc_error_str(result), client);
+      callback(result, rc_error_str(result), client, callback_userdata);
       return;
     }
 
     callback_data = (rc_client_load_state_t*)calloc(1, sizeof(rc_client_load_state_t));
     if (!callback_data) {
-      callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+      callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
       return;
     }
 
     callback_data->callback = callback;
+    callback_data->callback_userdata = callback_userdata;
     callback_data->client = client;
     callback_data->hash = game_hash;
     callback_data->game = game;
@@ -2029,18 +2037,18 @@ int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], si
 
 /* ===== Subsets ===== */
 
-void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback)
+void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata)
 {
   char buffer[32];
   rc_client_load_state_t* load_state;
 
   if (!client) {
-    callback(RC_INVALID_STATE, "client is required", client);
+    callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
     return;
   }
 
   if (!client->game) {
-    callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client);
+    callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client, callback_userdata);
     return;
   }
 
@@ -2048,12 +2056,13 @@ void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_cli
 
   load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
   if (!load_state) {
-    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client);
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
     return;
   }
 
   load_state->client = client;
   load_state->callback = callback;
+  load_state->callback_userdata = callback_userdata;
   load_state->game = client->game;
   load_state->hash = rc_client_find_game_hash(client, buffer);
   load_state->hash->game_id = subset_id;
@@ -3159,6 +3168,7 @@ static void rc_client_reset_leaderboards(rc_client_t* client)
 typedef struct rc_client_fetch_leaderboard_entries_callback_data_t {
   rc_client_t* client;
   rc_client_fetch_leaderboard_entries_callback_t callback;
+  void* callback_userdata;
   uint32_t leaderboard_id;
 } rc_client_fetch_leaderboard_entries_callback_data_t;
 
@@ -3172,7 +3182,7 @@ static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_res
   const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &lbinfo_response.response);
   if (error_message) {
     RC_CLIENT_LOG_ERR_FORMATTED(client, "Fetch leaderboard %u info failed: %s", lbinfo_callback_data->leaderboard_id, error_message);
-    lbinfo_callback_data->callback(result, error_message, NULL, client);
+    lbinfo_callback_data->callback(result, error_message, NULL, client, lbinfo_callback_data->callback_userdata);
   }
   else {
     rc_client_leaderboard_entry_list_t* list;
@@ -3185,7 +3195,7 @@ static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_res
 
     list = (rc_client_leaderboard_entry_list_t*)malloc(needed_size);
     if (!list) {
-      lbinfo_callback_data->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), NULL, client);
+      lbinfo_callback_data->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), NULL, client, lbinfo_callback_data->callback_userdata);
     }
     else {
       rc_client_leaderboard_entry_t* entry = list->entries = (rc_client_leaderboard_entry_t*)((uint8_t*)list + sizeof(*list));
@@ -3213,7 +3223,7 @@ static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_res
 
       list->num_entries = lbinfo_response.num_entries;
 
-      lbinfo_callback_data->callback(RC_OK, NULL, list, client);
+      lbinfo_callback_data->callback(RC_OK, NULL, list, client, lbinfo_callback_data->callback_userdata);
     }
   }
 
@@ -3223,7 +3233,7 @@ static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_res
 
 static void rc_client_begin_fetch_leaderboard_info(rc_client_t* client,
     const rc_api_fetch_leaderboard_info_request_t* lbinfo_request,
-    rc_client_fetch_leaderboard_entries_callback_t callback)
+    rc_client_fetch_leaderboard_entries_callback_t callback, void* callback_userdata)
 {
   rc_client_fetch_leaderboard_entries_callback_data_t* callback_data;
   rc_api_request_t request;
@@ -3234,18 +3244,19 @@ static void rc_client_begin_fetch_leaderboard_info(rc_client_t* client,
 
   if (result != RC_OK) {
     error_message = rc_error_str(result);
-    callback(result, error_message, NULL, client);
+    callback(result, error_message, NULL, client, callback_userdata);
     return;
   }
 
   callback_data = (rc_client_fetch_leaderboard_entries_callback_data_t*)malloc(sizeof(*callback_data));
   if (!callback_data) {
-    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), NULL, client);
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), NULL, client, callback_userdata);
     return;
   }
 
   callback_data->client = client;
   callback_data->callback = callback;
+  callback_data->callback_userdata = callback_userdata;
   callback_data->leaderboard_id = lbinfo_request->leaderboard_id;
 
   client->callbacks.server_call(&request, rc_client_fetch_leaderboard_entries_callback, callback_data, client);
@@ -3253,7 +3264,7 @@ static void rc_client_begin_fetch_leaderboard_info(rc_client_t* client,
 }
 
 void rc_client_begin_fetch_leaderboard_entries(rc_client_t* client, uint32_t leaderboard_id,
-    uint32_t first_entry, uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback)
+    uint32_t first_entry, uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback, void* callback_userdata)
 {
   rc_api_fetch_leaderboard_info_request_t lbinfo_request;
 
@@ -3262,11 +3273,11 @@ void rc_client_begin_fetch_leaderboard_entries(rc_client_t* client, uint32_t lea
   lbinfo_request.first_entry = first_entry;
   lbinfo_request.count = count;
 
-  rc_client_begin_fetch_leaderboard_info(client, &lbinfo_request, callback);
+  rc_client_begin_fetch_leaderboard_info(client, &lbinfo_request, callback, callback_userdata);
 }
 
 void rc_client_begin_fetch_leaderboard_entries_around_user(rc_client_t* client, uint32_t leaderboard_id,
-  uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback)
+  uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback, void* callback_userdata)
 {
   rc_api_fetch_leaderboard_info_request_t lbinfo_request;
 
@@ -3276,11 +3287,11 @@ void rc_client_begin_fetch_leaderboard_entries_around_user(rc_client_t* client, 
   lbinfo_request.count = count;
 
   if (!lbinfo_request.username) {
-    callback(RC_LOGIN_REQUIRED, rc_error_str(RC_LOGIN_REQUIRED), NULL, client);
+    callback(RC_LOGIN_REQUIRED, rc_error_str(RC_LOGIN_REQUIRED), NULL, client, callback_userdata);
     return;
   }
 
-  rc_client_begin_fetch_leaderboard_info(client, &lbinfo_request, callback);
+  rc_client_begin_fetch_leaderboard_info(client, &lbinfo_request, callback, callback_userdata);
 }
 
 void rc_client_destroy_leaderboard_entry_list(rc_client_leaderboard_entry_list_t* list)
