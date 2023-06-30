@@ -3237,6 +3237,7 @@ static void test_fetch_leaderboard_entries(void)
   ASSERT_NUM_EQUALS(g_leaderboard_entries->user_index, 2);
 
   rc_client_destroy_leaderboard_entry_list(g_leaderboard_entries);
+  rc_client_destroy(g_client);
 }
 
 static void test_fetch_leaderboard_entries_no_user(void)
@@ -3277,6 +3278,7 @@ static void test_fetch_leaderboard_entries_no_user(void)
   ASSERT_NUM_EQUALS(g_leaderboard_entries->user_index, -1);
 
   rc_client_destroy_leaderboard_entry_list(g_leaderboard_entries);
+  rc_client_destroy(g_client);
 }
 
 static void test_fetch_leaderboard_entries_around_user(void)
@@ -3366,6 +3368,7 @@ static void test_fetch_leaderboard_entries_around_user(void)
   ASSERT_NUM_EQUALS(g_leaderboard_entries->user_index, 4);
 
   rc_client_destroy_leaderboard_entry_list(g_leaderboard_entries);
+  rc_client_destroy(g_client);
 }
 
 static void rc_client_callback_expect_leaderboard_entry_list_login_required(int result, const char* error_message, rc_client_leaderboard_entry_list_t* list, rc_client_t* client)
@@ -3387,6 +3390,8 @@ static void test_fetch_leaderboard_entries_around_user_not_logged_in(void)
   ASSERT_PTR_NULL(g_leaderboard_entries);
 
   assert_api_not_called("r=lbinfo&i=4401&u=Username&c=10");
+
+  rc_client_destroy(g_client);
 }
 
 /* ----- do frame ----- */
