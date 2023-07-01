@@ -757,14 +757,12 @@ static void rc_client_callback_expect_no_longer_active(int result, const char* e
 
 static void test_logout_during_fetch_game(void)
 {
-  rc_client_async_handle_t* handle;
-
   g_client = mock_client_logged_in();
   g_client->callbacks.server_call = rc_client_server_call_async;
 
   reset_mock_api_handlers();
 
-  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF",
     rc_client_callback_expect_no_longer_active, g_callback_userdata);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
