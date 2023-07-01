@@ -1,3 +1,10 @@
+# v10.7.1
+* add rc_runtime_alloc
+* add rc_libretro_memory_find_avail
+* extract nginx errors from HTML returned for JSON endpoints
+* fix real address for 32X extension RAM
+* fix crash attempting to calculate gamecube hash for non-existent file
+
 # v10.7.0
 * add hash method and memory map for Gamecube
 * add console enum, hash method, and memory map for DSi
