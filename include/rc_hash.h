@@ -92,12 +92,12 @@ extern "C" {
 
   /* ===================================================== */
 
-  #define RC_HASH_CDTRACK_FIRST_DATA ((uint32_t)-1)
-  #define RC_HASH_CDTRACK_LAST ((uint32_t)-2)
-  #define RC_HASH_CDTRACK_LARGEST ((uint32_t)-3)
-  #define RC_HASH_CDTRACK_FIRST_OF_SECOND_SESSION ((uint32_t)-4)
+  #define RC_HASH_CDTRACK_FIRST_DATA ((uint32_t)-1) /* the first data track (skip audio tracks) */
+  #define RC_HASH_CDTRACK_LAST ((uint32_t)-2) /* the last data/audio track */
+  #define RC_HASH_CDTRACK_LARGEST ((uint32_t)-3) /* the largest data/audio track */
+  #define RC_HASH_CDTRACK_FIRST_OF_SECOND_SESSION ((uint32_t)-4) /* the first data/audio track of the second session */
 
-  /* opens a track from the specified file. track 0 indicates the largest data track should be opened.
+  /* opens a track from the specified file. see the RC_HASH_CDTRACK_ defines for special tracks.
    * returns a handle to be passed to the other functions, or NULL if the track could not be opened.
    */
   typedef void* (*rc_hash_cdreader_open_track_handler)(const char* path, uint32_t track);

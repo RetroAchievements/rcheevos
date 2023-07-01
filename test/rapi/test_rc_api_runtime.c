@@ -694,6 +694,23 @@ static void test_process_award_achievement_response_429() {
   rc_api_destroy_award_achievement_response(&award_achievement_response);
 }
 
+static void test_process_award_achievement_response_429_json() {
+  rc_api_award_achievement_response_t award_achievement_response;
+  const char* server_response =
+      "{\"Success\": false,\"Error\":\"Too Many Attempts\"}";
+
+  memset(&award_achievement_response, 0, sizeof(award_achievement_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_award_achievement_response(&award_achievement_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(award_achievement_response.response.error_message, "Too Many Attempts");
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0);
+
+  rc_api_destroy_award_achievement_response(&award_achievement_response);
+}
+
 static void test_init_submit_lboard_entry_request() {
   rc_api_submit_lboard_entry_request_t submit_lboard_entry_request;
   rc_api_request_t request;
@@ -898,6 +915,7 @@ void test_rapi_runtime(void) {
   TEST(test_process_award_achievement_response_text);
   TEST(test_process_award_achievement_response_no_fields);
   TEST(test_process_award_achievement_response_429);
+  TEST(test_process_award_achievement_response_429_json);
 
   /* submitlbentry */
   TEST(test_init_submit_lboard_entry_request);

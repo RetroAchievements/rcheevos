@@ -183,14 +183,23 @@ typedef struct rc_runtime_t {
 
   rc_value_t* variables;
   rc_value_t** next_variable;
+
+  char owns_self;
 }
 rc_runtime_t;
 ```
 
-The runtime must first be initialized.
+You can have rcheevos allocate a runtime for you. In this case, the returned runtime will be initialized and can be used immediately. Note that the allocation can fail, in which case NULL is returned.
+```c
+rc_runtime_t* rc_runtime_alloc(void);
+```
+
+You can also allocate the runtime yourself. In this case, the runtime must first be initialized.
 ```c
 void rc_runtime_init(rc_runtime_t* runtime);
 ```
+
+You cannot use `rc_runtime_init` if `rc_runtime_alloc` was used to create the runtime.
 
 Then individual achievements, leaderboards, and even rich presence can be loaded into the runtime. These functions return RC_OK, or one of the negative value error codes listed above.
 ```c
@@ -266,6 +275,13 @@ void rc_runtime_reset(rc_runtime_t* runtime);
 ```
 
 This ensures any active achievements/leaderboards are set back to their initial states and prevents unexpected triggers when the memory changes in atypical way.
+
+When you are finished using the runtime, you must destroy it to avoid memory leaks.
+```c
+void rc_runtime_destroy(rc_runtime_t* runtime);
+```
+
+If rcheevos allocated the runtime itself (via `rc_runtime_alloc`), then this call will also free the runtime itself.
 
 ## Server Communication
 

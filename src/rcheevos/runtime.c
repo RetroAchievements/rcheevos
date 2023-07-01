@@ -9,6 +9,17 @@
 
 #define RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE 256
 
+rc_runtime_t* rc_runtime_alloc(void) {
+  rc_runtime_t* self = malloc(sizeof(rc_runtime_t));
+
+  if (self) {
+    rc_runtime_init(self);
+    self->owns_self = 1;
+  }
+
+  return self;
+}
+
 void rc_runtime_init(rc_runtime_t* self) {
   memset(self, 0, sizeof(rc_runtime_t));
   self->next_memref = &self->memrefs;
@@ -48,6 +59,10 @@ void rc_runtime_destroy(rc_runtime_t* self) {
 
   self->next_memref = 0;
   self->memrefs = 0;
+
+  if (self->owns_self) {
+    free(self);
+  }
 }
 
 void rc_runtime_checksum(const char* memaddr, unsigned char* md5) {
