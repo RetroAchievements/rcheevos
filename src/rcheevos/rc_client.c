@@ -278,6 +278,8 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
   rc_client_t* client = login_callback_data->client;
   rc_api_login_response_t login_response;
   rc_client_load_state_t* load_state;
+  const char* error_message;
+  int result;
 
   if (rc_client_async_handle_aborted(client, &login_callback_data->async_handle)) {
     RC_CLIENT_LOG_VERBOSE(client, "Login aborted");
@@ -285,8 +287,8 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
     return;
   }
 
-  int result = rc_api_process_login_response(&login_response, server_response->body);
-  const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &login_response.response);
+  result = rc_api_process_login_response(&login_response, server_response->body);
+  error_message = rc_client_server_error_message(&result, server_response->http_status_code, &login_response.response);
   if (error_message) {
     rc_mutex_lock(&client->state.mutex);
     client->state.user = RC_CLIENT_USER_STATE_NONE;
