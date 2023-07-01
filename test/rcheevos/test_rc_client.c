@@ -671,6 +671,118 @@ static void test_login_with_password_async_aborted(void)
   rc_client_destroy(g_client);
 }
 
+static void rc_client_callback_expect_login_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_LOGIN_REQUIRED);
+  ASSERT_STR_EQUALS(error_message, "Login required");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
+static void test_logout(void)
+{
+  const rc_client_user_t* user;
+
+  g_client = mock_client_logged_in();
+
+  user = rc_client_get_user_info(g_client);
+  ASSERT_PTR_NOT_NULL(user);
+
+  rc_client_logout(g_client);
+  ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
+
+  /* reference pointer should be NULLed out */
+  ASSERT_PTR_NULL(user->display_name);
+  ASSERT_PTR_NULL(user->username);
+  ASSERT_PTR_NULL(user->token);
+
+  /* attempt to load game should fail */
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+  
+  rc_client_destroy(g_client);
+}
+
+static void test_logout_with_game_loaded(void)
+{
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(rc_client_get_user_info(g_client));
+  ASSERT_PTR_NOT_NULL(rc_client_get_game_info(g_client));
+
+  rc_client_logout(g_client);
+
+  ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
+  ASSERT_PTR_NULL(rc_client_get_game_info(g_client));
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_callback_expect_login_aborted(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_ABORTED);
+  ASSERT_STR_EQUALS(error_message, "Login aborted");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
+static void test_logout_during_login(void)
+{
+  g_client = mock_client_not_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_login_aborted, g_callback_userdata);
+  rc_client_logout(g_client);
+
+  async_api_response("r=login&u=User&p=Pa%24%24word",
+    "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
+
+  ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_callback_expect_no_longer_active(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_ABORTED);
+  ASSERT_STR_EQUALS(error_message, "The requested game is no longer active");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
+static void test_logout_during_fetch_game(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
+    rc_client_callback_expect_no_longer_active, g_callback_userdata);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+
+  rc_client_logout(g_client);
+
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+  ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
+
+  rc_client_destroy(g_client);
+}
+
 static void test_user_get_image_url(void)
 {
   char buffer[256];
@@ -824,14 +936,6 @@ static void test_load_game_unknown_hash(void)
     ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
   }
   rc_client_destroy(g_client);
-}
-
-static void rc_client_callback_expect_login_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
-{
-  ASSERT_NUM_EQUALS(result, RC_LOGIN_REQUIRED);
-  ASSERT_STR_EQUALS(error_message, "Login required");
-  ASSERT_PTR_EQUALS(client, g_client);
-  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static void test_load_game_not_logged_in(void)
@@ -6036,6 +6140,12 @@ void test_client(void) {
   TEST(test_login_with_password_async);
   TEST(test_login_with_password_async_aborted);
 
+  /* logout */
+  TEST(test_logout);
+  TEST(test_logout_with_game_loaded);
+  TEST(test_logout_during_login);
+  TEST(test_logout_during_fetch_game);
+
   /* user */
   TEST(test_user_get_image_url);
 
@@ -6063,6 +6173,7 @@ void test_client(void) {
   TEST(test_load_game_hardcore_unlocks_aborted);
   TEST(test_load_game_while_spectating);
 
+  /* identify and load game */
   TEST(test_identify_and_load_game_required_fields);
   TEST(test_identify_and_load_game_console_specified);
   TEST(test_identify_and_load_game_console_not_specified);
@@ -6071,6 +6182,7 @@ void test_client(void) {
   TEST(test_identify_and_load_game_multihash_unknown_game);
   TEST(test_identify_and_load_game_multihash_differ);
 
+  /* change media */
   TEST(test_change_media_required_fields);
   TEST(test_change_media_no_game_loaded);
   TEST(test_change_media_same_game);

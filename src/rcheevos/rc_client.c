@@ -59,6 +59,7 @@ typedef struct rc_client_load_state_t
   uint8_t hash_console_id;
 } rc_client_load_state_t;
 
+static void rc_client_load_error(rc_client_load_state_t* load_state, int result, const char* error_message);
 static void rc_client_begin_fetch_game_data(rc_client_load_state_t* callback_data);
 static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* load_state, const char* hash, const char* file_path);
 static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, time_t now);
@@ -287,6 +288,15 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
     return;
   }
 
+  if (client->state.user == RC_CLIENT_USER_STATE_NONE) {
+    /* logout was called */
+    if (login_callback_data->callback)
+      login_callback_data->callback(RC_ABORTED, "Login aborted", client, login_callback_data->callback_userdata);
+
+    free(login_callback_data);
+    return;
+  }
+
   result = rc_api_process_login_response(&login_response, server_response->body);
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &login_response.response);
   if (error_message) {
@@ -428,6 +438,38 @@ rc_client_async_handle_t* rc_client_begin_login_with_token(rc_client_t* client,
 
   RC_CLIENT_LOG_INFO_FORMATTED(client, "Attempting to log in %s (with token)", username);
   return rc_client_begin_login(client, &login_request, callback, callback_userdata);
+}
+
+void rc_client_logout(rc_client_t* client)
+{
+  rc_client_load_state_t* load_state;
+
+  if (!client)
+    return;
+
+  switch (client->state.user) {
+    case RC_CLIENT_USER_STATE_LOGGED_IN:
+      RC_CLIENT_LOG_INFO_FORMATTED(client, "Logging %s out", client->user.display_name);
+      break;
+
+    case RC_CLIENT_USER_STATE_LOGIN_REQUESTED:
+      RC_CLIENT_LOG_INFO(client, "Aborting login");
+      break;
+  }
+
+  rc_mutex_lock(&client->state.mutex);
+
+  client->state.user = RC_CLIENT_USER_STATE_NONE;
+  memset(&client->user, 0, sizeof(client->user));
+
+  load_state = client->state.load;
+
+  rc_mutex_unlock(&client->state.mutex);
+
+  rc_client_unload_game(client);
+
+  if (load_state && load_state->progress == RC_CLIENT_LOAD_STATE_AWAIT_LOGIN)
+    rc_client_load_error(load_state, RC_ABORTED, "Login aborted");
 }
 
 const rc_client_user_t* rc_client_get_user_info(const rc_client_t* client)
@@ -1877,7 +1919,7 @@ void rc_client_unload_game(rc_client_t* client)
       break;
 
     /* remove rich presence ping scheduled event for game */
-    if (next->callback == rc_client_ping && next->related_id == game->public.id) {
+    if (next->callback == rc_client_ping && game && next->related_id == game->public.id) {
       *last = next->next;
       continue;
     }

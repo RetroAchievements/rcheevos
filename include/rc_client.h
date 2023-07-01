@@ -165,6 +165,11 @@ rc_client_async_handle_t* rc_client_begin_login_with_token(rc_client_t* client,
     const char* username, const char* token,
     rc_client_callback_t callback, void* callback_userdata);
 
+/**
+ * Logout the user.
+ */
+void rc_client_logout(rc_client_t* logout);
+
 typedef struct rc_client_user_t {
   const char* display_name;
   const char* username;
