@@ -541,11 +541,11 @@ static const rc_memory_region_t _rc_memory_regions_megadrive[] = {
 static const rc_memory_regions_t rc_memory_regions_megadrive = { _rc_memory_regions_megadrive, 2 };
 
 /* ===== MegaDrive 32X (Genesis 32X) ===== */
-/* https://en.wikibooks.org/wiki/Genesis_Programming/68K_Memory_map/ */
+/* http://devster.monkeeh.com/sega/32xguide1.txt */
 static const rc_memory_region_t _rc_memory_regions_megadrive_32x[] = {
-    { 0x000000U, 0x00FFFFU, 0xFF0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
-    { 0x010000U, 0x04FFFFU, 0x200000U, RC_MEMORY_TYPE_SYSTEM_RAM, "32X RAM"},
-    { 0x050000U, 0x05FFFFU, 0x000000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
+    { 0x000000U, 0x00FFFFU, 0x00FF0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* Main MegaDrive RAM */
+    { 0x010000U, 0x04FFFFU, 0x06000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "32X RAM"},     /* Additional 32X RAM */
+    { 0x050000U, 0x05FFFFU, 0x00000000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
 };
 static const rc_memory_regions_t rc_memory_regions_megadrive_32x = { _rc_memory_regions_megadrive_32x, 3 };
 
