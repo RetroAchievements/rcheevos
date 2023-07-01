@@ -4024,6 +4024,14 @@ static void rc_client_reset_variables(rc_client_t* client)
     rc_reset_value(variable);
 }
 
+static void rc_client_reset_all(rc_client_t* client)
+{
+  rc_client_reset_achievements(client);
+  rc_client_reset_leaderboards(client);
+  rc_client_reset_richpresence(client);
+  rc_client_reset_variables(client);
+}
+
 void rc_client_reset(rc_client_t* client)
 {
   rc_client_game_hash_t* game_hash;
@@ -4046,10 +4054,7 @@ void rc_client_reset(rc_client_t* client)
   client->game->waiting_for_reset = 0;
   rc_client_reset_pending_events(client);
 
-  rc_client_reset_achievements(client);
-  rc_client_reset_leaderboards(client);
-  rc_client_reset_richpresence(client);
-  rc_client_reset_variables(client);
+  rc_client_reset_all(client);
 
   rc_mutex_unlock(&client->state.mutex);
 
@@ -4195,10 +4200,16 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
   for (subset = client->game->subsets; subset; subset = subset->next)
     rc_client_subset_before_deserialize_progress(subset);
 
-  result = rc_runtime_deserialize_progress(&client->game->runtime, serialized, NULL);
+  if (!serialized) {
+    rc_client_reset_all(client);
+    result = RC_OK;
+  }
+  else {
+    result = rc_runtime_deserialize_progress(&client->game->runtime, serialized, NULL);
+  }
 
   for (subset = client->game->subsets; subset; subset = subset->next)
-  rc_client_subset_after_deserialize_progress(client->game, subset);
+    rc_client_subset_after_deserialize_progress(client->game, subset);
 
   rc_mutex_unlock(&client->state.mutex);
 

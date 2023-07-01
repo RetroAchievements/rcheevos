@@ -5569,6 +5569,146 @@ static void test_deserialize_progress_updates_widgets(void)
   rc_client_destroy(g_client);
 }
 
+static void test_deserialize_progress_null(void)
+{
+  const rc_client_leaderboard_t* leaderboard;
+  const rc_client_achievement_t* achievement;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
+  mock_memory(memory, sizeof(memory));
+
+  rc_client_do_frame(g_client);
+
+  /* activate some widgets */
+  memory[0x01] = 1; /* challenge indicator for achievement 7 */
+  memory[0x0A] = 2; /* tracker for leaderboard 48 */
+  memory[0x0E] = 25; /* leaderboard 48 value */
+  event_count = 0;
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 3); /* challenge indicator show, leaderboard start, tracker show */
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  achievement = rc_client_get_achievement_info(g_client, 7);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_client_achievement_info_t*)achievement)->trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(((rc_client_achievement_info_t*)achievement)->trigger->requirement->conditions->next->current_hits, 2);
+
+  leaderboard = rc_client_get_leaderboard_info(g_client, 48);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_TRACKING);
+  ASSERT_NUM_EQUALS(((rc_client_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_STARTED);
+
+  /* deserialize null state. expect all widgets to be hidden and achievements reset to waiting */
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, NULL), RC_OK);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
+
+  achievement = rc_client_get_achievement_info(g_client, 7);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_client_achievement_info_t*)achievement)->trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(((rc_client_achievement_info_t*)achievement)->trigger->requirement->conditions->next->current_hits, 0);
+
+  leaderboard = rc_client_get_leaderboard_info(g_client, 48);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_client_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_WAITING);
+
+  /* must be false before it can be true to change from WAITING to ACTIVE. do so manually */
+  ((rc_client_leaderboard_info_t*)leaderboard)->lboard->state = RC_LBOARD_STATE_ACTIVE;
+
+  /* advance frame, challenge indicator and leaderboard tracker should reappear */
+  event_count = 0;
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 3); /* challenge indicator show, leaderboard start, tracker show */
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  rc_client_destroy(g_client);
+}
+
+static void test_deserialize_progress_invalid(void)
+{
+  const rc_client_leaderboard_t* leaderboard;
+  const rc_client_achievement_t* achievement;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
+  mock_memory(memory, sizeof(memory));
+
+  rc_client_do_frame(g_client);
+
+  /* activate some widgets */
+  memory[0x01] = 1; /* challenge indicator for achievement 7 */
+  memory[0x0A] = 2; /* tracker for leaderboard 48 */
+  memory[0x0E] = 25; /* leaderboard 48 value */
+  event_count = 0;
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 3); /* challenge indicator show, leaderboard start, tracker show */
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  achievement = rc_client_get_achievement_info(g_client, 7);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_client_achievement_info_t*)achievement)->trigger->state, RC_TRIGGER_STATE_PRIMED);
+  ASSERT_NUM_EQUALS(((rc_client_achievement_info_t*)achievement)->trigger->requirement->conditions->next->current_hits, 2);
+
+  leaderboard = rc_client_get_leaderboard_info(g_client, 48);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_TRACKING);
+  ASSERT_NUM_EQUALS(((rc_client_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_STARTED);
+
+  /* deserialize null state. expect all widgets to be hidden and achievements reset to waiting */
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, memory), RC_INVALID_STATE);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
+
+  achievement = rc_client_get_achievement_info(g_client, 7);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_client_achievement_info_t*)achievement)->trigger->state, RC_TRIGGER_STATE_WAITING);
+  ASSERT_NUM_EQUALS(((rc_client_achievement_info_t*)achievement)->trigger->requirement->conditions->next->current_hits, 0);
+
+  leaderboard = rc_client_get_leaderboard_info(g_client, 48);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(((rc_client_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_WAITING);
+
+  /* must be false before it can be true to change from WAITING to ACTIVE. do so manually */
+  ((rc_client_leaderboard_info_t*)leaderboard)->lboard->state = RC_LBOARD_STATE_ACTIVE;
+
+  /* advance frame, challenge indicator and leaderboard tracker should reappear */
+  event_count = 0;
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 3); /* challenge indicator show, leaderboard start, tracker show */
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- processing required ----- */
 
 static void test_processing_required(void)
@@ -6005,6 +6145,8 @@ void test_client(void) {
 
   TEST(test_reset_hides_widgets);
   TEST(test_deserialize_progress_updates_widgets);
+  TEST(test_deserialize_progress_null);
+  TEST(test_deserialize_progress_invalid);
 
   /* processing required */
   TEST(test_processing_required);
