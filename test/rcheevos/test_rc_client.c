@@ -4333,21 +4333,8 @@ static void test_do_frame_achievement_measured_progress_event(void)
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 0);
 
-    /* any change will trigger the popup - even dropping to 0 */
+    /* don't trigger popup when value changes to 0 as the measured_progress string will be blank */
     memory[0x06] = 0; /* 0 */
-    rc_client_do_frame(g_client);
-    ASSERT_NUM_EQUALS(event_count, 1);
-
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6);
-    ASSERT_PTR_NOT_NULL(event);
-    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
-    ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
-    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 6));
-    ASSERT_STR_EQUALS(event->achievement->measured_progress, "");
-
-    event_count = 0;
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 0);
 

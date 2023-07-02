@@ -3659,7 +3659,7 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
 {
   rc_client_achievement_info_t* achievement = subset->achievements;
   rc_client_achievement_info_t* stop = achievement + subset->public.num_achievements;
-  float best_progress = -1.0;
+  float best_progress = 0.0;
   rc_client_achievement_info_t* best_progress_achievement = NULL;
 
   for (; achievement < stop; ++achievement) {
