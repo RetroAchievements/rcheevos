@@ -2248,7 +2248,8 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
           /* value hasn't been initialized yet, leave progress string empty */
         }
         else if (achievement->trigger->measured_value == 0) {
-          /* value is 0, leave progress string empty */
+          /* value is 0, leave progress string empty. update progress to 0.0 */
+          achievement->public.measured_percent = 0.0;
         }
         else {
           /* clamp measured value at target (can't get more than 100%) */

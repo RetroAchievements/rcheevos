@@ -4280,6 +4280,7 @@ static void test_do_frame_achievement_measured(void)
 static void test_do_frame_achievement_measured_progress_event(void)
 {
   rc_client_event_t* event;
+  const rc_client_achievement_t* achievement;
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
@@ -4311,6 +4312,15 @@ static void test_do_frame_achievement_measured_progress_event(void)
     ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 6));
     ASSERT_STR_EQUALS(event->achievement->measured_progress, "3/6");
 
+    /* both achievements should have been updated, even though there was only one event */
+    achievement = rc_client_get_achievement_info(g_client, 6);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "3/6");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 50.0);
+
+    achievement = rc_client_get_achievement_info(g_client, 70);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "49999/100000");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 49.999);
+
     event_count = 0;
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 0);
@@ -4337,6 +4347,10 @@ static void test_do_frame_achievement_measured_progress_event(void)
     memory[0x06] = 0; /* 0 */
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 0);
+
+    achievement = rc_client_get_achievement_info(g_client, 6);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
 
     /* both at 50%, only report first */
     memory[0x06] = 3;                         /* 3/6 */
