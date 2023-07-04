@@ -4312,7 +4312,7 @@ static void test_do_frame_achievement_measured_progress_event(void)
     ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 6));
     ASSERT_STR_EQUALS(event->achievement->measured_progress, "3/6");
 
-    /* both achievements should have been updated, even though there was only one event */
+    /* both achievements should have been updated, */
     achievement = rc_client_get_achievement_info(g_client, 6);
     ASSERT_STR_EQUALS(achievement->measured_progress, "3/6");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 50.0);
@@ -6038,6 +6038,99 @@ static void test_set_hardcore_enable_no_game_loaded(void)
   rc_client_destroy(g_client);
 }
 
+static void test_set_hardcore_enable_encore_mode(void)
+{
+  const rc_client_achievement_t* achievement;
+  rc_client_achievement_info_t* achievement_info;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_encore_mode_enabled(g_client, 1);
+  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+
+  ASSERT_NUM_EQUALS(rc_client_get_encore_mode_enabled(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
+  ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 2);
+
+  g_client->game->runtime.triggers[0].trigger->state = RC_TRIGGER_STATE_ACTIVE;
+  g_client->game->runtime.triggers[1].trigger->state = RC_TRIGGER_STATE_ACTIVE;
+
+  achievement = rc_client_get_achievement_info(g_client, 5501);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH); /* unlock information still tracked */
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);     /* but achievement remains active */
+    ASSERT_NUM_EQUALS(g_client->game->runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  }
+  achievement = rc_client_get_achievement_info(g_client, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(g_client->game->runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  }
+
+  /* toggle hardcore mode should retain active achievements */
+  rc_client_set_hardcore_enabled(g_client, 0);
+  ASSERT_NUM_EQUALS(rc_client_get_encore_mode_enabled(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 0);
+  ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 2);
+
+  achievement = rc_client_get_achievement_info(g_client, 5501);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(g_client->game->runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  }
+  achievement = rc_client_get_achievement_info(g_client, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(g_client->game->runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+  }
+
+  /* toggle hardcore mode should retain active achievements */
+  rc_client_set_hardcore_enabled(g_client, 1);
+  ASSERT_NUM_EQUALS(rc_client_get_encore_mode_enabled(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
+  ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 2);
+
+  /* trigger an achievement */
+  achievement_info = (rc_client_achievement_info_t*)rc_client_get_achievement_info(g_client, 5501);
+  achievement_info->public.state = RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED;
+  g_client->game->runtime.triggers[0].trigger->state = RC_TRIGGER_STATE_TRIGGERED;
+
+  /* toggle hardcore mode should retain active achievements */
+  rc_client_set_hardcore_enabled(g_client, 0);
+  ASSERT_NUM_EQUALS(rc_client_get_encore_mode_enabled(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 0);
+  ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 1); /* only one active now */
+
+  achievement = rc_client_get_achievement_info(g_client, 5501);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+  }
+  achievement = rc_client_get_achievement_info(g_client, 5502);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(g_client->game->runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
+    ASSERT_PTR_EQUALS(((rc_client_achievement_info_t*)achievement)->trigger, g_client->game->runtime.triggers[0].trigger);
+  }
+
+  /* toggle hardcore mode should retain active achievements */
+  rc_client_set_hardcore_enabled(g_client, 1);
+  ASSERT_NUM_EQUALS(rc_client_get_encore_mode_enabled(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
+  ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 1);
+
+  rc_client_destroy(g_client);
+}
+
 static void test_set_encore_mode_enable(void)
 {
   const rc_client_achievement_t* achievement;
@@ -6272,6 +6365,7 @@ void test_client(void) {
   TEST(test_set_hardcore_disable_active_tracker);
   TEST(test_set_hardcore_enable);
   TEST(test_set_hardcore_enable_no_game_loaded);
+  TEST(test_set_hardcore_enable_encore_mode);
   TEST(test_set_encore_mode_enable);
   TEST(test_set_encore_mode_disable);
 
