@@ -4339,8 +4339,10 @@ int rc_client_get_hardcore_enabled(const rc_client_t* client)
 
 void rc_client_set_unofficial_enabled(rc_client_t* client, int enabled)
 {
-  if (client)
+  if (client) {
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Unofficial %s", enabled ? "enabled" : "disabled");
     client->state.unofficial_enabled = enabled ? 1 : 0;
+  }
 }
 
 int rc_client_get_unofficial_enabled(const rc_client_t* client)
@@ -4350,8 +4352,10 @@ int rc_client_get_unofficial_enabled(const rc_client_t* client)
 
 void rc_client_set_encore_mode_enabled(rc_client_t* client, int enabled)
 {
-  if (client)
+  if (client) {
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Encore mode %s", enabled ? "enabled" : "disabled");
     client->state.encore_mode = enabled ? 1 : 0;
+  }
 }
 
 int rc_client_get_encore_mode_enabled(const rc_client_t* client)
@@ -4367,6 +4371,7 @@ void rc_client_set_spectator_mode_enabled(rc_client_t* client, int enabled)
       return;
     }
 
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Spectator mode %s", enabled ? "enabled" : "disabled");
     client->state.spectator_mode = enabled ? RC_CLIENT_SPECTATOR_MODE_ON : RC_CLIENT_SPECTATOR_MODE_OFF;
   }
 }
