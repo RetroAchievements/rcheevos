@@ -125,6 +125,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 101, "Events");
 
   /* memory maps */
+  TEST_PARAMS2(test_memory, RC_CONSOLE_UNKNOWN, 0x000000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_3DO, 0x200000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_AMIGA, 0x100000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_AMSTRAD_PC, 0x090000);

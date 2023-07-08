@@ -33,6 +33,8 @@ typedef struct rc_api_login_response_t {
   const char* api_token;
   /* The current score of the player */
   unsigned score;
+  /* The current softcore score of the player */
+  unsigned score_softcore;
   /* The number of unread messages waiting for the player on the web site */
   unsigned num_unread_messages;
   /* The preferred name to display for the player */

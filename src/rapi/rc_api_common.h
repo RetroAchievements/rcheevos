@@ -67,6 +67,8 @@ void rc_buf_destroy(rc_api_buffer_t* buffer);
 char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount);
 void rc_buf_consume(rc_api_buffer_t* buffer, const char* start, char* end);
 void* rc_buf_alloc(rc_api_buffer_t* buffer, size_t amount);
+char* rc_buf_strcpy(rc_api_buffer_t* buffer, const char* src);
+char* rc_buf_strncpy(rc_api_buffer_t* buffer, const char* src, size_t len);
 
 void rc_url_builder_append_encoded_str(rc_api_url_builder_t* builder, const char* str);
 void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, int value);

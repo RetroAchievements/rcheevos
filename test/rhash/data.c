@@ -692,7 +692,7 @@ uint8_t* generate_jaguarcd_bin(unsigned header_offset, unsigned binary_size, int
 {
   size_t size_needed = (((binary_size + 64 + 32 + 8) + 2351) / 2352) * 2352;
   uint8_t* image = (uint8_t*)calloc(size_needed, 1);
-  int i;
+  size_t i;
 
   if (!image)
     return NULL;

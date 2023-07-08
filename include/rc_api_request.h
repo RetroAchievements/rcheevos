@@ -3,6 +3,8 @@
 
 #include "rc_error.h"
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -65,6 +67,15 @@ void rc_api_destroy_request(rc_api_request_t* request);
 
 void rc_api_set_host(const char* hostname);
 void rc_api_set_image_host(const char* hostname);
+
+typedef struct rc_api_server_response_t {
+  /* Pointer to the data returned from the server */
+  const char* body;
+  /* Length of data returned from the server (Content-Length) */
+  size_t body_length;
+  /* HTTP status code returned from the server */
+  int http_status_code;
+} rc_api_server_response_t;
 
 #ifdef __cplusplus
 }

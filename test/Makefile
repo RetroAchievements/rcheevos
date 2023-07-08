@@ -45,6 +45,7 @@ OBJ=$(RC_SRC)/alloc.o \
     $(RC_SRC)/lboard.o \
     $(RC_SRC)/memref.o \
     $(RC_SRC)/operand.o \
+    $(RC_SRC)/rc_client.o \
     $(RC_SRC)/rc_libretro.o \
     $(RC_SRC)/rc_validate.o \
     $(RC_SRC)/richpresence.o \
@@ -68,6 +69,7 @@ OBJ=$(RC_SRC)/alloc.o \
     rcheevos/test_lboard.o \
     rcheevos/test_memref.o \
     rcheevos/test_operand.o \
+    rcheevos/test_rc_client.o \
     rcheevos/test_rc_libretro.o \
     rcheevos/test_rc_validate.o \
     rcheevos/test_richpresence.o \
