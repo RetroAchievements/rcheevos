@@ -1,6 +1,7 @@
 #include "rc_api_editor.h"
 #include "rc_api_runtime.h"
 
+#include "../src/rapi/rc_api_common.h"
 #include "../test_framework.h"
 #include "rc_compat.h"
 #include "rc_consoles.h"
@@ -18,6 +19,7 @@ static void test_init_fetch_code_notes_request()
   ASSERT_NUM_EQUALS(rc_api_init_fetch_code_notes_request(&request, &fetch_code_notes_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=codenotes2&g=1234");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -144,6 +146,7 @@ static void test_init_update_code_note_request()
   ASSERT_NUM_EQUALS(rc_api_init_update_code_note_request(&request, &update_code_note_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=submitcodenote&u=Dev&t=API_TOKEN&g=1234&m=7168&n=flags%0a1%3dfirst%0a2%3dsecond");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -179,6 +182,7 @@ static void test_init_update_code_note_request_no_note()
   ASSERT_NUM_EQUALS(rc_api_init_update_code_note_request(&request, &update_code_note_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=submitcodenote&u=Dev&t=API_TOKEN&g=1234&m=7168");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -198,6 +202,7 @@ static void test_init_update_code_note_request_empty_note()
   ASSERT_NUM_EQUALS(rc_api_init_update_code_note_request(&request, &update_code_note_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=submitcodenote&u=Dev&t=API_TOKEN&g=1234&m=7168");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -248,6 +253,7 @@ static void test_init_update_achievement_request()
   ASSERT_NUM_EQUALS(rc_api_init_update_achievement_request(&request, &update_achievement_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=uploadachievement&u=Dev&t=API_TOKEN&a=5555&g=1234&n=Title&d=Description&m=0xH1234%3d1&z=5&f=3&b=123456&h=7cd9d3f0bfdf84734968353b5a430cfd");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -271,6 +277,7 @@ static void test_init_update_achievement_request_new()
   ASSERT_NUM_EQUALS(rc_api_init_update_achievement_request(&request, &update_achievement_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=uploadachievement&u=Dev&t=API_TOKEN&g=1234&n=Title&d=Description&m=0xH1234%3d1&z=5&f=5&b=123456&h=10dd1fd6e0201f634b1b7536d4860ccb");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -360,6 +367,7 @@ static void test_init_update_leaderboard_request()
   ASSERT_NUM_EQUALS(rc_api_init_update_leaderboard_request(&request, &update_leaderboard_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&i=5555&g=1234&n=Title&d=Description&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&h=bbdb85cb1eb82773d5740c2d5d515ec0");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -385,6 +393,7 @@ static void test_init_update_leaderboard_request_new()
   ASSERT_NUM_EQUALS(rc_api_init_update_leaderboard_request(&request, &update_leaderboard_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&g=1234&n=Title&d=Description&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&h=739e28608a9e93d7351103d2f43fc6dc");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -433,6 +442,7 @@ static void test_init_update_leaderboard_request_no_description()
   ASSERT_NUM_EQUALS(rc_api_init_update_leaderboard_request(&request, &update_leaderboard_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&i=5555&g=1234&n=Title&d=&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&h=bbdb85cb1eb82773d5740c2d5d515ec0");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -489,6 +499,7 @@ static void test_init_fetch_badge_range_request()
   ASSERT_NUM_EQUALS(rc_api_init_fetch_badge_range_request(&request, &fetch_badge_range_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=badgeiter");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -525,6 +536,7 @@ static void test_init_add_game_hash_request()
   ASSERT_NUM_EQUALS(rc_api_init_add_game_hash_request(&request, &add_game_hash_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=submitgametitle&u=Dev&t=API_TOKEN&c=7&m=NEW_HASH&i=Game+Name&g=1234&d=Game+Name+%5bNo+Intro%5d.nes");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -545,6 +557,7 @@ static void test_init_add_game_hash_request_no_game_id()
   ASSERT_NUM_EQUALS(rc_api_init_add_game_hash_request(&request, &add_game_hash_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=submitgametitle&u=Dev&t=API_TOKEN&c=7&m=NEW_HASH&i=Game+Name&d=Game+Name+%5bNo+Intro%5d.nes");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -585,6 +598,7 @@ static void test_init_add_game_hash_request_no_title()
   ASSERT_NUM_EQUALS(rc_api_init_add_game_hash_request(&request, &add_game_hash_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=submitgametitle&u=Dev&t=API_TOKEN&c=7&m=NEW_HASH&g=1234&d=Game+Name+%5bNo+Intro%5d.nes");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }

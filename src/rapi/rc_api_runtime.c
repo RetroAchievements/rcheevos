@@ -24,6 +24,7 @@ int rc_api_init_resolve_hash_request(rc_api_request_t* request, const rc_api_res
   rc_url_builder_append_str_param(&builder, "r", "gameid");
   rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
   request->post_data = rc_url_builder_finalize(&builder);
+  request->content_type = RC_CONTENT_TYPE_URLENCODED;
 
   return builder.result;
 }
@@ -65,6 +66,7 @@ int rc_api_init_fetch_game_data_request(rc_api_request_t* request, const rc_api_
   if (rc_api_url_build_dorequest(&builder, "patch", api_params->username, api_params->api_token)) {
     rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
     request->post_data = rc_url_builder_finalize(&builder);
+    request->content_type = RC_CONTENT_TYPE_URLENCODED;
   }
 
   return builder.result;
@@ -286,6 +288,7 @@ int rc_api_init_ping_request(rc_api_request_t* request, const rc_api_ping_reques
       rc_url_builder_append_str_param(&builder, "m", api_params->rich_presence);
 
     request->post_data = rc_url_builder_finalize(&builder);
+    request->content_type = RC_CONTENT_TYPE_URLENCODED;
   }
 
   return builder.result;
@@ -339,6 +342,7 @@ int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_ap
     rc_url_builder_append_str_param(&builder, "v", buffer);
 
     request->post_data = rc_url_builder_finalize(&builder);
+    request->content_type = RC_CONTENT_TYPE_URLENCODED;
   }
 
   return builder.result;
@@ -420,6 +424,7 @@ int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_
     rc_url_builder_append_str_param(&builder, "v", buffer);
 
     request->post_data = rc_url_builder_finalize(&builder);
+    request->content_type = RC_CONTENT_TYPE_URLENCODED;
   }
 
   return builder.result;

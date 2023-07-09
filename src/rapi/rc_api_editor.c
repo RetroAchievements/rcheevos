@@ -22,6 +22,7 @@ int rc_api_init_fetch_code_notes_request(rc_api_request_t* request, const rc_api
   rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
 
   request->post_data = rc_url_builder_finalize(&builder);
+  request->content_type = RC_CONTENT_TYPE_URLENCODED;
 
   return builder.result;
 }
@@ -123,6 +124,7 @@ int rc_api_init_update_code_note_request(rc_api_request_t* request, const rc_api
     rc_url_builder_append_str_param(&builder, "n", api_params->note);
 
   request->post_data = rc_url_builder_finalize(&builder);
+  request->content_type = RC_CONTENT_TYPE_URLENCODED;
 
   return builder.result;
 }
@@ -206,6 +208,7 @@ int rc_api_init_update_achievement_request(rc_api_request_t* request, const rc_a
   rc_url_builder_append_str_param(&builder, "h", buffer);
 
   request->post_data = rc_url_builder_finalize(&builder);
+  request->content_type = RC_CONTENT_TYPE_URLENCODED;
 
   return builder.result;
 }
@@ -297,6 +300,7 @@ int rc_api_init_update_leaderboard_request(rc_api_request_t* request, const rc_a
     rc_url_builder_append_str_param(&builder, "h", buffer);
 
     request->post_data = rc_url_builder_finalize(&builder);
+    request->content_type = RC_CONTENT_TYPE_URLENCODED;
 
     return builder.result;
 }
@@ -338,6 +342,7 @@ int rc_api_init_fetch_badge_range_request(rc_api_request_t* request, const rc_ap
   rc_url_builder_append_str_param(&builder, "r", "badgeiter");
 
   request->post_data = rc_url_builder_finalize(&builder);
+  request->content_type = RC_CONTENT_TYPE_URLENCODED;
 
   (void)api_params;
 
@@ -401,6 +406,7 @@ int rc_api_init_add_game_hash_request(rc_api_request_t* request, const rc_api_ad
     rc_url_builder_append_str_param(&builder, "d", api_params->hash_description);
 
   request->post_data = rc_url_builder_finalize(&builder);
+  request->content_type = RC_CONTENT_TYPE_URLENCODED;
 
   return builder.result;
 }

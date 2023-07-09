@@ -27,6 +27,7 @@ int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_requ
     return RC_INVALID_STATE;
 
   request->post_data = rc_url_builder_finalize(&builder);
+  request->content_type = RC_CONTENT_TYPE_URLENCODED;
 
   return builder.result;
 }
@@ -92,6 +93,7 @@ int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_st
     rc_url_builder_append_unum_param(&builder, "m", api_params->game_id);
     rc_url_builder_append_str_param(&builder, "l", RCHEEVOS_VERSION_STRING);
     request->post_data = rc_url_builder_finalize(&builder);
+    request->content_type = RC_CONTENT_TYPE_URLENCODED;
   }
 
   return builder.result;
@@ -125,6 +127,7 @@ int rc_api_init_fetch_user_unlocks_request(rc_api_request_t* request, const rc_a
     rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
     rc_url_builder_append_unum_param(&builder, "h", api_params->hardcore ? 1 : 0);
     request->post_data = rc_url_builder_finalize(&builder);
+    request->content_type = RC_CONTENT_TYPE_URLENCODED;
   }
 
   return builder.result;
