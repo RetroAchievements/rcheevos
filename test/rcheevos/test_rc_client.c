@@ -76,7 +76,8 @@ static const char* patchdata_bounds_check_system = "{\"Success\":true,\"PatchDat
       GENERIC_ACHIEVEMENT_JSON("3", "0xH10000=5") ","
       GENERIC_ACHIEVEMENT_JSON("4", "0x FFFE=5") ","
       GENERIC_ACHIEVEMENT_JSON("5", "0x FFFF=5") ","
-      GENERIC_ACHIEVEMENT_JSON("6", "0x 10000=5")
+      GENERIC_ACHIEVEMENT_JSON("6", "0x 10000=5") ","
+      GENERIC_ACHIEVEMENT_JSON("7", "I:0xH0000_0xHFFFF=5")
     "],"
     "\"Leaderboards\":[]"
     "}}";
@@ -3766,19 +3767,50 @@ static void test_fetch_leaderboard_entries_aborted(void)
 
 static void test_do_frame_bounds_check_system(void)
 {
+  const uint32_t memory_size = 0x10010; /* provide more memory than system expects */
+  uint8_t* memory = (uint8_t*)calloc(1, memory_size);
+  ASSERT_PTR_NOT_NULL(memory);
+
   g_client = mock_client_game_loaded(patchdata_bounds_check_system, no_unlocks, no_unlocks);
 
+  mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=7&h=1&m=0123456789ABCDEF&v=c39308ba325ba4a72919b081fb18fdd4",
+    "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":7,\"AchievementsRemaining\":4}");
+
   ASSERT_PTR_NOT_NULL(g_client->game);
-  if (g_client->game) {
-    assert_achievement_state(g_client, 1, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    assert_achievement_state(g_client, 2, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    assert_achievement_state(g_client, 3, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* 0x10000 out of range for system */
-    assert_achievement_state(g_client, 4, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    assert_achievement_state(g_client, 5, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE); /* cannot read two bytes from 0xFFFF, but size isn't enforced until do_frame */
-    assert_achievement_state(g_client, 6, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* 0x10000 out of range for system */
-  }
+  ASSERT_NUM_EQUALS(g_client->game->max_valid_address, 0xFFFF);
+
+  assert_achievement_state(g_client, 1, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  assert_achievement_state(g_client, 2, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  assert_achievement_state(g_client, 3, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* 0x10000 out of range for system */
+  assert_achievement_state(g_client, 4, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  assert_achievement_state(g_client, 5, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE); /* cannot read two bytes from 0xFFFF, but size isn't enforced until do_frame */
+  assert_achievement_state(g_client, 6, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* 0x10000 out of range for system */
+  assert_achievement_state(g_client, 7, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+
+  /* verify that reading at the edge of the memory bounds fails */
+  mock_memory(memory, 0x10000);
+  rc_client_do_frame(g_client);
+  assert_achievement_state(g_client, 5, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* cannot read two bytes from 0xFFFF */
+
+  /* set up memory so achievement 7 would trigger if the pointed at address were valid */
+  /* achievement should not trigger - invalid address should be ignored */
+  memory[0x10000] = 5;
+  memory[0x00000] = 1; /* byte(0xFFFF + byte(0x0000)) == 5 */
+  rc_client_do_frame(g_client);
+  assert_achievement_state(g_client, 7, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+
+  /* even if the extra memory is available, it shouldn't try to read beyond the system defined max address */
+  mock_memory(memory, memory_size);
+  rc_client_do_frame(g_client);
+  assert_achievement_state(g_client, 7, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+
+  /* change max valid address so memory will be evaluated. achievement should trigger */
+  g_client->game->max_valid_address = memory_size - 1;
+  rc_client_do_frame(g_client);
+  assert_achievement_state(g_client, 7, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
 
   rc_client_destroy(g_client);
+  free(memory);
 }
 
 static void test_do_frame_bounds_check_available(void)

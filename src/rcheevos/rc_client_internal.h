@@ -150,8 +150,10 @@ typedef struct rc_client_game_info_t {
   rc_client_media_hash_t* media_hash;
 
   rc_runtime_t runtime;
-  uint8_t waiting_for_reset;
 
+  uint32_t max_valid_address;
+
+  uint8_t waiting_for_reset;
   uint8_t pending_events;
 
   rc_api_buffer_t buffer;
