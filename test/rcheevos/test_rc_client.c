@@ -468,6 +468,7 @@ static rc_client_t* mock_client_logged_in(void)
 static void mock_client_load_game(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
 {
   reset_mock_api_handlers();
+  event_count = 0;
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
   mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
