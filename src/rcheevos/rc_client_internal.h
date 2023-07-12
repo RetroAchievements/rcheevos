@@ -242,6 +242,11 @@ int rc_trigger_contains_memref(const rc_trigger_t* trigger, const rc_memref_t* m
 int rc_value_contains_memref(const rc_value_t* value, const rc_memref_t* memref);
 /* end runtime.c internals */
 
+/* helper functions for unit tests */
+typedef struct rc_hash_iterator rc_hash_iterator_t;
+rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client);
+/* end helper functions for unit tests */
+
 enum {
   RC_CLIENT_LEGACY_PEEK_AUTO,
   RC_CLIENT_LEGACY_PEEK_CONSTRUCTED,

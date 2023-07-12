@@ -1,6 +1,7 @@
 #include "rc_client.h"
 
 #include "rc_consoles.h"
+#include "rc_hash.h"
 #include "rc_internal.h"
 #include "rc_client_internal.h"
 #include "rc_version.h"
@@ -386,6 +387,7 @@ static void _assert_api_called(const char* request_params, int count)
 #define assert_api_not_called(request_params) ASSERT_HELPER(_assert_api_called(request_params, 0), "assert_api_not_called")
 #define assert_api_call_count(request_params, num) ASSERT_HELPER(_assert_api_called(request_params, num), "assert_api_call_count")
 #define assert_api_pending(request_params) ASSERT_HELPER(_assert_api_called(request_params, -1), "assert_api_pending")
+#define assert_api_not_pending(request_params) ASSERT_HELPER(_assert_api_called(request_params, 0), "assert_api_not_pending")
 
 static void reset_mock_api_handlers(void)
 {
@@ -1479,6 +1481,103 @@ static void test_identify_and_load_game_console_not_specified(void)
   free(image);
 }
 
+static void test_identify_and_load_game_multiconsole_first(void)
+{
+  rc_hash_iterator_t* iterator;
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  /* first hash lookup should be pending. inject a secondary console into the iterator */
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  iterator = rc_client_get_load_state_hash_iterator(g_client);
+  ASSERT_NUM_EQUALS(iterator->index, 1);
+  ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
+  iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
+  iterator->consoles[iterator->index + 1] = 0;
+
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  assert_api_not_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17); /* actual console ID returned from server */
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_load_game_multiconsole_second(void)
+{
+  rc_hash_iterator_t* iterator;
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  /* first hash lookup should be pending. inject a secondary console into the iterator */
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  iterator = rc_client_get_load_state_hash_iterator(g_client);
+  ASSERT_NUM_EQUALS(iterator->index, 1);
+  ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
+  iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
+  iterator->consoles[iterator->index + 1] = 0;
+
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+
+  assert_api_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
+  async_api_response("r=gameid&m=64b131c5c7fec32985d9c99700babb7e", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17); /* actual console ID returned from server */
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "64b131c5c7fec32985d9c99700babb7e");
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
 static void test_identify_and_load_game_unknown_hash(void)
 {
   size_t image_size;
@@ -1491,6 +1590,89 @@ static void test_identify_and_load_game_unknown_hash(void)
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
       image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, RC_CONSOLE_NINTENDO);
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_load_game_unknown_hash_multiconsole(void)
+{
+  rc_hash_iterator_t* iterator;
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
+
+  /* first hash lookup should be pending. inject a secondary console into the iterator */
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  iterator = rc_client_get_load_state_hash_iterator(g_client);
+  ASSERT_NUM_EQUALS(iterator->index, 1);
+  ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
+  iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
+  iterator->consoles[iterator->index + 1] = 0;
+
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+
+  assert_api_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
+  async_api_response("r=gameid&m=64b131c5c7fec32985d9c99700babb7e", "{\"Success\":true,\"GameID\":0}");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+
+    /* when multiple hashes are tried, console will be unknown and hash will be a CSV */
+    ASSERT_NUM_EQUALS(g_client->game->public.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public.console_id, RC_CONSOLE_UNKNOWN);
+    ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857,64b131c5c7fec32985d9c99700babb7e");
+    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_load_game_unknown_hash_console_specified(void)
+{
+  rc_hash_iterator_t* iterator;
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  /* explicitly specify we only want the NES hash processed */
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
+
+  /* first hash lookup should be pending. iterator should not have been initialized */
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  iterator = rc_client_get_load_state_hash_iterator(g_client);
+  ASSERT_NUM_EQUALS(iterator->index, 0);
+  ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
+
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -6269,7 +6451,11 @@ void test_client(void) {
   TEST(test_identify_and_load_game_required_fields);
   TEST(test_identify_and_load_game_console_specified);
   TEST(test_identify_and_load_game_console_not_specified);
+  TEST(test_identify_and_load_game_multiconsole_first);
+  TEST(test_identify_and_load_game_multiconsole_second);
   TEST(test_identify_and_load_game_unknown_hash);
+  TEST(test_identify_and_load_game_unknown_hash_multiconsole);
+  TEST(test_identify_and_load_game_unknown_hash_console_specified);
   TEST(test_identify_and_load_game_multihash);
   TEST(test_identify_and_load_game_multihash_unknown_game);
   TEST(test_identify_and_load_game_multihash_differ);
