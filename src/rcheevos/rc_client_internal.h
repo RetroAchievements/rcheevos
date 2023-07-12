@@ -256,4 +256,4 @@ void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_cli
 }
 #endif
 
-#endif /* RC_RUNTIME_H */
+#endif /* RC_CLIENT_INTERNAL_H */
