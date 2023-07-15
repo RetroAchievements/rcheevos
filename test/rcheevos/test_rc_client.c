@@ -202,23 +202,63 @@ static void _assert_achievement_state(rc_client_t* client, uint32_t id, int expe
 }
 #define assert_achievement_state(client, id, expected_state) ASSERT_HELPER(_assert_achievement_state(client, id, expected_state), "assert_achievement_state")
 
-static rc_client_event_t events[16];
+typedef struct rc_client_captured_event_t
+{
+  rc_client_event_t event;
+  rc_client_server_error_t server_error; /* server_error goes out of scope, it needs to be copied too */
+  uint32_t id;
+} rc_client_captured_event_t;
+
+static rc_client_captured_event_t events[16];
 static int event_count = 0;
 
 static void rc_client_event_handler(const rc_client_event_t* e, rc_client_t* client)
 {
-  memcpy(&events[event_count++], e, sizeof(rc_client_event_t));
+  memcpy(&events[event_count], e, sizeof(rc_client_event_t));
+  memset(&events[event_count].server_error, 0, sizeof(events[event_count].server_error));
 
-  if (e->type == RC_CLIENT_EVENT_SERVER_ERROR) {
-    static char event_server_error_message[128];
-    static rc_client_server_error_t event_server_error;
+  switch (e->type) {
+    case RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED:
+    case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW:
+    case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE:
+    case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW:
+      events[event_count].id = e->achievement->id;
+      break;
 
-    /* server error data is not maintained out of scope, copy it too */
-    memcpy(&event_server_error, e->server_error, sizeof(event_server_error));
-    strcpy_s(event_server_error_message, sizeof(event_server_error_message), e->server_error->error_message);
-    event_server_error.error_message = event_server_error_message;
-    events[event_count - 1].server_error = &event_server_error;
+    case RC_CLIENT_EVENT_LEADERBOARD_STARTED:
+    case RC_CLIENT_EVENT_LEADERBOARD_FAILED:
+    case RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED:
+      events[event_count].id = e->leaderboard->id;
+      break;
+
+    case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW:
+    case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE:
+    case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE:
+      events[event_count].id = e->leaderboard_tracker->id;
+      break;
+
+    case RC_CLIENT_EVENT_GAME_COMPLETED:
+      events[event_count].id = rc_client_get_game_info(client)->id;
+      break;
+
+    case RC_CLIENT_EVENT_SERVER_ERROR: {
+      static char event_server_error_message[128];
+
+      /* server error data is not maintained out of scope, copy it */
+      memcpy(&events[event_count].server_error, e->server_error, sizeof(events[event_count].server_error));
+      strcpy_s(event_server_error_message, sizeof(event_server_error_message), e->server_error->error_message);
+      events[event_count].server_error.error_message = event_server_error_message;
+      events[event_count].event.server_error = &events[event_count].server_error;
+      events[event_count].id = 0;
+      break;
+    }
+
+    default:
+      events[event_count].id = 0;
+      break;
   }
+
+  ++event_count;
 }
 
 static rc_client_event_t* find_event(uint8_t type, uint32_t id)
@@ -226,39 +266,8 @@ static rc_client_event_t* find_event(uint8_t type, uint32_t id)
   int i;
 
   for (i = 0; i < event_count; ++i) {
-    if (events[i].type == type) {
-      switch (type) {
-        case RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED:
-        case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW:
-        case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE:
-        case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW:
-          if (events[i].achievement->id == id)
-            return &events[i];
-          break;
-
-        case RC_CLIENT_EVENT_LEADERBOARD_STARTED:
-        case RC_CLIENT_EVENT_LEADERBOARD_FAILED:
-        case RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED:
-          if (events[i].leaderboard->id == id)
-            return &events[i];
-          break;
-
-        case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW:
-        case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE:
-        case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE:
-          if (events[i].leaderboard_tracker->id == id)
-            return &events[i];
-          break;
-
-        case RC_CLIENT_EVENT_GAME_COMPLETED:
-        case RC_CLIENT_EVENT_RESET:
-        case RC_CLIENT_EVENT_SERVER_ERROR:
-          return &events[i];
-
-        default:
-          break;
-      }
-    }
+    if (events[i].id == id && events[i].event.type == type)
+      return &events[i].event;
   }
 
   return NULL;
@@ -460,6 +469,7 @@ static rc_client_t* mock_client_logged_in(void)
 static void mock_client_load_game(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
 {
   reset_mock_api_handlers();
+  event_count = 0;
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
   mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
@@ -1385,6 +1395,69 @@ static void test_load_game_while_spectating(void)
   ASSERT_FALSE(rc_client_get_spectator_mode_enabled(g_client));
 
   rc_client_destroy(g_client);
+}
+
+/* ----- unload game ----- */
+
+static void test_unload_game(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_NOT_NULL(rc_client_get_game_info(g_client));
+  ASSERT_PTR_NOT_NULL(rc_client_get_user_info(g_client));
+  ASSERT_PTR_NOT_NULL(rc_client_get_achievement_info(g_client, 5501));
+  ASSERT_PTR_NOT_NULL(rc_client_get_leaderboard_info(g_client, 4401));
+
+  event_count = 0;
+  rc_client_unload_game(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  ASSERT_PTR_NULL(g_client->game);
+  ASSERT_PTR_NULL(rc_client_get_game_info(g_client));
+  ASSERT_PTR_NOT_NULL(rc_client_get_user_info(g_client));
+  ASSERT_PTR_NULL(rc_client_get_achievement_info(g_client, 5501));
+  ASSERT_PTR_NULL(rc_client_get_leaderboard_info(g_client, 4401));
+
+  rc_client_destroy(g_client);
+}
+
+static void test_unload_game_hides_ui(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  mock_memory(memory, sizeof(memory));
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  memory[0x01] = 1;   /* show indicator */
+  memory[0x0B] = 1;   /* start leaderboard */
+  memory[0x0E] = 17;  /* leaderboard value */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 3);
+
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 44));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  event_count = 0;
+  rc_client_unload_game(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 2);
+
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
+
+  event_count = 0;
+  rc_client_destroy(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
 }
 
 /* ----- identify and load game ----- */
@@ -6296,6 +6369,10 @@ void test_client(void) {
   TEST(test_load_game_softcore_unlocks_aborted);
   TEST(test_load_game_hardcore_unlocks_aborted);
   TEST(test_load_game_while_spectating);
+
+  /* unload game */
+  TEST(test_unload_game);
+  TEST(test_unload_game_hides_ui);
 
   /* identify and load game */
   TEST(test_identify_and_load_game_required_fields);
