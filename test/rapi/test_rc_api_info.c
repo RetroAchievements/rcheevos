@@ -1,5 +1,6 @@
 #include "rc_api_info.h"
 
+#include "../src/rapi/rc_api_common.h"
 #include "../test_framework.h"
 #include "rc_compat.h"
 
@@ -19,6 +20,7 @@ static void test_init_fetch_achievement_info_request() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_achievement_info_request(&request, &fetch_achievement_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=achievementwondata&u=Username&t=API_TOKEN&a=1234&o=99&c=50");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -36,6 +38,7 @@ static void test_init_fetch_achievement_info_request_no_first() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_achievement_info_request(&request, &fetch_achievement_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=achievementwondata&u=Username&t=API_TOKEN&a=1234&c=50");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -54,6 +57,7 @@ static void test_init_fetch_achievement_info_request_one_first() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_achievement_info_request(&request, &fetch_achievement_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=achievementwondata&u=Username&t=API_TOKEN&a=1234&c=50");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -72,6 +76,7 @@ static void test_init_fetch_achievement_info_request_friends_only() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_achievement_info_request(&request, &fetch_achievement_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=achievementwondata&u=Username&t=API_TOKEN&a=1234&f=1&c=50");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -118,6 +123,7 @@ static void test_init_fetch_leaderboard_info_request() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_leaderboard_info_request(&request, &fetch_leaderboard_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&i=1234&o=100&c=50");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -133,6 +139,7 @@ static void test_init_fetch_leaderboard_info_request_no_first() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_leaderboard_info_request(&request, &fetch_leaderboard_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&i=1234&c=50");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -149,6 +156,7 @@ static void test_init_fetch_leaderboard_info_request_for_user() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_leaderboard_info_request(&request, &fetch_leaderboard_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&i=1234&u=Username&c=20");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -166,6 +174,7 @@ static void test_init_fetch_leaderboard_info_request_for_user_with_offset() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_leaderboard_info_request(&request, &fetch_leaderboard_info_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=lbinfo&i=1234&u=Username&c=20");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -266,6 +275,7 @@ static void test_init_fetch_games_list_request() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_games_list_request(&request, &fetch_games_list_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=gameslist&c=12");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }

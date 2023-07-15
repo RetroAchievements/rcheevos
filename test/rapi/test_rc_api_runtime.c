@@ -2,6 +2,7 @@
 
 #include "rc_runtime_types.h"
 
+#include "../src/rapi/rc_api_common.h"
 #include "../test_framework.h"
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"
@@ -18,6 +19,7 @@ static void test_init_resolve_hash_request() {
   ASSERT_NUM_EQUALS(rc_api_init_resolve_hash_request(&request, &resolve_hash_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=gameid&m=ABCDEF0123456789");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -32,6 +34,7 @@ static void test_init_resolve_hash_request_no_credentials() {
   ASSERT_NUM_EQUALS(rc_api_init_resolve_hash_request(&request, &resolve_hash_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=gameid&m=ABCDEF0123456789");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -99,6 +102,7 @@ static void test_init_fetch_game_data_request() {
   ASSERT_NUM_EQUALS(rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=patch&u=Username&t=API_TOKEN&g=1234");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -385,6 +389,7 @@ static void test_init_ping_request() {
   ASSERT_NUM_EQUALS(rc_api_init_ping_request(&request, &ping_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=ping&u=Username&t=API_TOKEN&g=1234");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -415,6 +420,7 @@ static void test_init_ping_request_rich_presence() {
   ASSERT_NUM_EQUALS(rc_api_init_ping_request(&request, &ping_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=ping&u=Username&t=API_TOKEN&g=1234&m=Level+1%2c+70%25+complete");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -432,6 +438,7 @@ static void test_init_ping_request_rich_presence_unicode() {
   ASSERT_NUM_EQUALS(rc_api_init_ping_request(&request, &ping_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=ping&u=Username&t=API_TOKEN&g=1446&m=%f0%9f%9a%b6%3a3%2c+1st+Quest");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -449,6 +456,7 @@ static void test_init_ping_request_rich_presence_empty() {
   ASSERT_NUM_EQUALS(rc_api_init_ping_request(&request, &ping_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=ping&u=Username&t=API_TOKEN&g=1234");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -480,6 +488,7 @@ static void test_init_award_achievement_request_hardcore() {
   ASSERT_NUM_EQUALS(rc_api_init_award_achievement_request(&request, &award_achievement_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=awardachievement&u=Username&t=API_TOKEN&a=1234&h=1&m=ABCDEF0123456789&v=b8aefaad6f9659e2164bc60da0c3b64d");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -498,6 +507,7 @@ static void test_init_award_achievement_request_non_hardcore() {
   ASSERT_NUM_EQUALS(rc_api_init_award_achievement_request(&request, &award_achievement_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=awardachievement&u=Username&t=API_TOKEN&a=1234&h=0&m=ABABCBCBDEDEFFFF&v=ed81d6ecf825f8cbe3ae1edace098892");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -515,6 +525,7 @@ static void test_init_award_achievement_request_no_hash() {
   ASSERT_NUM_EQUALS(rc_api_init_award_achievement_request(&request, &award_achievement_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=awardachievement&u=Username&t=API_TOKEN&a=5432&h=1&v=31048257ab1788386e71ab0c222aa5c8");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -725,6 +736,7 @@ static void test_init_submit_lboard_entry_request() {
   ASSERT_NUM_EQUALS(rc_api_init_submit_lboard_entry_request(&request, &submit_lboard_entry_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=submitlbentry&u=Username&t=API_TOKEN&i=1234&s=10999&m=ABCDEF0123456789&v=e13c9132ee651256f9d2ee8f06f75d76");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -743,6 +755,7 @@ static void test_init_submit_lboard_entry_request_zero_value() {
   ASSERT_NUM_EQUALS(rc_api_init_submit_lboard_entry_request(&request, &submit_lboard_entry_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=submitlbentry&u=Username&t=API_TOKEN&i=1111&s=0&m=ABCDEF0123456789&v=9c2ac665157d68b8a26e83bb71dd8aaf");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
@@ -761,6 +774,7 @@ static void test_init_submit_lboard_entry_request_negative_value() {
   ASSERT_NUM_EQUALS(rc_api_init_submit_lboard_entry_request(&request, &submit_lboard_entry_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
   ASSERT_STR_EQUALS(request.post_data, "r=submitlbentry&u=Username&t=API_TOKEN&i=1111&s=-234781&m=ABCDEF0123456789&v=fbe290266f2d121a7a37942e1e90f453");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
 }
