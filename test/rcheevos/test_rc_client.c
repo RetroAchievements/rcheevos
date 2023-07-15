@@ -938,13 +938,13 @@ static void test_load_game_unknown_hash(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 0);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, RC_CONSOLE_UNKNOWN);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
   }
   rc_client_destroy(g_client);
 }
@@ -982,43 +982,43 @@ static void test_load_game(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
 
     achievement = &g_client->game->subsets->achievements[0];
-    ASSERT_NUM_EQUALS(achievement->public.id, 5501);
-    ASSERT_STR_EQUALS(achievement->public.title, "Ach1");
-    ASSERT_STR_EQUALS(achievement->public.description, "Desc1");
-    ASSERT_STR_EQUALS(achievement->public.badge_name, "00234");
-    ASSERT_NUM_EQUALS(achievement->public.points, 5);
-    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
-    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_NUM_EQUALS(achievement->public_.id, 5501);
+    ASSERT_STR_EQUALS(achievement->public_.title, "Ach1");
+    ASSERT_STR_EQUALS(achievement->public_.description, "Desc1");
+    ASSERT_STR_EQUALS(achievement->public_.badge_name, "00234");
+    ASSERT_NUM_EQUALS(achievement->public_.points, 5);
+    ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     achievement = &g_client->game->subsets->achievements[1];
-    ASSERT_NUM_EQUALS(achievement->public.id, 5502);
-    ASSERT_STR_EQUALS(achievement->public.title, "Ach2");
-    ASSERT_STR_EQUALS(achievement->public.description, "Desc2");
-    ASSERT_STR_EQUALS(achievement->public.badge_name, "00235");
-    ASSERT_NUM_EQUALS(achievement->public.points, 2);
-    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
-    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_NUM_EQUALS(achievement->public_.id, 5502);
+    ASSERT_STR_EQUALS(achievement->public_.title, "Ach2");
+    ASSERT_STR_EQUALS(achievement->public_.description, "Desc2");
+    ASSERT_STR_EQUALS(achievement->public_.badge_name, "00235");
+    ASSERT_NUM_EQUALS(achievement->public_.points, 2);
+    ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     leaderboard = &g_client->game->subsets->leaderboards[0];
-    ASSERT_NUM_EQUALS(leaderboard->public.id, 4401);
-    ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard1");
-    ASSERT_STR_EQUALS(leaderboard->public.description, "Desc1");
-    ASSERT_NUM_EQUALS(leaderboard->public.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(leaderboard->public_.id, 4401);
+    ASSERT_STR_EQUALS(leaderboard->public_.title, "Leaderboard1");
+    ASSERT_STR_EQUALS(leaderboard->public_.description, "Desc1");
+    ASSERT_NUM_EQUALS(leaderboard->public_.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
     ASSERT_PTR_NOT_NULL(leaderboard->lboard);
     ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
@@ -1055,15 +1055,15 @@ static void test_load_game_async_login(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1343,43 +1343,43 @@ static void test_load_game_while_spectating(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
 
     achievement = &g_client->game->subsets->achievements[0];
-    ASSERT_NUM_EQUALS(achievement->public.id, 5501);
-    ASSERT_STR_EQUALS(achievement->public.title, "Ach1");
-    ASSERT_STR_EQUALS(achievement->public.description, "Desc1");
-    ASSERT_STR_EQUALS(achievement->public.badge_name, "00234");
-    ASSERT_NUM_EQUALS(achievement->public.points, 5);
-    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
-    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_NUM_EQUALS(achievement->public_.id, 5501);
+    ASSERT_STR_EQUALS(achievement->public_.title, "Ach1");
+    ASSERT_STR_EQUALS(achievement->public_.description, "Desc1");
+    ASSERT_STR_EQUALS(achievement->public_.badge_name, "00234");
+    ASSERT_NUM_EQUALS(achievement->public_.points, 5);
+    ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     achievement = &g_client->game->subsets->achievements[1];
-    ASSERT_NUM_EQUALS(achievement->public.id, 5502);
-    ASSERT_STR_EQUALS(achievement->public.title, "Ach2");
-    ASSERT_STR_EQUALS(achievement->public.description, "Desc2");
-    ASSERT_STR_EQUALS(achievement->public.badge_name, "00235");
-    ASSERT_NUM_EQUALS(achievement->public.points, 2);
-    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
-    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_NUM_EQUALS(achievement->public_.id, 5502);
+    ASSERT_STR_EQUALS(achievement->public_.title, "Ach2");
+    ASSERT_STR_EQUALS(achievement->public_.description, "Desc2");
+    ASSERT_STR_EQUALS(achievement->public_.badge_name, "00235");
+    ASSERT_NUM_EQUALS(achievement->public_.points, 2);
+    ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     leaderboard = &g_client->game->subsets->leaderboards[0];
-    ASSERT_NUM_EQUALS(leaderboard->public.id, 4401);
-    ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard1");
-    ASSERT_STR_EQUALS(leaderboard->public.description, "Desc1");
-    ASSERT_NUM_EQUALS(leaderboard->public.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(leaderboard->public_.id, 4401);
+    ASSERT_STR_EQUALS(leaderboard->public_.title, "Leaderboard1");
+    ASSERT_STR_EQUALS(leaderboard->public_.description, "Desc1");
+    ASSERT_NUM_EQUALS(leaderboard->public_.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
     ASSERT_PTR_NOT_NULL(leaderboard->lboard);
     ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
@@ -1505,15 +1505,15 @@ static void test_identify_and_load_game_console_specified(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1540,15 +1540,15 @@ static void test_identify_and_load_game_console_not_specified(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1588,15 +1588,15 @@ static void test_identify_and_load_game_multiconsole_first(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17); /* actual console ID returned from server */
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17); /* actual console ID returned from server */
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1637,15 +1637,15 @@ static void test_identify_and_load_game_multiconsole_second(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17); /* actual console ID returned from server */
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "64b131c5c7fec32985d9c99700babb7e");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17); /* actual console ID returned from server */
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "64b131c5c7fec32985d9c99700babb7e");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1668,13 +1668,13 @@ static void test_identify_and_load_game_unknown_hash(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 0);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, RC_CONSOLE_NINTENDO);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_NINTENDO);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
   }
 
   rc_client_destroy(g_client);
@@ -1711,14 +1711,14 @@ static void test_identify_and_load_game_unknown_hash_multiconsole(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
     /* when multiple hashes are tried, console will be unknown and hash will be a CSV */
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 0);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, RC_CONSOLE_UNKNOWN);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857,64b131c5c7fec32985d9c99700babb7e");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857,64b131c5c7fec32985d9c99700babb7e");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
   }
 
   rc_client_destroy(g_client);
@@ -1751,13 +1751,13 @@ static void test_identify_and_load_game_unknown_hash_console_specified(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 0);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, RC_CONSOLE_NINTENDO);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_NINTENDO);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
   }
 
   rc_client_destroy(g_client);
@@ -1784,15 +1784,15 @@ static void test_identify_and_load_game_multihash(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1815,13 +1815,13 @@ static void test_identify_and_load_game_multihash_unknown_game(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 0);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, RC_CONSOLE_APPLE_II);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Unknown Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "");
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_APPLE_II);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
   }
 
   /* same hash generated for all dsk consoles - only one server call should be made */
@@ -1861,15 +1861,15 @@ static void test_identify_and_load_game_multihash_differ(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "4989b063a40dcfa28291ff8d675050e3");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "4989b063a40dcfa28291ff8d675050e3");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1891,15 +1891,15 @@ static void test_change_media_required_fields(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1947,15 +1947,15 @@ static void test_change_media_same_game(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   /* resetting with a disc from the current game is allowed */
@@ -1963,15 +1963,15 @@ static void test_change_media_same_game(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -1994,15 +1994,15 @@ static void test_change_media_known_game(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   /* resetting with a disc from another game will disable the client */
@@ -2039,15 +2039,15 @@ static void test_change_media_unknown_game(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   ASSERT_FALSE(rc_client_get_hardcore_enabled(g_client));
@@ -2069,7 +2069,7 @@ static void test_change_media_unhashable(void)
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
 
   /* N64 hash will fail with Not a Nintendo 64 ROM */
-  g_client->game->public.console_id = RC_CONSOLE_NINTENDO_64;
+  g_client->game->public_.console_id = RC_CONSOLE_NINTENDO_64;
 
   /* changing to a disc not supported by the system is allowed */
   rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
@@ -2078,14 +2078,14 @@ static void test_change_media_unhashable(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "[NO HASH]");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "[NO HASH]");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   /* resetting with a disc not from the current game will disable the client */
@@ -2124,15 +2124,15 @@ static void test_change_media_back_and_forth(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "4989b063a40dcfa28291ff8d675050e3");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "4989b063a40dcfa28291ff8d675050e3");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -2177,15 +2177,15 @@ static void test_change_media_while_loading(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -2223,15 +2223,15 @@ static void test_change_media_while_loading_later(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   rc_client_destroy(g_client);
@@ -2260,15 +2260,15 @@ static void test_change_media_aborted(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF"); /* old hash retained */
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF"); /* old hash retained */
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   /* hash should still have been captured and lookup should succeed without having to call server again */
@@ -2277,7 +2277,7 @@ static void test_change_media_aborted(void)
   rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
     rc_client_callback_expect_success, g_callback_userdata);
 
-  ASSERT_STR_EQUALS(g_client->game->public.hash, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   rc_client_destroy(g_client);
@@ -2350,22 +2350,22 @@ static void test_load_subset(void)
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
-    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public);
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
-    ASSERT_NUM_EQUALS(g_client->game->public.id, 1234);
-    ASSERT_NUM_EQUALS(g_client->game->public.console_id, 17);
-    ASSERT_STR_EQUALS(g_client->game->public.title, "Sample Game");
-    ASSERT_STR_EQUALS(g_client->game->public.hash, "0123456789ABCDEF");
-    ASSERT_STR_EQUALS(g_client->game->public.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
 
   subset = rc_client_get_subset_info(g_client, 2345);
   ASSERT_PTR_NOT_NULL(subset);
   if (subset) {
     subset_info = g_client->game->subsets->next;
-    ASSERT_PTR_EQUALS(subset, &subset_info->public);
+    ASSERT_PTR_EQUALS(subset, &subset_info->public_);
 
     ASSERT_NUM_EQUALS(subset->id, 2345);
     ASSERT_STR_EQUALS(subset->title, "Bonus");
@@ -2374,53 +2374,53 @@ static void test_load_subset(void)
     ASSERT_NUM_EQUALS(subset->num_leaderboards, 2);
 
     achievement = &subset_info->achievements[0];
-    ASSERT_NUM_EQUALS(achievement->public.id, 7);
-    ASSERT_STR_EQUALS(achievement->public.title, "Achievement 7");
-    ASSERT_STR_EQUALS(achievement->public.description, "Desc 7");
-    ASSERT_STR_EQUALS(achievement->public.badge_name, "007");
-    ASSERT_NUM_EQUALS(achievement->public.points, 5);
-    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
-    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_NUM_EQUALS(achievement->public_.id, 7);
+    ASSERT_STR_EQUALS(achievement->public_.title, "Achievement 7");
+    ASSERT_STR_EQUALS(achievement->public_.description, "Desc 7");
+    ASSERT_STR_EQUALS(achievement->public_.badge_name, "007");
+    ASSERT_NUM_EQUALS(achievement->public_.points, 5);
+    ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     achievement = &subset_info->achievements[1];
-    ASSERT_NUM_EQUALS(achievement->public.id, 8);
-    ASSERT_STR_EQUALS(achievement->public.title, "Achievement 8");
-    ASSERT_STR_EQUALS(achievement->public.description, "Desc 8");
-    ASSERT_STR_EQUALS(achievement->public.badge_name, "008");
-    ASSERT_NUM_EQUALS(achievement->public.points, 5);
-    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
-    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_NUM_EQUALS(achievement->public_.id, 8);
+    ASSERT_STR_EQUALS(achievement->public_.title, "Achievement 8");
+    ASSERT_STR_EQUALS(achievement->public_.description, "Desc 8");
+    ASSERT_STR_EQUALS(achievement->public_.badge_name, "008");
+    ASSERT_NUM_EQUALS(achievement->public_.points, 5);
+    ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     achievement = &subset_info->achievements[2];
-    ASSERT_NUM_EQUALS(achievement->public.id, 9);
-    ASSERT_STR_EQUALS(achievement->public.title, "Achievement 9");
-    ASSERT_STR_EQUALS(achievement->public.description, "Desc 9");
-    ASSERT_STR_EQUALS(achievement->public.badge_name, "009");
-    ASSERT_NUM_EQUALS(achievement->public.points, 5);
-    ASSERT_NUM_EQUALS(achievement->public.unlock_time, 0);
-    ASSERT_NUM_EQUALS(achievement->public.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->public.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_NUM_EQUALS(achievement->public_.id, 9);
+    ASSERT_STR_EQUALS(achievement->public_.title, "Achievement 9");
+    ASSERT_STR_EQUALS(achievement->public_.description, "Desc 9");
+    ASSERT_STR_EQUALS(achievement->public_.badge_name, "009");
+    ASSERT_NUM_EQUALS(achievement->public_.points, 5);
+    ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
+    ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     leaderboard = &subset_info->leaderboards[0];
-    ASSERT_NUM_EQUALS(leaderboard->public.id, 81);
-    ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard 81");
-    ASSERT_STR_EQUALS(leaderboard->public.description, "Desc 81");
-    ASSERT_NUM_EQUALS(leaderboard->public.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(leaderboard->public_.id, 81);
+    ASSERT_STR_EQUALS(leaderboard->public_.title, "Leaderboard 81");
+    ASSERT_STR_EQUALS(leaderboard->public_.description, "Desc 81");
+    ASSERT_NUM_EQUALS(leaderboard->public_.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
     ASSERT_PTR_NOT_NULL(leaderboard->lboard);
     ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
     ASSERT_PTR_NULL(leaderboard->tracker);
 
     leaderboard = &subset_info->leaderboards[1];
-    ASSERT_NUM_EQUALS(leaderboard->public.id, 82);
-    ASSERT_STR_EQUALS(leaderboard->public.title, "Leaderboard 82");
-    ASSERT_STR_EQUALS(leaderboard->public.description, "Desc 82");
-    ASSERT_NUM_EQUALS(leaderboard->public.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(leaderboard->public_.id, 82);
+    ASSERT_STR_EQUALS(leaderboard->public_.title, "Leaderboard 82");
+    ASSERT_STR_EQUALS(leaderboard->public_.description, "Desc 82");
+    ASSERT_NUM_EQUALS(leaderboard->public_.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
     ASSERT_PTR_NOT_NULL(leaderboard->lboard);
     ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
@@ -6385,7 +6385,7 @@ static void test_set_hardcore_enable_encore_mode(void)
 
   /* trigger an achievement */
   achievement_info = (rc_client_achievement_info_t*)rc_client_get_achievement_info(g_client, 5501);
-  achievement_info->public.state = RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED;
+  achievement_info->public_.state = RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED;
   g_client->game->runtime.triggers[0].trigger->state = RC_TRIGGER_STATE_TRIGGERED;
 
   /* toggle hardcore mode should retain active achievements */

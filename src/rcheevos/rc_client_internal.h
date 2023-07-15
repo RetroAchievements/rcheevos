@@ -43,7 +43,7 @@ enum {
 };
 
 typedef struct rc_client_achievement_info_t {
-  rc_client_achievement_t public;
+  rc_client_achievement_t public_;
 
   rc_trigger_t* trigger;
   uint8_t md5[16];
@@ -62,7 +62,7 @@ enum {
 };
 
 typedef struct rc_client_leaderboard_tracker_info_t {
-  rc_client_leaderboard_tracker_t public;
+  rc_client_leaderboard_tracker_t public_;
   struct rc_client_leaderboard_tracker_info_t* next;
   int raw_value;
 
@@ -82,7 +82,7 @@ enum {
 };
 
 typedef struct rc_client_leaderboard_info_t {
-  rc_client_leaderboard_t public;
+  rc_client_leaderboard_t public_;
 
   rc_lboard_t* lboard;
   uint8_t md5[16];
@@ -110,7 +110,7 @@ enum {
 };
 
 typedef struct rc_client_subset_info_t {
-  rc_client_subset_t public;
+  rc_client_subset_t public_;
 
   rc_client_achievement_info_t* achievements;
   rc_client_leaderboard_info_t* leaderboards;
@@ -142,7 +142,7 @@ typedef struct rc_client_media_hash_t {
 } rc_client_media_hash_t;
 
 typedef struct rc_client_game_info_t {
-  rc_client_game_t public;
+  rc_client_game_t public_;
   rc_client_leaderboard_tracker_info_t* leaderboard_trackers;
 
   rc_client_subset_info_t* subsets;
@@ -263,4 +263,4 @@ void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_cli
 }
 #endif
 
-#endif /* RC_RUNTIME_H */
+#endif /* RC_CLIENT_INTERNAL_H */
