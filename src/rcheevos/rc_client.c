@@ -718,6 +718,7 @@ static void rc_client_validate_addresses(rc_client_game_info_t* game, rc_client_
     last_memref = &memref->next;
   }
 
+  game->max_valid_address = max_address;
   RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "%u/%u memory addresses valid", total_count - invalid_count, total_count);
 }
 
@@ -3535,6 +3536,10 @@ static void rc_client_invalidate_processing_memref(rc_client_t* client)
   rc_memref_t** next_memref = &client->game->runtime.memrefs;
   rc_memref_t* memref;
 
+  /* if processing_memref is not set, this occurred following a pointer chain. ignore it. */
+  if (!client->state.processing_memref)
+    return;
+
   /* invalid memref. remove from chain so we don't have to evaluate it in the future.
    * it's still there, so anything referencing it will always fetch the current value. */
   while ((memref = *next_memref) != NULL) {
@@ -3557,6 +3562,11 @@ static unsigned rc_client_peek_le(unsigned address, unsigned num_bytes, void* ud
   unsigned value = 0;
   uint32_t num_read = 0;
 
+  /* if we know the address is out of range, and it's part of a pointer chain
+   * (processing_memref is null), don't bother processing it. */
+  if (address > client->game->max_valid_address && !client->state.processing_memref)
+    return 0;
+
   if (num_bytes <= sizeof(value)) {
     num_read = client->callbacks.read_memory(address, (uint8_t*)&value, num_bytes, client);
     if (num_read == num_bytes)
@@ -3574,6 +3584,11 @@ static unsigned rc_client_peek(unsigned address, unsigned num_bytes, void* ud)
   rc_client_t* client = (rc_client_t*)ud;
   uint8_t buffer[4];
   uint32_t num_read = 0;
+
+  /* if we know the address is out of range, and it's part of a pointer chain
+   * (processing_memref is null), don't bother processing it. */
+  if (address > client->game->max_valid_address && !client->state.processing_memref)
+    return 0;
 
   switch (num_bytes) {
     case 1:
