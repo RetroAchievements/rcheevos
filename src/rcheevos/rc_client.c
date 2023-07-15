@@ -124,11 +124,13 @@ void rc_client_log_message(const rc_client_t* client, const char* message)
 static void rc_client_log_message_va(const rc_client_t* client, const char* format, va_list args)
 {
   if (client->callbacks.log_call) {
-    char buffer[256];
+    char buffer[2048];
 
 #ifdef __STDC_WANT_SECURE_LIB__
     vsprintf_s(buffer, sizeof(buffer), format, args);
-#else
+#elif __STDC_VERSION__ >= 199901L /* vsnprintf requires c99 */
+    vsnprintf(buffer, sizeof(buffer), format, args);
+#else /* c89 doesn't have a size-limited vsprintf function - assume the buffer is large enough */
     vsprintf(buffer, format, args);
 #endif
 
