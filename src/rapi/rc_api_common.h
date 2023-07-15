@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+#define RC_CONTENT_TYPE_URLENCODED "application/x-www-form-urlencoded"
+
 typedef struct rc_api_url_builder_t {
   char* write;
   char* start;

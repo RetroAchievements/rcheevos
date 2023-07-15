@@ -1,6 +1,7 @@
 #include "rc_client.h"
 
 #include "rc_consoles.h"
+#include "rc_hash.h"
 #include "rc_internal.h"
 #include "rc_client_internal.h"
 #include "rc_version.h"
@@ -76,7 +77,8 @@ static const char* patchdata_bounds_check_system = "{\"Success\":true,\"PatchDat
       GENERIC_ACHIEVEMENT_JSON("3", "0xH10000=5") ","
       GENERIC_ACHIEVEMENT_JSON("4", "0x FFFE=5") ","
       GENERIC_ACHIEVEMENT_JSON("5", "0x FFFF=5") ","
-      GENERIC_ACHIEVEMENT_JSON("6", "0x 10000=5")
+      GENERIC_ACHIEVEMENT_JSON("6", "0x 10000=5") ","
+      GENERIC_ACHIEVEMENT_JSON("7", "I:0xH0000_0xHFFFF=5")
     "],"
     "\"Leaderboards\":[]"
     "}}";
@@ -201,23 +203,63 @@ static void _assert_achievement_state(rc_client_t* client, uint32_t id, int expe
 }
 #define assert_achievement_state(client, id, expected_state) ASSERT_HELPER(_assert_achievement_state(client, id, expected_state), "assert_achievement_state")
 
-static rc_client_event_t events[16];
+typedef struct rc_client_captured_event_t
+{
+  rc_client_event_t event;
+  rc_client_server_error_t server_error; /* server_error goes out of scope, it needs to be copied too */
+  uint32_t id;
+} rc_client_captured_event_t;
+
+static rc_client_captured_event_t events[16];
 static int event_count = 0;
 
 static void rc_client_event_handler(const rc_client_event_t* e, rc_client_t* client)
 {
-  memcpy(&events[event_count++], e, sizeof(rc_client_event_t));
+  memcpy(&events[event_count], e, sizeof(rc_client_event_t));
+  memset(&events[event_count].server_error, 0, sizeof(events[event_count].server_error));
 
-  if (e->type == RC_CLIENT_EVENT_SERVER_ERROR) {
-    static char event_server_error_message[128];
-    static rc_client_server_error_t event_server_error;
+  switch (e->type) {
+    case RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED:
+    case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW:
+    case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE:
+    case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW:
+      events[event_count].id = e->achievement->id;
+      break;
 
-    /* server error data is not maintained out of scope, copy it too */
-    memcpy(&event_server_error, e->server_error, sizeof(event_server_error));
-    strcpy_s(event_server_error_message, sizeof(event_server_error_message), e->server_error->error_message);
-    event_server_error.error_message = event_server_error_message;
-    events[event_count - 1].server_error = &event_server_error;
+    case RC_CLIENT_EVENT_LEADERBOARD_STARTED:
+    case RC_CLIENT_EVENT_LEADERBOARD_FAILED:
+    case RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED:
+      events[event_count].id = e->leaderboard->id;
+      break;
+
+    case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW:
+    case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE:
+    case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE:
+      events[event_count].id = e->leaderboard_tracker->id;
+      break;
+
+    case RC_CLIENT_EVENT_GAME_COMPLETED:
+      events[event_count].id = rc_client_get_game_info(client)->id;
+      break;
+
+    case RC_CLIENT_EVENT_SERVER_ERROR: {
+      static char event_server_error_message[128];
+
+      /* server error data is not maintained out of scope, copy it */
+      memcpy(&events[event_count].server_error, e->server_error, sizeof(events[event_count].server_error));
+      strcpy_s(event_server_error_message, sizeof(event_server_error_message), e->server_error->error_message);
+      events[event_count].server_error.error_message = event_server_error_message;
+      events[event_count].event.server_error = &events[event_count].server_error;
+      events[event_count].id = 0;
+      break;
+    }
+
+    default:
+      events[event_count].id = 0;
+      break;
   }
+
+  ++event_count;
 }
 
 static rc_client_event_t* find_event(uint8_t type, uint32_t id)
@@ -225,39 +267,8 @@ static rc_client_event_t* find_event(uint8_t type, uint32_t id)
   int i;
 
   for (i = 0; i < event_count; ++i) {
-    if (events[i].type == type) {
-      switch (type) {
-        case RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED:
-        case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW:
-        case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE:
-        case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW:
-          if (events[i].achievement->id == id)
-            return &events[i];
-          break;
-
-        case RC_CLIENT_EVENT_LEADERBOARD_STARTED:
-        case RC_CLIENT_EVENT_LEADERBOARD_FAILED:
-        case RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED:
-          if (events[i].leaderboard->id == id)
-            return &events[i];
-          break;
-
-        case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW:
-        case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE:
-        case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE:
-          if (events[i].leaderboard_tracker->id == id)
-            return &events[i];
-          break;
-
-        case RC_CLIENT_EVENT_GAME_COMPLETED:
-        case RC_CLIENT_EVENT_RESET:
-        case RC_CLIENT_EVENT_SERVER_ERROR:
-          return &events[i];
-
-        default:
-          break;
-      }
-    }
+    if (events[i].id == id && events[i].event.type == type)
+      return &events[i].event;
   }
 
   return NULL;
@@ -386,6 +397,7 @@ static void _assert_api_called(const char* request_params, int count)
 #define assert_api_not_called(request_params) ASSERT_HELPER(_assert_api_called(request_params, 0), "assert_api_not_called")
 #define assert_api_call_count(request_params, num) ASSERT_HELPER(_assert_api_called(request_params, num), "assert_api_call_count")
 #define assert_api_pending(request_params) ASSERT_HELPER(_assert_api_called(request_params, -1), "assert_api_pending")
+#define assert_api_not_pending(request_params) ASSERT_HELPER(_assert_api_called(request_params, 0), "assert_api_not_pending")
 
 static void reset_mock_api_handlers(void)
 {
@@ -459,6 +471,7 @@ static rc_client_t* mock_client_logged_in(void)
 static void mock_client_load_game(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
 {
   reset_mock_api_handlers();
+  event_count = 0;
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
   mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
@@ -1386,6 +1399,69 @@ static void test_load_game_while_spectating(void)
   rc_client_destroy(g_client);
 }
 
+/* ----- unload game ----- */
+
+static void test_unload_game(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_NOT_NULL(rc_client_get_game_info(g_client));
+  ASSERT_PTR_NOT_NULL(rc_client_get_user_info(g_client));
+  ASSERT_PTR_NOT_NULL(rc_client_get_achievement_info(g_client, 5501));
+  ASSERT_PTR_NOT_NULL(rc_client_get_leaderboard_info(g_client, 4401));
+
+  event_count = 0;
+  rc_client_unload_game(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  ASSERT_PTR_NULL(g_client->game);
+  ASSERT_PTR_NULL(rc_client_get_game_info(g_client));
+  ASSERT_PTR_NOT_NULL(rc_client_get_user_info(g_client));
+  ASSERT_PTR_NULL(rc_client_get_achievement_info(g_client, 5501));
+  ASSERT_PTR_NULL(rc_client_get_leaderboard_info(g_client, 4401));
+
+  rc_client_destroy(g_client);
+}
+
+static void test_unload_game_hides_ui(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  mock_memory(memory, sizeof(memory));
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  memory[0x01] = 1;   /* show indicator */
+  memory[0x0B] = 1;   /* start leaderboard */
+  memory[0x0E] = 17;  /* leaderboard value */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 3);
+
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 44));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  event_count = 0;
+  rc_client_unload_game(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 2);
+
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
+
+  event_count = 0;
+  rc_client_destroy(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+}
+
 /* ----- identify and load game ----- */
 
 static void rc_client_callback_expect_data_or_file_path_required(int result, const char* error_message, rc_client_t* client, void* callback_data)
@@ -1479,6 +1555,103 @@ static void test_identify_and_load_game_console_not_specified(void)
   free(image);
 }
 
+static void test_identify_and_load_game_multiconsole_first(void)
+{
+  rc_hash_iterator_t* iterator;
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  /* first hash lookup should be pending. inject a secondary console into the iterator */
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  iterator = rc_client_get_load_state_hash_iterator(g_client);
+  ASSERT_NUM_EQUALS(iterator->index, 1);
+  ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
+  iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
+  iterator->consoles[iterator->index + 1] = 0;
+
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  assert_api_not_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17); /* actual console ID returned from server */
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_load_game_multiconsole_second(void)
+{
+  rc_hash_iterator_t* iterator;
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  /* first hash lookup should be pending. inject a secondary console into the iterator */
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  iterator = rc_client_get_load_state_hash_iterator(g_client);
+  ASSERT_NUM_EQUALS(iterator->index, 1);
+  ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
+  iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
+  iterator->consoles[iterator->index + 1] = 0;
+
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+
+  assert_api_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
+  async_api_response("r=gameid&m=64b131c5c7fec32985d9c99700babb7e", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
+  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17); /* actual console ID returned from server */
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "64b131c5c7fec32985d9c99700babb7e");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
 static void test_identify_and_load_game_unknown_hash(void)
 {
   size_t image_size;
@@ -1491,6 +1664,89 @@ static void test_identify_and_load_game_unknown_hash(void)
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
       image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_NINTENDO);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_load_game_unknown_hash_multiconsole(void)
+{
+  rc_hash_iterator_t* iterator;
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
+
+  /* first hash lookup should be pending. inject a secondary console into the iterator */
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  iterator = rc_client_get_load_state_hash_iterator(g_client);
+  ASSERT_NUM_EQUALS(iterator->index, 1);
+  ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
+  iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
+  iterator->consoles[iterator->index + 1] = 0;
+
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+
+  assert_api_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
+  async_api_response("r=gameid&m=64b131c5c7fec32985d9c99700babb7e", "{\"Success\":true,\"GameID\":0}");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    /* when multiple hashes are tried, console will be unknown and hash will be a CSV */
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857,64b131c5c7fec32985d9c99700babb7e");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_load_game_unknown_hash_console_specified(void)
+{
+  rc_hash_iterator_t* iterator;
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  /* explicitly specify we only want the NES hash processed */
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
+
+  /* first hash lookup should be pending. iterator should not have been initialized */
+  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  iterator = rc_client_get_load_state_hash_iterator(g_client);
+  ASSERT_NUM_EQUALS(iterator->index, 0);
+  ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
+
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -3766,19 +4022,50 @@ static void test_fetch_leaderboard_entries_aborted(void)
 
 static void test_do_frame_bounds_check_system(void)
 {
+  const uint32_t memory_size = 0x10010; /* provide more memory than system expects */
+  uint8_t* memory = (uint8_t*)calloc(1, memory_size);
+  ASSERT_PTR_NOT_NULL(memory);
+
   g_client = mock_client_game_loaded(patchdata_bounds_check_system, no_unlocks, no_unlocks);
 
+  mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=7&h=1&m=0123456789ABCDEF&v=c39308ba325ba4a72919b081fb18fdd4",
+    "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":7,\"AchievementsRemaining\":4}");
+
   ASSERT_PTR_NOT_NULL(g_client->game);
-  if (g_client->game) {
-    assert_achievement_state(g_client, 1, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    assert_achievement_state(g_client, 2, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    assert_achievement_state(g_client, 3, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* 0x10000 out of range for system */
-    assert_achievement_state(g_client, 4, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    assert_achievement_state(g_client, 5, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE); /* cannot read two bytes from 0xFFFF, but size isn't enforced until do_frame */
-    assert_achievement_state(g_client, 6, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* 0x10000 out of range for system */
-  }
+  ASSERT_NUM_EQUALS(g_client->game->max_valid_address, 0xFFFF);
+
+  assert_achievement_state(g_client, 1, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  assert_achievement_state(g_client, 2, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  assert_achievement_state(g_client, 3, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* 0x10000 out of range for system */
+  assert_achievement_state(g_client, 4, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  assert_achievement_state(g_client, 5, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE); /* cannot read two bytes from 0xFFFF, but size isn't enforced until do_frame */
+  assert_achievement_state(g_client, 6, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* 0x10000 out of range for system */
+  assert_achievement_state(g_client, 7, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+
+  /* verify that reading at the edge of the memory bounds fails */
+  mock_memory(memory, 0x10000);
+  rc_client_do_frame(g_client);
+  assert_achievement_state(g_client, 5, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* cannot read two bytes from 0xFFFF */
+
+  /* set up memory so achievement 7 would trigger if the pointed at address were valid */
+  /* achievement should not trigger - invalid address should be ignored */
+  memory[0x10000] = 5;
+  memory[0x00000] = 1; /* byte(0xFFFF + byte(0x0000)) == 5 */
+  rc_client_do_frame(g_client);
+  assert_achievement_state(g_client, 7, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+
+  /* even if the extra memory is available, it shouldn't try to read beyond the system defined max address */
+  mock_memory(memory, memory_size);
+  rc_client_do_frame(g_client);
+  assert_achievement_state(g_client, 7, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+
+  /* change max valid address so memory will be evaluated. achievement should trigger */
+  g_client->game->max_valid_address = memory_size - 1;
+  rc_client_do_frame(g_client);
+  assert_achievement_state(g_client, 7, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
 
   rc_client_destroy(g_client);
+  free(memory);
 }
 
 static void test_do_frame_bounds_check_available(void)
@@ -6265,11 +6552,19 @@ void test_client(void) {
   TEST(test_load_game_hardcore_unlocks_aborted);
   TEST(test_load_game_while_spectating);
 
+  /* unload game */
+  TEST(test_unload_game);
+  TEST(test_unload_game_hides_ui);
+
   /* identify and load game */
   TEST(test_identify_and_load_game_required_fields);
   TEST(test_identify_and_load_game_console_specified);
   TEST(test_identify_and_load_game_console_not_specified);
+  TEST(test_identify_and_load_game_multiconsole_first);
+  TEST(test_identify_and_load_game_multiconsole_second);
   TEST(test_identify_and_load_game_unknown_hash);
+  TEST(test_identify_and_load_game_unknown_hash_multiconsole);
+  TEST(test_identify_and_load_game_unknown_hash_console_specified);
   TEST(test_identify_and_load_game_multihash);
   TEST(test_identify_and_load_game_multihash_unknown_game);
   TEST(test_identify_and_load_game_multihash_differ);

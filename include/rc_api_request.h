@@ -43,6 +43,8 @@ typedef struct rc_api_request_t {
   const char* url;
   /* Additional query args that should be sent via a POST command. If null, GET may be used */
   const char* post_data;
+  /* The HTTP Content-Type of the POST data. */
+  const char* content_type;
 
   /* Storage for the url and post_data */
   rc_api_buffer_t buffer;

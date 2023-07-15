@@ -63,6 +63,7 @@ static void rc_client_load_error(rc_client_load_state_t* load_state, int result,
 static void rc_client_begin_fetch_game_data(rc_client_load_state_t* callback_data);
 static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* load_state, const char* hash, const char* file_path);
 static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, time_t now);
+static void rc_client_raise_pending_events(rc_client_t* client, rc_client_game_info_t* game);
 static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_subset_info_t* subset);
 static void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 
@@ -123,11 +124,13 @@ void rc_client_log_message(const rc_client_t* client, const char* message)
 static void rc_client_log_message_va(const rc_client_t* client, const char* format, va_list args)
 {
   if (client->callbacks.log_call) {
-    char buffer[256];
+    char buffer[2048];
 
 #ifdef __STDC_WANT_SECURE_LIB__
     vsprintf_s(buffer, sizeof(buffer), format, args);
-#else
+#elif __STDC_VERSION__ >= 199901L /* vsnprintf requires c99 */
+    vsnprintf(buffer, sizeof(buffer), format, args);
+#else /* c89 doesn't have a size-limited vsprintf function - assume the buffer is large enough */
     vsprintf(buffer, format, args);
 #endif
 
@@ -718,6 +721,7 @@ static void rc_client_validate_addresses(rc_client_game_info_t* game, rc_client_
     last_memref = &memref->next;
   }
 
+  game->max_valid_address = max_address;
   RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "%u/%u memory addresses valid", total_count - invalid_count, total_count);
 }
 
@@ -1476,6 +1480,12 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
     snprintf(subset->public_.badge_name, sizeof(subset->public_.badge_name), "%s", fetch_game_data_response.image_name);
     load_state->subset = subset;
 
+    if (load_state->game->public_.console_id != RC_CONSOLE_UNKNOWN &&
+        fetch_game_data_response.console_id != load_state->game->public_.console_id) {
+      RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Data for game %u is for console %u, expecting console %u",
+        fetch_game_data_response.id, fetch_game_data_response.console_id, load_state->game->public_.console_id);
+    }
+
     /* kick off the start session request while we process the game data */
     rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_STARTING_SESSION, 1);
     if (load_state->client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) {
@@ -1567,29 +1577,41 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
       return;
     }
 
-    if (load_state->game->media_hash && load_state->game->media_hash->next) {
+    if (load_state->game->media_hash &&
+        load_state->game->media_hash->game_hash &&
+        load_state->game->media_hash->game_hash->next) {
       /* multiple hashes were tried, create a CSV */
-      struct rc_client_media_hash_t* media_hash = load_state->game->media_hash;
+      struct rc_client_game_hash_t* game_hash = load_state->game->media_hash->game_hash;
       int count = 1;
       char* ptr;
-      size_t size, len;
+      size_t size;
 
-      while (media_hash->next) {
-        media_hash = media_hash->next;
+      size = strlen(game_hash->hash) + 1;
+      while (game_hash->next) {
+        game_hash = game_hash->next;
+        size += strlen(game_hash->hash) + 1;
         count++;
       }
 
-      size = count * 33;
-      load_state->game->public_.hash = ptr = (char*)rc_buf_alloc(&load_state->game->buffer, size);
-      for (media_hash = load_state->game->media_hash; media_hash; media_hash = media_hash->next) {
-        if (ptr != load_state->game->public_.hash) {
-          *ptr++ = ',';
-          size--;
-        }
-        len = snprintf(ptr, size, "%s", media_hash->game_hash->hash);
-        ptr += len;
-        size -= len;
-      }
+      ptr = (char*)rc_buf_alloc(&load_state->game->buffer, size);
+      ptr += size - 1;
+      *ptr = '\0';
+      game_hash = load_state->game->media_hash->game_hash;
+      do {
+        const size_t hash_len = strlen(game_hash->hash);
+        ptr -= hash_len;
+        memcpy(ptr, game_hash->hash, hash_len);
+
+        game_hash = game_hash->next;
+        if (!game_hash)
+          break;
+
+        ptr--;
+        *ptr = ',';
+      } while (1);
+
+      load_state->game->public_.hash = ptr;
+      load_state->game->public_.console_id = RC_CONSOLE_UNKNOWN;
     } else {
       /* only a single hash was tried, capture it */
       load_state->game->public_.console_id = load_state->hash_console_id;
@@ -1793,6 +1815,14 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
   return &load_state->async_handle;
 }
 
+rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client)
+{
+  if (client && client->state.load)
+    return &client->state.load->hash_iterator;
+
+  return NULL;
+}
+
 rc_client_async_handle_t* rc_client_begin_load_game(rc_client_t* client, const char* hash, rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_load_state_t* load_state;
@@ -1866,9 +1896,10 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
   load_state->client = client;
   load_state->callback = callback;
   load_state->callback_userdata = callback_userdata;
-  rc_hash_initialize_iterator(&load_state->hash_iterator, file_path, data, data_size);
 
   if (console_id == RC_CONSOLE_UNKNOWN) {
+    rc_hash_initialize_iterator(&load_state->hash_iterator, file_path, data, data_size);
+
     if (!rc_hash_iterate(hash, &load_state->hash_iterator)) {
       rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
       return NULL;
@@ -1877,6 +1908,7 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
     load_state->hash_console_id = load_state->hash_iterator.consoles[load_state->hash_iterator.index - 1];
   }
   else {
+    /* ASSERT: hash_iterator->index and hash_iterator->consoles[0] will be 0 from calloc */
     load_state->hash_console_id = console_id;
 
     if (data != NULL) {
@@ -1894,6 +1926,34 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
   }
 
   return rc_client_load_game(load_state, hash, file_path);
+}
+
+static void rc_client_game_mark_ui_to_be_hidden(rc_client_game_info_t* game)
+{
+  rc_client_achievement_info_t* achievement;
+  rc_client_achievement_info_t* achievement_stop;
+  rc_client_leaderboard_info_t* leaderboard;
+  rc_client_leaderboard_info_t* leaderboard_stop;
+  rc_client_subset_info_t* subset;
+
+  for (subset = game->subsets; subset; subset = subset->next) {
+    achievement = subset->achievements;
+    achievement_stop = achievement + subset->public_.num_achievements;
+    for (; achievement < achievement_stop; ++achievement) {
+      if (achievement->public_.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE &&
+          achievement->trigger && achievement->trigger->state == RC_TRIGGER_STATE_PRIMED) {
+        achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+        subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
+      }
+    }
+
+    leaderboard = subset->leaderboards;
+    leaderboard_stop = leaderboard + subset->public_.num_leaderboards;
+    for (; leaderboard < leaderboard_stop; ++leaderboard) {
+      if (leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING)
+        rc_client_release_leaderboard_tracker(game, leaderboard);
+    }
+  }
 }
 
 void rc_client_unload_game(rc_client_t* client)
@@ -1914,6 +1974,9 @@ void rc_client_unload_game(rc_client_t* client)
   if (client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_LOCKED)
     client->state.spectator_mode = RC_CLIENT_SPECTATOR_MODE_ON;
 
+  if (game != NULL)
+    rc_client_game_mark_ui_to_be_hidden(game);
+
   last = &client->state.scheduled_callbacks;
   do {
     next = *last;
@@ -1932,6 +1995,8 @@ void rc_client_unload_game(rc_client_t* client)
   rc_mutex_unlock(&client->state.mutex);
 
   if (game != NULL) {
+    rc_client_raise_pending_events(client, game);
+
     RC_CLIENT_LOG_INFO_FORMATTED(client, "Unloading game %u", game->public_.id);
     rc_client_free_game(game);
   }
@@ -3535,6 +3600,10 @@ static void rc_client_invalidate_processing_memref(rc_client_t* client)
   rc_memref_t** next_memref = &client->game->runtime.memrefs;
   rc_memref_t* memref;
 
+  /* if processing_memref is not set, this occurred following a pointer chain. ignore it. */
+  if (!client->state.processing_memref)
+    return;
+
   /* invalid memref. remove from chain so we don't have to evaluate it in the future.
    * it's still there, so anything referencing it will always fetch the current value. */
   while ((memref = *next_memref) != NULL) {
@@ -3557,6 +3626,11 @@ static unsigned rc_client_peek_le(unsigned address, unsigned num_bytes, void* ud
   unsigned value = 0;
   uint32_t num_read = 0;
 
+  /* if we know the address is out of range, and it's part of a pointer chain
+   * (processing_memref is null), don't bother processing it. */
+  if (address > client->game->max_valid_address && !client->state.processing_memref)
+    return 0;
+
   if (num_bytes <= sizeof(value)) {
     num_read = client->callbacks.read_memory(address, (uint8_t*)&value, num_bytes, client);
     if (num_read == num_bytes)
@@ -3574,6 +3648,11 @@ static unsigned rc_client_peek(unsigned address, unsigned num_bytes, void* ud)
   rc_client_t* client = (rc_client_t*)ud;
   uint8_t buffer[4];
   uint32_t num_read = 0;
+
+  /* if we know the address is out of range, and it's part of a pointer chain
+   * (processing_memref is null), don't bother processing it. */
+  if (address > client->game->max_valid_address && !client->state.processing_memref)
+    return 0;
 
   switch (num_bytes) {
     case 1:
@@ -3747,7 +3826,7 @@ static void rc_client_raise_achievement_events(rc_client_t* client, rc_client_su
       recent_unlock_time = time(NULL) - RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS;
     rc_client_update_achievement_display_information(client, achievement, recent_unlock_time);
 
-    /* raise events*/
+    /* raise events */
     client_event.achievement = &achievement->public_;
 
     if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE) {
@@ -3844,14 +3923,14 @@ static void rc_client_do_frame_process_leaderboards(rc_client_t* client, rc_clie
   }
 }
 
-static void rc_client_raise_leaderboard_tracker_events(rc_client_t* client)
+static void rc_client_raise_leaderboard_tracker_events(rc_client_t* client, rc_client_game_info_t* game)
 {
-  rc_client_leaderboard_tracker_info_t* tracker = client->game->leaderboard_trackers;
+  rc_client_leaderboard_tracker_info_t* tracker = game->leaderboard_trackers;
   rc_client_event_t client_event;
 
   memset(&client_event, 0, sizeof(client_event));
 
-  tracker = client->game->leaderboard_trackers;
+  tracker = game->leaderboard_trackers;
   for (; tracker; tracker = tracker->next) {
     if (tracker->pending_events == RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE)
       continue;
@@ -3940,21 +4019,21 @@ static void rc_client_subset_raise_pending_events(rc_client_t* client, rc_client
     rc_client_raise_mastery_event(client, subset);
 }
 
-static void rc_client_raise_pending_events(rc_client_t* client)
+static void rc_client_raise_pending_events(rc_client_t* client, rc_client_game_info_t* game)
 {
   rc_client_subset_info_t* subset;
 
   /* raise tracker events before leaderboard events so formatted values are updated for leaderboard events */
-  if (client->game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER)
-    rc_client_raise_leaderboard_tracker_events(client);
+  if (game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER)
+    rc_client_raise_leaderboard_tracker_events(client, game);
 
-  for (subset = client->game->subsets; subset; subset = subset->next)
+  for (subset = game->subsets; subset; subset = subset->next)
     rc_client_subset_raise_pending_events(client, subset);
 
   /* if any achievements were unlocked, resync the active achievements list */
-  if (client->game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_UPDATE_ACTIVE_ACHIEVEMENTS) {
+  if (game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_UPDATE_ACTIVE_ACHIEVEMENTS) {
     rc_mutex_lock(&client->state.mutex);
-    rc_client_update_active_achievements(client->game);
+    rc_client_update_active_achievements(game);
     rc_mutex_unlock(&client->state.mutex);
   }
 }
@@ -3993,7 +4072,7 @@ void rc_client_do_frame(rc_client_t* client)
 
     rc_mutex_unlock(&client->state.mutex);
 
-    rc_client_raise_pending_events(client);
+    rc_client_raise_pending_events(client, client->game);
   }
 
   rc_client_idle(client);
@@ -4103,7 +4182,7 @@ void rc_client_reset(rc_client_t* client)
 
   rc_mutex_unlock(&client->state.mutex);
 
-  rc_client_raise_pending_events(client);
+  rc_client_raise_pending_events(client, client->game);
 }
 
 size_t rc_client_progress_size(rc_client_t* client)
@@ -4164,7 +4243,7 @@ static void rc_client_subset_before_deserialize_progress(rc_client_subset_info_t
     if (lboard && lboard->state == RC_LBOARD_STATE_STARTED &&
         leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING) {
       leaderboard->pending_events |= RC_CLIENT_LEADERBOARD_PENDING_EVENT_FAILED;
-      subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
+      subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_LEADERBOARD;
     }
   }
 }
@@ -4258,7 +4337,7 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
 
   rc_mutex_unlock(&client->state.mutex);
 
-  rc_client_raise_pending_events(client);
+  rc_client_raise_pending_events(client, client->game);
 
   return result;
 }
@@ -4327,7 +4406,7 @@ void rc_client_set_hardcore_enabled(rc_client_t* client, int enabled)
     }
     else {
       /* if disabling hardcore, leaderboards will be deactivated. raise events for hiding trackers */
-      rc_client_raise_pending_events(client);
+      rc_client_raise_pending_events(client, client->game);
     }
   }
 }

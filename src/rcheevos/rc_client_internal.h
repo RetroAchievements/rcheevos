@@ -150,8 +150,10 @@ typedef struct rc_client_game_info_t {
   rc_client_media_hash_t* media_hash;
 
   rc_runtime_t runtime;
-  uint8_t waiting_for_reset;
 
+  uint32_t max_valid_address;
+
+  uint8_t waiting_for_reset;
   uint8_t pending_events;
 
   rc_api_buffer_t buffer;
@@ -241,6 +243,11 @@ void rc_runtime_checksum(const char* memaddr, unsigned char* md5);
 int rc_trigger_contains_memref(const rc_trigger_t* trigger, const rc_memref_t* memref);
 int rc_value_contains_memref(const rc_value_t* value, const rc_memref_t* memref);
 /* end runtime.c internals */
+
+/* helper functions for unit tests */
+struct rc_hash_iterator;
+struct rc_hash_iterator* rc_client_get_load_state_hash_iterator(rc_client_t* client);
+/* end helper functions for unit tests */
 
 enum {
   RC_CLIENT_LEGACY_PEEK_AUTO,

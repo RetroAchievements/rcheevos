@@ -27,6 +27,7 @@ int rc_api_init_fetch_achievement_info_request(rc_api_request_t* request, const 
     rc_url_builder_append_unum_param(&builder, "c", api_params->count);
 
     request->post_data = rc_url_builder_finalize(&builder);
+    request->content_type = RC_CONTENT_TYPE_URLENCODED;
   }
 
   return builder.result;
@@ -130,6 +131,7 @@ int rc_api_init_fetch_leaderboard_info_request(rc_api_request_t* request, const 
 
   rc_url_builder_append_unum_param(&builder, "c", api_params->count);
   request->post_data = rc_url_builder_finalize(&builder);
+  request->content_type = RC_CONTENT_TYPE_URLENCODED;
 
   return builder.result;
 }
@@ -270,6 +272,7 @@ int rc_api_init_fetch_games_list_request(rc_api_request_t* request, const rc_api
   rc_url_builder_append_unum_param(&builder, "c", api_params->console_id);
 
   request->post_data = rc_url_builder_finalize(&builder);
+  request->content_type = RC_CONTENT_TYPE_URLENCODED;
 
   return builder.result;
 }
