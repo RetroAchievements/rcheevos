@@ -1480,6 +1480,12 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
     snprintf(subset->public.badge_name, sizeof(subset->public.badge_name), "%s", fetch_game_data_response.image_name);
     load_state->subset = subset;
 
+    if (load_state->game->public.console_id != RC_CONSOLE_UNKNOWN &&
+        fetch_game_data_response.console_id != load_state->game->public.console_id) {
+      RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Data for game %u is for console %u, expecting console %u",
+        fetch_game_data_response.id, fetch_game_data_response.console_id, load_state->game->public.console_id);
+    }
+
     /* kick off the start session request while we process the game data */
     rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_STARTING_SESSION, 1);
     if (load_state->client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) {
@@ -1571,29 +1577,41 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
       return;
     }
 
-    if (load_state->game->media_hash && load_state->game->media_hash->next) {
+    if (load_state->game->media_hash &&
+        load_state->game->media_hash->game_hash &&
+        load_state->game->media_hash->game_hash->next) {
       /* multiple hashes were tried, create a CSV */
-      struct rc_client_media_hash_t* media_hash = load_state->game->media_hash;
+      struct rc_client_game_hash_t* game_hash = load_state->game->media_hash->game_hash;
       int count = 1;
       char* ptr;
-      size_t size, len;
+      size_t size;
 
-      while (media_hash->next) {
-        media_hash = media_hash->next;
+      size = strlen(game_hash->hash) + 1;
+      while (game_hash->next) {
+        game_hash = game_hash->next;
+        size += strlen(game_hash->hash) + 1;
         count++;
       }
 
-      size = count * 33;
-      load_state->game->public.hash = ptr = (char*)rc_buf_alloc(&load_state->game->buffer, size);
-      for (media_hash = load_state->game->media_hash; media_hash; media_hash = media_hash->next) {
-        if (ptr != load_state->game->public.hash) {
-          *ptr++ = ',';
-          size--;
-        }
-        len = snprintf(ptr, size, "%s", media_hash->game_hash->hash);
-        ptr += len;
-        size -= len;
-      }
+      ptr = (char*)rc_buf_alloc(&load_state->game->buffer, size);
+      ptr += size - 1;
+      *ptr = '\0';
+      game_hash = load_state->game->media_hash->game_hash;
+      do {
+        const size_t hash_len = strlen(game_hash->hash);
+        ptr -= hash_len;
+        memcpy(ptr, game_hash->hash, hash_len);
+
+        game_hash = game_hash->next;
+        if (!game_hash)
+          break;
+
+        ptr--;
+        *ptr = ',';
+      } while (1);
+
+      load_state->game->public.hash = ptr;
+      load_state->game->public.console_id = RC_CONSOLE_UNKNOWN;
     } else {
       /* only a single hash was tried, capture it */
       load_state->game->public.console_id = load_state->hash_console_id;
@@ -1797,6 +1815,14 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
   return &load_state->async_handle;
 }
 
+rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client)
+{
+  if (client && client->state.load)
+    return &client->state.load->hash_iterator;
+
+  return NULL;
+}
+
 rc_client_async_handle_t* rc_client_begin_load_game(rc_client_t* client, const char* hash, rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_load_state_t* load_state;
@@ -1870,9 +1896,10 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
   load_state->client = client;
   load_state->callback = callback;
   load_state->callback_userdata = callback_userdata;
-  rc_hash_initialize_iterator(&load_state->hash_iterator, file_path, data, data_size);
 
   if (console_id == RC_CONSOLE_UNKNOWN) {
+    rc_hash_initialize_iterator(&load_state->hash_iterator, file_path, data, data_size);
+
     if (!rc_hash_iterate(hash, &load_state->hash_iterator)) {
       rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
       return NULL;
@@ -1881,6 +1908,7 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
     load_state->hash_console_id = load_state->hash_iterator.consoles[load_state->hash_iterator.index - 1];
   }
   else {
+    /* ASSERT: hash_iterator->index and hash_iterator->consoles[0] will be 0 from calloc */
     load_state->hash_console_id = console_id;
 
     if (data != NULL) {
