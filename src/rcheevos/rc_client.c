@@ -2464,7 +2464,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
     for (; achievement < stop; ++achievement) {
       if (achievement->public_.category & category) {
         rc_client_update_achievement_display_information(client, achievement, recent_unlock_time);
-        bucket_counts[achievement->public_.bucket]++;
+        bucket_counts[rc_client_map_bucket(achievement->public_.bucket, grouping)]++;
       }
     }
   }
@@ -2500,7 +2500,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
         stop = achievement + subset->public_.num_achievements;
         for (; achievement < stop; ++achievement) {
           if (achievement->public_.category & category) {
-            if (achievement->public_.bucket == i) {
+            if (rc_client_map_bucket(achievement->public_.bucket, grouping) == i) {
               ++num_buckets;
               break;
             }
@@ -2530,8 +2530,10 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
         achievement = subset->achievements;
         stop = achievement + subset->public_.num_achievements;
         for (; achievement < stop; ++achievement) {
-          if (achievement->public_.bucket == bucket_type && achievement->public_.category & category)
+          if (achievement->public_.category & category &&
+              rc_client_map_bucket(achievement->public_.bucket, grouping) == bucket_type) {
             *achievement_ptr++ = &achievement->public_;
+          }
         }
       }
 
