@@ -3128,7 +3128,7 @@ static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, 
 
   for (tracker = game->leaderboard_trackers; tracker; tracker = tracker->next) {
     if (tracker->reference_count == 0) {
-      if (available_tracker == NULL)
+      if (available_tracker == NULL && tracker->pending_events == RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE)
         available_tracker = tracker;
 
       continue;
@@ -3915,6 +3915,12 @@ static void rc_client_do_frame_process_leaderboards(rc_client_t* client, rc_clie
         if (old_state != RC_RUNTIME_EVENT_LBOARD_TRIGGERED) {
           leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_ACTIVE;
           leaderboard->pending_events |= RC_CLIENT_LEADERBOARD_PENDING_EVENT_SUBMITTED;
+
+          if (old_state != RC_LBOARD_STATE_STARTED)
+            rc_client_allocate_leaderboard_tracker(client->game, leaderboard);
+          else
+            rc_client_update_leaderboard_tracker(client->game, leaderboard);
+
           rc_client_release_leaderboard_tracker(client->game, leaderboard);
         }
         break;
@@ -3939,21 +3945,26 @@ static void rc_client_raise_leaderboard_tracker_events(rc_client_t* client, rc_c
 
     client_event.leaderboard_tracker = &tracker->public_;
 
-    if (tracker->pending_events & RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE) {
-      client_event.type = RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE;
-      client->callbacks.event_handler(&client_event, client);
-    }
-    else {
+    /* update display text for new trackers or updated trackers */
+    if (tracker->pending_events & (RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW | RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE))
       rc_format_value(tracker->public_.display, sizeof(tracker->public_.display), tracker->raw_value, tracker->format);
 
+    if (tracker->pending_events & RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_HIDE) {
       if (tracker->pending_events & RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW) {
-        client_event.type = RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW;
+        /* request to show and hide in the same frame - ignore the event */
+      }
+      else {
+        client_event.type = RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE;
         client->callbacks.event_handler(&client_event, client);
       }
-      else if (tracker->pending_events & RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE) {
-        client_event.type = RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE;
-        client->callbacks.event_handler(&client_event, client);
-      }
+    }
+    else if (tracker->pending_events & RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_SHOW) {
+      client_event.type = RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW;
+      client->callbacks.event_handler(&client_event, client);
+    }
+    else if (tracker->pending_events & RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE) {
+      client_event.type = RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE;
+      client->callbacks.event_handler(&client_event, client);
     }
 
     tracker->pending_events = RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE;

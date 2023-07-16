@@ -69,6 +69,14 @@ static const char* patchdata_leaderboard_only = "{\"Success\":true,\"PatchData\"
     "]"
     "}}";
 
+static const char* patchdata_leaderboard_immediate_submit = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":[],"
+    "\"Leaderboards\":["
+      GENERIC_LEADERBOARD_JSON("44", "STA:0xH000B=1::CAN:0=1::SUB:1=1::VAL:0x 000E", "SCORE")
+    "]"
+    "}}";
+
 static const char* patchdata_bounds_check_system = "{\"Success\":true,\"PatchData\":{"
     "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":7,\"ImageIcon\":\"/Images/112233.png\","
     "\"Achievements\":["
@@ -5383,6 +5391,47 @@ static void test_do_frame_leaderboard_submit_while_spectating(void)
   rc_client_destroy(g_client);
 }
 
+static void test_do_frame_leaderboard_submit_immediate(void)
+{
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_leaderboard_immediate_submit, no_unlocks, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    mock_memory(memory, sizeof(memory));
+
+    mock_api_response("r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&v=a27fa205f7f30c8d13d74806ea5425b6",
+      "{\"Success\":true,\"Response\":{\"Score\":17,\"BestScore\":23,"
+      "\"TopEntries\":[{\"User\":\"Player1\",\"Score\":44,\"Rank\":1},{\"User\":\"Username\",\"Score\":23,\"Rank\":2}],"
+      "\"RankInfo\":{\"Rank\":2,\"NumEntries\":\"2\"}}}");
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* start the leaderboard (it will immediately submit) */
+    memory[0x0B] = 1;
+    memory[0x0E] = 17;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1); /* don't expect start or tracker events - only submit */
+
+    event = find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 44);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+    ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+    ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 44));
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+  }
+
+  rc_client_destroy(g_client);
+}
+
 static void test_do_frame_leaderboard_tracker_sharing(void)
 {
   rc_client_event_t* event;
@@ -6726,6 +6775,7 @@ void test_client(void) {
   TEST(test_do_frame_leaderboard_submit);
   TEST(test_do_frame_leaderboard_submit_server_error);
   TEST(test_do_frame_leaderboard_submit_while_spectating);
+  TEST(test_do_frame_leaderboard_submit_immediate);
   TEST(test_do_frame_leaderboard_tracker_sharing);
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
   TEST(test_do_frame_leaderboard_submit_automatic_retry);
