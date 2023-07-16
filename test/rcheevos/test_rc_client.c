@@ -2585,7 +2585,7 @@ static void test_achievement_list_simple_with_unlocks_encore_mode(void)
     rc_client_destroy_achievement_list(list);
   }
 
-  // unlock 5501, should appear unlocked again
+  /* unlock 5501, should appear unlocked again */
   mock_memory(memory, sizeof(memory));
   rc_client_do_frame(g_client);
   memory[1] = 3;
