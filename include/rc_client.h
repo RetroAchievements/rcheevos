@@ -494,13 +494,15 @@ enum {
   RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED = 4, /* [leaderboard] attempt submitted */
   RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW = 5, /* [achievement] challenge indicator should be shown */
   RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE = 6, /* [achievement] challenge indicator should be hidden */
-  RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW = 7, /* progress indicator should be shown for [achievement] for two seconds, replacing any currently visible progress indicator */
-  RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW = 8, /* [leaderboard_tracker] should be shown */
-  RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE = 9, /* [leaderboard_tracker] should be hidden */
-  RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE = 10, /* [leaderboard_tracker] updated */
-  RC_CLIENT_EVENT_RESET = 11, /* emulated system should be reset (as the result of enabling hardcore) */
-  RC_CLIENT_EVENT_GAME_COMPLETED = 12, /* all achievements for the game have been earned */
-  RC_CLIENT_EVENT_SERVER_ERROR = 13 /* an API response returned a [server_error] and will not be retried */
+  RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW = 7, /* progress indicator should be shown for [achievement] */
+  RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE = 8, /* progress indicator should be hidden */
+  RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE = 9, /* progress indicator should be updated to reflect new badge/progress for [achievement] */
+  RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW = 10, /* [leaderboard_tracker] should be shown */
+  RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE = 11, /* [leaderboard_tracker] should be hidden */
+  RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE = 12, /* [leaderboard_tracker] updated */
+  RC_CLIENT_EVENT_RESET = 13, /* emulated system should be reset (as the result of enabling hardcore) */
+  RC_CLIENT_EVENT_GAME_COMPLETED = 14, /* all achievements for the game have been earned */
+  RC_CLIENT_EVENT_SERVER_ERROR = 15 /* an API response returned a [server_error] and will not be retried */
 };
 
 typedef struct rc_client_server_error_t

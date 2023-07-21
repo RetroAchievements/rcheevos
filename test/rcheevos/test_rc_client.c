@@ -231,6 +231,7 @@ static void rc_client_event_handler(const rc_client_event_t* e, rc_client_t* cli
     case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW:
     case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE:
     case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW:
+    case RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE:
       events[event_count].id = e->achievement->id;
       break;
 
@@ -1448,24 +1449,26 @@ static void test_unload_game_hides_ui(void)
   ASSERT_NUM_EQUALS(event_count, 0);
 
   memory[0x01] = 1;   /* show indicator */
+  memory[0x06] = 3;   /* progress tracker */
   memory[0x0B] = 1;   /* start leaderboard */
   memory[0x0E] = 17;  /* leaderboard value */
   rc_client_do_frame(g_client);
-  ASSERT_NUM_EQUALS(event_count, 3);
 
+  ASSERT_NUM_EQUALS(event_count, 4);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 44));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
-
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
   event_count = 0;
+
   rc_client_unload_game(g_client);
 
-  ASSERT_NUM_EQUALS(event_count, 2);
-
+  ASSERT_NUM_EQUALS(event_count, 3);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
-
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
   event_count = 0;
+
   rc_client_destroy(g_client);
   ASSERT_NUM_EQUALS(event_count, 0);
 }
@@ -4716,7 +4719,7 @@ static void test_do_frame_achievement_measured_progress_event(void)
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 1);
 
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 70);
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE, 70);
     ASSERT_PTR_NOT_NULL(event);
     ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
@@ -4744,7 +4747,7 @@ static void test_do_frame_achievement_measured_progress_event(void)
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 1);
 
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6);
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE, 6);
     ASSERT_PTR_NOT_NULL(event);
     ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
@@ -4763,7 +4766,7 @@ static void test_do_frame_achievement_measured_progress_event(void)
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 1);
 
-    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 70);
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE, 70);
     ASSERT_PTR_NOT_NULL(event);
     ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
@@ -4793,6 +4796,13 @@ static void test_do_frame_achievement_measured_progress_event(void)
     event_count = 0;
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 0);
+
+    ASSERT_PTR_NOT_NULL(g_client->game->progress_tracker.hide_callback);
+    g_client->game->progress_tracker.hide_callback->when -= 3;
+
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+    ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
   }
 
   rc_client_destroy(g_client);
@@ -5956,13 +5966,16 @@ static void test_reset_hides_widgets(void)
   rc_client_do_frame(g_client);
 
   memory[0x01] = 1; /* challenge indicator for achievement 7 */
+  memory[0x06] = 3; /* progress indicator for achievement 6 */
   memory[0x0A] = 2; /* tracker for leaderboard 48 */
   event_count = 0;
   rc_client_do_frame(g_client);
 
-  ASSERT_NUM_EQUALS(event_count, 3); /* challenge indicator show, leaderboard start, tracker show */
+  ASSERT_NUM_EQUALS(event_count, 4);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 48));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
 
   event_count = 0;
   rc_client_do_frame(g_client);
@@ -5980,9 +5993,10 @@ static void test_reset_hides_widgets(void)
 
   rc_client_reset(g_client);
 
-  ASSERT_NUM_EQUALS(event_count, 2); /* challenge indicator hide, tracker hide */
+  ASSERT_NUM_EQUALS(event_count, 3);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
 
   achievement = rc_client_get_achievement_info(g_client, 7);
   ASSERT_PTR_NOT_NULL(achievement);
@@ -6035,14 +6049,17 @@ static void test_deserialize_progress_updates_widgets(void)
 
   /* activate some widgets */
   memory[0x01] = 1; /* challenge indicator for achievement 7 */
+  memory[0x06] = 4; /* progress indicator for achievement 6*/
   memory[0x0A] = 2; /* tracker for leaderboard 48 */
   memory[0x0E] = 25; /* leaderboard 48 value */
   event_count = 0;
   rc_client_do_frame(g_client);
 
-  ASSERT_NUM_EQUALS(event_count, 3); /* challenge indicator show, leaderboard start, tracker show */
+  ASSERT_NUM_EQUALS(event_count, 4);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 48));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
 
   event_count = 0;
   rc_client_do_frame(g_client);
@@ -6062,9 +6079,11 @@ static void test_deserialize_progress_updates_widgets(void)
   /* capture the state with the widgets visible */
   ASSERT_NUM_EQUALS(rc_client_serialize_progress(g_client, serialized2), RC_OK);
 
-  /* deserialize current state. expect no changes */
+  /* deserialize current state. expect progress tracker hide */
   ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, serialized2), RC_OK);
-  ASSERT_NUM_EQUALS(event_count, 0);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
+  event_count = 0;
 
   achievement = rc_client_get_achievement_info(g_client, 7);
   ASSERT_PTR_NOT_NULL(achievement);
@@ -6820,10 +6839,14 @@ void test_client(void) {
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
   TEST(test_do_frame_leaderboard_submit_automatic_retry);
 
+  /* ping */
   TEST(test_idle_ping);
   TEST(test_do_frame_ping_rich_presence);
 
+  /* reset */
   TEST(test_reset_hides_widgets);
+
+  /* deserialize_progress */
   TEST(test_deserialize_progress_updates_widgets);
   TEST(test_deserialize_progress_null);
   TEST(test_deserialize_progress_invalid);
