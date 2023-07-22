@@ -4798,7 +4798,7 @@ static void test_do_frame_achievement_measured_progress_event(void)
     ASSERT_NUM_EQUALS(event_count, 0);
 
     ASSERT_PTR_NOT_NULL(g_client->game->progress_tracker.hide_callback);
-    g_client->game->progress_tracker.hide_callback->when -= 3;
+    g_client->game->progress_tracker.hide_callback->when -= 3 * CLOCKS_PER_SEC;
 
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 1);
@@ -5852,7 +5852,7 @@ static void test_idle_ping(void)
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
     rc_client_scheduled_callback_t ping_callback;
-    time_t now;
+    clock_t now;
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
     g_client->state.scheduled_callbacks->when = 0;
@@ -5860,14 +5860,14 @@ static void test_idle_ping(void)
 
     mock_api_response("r=ping&u=Username&t=ApiToken&g=1234", "{\"Success\":true}");
 
-    /* capture now to minimize chance of test failure when executing near seconds rollover boundary */
-    now = time(NULL);
+    /* capture now to allow more accurate time comparisons */
+    now = clock();
 
     rc_client_idle(g_client);
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
-    ASSERT_NUM_GREATER(g_client->state.scheduled_callbacks->when, now + 100);
-    ASSERT_NUM_LESS(g_client->state.scheduled_callbacks->when, now + 150);
+    ASSERT_NUM_GREATER(g_client->state.scheduled_callbacks->when, now + 100 * CLOCKS_PER_SEC);
+    ASSERT_NUM_LESS(g_client->state.scheduled_callbacks->when, now + 150 * CLOCKS_PER_SEC);
     ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
   }
 
@@ -5888,7 +5888,7 @@ static void test_do_frame_ping_rich_presence(void)
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
     rc_client_scheduled_callback_t ping_callback;
-    time_t now;
+    clock_t now;
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
     g_client->state.scheduled_callbacks->when = 0;
@@ -5900,11 +5900,11 @@ static void test_do_frame_ping_rich_presence(void)
     /* before rc_client_do_frame, memory will not have been read. all values will be 0 */
     mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a0", "{\"Success\":true}");
 
-    now = time(NULL);
+    now = clock();
     rc_client_idle(g_client);
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
-    ASSERT_NUM_GREATER(g_client->state.scheduled_callbacks->when, now + 100);
+    ASSERT_NUM_GREATER(g_client->state.scheduled_callbacks->when, now + 100 * CLOCKS_PER_SEC);
     ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
 
     /* reset the callback time to force it to be called */
@@ -5912,11 +5912,11 @@ static void test_do_frame_ping_rich_presence(void)
     /* rc_client_do_frame will update the memory, so the message will contain appropriate data */
     mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25", "{\"Success\":true}");
 
-    now = time(NULL);
+    now = clock();
     rc_client_do_frame(g_client);
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
-    ASSERT_NUM_GREATER(g_client->state.scheduled_callbacks->when, now + 100);
+    ASSERT_NUM_GREATER(g_client->state.scheduled_callbacks->when, now + 100 * CLOCKS_PER_SEC);
     ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
 
     assert_api_called("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25");
@@ -5927,11 +5927,11 @@ static void test_do_frame_ping_rich_presence(void)
     mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a75", "{\"Success\":true}");
     memory[0x03] = 75;
 
-    now = time(NULL);
+    now = clock();
     rc_client_do_frame(g_client);
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
-    ASSERT_NUM_GREATER(g_client->state.scheduled_callbacks->when, now + 100);
+    ASSERT_NUM_GREATER(g_client->state.scheduled_callbacks->when, now + 100 * CLOCKS_PER_SEC);
     ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
 
     assert_api_called("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a75");
@@ -5939,11 +5939,11 @@ static void test_do_frame_ping_rich_presence(void)
     /* reset the callback time to force it to be called */
     g_client->state.scheduled_callbacks->when = 0;
     /* no change to rich presence strings. make sure the callback still gets called again */
-    now = time(NULL);
+    now = clock();
     rc_client_do_frame(g_client);
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
-    ASSERT_NUM_GREATER(g_client->state.scheduled_callbacks->when, now + 100);
+    ASSERT_NUM_GREATER(g_client->state.scheduled_callbacks->when, now + 100 * CLOCKS_PER_SEC);
     ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
 
     assert_api_call_count("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a75", 2);

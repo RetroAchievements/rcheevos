@@ -21,11 +21,11 @@ typedef struct rc_client_callbacks_t {
 } rc_client_callbacks_t;
 
 struct rc_client_scheduled_callback_data_t;
-typedef void (*rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, time_t now);
+typedef void (*rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, clock_t now);
 
 typedef struct rc_client_scheduled_callback_data_t
 {
-  time_t when;
+  clock_t when;
   unsigned related_id;
   rc_client_scheduled_callback_t callback;
   void* data;
