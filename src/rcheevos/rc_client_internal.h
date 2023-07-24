@@ -95,6 +95,7 @@ typedef struct rc_client_leaderboard_info_t {
   uint8_t format;
   uint8_t pending_events;
   uint8_t bucket;
+  uint8_t hidden;
 } rc_client_leaderboard_info_t;
 
 enum {
