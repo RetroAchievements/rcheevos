@@ -141,6 +141,23 @@ static const char* patchdata_exhaustive = "{\"Success\":true,\"PatchData\":{"
     "\"RichPresencePatch\":\"Display:\\r\\nPoints:@Number(0xH0003)\\r\\n\""
     "}}";
 
+#define HIDDEN_LEADERBOARD_JSON(id, memaddr, format) "{\"ID\":" id ",\"Title\":\"Leaderboard " id "\"," \
+      "\"Description\":\"Desc " id "\",\"Mem\":\"" memaddr "\",\"Format\":\"" format "\",\"Hidden\":true}"
+
+static const char* patchdata_leaderboards_hidden = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":7,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":["
+    "],"
+    "\"Leaderboards\":["
+      GENERIC_LEADERBOARD_JSON("44", "STA:0xH000B=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE") ","
+      HIDDEN_LEADERBOARD_JSON("45", "STA:0xH000A=1::CAN:0xH000C=2::SUB:0xH000D=1::VAL:0xH000E", "SCORE") ","
+      GENERIC_LEADERBOARD_JSON("46", "STA:0xH000A=1::CAN:0xH000C=3::SUB:0xH000D=1::VAL:0x 000E", "VALUE") ","
+      GENERIC_LEADERBOARD_JSON("47", "STA:0xH000A=1::CAN:0xH000C=4::SUB:0xH000D=2::VAL:0x 000E", "SCORE") ","
+      HIDDEN_LEADERBOARD_JSON("48", "STA:0xH000A=2::CAN:0xH000C=5::SUB:0xH000D=1::VAL:0x 000E", "SCORE")
+    "],"
+    "\"RichPresencePatch\":\"Display:\\r\\nPoints:@Number(0xH0003)\\r\\n\""
+    "}}";
+
 static const char* patchdata_unofficial_unsupported = "{\"Success\":true,\"PatchData\":{"
     "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
     "\"Achievements\":["
@@ -3768,6 +3785,74 @@ static void test_leaderboard_list_subset(void)
   rc_client_destroy(g_client);
 }
 
+static void test_leaderboard_list_hidden(void)
+{
+  rc_client_leaderboard_list_t* list;
+  rc_client_leaderboard_t** iter;
+  rc_client_leaderboard_t* leaderboard;
+  uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
+
+  g_client = mock_client_logged_in();
+  mock_memory(memory, sizeof(memory));
+  mock_client_load_game(patchdata_leaderboards_hidden, no_unlocks, no_unlocks);
+
+  rc_client_do_frame(g_client);
+
+  /* hidden leaderboards (45+48) should not appear in list */
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Inactive");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 3);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
+
+  memory[0x0A] = 1; /* start 45,46,47 */
+  rc_client_do_frame(g_client);
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Active");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 2);
+
+    iter = list->buckets[0].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 46);
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 47);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Inactive");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_leaderboards, 1);
+
+    iter = list->buckets[1].leaderboards;
+    leaderboard = *iter++;
+    ASSERT_NUM_EQUALS(leaderboard->id, 44);
+
+    rc_client_destroy_leaderboard_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
 static const char* lbinfo_4401_top_10 = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":4401,\"GameID\":1234,"
     "\"LowerIsBetter\":1,\"LBTitle\":\"Leaderboard1\",\"LBDesc\":\"Desc1\",\"LBFormat\":\"SCORE\","
     "\"LBMem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"LBAuthor\":null,"
@@ -5442,6 +5527,63 @@ static void test_do_frame_leaderboard_submit_immediate(void)
   rc_client_destroy(g_client);
 }
 
+static void test_do_frame_leaderboard_submit_hidden(void)
+{
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_leaderboards_hidden, no_unlocks, no_unlocks);
+
+  /* hidden leaderboards should still start/track/submit normally. they just don't appear in list */
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  mock_memory(memory, sizeof(memory));
+
+  mock_api_response("r=submitlbentry&u=Username&t=ApiToken&i=48&s=17&m=0123456789ABCDEF&v=468a1f9e9475d8c4d862f48cc8806018",
+    "{\"Success\":true,\"Response\":{\"Score\":17,\"BestScore\":23,"
+    "\"TopEntries\":[{\"User\":\"Player1\",\"Score\":44,\"Rank\":1},{\"User\":\"Username\",\"Score\":23,\"Rank\":2}],"
+    "\"RankInfo\":{\"Rank\":2,\"NumEntries\":\"2\"}}}");
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* start the leaderboard */
+  memory[0x0A] = 2;
+  memory[0x0E] = 17;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 48));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* submit the leaderboard */
+  memory[0x0D] = 1;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 2);
+
+  event = find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 48);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+  ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+  ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 48));
+
+  event = find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+  ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  rc_client_destroy(g_client);
+}
+
 static void test_do_frame_leaderboard_tracker_sharing(void)
 {
   rc_client_event_t* event;
@@ -6807,6 +6949,7 @@ void test_client(void) {
   TEST(test_leaderboard_list_buckets);
   TEST(test_leaderboard_list_buckets_with_unsupported);
   TEST(test_leaderboard_list_subset);
+  TEST(test_leaderboard_list_hidden);
 
   TEST(test_fetch_leaderboard_entries);
   TEST(test_fetch_leaderboard_entries_no_user);
@@ -6835,6 +6978,7 @@ void test_client(void) {
   TEST(test_do_frame_leaderboard_submit_server_error);
   TEST(test_do_frame_leaderboard_submit_while_spectating);
   TEST(test_do_frame_leaderboard_submit_immediate);
+  TEST(test_do_frame_leaderboard_submit_hidden);
   TEST(test_do_frame_leaderboard_tracker_sharing);
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
   TEST(test_do_frame_leaderboard_submit_automatic_retry);

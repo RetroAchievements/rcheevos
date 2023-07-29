@@ -1388,6 +1388,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
     leaderboard->public_.id = read->id;
     leaderboard->public_.lower_is_better = read->lower_is_better;
     leaderboard->format = (uint8_t)read->format;
+    leaderboard->hidden = (uint8_t)read->hidden;
 
     memaddr = read->definition;
     rc_runtime_checksum(memaddr, leaderboard->md5);
@@ -3004,6 +3005,9 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
     leaderboard = subset->leaderboards;
     stop = leaderboard + subset->public_.num_leaderboards;
     for (; leaderboard < stop; ++leaderboard) {
+      if (leaderboard->hidden)
+        continue;
+
       leaderboard->bucket = rc_client_get_leaderboard_bucket(leaderboard, grouping);
       bucket_counts[leaderboard->bucket]++;
     }
@@ -3068,7 +3072,7 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
         leaderboard = subset->leaderboards;
         stop = leaderboard + subset->public_.num_leaderboards;
         for (; leaderboard < stop; ++leaderboard) {
-          if (leaderboard->bucket == bucket_type)
+          if (leaderboard->bucket == bucket_type && !leaderboard->hidden)
             *leaderboard_ptr++ = &leaderboard->public_;
         }
       }
@@ -3098,7 +3102,7 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
       leaderboard = subset->leaderboards;
       stop = leaderboard + subset->public_.num_leaderboards;
       for (; leaderboard < stop; ++leaderboard) {
-        if (leaderboard->bucket == bucket_type)
+        if (leaderboard->bucket == bucket_type && !leaderboard->hidden)
           *leaderboard_ptr++ = &leaderboard->public_;
       }
 
