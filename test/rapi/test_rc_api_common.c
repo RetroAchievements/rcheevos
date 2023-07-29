@@ -11,9 +11,9 @@
 static void _assert_json_parse_response(rc_api_response_t* response, rc_json_field_t* field, const char* json, int expected_result) {
   int result;
   rc_json_field_t fields[] = {
-    {"Success"},
-    {"Error"},
-    {"Test"}
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Test")
   };
   rc_buf_init(&response->buffer);
 
@@ -65,9 +65,9 @@ static void test_json_parse_response_non_json() {
   int result;
   rc_api_response_t response;
   rc_json_field_t fields[] = {
-    {"Success"},
-    {"Error"},
-    {"Test"}
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Test")
   };
   rc_buf_init(&response.buffer);
 
@@ -83,9 +83,9 @@ static void test_json_parse_response_error_from_server() {
   int result;
   rc_api_response_t response;
   rc_json_field_t fields[] = {
-    {"Success"},
-    {"Error"},
-    {"Test"}
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Test")
   };
   rc_buf_init(&response.buffer);
 

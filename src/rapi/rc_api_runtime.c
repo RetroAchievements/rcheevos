@@ -75,7 +75,8 @@ int rc_api_init_fetch_game_data_request(rc_api_request_t* request, const rc_api_
 int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* response, const char* server_response) {
   rc_api_achievement_definition_t* achievement;
   rc_api_leaderboard_definition_t* leaderboard;
-  rc_json_field_t iterator;
+  rc_json_field_t array_field;
+  rc_json_iterator_t iterator;
   const char* str;
   const char* last_author = "";
   const char* last_author_field = "";
@@ -177,13 +178,17 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
   if (!response->rich_presence_script)
     response->rich_presence_script = "";
 
-  if (!rc_json_get_required_array(&response->num_achievements, &iterator, &response->response, &patchdata_fields[5], "Achievements"))
+  if (!rc_json_get_required_array(&response->num_achievements, &array_field, &response->response, &patchdata_fields[5], "Achievements"))
     return RC_MISSING_VALUE;
 
   if (response->num_achievements) {
     response->achievements = (rc_api_achievement_definition_t*)rc_buf_alloc(&response->response.buffer, response->num_achievements * sizeof(rc_api_achievement_definition_t));
     if (!response->achievements)
       return RC_OUT_OF_MEMORY;
+
+    memset(&iterator, 0, sizeof(iterator));
+    iterator.json = array_field.value_start;
+    iterator.end = array_field.value_end;
 
     achievement = response->achievements;
     while (rc_json_get_array_entry_object(achievement_fields, sizeof(achievement_fields) / sizeof(achievement_fields[0]), &iterator)) {
@@ -226,13 +231,17 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
     }
   }
 
-  if (!rc_json_get_required_array(&response->num_leaderboards, &iterator, &response->response, &patchdata_fields[6], "Leaderboards"))
+  if (!rc_json_get_required_array(&response->num_leaderboards, &array_field, &response->response, &patchdata_fields[6], "Leaderboards"))
     return RC_MISSING_VALUE;
 
   if (response->num_leaderboards) {
     response->leaderboards = (rc_api_leaderboard_definition_t*)rc_buf_alloc(&response->response.buffer, response->num_leaderboards * sizeof(rc_api_leaderboard_definition_t));
     if (!response->leaderboards)
       return RC_OUT_OF_MEMORY;
+
+    memset(&iterator, 0, sizeof(iterator));
+    iterator.json = array_field.value_start;
+    iterator.end = array_field.value_end;
 
     leaderboard = response->leaderboards;
     while (rc_json_get_array_entry_object(leaderboard_fields, sizeof(leaderboard_fields) / sizeof(leaderboard_fields[0]), &iterator)) {
@@ -432,7 +441,8 @@ int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_
 
 int rc_api_process_submit_lboard_entry_response(rc_api_submit_lboard_entry_response_t* response, const char* server_response) {
   rc_api_lboard_entry_t* entry;
-  rc_json_field_t iterator;
+  rc_json_field_t array_field;
+  rc_json_iterator_t iterator;
   const char* str;
   int result;
 
@@ -504,13 +514,17 @@ int rc_api_process_submit_lboard_entry_response(rc_api_submit_lboard_entry_respo
     return RC_MISSING_VALUE;
   response->num_entries = (unsigned)atoi(str);
 
-  if (!rc_json_get_required_array(&response->num_top_entries, &iterator, &response->response, &response_fields[3], "TopEntries"))
+  if (!rc_json_get_required_array(&response->num_top_entries, &array_field, &response->response, &response_fields[3], "TopEntries"))
     return RC_MISSING_VALUE;
 
   if (response->num_top_entries) {
     response->top_entries = (rc_api_lboard_entry_t*)rc_buf_alloc(&response->response.buffer, response->num_top_entries * sizeof(rc_api_lboard_entry_t));
     if (!response->top_entries)
       return RC_OUT_OF_MEMORY;
+
+    memset(&iterator, 0, sizeof(iterator));
+    iterator.json = array_field.value_start;
+    iterator.end = array_field.value_end;
 
     entry = response->top_entries;
     while (rc_json_get_array_entry_object(entry_fields, sizeof(entry_fields) / sizeof(entry_fields[0]), &iterator)) {

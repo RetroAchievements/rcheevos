@@ -28,7 +28,8 @@ int rc_api_init_fetch_code_notes_request(rc_api_request_t* request, const rc_api
 }
 
 int rc_api_process_fetch_code_notes_response(rc_api_fetch_code_notes_response_t* response, const char* server_response) {
-  rc_json_field_t iterator;
+  rc_json_field_t array_field;
+  rc_json_iterator_t iterator;
   rc_api_code_note_t* note;
   const char* address_str;
   const char* last_author = "";
@@ -55,7 +56,7 @@ int rc_api_process_fetch_code_notes_response(rc_api_fetch_code_notes_response_t*
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
-  if (!rc_json_get_required_array(&response->num_notes, &iterator, &response->response, &fields[2], "CodeNotes"))
+  if (!rc_json_get_required_array(&response->num_notes, &array_field, &response->response, &fields[2], "CodeNotes"))
     return RC_MISSING_VALUE;
 
   if (response->num_notes) {
@@ -63,15 +64,21 @@ int rc_api_process_fetch_code_notes_response(rc_api_fetch_code_notes_response_t*
     if (!response->notes)
       return RC_OUT_OF_MEMORY;
 
+    memset(&iterator, 0, sizeof(iterator));
+    iterator.json = array_field.value_start;
+    iterator.end = array_field.value_end;
+
     note = response->notes;
     while (rc_json_get_array_entry_object(note_fields, sizeof(note_fields) / sizeof(note_fields[0]), &iterator)) {
       /* an empty note represents a record that was deleted on the server */
       /* a note set to '' also represents a deleted note (remnant of a bug) */
       /* NOTE: len will include the quotes */
-      len = note_fields[2].value_end - note_fields[2].value_start;
-      if (len == 2 || (len == 4 && note_fields[2].value_start[1] == '\'' && note_fields[2].value_start[2] == '\'')) {
-        --response->num_notes;
-        continue;
+      if (note_fields[2].value_start) {
+        len = note_fields[2].value_end - note_fields[2].value_start;
+        if (len == 2 || (len == 4 && note_fields[2].value_start[1] == '\'' && note_fields[2].value_start[2] == '\'')) {
+          --response->num_notes;
+          continue;
+        }
       }
 
       if (!rc_json_get_required_string(&address_str, &response->response, &note_fields[0], "Address"))
