@@ -1252,6 +1252,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
   const rc_api_achievement_definition_t* stop;
   rc_client_achievement_info_t* achievements;
   rc_client_achievement_info_t* achievement;
+  rc_client_achievement_info_t* scan;
   rc_api_buffer_t* buffer;
   rc_parse_state_t parse;
   const char* memaddr;
@@ -1335,6 +1336,20 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
 
       rc_destroy_parse_state(&parse);
     }
+
+    achievement->created_time = read->created;
+    achievement->updated_time = read->updated;
+
+    scan = achievement;
+    while (scan > achievements) {
+      --scan;
+      if (strcmp(scan->author, read->author) == 0) {
+        achievement->author = scan->author;
+        break;
+      }
+    }
+    if (!achievement->author)
+      achievement->author = rc_buf_strcpy(buffer, read->author);
 
     ++achievement;
   }
@@ -1720,7 +1735,7 @@ static void rc_client_identify_game_callback(const rc_api_server_response_t* ser
   rc_api_destroy_resolve_hash_response(&resolve_hash_response);
 }
 
-static rc_client_game_hash_t* rc_client_find_game_hash(rc_client_t* client, const char* hash)
+rc_client_game_hash_t* rc_client_find_game_hash(rc_client_t* client, const char* hash)
 {
   rc_client_game_hash_t* game_hash;
 

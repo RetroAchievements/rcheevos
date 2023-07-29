@@ -52,6 +52,10 @@ typedef struct rc_client_achievement_info_t {
   time_t unlock_time_softcore;
 
   uint8_t pending_events;
+
+  const char* author;
+  time_t created_time;
+  time_t updated_time;
 } rc_client_achievement_info_t;
 
 enum {
@@ -151,6 +155,8 @@ typedef struct rc_client_game_hash_t {
   uint32_t game_id;
   struct rc_client_game_hash_t* next;
 } rc_client_game_hash_t;
+
+rc_client_game_hash_t* rc_client_find_game_hash(rc_client_t* client, const char* hash);
 
 typedef struct rc_client_media_hash_t {
   rc_client_game_hash_t* game_hash;
