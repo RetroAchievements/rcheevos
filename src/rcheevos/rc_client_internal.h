@@ -21,11 +21,11 @@ typedef struct rc_client_callbacks_t {
 } rc_client_callbacks_t;
 
 struct rc_client_scheduled_callback_data_t;
-typedef void (*rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, time_t now);
+typedef void (*rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, clock_t now);
 
 typedef struct rc_client_scheduled_callback_data_t
 {
-  time_t when;
+  clock_t when;
   unsigned related_id;
   rc_client_scheduled_callback_t callback;
   void* data;
@@ -39,7 +39,7 @@ enum {
   RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_TRIGGERED = (1 << 1),
   RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_SHOW = (1 << 2),
   RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE = (1 << 3),
-  RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW = (1 << 4)
+  RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_UPDATE = (1 << 4) /* not a real event, just triggers update */
 };
 
 typedef struct rc_client_achievement_info_t {
@@ -53,6 +53,21 @@ typedef struct rc_client_achievement_info_t {
 
   uint8_t pending_events;
 } rc_client_achievement_info_t;
+
+enum {
+  RC_CLIENT_PROGRESS_TRACKER_ACTION_NONE,
+  RC_CLIENT_PROGRESS_TRACKER_ACTION_SHOW,
+  RC_CLIENT_PROGRESS_TRACKER_ACTION_UPDATE,
+  RC_CLIENT_PROGRESS_TRACKER_ACTION_HIDE
+};
+
+typedef struct rc_client_progress_tracker_t {
+  rc_client_achievement_info_t* achievement;
+  float progress;
+
+  rc_client_scheduled_callback_data_t* hide_callback;
+  uint8_t action;
+} rc_client_progress_tracker_t;
 
 enum {
   RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE = 0,
@@ -106,7 +121,8 @@ enum {
 enum {
   RC_CLIENT_GAME_PENDING_EVENT_NONE = 0,
   RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER = (1 << 1),
-  RC_CLIENT_GAME_PENDING_EVENT_UPDATE_ACTIVE_ACHIEVEMENTS = (1 << 2)
+  RC_CLIENT_GAME_PENDING_EVENT_UPDATE_ACTIVE_ACHIEVEMENTS = (1 << 2),
+  RC_CLIENT_GAME_PENDING_EVENT_PROGRESS_TRACKER = (1 << 3)
 };
 
 typedef struct rc_client_subset_info_t {
@@ -144,6 +160,7 @@ typedef struct rc_client_media_hash_t {
 typedef struct rc_client_game_info_t {
   rc_client_game_t public_;
   rc_client_leaderboard_tracker_info_t* leaderboard_trackers;
+  rc_client_progress_tracker_t progress_tracker;
 
   rc_client_subset_info_t* subsets;
 

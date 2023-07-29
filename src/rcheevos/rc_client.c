@@ -14,6 +14,11 @@
 #define RC_CLIENT_UNKNOWN_GAME_ID (uint32_t)-1
 #define RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS (10 * 60) /* ten minutes */
 
+/* clock_t can wrap. For most cases, we won't have to worry about it because it won't
+ * overflow until after over a month of runtime. But some cases can overflow in as short as
+ * 36 minutes. Use substraction as a secondary check to ensure an overflow hasn't occurred. */
+#define RC_CLIENT_CLOCK_IS_BEFORE(clk, cmp_clk) (clk < cmp_clk && (cmp_clk - clk) > 0)
+
 struct rc_client_async_handle_t {
   uint8_t aborted;
 };
@@ -59,13 +64,15 @@ typedef struct rc_client_load_state_t
   uint8_t hash_console_id;
 } rc_client_load_state_t;
 
-static void rc_client_load_error(rc_client_load_state_t* load_state, int result, const char* error_message);
 static void rc_client_begin_fetch_game_data(rc_client_load_state_t* callback_data);
+static void rc_client_hide_progress_tracker(rc_client_t* client, rc_client_game_info_t* game);
+static void rc_client_load_error(rc_client_load_state_t* load_state, int result, const char* error_message);
 static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* load_state, const char* hash, const char* file_path);
-static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, time_t now);
-static void rc_client_raise_pending_events(rc_client_t* client, rc_client_game_info_t* game);
+static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, clock_t now);
 static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_subset_info_t* subset);
+static void rc_client_raise_pending_events(rc_client_t* client, rc_client_game_info_t* game);
 static void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
+static void rc_client_reschedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* callback, clock_t when);
 
 /* ===== Construction/Destruction ===== */
 
@@ -1067,7 +1074,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state)
           memset(callback_data, 0, sizeof(*callback_data));
           callback_data->callback = rc_client_ping;
           callback_data->related_id = load_state->game->public_.id;
-          callback_data->when = time(NULL) + 30;
+          callback_data->when = clock() + 30 * CLOCKS_PER_SEC;
           rc_client_schedule_callback(client, callback_data);
         }
 
@@ -1928,7 +1935,7 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
   return rc_client_load_game(load_state, hash, file_path);
 }
 
-static void rc_client_game_mark_ui_to_be_hidden(rc_client_game_info_t* game)
+static void rc_client_game_mark_ui_to_be_hidden(rc_client_t* client, rc_client_game_info_t* game)
 {
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* achievement_stop;
@@ -1954,6 +1961,8 @@ static void rc_client_game_mark_ui_to_be_hidden(rc_client_game_info_t* game)
         rc_client_release_leaderboard_tracker(game, leaderboard);
     }
   }
+
+  rc_client_hide_progress_tracker(client, game);
 }
 
 void rc_client_unload_game(rc_client_t* client)
@@ -1975,7 +1984,7 @@ void rc_client_unload_game(rc_client_t* client)
     client->state.spectator_mode = RC_CLIENT_SPECTATOR_MODE_ON;
 
   if (game != NULL)
-    rc_client_game_mark_ui_to_be_hidden(game);
+    rc_client_game_mark_ui_to_be_hidden(client, game);
 
   last = &client->state.scheduled_callbacks;
   do {
@@ -2659,7 +2668,7 @@ typedef struct rc_client_award_achievement_callback_data_t
 
 static void rc_client_award_achievement_server_call(rc_client_award_achievement_callback_data_t* ach_data);
 
-static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, time_t now)
+static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, clock_t now)
 {
   rc_client_award_achievement_callback_data_t* ach_data =
     (rc_client_award_achievement_callback_data_t*)callback_data->data;
@@ -2706,7 +2715,7 @@ static void rc_client_award_achievement_callback(const rc_api_server_response_t*
         ach_data->scheduled_callback_data->related_id = ach_data->id;
       }
 
-      ach_data->scheduled_callback_data->when = time(NULL) + delay;
+      ach_data->scheduled_callback_data->when = clock() + delay * CLOCKS_PER_SEC;
 
       rc_client_schedule_callback(ach_data->client, ach_data->scheduled_callback_data);
       return;
@@ -3216,7 +3225,7 @@ typedef struct rc_client_submit_leaderboard_entry_callback_data_t
 
 static void rc_client_submit_leaderboard_entry_server_call(rc_client_submit_leaderboard_entry_callback_data_t* lboard_data);
 
-static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, time_t now)
+static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, clock_t now)
 {
   rc_client_submit_leaderboard_entry_callback_data_t* lboard_data =
       (rc_client_submit_leaderboard_entry_callback_data_t*)callback_data->data;
@@ -3263,7 +3272,7 @@ static void rc_client_submit_leaderboard_entry_callback(const rc_api_server_resp
         lboard_data->scheduled_callback_data->related_id = lboard_data->id;
       }
 
-      lboard_data->scheduled_callback_data->when = time(NULL) + delay;
+      lboard_data->scheduled_callback_data->when = clock() + delay * CLOCKS_PER_SEC;
 
       rc_client_schedule_callback(lboard_data->client, lboard_data->scheduled_callback_data);
       return;
@@ -3539,7 +3548,7 @@ static void rc_client_ping_callback(const rc_api_server_response_t* server_respo
   rc_api_destroy_ping_response(&response);
 }
 
-static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, time_t now)
+static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, clock_t now)
 {
   rc_api_ping_request_t api_params;
   rc_api_request_t request;
@@ -3563,7 +3572,7 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
     client->callbacks.server_call(&request, rc_client_ping_callback, client, client);
   }
 
-  callback_data->when = now + 120;
+  callback_data->when = now + 120 * CLOCKS_PER_SEC;
   rc_client_schedule_callback(client, callback_data);
 }
 
@@ -3743,8 +3752,6 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
 {
   rc_client_achievement_info_t* achievement = subset->achievements;
   rc_client_achievement_info_t* stop = achievement + subset->public_.num_achievements;
-  float best_progress = 0.0;
-  rc_client_achievement_info_t* best_progress_achievement = NULL;
 
   for (; achievement < stop; ++achievement) {
     rc_trigger_t* trigger = achievement->trigger;
@@ -3774,15 +3781,12 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
           progress = -1.0;
       }
 
-      if (progress > best_progress) {
-        best_progress = progress;
-
-        if (best_progress_achievement)
-          best_progress_achievement->pending_events &= ~RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW;
-
-        achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW;
+      if (progress > client->game->progress_tracker.progress) {
+        client->game->progress_tracker.progress = progress;
+        client->game->progress_tracker.achievement = achievement;
+        client->game->pending_events |= RC_CLIENT_GAME_PENDING_EVENT_PROGRESS_TRACKER;
         subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
-        best_progress_achievement = achievement;
+        achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_UPDATE;
       }
     }
 
@@ -3802,6 +3806,75 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
 
     subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
   }
+}
+
+static void rc_client_hide_progress_tracker(rc_client_t* client, rc_client_game_info_t* game)
+{
+  /* ASSERT: this should only be called if the mutex is held */
+
+  if (game->progress_tracker.hide_callback &&
+      game->progress_tracker.hide_callback->when &&
+      game->progress_tracker.action == RC_CLIENT_PROGRESS_TRACKER_ACTION_NONE) {
+    rc_client_reschedule_callback(client, game->progress_tracker.hide_callback, 0);
+    game->progress_tracker.action = RC_CLIENT_PROGRESS_TRACKER_ACTION_HIDE;
+    game->pending_events |= RC_CLIENT_GAME_PENDING_EVENT_PROGRESS_TRACKER;
+  }
+}
+
+static void rc_client_progress_tracker_timer_elapsed(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, clock_t now)
+{
+  rc_client_event_t client_event;
+  memset(&client_event, 0, sizeof(client_event));
+
+  rc_mutex_lock(&client->state.mutex);
+  if (client->game->progress_tracker.action == RC_CLIENT_PROGRESS_TRACKER_ACTION_NONE) {
+    client->game->progress_tracker.hide_callback->when = 0;
+    client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE;
+  }
+  rc_mutex_unlock(&client->state.mutex);
+
+  if (client_event.type)
+    client->callbacks.event_handler(&client_event, client);
+}
+
+static void rc_client_do_frame_update_progress_tracker(rc_client_t* client, rc_client_game_info_t* game)
+{
+  if (!game->progress_tracker.hide_callback) {
+    game->progress_tracker.hide_callback = (rc_client_scheduled_callback_data_t*)
+      rc_buf_alloc(&game->buffer, sizeof(rc_client_scheduled_callback_data_t));
+    memset(game->progress_tracker.hide_callback, 0, sizeof(rc_client_scheduled_callback_data_t));
+    game->progress_tracker.hide_callback->callback = rc_client_progress_tracker_timer_elapsed;
+  }
+
+  if (game->progress_tracker.hide_callback->when == 0)
+    game->progress_tracker.action = RC_CLIENT_PROGRESS_TRACKER_ACTION_SHOW;
+  else
+    game->progress_tracker.action = RC_CLIENT_PROGRESS_TRACKER_ACTION_UPDATE;
+
+  rc_client_reschedule_callback(client, game->progress_tracker.hide_callback, clock() + 2 * CLOCKS_PER_SEC);
+}
+
+static void rc_client_raise_progress_tracker_events(rc_client_t* client, rc_client_game_info_t* game)
+{
+  rc_client_event_t client_event;
+
+  memset(&client_event, 0, sizeof(client_event));
+
+  switch (game->progress_tracker.action) {
+  case RC_CLIENT_PROGRESS_TRACKER_ACTION_SHOW:
+    client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW;
+    break;
+  case RC_CLIENT_PROGRESS_TRACKER_ACTION_HIDE:
+    client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE;
+    break;
+  default:
+    client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE;
+    break;
+  }
+  game->progress_tracker.action = RC_CLIENT_PROGRESS_TRACKER_ACTION_NONE;
+
+  client_event.achievement = &game->progress_tracker.achievement->public_;
+  client->callbacks.event_handler(&client_event, client);
 }
 
 static void rc_client_raise_achievement_events(rc_client_t* client, rc_client_subset_info_t* subset)
@@ -3837,11 +3910,6 @@ static void rc_client_raise_achievement_events(rc_client_t* client, rc_client_su
     }
     else if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_SHOW) {
       client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW;
-      client->callbacks.event_handler(&client_event, client);
-    }
-
-    if (achievement->pending_events & RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_PROGRESS_INDICATOR_SHOW) {
-      client_event.type = RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW;
       client->callbacks.event_handler(&client_event, client);
     }
 
@@ -4043,12 +4111,18 @@ static void rc_client_raise_pending_events(rc_client_t* client, rc_client_game_i
   for (subset = game->subsets; subset; subset = subset->next)
     rc_client_subset_raise_pending_events(client, subset);
 
+  /* raise progress tracker events after achievement events so formatted values are updated for tracker event */
+  if (game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_PROGRESS_TRACKER)
+    rc_client_raise_progress_tracker_events(client, game);
+
   /* if any achievements were unlocked, resync the active achievements list */
   if (game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_UPDATE_ACTIVE_ACHIEVEMENTS) {
     rc_mutex_lock(&client->state.mutex);
     rc_client_update_active_achievements(game);
     rc_mutex_unlock(&client->state.mutex);
   }
+
+  game->pending_events = RC_CLIENT_GAME_PENDING_EVENT_NONE;
 }
 
 void rc_client_do_frame(rc_client_t* client)
@@ -4067,10 +4141,13 @@ void rc_client_do_frame(rc_client_t* client)
     rc_client_update_memref_values(client);
     rc_update_variables(client->game->runtime.variables, client->state.legacy_peek, client, NULL);
 
+    client->game->progress_tracker.progress = 0.0;
     for (subset = client->game->subsets; subset; subset = subset->next) {
       if (subset->active)
         rc_client_do_frame_process_achievements(client, subset);
     }
+    if (client->game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_PROGRESS_TRACKER)
+      rc_client_do_frame_update_progress_tracker(client, client->game);
 
     if (client->state.hardcore) {
       for (subset = client->game->subsets; subset; subset = subset->next) {
@@ -4100,13 +4177,13 @@ void rc_client_idle(rc_client_t* client)
 
   scheduled_callback = client->state.scheduled_callbacks;
   if (scheduled_callback) {
-    const time_t now = time(NULL);
+    const clock_t now = clock();
 
     do {
       rc_mutex_lock(&client->state.mutex);
       scheduled_callback = client->state.scheduled_callbacks;
       if (scheduled_callback) {
-        if (scheduled_callback->when > now) {
+        if (RC_CLIENT_CLOCK_IS_BEFORE(now, scheduled_callback->when)) {
           /* not time for next callback yet, ignore it */
           scheduled_callback = NULL;
         }
@@ -4135,7 +4212,7 @@ void rc_client_schedule_callback(rc_client_t* client, rc_client_scheduled_callba
   last = &client->state.scheduled_callbacks;
   do {
     next = *last;
-    if (next == NULL || next->when > scheduled_callback->when) {
+    if (!next || RC_CLIENT_CLOCK_IS_BEFORE(scheduled_callback->when, next->when)) {
       scheduled_callback->next = next;
       *last = scheduled_callback;
       break;
@@ -4145,6 +4222,55 @@ void rc_client_schedule_callback(rc_client_t* client, rc_client_scheduled_callba
   } while (1);
 
   rc_mutex_unlock(&client->state.mutex);
+}
+
+static void rc_client_reschedule_callback(rc_client_t* client,
+  rc_client_scheduled_callback_data_t* callback, clock_t when)
+{
+  rc_client_scheduled_callback_data_t** last;
+  rc_client_scheduled_callback_data_t* next;
+
+  /* ASSERT: this should only be called if the mutex is held */
+
+  callback->when = when;
+
+  last = &client->state.scheduled_callbacks;
+  do {
+    next = *last;
+
+    if (next == callback) {
+      if (when == 0) {
+        /* request to unschedule the callback */
+        *last = next->next;
+        next->next = NULL;
+        break;
+      }
+
+      if (!next->next) {
+         /* end of list, just append it */
+         break;
+      }
+
+      if (RC_CLIENT_CLOCK_IS_BEFORE(when, next->next->when)) {
+        /* already in the correct place */
+        break;
+      }
+
+      /* remove from current position - will insert later */
+      *last = next->next;
+      next->next = NULL;
+      continue;
+    }
+
+    if (!next || RC_CLIENT_CLOCK_IS_BEFORE(when, next->when)) {
+      /* insert here */
+      callback->next = next;
+      *last = callback;
+      break;
+    }
+
+    last = &next->next;
+  } while (1);
 }
 
 static void rc_client_reset_richpresence(rc_client_t* client)
@@ -4191,6 +4317,7 @@ void rc_client_reset(rc_client_t* client)
   client->game->waiting_for_reset = 0;
   rc_client_reset_pending_events(client);
 
+  rc_client_hide_progress_tracker(client, client->game);
   rc_client_reset_all(client);
 
   rc_mutex_unlock(&client->state.mutex);
@@ -4336,6 +4463,8 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
 
   for (subset = client->game->subsets; subset; subset = subset->next)
     rc_client_subset_before_deserialize_progress(subset);
+
+  rc_client_hide_progress_tracker(client, client->game);
 
   if (!serialized) {
     rc_client_reset_all(client);
