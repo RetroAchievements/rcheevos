@@ -10,6 +10,7 @@
 
 static void _assert_json_parse_response(rc_api_response_t* response, rc_json_field_t* field, const char* json, int expected_result) {
   int result;
+  rc_api_server_response_t server_response;
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
     RC_JSON_NEW_FIELD("Error"),
@@ -17,7 +18,11 @@ static void _assert_json_parse_response(rc_api_response_t* response, rc_json_fie
   };
   rc_buf_init(&response->buffer);
 
-  result = rc_json_parse_response(response, json, fields, sizeof(fields)/sizeof(fields[0]));
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = json;
+  server_response.body_length = strlen(json);
+
+  result = rc_json_parse_server_response(response, &server_response, fields, sizeof(fields)/sizeof(fields[0]));
   ASSERT_NUM_EQUALS(result, expected_result);
 
   ASSERT_NUM_EQUALS(response->succeeded, 1);
@@ -63,7 +68,9 @@ static void test_json_parse_response_field(const char* json, const char* value) 
 
 static void test_json_parse_response_non_json() {
   int result;
+  rc_api_server_response_t server_response;
   rc_api_response_t response;
+  const char* error_message = "This is an error.";
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
     RC_JSON_NEW_FIELD("Error"),
@@ -71,7 +78,11 @@ static void test_json_parse_response_non_json() {
   };
   rc_buf_init(&response.buffer);
 
-  result = rc_json_parse_response(&response, "This is an error.", fields, sizeof(fields)/sizeof(fields[0]));
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = error_message;
+  server_response.body_length = strlen(error_message);
+
+  result = rc_json_parse_server_response(&response, &server_response, fields, sizeof(fields) / sizeof(fields[0]));
   ASSERT_NUM_EQUALS(result, RC_INVALID_JSON);
 
   ASSERT_PTR_NOT_NULL(response.error_message);
@@ -81,7 +92,9 @@ static void test_json_parse_response_non_json() {
 
 static void test_json_parse_response_error_from_server() {
   int result;
+  rc_api_server_response_t server_response;
   rc_api_response_t response;
+  const char* json;
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
     RC_JSON_NEW_FIELD("Error"),
@@ -89,9 +102,40 @@ static void test_json_parse_response_error_from_server() {
   };
   rc_buf_init(&response.buffer);
 
-  result = rc_json_parse_response(&response, "{\"Success\":false,\"Error\":\"Oops\"}", fields, sizeof(fields)/sizeof(fields[0]));
+  json = "{\"Success\":false,\"Error\":\"Oops\"}";
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = json;
+  server_response.body_length = strlen(json);
+
+  result = rc_json_parse_server_response(&response, &server_response, fields, sizeof(fields)/sizeof(fields[0]));
   ASSERT_NUM_EQUALS(result, RC_OK);
 
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "Oops");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
+static void test_json_parse_response_incorrect_size() {
+  int result;
+  rc_api_server_response_t server_response;
+  rc_api_response_t response;
+  const char* json;
+  rc_json_field_t fields[] = {
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Test")
+  };
+  rc_buf_init(&response.buffer);
+
+  json = "{\"Success\":false,\"Error\":\"Oops\"}";
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = json;
+  server_response.body_length = strlen(json) - 1;
+
+  result = rc_json_parse_server_response(&response, &server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  ASSERT_NUM_EQUALS(result, RC_INVALID_JSON);
+
+  /* the error message was found before the parser failed */
   ASSERT_PTR_NOT_NULL(response.error_message);
   ASSERT_STR_EQUALS(response.error_message, "Oops");
   ASSERT_NUM_EQUALS(response.succeeded, 0);
@@ -603,6 +647,7 @@ void test_rapi_common(void) {
   TEST_PARAMS2(test_json_parse_response_field, "{ \"Test\" : 1, \"Other\" : 2 }", "1"); /* trailing field */
   TEST(test_json_parse_response_non_json);
   TEST(test_json_parse_response_error_from_server);
+  TEST(test_json_parse_response_incorrect_size);
 
   /* rc_json_get_string */
   TEST_PARAMS2(test_json_get_string, "", "");

@@ -251,15 +251,7 @@ int rc_json_get_object_string_length(const char* json) {
   return (int)(iterator.json - json_start);
 }
 
-int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_json_field_t* fields, size_t field_count) {
-  rc_api_server_response_t server_response;
-  memset(&server_response, 0, sizeof(server_response));
-  server_response.body = json;
-  server_response.body_length = rc_json_get_object_string_length(json);
-  return rc_json_parse_server_response(response, &server_response, fields, field_count);
-}
-
-int rc_json_extract_html_error(rc_api_response_t* response, const rc_api_server_response_t* server_response) {
+static int rc_json_extract_html_error(rc_api_response_t* response, const rc_api_server_response_t* server_response) {
   const char* json = server_response->body;
   const char* end = json;
 
