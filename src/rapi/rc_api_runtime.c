@@ -30,6 +30,16 @@ int rc_api_init_resolve_hash_request(rc_api_request_t* request, const rc_api_res
 }
 
 int rc_api_process_resolve_hash_response(rc_api_resolve_hash_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_resolve_hash_server_response(response, &response_obj);
+}
+
+int rc_api_process_resolve_hash_server_response(rc_api_resolve_hash_response_t* response, const rc_api_server_response_t* server_response) {
   int result;
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
@@ -40,7 +50,7 @@ int rc_api_process_resolve_hash_response(rc_api_resolve_hash_response_t* respons
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK)
     return result;
 
@@ -73,6 +83,16 @@ int rc_api_init_fetch_game_data_request(rc_api_request_t* request, const rc_api_
 }
 
 int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_fetch_game_data_server_response(response, &response_obj);
+}
+
+int rc_api_process_fetch_game_data_server_response(rc_api_fetch_game_data_response_t* response, const rc_api_server_response_t* server_response) {
   rc_api_achievement_definition_t* achievement;
   rc_api_leaderboard_definition_t* leaderboard;
   rc_json_field_t array_field;
@@ -132,7 +152,7 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
@@ -304,6 +324,16 @@ int rc_api_init_ping_request(rc_api_request_t* request, const rc_api_ping_reques
 }
 
 int rc_api_process_ping_response(rc_api_ping_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_ping_server_response(response, &response_obj);
+}
+
+int rc_api_process_ping_server_response(rc_api_ping_response_t* response, const rc_api_server_response_t* server_response) {
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
     RC_JSON_NEW_FIELD("Error")
@@ -312,7 +342,7 @@ int rc_api_process_ping_response(rc_api_ping_response_t* response, const char* s
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  return rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  return rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
 }
 
 void rc_api_destroy_ping_response(rc_api_ping_response_t* response) {
@@ -358,6 +388,16 @@ int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_ap
 }
 
 int rc_api_process_award_achievement_response(rc_api_award_achievement_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_award_achievement_server_response(response, &response_obj);
+}
+
+int rc_api_process_award_achievement_server_response(rc_api_award_achievement_response_t* response, const rc_api_server_response_t* server_response) {
   int result;
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
@@ -371,7 +411,7 @@ int rc_api_process_award_achievement_response(rc_api_award_achievement_response_
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK)
     return result;
 
@@ -440,6 +480,16 @@ int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_
 }
 
 int rc_api_process_submit_lboard_entry_response(rc_api_submit_lboard_entry_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_submit_lboard_entry_server_response(response, &response_obj);
+}
+
+int rc_api_process_submit_lboard_entry_server_response(rc_api_submit_lboard_entry_response_t* response, const rc_api_server_response_t* server_response) {
   rc_api_lboard_entry_t* entry;
   rc_json_field_t array_field;
   rc_json_iterator_t iterator;
@@ -495,7 +545,7 @@ int rc_api_process_submit_lboard_entry_response(rc_api_submit_lboard_entry_respo
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
