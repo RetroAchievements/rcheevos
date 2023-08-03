@@ -2410,6 +2410,9 @@ static void test_load_subset(void)
     ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_STR_EQUALS(achievement->author, "User1");
+    ASSERT_NUM_EQUALS(achievement->created_time, 1367266583);
+    ASSERT_NUM_EQUALS(achievement->updated_time, 1376929305);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     achievement = &subset_info->achievements[1];
