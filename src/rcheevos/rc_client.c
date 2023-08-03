@@ -261,6 +261,26 @@ static void rc_client_raise_server_error_event(rc_client_t* client, const char* 
   client->callbacks.event_handler(&client_event, client);
 }
 
+static int rc_client_should_retry(const rc_api_server_response_t* server_response)
+{
+  switch (server_response->http_status_code) {
+    case 502: /* 502 Bad Gateway */
+      /* nginx connection pool full. retry */
+      return 1;
+
+    case 503: /* 503 Service Temporarily Unavailable */
+      /* site is in maintenance mode. retry */
+      return 1;
+
+    case 429: /* 429 Too Many Requests */
+      /* too many unlocks occurred at the same time */
+      return 1;
+
+    default:
+      return 0;
+  }
+}
+
 static int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_type, const char* image_name)
 {
   rc_api_fetch_image_request_t image_request;
@@ -307,7 +327,7 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
     return;
   }
 
-  result = rc_api_process_login_response(&login_response, server_response->body);
+  result = rc_api_process_login_server_response(&login_response, server_response);
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &login_response.response);
   if (error_message) {
     rc_mutex_lock(&client->state.mutex);
@@ -1112,7 +1132,7 @@ static void rc_client_start_session_callback(const rc_api_server_response_t* ser
     return;
   }
 
-  result = rc_api_process_start_session_response(&start_session_response, server_response->body);
+  result = rc_api_process_start_session_server_response(&start_session_response, server_response);
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &start_session_response.response);
   outstanding_requests = rc_client_end_load_state(load_state);
 
@@ -1145,7 +1165,7 @@ static void rc_client_unlocks_callback(const rc_api_server_response_t* server_re
     return;
   }
 
-  result = rc_api_process_fetch_user_unlocks_response(&fetch_user_unlocks_response, server_response->body);
+  result = rc_api_process_fetch_user_unlocks_server_response(&fetch_user_unlocks_response, server_response);
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &fetch_user_unlocks_response.response);
   outstanding_requests = rc_client_end_load_state(load_state);
 
@@ -1482,7 +1502,7 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
     return;
   }
 
-  result = rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response->body);
+  result = rc_api_process_fetch_game_data_server_response(&fetch_game_data_response, server_response);
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &fetch_game_data_response.response);
 
   outstanding_requests = rc_client_end_load_state(load_state);
@@ -1710,7 +1730,7 @@ static void rc_client_identify_game_callback(const rc_api_server_response_t* ser
     return;
   }
 
-  result = rc_api_process_resolve_hash_response(&resolve_hash_response, server_response->body);
+  result = rc_api_process_resolve_hash_server_response(&resolve_hash_response, server_response);
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &resolve_hash_response.response);
 
   if (error_message) {
@@ -2052,7 +2072,7 @@ static void rc_client_identify_changed_media_callback(const rc_api_server_respon
   rc_client_t* client = load_state->client;
   rc_api_resolve_hash_response_t resolve_hash_response;
 
-  int result = rc_api_process_resolve_hash_response(&resolve_hash_response, server_response->body);
+  int result = rc_api_process_resolve_hash_server_response(&resolve_hash_response, server_response);
   const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &resolve_hash_response.response);
 
   if (rc_client_async_handle_aborted(client, &load_state->async_handle)) {
@@ -2698,11 +2718,11 @@ static void rc_client_award_achievement_callback(const rc_api_server_response_t*
       (rc_client_award_achievement_callback_data_t*)callback_data;
   rc_api_award_achievement_response_t award_achievement_response;
 
-  int result = rc_api_process_award_achievement_response(&award_achievement_response, server_response->body);
+  int result = rc_api_process_award_achievement_server_response(&award_achievement_response, server_response);
   const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &award_achievement_response.response);
 
   if (error_message) {
-    if (award_achievement_response.response.error_message) {
+    if (award_achievement_response.response.error_message && !rc_client_should_retry(server_response)) {
       /* actual error from server */
       RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Error awarding achievement %u: %s", ach_data->id, error_message);
       rc_client_raise_server_error_event(ach_data->client, "award_achievement", award_achievement_response.response.error_message);
@@ -3258,11 +3278,11 @@ static void rc_client_submit_leaderboard_entry_callback(const rc_api_server_resp
       (rc_client_submit_leaderboard_entry_callback_data_t*)callback_data;
   rc_api_submit_lboard_entry_response_t submit_lboard_entry_response;
 
-  int result = rc_api_process_submit_lboard_entry_response(&submit_lboard_entry_response, server_response->body);
+  int result = rc_api_process_submit_lboard_entry_server_response(&submit_lboard_entry_response, server_response);
   const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &submit_lboard_entry_response.response);
 
   if (error_message) {
-    if (submit_lboard_entry_response.response.error_message) {
+    if (submit_lboard_entry_response.response.error_message && !rc_client_should_retry(server_response)) {
       /* actual error from server */
       RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Error submitting leaderboard entry %u: %s", lboard_data->id, error_message);
       rc_client_raise_server_error_event(lboard_data->client, "submit_lboard_entry", submit_lboard_entry_response.response.error_message);
@@ -3419,7 +3439,7 @@ static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_res
     return;
   }
 
-  result = rc_api_process_fetch_leaderboard_info_response(&lbinfo_response, server_response->body);
+  result = rc_api_process_fetch_leaderboard_info_server_response(&lbinfo_response, server_response);
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &lbinfo_response.response);
   if (error_message) {
     RC_CLIENT_LOG_ERR_FORMATTED(client, "Fetch leaderboard %u info failed: %s", lbinfo_callback_data->leaderboard_id, error_message);
@@ -3558,7 +3578,7 @@ static void rc_client_ping_callback(const rc_api_server_response_t* server_respo
   rc_client_t* client = (rc_client_t*)callback_data;
   rc_api_ping_response_t response;
 
-  int result = rc_api_process_ping_response(&response, server_response->body);
+  int result = rc_api_process_ping_server_response(&response, server_response);
   const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &response.response);
   if (error_message) {
     RC_CLIENT_LOG_WARN_FORMATTED(client, "Ping response error: %s", error_message);

@@ -47,6 +47,7 @@ rc_api_login_response_t;
 
 int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_request_t* api_params);
 int rc_api_process_login_response(rc_api_login_response_t* response, const char* server_response);
+int rc_api_process_login_server_response(rc_api_login_response_t* response, const rc_api_server_response_t* server_response);
 void rc_api_destroy_login_response(rc_api_login_response_t* response);
 
 /* --- Start Session --- */
@@ -75,6 +76,7 @@ rc_api_start_session_response_t;
 
 int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_start_session_request_t* api_params);
 int rc_api_process_start_session_response(rc_api_start_session_response_t* response, const char* server_response);
+int rc_api_process_start_session_server_response(rc_api_start_session_response_t* response, const rc_api_server_response_t* server_response);
 void rc_api_destroy_start_session_response(rc_api_start_session_response_t* response);
 
 /* --- Fetch User Unlocks --- */
@@ -110,6 +112,7 @@ rc_api_fetch_user_unlocks_response_t;
 
 int rc_api_init_fetch_user_unlocks_request(rc_api_request_t* request, const rc_api_fetch_user_unlocks_request_t* api_params);
 int rc_api_process_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response, const char* server_response);
+int rc_api_process_fetch_user_unlocks_server_response(rc_api_fetch_user_unlocks_response_t* response, const rc_api_server_response_t* server_response);
 void rc_api_destroy_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response);
 
 #ifdef __cplusplus

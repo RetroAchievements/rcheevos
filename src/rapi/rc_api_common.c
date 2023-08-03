@@ -20,157 +20,174 @@ static char* g_imagehost = NULL;
 
 /* --- rc_json --- */
 
-static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count, unsigned* fields_seen);
-static int rc_json_parse_array(const char** json_ptr, rc_json_field_t* field);
+static int rc_json_parse_object(rc_json_iterator_t* iterator, rc_json_field_t* fields, size_t field_count, unsigned* fields_seen);
+static int rc_json_parse_array(rc_json_iterator_t* iterator, rc_json_field_t* field);
 
-static int rc_json_parse_field(const char** json_ptr, rc_json_field_t* field) {
+static int rc_json_match_char(rc_json_iterator_t* iterator, char c)
+{
+  if (iterator->json < iterator->end && *iterator->json == c) {
+    ++iterator->json;
+    return 1;
+  }
+
+  return 0;
+}
+
+static void rc_json_skip_whitespace(rc_json_iterator_t* iterator)
+{
+  while (iterator->json < iterator->end && isspace((unsigned char)*iterator->json))
+    ++iterator->json;
+}
+
+static int rc_json_find_closing_quote(rc_json_iterator_t* iterator)
+{
+  while (iterator->json < iterator->end) {
+    if (*iterator->json == '"')
+      return 1;
+
+    if (*iterator->json == '\\') {
+      ++iterator->json;
+      if (iterator->json == iterator->end)
+        return 0;
+    }
+
+    if (*iterator->json == '\0')
+      return 0;
+
+    ++iterator->json;
+  }
+
+  return 0;
+}
+
+static int rc_json_parse_field(rc_json_iterator_t* iterator, rc_json_field_t* field) {
   int result;
 
-  field->value_start = *json_ptr;
+  if (iterator->json >= iterator->end)
+    return RC_INVALID_JSON;
 
-  switch (**json_ptr)
+  field->value_start = iterator->json;
+
+  switch (*iterator->json)
   {
     case '"': /* quoted string */
-      ++(*json_ptr);
-      while (**json_ptr != '"') {
-        if (**json_ptr == '\\')
-          ++(*json_ptr);
-
-        if (**json_ptr == '\0')
-          return RC_INVALID_JSON;
-
-        ++(*json_ptr);
-      }
-      ++(*json_ptr);
+      ++iterator->json;
+      if (!rc_json_find_closing_quote(iterator))
+        return RC_INVALID_JSON;
+      ++iterator->json;
       break;
 
     case '-':
     case '+': /* signed number */
-      ++(*json_ptr);
+      ++iterator->json;
       /* fallthrough to number */
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9': /* number */
-      do {
-        ++(*json_ptr);
-      } while (**json_ptr >= '0' && **json_ptr <= '9');
-      if (**json_ptr == '.') {
-        do {
-          ++(*json_ptr);
-        } while (**json_ptr >= '0' && **json_ptr <= '9');
+      while (iterator->json < iterator->end && *iterator->json >= '0' && *iterator->json <= '9')
+        ++iterator->json;
+
+      if (rc_json_match_char(iterator, '.')) {
+        while (iterator->json < iterator->end && *iterator->json >= '0' && *iterator->json <= '9')
+          ++iterator->json;
       }
       break;
 
     case '[': /* array */
-      result = rc_json_parse_array(json_ptr, field);
+      result = rc_json_parse_array(iterator, field);
       if (result != RC_OK)
-          return result;
+        return result;
 
       break;
 
     case '{': /* object */
-      result = rc_json_parse_object(json_ptr, NULL, 0, &field->array_size);
+      result = rc_json_parse_object(iterator, NULL, 0, &field->array_size);
       if (result != RC_OK)
         return result;
 
       break;
 
     default: /* non-quoted text [true,false,null] */
-      if (!isalpha((unsigned char)**json_ptr))
+      if (!isalpha((unsigned char)*iterator->json))
         return RC_INVALID_JSON;
 
-      do {
-        ++(*json_ptr);
-      } while (isalnum((unsigned char)**json_ptr));
+      while (iterator->json < iterator->end && isalnum((unsigned char)*iterator->json))
+        ++iterator->json;
       break;
   }
 
-  field->value_end = *json_ptr;
+  field->value_end = iterator->json;
   return RC_OK;
 }
 
-static int rc_json_parse_array(const char** json_ptr, rc_json_field_t* field) {
+static int rc_json_parse_array(rc_json_iterator_t* iterator, rc_json_field_t* field) {
   rc_json_field_t unused_field;
-  const char* json = *json_ptr;
   int result;
 
-  if (*json != '[')
+  if (!rc_json_match_char(iterator, '['))
     return RC_INVALID_JSON;
-  ++json;
 
   field->array_size = 0;
-  if (*json != ']') {
-    do
-    {
-      while (isspace((unsigned char)*json))
-        ++json;
 
-      result = rc_json_parse_field(&json, &unused_field);
-      if (result != RC_OK)
-        return result;
+  if (rc_json_match_char(iterator, ']')) /* empty array */
+    return RC_OK;
 
-      ++field->array_size;
+  do
+  {
+    rc_json_skip_whitespace(iterator);
 
-      while (isspace((unsigned char)*json))
-        ++json;
+    result = rc_json_parse_field(iterator, &unused_field);
+    if (result != RC_OK)
+      return result;
 
-      if (*json != ',')
-        break;
+    ++field->array_size;
 
-      ++json;
-    } while (1);
+    rc_json_skip_whitespace(iterator);
+  } while (rc_json_match_char(iterator, ','));
 
-    if (*json != ']')
-      return RC_INVALID_JSON;
-  }
+  if (!rc_json_match_char(iterator, ']'))
+    return RC_INVALID_JSON;
 
-  *json_ptr = ++json;
   return RC_OK;
 }
 
-static int rc_json_get_next_field(rc_json_object_field_iterator_t* iterator) {
-  const char* json = iterator->json;
+static int rc_json_get_next_field(rc_json_iterator_t* iterator, rc_json_field_t* field) {
+  rc_json_skip_whitespace(iterator);
 
-  while (isspace((unsigned char)*json))
-    ++json;
-
-  if (*json != '"')
+  if (!rc_json_match_char(iterator, '"'))
     return RC_INVALID_JSON;
 
-  iterator->field.name = ++json;
-  while (*json != '"') {
-    if (!*json)
+  field->name = iterator->json;
+  while (iterator->json < iterator->end && *iterator->json != '"') {
+    if (!*iterator->json)
       return RC_INVALID_JSON;
-    ++json;
+    ++iterator->json;
   }
-  iterator->name_len = json - iterator->field.name;
-  ++json;
 
-  while (isspace((unsigned char)*json))
-    ++json;
-
-  if (*json != ':')
+  if (iterator->json == iterator->end)
     return RC_INVALID_JSON;
 
-  ++json;
+  field->name_len = iterator->json - field->name;
+  ++iterator->json;
 
-  while (isspace((unsigned char)*json))
-    ++json;
+  rc_json_skip_whitespace(iterator);
 
-  if (rc_json_parse_field(&json, &iterator->field) < 0)
+  if (!rc_json_match_char(iterator, ':'))
     return RC_INVALID_JSON;
 
-  while (isspace((unsigned char)*json))
-    ++json;
+  rc_json_skip_whitespace(iterator);
 
-  iterator->json = json;
+  if (rc_json_parse_field(iterator, field) < 0)
+    return RC_INVALID_JSON;
+
+  rc_json_skip_whitespace(iterator);
+
   return RC_OK;
 }
 
-static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, size_t field_count, unsigned* fields_seen) {
-  rc_json_object_field_iterator_t iterator;
-  const char* json = *json_ptr;
+static int rc_json_parse_object(rc_json_iterator_t* iterator, rc_json_field_t* fields, size_t field_count, unsigned* fields_seen) {
   size_t i;
   unsigned num_fields = 0;
+  rc_json_field_t field;
   int result;
 
   if (fields_seen)
@@ -179,60 +196,105 @@ static int rc_json_parse_object(const char** json_ptr, rc_json_field_t* fields, 
   for (i = 0; i < field_count; ++i)
     fields[i].value_start = fields[i].value_end = NULL;
 
-  if (*json != '{')
+  if (!rc_json_match_char(iterator, '{'))
     return RC_INVALID_JSON;
-  ++json;
 
-  if (*json == '}') {
-    *json_ptr = ++json;
+  if (rc_json_match_char(iterator, '}')) /* empty object */
     return RC_OK;
-  }
-
-  memset(&iterator, 0, sizeof(iterator));
-  iterator.json = json;
 
   do
   {
-    result = rc_json_get_next_field(&iterator);
+    result = rc_json_get_next_field(iterator, &field);
     if (result != RC_OK)
       return result;
 
     for (i = 0; i < field_count; ++i) {
-      if (!fields[i].value_start && strncmp(fields[i].name, iterator.field.name, iterator.name_len) == 0 &&
-          fields[i].name[iterator.name_len] == '\0') {
-        fields[i].value_start = iterator.field.value_start;
-        fields[i].value_end = iterator.field.value_end;
-        fields[i].array_size = iterator.field.array_size;
+      if (!fields[i].value_start && fields[i].name_len == field.name_len &&
+          memcmp(fields[i].name, field.name, field.name_len) == 0) {
+        fields[i].value_start = field.value_start;
+        fields[i].value_end = field.value_end;
+        fields[i].array_size = field.array_size;
         break;
       }
     }
 
     ++num_fields;
-    if (*iterator.json != ',')
-      break;
 
-    ++iterator.json;
-  } while (1);
+  } while (rc_json_match_char(iterator, ','));
 
-  if (*iterator.json != '}')
+  if (!rc_json_match_char(iterator, '}'))
     return RC_INVALID_JSON;
 
   if (fields_seen)
     *fields_seen = num_fields;
 
-  *json_ptr = ++iterator.json;
   return RC_OK;
 }
 
-int rc_json_get_next_object_field(rc_json_object_field_iterator_t* iterator) {
-  if (*iterator->json != ',' && *iterator->json != '{')
+int rc_json_get_next_object_field(rc_json_iterator_t* iterator, rc_json_field_t* field) {
+  if (!rc_json_match_char(iterator, ',') && !rc_json_match_char(iterator, '{'))
     return 0;
 
-  ++iterator->json;
-  return (rc_json_get_next_field(iterator) == RC_OK);
+  return (rc_json_get_next_field(iterator, field) == RC_OK);
 }
 
-int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_json_field_t* fields, size_t field_count) {
+int rc_json_get_object_string_length(const char* json) {
+  const char* json_start = json;
+
+  rc_json_iterator_t iterator;
+  memset(&iterator, 0, sizeof(iterator));
+  iterator.json = json;
+  iterator.end = json + (1024 * 1024 * 1024); /* arbitrary 1GB limit on JSON response */
+
+  rc_json_parse_object(&iterator, NULL, 0, NULL);
+
+  return (int)(iterator.json - json_start);
+}
+
+static int rc_json_extract_html_error(rc_api_response_t* response, const rc_api_server_response_t* server_response) {
+  const char* json = server_response->body;
+  const char* end = json;
+
+  const char* title_start = strstr(json, "<title>");
+  if (title_start) {
+    title_start += 7;
+    if (isdigit((int)*title_start)) {
+      const char* title_end = strstr(title_start + 7, "</title>");
+      if (title_end) {
+        char* dst = rc_buf_reserve(&response->buffer, (title_end - title_start) + 1);
+        response->error_message = dst;
+        memcpy(dst, title_start, title_end - title_start);
+        dst += (title_end - title_start);
+        *dst++ = '\0';
+        rc_buf_consume(&response->buffer, response->error_message, dst);
+        response->succeeded = 0;
+        return RC_INVALID_JSON;
+      }
+    }
+  }
+
+  while (*end && *end != '\n' && end - json < 200)
+    ++end;
+
+  if (end > json && end[-1] == '\r')
+    --end;
+
+  if (end > json) {
+    char* dst = rc_buf_reserve(&response->buffer, (end - json) + 1);
+    response->error_message = dst;
+    memcpy(dst, json, end - json);
+    dst += (end - json);
+    *dst++ = '\0';
+    rc_buf_consume(&response->buffer, response->error_message, dst);
+  }
+
+  response->succeeded = 0;
+  return RC_INVALID_JSON;
+}
+
+int rc_json_parse_server_response(rc_api_response_t* response, const rc_api_server_response_t* server_response, rc_json_field_t* fields, size_t field_count) {
+  int result;
+
 #ifndef NDEBUG
   if (field_count < 2)
     return RC_INVALID_STATE;
@@ -242,63 +304,28 @@ int rc_json_parse_response(rc_api_response_t* response, const char* json, rc_jso
     return RC_INVALID_STATE;
 #endif
 
-  if (!json || !*json) {
+  response->error_message = NULL;
+
+  if (!server_response || !server_response->body || !*server_response->body) {
     response->succeeded = 0;
     return RC_NO_RESPONSE;
   }
 
-  if (*json == '{') {
-    int result = rc_json_parse_object(&json, fields, field_count, NULL);
+  if (*server_response->body != '{') {
+    result = rc_json_extract_html_error(response, server_response);
+  }
+  else {
+    rc_json_iterator_t iterator;
+    memset(&iterator, 0, sizeof(iterator));
+    iterator.json = server_response->body;
+    iterator.end = server_response->body + server_response->body_length;
+    result = rc_json_parse_object(&iterator, fields, field_count, NULL);
 
     rc_json_get_optional_string(&response->error_message, response, &fields[1], "Error", NULL);
     rc_json_get_optional_bool(&response->succeeded, &fields[0], "Success", 1);
-
-    return result;
   }
 
-  response->error_message = NULL;
-
-  if (*json) {
-    const char* end = json;
-
-    if (strncmp(json, "<html>", 6) == 0) {
-      const char* title_start = strstr(json, "<title>");
-      if (title_start) {
-        title_start += 7;
-        if (isdigit((int)*title_start)) {
-          const char* title_end = strstr(title_start + 7, "</title>");
-          if (title_end) {
-            char *dst = rc_buf_reserve(&response->buffer, (title_end - title_start) + 1);
-            response->error_message = dst;
-            memcpy(dst, title_start, title_end - title_start);
-            dst += (title_end - title_start);
-            *dst++ = '\0';
-            rc_buf_consume(&response->buffer, response->error_message, dst);
-            response->succeeded = 0;
-            return RC_INVALID_JSON;
-          }
-        }
-      }
-    }
-
-    while (*end && *end != '\n' && end - json < 200)
-      ++end;
-
-    if (end > json && end[-1] == '\r')
-      --end;
-
-    if (end > json) {
-      char* dst = rc_buf_reserve(&response->buffer, (end - json) + 1);
-      response->error_message = dst;
-      memcpy(dst, json, end - json);
-      dst += (end - json);
-      *dst++ = '\0';
-      rc_buf_consume(&response->buffer, response->error_message, dst);
-    }
-  }
-
-  response->succeeded = 0;
-  return RC_INVALID_JSON;
+  return result;
 }
 
 static int rc_json_missing_field(rc_api_response_t* response, const rc_json_field_t* field) {
@@ -321,7 +348,8 @@ static int rc_json_missing_field(rc_api_response_t* response, const rc_json_fiel
 }
 
 int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_api_response_t* response, rc_json_field_t* field, const char* field_name) {
-  const char* json = field->value_start;
+  rc_json_iterator_t iterator;
+
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
@@ -329,36 +357,39 @@ int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_
   (void)field_name;
 #endif
 
-  if (!json)
+  if (!field->value_start)
     return rc_json_missing_field(response, field);
 
-  return (rc_json_parse_object(&json, fields, field_count, &field->array_size) == RC_OK);
+  memset(&iterator, 0, sizeof(iterator));
+  iterator.json = field->value_start;
+  iterator.end = field->value_end;
+  return (rc_json_parse_object(&iterator, fields, field_count, &field->array_size) == RC_OK);
 }
 
-static int rc_json_get_array_entry_value(rc_json_field_t* field, rc_json_field_t* iterator) {
-  if (!iterator->array_size)
+static int rc_json_get_array_entry_value(rc_json_field_t* field, rc_json_iterator_t* iterator) {
+  rc_json_skip_whitespace(iterator);
+
+  if (iterator->json >= iterator->end)
     return 0;
 
-  while (isspace((unsigned char)*iterator->value_start))
-    ++iterator->value_start;
+  if (rc_json_parse_field(iterator, field) != RC_OK)
+    return 0;
 
-  rc_json_parse_field(&iterator->value_start, field);
+  rc_json_skip_whitespace(iterator);
 
-  while (isspace((unsigned char)*iterator->value_start))
-    ++iterator->value_start;
+  if (!rc_json_match_char(iterator, ','))
+    rc_json_match_char(iterator, ']');
 
-  ++iterator->value_start; /* skip , or ] */
-
-  --iterator->array_size;
   return 1;
 }
 
 int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
-  rc_json_field_t iterator;
+  rc_json_iterator_t iterator;
+  rc_json_field_t array;
   rc_json_field_t value;
   unsigned* entry;
 
-  if (!rc_json_get_required_array(num_entries, &iterator, response, field, field_name))
+  if (!rc_json_get_required_array(num_entries, &array, response, field, field_name))
     return RC_MISSING_VALUE;
 
   if (*num_entries) {
@@ -367,6 +398,10 @@ int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, r
       return RC_OUT_OF_MEMORY;
 
     value.name = field_name;
+
+    memset(&iterator, 0, sizeof(iterator));
+    iterator.json = array.value_start;
+    iterator.end = array.value_end;
 
     entry = *entries;
     while (rc_json_get_array_entry_value(&value, &iterator)) {
@@ -383,7 +418,7 @@ int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, r
   return RC_OK;
 }
 
-int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* array_field, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
@@ -396,28 +431,27 @@ int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* iterator,
     return rc_json_missing_field(response, field);
   }
 
-  memcpy(iterator, field, sizeof(*iterator));
-  ++iterator->value_start; /* skip [ */
+  memcpy(array_field, field, sizeof(*array_field));
+  ++array_field->value_start; /* skip [ */
 
   *num_entries = field->array_size;
   return 1;
 }
 
-int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, rc_json_field_t* iterator) {
-  if (!iterator->array_size)
+int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, rc_json_iterator_t* iterator) {
+  rc_json_skip_whitespace(iterator);
+
+  if (iterator->json >= iterator->end)
     return 0;
 
-  while (isspace((unsigned char)*iterator->value_start))
-    ++iterator->value_start;
+  if (rc_json_parse_object(iterator, fields, field_count, NULL) != RC_OK)
+    return 0;
 
-  rc_json_parse_object(&iterator->value_start, fields, field_count, NULL);
+  rc_json_skip_whitespace(iterator);
 
-  while (isspace((unsigned char)*iterator->value_start))
-    ++iterator->value_start;
+  if (!rc_json_match_char(iterator, ','))
+    rc_json_match_char(iterator, ']');
 
-  ++iterator->value_start; /* skip , or ] */
-
-  --iterator->array_size;
   return 1;
 }
 

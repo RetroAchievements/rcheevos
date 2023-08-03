@@ -33,6 +33,16 @@ int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_requ
 }
 
 int rc_api_process_login_response(rc_api_login_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_login_server_response(response, &response_obj);
+}
+
+int rc_api_process_login_server_response(rc_api_login_response_t* response, const rc_api_server_response_t* server_response) {
   int result;
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
@@ -48,7 +58,7 @@ int rc_api_process_login_response(rc_api_login_response_t* response, const char*
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
@@ -100,6 +110,16 @@ int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_st
 }
 
 int rc_api_process_start_session_response(rc_api_start_session_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_start_session_server_response(response, &response_obj);
+}
+
+int rc_api_process_start_session_server_response(rc_api_start_session_response_t* response, const rc_api_server_response_t* server_response) {
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
     RC_JSON_NEW_FIELD("Error")
@@ -108,7 +128,7 @@ int rc_api_process_start_session_response(rc_api_start_session_response_t* respo
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  return rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  return rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
 }
 
 void rc_api_destroy_start_session_response(rc_api_start_session_response_t* response) {
@@ -134,6 +154,16 @@ int rc_api_init_fetch_user_unlocks_request(rc_api_request_t* request, const rc_a
 }
 
 int rc_api_process_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_fetch_user_unlocks_server_response(response, &response_obj);
+}
+
+int rc_api_process_fetch_user_unlocks_server_response(rc_api_fetch_user_unlocks_response_t* response, const rc_api_server_response_t* server_response) {
   int result;
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
@@ -148,7 +178,7 @@ int rc_api_process_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_respons
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK || !response->response.succeeded)
     return result;
 

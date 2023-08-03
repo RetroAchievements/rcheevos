@@ -722,6 +722,64 @@ static void test_process_award_achievement_response_429_json() {
   rc_api_destroy_award_achievement_response(&award_achievement_response);
 }
 
+static void test_process_award_achievement_response_503_fancy() {
+  rc_api_award_achievement_response_t award_achievement_response;
+  const char* server_response =
+    "<!DOCTYPE html>\n"
+    "<html>\n"
+    "<head>\n"
+    "  <meta charset='utf-8'>\n"
+    "  <meta name='viewport' content='width=device-width, initial-scale=1'>\n"
+    "  <style>\n"
+    "  body {\n"
+    "    background-color: #1a1a1a;\n"
+    "    color: white; width: 100%;\n"
+    "  }\n"
+    "  a {\n"
+    "    color: #cc9900;\n"
+    "    text-decoration: none;\n"
+    "  }\n"
+    "  .center {\n"
+    "    margin: 0;\n"
+    "    padding: 0;\n"
+    "    text - align: center;\n"
+    "    position: absolute;\n"
+    "    top: 50%;\n"
+    "    left: 50%;\n"
+    "    transform: translateX(-50%) translateY(-50%);\n"
+    "  }\n"
+    "  </style>\n"
+    "  <title>503 Service Temporarily Unavailable</title>\n"
+    "</head>\n"
+    "<body style='background-color: #1a1a1a; color:white; width:100%;'>\n"
+    "<div class='center'>\n"
+    "  <img style='text-align: center; width: 75%;' src = 'https://static.retroachievements.org/assets/images/ra-logo-sm.webp'>\n"
+    "  <h1>503</h1>\n"
+    "  <h2>Service Temporarily Unavailable</h2>\n"
+    "  <img src='https://static.retroachievements.org/assets/images/cheevo/sad.webp' alt='Sad Cheevo'>\n"
+    "  <p>The RetroAchievements website is currently offline, we apologize for any inconvenience caused.</p>\n"
+    "  <p><strong><u>You can still earn achievements in any supported emulator.</u></strong></p>\n"
+    "  <p><strong>Make sure that the emulator has informed you that you have successfully logged in before you begin playing to avoid missing unlocks.</strong></p>\n"
+    "  <p>For more information and updates, please join our <a href='https://discord.gg/retroachievements'>Discord</a>.</p>\n"
+    "  <br/>\n"
+    "  <a href='https://retroachievements.org'>retroachievements.org</a>\n"
+    "</div>\n"
+    "</body>\n"
+    "</html>";
+
+  memset(&award_achievement_response, 0, sizeof(award_achievement_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_award_achievement_response(&award_achievement_response, server_response), RC_INVALID_JSON);
+  ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(award_achievement_response.response.error_message, "503 Service Temporarily Unavailable");
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0);
+
+  rc_api_destroy_award_achievement_response(&award_achievement_response);
+}
+
 static void test_init_submit_lboard_entry_request() {
   rc_api_submit_lboard_entry_request_t submit_lboard_entry_request;
   rc_api_request_t request;
@@ -930,6 +988,7 @@ void test_rapi_runtime(void) {
   TEST(test_process_award_achievement_response_no_fields);
   TEST(test_process_award_achievement_response_429);
   TEST(test_process_award_achievement_response_429_json);
+  TEST(test_process_award_achievement_response_503_fancy);
 
   /* submitlbentry */
   TEST(test_init_submit_lboard_entry_request);
