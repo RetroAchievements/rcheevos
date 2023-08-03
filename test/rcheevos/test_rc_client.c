@@ -218,6 +218,24 @@ static const char* response_429 =
     "</body>\n"
     "</html>";
 
+static const char* response_502 =
+    "<html>\n"
+    "<head><title>502 Bad Gateway</title></head>\n"
+    "<body>\n"
+    "<center><h1>502 Bad Gateway</h1></center>\n"
+    "<hr><center>nginx</center>\n"
+    "</body>\n"
+    "</html>";
+
+static const char* response_503 =
+    "<html>\n"
+    "<head><title>503 Service Temporarily Unavailable</title></head>\n"
+    "<body>\n"
+    "<center><h1>503 Service Temporarily Unavailable</h1></center>\n"
+    "<hr><center>nginx</center>\n"
+    "</body>\n"
+    "</html>";
+
 /* ----- helpers ----- */
 
 static void _assert_achievement_state(rc_client_t* client, uint32_t id, int expected_state)
@@ -4566,6 +4584,237 @@ static void test_do_frame_achievement_trigger_automatic_retry(void)
   rc_client_destroy(g_client);
 }
 
+static void test_do_frame_achievement_trigger_automatic_retry_429(void)
+{
+  const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  /* discard the queued ping to make finding the retry easier */
+  g_client->state.scheduled_callbacks = NULL;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    const uint32_t num_active = g_client->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[1] = 3;
+    memory[2] = 7;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5501);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 5501));
+
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* first failure will immediately requeue the request */
+    async_api_error(unlock_request_params, response_429, 429);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* second failure will queue it */
+    async_api_error(unlock_request_params, response_429, 429);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    g_client->state.scheduled_callbacks->when = 0;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* third failure will requeue it */
+    async_api_error(unlock_request_params, response_429, 429);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    g_client->state.scheduled_callbacks->when = 0;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* success should not requeue it and update player score */
+    async_api_response(unlock_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    ASSERT_NUM_EQUALS(g_client->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_achievement_trigger_automatic_retry_502(void)
+{
+  const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  /* discard the queued ping to make finding the retry easier */
+  g_client->state.scheduled_callbacks = NULL;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    const uint32_t num_active = g_client->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[1] = 3;
+    memory[2] = 7;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5501);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 5501));
+
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* first failure will immediately requeue the request */
+    async_api_error(unlock_request_params, response_502, 502);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* second failure will queue it */
+    async_api_error(unlock_request_params, response_502, 502);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    g_client->state.scheduled_callbacks->when = 0;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* third failure will requeue it */
+    async_api_error(unlock_request_params, response_502, 502);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    g_client->state.scheduled_callbacks->when = 0;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* success should not requeue it and update player score */
+    async_api_response(unlock_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    ASSERT_NUM_EQUALS(g_client->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_achievement_trigger_automatic_retry_503(void)
+{
+  const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  /* discard the queued ping to make finding the retry easier */
+  g_client->state.scheduled_callbacks = NULL;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    const uint32_t num_active = g_client->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[1] = 3;
+    memory[2] = 7;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5501);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 5501));
+
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* first failure will immediately requeue the request */
+    async_api_error(unlock_request_params, response_503, 503);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* second failure will queue it */
+    async_api_error(unlock_request_params, response_503, 503);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    g_client->state.scheduled_callbacks->when = 0;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* third failure will requeue it */
+    async_api_error(unlock_request_params, response_503, 503);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    g_client->state.scheduled_callbacks->when = 0;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* success should not requeue it and update player score */
+    async_api_response(unlock_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    ASSERT_NUM_EQUALS(g_client->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+  }
+
+  rc_client_destroy(g_client);
+}
+
 static void test_do_frame_achievement_trigger_subset(void)
 {
   rc_client_event_t* event;
@@ -6965,6 +7214,9 @@ void test_client(void) {
   TEST(test_do_frame_achievement_trigger_server_error);
   TEST(test_do_frame_achievement_trigger_while_spectating);
   TEST(test_do_frame_achievement_trigger_automatic_retry);
+  TEST(test_do_frame_achievement_trigger_automatic_retry_429);
+  TEST(test_do_frame_achievement_trigger_automatic_retry_502);
+  TEST(test_do_frame_achievement_trigger_automatic_retry_503);
   TEST(test_do_frame_achievement_trigger_subset);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_measured_progress_event);

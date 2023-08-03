@@ -261,6 +261,26 @@ static void rc_client_raise_server_error_event(rc_client_t* client, const char* 
   client->callbacks.event_handler(&client_event, client);
 }
 
+static int rc_client_should_retry(const rc_api_server_response_t* server_response)
+{
+  switch (server_response->http_status_code) {
+    case 502: /* 502 Bad Gateway */
+      /* nginx connection pool full. retry */
+      return 1;
+
+    case 503: /* 503 Service Temporarily Unavailable */
+      /* site is in maintenance mode. retry */
+      return 1;
+
+    case 429: /* 429 Too Many Requests */
+      /* too many unlocks occurred at the same time */
+      return 1;
+
+    default:
+      return 0;
+  }
+}
+
 static int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_type, const char* image_name)
 {
   rc_api_fetch_image_request_t image_request;
@@ -2687,7 +2707,7 @@ static void rc_client_award_achievement_callback(const rc_api_server_response_t*
   const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &award_achievement_response.response);
 
   if (error_message) {
-    if (award_achievement_response.response.error_message) {
+    if (award_achievement_response.response.error_message && !rc_client_should_retry(server_response)) {
       /* actual error from server */
       RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Error awarding achievement %u: %s", ach_data->id, error_message);
       rc_client_raise_server_error_event(ach_data->client, "award_achievement", award_achievement_response.response.error_message);
@@ -3247,7 +3267,7 @@ static void rc_client_submit_leaderboard_entry_callback(const rc_api_server_resp
   const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &submit_lboard_entry_response.response);
 
   if (error_message) {
-    if (submit_lboard_entry_response.response.error_message) {
+    if (submit_lboard_entry_response.response.error_message && !rc_client_should_retry(server_response)) {
       /* actual error from server */
       RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Error submitting leaderboard entry %u: %s", lboard_data->id, error_message);
       rc_client_raise_server_error_event(lboard_data->client, "submit_lboard_entry", submit_lboard_entry_response.response.error_message);
