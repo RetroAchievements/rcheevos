@@ -46,11 +46,6 @@ typedef void (*rc_client_callback_t)(int result, const char* error_message, rc_c
  */
 typedef void (*rc_client_message_callback_t)(const char* message, const rc_client_t* client);
 
-/**
- * Marks an async process as aborted. The associated callback will not be called.
- */
-void rc_client_abort_async(rc_client_t* client, rc_client_async_handle_t* async_handle);
-
 /*****************************************************************************\
 | Runtime                                                                     |
 \*****************************************************************************/
@@ -129,6 +124,20 @@ void* rc_client_get_userdata(const rc_client_t* client);
  * Sets the name of the server to use.
  */
 void rc_client_set_host(const rc_client_t* client, const char* hostname);
+
+/* 32-bit unsigned integer can hold enough milliseconds for 49.7 days*/
+typedef uint32_t rc_clock_t;
+typedef rc_clock_t (*rc_get_time_millisecs_func_t)(const rc_client_t* client);
+
+/**
+ * Specifies a function that returns a value that increases once per millisecond.
+ */
+void rc_client_set_get_time_millisecs_function(rc_client_t* client, rc_get_time_millisecs_func_t handler);
+
+/**
+ * Marks an async process as aborted. The associated callback will not be called.
+ */
+void rc_client_abort_async(rc_client_t* client, rc_client_async_handle_t* async_handle);
 
 /*****************************************************************************\
 | Logging                                                                     |
