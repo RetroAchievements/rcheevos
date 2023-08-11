@@ -16,16 +16,17 @@ typedef struct rc_client_callbacks_t {
   rc_client_event_handler_t event_handler;
   rc_client_server_call_t server_call;
   rc_client_message_callback_t log_call;
+  rc_get_time_millisecs_func_t get_time_millisecs;
 
   void* client_data;
 } rc_client_callbacks_t;
 
 struct rc_client_scheduled_callback_data_t;
-typedef void (*rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, clock_t now);
+typedef void (*rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
 
 typedef struct rc_client_scheduled_callback_data_t
 {
-  clock_t when;
+  rc_clock_t when;
   unsigned related_id;
   rc_client_scheduled_callback_t callback;
   void* data;
