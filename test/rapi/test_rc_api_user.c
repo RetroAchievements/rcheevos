@@ -19,7 +19,7 @@ static void test_init_start_session_request()
 
   ASSERT_NUM_EQUALS(rc_api_init_start_session_request(&request, &start_session_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data,  "r=postactivity&u=Username&t=API_TOKEN&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING);
+  ASSERT_STR_EQUALS(request.post_data,  "r=startsession&u=Username&t=API_TOKEN&g=1234&l=" RCHEEVOS_VERSION_STRING);
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
@@ -39,7 +39,7 @@ static void test_init_start_session_request_no_game()
   rc_api_destroy_request(&request);
 }
 
-static void test_process_start_session_response()
+static void test_process_start_session_response_legacy()
 {
   rc_api_start_session_response_t start_session_response;
   const char* server_response = "{\"Success\":true}";
@@ -49,6 +49,49 @@ static void test_process_start_session_response()
   ASSERT_NUM_EQUALS(rc_api_process_start_session_response(&start_session_response, server_response), RC_OK);
   ASSERT_NUM_EQUALS(start_session_response.response.succeeded, 1);
   ASSERT_PTR_NULL(start_session_response.response.error_message);
+  ASSERT_NUM_EQUALS(start_session_response.num_unlocks, 0);
+  ASSERT_NUM_EQUALS(start_session_response.num_hardcore_unlocks, 0);
+  ASSERT_NUM_EQUALS(start_session_response.server_now, 0);
+
+  rc_api_destroy_start_session_response(&start_session_response);
+}
+
+static void test_process_start_session_response()
+{
+  rc_api_start_session_response_t start_session_response;
+  const char* server_response = "{\"Success\":true,\"HardcoreUnlocks\":["
+      "{\"ID\":111,\"When\":1234567890},"
+      "{\"ID\":112,\"When\":1234567891},"
+      "{\"ID\":113,\"When\":1234567860}"
+    "],\"Unlocks\":["
+      "{\"ID\":111,\"When\":1234567890},"
+      "{\"ID\":112,\"When\":1234567841},"
+      "{\"ID\":113,\"When\":1234567860},"
+      "{\"ID\":114,\"When\":1234567840}"
+    "],\"ServerNow\":1234577777}";
+
+  memset(&start_session_response, 0, sizeof(start_session_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_start_session_response(&start_session_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(start_session_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(start_session_response.response.error_message);
+  ASSERT_NUM_EQUALS(start_session_response.num_unlocks, 4);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[0].achievement_id, 111);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[0].when, 1234567890);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[1].achievement_id, 112);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[1].when, 1234567841);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[2].achievement_id, 113);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[2].when, 1234567860);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[3].achievement_id, 114);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[3].when, 1234567840);
+  ASSERT_NUM_EQUALS(start_session_response.num_hardcore_unlocks, 3);
+  ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[0].achievement_id, 111);
+  ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[0].when, 1234567890);
+  ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[1].achievement_id, 112);
+  ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[1].when, 1234567891);
+  ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[2].achievement_id, 113);
+  ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[2].when, 1234567860);
+  ASSERT_NUM_EQUALS(start_session_response.server_now, 1234577777);
 
   rc_api_destroy_start_session_response(&start_session_response);
 }
@@ -505,6 +548,7 @@ void test_rapi_user(void) {
   TEST(test_init_start_session_request);
   TEST(test_init_start_session_request_no_game);
 
+  TEST(test_process_start_session_response_legacy);
   TEST(test_process_start_session_response);
   TEST(test_process_start_session_response_invalid_credentials);
 

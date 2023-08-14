@@ -518,7 +518,7 @@ static void mock_client_load_game(const char* patchdata, const char* hardcore_un
   event_count = 0;
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", softcore_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", hardcore_unlocks);
 
@@ -540,7 +540,7 @@ static rc_client_t* mock_client_game_loaded(const char* patchdata, const char* h
 static void mock_client_load_subset(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
 {
   mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", softcore_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", hardcore_unlocks);
 
@@ -824,7 +824,7 @@ static void test_logout_during_fetch_game(void)
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_logout(g_client);
 
@@ -899,7 +899,7 @@ static void test_get_user_game_summary_encore_mode(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", unlock_6_8_and_9);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", unlock_8);
 
@@ -1017,7 +1017,7 @@ static void test_load_game(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
@@ -1090,7 +1090,7 @@ static void test_load_game_async_login(void)
   assert_api_pending("r=patch&u=Username&t=ApiToken&g=1234");
 
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
@@ -1153,7 +1153,7 @@ static void test_load_game_gameid_failure(void)
   reset_mock_api_handlers();
   mock_api_error("r=gameid&m=0123456789ABCDEF", response_429, 429);
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
 
@@ -1172,7 +1172,7 @@ static void test_load_game_patch_failure(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_error("r=patch&u=Username&t=ApiToken&g=1234", response_429, 429);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
 
@@ -1184,14 +1184,14 @@ static void test_load_game_patch_failure(void)
   rc_client_destroy(g_client);
 }
 
-static void test_load_game_postactivity_failure(void)
+static void test_load_game_startsession_failure(void)
 {
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_error("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, response_429, 429);
+  mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, response_429, 429);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
 
@@ -1210,7 +1210,7 @@ static void test_load_game_softcore_unlocks_failure(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_error("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", response_429, 429);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
 
@@ -1229,7 +1229,7 @@ static void test_load_game_hardcore_unlocks_failure(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
   mock_api_error("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", response_429, 429);
 
@@ -1281,7 +1281,7 @@ static void test_load_game_patch_aborted(void)
   rc_client_abort_async(g_client, handle);
 
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  assert_api_not_called("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING);
+  assert_api_not_called("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -1289,7 +1289,7 @@ static void test_load_game_patch_aborted(void)
   rc_client_destroy(g_client);
 }
 
-static void test_load_game_postactivity_aborted(void)
+static void test_load_game_startsession_aborted(void)
 {
   rc_client_async_handle_t* handle;
 
@@ -1306,7 +1306,7 @@ static void test_load_game_postactivity_aborted(void)
 
   rc_client_abort_async(g_client, handle);
 
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
 
@@ -1330,7 +1330,7 @@ static void test_load_game_softcore_unlocks_aborted(void)
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_abort_async(g_client, handle);
 
@@ -1357,7 +1357,7 @@ static void test_load_game_hardcore_unlocks_aborted(void)
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
 
   rc_client_abort_async(g_client, handle);
@@ -1541,7 +1541,7 @@ static void test_identify_and_load_game_console_specified(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
@@ -1576,7 +1576,7 @@ static void test_identify_and_load_game_console_not_specified(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
@@ -1625,7 +1625,7 @@ static void test_identify_and_load_game_multiconsole_first(void)
 
   async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
@@ -1676,7 +1676,7 @@ static void test_identify_and_load_game_multiconsole_second(void)
   assert_api_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
   async_api_response("r=gameid&m=64b131c5c7fec32985d9c99700babb7e", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
@@ -1820,7 +1820,7 @@ static void test_identify_and_load_game_multihash(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
@@ -1900,7 +1900,7 @@ static void test_identify_and_load_game_multihash_differ(void)
   /* second lookup should succeed */
   async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
@@ -2210,7 +2210,7 @@ static void test_change_media_while_loading(void)
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
@@ -2261,7 +2261,7 @@ static void test_change_media_while_loading_later(void)
   assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
   async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
@@ -2380,14 +2380,14 @@ static void test_load_subset(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata_subset);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", no_unlocks);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", no_unlocks);
 
@@ -3304,13 +3304,13 @@ static void test_achievement_list_subset_buckets_subset_first(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":2345}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata_subset2);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", unlock_5502);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", unlock_5502);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", unlock_8);
   mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", unlock_8);
   rc_client_begin_load_subset(g_client, 1234, rc_client_callback_expect_success, g_callback_userdata);
@@ -7135,12 +7135,12 @@ void test_client(void) {
   TEST(test_load_game_async_login_with_incorrect_password);
   TEST(test_load_game_gameid_failure);
   TEST(test_load_game_patch_failure);
-  TEST(test_load_game_postactivity_failure);
+  TEST(test_load_game_startsession_failure);
   TEST(test_load_game_softcore_unlocks_failure);
   TEST(test_load_game_hardcore_unlocks_failure);
   TEST(test_load_game_gameid_aborted);
   TEST(test_load_game_patch_aborted);
-  TEST(test_load_game_postactivity_aborted);
+  TEST(test_load_game_startsession_aborted);
   TEST(test_load_game_softcore_unlocks_aborted);
   TEST(test_load_game_hardcore_unlocks_aborted);
   TEST(test_load_game_while_spectating);
