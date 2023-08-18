@@ -386,6 +386,7 @@ static void _async_api_response(const char* request_params, const char* response
   {
     if (g_mock_api_responses[i].request_params && strcmp(g_mock_api_responses[i].request_params, request_params) == 0)
     {
+      /* request_params are set to NULL, so we can't find the requests to get a count anyway */
       g_mock_api_responses[i].seen++;
       g_mock_api_responses[i].server_response.body = response_body;
       g_mock_api_responses[i].server_response.body_length = strlen(response_body);
@@ -4543,11 +4544,21 @@ static void test_do_frame_achievement_trigger_automatic_retry(void)
     assert_api_pending(unlock_request_params);
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
+    rc_client_idle(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
     /* second failure will queue it for one second later */
     async_api_response(unlock_request_params, "");
-    assert_api_call_count(unlock_request_params, 0);
+    assert_api_not_pending(unlock_request_params);
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
 
+    /* disconnected event should be raised after retry is queued */
+    rc_client_idle(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+    ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_DISCONNECTED, 0));
+    event_count = 0;
+
+    /* advance time and process scheduled callbacks */
     ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 1 * 1000);
     g_now += 1 * 1000;
 
@@ -4555,9 +4566,12 @@ static void test_do_frame_achievement_trigger_automatic_retry(void)
     assert_api_pending(unlock_request_params);
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
+    /* disconnected event should not have been raised again */
+    ASSERT_NUM_EQUALS(event_count, 0);
+
     /* third failure will requeue it for two seconds later */
     async_api_response(unlock_request_params, "");
-    assert_api_call_count(unlock_request_params, 0);
+    assert_api_not_pending(unlock_request_params);
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
 
     ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 2 * 1000);
@@ -4573,6 +4587,12 @@ static void test_do_frame_achievement_trigger_automatic_retry(void)
 
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
     ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+
+    /* reconnected event should be pending, watch for it */
+    ASSERT_NUM_EQUALS(event_count, 0);
+    rc_client_idle(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+    ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_RECONNECTED, 0));
   }
 
   rc_client_destroy(g_client);
@@ -5966,11 +5986,21 @@ static void test_do_frame_leaderboard_submit_automatic_retry(void)
     assert_api_pending(submit_entry_params);
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
+    rc_client_idle(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
     /* second failure will queue it for one second later */
     async_api_response(submit_entry_params, "");
-    assert_api_call_count(submit_entry_params, 0);
+    assert_api_not_pending(submit_entry_params);
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
 
+    /* disconnected event should be raised after retry is queued */
+    rc_client_idle(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+    ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_DISCONNECTED, 0));
+    event_count = 0;
+
+    /* advance time and process scheduled callbacks */
     ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 1 * 1000);
     g_now += 1 * 1000;
 
@@ -5980,7 +6010,7 @@ static void test_do_frame_leaderboard_submit_automatic_retry(void)
 
     /* third failure will requeue it for two seconds later */
     async_api_response(submit_entry_params, "");
-    assert_api_call_count(submit_entry_params, 0);
+    assert_api_not_pending(submit_entry_params);
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
 
     ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 2 * 1000);
@@ -5996,7 +6026,152 @@ static void test_do_frame_leaderboard_submit_automatic_retry(void)
         "\"TopEntries\":[{\"User\":\"Player1\",\"Score\":44,\"Rank\":1},{\"User\":\"Username\",\"Score\":23,\"Rank\":2}],"
         "\"RankInfo\":{\"Rank\":2,\"NumEntries\":\"2\"}}}");
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* reconnected event should be pending, watch for it */
+    ASSERT_NUM_EQUALS(event_count, 0);
+    rc_client_idle(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+    ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_RECONNECTED, 0));
   }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_multiple_automatic_retry(void)
+{
+  const char* unlock_5501_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
+  const char* unlock_5502_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5502&h=1&m=0123456789ABCDEF&v=8d7405f5aacc9b4b334619a0dae62a56";
+  const char* submit_entry_params = "r=submitlbentry&u=Username&t=ApiToken&i=4401&s=17&m=0123456789ABCDEF&v=13b4cdfe295a97783e78bb48c8910867";
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  /* discard the queued ping to make finding the retry easier */
+  g_client->state.scheduled_callbacks = NULL;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+
+  mock_memory(memory, sizeof(memory));
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  g_now = 100000; /* time 0 */
+  memory[1] = 3; /* trigger 5501 */
+  memory[2] = 7; /* trigger 5501 */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5501));
+  event_count = 0;
+
+  /* first failure will immediately requeue the request */
+  async_api_response(unlock_5501_request_params, "");
+  assert_api_pending(unlock_5501_request_params);
+
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* second failure will queue it for one second later (101000) */
+  async_api_response(unlock_5501_request_params, "");
+  assert_api_not_pending(unlock_5501_request_params);
+
+  /* disconnected event should be raised after retry is queued */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_DISCONNECTED, 0));
+  event_count = 0;
+
+  /* advance time 500ms. trigger second achievement and start leaderboard */
+  g_now += 500; /* 100500 */
+  memory[1] = 2; /* trigger 5502 */
+  memory[2] = 9; /* trigger 5502 */
+  memory[0x0C] = 1; /* start leaderboard 1 */
+  memory[0x0E] = 17; /* leaderboard 1 value */
+
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 3);
+  /* disconnected event should not be raised again */
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5502));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 4401));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+  event_count = 0;
+
+  /* first failure will immediately requeue the request */
+  async_api_response(unlock_5502_request_params, "");
+  assert_api_pending(unlock_5502_request_params);
+
+  /* second failure will queue it for one second later (101500) */
+  async_api_response(unlock_5502_request_params, "");
+  assert_api_not_pending(unlock_5502_request_params);
+
+  /* advance time 250ms. submit leaderboard */
+  g_now += 250; /* 100750 */
+  memory[0x0D] = 2; /* submit leaderboard 1 */
+
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  /* disconnected event should not be raised again */
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 4401));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
+  event_count = 0;
+
+  /* first failure will immediately requeue the request */
+  async_api_response(submit_entry_params, "");
+  assert_api_pending(submit_entry_params);
+
+  /* second failure will queue it for one second later (101750) */
+  async_api_response(submit_entry_params, "");
+  assert_api_not_pending(submit_entry_params);
+
+  /* advance time. first callback will fail again and be queued for two seconds later (103000) */
+  g_now += 350; /* 101100 */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  assert_api_pending(unlock_5501_request_params);
+  async_api_response(unlock_5501_request_params, "");
+  assert_api_not_pending(unlock_5501_request_params);
+
+  /* advance time. second callback will succeed */
+  g_now += 500; /* 101600 */
+  rc_client_do_frame(g_client);
+  assert_api_pending(unlock_5502_request_params);
+  async_api_response(unlock_5502_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+  assert_api_not_pending(unlock_5502_request_params);
+
+  /* reconnected event should not be raised until all pending requests are handled */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* advance time. third callback will succeed */
+  g_now += 500; /* 102100 */
+  rc_client_do_frame(g_client);
+  assert_api_pending(submit_entry_params);
+  async_api_response(submit_entry_params,
+    "{\"Success\":true,\"Response\":{\"Score\":17,\"BestScore\":23,"
+    "\"TopEntries\":[{\"User\":\"Player1\",\"Score\":44,\"Rank\":1},{\"User\":\"Username\",\"Score\":23,\"Rank\":2}],"
+    "\"RankInfo\":{\"Rank\":2,\"NumEntries\":\"2\"}}}");
+  assert_api_not_pending(submit_entry_params);
+
+  /* reconnected event should not be raised until all pending requests are handled */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* advance time. first callback will finally succeed */
+  g_now += 2000; /* 104100 */
+  rc_client_do_frame(g_client);
+  assert_api_pending(unlock_5501_request_params);
+  async_api_response(unlock_5501_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+  assert_api_not_pending(unlock_5501_request_params);
+
+  /* reconnected event should be pending, watch for it */
+  ASSERT_NUM_EQUALS(event_count, 0);
+  rc_client_idle(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_RECONNECTED, 0));
 
   rc_client_destroy(g_client);
 }
@@ -6990,6 +7165,7 @@ void test_client(void) {
   TEST(test_do_frame_leaderboard_tracker_sharing);
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
   TEST(test_do_frame_leaderboard_submit_automatic_retry);
+  TEST(test_do_frame_multiple_automatic_retry);
 
   /* ping */
   TEST(test_idle_ping);
