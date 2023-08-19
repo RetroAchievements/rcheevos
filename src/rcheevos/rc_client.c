@@ -273,6 +273,22 @@ static int rc_client_should_retry(const rc_api_server_response_t* server_respons
       /* too many unlocks occurred at the same time */
       return 1;
 
+    case 521: /* 521 Web Server is Down */
+      /* cloudfare could not find the server */
+      return 1;
+
+    case 522: /* 522 Connection Timed Out */
+      /* timeout connecting to server from cloudfare */
+      return 1;
+
+    case 523: /* 523 Origin is Unreachable */
+      /* cloudfare cannot find server */
+      return 1;
+
+    case 524: /* 524 A Timeout Occurred */
+      /* connection to server from cloudfare was dropped before request was completed */
+      return 1;
+
     default:
       return 0;
   }
