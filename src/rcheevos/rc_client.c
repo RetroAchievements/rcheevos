@@ -246,7 +246,7 @@ static rc_clock_t rc_client_clock_get_now_millisecs(const rc_client_t* client)
     const time_t time_now = time(NULL);
 
     if (last_timet != 0) {
-      const uint32_t seconds_per_clock_t = (uint32_t)(((uint64_t)1 << 32) / CLOCKS_PER_SEC);
+      const time_t seconds_per_clock_t = (time_t)(((uint64_t)1 << 32) / CLOCKS_PER_SEC);
       if (clock_now < last_clock) {
         /* clock() has wrapped */
         ++clock_wraps;
