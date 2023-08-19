@@ -13,7 +13,7 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include <windows.h>
 #include <profileapi.h>
 #else
 #include <time.h>
@@ -2330,7 +2330,7 @@ void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_cli
     return;
   }
 
-  snprintf(buffer, sizeof(buffer), "[SUBSET%u]", subset_id);
+  snprintf(buffer, sizeof(buffer), "[SUBSET%lu]", (unsigned long)subset_id);
 
   load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
   if (!load_state) {
@@ -2403,11 +2403,11 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
 
           if (!achievement->trigger->measured_as_percent) {
             snprintf(achievement->public_.measured_progress, sizeof(achievement->public_.measured_progress),
-                "%u/%u", new_measured_value, achievement->trigger->measured_target);
+                "%lu/%lu", (unsigned long)new_measured_value, (unsigned long)achievement->trigger->measured_target);
           }
           else if (achievement->public_.measured_percent >= 1.0) {
             snprintf(achievement->public_.measured_progress, sizeof(achievement->public_.measured_progress),
-                "%u%%", (uint32_t)achievement->public_.measured_percent);
+                "%lu%%", (unsigned long)achievement->public_.measured_percent);
           }
         }
       }
@@ -3771,8 +3771,12 @@ static unsigned rc_client_peek(unsigned address, unsigned num_bytes, void* ud)
 void rc_client_set_legacy_peek(rc_client_t* client, int method)
 {
   if (method == RC_CLIENT_LEGACY_PEEK_AUTO) {
-    uint8_t buffer[4] = { 1,0,0,0 };
-    method = (*((uint32_t*)buffer) == 1) ?
+    union {
+      uint32_t whole;
+      uint8_t parts[4];
+    } u;
+    u.whole = 1;
+    method = (u.parts[0] == 1) ?
         RC_CLIENT_LEGACY_PEEK_LITTLE_ENDIAN_READS : RC_CLIENT_LEGACY_PEEK_CONSTRUCTED;
   }
 
