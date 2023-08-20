@@ -31,6 +31,7 @@ static void test_shared_masks(void)
   TEST_PARAMS2(test_mask, RC_MEMSIZE_32_BITS, 0xffffffff);
   TEST_PARAMS2(test_mask, RC_MEMSIZE_32_BITS_BE, 0xffffffff);
   TEST_PARAMS2(test_mask, RC_MEMSIZE_FLOAT, 0xffffffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_FLOAT_BE, 0xffffffff);
   TEST_PARAMS2(test_mask, RC_MEMSIZE_MBF32, 0xffffffff);
   TEST_PARAMS2(test_mask, RC_MEMSIZE_VARIABLE, 0xffffffff);
 }
@@ -61,6 +62,7 @@ static void test_shared_sizes(void)
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS_BE, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_FLOAT, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_FLOAT_BE, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_MBF32, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_MBF32_LE, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_VARIABLE, RC_MEMSIZE_32_BITS);
@@ -159,6 +161,23 @@ static void test_transforms(void)
   TEST_PARAMS3(test_transform_float, 0x000042B4, RC_MEMSIZE_FLOAT, 2.39286e-41);
   TEST_PARAMS2(test_transform_float_inf, 0x7F800000, RC_MEMSIZE_FLOAT);
   TEST_PARAMS2(test_transform_float_nan, 0x7FFFFFFF, RC_MEMSIZE_FLOAT);
+
+  TEST_PARAMS3(test_transform_float, 0x0000803F, RC_MEMSIZE_FLOAT_BE, 1.0);
+  TEST_PARAMS3(test_transform_float, 0x00004641, RC_MEMSIZE_FLOAT_BE, 12.375);
+  TEST_PARAMS3(test_transform_float, 0xFA3E8842, RC_MEMSIZE_FLOAT_BE, 68.123);
+  TEST_PARAMS3(test_transform_float, 0x00000000, RC_MEMSIZE_FLOAT_BE, 0.0);
+  TEST_PARAMS3(test_transform_float, 0x00000080, RC_MEMSIZE_FLOAT_BE, -0.0);
+  TEST_PARAMS3(test_transform_float, 0x000000C0, RC_MEMSIZE_FLOAT_BE, -2.0);
+  TEST_PARAMS3(test_transform_float, 0xDB0F4940, RC_MEMSIZE_FLOAT_BE, 3.14159274101257324);
+  TEST_PARAMS3(test_transform_float, 0xABAAAA3E, RC_MEMSIZE_FLOAT_BE, 0.333333334326744076);
+  TEST_PARAMS3(test_transform_float, 0x92449A42, RC_MEMSIZE_FLOAT_BE, 77.133926);
+  TEST_PARAMS3(test_transform_float, 0x0A375043, RC_MEMSIZE_FLOAT_BE, 208.214996);
+  TEST_PARAMS3(test_transform_float, 0xE936AE45, RC_MEMSIZE_FLOAT_BE, 5574.863770);
+  TEST_PARAMS3(test_transform_float, 0xA95F6358, RC_MEMSIZE_FLOAT_BE, 1000000000000000.0);
+  TEST_PARAMS3(test_transform_float, 0x9595E624, RC_MEMSIZE_FLOAT_BE, 0.0000000000000001);
+  TEST_PARAMS3(test_transform_float, 0xB4420000, RC_MEMSIZE_FLOAT_BE, 2.39286e-41);
+  TEST_PARAMS2(test_transform_float_inf, 0x0000807F, RC_MEMSIZE_FLOAT_BE);
+  TEST_PARAMS2(test_transform_float_nan, 0xFFFFFF7F, RC_MEMSIZE_FLOAT_BE);
 
   /* MBF values are stored big endian (at least on Apple II), so will be byteswapped
    * when passed to rc_transform_memref_value. MBF doesn't support infinity or NaN. */
