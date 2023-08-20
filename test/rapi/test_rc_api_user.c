@@ -59,14 +59,14 @@ static void test_process_start_session_response_legacy()
 static void test_process_start_session_response()
 {
   rc_api_start_session_response_t start_session_response;
+  /* startsession API only returns HardcoreUnlocks if an achievement has been earned in hardcore,
+   * even if the softcore unlock has a different timestamp. Unlocks are only returned for things
+   * only unlocked in softcore. */
   const char* server_response = "{\"Success\":true,\"HardcoreUnlocks\":["
       "{\"ID\":111,\"When\":1234567890},"
       "{\"ID\":112,\"When\":1234567891},"
       "{\"ID\":113,\"When\":1234567860}"
     "],\"Unlocks\":["
-      "{\"ID\":111,\"When\":1234567890},"
-      "{\"ID\":112,\"When\":1234567841},"
-      "{\"ID\":113,\"When\":1234567860},"
       "{\"ID\":114,\"When\":1234567840}"
     "],\"ServerNow\":1234577777}";
 
@@ -75,15 +75,9 @@ static void test_process_start_session_response()
   ASSERT_NUM_EQUALS(rc_api_process_start_session_response(&start_session_response, server_response), RC_OK);
   ASSERT_NUM_EQUALS(start_session_response.response.succeeded, 1);
   ASSERT_PTR_NULL(start_session_response.response.error_message);
-  ASSERT_NUM_EQUALS(start_session_response.num_unlocks, 4);
-  ASSERT_NUM_EQUALS(start_session_response.unlocks[0].achievement_id, 111);
-  ASSERT_NUM_EQUALS(start_session_response.unlocks[0].when, 1234567890);
-  ASSERT_NUM_EQUALS(start_session_response.unlocks[1].achievement_id, 112);
-  ASSERT_NUM_EQUALS(start_session_response.unlocks[1].when, 1234567841);
-  ASSERT_NUM_EQUALS(start_session_response.unlocks[2].achievement_id, 113);
-  ASSERT_NUM_EQUALS(start_session_response.unlocks[2].when, 1234567860);
-  ASSERT_NUM_EQUALS(start_session_response.unlocks[3].achievement_id, 114);
-  ASSERT_NUM_EQUALS(start_session_response.unlocks[3].when, 1234567840);
+  ASSERT_NUM_EQUALS(start_session_response.num_unlocks, 1);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[0].achievement_id, 114);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[0].when, 1234567840);
   ASSERT_NUM_EQUALS(start_session_response.num_hardcore_unlocks, 3);
   ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[0].achievement_id, 111);
   ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[0].when, 1234567890);

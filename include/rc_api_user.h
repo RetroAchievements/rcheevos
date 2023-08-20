@@ -82,11 +82,11 @@ rc_api_unlock_entry_t;
 typedef struct rc_api_start_session_response_t {
   /* An array of hardcore user unlocks */
   rc_api_unlock_entry_t* hardcore_unlocks;
-  /* The number of items in the hardcore_unlocks array */
-  unsigned num_hardcore_unlocks;
-
   /* An array of user unlocks */
   rc_api_unlock_entry_t* unlocks;
+
+  /* The number of items in the hardcore_unlocks array */
+  unsigned num_hardcore_unlocks;
   /* The number of items in the unlocks array */
   unsigned num_unlocks;
 

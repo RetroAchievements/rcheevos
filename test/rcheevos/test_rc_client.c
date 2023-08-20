@@ -203,37 +203,22 @@ static const char* patchdata_subset2 = "{\"Success\":true,\"PatchData\":{"
 
 static const char* no_unlocks = "{\"Success\":true,\"Unlocks\":[],\"HardcoreUnlocks\":[]}";
 
-static const char* unlock_5501 = "{\"Success\":true,\"Unlocks\":["
-      "{\"ID\":5501,\"When\":1234567890}"
-    "],\"HardcoreUnlocks\":["
-      "{\"ID\":5501,\"When\":1234567890}"
-    "]}";
-static const char* unlock_5502 = "{\"Success\":true,\"Unlocks\":["
-      "{\"ID\":5502,\"When\":1234567890}"
-    "],\"HardcoreUnlocks\":["
-      "{\"ID\":5502,\"When\":1234567890}"
-    "]}";
+/* startsession API only returns HardcoreUnlocks if an achievement has been earned in hardcore,
+ * even if the softcore unlock has a different timestamp */
+static const char* unlock_5501 = "{\"Success\":true,\"HardcoreUnlocks\":[{\"ID\":5501,\"When\":1234567890}]}";
+static const char* unlock_5502 = "{\"Success\":true,\"HardcoreUnlocks\":[{\"ID\":5502,\"When\":1234567890}]}";
 static const char* unlock_5501h_and_5502 = "{\"Success\":true,\"Unlocks\":["
-      "{\"ID\":5501,\"When\":1234567890},"
       "{\"ID\":5502,\"When\":1234567899}"
     "],\"HardcoreUnlocks\":["
       "{\"ID\":5501,\"When\":1234567890}"
     "]}";
-static const char* unlock_5501_and_5502 = "{\"Success\":true,\"Unlocks\":["
-      "{\"ID\":5501,\"When\":1234567890},"
-      "{\"ID\":5502,\"When\":1234567899}"
-    "],\"HardcoreUnlocks\":["
+static const char* unlock_5501_and_5502 = "{\"Success\":true,\"HardcoreUnlocks\":["
       "{\"ID\":5501,\"When\":1234567890},"
       "{\"ID\":5502,\"When\":1234567899}"
     "]}";
-static const char* unlock_8 = "{\"Success\":true,\"Unlocks\":["
-      "{\"ID\":8,\"When\":1234567890}"
-    "],\"HardcoreUnlocks\":["
-      "{\"ID\":8,\"When\":1234567890}"
-    "]}";
+static const char* unlock_8 = "{\"Success\":true,\"HardcoreUnlocks\":[{\"ID\":8,\"When\":1234567890}]}";
 static const char* unlock_6_8h_and_9 = "{\"Success\":true,\"Unlocks\":["
       "{\"ID\":6,\"When\":1234567890},"
-      "{\"ID\":8,\"When\":1234567895},"
       "{\"ID\":9,\"When\":1234567899}"
     "],\"HardcoreUnlocks\":["
       "{\"ID\":8,\"When\":1234567895}"

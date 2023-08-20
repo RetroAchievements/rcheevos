@@ -1027,9 +1027,9 @@ static void rc_client_apply_unlocks(rc_client_subset_info_t* subset, rc_api_unlo
       if (scan->public_.id == unlock->achievement_id) {
         scan->public_.unlocked |= mode;
 
-        if (mode == RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE)
+        if (mode & RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE)
           scan->unlock_time_hardcore = unlock->when;
-        else
+        if (mode & RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE)
           scan->unlock_time_softcore = unlock->when;
 
         if (scan == start)
@@ -1064,10 +1064,10 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
   }
   else {
     if (client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_OFF) {
-      rc_client_apply_unlocks(load_state->subset, start_session_response->unlocks,
-          start_session_response->num_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
       rc_client_apply_unlocks(load_state->subset, start_session_response->hardcore_unlocks,
           start_session_response->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+      rc_client_apply_unlocks(load_state->subset, start_session_response->unlocks,
+        start_session_response->num_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
     }
 
     rc_mutex_lock(&client->state.mutex);
