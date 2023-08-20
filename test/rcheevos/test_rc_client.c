@@ -205,7 +205,6 @@ static const char* no_unlocks = "{\"Success\":true,\"Unlocks\":[],\"HardcoreUnlo
 
 /* startsession API only returns HardcoreUnlocks if an achievement has been earned in hardcore,
  * even if the softcore unlock has a different timestamp */
-static const char* unlock_5501 = "{\"Success\":true,\"HardcoreUnlocks\":[{\"ID\":5501,\"When\":1234567890}]}";
 static const char* unlock_5502 = "{\"Success\":true,\"HardcoreUnlocks\":[{\"ID\":5502,\"When\":1234567890}]}";
 static const char* unlock_5501h_and_5502 = "{\"Success\":true,\"Unlocks\":["
       "{\"ID\":5502,\"When\":1234567899}"
