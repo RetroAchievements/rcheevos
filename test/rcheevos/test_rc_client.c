@@ -6050,6 +6050,8 @@ static void test_clock_get_now_millisecs(void)
 
   } while (1);
 #endif
+
+  rc_client_destroy(client);
 }
 
 /* ----- ping ----- */
