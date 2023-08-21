@@ -9,6 +9,14 @@
 #include "../rhash/data.h"
 #include "../test_framework.h"
 
+#if defined(_WIN32)
+#include <Windows.h>
+#elif defined(__unix__) && __STDC_VERSION__ >= 199309L
+#include <unistd.h>
+#else
+#define RC_NO_SLEEP
+#endif
+
 static rc_client_t* g_client;
 static void* g_callback_userdata = &g_client; /* dummy object to use for callback userdata validation */
 
@@ -6001,6 +6009,49 @@ static void test_do_frame_leaderboard_submit_automatic_retry(void)
   rc_client_destroy(g_client);
 }
 
+static void test_clock_get_now_millisecs(void)
+{
+  rc_client_t* client = rc_client_create(rc_client_read_memory, rc_client_server_call);
+  rc_get_time_millisecs_func_t get_millisecs = client->callbacks.get_time_millisecs;
+
+#ifdef RC_NO_SLEEP
+  rc_clock_t time1;
+  ASSERT_PTR_NOT_NULL(get_millisecs);
+  time1 = get_millisecs(client);
+  ASSERT_NUM_NOT_EQUALS(time1, 0);
+#else
+  rc_clock_t time1, time2, diff;
+  time_t first = time(NULL), now;
+
+  do {
+    ASSERT_PTR_NOT_NULL(get_millisecs);
+    time1 = get_millisecs(client);
+    ASSERT_NUM_NOT_EQUALS(time1, 0);
+
+#if defined(_WIN32)
+    Sleep(50);
+#else
+    usleep(50000);
+#endif
+
+    time2 = get_millisecs(client);
+    ASSERT_NUM_NOT_EQUALS(time2, 0);
+    diff = time2 - time1;
+
+    ASSERT_NUM_GREATER(diff, 49);
+    if (diff < 100)
+      break;
+
+    now = time(NULL);
+    if (now - first >= 3) {
+      ASSERT_FAIL("could not get a 50ms sleep interval within 3 seconds");
+      break;
+    }
+
+  } while (1);
+#endif
+}
+
 /* ----- ping ----- */
 
 static void test_idle_ping(void)
@@ -6990,6 +7041,8 @@ void test_client(void) {
   TEST(test_do_frame_leaderboard_tracker_sharing);
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
   TEST(test_do_frame_leaderboard_submit_automatic_retry);
+
+  TEST(test_clock_get_now_millisecs);
 
   /* ping */
   TEST(test_idle_ping);
