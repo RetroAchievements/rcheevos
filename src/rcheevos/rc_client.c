@@ -219,7 +219,7 @@ static rc_clock_t rc_client_clock_get_now_millisecs(const rc_client_t* client)
     return 0;
 
   /* round nanoseconds to nearest millisecond and add to seconds */
-  return ((rc_clock_t)now.tv_sec * 1000 + ((rc_clock_t)now.tv_nsec + 500000) / 1000000);
+  return ((rc_clock_t)now.tv_sec * 1000 + ((rc_clock_t)now.tv_nsec / 1000000));
 #elif defined(_WIN32)
   static LARGE_INTEGER freq;
   LARGE_INTEGER ticks;
