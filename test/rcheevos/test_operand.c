@@ -155,7 +155,9 @@ static void test_parse_memory_references() {
   TEST_PARAMS4(test_parse_operand, "0xJ1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_24_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "0xG1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_32_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "fF1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_FLOAT, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "fB1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_FLOAT_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "fM1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_MBF32, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "fL1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_MBF32_LE, 0x1234U);
 
   /* sizes (ignore case) */
   TEST_PARAMS4(test_parse_operand, "0Xh1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U);
@@ -175,7 +177,9 @@ static void test_parse_memory_references() {
   TEST_PARAMS4(test_parse_operand, "0xj1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_24_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "0xg1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_32_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "ff1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_FLOAT, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "fb1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_FLOAT_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "fm1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_MBF32, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "fl1234", RC_OPERAND_ADDRESS, RC_MEMSIZE_MBF32_LE, 0x1234U);
 
   /* addresses */
   TEST_PARAMS4(test_parse_operand, "0xH0000", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x0000U);
@@ -207,7 +211,9 @@ static void test_parse_delta_memory_references() {
   TEST_PARAMS4(test_parse_operand, "d0xJ1234", RC_OPERAND_DELTA, RC_MEMSIZE_24_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "d0xG1234", RC_OPERAND_DELTA, RC_MEMSIZE_32_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "dfF1234", RC_OPERAND_DELTA, RC_MEMSIZE_FLOAT, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "dfB1234", RC_OPERAND_DELTA, RC_MEMSIZE_FLOAT_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "dfM1234", RC_OPERAND_DELTA, RC_MEMSIZE_MBF32, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "dfL1234", RC_OPERAND_DELTA, RC_MEMSIZE_MBF32_LE, 0x1234U);
 
   /* ignores case */
   TEST_PARAMS4(test_parse_operand, "D0Xh1234", RC_OPERAND_DELTA, RC_MEMSIZE_8_BITS, 0x1234U);
@@ -241,7 +247,9 @@ static void test_parse_prior_memory_references() {
   TEST_PARAMS4(test_parse_operand, "p0xJ1234", RC_OPERAND_PRIOR, RC_MEMSIZE_24_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "p0xG1234", RC_OPERAND_PRIOR, RC_MEMSIZE_32_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "pfF1234", RC_OPERAND_PRIOR, RC_MEMSIZE_FLOAT, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "pfB1234", RC_OPERAND_PRIOR, RC_MEMSIZE_FLOAT_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "pfM1234", RC_OPERAND_PRIOR, RC_MEMSIZE_MBF32, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "pfL1234", RC_OPERAND_PRIOR, RC_MEMSIZE_MBF32_LE, 0x1234U);
 
   /* ignores case */
   TEST_PARAMS4(test_parse_operand, "P0Xh1234", RC_OPERAND_PRIOR, RC_MEMSIZE_8_BITS, 0x1234U);
@@ -264,7 +272,9 @@ static void test_parse_bcd_memory_references() {
   TEST_PARAMS4(test_parse_operand, "b0xJ1234", RC_OPERAND_BCD, RC_MEMSIZE_24_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "b0xG1234", RC_OPERAND_BCD, RC_MEMSIZE_32_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "bfF1234", RC_OPERAND_BCD, RC_MEMSIZE_FLOAT, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "bfB1234", RC_OPERAND_BCD, RC_MEMSIZE_FLOAT_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "bfM1234", RC_OPERAND_BCD, RC_MEMSIZE_MBF32, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "bfL1234", RC_OPERAND_BCD, RC_MEMSIZE_MBF32_LE, 0x1234U);
 
   /* sizes less than 8-bit technically don't need a BCD conversion */
   TEST_PARAMS4(test_parse_operand, "b0xL1234", RC_OPERAND_BCD, RC_MEMSIZE_LOW, 0x1234U);
@@ -289,7 +299,9 @@ static void test_parse_inverted_memory_references() {
   TEST_PARAMS4(test_parse_operand, "~0xJ1234", RC_OPERAND_INVERTED, RC_MEMSIZE_24_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "~0xG1234", RC_OPERAND_INVERTED, RC_MEMSIZE_32_BITS_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "~fF1234", RC_OPERAND_INVERTED, RC_MEMSIZE_FLOAT, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "~fB1234", RC_OPERAND_INVERTED, RC_MEMSIZE_FLOAT_BE, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "~fM1234", RC_OPERAND_INVERTED, RC_MEMSIZE_MBF32, 0x1234U);
+  TEST_PARAMS4(test_parse_operand, "~fL1234", RC_OPERAND_INVERTED, RC_MEMSIZE_MBF32_LE, 0x1234U);
 
   TEST_PARAMS4(test_parse_operand, "~0xL1234", RC_OPERAND_INVERTED, RC_MEMSIZE_LOW, 0x1234U);
   TEST_PARAMS4(test_parse_operand, "~0xU1234", RC_OPERAND_INVERTED, RC_MEMSIZE_HIGH, 0x1234U);
