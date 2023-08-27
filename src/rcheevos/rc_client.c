@@ -1594,6 +1594,11 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
       scan->next = subset;
     }
 
+    if (load_state->client->callbacks.post_process_game_data_response) {
+      load_state->client->callbacks.post_process_game_data_response(server_response,
+        &fetch_game_data_response, load_state->client, load_state->callback_userdata);
+    }
+
     outstanding_requests = rc_client_end_load_state(load_state);
     if (outstanding_requests < 0) {
       /* previous load state was aborted, load_state was free'd */
@@ -2865,6 +2870,12 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
 
   rc_mutex_unlock(&client->state.mutex);
 
+  if (client->callbacks.can_submit_achievement_unlock &&
+      !client->callbacks.can_submit_achievement_unlock(achievement->public_.id, client)) {
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Achievement %u unlock blocked by client", achievement->public_.id);
+    return;
+  }
+
   /* can't unlock unofficial achievements on the server */
   if (achievement->public_.category != RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE) {
     RC_CLIENT_LOG_INFO_FORMATTED(client, "Unlocked unofficial achievement %u: %s", achievement->public_.id, achievement->public_.title);
@@ -3365,6 +3376,12 @@ static void rc_client_submit_leaderboard_entry_server_call(rc_client_submit_lead
 static void rc_client_submit_leaderboard_entry(rc_client_t* client, rc_client_leaderboard_info_t* leaderboard)
 {
   rc_client_submit_leaderboard_entry_callback_data_t* callback_data;
+
+  if (client->callbacks.can_submit_leaderboard_entry &&
+      !client->callbacks.can_submit_leaderboard_entry(leaderboard->public_.id, client)) {
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Leaderboard %u entry submission blocked by client", leaderboard->public_.id);
+    return;
+  }
 
   /* don't actually submit leaderboard entries when spectating */
   if (client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) {
