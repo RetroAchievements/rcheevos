@@ -609,7 +609,7 @@ static void rc_client_subset_get_user_game_summary(const rc_client_subset_info_t
           ++summary->num_unlocked_achievements;
           summary->points_unlocked += achievement->public_.points;
         }
-        else if (achievement->public_.bucket == RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED) {
+        if (achievement->public_.bucket == RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED) {
           ++summary->num_unsupported_achievements;
         }
 

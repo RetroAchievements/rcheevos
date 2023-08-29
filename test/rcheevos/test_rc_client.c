@@ -223,6 +223,11 @@ static const char* unlock_5501_and_5502 = "{\"Success\":true,\"HardcoreUnlocks\"
       "{\"ID\":5501,\"When\":1234567890},"
       "{\"ID\":5502,\"When\":1234567899}"
     "]}";
+static const char* unlock_5501_5502_and_5503 = "{\"Success\":true,\"HardcoreUnlocks\":["
+      "{\"ID\":5501,\"When\":1234567890},"
+      "{\"ID\":5502,\"When\":1234567899},"
+      "{\"ID\":5503,\"When\":1234567999}"
+    "]}";
 static const char* unlock_8 = "{\"Success\":true,\"HardcoreUnlocks\":[{\"ID\":8,\"When\":1234567890}]}";
 static const char* unlock_6_8h_and_9 = "{\"Success\":true,\"Unlocks\":["
       "{\"ID\":6,\"When\":1234567890},"
@@ -956,6 +961,27 @@ static void test_get_user_game_summary_with_unsupported_and_unofficial(void)
 
   ASSERT_NUM_EQUALS(summary.points_core, 7);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_with_unsupported_unlocks(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_unofficial_enabled(g_client, 1);
+  mock_client_load_game(patchdata_unofficial_unsupported, unlock_5501_5502_and_5503);
+
+  /* unlocked unsupported achievement should be counted in both unlocked and unsuppored buckets */
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 2);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 1);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 1);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 2);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 7);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 7);
 
   rc_client_destroy(g_client);
 }
@@ -7062,6 +7088,7 @@ void test_client(void) {
   TEST(test_get_user_game_summary_softcore);
   TEST(test_get_user_game_summary_encore_mode);
   TEST(test_get_user_game_summary_with_unsupported_and_unofficial);
+  TEST(test_get_user_game_summary_with_unsupported_unlocks);
 
   /* load game */
   TEST(test_load_game_required_fields);
