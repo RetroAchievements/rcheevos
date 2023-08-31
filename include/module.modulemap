@@ -47,6 +47,10 @@ module rcheevos {
     
     module rc_runtime {
         header "rc_runtime.h"
+        export *
+    }
+    
+    module rc_runtime_types {
         header "rc_runtime_types.h"
         export *
     }
