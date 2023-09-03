@@ -5,9 +5,18 @@
 #include "rc_internal.h"
 #include "rc_client_internal.h"
 #include "rc_version.h"
+#include "rc_api_runtime.h"
 
 #include "../rhash/data.h"
 #include "../test_framework.h"
+
+#if defined(_WIN32)
+#include <Windows.h>
+#elif defined(__unix__) && __STDC_VERSION__ >= 199309L
+#include <unistd.h>
+#else
+#define RC_NO_SLEEP
+#endif
 
 static rc_client_t* g_client;
 static void* g_callback_userdata = &g_client; /* dummy object to use for callback userdata validation */
@@ -201,19 +210,56 @@ static const char* patchdata_subset2 = "{\"Success\":true,\"PatchData\":{"
     "]"
     "}}";
 
-static const char* no_unlocks = "{\"Success\":true,\"UserUnlocks\":[]}";
+static const char* no_unlocks = "{\"Success\":true,\"Unlocks\":[],\"HardcoreUnlocks\":[]}";
 
-static const char* unlock_5501 = "{\"Success\":true,\"UserUnlocks\":[5501]}";
-static const char* unlock_5502 = "{\"Success\":true,\"UserUnlocks\":[5502]}";
-static const char* unlock_5501_and_5502 = "{\"Success\":true,\"UserUnlocks\":[5501,5502]}";
-static const char* unlock_8 = "{\"Success\":true,\"UserUnlocks\":[8]}";
-static const char* unlock_6_8_and_9 = "{\"Success\":true,\"UserUnlocks\":[6,8,9]}";
+/* startsession API only returns HardcoreUnlocks if an achievement has been earned in hardcore,
+ * even if the softcore unlock has a different timestamp */
+static const char* unlock_5502 = "{\"Success\":true,\"HardcoreUnlocks\":[{\"ID\":5502,\"When\":1234567890}]}";
+static const char* unlock_5501h_and_5502 = "{\"Success\":true,\"Unlocks\":["
+      "{\"ID\":5502,\"When\":1234567899}"
+    "],\"HardcoreUnlocks\":["
+      "{\"ID\":5501,\"When\":1234567890}"
+    "]}";
+static const char* unlock_5501_and_5502 = "{\"Success\":true,\"HardcoreUnlocks\":["
+      "{\"ID\":5501,\"When\":1234567890},"
+      "{\"ID\":5502,\"When\":1234567899}"
+    "]}";
+static const char* unlock_5501_5502_and_5503 = "{\"Success\":true,\"HardcoreUnlocks\":["
+      "{\"ID\":5501,\"When\":1234567890},"
+      "{\"ID\":5502,\"When\":1234567899},"
+      "{\"ID\":5503,\"When\":1234567999}"
+    "]}";
+static const char* unlock_8 = "{\"Success\":true,\"HardcoreUnlocks\":[{\"ID\":8,\"When\":1234567890}]}";
+static const char* unlock_6_8h_and_9 = "{\"Success\":true,\"Unlocks\":["
+      "{\"ID\":6,\"When\":1234567890},"
+      "{\"ID\":9,\"When\":1234567899}"
+    "],\"HardcoreUnlocks\":["
+      "{\"ID\":8,\"When\":1234567895}"
+    "]}";
 
 static const char* response_429 =
     "<html>\n"
     "<head><title>429 Too Many Requests</title></head>\n"
     "<body>\n"
     "<center><h1>429 Too Many Requests</h1></center>\n"
+    "<hr><center>nginx</center>\n"
+    "</body>\n"
+    "</html>";
+
+static const char* response_502 =
+    "<html>\n"
+    "<head><title>502 Bad Gateway</title></head>\n"
+    "<body>\n"
+    "<center><h1>502 Bad Gateway</h1></center>\n"
+    "<hr><center>nginx</center>\n"
+    "</body>\n"
+    "</html>";
+
+static const char* response_503 =
+    "<html>\n"
+    "<head><title>503 Service Temporarily Unavailable</title></head>\n"
+    "<body>\n"
+    "<center><h1>503 Service Temporarily Unavailable</h1></center>\n"
     "<hr><center>nginx</center>\n"
     "</body>\n"
     "</html>";
@@ -503,15 +549,13 @@ static rc_client_t* mock_client_logged_in(void)
   return client;
 }
 
-static void mock_client_load_game(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
+static void mock_client_load_game(const char* patchdata, const char* unlocks)
 {
   reset_mock_api_handlers();
   event_count = 0;
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", softcore_unlocks);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", hardcore_unlocks);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, unlocks);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
@@ -519,21 +563,19 @@ static void mock_client_load_game(const char* patchdata, const char* hardcore_un
     ASSERT_MESSAGE("client->game is NULL");
 }
 
-static rc_client_t* mock_client_game_loaded(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
+static rc_client_t* mock_client_game_loaded(const char* patchdata, const char* unlocks)
 {
   g_client = mock_client_logged_in();
 
-  mock_client_load_game(patchdata, hardcore_unlocks, softcore_unlocks);
+  mock_client_load_game(patchdata, unlocks);
 
   return g_client;
 }
 
-static void mock_client_load_subset(const char* patchdata, const char* hardcore_unlocks, const char* softcore_unlocks)
+static void mock_client_load_subset(const char* patchdata, const char* unlocks)
 {
   mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", softcore_unlocks);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", hardcore_unlocks);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&l=" RCHEEVOS_VERSION_STRING, unlocks);
 
   rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success, g_callback_userdata);
 }
@@ -758,7 +800,7 @@ static void test_logout(void)
 
 static void test_logout_with_game_loaded(void)
 {
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(rc_client_get_user_info(g_client));
   ASSERT_PTR_NOT_NULL(rc_client_get_game_info(g_client));
@@ -815,12 +857,10 @@ static void test_logout_during_fetch_game(void)
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_logout(g_client);
 
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -832,7 +872,7 @@ static void test_logout_during_fetch_game(void)
 static void test_user_get_image_url(void)
 {
   char buffer[256];
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   ASSERT_NUM_EQUALS(rc_client_user_get_image_url(rc_client_get_user_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/UserPic/DisplayName.png");
@@ -846,7 +886,7 @@ static void test_get_user_game_summary(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_unofficial_enabled(g_client, 1);
-  mock_client_load_game(patchdata_exhaustive, unlock_8, unlock_6_8_and_9);
+  mock_client_load_game(patchdata_exhaustive, unlock_6_8h_and_9);
 
   rc_client_get_user_game_summary(g_client, &summary);
   ASSERT_NUM_EQUALS(summary.num_core_achievements, 7);
@@ -866,7 +906,7 @@ static void test_get_user_game_summary_softcore(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_unofficial_enabled(g_client, 1);
-  mock_client_load_game(patchdata_exhaustive, unlock_8, unlock_6_8_and_9);
+  mock_client_load_game(patchdata_exhaustive, unlock_6_8h_and_9);
   rc_client_set_hardcore_enabled(g_client, 0);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -890,9 +930,7 @@ static void test_get_user_game_summary_encore_mode(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", unlock_6_8_and_9);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", unlock_8);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, unlock_6_8h_and_9);
 
   rc_client_set_encore_mode_enabled(g_client, 1);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -915,7 +953,7 @@ static void test_get_user_game_summary_with_unsupported_and_unofficial(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_unofficial_enabled(g_client, 1);
-  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
+  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks);
 
   rc_client_get_user_game_summary(g_client, &summary);
   ASSERT_NUM_EQUALS(summary.num_core_achievements, 2);
@@ -925,6 +963,27 @@ static void test_get_user_game_summary_with_unsupported_and_unofficial(void)
 
   ASSERT_NUM_EQUALS(summary.points_core, 7);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_with_unsupported_unlocks(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_unofficial_enabled(g_client, 1);
+  mock_client_load_game(patchdata_unofficial_unsupported, unlock_5501_5502_and_5503);
+
+  /* unlocked unsupported achievement should be counted in both unlocked and unsuppored buckets */
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 2);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 1);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 1);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 2);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 7);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 7);
 
   rc_client_destroy(g_client);
 }
@@ -1008,9 +1067,7 @@ static void test_load_game(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
@@ -1081,9 +1138,7 @@ static void test_load_game_async_login(void)
   assert_api_pending("r=patch&u=Username&t=ApiToken&g=1234");
 
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_STR_EQUALS(g_client->user.username, "Username");
 
@@ -1144,9 +1199,7 @@ static void test_load_game_gameid_failure(void)
   reset_mock_api_handlers();
   mock_api_error("r=gameid&m=0123456789ABCDEF", response_429, 429);
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
 
@@ -1163,9 +1216,7 @@ static void test_load_game_patch_failure(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_error("r=patch&u=Username&t=ApiToken&g=1234", response_429, 429);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
 
@@ -1175,54 +1226,14 @@ static void test_load_game_patch_failure(void)
   rc_client_destroy(g_client);
 }
 
-static void test_load_game_postactivity_failure(void)
+static void test_load_game_startsession_failure(void)
 {
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_error("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, response_429, 429);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
-
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
-
-  ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NULL(g_client->game);
-
-  rc_client_destroy(g_client);
-}
-
-static void test_load_game_softcore_unlocks_failure(void)
-{
-  g_client = mock_client_logged_in();
-
-  reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_error("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", response_429, 429);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
-
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
-
-  ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NULL(g_client->game);
-
-  rc_client_destroy(g_client);
-}
-
-static void test_load_game_hardcore_unlocks_failure(void)
-{
-  g_client = mock_client_logged_in();
-
-  reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
-  mock_api_error("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", response_429, 429);
+  mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, response_429, 429);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
 
@@ -1272,7 +1283,7 @@ static void test_load_game_patch_aborted(void)
   rc_client_abort_async(g_client, handle);
 
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  assert_api_not_called("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING);
+  assert_api_not_called("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -1280,7 +1291,7 @@ static void test_load_game_patch_aborted(void)
   rc_client_destroy(g_client);
 }
 
-static void test_load_game_postactivity_aborted(void)
+static void test_load_game_startsession_aborted(void)
 {
   rc_client_async_handle_t* handle;
 
@@ -1297,63 +1308,7 @@ static void test_load_game_postactivity_aborted(void)
 
   rc_client_abort_async(g_client, handle);
 
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
-
-  ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NULL(g_client->game);
-
-  rc_client_destroy(g_client);
-}
-
-static void test_load_game_softcore_unlocks_aborted(void)
-{
-  rc_client_async_handle_t* handle;
-
-  g_client = mock_client_logged_in();
-  g_client->callbacks.server_call = rc_client_server_call_async;
-
-  reset_mock_api_handlers();
-
-  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
-    rc_client_callback_expect_uncalled, g_callback_userdata);
-
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-
-  rc_client_abort_async(g_client, handle);
-
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
-
-  ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NULL(g_client->game);
-
-  rc_client_destroy(g_client);
-}
-
-static void test_load_game_hardcore_unlocks_aborted(void)
-{
-  rc_client_async_handle_t* handle;
-
-  g_client = mock_client_logged_in();
-  g_client->callbacks.server_call = rc_client_server_call_async;
-
-  reset_mock_api_handlers();
-
-  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
-    rc_client_callback_expect_uncalled, g_callback_userdata);
-
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", "{\"Success\":true,\"UserUnlocks\":[]}");
-
-  rc_client_abort_async(g_client, handle);
-
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", "{\"Success\":true,\"UserUnlocks\":[]}");
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -1434,6 +1389,81 @@ static void test_load_game_while_spectating(void)
   rc_client_destroy(g_client);
 }
 
+static int rc_client_callback_process_game_data_called = 0;
+static void rc_client_callback_process_game_data(const rc_api_server_response_t* server_response,
+    struct rc_api_fetch_game_data_response_t* game_data_response, rc_client_t* client, void* userdata)
+{
+  ASSERT_STR_EQUALS(server_response->body, patchdata_2ach_1lbd);
+  ASSERT_NUM_EQUALS(game_data_response->id, 1234);
+  ASSERT_NUM_EQUALS(game_data_response->num_achievements, 2);
+  ASSERT_NUM_EQUALS(game_data_response->num_leaderboards, 1);
+  rc_client_callback_process_game_data_called = 1;
+}
+
+static void test_load_game_process_game_data(void)
+{
+  rc_client_achievement_info_t* achievement;
+  rc_client_leaderboard_info_t* leaderboard;
+  g_client = mock_client_logged_in();
+  g_client->callbacks.post_process_game_data_response = rc_client_callback_process_game_data;
+  rc_client_callback_process_game_data_called = 0;
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+
+  achievement = &g_client->game->subsets->achievements[0];
+  ASSERT_NUM_EQUALS(achievement->public_.id, 5501);
+  ASSERT_STR_EQUALS(achievement->public_.title, "Ach1");
+  ASSERT_STR_EQUALS(achievement->public_.description, "Desc1");
+  ASSERT_STR_EQUALS(achievement->public_.badge_name, "00234");
+  ASSERT_NUM_EQUALS(achievement->public_.points, 5);
+  ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
+  ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+  ASSERT_PTR_NOT_NULL(achievement->trigger);
+
+  achievement = &g_client->game->subsets->achievements[1];
+  ASSERT_NUM_EQUALS(achievement->public_.id, 5502);
+  ASSERT_STR_EQUALS(achievement->public_.title, "Ach2");
+  ASSERT_STR_EQUALS(achievement->public_.description, "Desc2");
+  ASSERT_STR_EQUALS(achievement->public_.badge_name, "00235");
+  ASSERT_NUM_EQUALS(achievement->public_.points, 2);
+  ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
+  ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+  ASSERT_PTR_NOT_NULL(achievement->trigger);
+
+  leaderboard = &g_client->game->subsets->leaderboards[0];
+  ASSERT_NUM_EQUALS(leaderboard->public_.id, 4401);
+  ASSERT_STR_EQUALS(leaderboard->public_.title, "Leaderboard1");
+  ASSERT_STR_EQUALS(leaderboard->public_.description, "Desc1");
+  ASSERT_NUM_EQUALS(leaderboard->public_.state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
+  ASSERT_PTR_NOT_NULL(leaderboard->lboard);
+  ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
+  ASSERT_PTR_NULL(leaderboard->tracker);
+
+  ASSERT_NUM_NOT_EQUALS(rc_client_callback_process_game_data_called, 0);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- unload game ----- */
 
 static void test_unload_game(void)
@@ -1441,7 +1471,7 @@ static void test_unload_game(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   ASSERT_PTR_NOT_NULL(rc_client_get_game_info(g_client));
@@ -1467,7 +1497,7 @@ static void test_unload_game_hides_ui(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
   mock_memory(memory, sizeof(memory));
 
   event_count = 0;
@@ -1532,9 +1562,7 @@ static void test_identify_and_load_game_console_specified(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
       image, image_size, rc_client_callback_expect_success, g_callback_userdata);
@@ -1567,9 +1595,7 @@ static void test_identify_and_load_game_console_not_specified(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
       image, image_size, rc_client_callback_expect_success, g_callback_userdata);
@@ -1616,9 +1642,7 @@ static void test_identify_and_load_game_multiconsole_first(void)
 
   async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   assert_api_not_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
 
@@ -1667,9 +1691,7 @@ static void test_identify_and_load_game_multiconsole_second(void)
   assert_api_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
   async_api_response("r=gameid&m=64b131c5c7fec32985d9c99700babb7e", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1811,9 +1833,7 @@ static void test_identify_and_load_game_multihash(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "abc.dsk",
       image, image_size, rc_client_callback_expect_success, g_callback_userdata);
@@ -1891,10 +1911,8 @@ static void test_identify_and_load_game_multihash_differ(void)
   /* second lookup should succeed */
   async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
-
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+ 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -1920,7 +1938,7 @@ static void test_change_media_required_fields(void)
   const size_t image_size = 32768;
   uint8_t* image = generate_generic_file(image_size);
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   rc_client_begin_change_media(g_client, NULL, NULL, 0,
       rc_client_callback_expect_data_or_file_path_required, g_callback_userdata);
@@ -1973,7 +1991,7 @@ static void test_change_media_same_game(void)
   const size_t image_size = 32768;
   uint8_t* image = generate_generic_file(image_size);
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
 
@@ -2020,7 +2038,7 @@ static void test_change_media_known_game(void)
   const size_t image_size = 32768;
   uint8_t* image = generate_generic_file(image_size);
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":5555}");
 
@@ -2064,7 +2082,7 @@ static void test_change_media_unknown_game(void)
   const size_t image_size = 32768;
   uint8_t* image = generate_generic_file(image_size);
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   ASSERT_TRUE(rc_client_get_hardcore_enabled(g_client));
 
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
@@ -2103,7 +2121,7 @@ static void test_change_media_unhashable(void)
   const size_t image_size = 32768;
   uint8_t* image = generate_generic_file(image_size);
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   /* N64 hash will fail with Not a Nintendo 64 ROM */
   g_client->game->public_.console_id = RC_CONSOLE_NINTENDO_64;
@@ -2141,7 +2159,7 @@ static void test_change_media_back_and_forth(void)
   uint8_t* image2 = generate_generic_file(image_size);
   memset(&image2[256], 0, 32); /* force image2 to be different */
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
@@ -2201,11 +2219,7 @@ static void test_change_media_while_loading(void)
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   /* secondary hash resolution does not occur until game is fully loaded or hash can't be compared to loaded game */
   assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
@@ -2252,9 +2266,7 @@ static void test_change_media_while_loading_later(void)
   assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
-  async_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  async_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
   async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2281,7 +2293,7 @@ static void test_change_media_aborted(void)
   const size_t image_size = 32768;
   uint8_t* image = generate_generic_file(image_size);
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   g_client->callbacks.server_call = rc_client_server_call_async;
 
   reset_mock_api_handlers();
@@ -2326,7 +2338,7 @@ static void test_change_media_aborted(void)
 static void test_game_get_image_url(void)
 {
   char buffer[256];
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Images/112233.png");
@@ -2337,7 +2349,7 @@ static void test_game_get_image_url(void)
 static void test_game_get_image_url_non_ssl(void)
 {
   char buffer[256];
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   rc_client_set_host(g_client, "http://retroachievements.org");
 
   ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
@@ -2349,7 +2361,7 @@ static void test_game_get_image_url_non_ssl(void)
 static void test_game_get_image_url_custom(void)
 {
   char buffer[256];
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   rc_client_set_host(g_client, "localhost");
 
   ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
@@ -2371,16 +2383,12 @@ static void test_load_subset(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", no_unlocks);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", no_unlocks);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata_subset);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", no_unlocks);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", no_unlocks);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success, g_callback_userdata);
 
@@ -2419,6 +2427,9 @@ static void test_load_subset(void)
     ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(achievement->public_.category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+    ASSERT_STR_EQUALS(achievement->author, "User1");
+    ASSERT_NUM_EQUALS(achievement->created_time, 1367266583);
+    ASSERT_NUM_EQUALS(achievement->updated_time, 1376929305);
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     achievement = &subset_info->achievements[1];
@@ -2475,7 +2486,7 @@ static void test_achievement_list_simple(void)
   rc_client_achievement_t** iter;
   rc_client_achievement_t* achievement;
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -2511,7 +2522,7 @@ static void test_achievement_list_simple_with_unlocks(void)
   rc_client_achievement_t** iter;
   rc_client_achievement_t* achievement;
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501h_and_5502);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -2576,7 +2587,7 @@ static void test_achievement_list_simple_with_unlocks_encore_mode(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_encore_mode_enabled(g_client, 1);
-  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501h_and_5502);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -2694,7 +2705,7 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_unofficial_enabled(g_client, 1);
-  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
+  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -2759,7 +2770,7 @@ static void test_achievement_list_simple_with_unofficial_off(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_unofficial_enabled(g_client, 0);
-  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
+  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -2816,7 +2827,7 @@ static void test_achievement_list_buckets(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, unlock_8, unlock_8);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, unlock_8);
   mock_memory(memory, sizeof(memory));
 
   rc_client_do_frame(g_client); /* advance achievements out of waiting state */
@@ -2998,8 +3009,8 @@ static void test_achievement_list_subset_with_unofficial_and_unsupported(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_unofficial_enabled(g_client, 1);
-  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks, no_unlocks);
-  mock_client_load_subset(patchdata_subset, no_unlocks, no_unlocks);
+  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks);
+  mock_client_load_subset(patchdata_subset, no_unlocks);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -3081,8 +3092,8 @@ static void test_achievement_list_subset_buckets(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, unlock_8, unlock_8);
-  mock_client_load_subset(patchdata_subset2, unlock_5502, unlock_5502);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, unlock_8);
+  mock_client_load_subset(patchdata_subset2, unlock_5502);
   mock_memory(memory, sizeof(memory));
 
   rc_client_do_frame(g_client); /* advance achievements out of waiting state */
@@ -3292,15 +3303,11 @@ static void test_achievement_list_subset_buckets_subset_first(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":2345}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata_subset2);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=2345&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=0", unlock_5502);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=2345&h=1", unlock_5502);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&l=" RCHEEVOS_VERSION_STRING, unlock_5502);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
-  mock_api_response("r=postactivity&u=Username&t=ApiToken&a=3&m=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=0", unlock_8);
-  mock_api_response("r=unlocks&u=Username&t=ApiToken&g=1234&h=1", unlock_8);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, unlock_8);
   rc_client_begin_load_subset(g_client, 1234, rc_client_callback_expect_success, g_callback_userdata);
 
   mock_memory(memory, sizeof(memory));
@@ -3365,7 +3372,7 @@ static void test_achievement_list_subset_buckets_subset_first(void)
 static void test_achievement_get_image_url(void)
 {
   char buffer[256];
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   ASSERT_NUM_EQUALS(rc_client_achievement_get_image_url(rc_client_get_achievement_info(g_client, 5501),
       RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED, buffer, sizeof(buffer)), RC_OK);
@@ -3397,7 +3404,7 @@ static void test_leaderboard_list_simple(void)
 
   g_client = mock_client_logged_in();
   mock_memory(memory, sizeof(memory));
-  mock_client_load_game(patchdata_exhaustive, no_unlocks, no_unlocks);
+  mock_client_load_game(patchdata_exhaustive, no_unlocks);
 
   list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE);
   ASSERT_PTR_NOT_NULL(list);
@@ -3470,7 +3477,7 @@ static void test_leaderboard_list_simple_with_unsupported(void)
 
   g_client = mock_client_logged_in();
   mock_memory(memory, 0x0E); /* 0x0E address is now invalid (44,45,46,47,48)*/
-  mock_client_load_game(patchdata_exhaustive, no_unlocks, no_unlocks);
+  mock_client_load_game(patchdata_exhaustive, no_unlocks);
 
   list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE);
   ASSERT_PTR_NOT_NULL(list);
@@ -3519,7 +3526,7 @@ static void test_leaderboard_list_buckets(void)
 
   g_client = mock_client_logged_in();
   mock_memory(memory, sizeof(memory));
-  mock_client_load_game(patchdata_exhaustive, no_unlocks, no_unlocks);
+  mock_client_load_game(patchdata_exhaustive, no_unlocks);
 
   rc_client_do_frame(g_client);
 
@@ -3601,7 +3608,7 @@ static void test_leaderboard_list_buckets_with_unsupported(void)
 
   g_client = mock_client_logged_in();
   mock_memory(memory, 0x0E); /* 0x0E address is now invalid (44,45,46,47,48)*/
-  mock_client_load_game(patchdata_exhaustive, no_unlocks, no_unlocks);
+  mock_client_load_game(patchdata_exhaustive, no_unlocks);
 
   rc_client_do_frame(g_client);
 
@@ -3697,8 +3704,8 @@ static void test_leaderboard_list_subset(void)
 
   g_client = mock_client_logged_in();
   mock_memory(memory, sizeof(memory));
-  mock_client_load_game(patchdata_exhaustive, no_unlocks, no_unlocks);
-  mock_client_load_subset(patchdata_subset, no_unlocks, no_unlocks);
+  mock_client_load_game(patchdata_exhaustive, no_unlocks);
+  mock_client_load_subset(patchdata_subset, no_unlocks);
 
   rc_client_do_frame(g_client);
 
@@ -3803,7 +3810,7 @@ static void test_leaderboard_list_hidden(void)
 
   g_client = mock_client_logged_in();
   mock_memory(memory, sizeof(memory));
-  mock_client_load_game(patchdata_leaderboards_hidden, no_unlocks, no_unlocks);
+  mock_client_load_game(patchdata_leaderboards_hidden, no_unlocks);
 
   rc_client_do_frame(g_client);
 
@@ -3933,7 +3940,7 @@ static void test_fetch_leaderboard_entries(void)
   rc_client_leaderboard_entry_t* entry;
   char url[256];
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   g_leaderboard_entries = NULL;
 
   mock_api_response("r=lbinfo&i=4401&c=10", lbinfo_4401_top_10);
@@ -4033,7 +4040,7 @@ static void test_fetch_leaderboard_entries_no_user(void)
 {
   rc_client_leaderboard_entry_t* entry;
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   g_leaderboard_entries = NULL;
 
   mock_api_response("r=lbinfo&i=4401&c=10", lbinfo_4401_top_10_no_user);
@@ -4075,7 +4082,7 @@ static void test_fetch_leaderboard_entries_around_user(void)
 {
   rc_client_leaderboard_entry_t* entry;
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   g_leaderboard_entries = NULL;
 
   mock_api_response("r=lbinfo&i=4401&u=Username&c=10", lbinfo_4401_near_user);
@@ -4198,7 +4205,7 @@ static void test_fetch_leaderboard_entries_aborted(void)
 {
   rc_client_async_handle_t* handle;
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   g_client->callbacks.server_call = rc_client_server_call_async;
 
   g_leaderboard_entries = NULL;
@@ -4222,7 +4229,7 @@ static void test_do_frame_bounds_check_system(void)
   uint8_t* memory = (uint8_t*)calloc(1, memory_size);
   ASSERT_PTR_NOT_NULL(memory);
 
-  g_client = mock_client_game_loaded(patchdata_bounds_check_system, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_bounds_check_system, no_unlocks);
 
   mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=7&h=1&m=0123456789ABCDEF&v=c39308ba325ba4a72919b081fb18fdd4",
     "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":7,\"AchievementsRemaining\":4}");
@@ -4267,7 +4274,7 @@ static void test_do_frame_bounds_check_system(void)
 static void test_do_frame_bounds_check_available(void)
 {
   uint8_t memory[8] = { 0,0,0,0,0,0,0,0 };
-  g_client = mock_client_game_loaded(patchdata_bounds_check_8, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_bounds_check_8, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -4312,7 +4319,7 @@ static void test_do_frame_achievement_trigger(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -4356,7 +4363,7 @@ static void test_do_frame_achievement_trigger_already_awarded(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -4400,7 +4407,7 @@ static void test_do_frame_achievement_trigger_server_error(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -4450,7 +4457,7 @@ static void test_do_frame_achievement_trigger_while_spectating(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -4498,6 +4505,87 @@ static void test_do_frame_achievement_trigger_while_spectating(void)
   rc_client_destroy(g_client);
 }
 
+static int rc_client_callback_deny_unlock(uint32_t achievement_id, rc_client_t* client)
+{
+  return 0;
+}
+
+static int rc_client_callback_allow_unlock(uint32_t achievement_id, rc_client_t* client)
+{
+  return 1;
+}
+
+static void test_do_frame_achievement_trigger_blocked(void)
+{
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  uint32_t num_active;
+  const char* api_call8 = "r=awardachievement&u=Username&t=ApiToken&a=8&h=1&m=0123456789ABCDEF&v=da80b659c2b858e13ddd97077647b217";
+  const char* api_call9 = "r=awardachievement&u=Username&t=ApiToken&a=9&h=1&m=0123456789ABCDEF&v=6d989ee0f408660a87d6440a13563bf6";
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  g_client->callbacks.can_submit_achievement_unlock = rc_client_callback_deny_unlock;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  mock_memory(memory, sizeof(memory));
+  num_active = g_client->game->runtime.trigger_count;
+
+  mock_api_response(api_call8,
+    "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+  mock_api_response(api_call9,
+    "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  memory[8] = 8;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+
+  event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 8);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+  ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+  ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+  ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+  ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 8));
+
+  ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
+  ASSERT_NUM_EQUALS(g_client->user.score, 12350); /* 12345+5 - not updated by server response that didn't happen */
+  ASSERT_NUM_EQUALS(g_client->user.score_softcore, 0);
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  assert_api_not_called(api_call8);
+
+  g_client->callbacks.can_submit_achievement_unlock = rc_client_callback_allow_unlock;
+
+  memory[9] = 9;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+
+  event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 9);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+  ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+  ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+  ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+  ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 9));
+
+  ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 2);
+  ASSERT_NUM_EQUALS(g_client->user.score, 5432);
+  ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+
+  assert_api_called(api_call9);
+
+  rc_client_destroy(g_client);
+}
+
+
 static void test_do_frame_achievement_trigger_automatic_retry(void)
 {
   const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
@@ -4505,7 +4593,7 @@ static void test_do_frame_achievement_trigger_automatic_retry(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   g_client->callbacks.server_call = rc_client_server_call_async;
 
   /* discard the queued ping to make finding the retry easier */
@@ -4544,21 +4632,11 @@ static void test_do_frame_achievement_trigger_automatic_retry(void)
     assert_api_pending(unlock_request_params);
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
-    rc_client_idle(g_client);
-    ASSERT_NUM_EQUALS(event_count, 0);
-
     /* second failure will queue it for one second later */
     async_api_response(unlock_request_params, "");
-    assert_api_not_pending(unlock_request_params);
+    assert_api_call_count(unlock_request_params, 0);
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
 
-    /* disconnected event should be raised after retry is queued */
-    rc_client_idle(g_client);
-    ASSERT_NUM_EQUALS(event_count, 1);
-    ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_DISCONNECTED, 0));
-    event_count = 0;
-
-    /* advance time and process scheduled callbacks */
     ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 1 * 1000);
     g_now += 1 * 1000;
 
@@ -4566,12 +4644,251 @@ static void test_do_frame_achievement_trigger_automatic_retry(void)
     assert_api_pending(unlock_request_params);
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
-    /* disconnected event should not have been raised again */
-    ASSERT_NUM_EQUALS(event_count, 0);
-
     /* third failure will requeue it for two seconds later */
     async_api_response(unlock_request_params, "");
     assert_api_not_pending(unlock_request_params);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 2 * 1000);
+    g_now += 2 * 1000;
+
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* success should not requeue it and update player score */
+    async_api_response(unlock_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    ASSERT_NUM_EQUALS(g_client->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_achievement_trigger_automatic_retry_429(void)
+{
+  const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  /* discard the queued ping to make finding the retry easier */
+  g_client->state.scheduled_callbacks = NULL;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    const uint32_t num_active = g_client->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[1] = 3;
+    memory[2] = 7;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5501);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 5501));
+
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* first failure will immediately requeue the request */
+    async_api_error(unlock_request_params, response_429, 429);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* second failure will queue it */
+    async_api_error(unlock_request_params, response_429, 429);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    g_client->state.scheduled_callbacks->when = 0;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* third failure will requeue it */
+    async_api_error(unlock_request_params, response_429, 429);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    g_client->state.scheduled_callbacks->when = 0;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* success should not requeue it and update player score */
+    async_api_response(unlock_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    ASSERT_NUM_EQUALS(g_client->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_achievement_trigger_automatic_retry_502(void)
+{
+  const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  /* discard the queued ping to make finding the retry easier */
+  g_client->state.scheduled_callbacks = NULL;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    const uint32_t num_active = g_client->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[1] = 3;
+    memory[2] = 7;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5501);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 5501));
+
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* first failure will immediately requeue the request */
+    async_api_error(unlock_request_params, response_502, 502);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* second failure will queue it */
+    async_api_error(unlock_request_params, response_502, 502);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    g_client->state.scheduled_callbacks->when = 0;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* third failure will requeue it */
+    async_api_error(unlock_request_params, response_502, 502);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    g_client->state.scheduled_callbacks->when = 0;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* success should not requeue it and update player score */
+    async_api_response(unlock_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    ASSERT_NUM_EQUALS(g_client->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_achievement_trigger_automatic_retry_503(void)
+{
+  const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  /* discard the queued ping to make finding the retry easier */
+  g_client->state.scheduled_callbacks = NULL;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    const uint32_t num_active = g_client->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[1] = 3;
+    memory[2] = 7;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5501);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 5501));
+
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* first failure will immediately requeue the request without raising the disconnect event */
+    async_api_error(unlock_request_params, response_503, 503);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+    rc_client_idle(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    /* second failure will queue it and raise the disconnect event */
+    async_api_error(unlock_request_params, response_503, 503);
+    assert_api_call_count(unlock_request_params, 0);
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+
+    rc_client_idle(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+    ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_DISCONNECTED, 0));
+    event_count = 0;
+
+    /* advance time so queued request gets processed */
+    ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 1 * 1000);
+    g_now += 1 * 1000;
+    rc_client_idle(g_client);
+    assert_api_pending(unlock_request_params);
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+    /* third failure will requeue it */
+    async_api_error(unlock_request_params, response_503, 503);
+    assert_api_call_count(unlock_request_params, 0);
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
 
     ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 2 * 1000);
@@ -4604,8 +4921,8 @@ static void test_do_frame_achievement_trigger_subset(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
-  mock_client_load_subset(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  mock_client_load_subset(patchdata_2ach_1lbd, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -4670,7 +4987,7 @@ static void test_do_frame_achievement_measured(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -4790,7 +5107,7 @@ static void test_do_frame_achievement_measured_progress_event(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -4931,7 +5248,7 @@ static void test_do_frame_achievement_challenge_indicator(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -5032,7 +5349,7 @@ static void test_do_frame_mastery(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
   g_client->callbacks.server_call = rc_client_server_call_async;
 
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -5119,7 +5436,7 @@ static void test_do_frame_mastery_encore(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
   g_client->callbacks.server_call = rc_client_server_call_async;
 
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -5206,7 +5523,7 @@ static void test_do_frame_leaderboard_started(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -5246,7 +5563,7 @@ static void test_do_frame_leaderboard_update(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -5292,7 +5609,7 @@ static void test_do_frame_leaderboard_failed(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -5344,7 +5661,7 @@ static void test_do_frame_leaderboard_submit(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -5401,7 +5718,7 @@ static void test_do_frame_leaderboard_submit_server_error(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -5462,7 +5779,7 @@ static void test_do_frame_leaderboard_submit_while_spectating(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -5524,7 +5841,7 @@ static void test_do_frame_leaderboard_submit_immediate(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_leaderboard_immediate_submit, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_leaderboard_immediate_submit, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -5565,7 +5882,7 @@ static void test_do_frame_leaderboard_submit_hidden(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_leaderboards_hidden, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_leaderboards_hidden, no_unlocks);
 
   /* hidden leaderboards should still start/track/submit normally. they just don't appear in list */
 
@@ -5616,13 +5933,93 @@ static void test_do_frame_leaderboard_submit_hidden(void)
   rc_client_destroy(g_client);
 }
 
+static int rc_client_callback_deny_leaderboard(uint32_t leaderboard_id, rc_client_t* client)
+{
+  return 0;
+}
+
+static int rc_client_callback_allow_leaderboard(uint32_t leaderboard_id, rc_client_t* client)
+{
+  return 1;
+}
+
+static void test_do_frame_leaderboard_submit_blocked(void)
+{
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  const char* api_call = "r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&v=a27fa205f7f30c8d13d74806ea5425b6";
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  g_client->callbacks.can_submit_leaderboard_entry = rc_client_callback_deny_leaderboard;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  mock_memory(memory, sizeof(memory));
+
+  mock_api_response(api_call,
+    "{\"Success\":true,\"Response\":{\"Score\":17,\"BestScore\":23,"
+    "\"TopEntries\":[{\"User\":\"Player1\",\"Score\":44,\"Rank\":1},{\"User\":\"Username\",\"Score\":23,\"Rank\":2}],"
+    "\"RankInfo\":{\"Rank\":2,\"NumEntries\":\"2\"}}}");
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* start the leaderboard */
+  memory[0x0B] = 1;
+  memory[0x0E] = 17;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 44));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* submit the leaderboard */
+  memory[0x0B] = 0;
+  memory[0x0D] = 1;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 2);
+
+  event = find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 44);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+  ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+  ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 44));
+
+  event = find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+  ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+  assert_api_not_called(api_call);
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  g_client->callbacks.can_submit_leaderboard_entry = rc_client_callback_allow_leaderboard;
+
+  /* restart the leaderboard - will immediately submit */
+  memory[0x0B] = 1;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 44));
+
+  assert_api_called(api_call);
+
+  rc_client_destroy(g_client);
+}
+
 static void test_do_frame_leaderboard_tracker_sharing(void)
 {
   rc_client_event_t* event;
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -5829,7 +6226,7 @@ static void test_do_frame_leaderboard_tracker_sharing_hits(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -5935,7 +6332,7 @@ static void test_do_frame_leaderboard_submit_automatic_retry(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
   g_client->callbacks.server_call = rc_client_server_call_async;
 
   /* discard the queued ping to make finding the retry easier */
@@ -6045,7 +6442,7 @@ static void test_do_frame_multiple_automatic_retry(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   g_client->callbacks.server_call = rc_client_server_call_async;
 
   /* discard the queued ping to make finding the retry easier */
@@ -6176,11 +6573,56 @@ static void test_do_frame_multiple_automatic_retry(void)
   rc_client_destroy(g_client);
 }
 
+static void test_clock_get_now_millisecs(void)
+{
+  rc_client_t* client = rc_client_create(rc_client_read_memory, rc_client_server_call);
+  rc_get_time_millisecs_func_t get_millisecs = client->callbacks.get_time_millisecs;
+
+#ifdef RC_NO_SLEEP
+  rc_clock_t time1;
+  ASSERT_PTR_NOT_NULL(get_millisecs);
+  time1 = get_millisecs(client);
+  ASSERT_NUM_NOT_EQUALS(time1, 0);
+#else
+  rc_clock_t time1, time2, diff;
+  time_t first = time(NULL), now;
+
+  do {
+    ASSERT_PTR_NOT_NULL(get_millisecs);
+    time1 = get_millisecs(client);
+    ASSERT_NUM_NOT_EQUALS(time1, 0);
+
+#if defined(_WIN32)
+    Sleep(50);
+#else
+    usleep(50000);
+#endif
+
+    time2 = get_millisecs(client);
+    ASSERT_NUM_NOT_EQUALS(time2, 0);
+    diff = time2 - time1;
+
+    ASSERT_NUM_GREATER(diff, 49);
+    if (diff < 100)
+      break;
+
+    now = time(NULL);
+    if (now - first >= 3) {
+      ASSERT_FAIL("could not get a 50ms sleep interval within 3 seconds");
+      break;
+    }
+
+  } while (1);
+#endif
+
+  rc_client_destroy(client);
+}
+
 /* ----- ping ----- */
 
 static void test_idle_ping(void)
 {
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -6213,7 +6655,7 @@ static void test_do_frame_ping_rich_presence(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -6284,7 +6726,7 @@ static void test_reset_hides_widgets(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
   mock_memory(memory, sizeof(memory));
 
@@ -6360,7 +6802,7 @@ static void test_deserialize_progress_updates_widgets(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
   mock_memory(memory, sizeof(memory));
 
@@ -6490,7 +6932,7 @@ static void test_deserialize_progress_null(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
   mock_memory(memory, sizeof(memory));
 
@@ -6560,7 +7002,7 @@ static void test_deserialize_progress_invalid(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
   mock_memory(memory, sizeof(memory));
 
@@ -6627,7 +7069,7 @@ static void test_deserialize_progress_invalid(void)
 
 static void test_processing_required(void)
 {
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501h_and_5502);
 
   ASSERT_TRUE(rc_client_is_processing_required(g_client));
 
@@ -6636,7 +7078,7 @@ static void test_processing_required(void)
 
 static void test_processing_required_empty_game(void)
 {
-  g_client = mock_client_game_loaded(patchdata_empty, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_empty, no_unlocks);
 
   ASSERT_FALSE(rc_client_is_processing_required(g_client));
 
@@ -6645,7 +7087,7 @@ static void test_processing_required_empty_game(void)
 
 static void test_processing_required_rich_presence_only(void)
 {
-  g_client = mock_client_game_loaded(patchdata_rich_presence_only, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_rich_presence_only, no_unlocks);
 
   ASSERT_TRUE(rc_client_is_processing_required(g_client));
 
@@ -6654,7 +7096,7 @@ static void test_processing_required_rich_presence_only(void)
 
 static void test_processing_required_leaderboard_only(void)
 {
-  g_client = mock_client_game_loaded(patchdata_leaderboard_only, no_unlocks, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_leaderboard_only, no_unlocks);
 
   ASSERT_TRUE(rc_client_is_processing_required(g_client));
 
@@ -6663,7 +7105,7 @@ static void test_processing_required_leaderboard_only(void)
 
 static void test_processing_required_after_mastery(void)
 {
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501_and_5502, unlock_5501_and_5502);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501_and_5502);
 
   ASSERT_TRUE(rc_client_is_processing_required(g_client));
 
@@ -6672,7 +7114,7 @@ static void test_processing_required_after_mastery(void)
 
 static void test_processing_required_after_mastery_no_leaderboards(void)
 {
-  g_client = mock_client_game_loaded(patchdata_2ach_0lbd, unlock_5501_and_5502, unlock_5501_and_5502);
+  g_client = mock_client_game_loaded(patchdata_2ach_0lbd, unlock_5501_and_5502);
 
   ASSERT_FALSE(rc_client_is_processing_required(g_client));
 
@@ -6686,7 +7128,7 @@ static void test_set_hardcore_disable(void)
   const rc_client_achievement_t* achievement;
   const rc_client_leaderboard_t* leaderboard;
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501h_and_5502);
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
 
   achievement = rc_client_get_achievement_info(g_client, 5502);
@@ -6733,7 +7175,7 @@ static void test_set_hardcore_disable_active_tracker(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501h_and_5502);
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
   mock_memory(memory, sizeof(memory));
 
@@ -6781,7 +7223,7 @@ static void test_set_hardcore_enable(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_hardcore_enabled(g_client, 0);
-  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501h_and_5502);
 
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 0);
 
@@ -6856,7 +7298,7 @@ static void test_set_hardcore_enable_encore_mode(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_encore_mode_enabled(g_client, 1);
-  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501h_and_5502);
 
   ASSERT_NUM_EQUALS(rc_client_get_encore_mode_enabled(g_client), 1);
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
@@ -6948,7 +7390,7 @@ static void test_set_encore_mode_enable(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_encore_mode_enabled(g_client, 1);
-  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501h_and_5502);
 
   ASSERT_NUM_EQUALS(rc_client_get_encore_mode_enabled(g_client), 1);
 
@@ -6992,7 +7434,7 @@ static void test_set_encore_mode_disable(void)
   g_client = mock_client_logged_in();
   rc_client_set_encore_mode_enabled(g_client, 1);
   rc_client_set_encore_mode_enabled(g_client, 0);
-  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501, unlock_5501_and_5502);
+  mock_client_load_game(patchdata_2ach_1lbd, unlock_5501h_and_5502);
 
   ASSERT_NUM_EQUALS(rc_client_get_encore_mode_enabled(g_client), 0);
 
@@ -7056,6 +7498,7 @@ void test_client(void) {
   TEST(test_get_user_game_summary_softcore);
   TEST(test_get_user_game_summary_encore_mode);
   TEST(test_get_user_game_summary_with_unsupported_and_unofficial);
+  TEST(test_get_user_game_summary_with_unsupported_unlocks);
 
   /* load game */
   TEST(test_load_game_required_fields);
@@ -7066,15 +7509,12 @@ void test_client(void) {
   TEST(test_load_game_async_login_with_incorrect_password);
   TEST(test_load_game_gameid_failure);
   TEST(test_load_game_patch_failure);
-  TEST(test_load_game_postactivity_failure);
-  TEST(test_load_game_softcore_unlocks_failure);
-  TEST(test_load_game_hardcore_unlocks_failure);
+  TEST(test_load_game_startsession_failure);
   TEST(test_load_game_gameid_aborted);
   TEST(test_load_game_patch_aborted);
-  TEST(test_load_game_postactivity_aborted);
-  TEST(test_load_game_softcore_unlocks_aborted);
-  TEST(test_load_game_hardcore_unlocks_aborted);
+  TEST(test_load_game_startsession_aborted);
   TEST(test_load_game_while_spectating);
+  TEST(test_load_game_process_game_data);
 
   /* unload game */
   TEST(test_unload_game);
@@ -7147,7 +7587,11 @@ void test_client(void) {
   TEST(test_do_frame_achievement_trigger_already_awarded);
   TEST(test_do_frame_achievement_trigger_server_error);
   TEST(test_do_frame_achievement_trigger_while_spectating);
+  TEST(test_do_frame_achievement_trigger_blocked);
   TEST(test_do_frame_achievement_trigger_automatic_retry);
+  TEST(test_do_frame_achievement_trigger_automatic_retry_429);
+  TEST(test_do_frame_achievement_trigger_automatic_retry_502);
+  TEST(test_do_frame_achievement_trigger_automatic_retry_503);
   TEST(test_do_frame_achievement_trigger_subset);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_measured_progress_event);
@@ -7162,10 +7606,13 @@ void test_client(void) {
   TEST(test_do_frame_leaderboard_submit_while_spectating);
   TEST(test_do_frame_leaderboard_submit_immediate);
   TEST(test_do_frame_leaderboard_submit_hidden);
+  TEST(test_do_frame_leaderboard_submit_blocked);
   TEST(test_do_frame_leaderboard_tracker_sharing);
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
   TEST(test_do_frame_leaderboard_submit_automatic_retry);
   TEST(test_do_frame_multiple_automatic_retry);
+
+  TEST(test_clock_get_now_millisecs);
 
   /* ping */
   TEST(test_idle_ping);

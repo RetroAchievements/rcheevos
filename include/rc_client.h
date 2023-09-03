@@ -125,8 +125,7 @@ void* rc_client_get_userdata(const rc_client_t* client);
  */
 void rc_client_set_host(const rc_client_t* client, const char* hostname);
 
-/* 32-bit unsigned integer can hold enough milliseconds for 49.7 days*/
-typedef uint32_t rc_clock_t;
+typedef uint64_t rc_clock_t;
 typedef rc_clock_t (*rc_get_time_millisecs_func_t)(const rc_client_t* client);
 
 /**

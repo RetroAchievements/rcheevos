@@ -95,7 +95,6 @@ int main(void) {
   test_richpresence();
   test_runtime();
   test_runtime_progress();
-  test_client();
 
   test_consoleinfo();
   test_rc_libretro();
@@ -105,14 +104,16 @@ int main(void) {
 
   test_url();
 
-  test_cdreader();
-  test_hash();
-
   test_rapi_common();
   test_rapi_user();
   test_rapi_runtime();
   test_rapi_info();
   test_rapi_editor();
+
+  test_client();
+
+  test_cdreader();
+  test_hash();
 #endif
 
   TEST_FRAMEWORK_SHUTDOWN();

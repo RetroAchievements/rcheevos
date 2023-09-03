@@ -11,12 +11,21 @@ extern "C" {
 #include "rc_runtime.h"
 #include "rc_runtime_types.h"
 
+struct rc_api_fetch_game_data_response_t;
+typedef void (*rc_client_post_process_game_data_response_t)(const rc_api_server_response_t* server_response,
+              struct rc_api_fetch_game_data_response_t* game_data_response, rc_client_t* client, void* userdata);
+typedef int (*rc_client_can_submit_achievement_unlock_t)(uint32_t achievement_id, rc_client_t* client);
+typedef int (*rc_client_can_submit_leaderboard_entry_t)(uint32_t leaderboard_id, rc_client_t* client);
+
 typedef struct rc_client_callbacks_t {
   rc_client_read_memory_func_t read_memory;
   rc_client_event_handler_t event_handler;
   rc_client_server_call_t server_call;
   rc_client_message_callback_t log_call;
   rc_get_time_millisecs_func_t get_time_millisecs;
+  rc_client_post_process_game_data_response_t post_process_game_data_response;
+  rc_client_can_submit_achievement_unlock_t can_submit_achievement_unlock;
+  rc_client_can_submit_leaderboard_entry_t can_submit_leaderboard_entry;
 
   void* client_data;
 } rc_client_callbacks_t;
@@ -53,6 +62,10 @@ typedef struct rc_client_achievement_info_t {
   time_t unlock_time_softcore;
 
   uint8_t pending_events;
+
+  const char* author;
+  time_t created_time;
+  time_t updated_time;
 } rc_client_achievement_info_t;
 
 enum {
@@ -152,6 +165,8 @@ typedef struct rc_client_game_hash_t {
   uint32_t game_id;
   struct rc_client_game_hash_t* next;
 } rc_client_game_hash_t;
+
+rc_client_game_hash_t* rc_client_find_game_hash(rc_client_t* client, const char* hash);
 
 typedef struct rc_client_media_hash_t {
   rc_client_game_hash_t* game_hash;

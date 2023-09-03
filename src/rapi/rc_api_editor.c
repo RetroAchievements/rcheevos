@@ -28,7 +28,18 @@ int rc_api_init_fetch_code_notes_request(rc_api_request_t* request, const rc_api
 }
 
 int rc_api_process_fetch_code_notes_response(rc_api_fetch_code_notes_response_t* response, const char* server_response) {
-  rc_json_field_t iterator;
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_fetch_code_notes_server_response(response, &response_obj);
+}
+
+int rc_api_process_fetch_code_notes_server_response(rc_api_fetch_code_notes_response_t* response, const rc_api_server_response_t* server_response) {
+  rc_json_field_t array_field;
+  rc_json_iterator_t iterator;
   rc_api_code_note_t* note;
   const char* address_str;
   const char* last_author = "";
@@ -51,11 +62,11 @@ int rc_api_process_fetch_code_notes_response(rc_api_fetch_code_notes_response_t*
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
-  if (!rc_json_get_required_array(&response->num_notes, &iterator, &response->response, &fields[2], "CodeNotes"))
+  if (!rc_json_get_required_array(&response->num_notes, &array_field, &response->response, &fields[2], "CodeNotes"))
     return RC_MISSING_VALUE;
 
   if (response->num_notes) {
@@ -63,15 +74,21 @@ int rc_api_process_fetch_code_notes_response(rc_api_fetch_code_notes_response_t*
     if (!response->notes)
       return RC_OUT_OF_MEMORY;
 
+    memset(&iterator, 0, sizeof(iterator));
+    iterator.json = array_field.value_start;
+    iterator.end = array_field.value_end;
+
     note = response->notes;
     while (rc_json_get_array_entry_object(note_fields, sizeof(note_fields) / sizeof(note_fields[0]), &iterator)) {
       /* an empty note represents a record that was deleted on the server */
       /* a note set to '' also represents a deleted note (remnant of a bug) */
       /* NOTE: len will include the quotes */
-      len = note_fields[2].value_end - note_fields[2].value_start;
-      if (len == 2 || (len == 4 && note_fields[2].value_start[1] == '\'' && note_fields[2].value_start[2] == '\'')) {
-        --response->num_notes;
-        continue;
+      if (note_fields[2].value_start) {
+        len = note_fields[2].value_end - note_fields[2].value_start;
+        if (len == 2 || (len == 4 && note_fields[2].value_start[1] == '\'' && note_fields[2].value_start[2] == '\'')) {
+          --response->num_notes;
+          continue;
+        }
       }
 
       if (!rc_json_get_required_string(&address_str, &response->response, &note_fields[0], "Address"))
@@ -130,6 +147,16 @@ int rc_api_init_update_code_note_request(rc_api_request_t* request, const rc_api
 }
 
 int rc_api_process_update_code_note_response(rc_api_update_code_note_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_update_code_note_server_response(response, &response_obj);
+}
+
+int rc_api_process_update_code_note_server_response(rc_api_update_code_note_response_t* response, const rc_api_server_response_t* server_response) {
   int result;
 
   rc_json_field_t fields[] = {
@@ -145,7 +172,7 @@ int rc_api_process_update_code_note_response(rc_api_update_code_note_response_t*
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
@@ -214,6 +241,16 @@ int rc_api_init_update_achievement_request(rc_api_request_t* request, const rc_a
 }
 
 int rc_api_process_update_achievement_response(rc_api_update_achievement_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_update_achievement_server_response(response, &response_obj);
+}
+
+int rc_api_process_update_achievement_server_response(rc_api_update_achievement_response_t* response, const rc_api_server_response_t* server_response) {
   int result;
 
   rc_json_field_t fields[] = {
@@ -225,7 +262,7 @@ int rc_api_process_update_achievement_response(rc_api_update_achievement_respons
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
@@ -306,6 +343,16 @@ int rc_api_init_update_leaderboard_request(rc_api_request_t* request, const rc_a
 }
 
 int rc_api_process_update_leaderboard_response(rc_api_update_leaderboard_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_update_leaderboard_server_response(response, &response_obj);
+}
+
+int rc_api_process_update_leaderboard_server_response(rc_api_update_leaderboard_response_t* response, const rc_api_server_response_t* server_response) {
     int result;
 
     rc_json_field_t fields[] = {
@@ -317,7 +364,7 @@ int rc_api_process_update_leaderboard_response(rc_api_update_leaderboard_respons
     memset(response, 0, sizeof(*response));
     rc_buf_init(&response->response.buffer);
 
-    result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+    result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
     if (result != RC_OK || !response->response.succeeded)
         return result;
 
@@ -350,6 +397,16 @@ int rc_api_init_fetch_badge_range_request(rc_api_request_t* request, const rc_ap
 }
 
 int rc_api_process_fetch_badge_range_response(rc_api_fetch_badge_range_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_fetch_badge_range_server_response(response, &response_obj);
+}
+
+int rc_api_process_fetch_badge_range_server_response(rc_api_fetch_badge_range_response_t* response, const rc_api_server_response_t* server_response) {
   int result;
 
   rc_json_field_t fields[] = {
@@ -362,7 +419,7 @@ int rc_api_process_fetch_badge_range_response(rc_api_fetch_badge_range_response_
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
@@ -412,6 +469,16 @@ int rc_api_init_add_game_hash_request(rc_api_request_t* request, const rc_api_ad
 }
 
 int rc_api_process_add_game_hash_response(rc_api_add_game_hash_response_t* response, const char* server_response) {
+  rc_api_server_response_t response_obj;
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+
+  return rc_api_process_add_game_hash_server_response(response, &response_obj);
+}
+
+int rc_api_process_add_game_hash_server_response(rc_api_add_game_hash_response_t* response, const rc_api_server_response_t* server_response) {
   int result;
 
   rc_json_field_t fields[] = {
@@ -433,7 +500,7 @@ int rc_api_process_add_game_hash_response(rc_api_add_game_hash_response_t* respo
   memset(response, 0, sizeof(*response));
   rc_buf_init(&response->response.buffer);
 
-  result = rc_json_parse_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
