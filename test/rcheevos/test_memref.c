@@ -4,6 +4,7 @@
 #include "mock_memory.h"
 
 #include <float.h>
+#include <math.h> /* pow, round */
 
 static void test_mask(char size, uint32_t expected)
 {
@@ -32,6 +33,8 @@ static void test_shared_masks(void)
   TEST_PARAMS2(test_mask, RC_MEMSIZE_32_BITS_BE, 0xffffffff);
   TEST_PARAMS2(test_mask, RC_MEMSIZE_FLOAT, 0xffffffff);
   TEST_PARAMS2(test_mask, RC_MEMSIZE_FLOAT_BE, 0xffffffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_DOUBLE32, 0xffffffff);
+  TEST_PARAMS2(test_mask, RC_MEMSIZE_DOUBLE32_BE, 0xffffffff);
   TEST_PARAMS2(test_mask, RC_MEMSIZE_MBF32, 0xffffffff);
   TEST_PARAMS2(test_mask, RC_MEMSIZE_VARIABLE, 0xffffffff);
 }
@@ -63,6 +66,8 @@ static void test_shared_sizes(void)
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_32_BITS_BE, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_FLOAT, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_FLOAT_BE, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_DOUBLE32, RC_MEMSIZE_32_BITS);
+  TEST_PARAMS2(test_shared_size, RC_MEMSIZE_DOUBLE32_BE, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_MBF32, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_MBF32_LE, RC_MEMSIZE_32_BITS);
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_VARIABLE, RC_MEMSIZE_32_BITS);
@@ -83,6 +88,24 @@ static void test_transform_float(uint32_t value, uint8_t size, double expected)
   typed_value.type = RC_VALUE_TYPE_UNSIGNED;
   typed_value.value.u32 = value;
   rc_transform_memref_value(&typed_value, size);
+  ASSERT_FLOAT_EQUALS(typed_value.value.f32, expected);
+}
+
+static void test_transform_double32(uint32_t value, uint8_t size, double expected)
+{
+  rc_typed_value_t typed_value;
+  typed_value.type = RC_VALUE_TYPE_UNSIGNED;
+  typed_value.value.u32 = value;
+  rc_transform_memref_value(&typed_value, size);
+
+  /* a 20-bit mantissa only has 6 digits of precision. round to 6 digits, then do a float comparison. */
+  if (fabs(expected) != 0.0) {
+    const double digits = floor(log10(fabs(expected))) + 1;
+    const double expected_pow = pow(10, 6 - digits);
+    expected = round(expected * expected_pow) / expected_pow;
+    typed_value.value.f32 = (float)(round(typed_value.value.f32 * expected_pow) / expected_pow);
+  }
+
   ASSERT_FLOAT_EQUALS(typed_value.value.f32, expected);
 }
 
@@ -161,6 +184,29 @@ static void test_transforms(void)
   TEST_PARAMS3(test_transform_float, 0x000042B4, RC_MEMSIZE_FLOAT, 2.39286e-41);
   TEST_PARAMS2(test_transform_float_inf, 0x7F800000, RC_MEMSIZE_FLOAT);
   TEST_PARAMS2(test_transform_float_nan, 0x7FFFFFFF, RC_MEMSIZE_FLOAT);
+
+  TEST_PARAMS3(test_transform_double32, 0x3FF00000, RC_MEMSIZE_DOUBLE32, 1.0);
+  TEST_PARAMS3(test_transform_double32, 0x4028C000, RC_MEMSIZE_DOUBLE32, 12.375);
+  TEST_PARAMS3(test_transform_double32, 0x405107DF, RC_MEMSIZE_DOUBLE32, 68.123);
+  TEST_PARAMS3(test_transform_double32, 0x00000000, RC_MEMSIZE_DOUBLE32, 0.0);
+  TEST_PARAMS3(test_transform_double32, 0x80000000, RC_MEMSIZE_DOUBLE32, -0.0);
+  TEST_PARAMS3(test_transform_double32, 0xC0000000, RC_MEMSIZE_DOUBLE32, -2.0);
+  TEST_PARAMS3(test_transform_double32, 0x400921FB, RC_MEMSIZE_DOUBLE32, 3.14159274101257324);
+  TEST_PARAMS3(test_transform_double32, 0x3FD55555, RC_MEMSIZE_DOUBLE32, 0.333333334326744076);
+  TEST_PARAMS3(test_transform_double32, 0x40534892, RC_MEMSIZE_DOUBLE32, 77.133926);
+  TEST_PARAMS3(test_transform_double32, 0x406A06E1, RC_MEMSIZE_DOUBLE32, 208.214996);
+  TEST_PARAMS3(test_transform_double32, 0x40B5C6DD, RC_MEMSIZE_DOUBLE32, 5574.863770);
+  TEST_PARAMS3(test_transform_double32, 0x430C6BF5, RC_MEMSIZE_DOUBLE32, 1000000000000000.0);
+  TEST_PARAMS3(test_transform_double32, 0x3C9CD2B2, RC_MEMSIZE_DOUBLE32, 0.0000000000000001);
+  TEST_PARAMS3(test_transform_double32, 0x3780AD01, RC_MEMSIZE_DOUBLE32, 2.39286e-41);
+  TEST_PARAMS3(test_transform_double32, 0x3FF3C0CA, RC_MEMSIZE_DOUBLE32, 1.234568);
+  TEST_PARAMS2(test_transform_float_inf, 0x7F800000, RC_MEMSIZE_DOUBLE32);
+  TEST_PARAMS2(test_transform_float_nan, 0x7FFFFFFF, RC_MEMSIZE_DOUBLE32);
+
+  TEST_PARAMS3(test_transform_double32, 0x000000C0, RC_MEMSIZE_DOUBLE32_BE, -2.0);
+  TEST_PARAMS3(test_transform_double32, 0x00003840, RC_MEMSIZE_DOUBLE32_BE, 24.0);
+  TEST_PARAMS3(test_transform_double32, 0xCAC0F33F, RC_MEMSIZE_DOUBLE32_BE, 1.234568);
+  TEST_PARAMS3(test_transform_double32, 0xFB210940, RC_MEMSIZE_DOUBLE32_BE, 3.14159274101257324);
 
   TEST_PARAMS3(test_transform_float, 0x0000803F, RC_MEMSIZE_FLOAT_BE, 1.0);
   TEST_PARAMS3(test_transform_float, 0x00004641, RC_MEMSIZE_FLOAT_BE, 12.375);
