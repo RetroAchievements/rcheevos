@@ -1233,7 +1233,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
           rc_client_schedule_callback(client, callback_data);
         }
 
-        RC_CLIENT_LOG_INFO_FORMATTED(client, "Game %u loaded, hardcode %s%s", load_state->game->public_.id,
+        RC_CLIENT_LOG_INFO_FORMATTED(client, "Game %u loaded, hardcore %s%s", load_state->game->public_.id,
             client->state.hardcore ? "enabled" : "disabled",
             (client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) ? ", spectating" : "");
       }
