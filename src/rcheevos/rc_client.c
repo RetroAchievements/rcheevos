@@ -73,6 +73,8 @@ static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_su
 static void rc_client_raise_pending_events(rc_client_t* client, rc_client_game_info_t* game);
 static void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 static void rc_client_reschedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* callback, rc_clock_t when);
+static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
+static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
 
 /* ===== Construction/Destruction ===== */
 
@@ -321,6 +323,56 @@ static void rc_client_raise_server_error_event(rc_client_t* client, const char* 
   client_event.type = RC_CLIENT_EVENT_SERVER_ERROR;
   client_event.server_error = &server_error;
 
+  client->callbacks.event_handler(&client_event, client);
+}
+
+static void rc_client_update_disconnect_state(rc_client_t* client)
+{
+  rc_client_scheduled_callback_data_t* scheduled_callback;
+  uint8_t new_state = RC_CLIENT_DISCONNECT_HIDDEN;
+
+  rc_mutex_lock(&client->state.mutex);
+
+  scheduled_callback = client->state.scheduled_callbacks;
+  for (; scheduled_callback; scheduled_callback = scheduled_callback->next) {
+    if (scheduled_callback->callback == rc_client_award_achievement_retry ||
+      scheduled_callback->callback == rc_client_submit_leaderboard_entry_retry) {
+      new_state = RC_CLIENT_DISCONNECT_VISIBLE;
+      break;
+    }
+  }
+
+  if ((client->state.disconnect & RC_CLIENT_DISCONNECT_VISIBLE) != new_state) {
+    if (new_state == RC_CLIENT_DISCONNECT_VISIBLE)
+      client->state.disconnect = RC_CLIENT_DISCONNECT_HIDDEN | RC_CLIENT_DISCONNECT_SHOW_PENDING;
+    else
+      client->state.disconnect = RC_CLIENT_DISCONNECT_VISIBLE | RC_CLIENT_DISCONNECT_HIDE_PENDING;
+  }
+  else {
+    client->state.disconnect = new_state;
+  }
+
+  rc_mutex_unlock(&client->state.mutex);
+}
+
+static void rc_client_raise_disconnect_events(rc_client_t* client)
+{
+  rc_client_event_t client_event;
+  uint8_t new_state;
+
+  rc_mutex_lock(&client->state.mutex);
+
+  if (client->state.disconnect & RC_CLIENT_DISCONNECT_SHOW_PENDING)
+    new_state = RC_CLIENT_DISCONNECT_VISIBLE;
+  else
+    new_state = RC_CLIENT_DISCONNECT_HIDDEN;
+  client->state.disconnect = new_state;
+
+  rc_mutex_unlock(&client->state.mutex);
+
+  memset(&client_event, 0, sizeof(client_event));
+  client_event.type = (new_state == RC_CLIENT_DISCONNECT_VISIBLE) ?
+    RC_CLIENT_EVENT_DISCONNECTED : RC_CLIENT_EVENT_RECONNECTED;
   client->callbacks.event_handler(&client_event, client);
 }
 
@@ -1133,7 +1185,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
       rc_client_apply_unlocks(load_state->subset, start_session_response->hardcore_unlocks,
           start_session_response->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
       rc_client_apply_unlocks(load_state->subset, start_session_response->unlocks,
-        start_session_response->num_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+          start_session_response->num_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
     }
 
     rc_mutex_lock(&client->state.mutex);
@@ -1181,7 +1233,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
           rc_client_schedule_callback(client, callback_data);
         }
 
-        RC_CLIENT_LOG_INFO_FORMATTED(client, "Game %u loaded, hardcode %s%s", load_state->game->public_.id,
+        RC_CLIENT_LOG_INFO_FORMATTED(client, "Game %u loaded, hardcore %s%s", load_state->game->public_.id,
             client->state.hardcore ? "enabled" : "disabled",
             (client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) ? ", spectating" : "");
       }
@@ -2764,6 +2816,8 @@ static void rc_client_award_achievement_callback(const rc_api_server_response_t*
           ach_data->client->callbacks.get_time_millisecs(ach_data->client) + delay * 1000;
 
       rc_client_schedule_callback(ach_data->client, ach_data->scheduled_callback_data);
+
+      rc_client_update_disconnect_state(ach_data->client);
       return;
     }
   }
@@ -2812,6 +2866,9 @@ static void rc_client_award_achievement_callback(const rc_api_server_response_t*
       }
     }
   }
+
+  if (ach_data->retry_count)
+    rc_client_update_disconnect_state(ach_data->client);
 
   if (ach_data->scheduled_callback_data)
     free(ach_data->scheduled_callback_data);
@@ -3331,6 +3388,8 @@ static void rc_client_submit_leaderboard_entry_callback(const rc_api_server_resp
           lboard_data->client->callbacks.get_time_millisecs(lboard_data->client) + delay * 1000;
 
       rc_client_schedule_callback(lboard_data->client, lboard_data->scheduled_callback_data);
+
+      rc_client_update_disconnect_state(lboard_data->client);
       return;
     }
   }
@@ -3343,6 +3402,9 @@ static void rc_client_submit_leaderboard_entry_callback(const rc_api_server_resp
           lboard_data->id, lboard_data->score, lboard_data->retry_count);
     }
   }
+
+  if (lboard_data->retry_count)
+    rc_client_update_disconnect_state(lboard_data->client);
 
   if (lboard_data->scheduled_callback_data)
     free(lboard_data->scheduled_callback_data);
@@ -4267,6 +4329,9 @@ void rc_client_idle(rc_client_t* client)
       scheduled_callback->callback(scheduled_callback, client, now);
     } while (1);
   }
+
+  if (client->state.disconnect & ~RC_CLIENT_DISCONNECT_VISIBLE)
+    rc_client_raise_disconnect_events(client);
 }
 
 void rc_client_schedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* scheduled_callback)

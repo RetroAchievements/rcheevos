@@ -221,6 +221,13 @@ enum {
   RC_CLIENT_SPECTATOR_MODE_LOCKED
 };
 
+enum {
+  RC_CLIENT_DISCONNECT_HIDDEN = 0,
+  RC_CLIENT_DISCONNECT_VISIBLE = (1 << 0),
+  RC_CLIENT_DISCONNECT_SHOW_PENDING = (1 << 1),
+  RC_CLIENT_DISCONNECT_HIDE_PENDING = (1 << 2)
+};
+
 struct rc_client_load_state_t;
 
 typedef struct rc_client_state_t {
@@ -235,6 +242,7 @@ typedef struct rc_client_state_t {
   uint8_t unofficial_enabled;
   uint8_t log_level;
   uint8_t user;
+  uint8_t disconnect;
 
   struct rc_client_load_state_t* load;
   rc_memref_t* processing_memref;
