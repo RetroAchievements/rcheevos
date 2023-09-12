@@ -373,6 +373,11 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
  */
 void rc_client_destroy_achievement_list(rc_client_achievement_list_t* list);
 
+/**
+ * Returns non-zero if there are any achievements that can be queried through rc_client_create_achievement_list().
+ */
+int rc_client_has_achievements(rc_client_t* client);
+
 /*****************************************************************************\
 | Leaderboards                                                                |
 \*****************************************************************************/
@@ -443,6 +448,11 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
  */
 void rc_client_destroy_leaderboard_list(rc_client_leaderboard_list_t* list);
 
+/**
+ * Returns non-zero if the current game has any leaderboards.
+ */
+int rc_client_has_leaderboards(rc_client_t* client);
+
 typedef struct rc_client_leaderboard_entry_t {
   const char* user;
   char display[24];
@@ -488,6 +498,11 @@ void rc_client_destroy_leaderboard_entry_list(rc_client_leaderboard_entry_list_t
 /*****************************************************************************\
 | Rich Presence                                                               |
 \*****************************************************************************/
+
+/**
+ * Returns non-zero if the current game supports rich presence.
+ */
+int rc_client_has_rich_presence(rc_client_t* client);
 
 /**
  * Gets the current rich presence message.

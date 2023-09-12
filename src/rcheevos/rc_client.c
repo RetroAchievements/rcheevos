@@ -2706,6 +2706,34 @@ void rc_client_destroy_achievement_list(rc_client_achievement_list_t* list)
     free(list);
 }
 
+int rc_client_has_achievements(rc_client_t* client)
+{
+  rc_client_subset_info_t* subset;
+  int result;
+
+  if (!client || !client->game)
+    return 0;
+
+  rc_mutex_lock(&client->state.mutex);
+
+  subset = client->game->subsets;
+  result = 0;
+  for (; subset; subset = subset->next)
+  {
+    if (!subset->active)
+      continue;
+
+    if (subset->public_.num_achievements > 0) {
+      result = 1;
+      break;
+    }
+  }
+
+  rc_mutex_unlock(&client->state.mutex);
+
+  return result;
+}
+
 static const rc_client_achievement_t* rc_client_subset_get_achievement_info(
     rc_client_t* client, rc_client_subset_info_t* subset, uint32_t id)
 {
@@ -3242,6 +3270,34 @@ void rc_client_destroy_leaderboard_list(rc_client_leaderboard_list_t* list)
     free(list);
 }
 
+int rc_client_has_leaderboards(rc_client_t* client)
+{
+  rc_client_subset_info_t* subset;
+  int result;
+
+  if (!client || !client->game)
+    return 0;
+
+  rc_mutex_lock(&client->state.mutex);
+
+  subset = client->game->subsets;
+  result = 0;
+  for (; subset; subset = subset->next)
+  {
+    if (!subset->active)
+      continue;
+
+    if (subset->public_.num_leaderboards > 0) {
+      result = 1;
+      break;
+    }
+  }
+
+  rc_mutex_unlock(&client->state.mutex);
+
+  return result;
+}
+
 static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
 {
   rc_client_leaderboard_tracker_info_t* tracker;
@@ -3698,6 +3754,17 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
 
   callback_data->when = now + 120 * 1000;
   rc_client_schedule_callback(client, callback_data);
+}
+
+int rc_client_has_rich_presence(rc_client_t* client)
+{
+  if (!client || !client->game)
+    return 0;
+
+  if (!client->game->runtime.richpresence || !client->game->runtime.richpresence)
+    return 0;
+
+  return 1;
 }
 
 size_t rc_client_get_rich_presence_message(rc_client_t* client, char buffer[], size_t buffer_size)
