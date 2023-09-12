@@ -1433,6 +1433,31 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
   subset->achievements = achievements;
 }
 
+static uint8_t rc_client_map_leaderboard_format(const rc_api_leaderboard_definition_t* defn)
+{
+  switch (defn->format) {
+    case RC_FORMAT_SECONDS:
+    case RC_FORMAT_CENTISECS:
+    case RC_FORMAT_MINUTES:
+    case RC_FORMAT_SECONDS_AS_MINUTES:
+    case RC_FORMAT_FRAMES:
+      return RC_CLIENT_LEADERBOARD_FORMAT_TIME;
+
+    case RC_FORMAT_SCORE:
+      return RC_CLIENT_LEADERBOARD_FORMAT_SCORE;
+
+    case RC_FORMAT_VALUE:
+    case RC_FORMAT_FLOAT1:
+    case RC_FORMAT_FLOAT2:
+    case RC_FORMAT_FLOAT3:
+    case RC_FORMAT_FLOAT4:
+    case RC_FORMAT_FLOAT5:
+    case RC_FORMAT_FLOAT6:
+    default:
+      return RC_CLIENT_LEADERBOARD_FORMAT_VALUE;
+  }
+}
+
 static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
     rc_client_subset_info_t* subset,
     const rc_api_leaderboard_definition_t* leaderboard_definitions, uint32_t num_leaderboards)
@@ -1477,6 +1502,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
     leaderboard->public_.title = rc_buf_strcpy(buffer, read->title);
     leaderboard->public_.description = rc_buf_strcpy(buffer, read->description);
     leaderboard->public_.id = read->id;
+    leaderboard->public_.format = rc_client_map_leaderboard_format(read);
     leaderboard->public_.lower_is_better = read->lower_is_better;
     leaderboard->format = (uint8_t)read->format;
     leaderboard->hidden = (uint8_t)read->hidden;

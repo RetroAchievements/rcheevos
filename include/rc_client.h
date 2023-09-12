@@ -390,12 +390,20 @@ enum {
   NUM_RC_CLIENT_LEADERBOARD_STATES = 4
 };
 
+enum {
+  RC_CLIENT_LEADERBOARD_FORMAT_TIME = 0,
+  RC_CLIENT_LEADERBOARD_FORMAT_SCORE = 1,
+  RC_CLIENT_LEADERBOARD_FORMAT_VALUE = 2,
+  NUM_RC_CLIENT_LEADERBOARD_FORMATS = 3
+};
+
 typedef struct rc_client_leaderboard_t {
   const char* title;
   const char* description;
   const char* tracker_value;
   uint32_t id;
   uint8_t state;
+  uint8_t format;
   uint8_t lower_is_better;
 } rc_client_leaderboard_t;
 
