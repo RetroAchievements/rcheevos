@@ -3043,14 +3043,14 @@ static void rc_client_reset_achievements(rc_client_t* client)
 
 /* ===== Leaderboards ===== */
 
-static const rc_client_leaderboard_t* rc_client_subset_get_leaderboard_info(const rc_client_subset_info_t* subset, uint32_t id)
+static rc_client_leaderboard_info_t* rc_client_subset_get_leaderboard_info(const rc_client_subset_info_t* subset, uint32_t id)
 {
   rc_client_leaderboard_info_t* leaderboard = subset->leaderboards;
   rc_client_leaderboard_info_t* stop = leaderboard + subset->public_.num_leaderboards;
 
   for (; leaderboard < stop; ++leaderboard) {
     if (leaderboard->public_.id == id)
-      return &leaderboard->public_;
+      return leaderboard;
   }
 
   return NULL;
@@ -3064,9 +3064,9 @@ const rc_client_leaderboard_t* rc_client_get_leaderboard_info(const rc_client_t*
     return NULL;
 
   for (subset = client->game->subsets; subset; subset = subset->next) {
-    const rc_client_leaderboard_t* leaderboard = rc_client_subset_get_leaderboard_info(subset, id);
+    const rc_client_leaderboard_info_t* leaderboard = rc_client_subset_get_leaderboard_info(subset, id);
     if (leaderboard != NULL)
-      return leaderboard;
+      return &leaderboard->public_;
   }
  
   return NULL;
@@ -3427,6 +3427,61 @@ static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callbac
   rc_client_submit_leaderboard_entry_server_call(lboard_data);
 }
 
+static void rc_client_raise_scoreboard_event(rc_client_submit_leaderboard_entry_callback_data_t* lboard_data,
+    const rc_api_submit_lboard_entry_response_t* response)
+{
+  rc_client_leaderboard_scoreboard_t sboard;
+  rc_client_event_t client_event;
+  rc_client_subset_info_t* subset;
+  rc_client_t* client = lboard_data->client;
+  rc_client_leaderboard_info_t* leaderboard = NULL;
+
+  if (!client || !client->game)
+    return;
+
+  for (subset = client->game->subsets; subset; subset = subset->next) {
+    leaderboard = rc_client_subset_get_leaderboard_info(subset, lboard_data->id);
+    if (leaderboard != NULL)
+      break;
+  }
+  if (leaderboard == NULL) {
+    RC_CLIENT_LOG_ERR_FORMATTED(client, "Trying to raise scoreboard for unknown leaderboard %u", lboard_data->id);
+    return;
+  }
+
+  memset(&sboard, 0, sizeof(sboard));
+  sboard.leaderboard_id = lboard_data->id;
+  rc_format_value(sboard.submitted_score, sizeof(sboard.submitted_score), response->submitted_score, leaderboard->format);
+  rc_format_value(sboard.best_score, sizeof(sboard.best_score), response->best_score, leaderboard->format);
+  sboard.new_rank = response->new_rank;
+  sboard.num_entries = response->num_entries;
+  sboard.num_top_entries = response->num_top_entries;
+  if (sboard.num_top_entries > 0) {
+    sboard.top_entries = (rc_client_leaderboard_scoreboard_entry_t*)calloc(
+      response->num_top_entries, sizeof(rc_client_leaderboard_scoreboard_entry_t));
+    if (sboard.top_entries != NULL) {
+      unsigned i;
+      for (i = 0; i < response->num_top_entries; i++) {
+        sboard.top_entries[i].username = response->top_entries[i].username;
+        sboard.top_entries[i].rank = response->top_entries[i].rank;
+        rc_format_value(sboard.top_entries[i].score, sizeof(sboard.top_entries[i].score), response->top_entries[i].score,
+            leaderboard->format);
+      }
+    }
+  }
+
+  memset(&client_event, 0, sizeof(client_event));
+  client_event.type = RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD;
+  client_event.leaderboard = &leaderboard->public_;
+  client_event.leaderboard_scoreboard = &sboard;
+
+  lboard_data->client->callbacks.event_handler(&client_event, lboard_data->client);
+
+  if (sboard.top_entries != NULL) {
+    free(sboard.top_entries);
+  }
+}
+
 static void rc_client_submit_leaderboard_entry_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_submit_leaderboard_entry_callback_data_t* lboard_data =
@@ -3476,7 +3531,10 @@ static void rc_client_submit_leaderboard_entry_callback(const rc_api_server_resp
     }
   }
   else {
-    /* TODO: raise event for scoreboard (if retry_count < 2) */
+    /* raise event for scoreboard */
+    if (lboard_data->retry_count < 2) {
+      rc_client_raise_scoreboard_event(lboard_data, &submit_lboard_entry_response);
+    }
 
     /* not currently doing anything with the response */
     if (lboard_data->retry_count) {
