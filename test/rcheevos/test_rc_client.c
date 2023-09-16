@@ -304,6 +304,28 @@ static void rc_client_event_handler(const rc_client_event_t* e, rc_client_t* cli
       events[event_count].id = e->leaderboard->id;
       break;
 
+    case RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD: {
+      /* scoreboard is not maintained out of scope, copy it */
+      static rc_client_leaderboard_scoreboard_t scoreboard;
+      static rc_client_leaderboard_scoreboard_entry_t scoreboard_entries[2];
+      static char scoreboard_top_usernames[2][128];
+      unsigned i;
+
+      /* cap the entries at 2, none of the mocked responses have anything larger */
+      memcpy(&scoreboard, e->leaderboard_scoreboard, sizeof(scoreboard));
+      scoreboard.num_top_entries = (scoreboard.num_top_entries > 2) ? 2 : scoreboard.num_top_entries;
+      for (i = 0; i < scoreboard.num_top_entries; i++) {
+        memcpy(&scoreboard_entries[i], &e->leaderboard_scoreboard->top_entries[i], sizeof(scoreboard_entries[i]));
+        strcpy_s(scoreboard_top_usernames[i], sizeof(scoreboard_top_usernames[i]), scoreboard_entries[i].username);
+        scoreboard_entries[i].username = scoreboard_top_usernames[i];
+      }
+      scoreboard.top_entries = scoreboard_entries;
+
+      events[event_count].id = e->leaderboard_scoreboard->leaderboard_id;
+      events[event_count].event.leaderboard_scoreboard = &scoreboard;
+      break;
+    }
+
     case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW:
     case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE:
     case RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE:
@@ -5691,7 +5713,7 @@ static void test_do_frame_leaderboard_submit(void)
     /* submit the leaderboard */
     memory[0x0D] = 1;
     rc_client_do_frame(g_client);
-    ASSERT_NUM_EQUALS(event_count, 2);
+    ASSERT_NUM_EQUALS(event_count, 3);
 
     event = find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 44);
     ASSERT_PTR_NOT_NULL(event);
@@ -5703,6 +5725,23 @@ static void test_do_frame_leaderboard_submit(void)
     ASSERT_PTR_NOT_NULL(event);
     ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
     ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+    event = find_event(RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD, 44);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->leaderboard_id, 44);
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->submitted_score, "000017");
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->best_score, "000023");
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->new_rank, 2);
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->num_entries, 2);
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->num_top_entries, 2);
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[0].username, "Player1");
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->top_entries[0].rank, 1);
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[0].score, "000044");
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[1].username, "Username");
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->top_entries[1].rank, 2);
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[1].score, "000023");
+    ASSERT_PTR_NOT_NULL(event->leaderboard_scoreboard->top_entries);
+    ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 44));
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -5860,12 +5899,29 @@ static void test_do_frame_leaderboard_submit_immediate(void)
     memory[0x0B] = 1;
     memory[0x0E] = 17;
     rc_client_do_frame(g_client);
-    ASSERT_NUM_EQUALS(event_count, 1); /* don't expect start or tracker events - only submit */
+    ASSERT_NUM_EQUALS(event_count, 2); /* don't expect start or tracker events - only submit and scoreboard */
 
     event = find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 44);
     ASSERT_PTR_NOT_NULL(event);
     ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
     ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+    ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 44));
+
+    event = find_event(RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD, 44);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->leaderboard_id, 44);
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->submitted_score, "000017");
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->best_score, "000023");
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->new_rank, 2);
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->num_entries, 2);
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->num_top_entries, 2);
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[0].username, "Player1");
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->top_entries[0].rank, 1);
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[0].score, "000044");
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[1].username, "Username");
+    ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->top_entries[1].rank, 2);
+    ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[1].score, "000023");
+    ASSERT_PTR_NOT_NULL(event->leaderboard_scoreboard->top_entries);
     ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 44));
 
     event_count = 0;
@@ -5913,7 +5969,7 @@ static void test_do_frame_leaderboard_submit_hidden(void)
   /* submit the leaderboard */
   memory[0x0D] = 1;
   rc_client_do_frame(g_client);
-  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_NUM_EQUALS(event_count, 3);
 
   event = find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 48);
   ASSERT_PTR_NOT_NULL(event);
@@ -5925,6 +5981,23 @@ static void test_do_frame_leaderboard_submit_hidden(void)
   ASSERT_PTR_NOT_NULL(event);
   ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
   ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+  event = find_event(RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD, 48);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->leaderboard_id, 48);
+  ASSERT_STR_EQUALS(event->leaderboard_scoreboard->submitted_score, "000017");
+  ASSERT_STR_EQUALS(event->leaderboard_scoreboard->best_score, "000023");
+  ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->new_rank, 2);
+  ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->num_entries, 2);
+  ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->num_top_entries, 2);
+  ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[0].username, "Player1");
+  ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->top_entries[0].rank, 1);
+  ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[0].score, "000044");
+  ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[1].username, "Username");
+  ASSERT_NUM_EQUALS(event->leaderboard_scoreboard->top_entries[1].rank, 2);
+  ASSERT_STR_EQUALS(event->leaderboard_scoreboard->top_entries[1].score, "000023");
+  ASSERT_PTR_NOT_NULL(event->leaderboard_scoreboard->top_entries);
+  ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 48));
 
   event_count = 0;
   rc_client_do_frame(g_client);
@@ -6005,8 +6078,9 @@ static void test_do_frame_leaderboard_submit_blocked(void)
   /* restart the leaderboard - will immediately submit */
   memory[0x0B] = 1;
   rc_client_do_frame(g_client);
-  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_NUM_EQUALS(event_count, 2);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 44));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD, 44));
 
   assert_api_called(api_call);
 
