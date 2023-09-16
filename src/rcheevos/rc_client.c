@@ -2529,6 +2529,15 @@ static int rc_client_compare_achievement_unlock_times(const void* a, const void*
   return (int)(unlock_b->unlock_time - unlock_a->unlock_time);
 }
 
+static int rc_client_compare_achievement_progress(const void* a, const void* b)
+{
+  const rc_client_achievement_t* unlock_a = *(const rc_client_achievement_t**)a;
+  const rc_client_achievement_t* unlock_b = *(const rc_client_achievement_t**)b;
+  if (unlock_b->measured_percent == unlock_a->measured_percent)
+    return (int)(unlock_a->id - unlock_b->id);
+  return (unlock_b->measured_percent > unlock_a->measured_percent) ? 1 : -1;
+}
+
 static uint8_t rc_client_map_bucket(uint8_t bucket, int grouping)
 {
   if (grouping == RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE) {
@@ -2678,6 +2687,8 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
         if (bucket_type == RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED)
           qsort(bucket_ptr->achievements, bucket_ptr->num_achievements, sizeof(rc_client_achievement_t*), rc_client_compare_achievement_unlock_times);
+        else if (bucket_type == RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE)
+          qsort(bucket_ptr->achievements, bucket_ptr->num_achievements, sizeof(rc_client_achievement_t*), rc_client_compare_achievement_progress);
 
         ++bucket_ptr;
       }

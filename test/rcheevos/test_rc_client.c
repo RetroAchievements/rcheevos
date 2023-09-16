@@ -3025,6 +3025,77 @@ static void test_achievement_list_buckets(void)
   rc_client_destroy(g_client);
 }
 
+static void test_achievement_list_buckets_progress_sort(void)
+{
+  rc_client_achievement_list_t* list;
+  rc_client_achievement_t** iter;
+  rc_client_achievement_t* achievement;
+
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  mock_memory(memory, sizeof(memory));
+
+  rc_client_do_frame(g_client); /* advance achievements out of waiting state */
+  event_count = 0;
+
+  g_client->game->subsets->achievements[0].trigger->measured_target = 100;
+  g_client->game->subsets->achievements[0].trigger->measured_value = 86;
+  g_client->game->subsets->achievements[1].trigger->measured_target = 100;
+  g_client->game->subsets->achievements[1].trigger->measured_value = 85;
+  g_client->game->subsets->achievements[2].trigger->measured_target = 1000;
+  g_client->game->subsets->achievements[2].trigger->measured_value = 855;
+  g_client->game->subsets->achievements[3].trigger->measured_target = 100;
+  g_client->game->subsets->achievements[3].trigger->measured_value = 87;
+  g_client->game->subsets->achievements[4].trigger->measured_target = 100;
+  g_client->game->subsets->achievements[4].trigger->measured_value = 85;
+  g_client->game->subsets->achievements[5].trigger->measured_target = 100;
+  g_client->game->subsets->achievements[5].trigger->measured_value = 75;
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
+
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Almost There");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 5);
+    iter = list->buckets[0].achievements;
+    achievement = *iter++;
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 87.0f);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "87/100");
+    achievement = *iter++;
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 86.0f);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "86/100");
+    achievement = *iter++;
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 85.5f);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "855/1000");
+    achievement = *iter++;
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 85.0f);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "85/100");
+    ASSERT_NUM_EQUALS(achievement->id, 6);
+    achievement = *iter++;
+    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 85.0f);
+    ASSERT_STR_EQUALS(achievement->measured_progress, "85/100");
+    ASSERT_NUM_EQUALS(achievement->id, 9);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 2);
+    ASSERT_FLOAT_EQUALS(list->buckets[1].achievements[0]->measured_percent, 75.0f);
+    ASSERT_STR_EQUALS(list->buckets[1].achievements[0]->measured_progress, "75/100");
+    ASSERT_FLOAT_EQUALS(list->buckets[1].achievements[1]->measured_percent, 0.0f);
+    ASSERT_STR_EQUALS(list->buckets[1].achievements[1]->measured_progress, "");
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
 static void test_achievement_list_subset_with_unofficial_and_unsupported(void)
 {
   rc_client_achievement_list_t* list;
@@ -7634,6 +7705,7 @@ void test_client(void) {
   TEST(test_achievement_list_simple_with_unofficial_and_unsupported);
   TEST(test_achievement_list_simple_with_unofficial_off);
   TEST(test_achievement_list_buckets);
+  TEST(test_achievement_list_buckets_progress_sort);
   TEST(test_achievement_list_subset_with_unofficial_and_unsupported);
   TEST(test_achievement_list_subset_buckets);
   TEST(test_achievement_list_subset_buckets_subset_first);
