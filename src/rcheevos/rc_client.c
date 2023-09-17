@@ -64,7 +64,7 @@ typedef struct rc_client_load_state_t
   uint8_t hash_console_id;
 } rc_client_load_state_t;
 
-static void rc_client_begin_fetch_game_data(rc_client_load_state_t* callback_data);
+static int rc_client_begin_fetch_game_data(rc_client_load_state_t* callback_data);
 static void rc_client_hide_progress_tracker(rc_client_t* client, rc_client_game_info_t* game);
 static void rc_client_load_error(rc_client_load_state_t* load_state, int result, const char* error_message);
 static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* load_state, const char* hash, const char* file_path);
@@ -1690,7 +1690,7 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
   rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
 }
 
-static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
+static int rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
 {
   rc_api_fetch_game_data_request_t fetch_game_data_request;
   rc_client_t* client = load_state->client;
@@ -1703,8 +1703,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
     if (rc_hash_iterate(hash, &load_state->hash_iterator)) {
       /* found another hash to try */
       load_state->hash_console_id = load_state->hash_iterator.consoles[load_state->hash_iterator.index - 1];
-      rc_client_load_game(load_state, hash, NULL);
-      return;
+      return (rc_client_load_game(load_state, hash, NULL) != NULL);
     }
 
     if (load_state->game->media_hash &&
@@ -1754,7 +1753,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
     load_state->game = NULL;
 
     rc_client_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
-    return;
+    return 0;
   }
 
   if (load_state->hash->hash[0] != '[') {
@@ -1777,11 +1776,11 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
 
     case RC_CLIENT_USER_STATE_LOGIN_REQUESTED:
       /* do nothing, this function will be called again after login completes */
-      return;
+      return 1;
 
     default:
       rc_client_load_error(load_state, RC_LOGIN_REQUIRED, rc_error_str(RC_LOGIN_REQUIRED));
-      return;
+      return 0;
   }
 
   memset(&fetch_game_data_request, 0, sizeof(fetch_game_data_request));
@@ -1792,7 +1791,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   result = rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request);
   if (result != RC_OK) {
     rc_client_load_error(load_state, result, rc_error_str(result));
-    return;
+    return 0;
   }
 
   rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_FETCHING_GAME_DATA, 1);
@@ -1800,6 +1799,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Fetching data for game %u", fetch_game_data_request.game_id);
   client->callbacks.server_call(&request, rc_client_fetch_game_data_callback, load_state, client);
   rc_api_destroy_request(&request);
+  return 1;
 }
 
 static void rc_client_identify_game_callback(const rc_api_server_response_t* server_response, void* callback_data)
@@ -1939,7 +1939,8 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
   else {
     RC_CLIENT_LOG_INFO_FORMATTED(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
 
-    rc_client_begin_fetch_game_data(load_state);
+    if (!rc_client_begin_fetch_game_data(load_state))
+      return NULL;
   }
 
   return &load_state->async_handle;
