@@ -3861,7 +3861,7 @@ int rc_client_has_rich_presence(rc_client_t* client)
   if (!client || !client->game)
     return 0;
 
-  if (!client->game->runtime.richpresence || !client->game->runtime.richpresence)
+  if (!client->game->runtime.richpresence || !client->game->runtime.richpresence->richpresence)
     return 0;
 
   return 1;
