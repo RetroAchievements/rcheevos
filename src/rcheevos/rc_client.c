@@ -2526,16 +2526,21 @@ static int rc_client_compare_achievement_unlock_times(const void* a, const void*
 {
   const rc_client_achievement_t* unlock_a = *(const rc_client_achievement_t**)a;
   const rc_client_achievement_t* unlock_b = *(const rc_client_achievement_t**)b;
-  return (int)(unlock_b->unlock_time - unlock_a->unlock_time);
+  if (unlock_b->unlock_time == unlock_a->unlock_time)
+    return 0;
+  return (unlock_b->unlock_time < unlock_a->unlock_time) ? -1 : 1;
 }
 
 static int rc_client_compare_achievement_progress(const void* a, const void* b)
 {
   const rc_client_achievement_t* unlock_a = *(const rc_client_achievement_t**)a;
   const rc_client_achievement_t* unlock_b = *(const rc_client_achievement_t**)b;
-  if (unlock_b->measured_percent == unlock_a->measured_percent)
-    return (int)(unlock_a->id - unlock_b->id);
-  return (unlock_b->measured_percent > unlock_a->measured_percent) ? 1 : -1;
+  if (unlock_b->measured_percent == unlock_a->measured_percent) {
+    if (unlock_a->id == unlock_b->id)
+      return 0;
+    return (unlock_a->id < unlock_b->id) ? -1 : 1;
+  }
+  return (unlock_b->measured_percent < unlock_a->measured_percent) ? -1 : 1;
 }
 
 static uint8_t rc_client_map_bucket(uint8_t bucket, int grouping)
