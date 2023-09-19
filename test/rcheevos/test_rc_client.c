@@ -4434,6 +4434,7 @@ static void test_do_frame_bounds_check_system(void)
 
 static void test_do_frame_bounds_check_available(void)
 {
+  const rc_trigger_t* trigger;
   uint8_t memory[8] = { 0,0,0,0,0,0,0,0 };
   g_client = mock_client_game_loaded(patchdata_bounds_check_8, no_unlocks);
 
@@ -4441,6 +4442,8 @@ static void test_do_frame_bounds_check_available(void)
   if (g_client->game) {
     /* all addresses are valid according to the system, so no achievements should be disabled yet. */
     assert_achievement_state(g_client, 808, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    trigger = ((rc_client_achievement_info_t*)rc_client_get_achievement_info(g_client, 808))->trigger;
+    ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_WAITING);
 
     /* limit the memory that's actually exposed and try to process a frame */
     mock_memory(memory, sizeof(memory));
@@ -4451,6 +4454,7 @@ static void test_do_frame_bounds_check_available(void)
     assert_achievement_state(g_client, 608, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     assert_achievement_state(g_client, 708, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     assert_achievement_state(g_client, 808, RC_CLIENT_ACHIEVEMENT_STATE_DISABLED); /* out of bounds*/
+    ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_DISABLED);
 
     assert_achievement_state(g_client, 416, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     assert_achievement_state(g_client, 516, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
