@@ -1076,6 +1076,51 @@ static void test_load_game_unknown_hash(void)
   rc_client_destroy(g_client);
 }
 
+static void test_load_game_unknown_hash_repeated(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  /* first request should resolve the hash asynchronously */
+  handle = rc_client_begin_load_game(g_client,
+      "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
+  ASSERT_PTR_NOT_NULL(handle);
+  ASSERT_PTR_NOT_NULL(g_client->state.load);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+
+  /* second request should use the hash cache and not need an asynchronous call */
+  handle = rc_client_begin_load_game(g_client,
+      "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
+  ASSERT_PTR_NULL(handle);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+
+  rc_client_destroy(g_client);
+}
+
 static void test_load_game_not_logged_in(void)
 {
   g_client = mock_client_not_logged_in();
@@ -1768,6 +1813,56 @@ static void test_identify_and_load_game_unknown_hash(void)
     ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
   }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_load_game_unknown_hash_repeated(void)
+{
+  rc_client_async_handle_t* handle;
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  /* first request should resolve the hash asynchronously */
+  handle = rc_client_begin_identify_and_load_game(g_client,
+      RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_unknown_game, g_callback_userdata);
+  ASSERT_PTR_NOT_NULL(handle);
+  ASSERT_PTR_NOT_NULL(g_client->state.load);
+
+  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_NINTENDO);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+
+  /* second request should use the hash cache and not need an asynchronous call */
+  handle = rc_client_begin_identify_and_load_game(g_client,
+      RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_unknown_game, g_callback_userdata);
+  ASSERT_PTR_NULL(handle);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_NINTENDO);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
 
   rc_client_destroy(g_client);
   free(image);
@@ -7716,6 +7811,7 @@ void test_client(void) {
   /* load game */
   TEST(test_load_game_required_fields);
   TEST(test_load_game_unknown_hash);
+  TEST(test_load_game_unknown_hash_repeated);
   TEST(test_load_game_not_logged_in);
   TEST(test_load_game);
   TEST(test_load_game_async_login);
@@ -7740,6 +7836,7 @@ void test_client(void) {
   TEST(test_identify_and_load_game_multiconsole_first);
   TEST(test_identify_and_load_game_multiconsole_second);
   TEST(test_identify_and_load_game_unknown_hash);
+  TEST(test_identify_and_load_game_unknown_hash_repeated);
   TEST(test_identify_and_load_game_unknown_hash_multiconsole);
   TEST(test_identify_and_load_game_unknown_hash_console_specified);
   TEST(test_identify_and_load_game_multihash);

@@ -1942,7 +1942,7 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
     rc_client_begin_fetch_game_data(load_state);
   }
 
-  return &load_state->async_handle;
+  return (client->state.load == load_state) ? &load_state->async_handle : NULL;
 }
 
 rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client)
