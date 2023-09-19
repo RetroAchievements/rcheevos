@@ -997,6 +997,9 @@ static uint32_t rc_client_subset_toggle_hardcore_achievements(rc_client_subset_i
         client_event.achievement = &achievement->public_;
         client->callbacks.event_handler(&client_event, client);
       }
+
+      if (achievement->trigger && rc_trigger_state_active(achievement->trigger->state))
+        achievement->trigger->state = RC_TRIGGER_STATE_TRIGGERED;
     }
   }
 

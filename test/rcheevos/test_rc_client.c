@@ -7340,24 +7340,31 @@ static void test_set_hardcore_disable(void)
 {
   const rc_client_achievement_t* achievement;
   const rc_client_leaderboard_t* leaderboard;
+  const rc_trigger_t* trigger;
 
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501h_and_5502);
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
 
+  achievement = rc_client_get_achievement_info(g_client, 5501);
+  ASSERT_PTR_NOT_NULL(achievement);
+  trigger = ((rc_client_achievement_info_t*)achievement)->trigger;
+  ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+  ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_TRIGGERED);
+
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
-  if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 1); /* 5502 should be active*/
-  }
+  trigger = ((rc_client_achievement_info_t*)achievement)->trigger;
+  ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+  ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_WAITING);
+
+  ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 1); /* only 5502 should be active*/
 
   leaderboard = rc_client_get_leaderboard_info(g_client, 4401);
   ASSERT_PTR_NOT_NULL(leaderboard);
-  if (leaderboard) {
-    ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(g_client->game->runtime.lboard_count, 1);
-  }
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(g_client->game->runtime.lboard_count, 1);
 
   rc_client_set_hardcore_enabled(g_client, 0);
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 0);
@@ -7365,18 +7372,17 @@ static void test_set_hardcore_disable(void)
 
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
-  if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
-    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 0); /* 5502 should not be active*/
-  }
+  trigger = ((rc_client_achievement_info_t*)achievement)->trigger;
+
+  ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+  ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+  ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_TRIGGERED);
+  ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 0); /* 5502 should not be active*/
 
   leaderboard = rc_client_get_leaderboard_info(g_client, 4401);
   ASSERT_PTR_NOT_NULL(leaderboard);
-  if (leaderboard) {
-    ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_INACTIVE);
-    ASSERT_NUM_EQUALS(g_client->game->runtime.lboard_count, 0);
-  }
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_INACTIVE);
+  ASSERT_NUM_EQUALS(g_client->game->runtime.lboard_count, 0);
 
   rc_client_destroy(g_client);
 }
