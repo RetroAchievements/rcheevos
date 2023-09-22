@@ -348,6 +348,12 @@ void test_redundant_conditions() {
   TEST_PARAMS2(test_validate_trigger, "0xH0000!=0S0xH0000!=0S0xH0001=2", "Alt1 Condition 1: Redundant with Core Condition 1");
 }
 
+void test_redundant_hitcounts() {
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0", "");
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0.1.", "Condition 1: Hit target of 1 is redundant on ResetIf");
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0.2.", "");
+}
+
 void test_rc_validate(void) {
   TEST_SUITE_BEGIN();
 
@@ -364,6 +370,7 @@ void test_rc_validate(void) {
   test_float_comparisons();
   test_conflicting_conditions();
   test_redundant_conditions();
+  test_redundant_hitcounts();
 
   TEST_SUITE_END();
 }
