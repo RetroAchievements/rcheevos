@@ -1264,12 +1264,10 @@ static void test_load_game_async_login_with_incorrect_password(void)
 
 static void test_load_game_async_login_logout(void)
 {
-  rc_client_async_handle_t* handle;
-
   g_client = mock_client_not_logged_in_async();
   reset_mock_api_handlers();
 
-  handle = rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_login_aborted, g_callback_userdata);
+  rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_login_aborted, g_callback_userdata);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_aborted, g_callback_userdata);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
