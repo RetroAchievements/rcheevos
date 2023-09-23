@@ -1855,6 +1855,38 @@ static void test_hash_saturn_invalid_header()
   free(image);
 }
 
+static void test_hash_scv_cart()
+{
+  size_t image_size = 32768 + 32;
+  uint8_t* image = generate_generic_file(image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "4309c9844b44f9ff8256dfc04687b8fd";
+
+  memcpy(image, "EmuSCV....CART..................", 32);
+
+  mock_file(0, "game.cart", image, image_size);
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_SUPER_CASSETTEVISION, "game.cart");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.cart", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
 /* ========================================================================= */
 
 static void assert_valid_m3u(const char* disc_filename, const char* m3u_filename, const char* m3u_contents)
@@ -2250,6 +2282,10 @@ void test_hash(void) {
   /* SNES */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_NINTENDO, "test.smc", 524288, "68f0f13b598e0b66461bc578375c3888");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_NINTENDO, "test.smc", 524288 + 512, "258c93ebaca1c3f488ab48218e5e8d38");
+
+  /* Super Cassette Vision */
+  TEST(test_hash_scv_cart);
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_CASSETTEVISION, "test.bin", 32768, "6a2305a2b6675a97ff792709be1ca857");
 
   /* TI-83 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_TI83, "test.83g", 1695, "bfb6048395a425c69743900785987c42");
