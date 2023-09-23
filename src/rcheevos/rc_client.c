@@ -444,7 +444,7 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
   int result;
 
   if (rc_client_async_handle_aborted(client, &login_callback_data->async_handle)) {
-    RC_CLIENT_LOG_VERBOSE(client, "Login aborted");
+    rc_client_logout(client); /* logout will reset the user state and call the load game callback */
     free(login_callback_data);
     return;
   }
@@ -455,6 +455,7 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
       login_callback_data->callback(RC_ABORTED, "Login aborted", client, login_callback_data->callback_userdata);
 
     free(login_callback_data);
+    /* logout call will immediately abort load game before this callback gets called */
     return;
   }
 

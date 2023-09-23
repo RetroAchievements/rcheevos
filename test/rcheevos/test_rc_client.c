@@ -1262,6 +1262,62 @@ static void test_load_game_async_login_with_incorrect_password(void)
   rc_client_destroy(g_client);
 }
 
+static void test_load_game_async_login_logout(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_not_logged_in_async();
+  reset_mock_api_handlers();
+
+  handle = rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_login_aborted, g_callback_userdata);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_aborted, g_callback_userdata);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  /* game load process will stop here waiting for the login to complete */
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+
+  /* logout will cancel login and allow game load to proceed with failure */
+  rc_client_logout(g_client);
+  async_api_response("r=login&u=Username&p=Pa%24%24word",
+    "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+
+  ASSERT_PTR_NULL(g_client->user.username);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_game_async_login_aborted(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_not_logged_in_async();
+  reset_mock_api_handlers();
+
+  handle = rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_uncalled, g_callback_userdata);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_aborted, g_callback_userdata);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  /* game load process will stop here waiting for the login to complete */
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+
+  /* login abort will trigger game load process to continue */
+  rc_client_abort_async(g_client, handle);
+  async_api_response("r=login&u=Username&p=Pa%24%24word",
+    "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+
+  ASSERT_PTR_NULL(g_client->user.username);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
 static void rc_client_callback_expect_too_many_requests(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_INVALID_JSON);
@@ -7826,6 +7882,8 @@ void test_client(void) {
   TEST(test_load_game);
   TEST(test_load_game_async_login);
   TEST(test_load_game_async_login_with_incorrect_password);
+  TEST(test_load_game_async_login_logout);
+  TEST(test_load_game_async_login_aborted);
   TEST(test_load_game_gameid_failure);
   TEST(test_load_game_patch_failure);
   TEST(test_load_game_startsession_failure);
