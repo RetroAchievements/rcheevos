@@ -815,6 +815,10 @@ static void rc_client_invalidate_memref_achievements(rc_client_game_info_t* game
       if (rc_trigger_contains_memref(achievement->trigger, memref)) {
         achievement->public_.state = RC_CLIENT_ACHIEVEMENT_STATE_DISABLED;
         achievement->public_.bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED;
+
+        if (achievement->trigger)
+          achievement->trigger->state = RC_TRIGGER_STATE_DISABLED;
+
         RC_CLIENT_LOG_WARN_FORMATTED(client, "Disabled achievement %u. Invalid address %06X", achievement->public_.id, memref->address);
       }
     }
@@ -841,6 +845,9 @@ static void rc_client_invalidate_memref_leaderboards(rc_client_game_info_t* game
         leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
       else
         continue;
+
+      if (leaderboard->lboard)
+        leaderboard->lboard->state = RC_LBOARD_STATE_DISABLED;
 
       RC_CLIENT_LOG_WARN_FORMATTED(client, "Disabled leaderboard %u. Invalid address %06X", leaderboard->public_.id, memref->address);
     }
@@ -997,6 +1004,9 @@ static uint32_t rc_client_subset_toggle_hardcore_achievements(rc_client_subset_i
         client_event.achievement = &achievement->public_;
         client->callbacks.event_handler(&client_event, client);
       }
+
+      if (achievement->trigger && rc_trigger_state_active(achievement->trigger->state))
+        achievement->trigger->state = RC_TRIGGER_STATE_TRIGGERED;
     }
   }
 
