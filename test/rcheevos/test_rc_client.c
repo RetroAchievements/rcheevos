@@ -4702,6 +4702,7 @@ static void test_do_frame_achievement_trigger_server_error(void)
     ASSERT_PTR_NOT_NULL(event);
     ASSERT_STR_EQUALS(event->server_error->api, "award_achievement");
     ASSERT_STR_EQUALS(event->server_error->error_message, "Achievement not found");
+    ASSERT_NUM_EQUALS(event->server_error->related_id, 8);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -6041,6 +6042,7 @@ static void test_do_frame_leaderboard_submit_server_error(void)
     ASSERT_PTR_NOT_NULL(event);
     ASSERT_STR_EQUALS(event->server_error->api, "submit_lboard_entry");
     ASSERT_STR_EQUALS(event->server_error->error_message, "Leaderboard not found");
+    ASSERT_NUM_EQUALS(event->server_error->related_id, 44);
 
     event_count = 0;
     rc_client_do_frame(g_client);
