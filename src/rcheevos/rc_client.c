@@ -71,7 +71,6 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
 static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
 static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_subset_info_t* subset);
 static void rc_client_raise_pending_events(rc_client_t* client, rc_client_game_info_t* game);
-static void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 static void rc_client_reschedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* callback, rc_clock_t when);
 static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
 static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
@@ -3413,7 +3412,7 @@ static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, 
   game->pending_events |= RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER;
 }
 
-static void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
+void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
 {
   rc_client_leaderboard_tracker_info_t* tracker = leaderboard->tracker;
   leaderboard->tracker = NULL;
