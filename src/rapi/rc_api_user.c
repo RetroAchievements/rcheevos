@@ -47,6 +47,7 @@ int rc_api_process_login_server_response(rc_api_login_response_t* response, cons
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
     RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Code"),
     RC_JSON_NEW_FIELD("User"),
     RC_JSON_NEW_FIELD("Token"),
     RC_JSON_NEW_FIELD("Score"),
@@ -62,16 +63,16 @@ int rc_api_process_login_server_response(rc_api_login_response_t* response, cons
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
-  if (!rc_json_get_required_string(&response->username, &response->response, &fields[2], "User"))
+  if (!rc_json_get_required_string(&response->username, &response->response, &fields[3], "User"))
     return RC_MISSING_VALUE;
-  if (!rc_json_get_required_string(&response->api_token, &response->response, &fields[3], "Token"))
+  if (!rc_json_get_required_string(&response->api_token, &response->response, &fields[4], "Token"))
     return RC_MISSING_VALUE;
 
-  rc_json_get_optional_unum(&response->score, &fields[4], "Score", 0);
-  rc_json_get_optional_unum(&response->score_softcore, &fields[5], "SoftcoreScore", 0);
-  rc_json_get_optional_unum(&response->num_unread_messages, &fields[6], "Messages", 0);
+  rc_json_get_optional_unum(&response->score, &fields[5], "Score", 0);
+  rc_json_get_optional_unum(&response->score_softcore, &fields[6], "SoftcoreScore", 0);
+  rc_json_get_optional_unum(&response->num_unread_messages, &fields[7], "Messages", 0);
 
-  rc_json_get_optional_string(&response->display_name, &response->response, &fields[7], "DisplayName", response->username);
+  rc_json_get_optional_string(&response->display_name, &response->response, &fields[8], "DisplayName", response->username);
 
   return RC_OK;
 }

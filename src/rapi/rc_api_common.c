@@ -292,6 +292,31 @@ static int rc_json_extract_html_error(rc_api_response_t* response, const rc_api_
   return RC_INVALID_JSON;
 }
 
+static int rc_json_convert_error_code(const char* server_error_code)
+{
+  switch (server_error_code[0]) {
+    case 'a':
+      if (strcmp(server_error_code, "access_denied") == 0)
+        return RC_ACCESS_DENIED;
+      break;
+
+    case 'e':
+      if (strcmp(server_error_code, "expired_token") == 0)
+        return RC_EXPIRED_TOKEN;
+      break;
+
+    case 'i':
+      if (strcmp(server_error_code, "invalid_credentials") == 0)
+        return RC_INVALID_CREDENTIALS;
+      break;
+
+    default:
+      break;
+  }
+
+  return RC_API_FAILURE;
+}
+
 int rc_json_parse_server_response(rc_api_response_t* response, const rc_api_server_response_t* server_response, rc_json_field_t* fields, size_t field_count) {
   int result;
 
@@ -323,6 +348,13 @@ int rc_json_parse_server_response(rc_api_response_t* response, const rc_api_serv
 
     rc_json_get_optional_string(&response->error_message, response, &fields[1], "Error", NULL);
     rc_json_get_optional_bool(&response->succeeded, &fields[0], "Success", 1);
+
+    /* Code will be the third field in the fields array, but may not always be present */
+    if (field_count > 2 && strcmp(fields[2].name, "Code") == 0) {
+      rc_json_get_optional_string(&response->error_code, response, &fields[2], "Code", NULL);
+      if (response->error_code != NULL)
+        result = rc_json_convert_error_code(response->error_code);
+    }
   }
 
   return result;

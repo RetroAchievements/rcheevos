@@ -59,6 +59,8 @@ typedef struct rc_api_response_t {
   int succeeded;
   /* Server-provided message associated to the failure */
   const char* error_message;
+  /* Server-provided error code associated to the failure */
+  const char* error_code;
 
   /* Storage for the response data */
   rc_api_buffer_t buffer;
