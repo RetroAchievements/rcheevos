@@ -582,6 +582,8 @@ typedef struct rc_client_server_error_t
 {
   const char* error_message;
   const char* api;
+  int result;
+  uint32_t related_id;
 } rc_client_server_error_t;
 
 typedef struct rc_client_event_t
