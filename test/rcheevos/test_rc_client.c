@@ -703,7 +703,7 @@ static void test_login_required_fields(void)
 
 static void rc_client_callback_expect_credentials_error(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
-  ASSERT_NUM_EQUALS(result, RC_API_FAILURE);
+  ASSERT_NUM_EQUALS(result, RC_INVALID_CREDENTIALS);
   ASSERT_STR_EQUALS(error_message, "Invalid User/Password combination. Please try again");
   ASSERT_PTR_EQUALS(client, g_client);
   ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
@@ -713,9 +713,80 @@ static void test_login_with_incorrect_password(void)
 {
   g_client = mock_client_not_logged_in();
   reset_mock_api_handlers();
-  mock_api_error("r=login&u=User&p=Pa%24%24word", "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\"}", 403);
+  mock_api_error("r=login&u=User&p=Pa%24%24word",
+      "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\","
+       "\"Status\":401,\"Code\":\"invalid_credentials\"}", 401);
 
   rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_credentials_error, g_callback_userdata);
+
+  ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_callback_expect_token_error(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_INVALID_CREDENTIALS);
+  ASSERT_STR_EQUALS(error_message, "Invalid User/Token combination.");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
+static void test_login_with_incorrect_token(void)
+{
+  g_client = mock_client_not_logged_in();
+  reset_mock_api_handlers();
+  mock_api_error("r=login&u=User&t=TOKEN",
+      "{\"Success\":false,\"Error\":\"Invalid User/Token combination.\","
+      "\"Status\":401,\"Code\":\"invalid_credentials\"}", 401);
+
+  rc_client_begin_login_with_token(g_client, "User", "TOKEN", rc_client_callback_expect_token_error, g_callback_userdata);
+
+  ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_callback_expect_expired_token(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_EXPIRED_TOKEN);
+  ASSERT_STR_EQUALS(error_message, "The access token has expired. Please log in again.");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
+static void test_login_with_expired_token(void)
+{
+  g_client = mock_client_not_logged_in();
+  reset_mock_api_handlers();
+  mock_api_error("r=login&u=User&t=EXPIRED",
+      "{\"Success\":false,\"Error\":\"The access token has expired. Please log in again.\","
+      "\"Status\":401,\"Code\":\"expired_token\"}", 403);
+
+  rc_client_begin_login_with_token(g_client, "User", "EXPIRED", rc_client_callback_expect_expired_token, g_callback_userdata);
+
+  ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_callback_expect_access_denied(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_ACCESS_DENIED);
+  ASSERT_STR_EQUALS(error_message, "Access denied.");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
+static void test_login_with_banned_account(void)
+{
+  g_client = mock_client_not_logged_in();
+  reset_mock_api_handlers();
+  mock_api_error("r=login&u=User&p=Pa%24%24word",
+      "{\"Success\":false,\"Error\":\"Access denied.\","
+      "\"Status\":403,\"Code\":\"access_denied\"}", 403);
+
+  rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_access_denied, g_callback_userdata);
 
   ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
 
@@ -1251,7 +1322,8 @@ static void test_load_game_async_login_with_incorrect_password(void)
 
   /* login failure will trigger process to continue */
   async_api_error("r=login&u=Username&p=Pa%24%24word",
-      "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\"}", 403);
+      "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\","
+      "\"Status\":401,\"Code\":\"invalid_credentials\"}", 401);
   assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
 
   ASSERT_PTR_NULL(g_client->user.username);
@@ -7857,6 +7929,9 @@ void test_client(void) {
   TEST(test_login_with_token);
   TEST(test_login_required_fields);
   TEST(test_login_with_incorrect_password);
+  TEST(test_login_with_incorrect_token);
+  TEST(test_login_with_expired_token);
+  TEST(test_login_with_banned_account);
   TEST(test_login_incomplete_response);
   TEST(test_login_with_password_async);
   TEST(test_login_with_password_async_aborted);

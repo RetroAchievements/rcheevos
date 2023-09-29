@@ -206,6 +206,9 @@ const char* rc_error_str(int ret)
     case RC_HARDCORE_DISABLED: return "Hardcore disabled";
     case RC_ABORTED: return "Aborted";
     case RC_NO_RESPONSE: return "No response";
+    case RC_ACCESS_DENIED: return "Access denied";
+    case RC_INVALID_CREDENTIALS: return "Invalid credentials";
+    case RC_EXPIRED_TOKEN: return "Expired token";
     default: return "Unknown error";
   }
 }
