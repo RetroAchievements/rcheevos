@@ -294,6 +294,9 @@
     <ClCompile Include="test_rc_libretro.c">
       <Filter>tests</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rc_util.c">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">
@@ -372,6 +375,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\rc_libretro.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rc_util.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

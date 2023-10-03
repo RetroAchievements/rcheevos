@@ -1,5 +1,5 @@
-#ifndef INTERNAL_H
-#define INTERNAL_H
+#ifndef RC_INTERNAL_H
+#define RC_INTERNAL_H
 
 #include "rc_runtime_types.h"
 
@@ -206,4 +206,4 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
 }
 #endif
 
-#endif /* INTERNAL_H */
+#endif /* RC_INTERNAL_H */
