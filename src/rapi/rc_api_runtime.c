@@ -3,7 +3,7 @@
 
 #include "rc_runtime.h"
 #include "rc_runtime_types.h"
-#include "../rcheevos/rc_compat.h"
+#include "../rc_compat.h"
 #include "../rhash/md5.h"
 
 #include <stdlib.h>

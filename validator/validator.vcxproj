@@ -125,7 +125,6 @@
     <ClCompile Include="..\src\rapi\rc_api_common.c" />
     <ClCompile Include="..\src\rapi\rc_api_runtime.c" />
     <ClCompile Include="..\src\rcheevos\alloc.c" />
-    <ClCompile Include="..\src\rcheevos\compat.c" />
     <ClCompile Include="..\src\rcheevos\condition.c" />
     <ClCompile Include="..\src\rcheevos\condset.c" />
     <ClCompile Include="..\src\rcheevos\consoleinfo.c" />
@@ -138,6 +137,7 @@
     <ClCompile Include="..\src\rcheevos\runtime.c" />
     <ClCompile Include="..\src\rcheevos\trigger.c" />
     <ClCompile Include="..\src\rcheevos\value.c" />
+    <ClCompile Include="..\src\rc_compat.c" />
     <ClCompile Include="..\src\rhash\md5.c" />
     <ClCompile Include="..\test\lua\src\lapi.c" />
     <ClCompile Include="..\test\lua\src\lauxlib.c" />

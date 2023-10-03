@@ -2,7 +2,7 @@
 
 #include "rc_api_runtime.h" /* for rc_fetch_image */
 
-#include "rc_compat.h"
+#include "../rc_compat.h"
 
 #include "../test_framework.h"
 

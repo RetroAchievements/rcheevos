@@ -2,7 +2,7 @@
 #include "rc_api_request.h"
 #include "rc_api_runtime.h"
 
-#include "../rcheevos/rc_compat.h"
+#include "../rc_compat.h"
 
 #include <ctype.h>
 #include <stdio.h>

@@ -7,7 +7,7 @@
 #include "rc_internal.h"
 #include "rc_hash.h"
 
-#include "../rapi/rc_api_common.h"
+#include "rapi/rc_api_common.h"
 
 #include <stdarg.h>
 

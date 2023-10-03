@@ -1,7 +1,7 @@
 #include "rc_api_user.h"
 #include "rc_api_common.h"
 
-#include "../rcheevos/rc_version.h"
+#include "../rc_version.h"
 
 #include <string.h>
 

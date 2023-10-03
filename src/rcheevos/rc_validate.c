@@ -1,8 +1,9 @@
 #include "rc_validate.h"
 
-#include "rc_compat.h"
 #include "rc_consoles.h"
 #include "rc_internal.h"
+
+#include "../rc_compat.h"
 
 #include <stddef.h>
 #include <stdlib.h>

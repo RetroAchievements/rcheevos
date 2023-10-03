@@ -154,9 +154,6 @@
     <ClCompile Include="..\src\rhash\md5.c">
       <Filter>src\rhash</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\rcheevos\compat.c">
-      <Filter>src\rcheevos</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\rapi\rc_api_runtime.c">
       <Filter>src\rapi</Filter>
     </ClCompile>
@@ -168,6 +165,9 @@
     </ClCompile>
     <ClCompile Include="..\src\rcheevos\rc_validate.c">
       <Filter>src\rcheevos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rc_compat.c">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
