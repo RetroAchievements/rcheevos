@@ -16,8 +16,6 @@
 static char* g_host = NULL;
 static char* g_imagehost = NULL;
 
-#undef DEBUG_BUFFERS
-
 /* --- rc_json --- */
 
 static int rc_json_parse_object(rc_json_iterator_t* iterator, rc_json_field_t* fields, size_t field_count, unsigned* fields_seen);
@@ -261,12 +259,12 @@ static int rc_json_extract_html_error(rc_api_response_t* response, const rc_api_
     if (isdigit((int)*title_start)) {
       const char* title_end = strstr(title_start + 7, "</title>");
       if (title_end) {
-        char* dst = rc_buf_reserve(&response->buffer, (title_end - title_start) + 1);
+        char* dst = rc_buffer_reserve(&response->buffer, (title_end - title_start) + 1);
         response->error_message = dst;
         memcpy(dst, title_start, title_end - title_start);
         dst += (title_end - title_start);
         *dst++ = '\0';
-        rc_buf_consume(&response->buffer, response->error_message, dst);
+        rc_buffer_consume(&response->buffer, response->error_message, dst);
         response->succeeded = 0;
         return RC_INVALID_JSON;
       }
@@ -280,12 +278,12 @@ static int rc_json_extract_html_error(rc_api_response_t* response, const rc_api_
     --end;
 
   if (end > json) {
-    char* dst = rc_buf_reserve(&response->buffer, (end - json) + 1);
+    char* dst = rc_buffer_reserve(&response->buffer, (end - json) + 1);
     response->error_message = dst;
     memcpy(dst, json, end - json);
     dst += (end - json);
     *dst++ = '\0';
-    rc_buf_consume(&response->buffer, response->error_message, dst);
+    rc_buffer_consume(&response->buffer, response->error_message, dst);
   }
 
   response->succeeded = 0;
@@ -365,14 +363,14 @@ static int rc_json_missing_field(rc_api_response_t* response, const rc_json_fiel
   const size_t not_found_len = strlen(not_found);
   const size_t field_len = strlen(field->name);
 
-  char* write = rc_buf_reserve(&response->buffer, field_len + not_found_len + 1);
+  char* write = rc_buffer_reserve(&response->buffer, field_len + not_found_len + 1);
   if (write) {
     response->error_message = write;
     memcpy(write, field->name, field_len);
     write += field_len;
     memcpy(write, not_found, not_found_len + 1);
     write += not_found_len + 1;
-    rc_buf_consume(&response->buffer, response->error_message, write);
+    rc_buffer_consume(&response->buffer, response->error_message, write);
   }
 
   response->succeeded = 0;
@@ -426,7 +424,7 @@ int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, r
     return RC_MISSING_VALUE;
 
   if (*num_entries) {
-    *entries = (unsigned*)rc_buf_alloc(&response->buffer, *num_entries * sizeof(unsigned));
+    *entries = (unsigned*)rc_buffer_alloc(&response->buffer, *num_entries * sizeof(unsigned));
     if (!*entries)
       return RC_OUT_OF_MEMORY;
 
@@ -554,7 +552,7 @@ static int rc_json_ucs32_to_utf8(unsigned char* dst, unsigned ucs32_char) {
   return 6;
 }
 
-int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_field_t* field, const char* field_name) {
+int rc_json_get_string(const char** out, rc_buffer_t* buffer, const rc_json_field_t* field, const char* field_name) {
   const char* src = field->value_start;
   size_t len = field->value_end - field->value_start;
   char* dst;
@@ -585,7 +583,7 @@ int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_
       return 1;
     }
 
-    *out = dst = rc_buf_reserve(buffer, len - 1); /* -2 for quotes, +1 for null terminator */
+    *out = dst = rc_buffer_reserve(buffer, len - 1); /* -2 for quotes, +1 for null terminator */
 
     do {
       if (*src == '\\') {
@@ -645,13 +643,13 @@ int rc_json_get_string(const char** out, rc_api_buffer_t* buffer, const rc_json_
     } while (*src != '\"');
 
   } else {
-    *out = dst = rc_buf_reserve(buffer, len + 1); /* +1 for null terminator */
+    *out = dst = rc_buffer_reserve(buffer, len + 1); /* +1 for null terminator */
     memcpy(dst, src, len);
     dst += len;
   }
 
   *dst++ = '\0';
-  rc_buf_consume(buffer, *out, dst);
+  rc_buffer_consume(buffer, *out, dst);
   return 1;
 }
 
@@ -851,127 +849,21 @@ int rc_json_get_required_bool(int* out, rc_api_response_t* response, const rc_js
   return rc_json_missing_field(response, field);
 }
 
-/* --- rc_buf --- */
+/* --- rc_api_request --- */
 
-void rc_buf_init(rc_api_buffer_t* buffer) {
-  buffer->chunk.write = buffer->chunk.start = &buffer->data[0];
-  buffer->chunk.end = &buffer->data[sizeof(buffer->data)];
-  buffer->chunk.next = NULL;
-}
-
-void rc_buf_destroy(rc_api_buffer_t* buffer) {
-  rc_api_buffer_chunk_t *chunk;
-#ifdef DEBUG_BUFFERS
-  int count = 0;
-  int wasted = 0;
-  int total = 0;
-#endif
-
-  /* first chunk is not allocated. skip it. */
-  chunk = buffer->chunk.next;
-
-  /* deallocate any additional buffers */
-  while (chunk) {
-    rc_api_buffer_chunk_t* next = chunk->next;
-#ifdef DEBUG_BUFFERS
-    total += (int)(chunk->end - chunk->data);
-    wasted += (int)(chunk->end - chunk->write);
-    ++count;
-#endif
-    free(chunk);
-    chunk = next;
-  }
-
-#ifdef DEBUG_BUFFERS
-  printf("-- %d allocated buffers (%d/%d used, %d wasted, %0.2f%% efficiency)\n", count,
-         total - wasted, total, wasted, (float)(100.0 - (wasted * 100.0) / total));
-#endif
-}
-
-char* rc_buf_reserve(rc_api_buffer_t* buffer, size_t amount) {
-  rc_api_buffer_chunk_t* chunk = &buffer->chunk;
-  size_t remaining;
-  while (chunk) {
-    remaining = chunk->end - chunk->write;
-    if (remaining >= amount)
-      return chunk->write;
-
-    if (!chunk->next) {
-      /* allocate a chunk of memory that is a multiple of 256-bytes. the first 32 bytes will be associated
-       * to the chunk header, and the remaining will be used for data.
-       */
-      const size_t chunk_header_size = sizeof(rc_api_buffer_chunk_t);
-      const size_t alloc_size = (chunk_header_size + amount + 0xFF) & ~0xFF;
-      chunk->next = (rc_api_buffer_chunk_t*)malloc(alloc_size);
-      if (!chunk->next)
-        break;
-
-      chunk->next->start = (char*)chunk->next + chunk_header_size;
-      chunk->next->write = chunk->next->start;
-      chunk->next->end = (char*)chunk->next + alloc_size;
-      chunk->next->next = NULL;
-    }
-
-    chunk = chunk->next;
-  }
-
-  return NULL;
-}
-
-void rc_buf_consume(rc_api_buffer_t* buffer, const char* start, char* end) {
-  rc_api_buffer_chunk_t* chunk = &buffer->chunk;
-  do {
-    if (chunk->write == start) {
-      size_t offset = (end - chunk->start);
-      offset = (offset + 7) & ~7;
-      chunk->write = &chunk->start[offset];
-
-      if (chunk->write > chunk->end)
-        chunk->write = chunk->end;
-      break;
-    }
-
-    chunk = chunk->next;
-  } while (chunk);
-}
-
-void* rc_buf_alloc(rc_api_buffer_t* buffer, size_t amount) {
-  char* ptr = rc_buf_reserve(buffer, amount);
-  rc_buf_consume(buffer, ptr, ptr + amount);
-  return (void*)ptr;
-}
-
-char* rc_buf_strncpy(rc_api_buffer_t* buffer, const char* src, size_t len) {
-  char* dst = rc_buf_reserve(buffer, len + 1);
-  memcpy(dst, src, len);
-  dst[len] = '\0';
-  rc_buf_consume(buffer, dst, dst + len + 2);
-  return dst;
-}
-
-char* rc_buf_strcpy(rc_api_buffer_t* buffer, const char* src) {
-  return rc_buf_strncpy(buffer, src, strlen(src));
-}
-
-void rc_api_destroy_request(rc_api_request_t* request) {
-  rc_buf_destroy(&request->buffer);
-}
-
-void rc_api_format_md5(char checksum[33], const unsigned char digest[16]) {
-  snprintf(checksum, 33, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-      digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],
-      digest[8], digest[9], digest[10], digest[11], digest[12], digest[13], digest[14], digest[15]
-  );
+void rc_api_destroy_request(rc_api_request_t* request)
+{
+  rc_buffer_destroy(&request->buffer);
 }
 
 /* --- rc_url_builder --- */
 
-void rc_url_builder_init(rc_api_url_builder_t* builder, rc_api_buffer_t* buffer, size_t estimated_size) {
-  rc_api_buffer_chunk_t* used_buffer;
+void rc_url_builder_init(rc_api_url_builder_t* builder, rc_buffer_t* buffer, size_t estimated_size) {
+  rc_buffer_chunk_t* used_buffer;
 
   memset(builder, 0, sizeof(*builder));
   builder->buffer = buffer;
-  builder->write = builder->start = rc_buf_reserve(buffer, estimated_size);
+  builder->write = builder->start = rc_buffer_reserve(buffer, estimated_size);
 
   used_buffer = &buffer->chunk;
   while (used_buffer && used_buffer->write != builder->write)
@@ -986,7 +878,7 @@ const char* rc_url_builder_finalize(rc_api_url_builder_t* builder) {
   if (builder->result != RC_OK)
     return NULL;
 
-  rc_buf_consume(builder->buffer, builder->start, builder->write);
+  rc_buffer_consume(builder->buffer, builder->start, builder->write);
   return builder->start;
 }
 
@@ -996,7 +888,7 @@ static int rc_url_builder_reserve(rc_api_url_builder_t* builder, size_t amount) 
     if (remaining < amount) {
       const size_t used = builder->write - builder->start;
       const size_t current_size = builder->end - builder->start;
-      const size_t buffer_prefix_size = sizeof(rc_api_buffer_chunk_t);
+      const size_t buffer_prefix_size = sizeof(rc_buffer_chunk_t);
       char* new_start;
       size_t new_size = (current_size < 256) ? 256 : current_size * 2;
       do {
@@ -1007,11 +899,11 @@ static int rc_url_builder_reserve(rc_api_url_builder_t* builder, size_t amount) 
         new_size *= 2;
       } while (1);
 
-      /* rc_buf_reserve will align to 256 bytes after including the buffer prefix. attempt to account for that */
+      /* rc_buffer_reserve will align to 256 bytes after including the buffer prefix. attempt to account for that */
       if ((remaining - amount) > buffer_prefix_size)
         new_size -= buffer_prefix_size;
 
-      new_start = rc_buf_reserve(builder->buffer, new_size);
+      new_start = rc_buffer_reserve(builder->buffer, new_size);
       if (!new_start) {
         builder->result = RC_OUT_OF_MEMORY;
         return RC_OUT_OF_MEMORY;
@@ -1125,7 +1017,7 @@ void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* 
 
 void rc_api_url_build_dorequest_url(rc_api_request_t* request) {
   #define DOREQUEST_ENDPOINT "/dorequest.php"
-  rc_buf_init(&request->buffer);
+  rc_buffer_init(&request->buffer);
 
   if (!g_host) {
     request->url = RETROACHIEVEMENTS_HOST DOREQUEST_ENDPOINT;
@@ -1134,11 +1026,11 @@ void rc_api_url_build_dorequest_url(rc_api_request_t* request) {
     const size_t endpoint_len = sizeof(DOREQUEST_ENDPOINT);
     const size_t host_len = strlen(g_host);
     const size_t url_len = host_len + endpoint_len;
-    char* url = rc_buf_reserve(&request->buffer, url_len);
+    char* url = rc_buffer_reserve(&request->buffer, url_len);
 
     memcpy(url, g_host, host_len);
     memcpy(url + host_len, DOREQUEST_ENDPOINT, endpoint_len);
-    rc_buf_consume(&request->buffer, url, url + url_len);
+    rc_buffer_consume(&request->buffer, url, url + url_len);
 
     request->url = url;
   }
@@ -1214,7 +1106,7 @@ void rc_api_set_image_host(const char* hostname) {
 int rc_api_init_fetch_image_request(rc_api_request_t* request, const rc_api_fetch_image_request_t* api_params) {
   rc_api_url_builder_t builder;
 
-  rc_buf_init(&request->buffer);
+  rc_buffer_init(&request->buffer);
   rc_url_builder_init(&builder, &request->buffer, 64);
 
   if (g_imagehost) {

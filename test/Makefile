@@ -4,10 +4,11 @@
 #  DEBUG         if set to anything, builds with DEBUG symbols
 #  HAVE_LUA      if set to anything, includes the lua functionality
 
-RC_SRC=../src/rcheevos
-RC_URL_SRC=../src/rurl
-RC_HASH_SRC=../src/rhash
-RC_API_SRC=../src/rapi
+RC_SRC=../src
+RC_CHEEVOS_SRC=$(RC_SRC)/rcheevos
+RC_URL_SRC=$(RC_SRC)/rurl
+RC_HASH_SRC=$(RC_SRC)/rhash
+RC_API_SRC=$(RC_SRC)/rapi
 LUA_SRC=lua/src
 
 # default parameter values
@@ -36,23 +37,24 @@ else
 endif
 
 # source files
-OBJ=$(RC_SRC)/alloc.o \
-    $(RC_SRC)/compat.o \
-    $(RC_SRC)/condition.o \
-    $(RC_SRC)/condset.o \
-    $(RC_SRC)/consoleinfo.o \
-    $(RC_SRC)/format.o \
-    $(RC_SRC)/lboard.o \
-    $(RC_SRC)/memref.o \
-    $(RC_SRC)/operand.o \
+OBJ=$(RC_SRC)/rc_compat.o \
     $(RC_SRC)/rc_client.o \
     $(RC_SRC)/rc_libretro.o \
-    $(RC_SRC)/rc_validate.o \
-    $(RC_SRC)/richpresence.o \
-    $(RC_SRC)/runtime.o \
-    $(RC_SRC)/runtime_progress.o \
-    $(RC_SRC)/trigger.o \
-    $(RC_SRC)/value.o \
+    $(RC_SRC)/rc_util.o \
+    $(RC_CHEEVOS_SRC)/alloc.o \
+    $(RC_CHEEVOS_SRC)/condition.o \
+    $(RC_CHEEVOS_SRC)/condset.o \
+    $(RC_CHEEVOS_SRC)/consoleinfo.o \
+    $(RC_CHEEVOS_SRC)/format.o \
+    $(RC_CHEEVOS_SRC)/lboard.o \
+    $(RC_CHEEVOS_SRC)/memref.o \
+    $(RC_CHEEVOS_SRC)/operand.o \
+    $(RC_CHEEVOS_SRC)/rc_validate.o \
+    $(RC_CHEEVOS_SRC)/richpresence.o \
+    $(RC_CHEEVOS_SRC)/runtime.o \
+    $(RC_CHEEVOS_SRC)/runtime_progress.o \
+    $(RC_CHEEVOS_SRC)/trigger.o \
+    $(RC_CHEEVOS_SRC)/value.o \
     $(RC_HASH_SRC)/cdreader.o \
     $(RC_HASH_SRC)/hash.o \
     $(RC_HASH_SRC)/md5.o \
@@ -69,8 +71,6 @@ OBJ=$(RC_SRC)/alloc.o \
     rcheevos/test_lboard.o \
     rcheevos/test_memref.o \
     rcheevos/test_operand.o \
-    rcheevos/test_rc_client.o \
-    rcheevos/test_rc_libretro.o \
     rcheevos/test_rc_validate.o \
     rcheevos/test_richpresence.o \
     rcheevos/test_runtime.o \
@@ -87,11 +87,13 @@ OBJ=$(RC_SRC)/alloc.o \
     rapi/test_rc_api_info.o \
     rapi/test_rc_api_runtime.o \
     rapi/test_rc_api_user.o \
+    test_rc_client.o \
+    test_rc_libretro.o \
     test.o
 
 # compile flags
 CFLAGS=-Wall -Wno-long-long -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
-INCLUDES=-I../include -I$(RC_SRC) -I.
+INCLUDES=-I../include -I$(RC_CHEEVOS_SRC) -I.
 
 ifeq ($(ARCH), x86)
     CFLAGS += -m32
@@ -153,6 +155,9 @@ $(info ==== rcheevos test [$(BUILD)/$(ARCH)$(EXTRA)] ====)
 all: test
 
 $(RC_SRC)/%.o: $(RC_SRC)/%.c
+	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+
+$(RC_CHEEVOS_SRC)/%.o: $(RC_CHEEVOS_SRC)/%.c
 	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
 
 $(RC_HASH_SRC)/%.o: $(RC_HASH_SRC)/%.c

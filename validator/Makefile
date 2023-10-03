@@ -1,12 +1,15 @@
-RC_SRC=../src/rcheevos
-RC_HASH_SRC=../src/rhash
-RC_API_SRC=../src/rapi
+RC_SRC=../src
+RC_CHEEVOS_SRC=$(RC_SRC)/rcheevos
+RC_HASH_SRC=$(RC_SRC)/rhash
+RC_API_SRC=$(RC_SRC)/rapi
 LUA_SRC=../test/lua/src
 
-OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/operand.o \
-    $(RC_SRC)/value.o $(RC_SRC)/lboard.o $(RC_SRC)/richpresence.o $(RC_SRC)/runtime.o \
-    $(RC_SRC)/alloc.o $(RC_SRC)/memref.o $(RC_SRC)/format.o $(RC_SRC)/compat.o  \
-    $(RC_SRC)/consoleinfo.o $(RC_SRC)/rc_validate.o \
+OBJ=$(RC_CHEEVOS_SRC)/alloc.o $(RC_CHEEVOS_SRC)/condition.o $(RC_CHEEVOS_SRC)/condset.o \
+    $(RC_CHEEVOS_SRC)/consoleinfo.o $(RC_CHEEVOS_SRC)/format.o $(RC_CHEEVOS_SRC)/lboard.o \
+    $(RC_CHEEVOS_SRC)/memref.o $(RC_CHEEVOS_SRC)/operand.o $(RC_CHEEVOS_SRC)/rc_validate.o \
+    $(RC_CHEEVOS_SRC)/richpresence.o $(RC_CHEEVOS_SRC)/runtime.o $(RC_CHEEVOS_SRC)/trigger.o \
+    $(RC_CHEEVOS_SRC)/value.o \
+    $(RC_SRC)/rc_compat.o $(RC_SRC)/rc_util.o \
     $(RC_HASH_SRC)/md5.o \
     $(RC_API_SRC)/rc_api_common.o $(RC_API_SRC)/rc_api_runtime.o \
     $(LUA_SRC)/lapi.o $(LUA_SRC)/lcode.o $(LUA_SRC)/lctype.o $(LUA_SRC)/ldebug.o \
@@ -22,7 +25,7 @@ OBJ=$(RC_SRC)/trigger.o $(RC_SRC)/condset.o $(RC_SRC)/condition.o $(RC_SRC)/oper
 all: validator
 
 %.o: %.c
-	gcc -Wall -O0 -g -std=c89 -ansi -Wno-long-long -DLUA_32BITS -I../include -I$(RC_SRC) -I$(LUA_SRC) -c $< -o $@
+	gcc -Wall -O0 -g -std=c89 -ansi -Wno-long-long -DLUA_32BITS -I../include -I$(RC_CHEEVOS_SRC) -I$(LUA_SRC) -c $< -o $@
 
 validator: $(OBJ)
 	gcc -o $@ $+ -lm

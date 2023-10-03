@@ -320,16 +320,10 @@
     <ClInclude Include="..\include\rc_hash.h">
       <Filter>src\rhash</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\rc_consoles.h">
-      <Filter>src\rcheevos</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\rc_url.h">
       <Filter>src\rurl</Filter>
     </ClInclude>
     <ClInclude Include="..\src\rcheevos\rc_internal.h">
-      <Filter>src\rcheevos</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\rc_error.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
     <ClInclude Include="..\src\rapi\rc_api_common.h">
@@ -362,9 +356,6 @@
     <ClInclude Include="..\src\rcheevos\rc_validate.h">
       <Filter>src\rcheevos</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\rc_client.h">
-      <Filter>src\rcheevos</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\rc_version.h">
       <Filter>src</Filter>
     </ClInclude>
@@ -378,6 +369,15 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\rc_util.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_client.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_error.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_consoles.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

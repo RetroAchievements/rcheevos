@@ -190,7 +190,7 @@ typedef struct rc_client_game_info_t {
   uint8_t waiting_for_reset;
   uint8_t pending_events;
 
-  rc_api_buffer_t buffer;
+  rc_buffer_t buffer;
 } rc_client_game_info_t;
 
 enum {
@@ -232,7 +232,7 @@ struct rc_client_load_state_t;
 
 typedef struct rc_client_state_t {
   rc_mutex_t mutex;
-  rc_api_buffer_t buffer;
+  rc_buffer_t buffer;
 
   rc_client_scheduled_callback_data_t* scheduled_callbacks;
 

@@ -16,7 +16,7 @@ static void _assert_json_parse_response(rc_api_response_t* response, rc_json_fie
     RC_JSON_NEW_FIELD("Error"),
     RC_JSON_NEW_FIELD("Test")
   };
-  rc_buf_init(&response->buffer);
+  rc_buffer_init(&response->buffer);
 
   memset(&server_response, 0, sizeof(server_response));
   server_response.body = json;
@@ -76,7 +76,7 @@ static void test_json_parse_response_non_json() {
     RC_JSON_NEW_FIELD("Error"),
     RC_JSON_NEW_FIELD("Test")
   };
-  rc_buf_init(&response.buffer);
+  rc_buffer_init(&response.buffer);
 
   memset(&server_response, 0, sizeof(server_response));
   server_response.body = error_message;
@@ -100,7 +100,7 @@ static void test_json_parse_response_error_from_server() {
     RC_JSON_NEW_FIELD("Error"),
     RC_JSON_NEW_FIELD("Test")
   };
-  rc_buf_init(&response.buffer);
+  rc_buffer_init(&response.buffer);
 
   json = "{\"Success\":false,\"Error\":\"Oops\"}";
   memset(&server_response, 0, sizeof(server_response));
@@ -125,7 +125,7 @@ static void test_json_parse_response_incorrect_size() {
     RC_JSON_NEW_FIELD("Error"),
     RC_JSON_NEW_FIELD("Test")
   };
-  rc_buf_init(&response.buffer);
+  rc_buffer_init(&response.buffer);
 
   json = "{\"Success\":false,\"Error\":\"Oops\"}";
   memset(&server_response, 0, sizeof(server_response));
@@ -405,7 +405,7 @@ static void test_json_get_unum_array(const char* input, unsigned expected_count,
   ASSERT_NUM_EQUALS(result, expected_result);
   ASSERT_NUM_EQUALS(count, expected_count);
 
-  rc_buf_destroy(&response.buffer);
+  rc_buffer_destroy(&response.buffer);
 }
 
 static void test_json_get_unum_array_trailing_comma() {
@@ -489,25 +489,25 @@ static void test_url_build_dorequest_url_custom_host_no_protocol() {
 
 static void test_url_builder_append_encoded_str(const char* input, const char* expected) {
   rc_api_url_builder_t builder;
-  rc_api_buffer_t buffer;
+  rc_buffer_t buffer;
   const char* output;
 
-  rc_buf_init(&buffer);
+  rc_buffer_init(&buffer);
   rc_url_builder_init(&builder, &buffer, 128);
   rc_url_builder_append_encoded_str(&builder, input);
   output = rc_url_builder_finalize(&builder);
 
   ASSERT_STR_EQUALS(output, expected);
 
-  rc_buf_destroy(&buffer);
+  rc_buffer_destroy(&buffer);
 }
 
 static void test_url_builder_append_str_param() {
   rc_api_url_builder_t builder;
-  rc_api_buffer_t buffer;
+  rc_buffer_t buffer;
   const char* output;
 
-  rc_buf_init(&buffer);
+  rc_buffer_init(&buffer);
   rc_url_builder_init(&builder, &buffer, 64);
   rc_url_builder_append_str_param(&builder, "a", "Apple");
   rc_url_builder_append_str_param(&builder, "b", "Banana");
@@ -516,15 +516,15 @@ static void test_url_builder_append_str_param() {
 
   ASSERT_STR_EQUALS(output, "a=Apple&b=Banana&t=Test+1");
 
-  rc_buf_destroy(&buffer);
+  rc_buffer_destroy(&buffer);
 }
 
 static void test_url_builder_append_unum_param() {
   rc_api_url_builder_t builder;
-  rc_api_buffer_t buffer;
+  rc_buffer_t buffer;
   const char* output;
 
-  rc_buf_init(&buffer);
+  rc_buffer_init(&buffer);
   rc_url_builder_init(&builder, &buffer, 32);
   rc_url_builder_append_unum_param(&builder, "a", 0);
   rc_url_builder_append_unum_param(&builder, "b", 123456);
@@ -533,15 +533,15 @@ static void test_url_builder_append_unum_param() {
 
   ASSERT_STR_EQUALS(output, "a=0&b=123456&t=4294967295");
 
-  rc_buf_destroy(&buffer);
+  rc_buffer_destroy(&buffer);
 }
 
 static void test_url_builder_append_num_param() {
   rc_api_url_builder_t builder;
-  rc_api_buffer_t buffer;
+  rc_buffer_t buffer;
   const char* output;
 
-  rc_buf_init(&buffer);
+  rc_buffer_init(&buffer);
   rc_url_builder_init(&builder, &buffer, 32);
   rc_url_builder_append_num_param(&builder, "a", 0);
   rc_url_builder_append_num_param(&builder, "b", 123456);
@@ -550,7 +550,7 @@ static void test_url_builder_append_num_param() {
 
   ASSERT_STR_EQUALS(output, "a=0&b=123456&t=-1");
 
-  rc_buf_destroy(&buffer);
+  rc_buffer_destroy(&buffer);
 }
 
 static void test_init_fetch_image_request_game() {
