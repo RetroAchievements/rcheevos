@@ -4,10 +4,11 @@
 #include "rc_api_runtime.h"
 #include "rc_api_user.h"
 #include "rc_consoles.h"
-#include "rc_internal.h"
 #include "rc_hash.h"
 
 #include "rapi/rc_api_common.h"
+
+#include "rcheevos/rc_internal.h"
 
 #include <stdarg.h>
 
