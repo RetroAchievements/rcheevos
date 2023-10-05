@@ -383,11 +383,15 @@ static int rc_client_should_retry(const rc_api_server_response_t* server_respons
 {
   switch (server_response->http_status_code) {
     case 502: /* 502 Bad Gateway */
-      /* nginx connection pool full. retry */
+      /* nginx connection pool full */
       return 1;
 
     case 503: /* 503 Service Temporarily Unavailable */
-      /* site is in maintenance mode. retry */
+      /* site is in maintenance mode */
+      return 1;
+
+    case 504: /* 504 Gateway Timeout */
+      /* timeout between web server and database server */
       return 1;
 
     case 429: /* 429 Too Many Requests */
