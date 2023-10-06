@@ -115,7 +115,7 @@ static void test_init_login_request_password()
 
   ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=login&u=Username&p=Pa%24%24w0rd%21");
+  ASSERT_STR_EQUALS(request.post_data, "r=login2&u=Username&p=Pa%24%24w0rd%21");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
@@ -129,7 +129,7 @@ static void test_init_login_request_password_long()
   int i;
 
   /* this generates a password that's 830 characters long */
-  ptr = password_start = buffer + snprintf(buffer, sizeof(buffer), "r=login&u=ThisUsernameIsAlsoReallyLongAtRoughlyFiftyCharacters&p=");
+  ptr = password_start = buffer + snprintf(buffer, sizeof(buffer), "r=login2&u=ThisUsernameIsAlsoReallyLongAtRoughlyFiftyCharacters&p=");
   for (i = 0; i < 30; i++)
 	ptr += snprintf(ptr, sizeof(buffer) - (ptr - buffer), "%dABCDEFGHIJKLMNOPQRSTUVWXYZ", i);
 
@@ -156,7 +156,7 @@ static void test_init_login_request_token()
 
   ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=login&u=Username&t=ABCDEFGHIJKLMNOP");
+  ASSERT_STR_EQUALS(request.post_data, "r=login2&u=Username&t=ABCDEFGHIJKLMNOP");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
@@ -174,7 +174,7 @@ static void test_init_login_request_password_and_token()
 
   ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=login&u=Username&p=Pa%24%24w0rd%21");
+  ASSERT_STR_EQUALS(request.post_data, "r=login2&u=Username&p=Pa%24%24w0rd%21");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
@@ -205,7 +205,7 @@ static void test_init_login_request_alternate_host()
   rc_api_set_host("localhost");
   ASSERT_NUM_EQUALS(rc_api_init_login_request(&request, &login_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, "http://localhost/dorequest.php");
-  ASSERT_STR_EQUALS(request.post_data, "r=login&u=Username&p=Pa%24%24w0rd%21");
+  ASSERT_STR_EQUALS(request.post_data, "r=login2&u=Username&p=Pa%24%24w0rd%21");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_set_host(NULL);
