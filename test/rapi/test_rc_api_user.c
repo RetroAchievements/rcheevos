@@ -215,11 +215,31 @@ static void test_init_login_request_alternate_host()
 static void test_process_login_response_success()
 {
   rc_api_login_response_t login_response;
+  rc_api_server_response_t response_obj;
   const char* server_response = "{\"Success\":true,\"User\":\"USER\",\"Token\":\"ApiTOKEN\",\"Score\":1234,\"SoftcoreScore\":789,\"Messages\":2}";
 
   memset(&login_response, 0, sizeof(login_response));
 
   ASSERT_NUM_EQUALS(rc_api_process_login_response(&login_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(login_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(login_response.response.error_message);
+  ASSERT_STR_EQUALS(login_response.username, "USER");
+  ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
+  ASSERT_NUM_EQUALS(login_response.score, 1234);
+  ASSERT_NUM_EQUALS(login_response.score_softcore, 789);
+  ASSERT_NUM_EQUALS(login_response.num_unread_messages, 2);
+  ASSERT_STR_EQUALS(login_response.display_name, "USER");
+
+  rc_api_destroy_login_response(&login_response);
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+  response_obj.http_status_code = 200;
+
+  memset(&login_response, 0, sizeof(login_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_login_server_response(&login_response, &response_obj), RC_OK);
   ASSERT_NUM_EQUALS(login_response.response.succeeded, 1);
   ASSERT_PTR_NULL(login_response.response.error_message);
   ASSERT_STR_EQUALS(login_response.username, "USER");
@@ -252,16 +272,116 @@ static void test_process_login_response_unique_display_name()
   rc_api_destroy_login_response(&login_response);
 }
 
-static void test_process_login_response_error()
+static void test_process_login_response_invalid_credentials()
 {
   rc_api_login_response_t login_response;
-  const char* server_response = "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\"}";
+  rc_api_server_response_t response_obj;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\", \"Code\":\"invalid_credentials\"}";
 
   memset(&login_response, 0, sizeof(login_response));
 
-  ASSERT_NUM_EQUALS(rc_api_process_login_response(&login_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(rc_api_process_login_response(&login_response, server_response), RC_INVALID_CREDENTIALS);
   ASSERT_NUM_EQUALS(login_response.response.succeeded, 0);
   ASSERT_STR_EQUALS(login_response.response.error_message, "Invalid User/Password combination. Please try again");
+  ASSERT_PTR_NULL(login_response.username);
+  ASSERT_PTR_NULL(login_response.api_token);
+  ASSERT_NUM_EQUALS(login_response.score, 0);
+  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
+
+  rc_api_destroy_login_response(&login_response);
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+  response_obj.http_status_code = 401;
+
+  memset(&login_response, 0, sizeof(login_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_login_server_response(&login_response, &response_obj), RC_INVALID_CREDENTIALS);
+  ASSERT_NUM_EQUALS(login_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(login_response.response.error_message, "Invalid User/Password combination. Please try again");
+  ASSERT_PTR_NULL(login_response.username);
+  ASSERT_PTR_NULL(login_response.api_token);
+  ASSERT_NUM_EQUALS(login_response.score, 0);
+  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
+
+  rc_api_destroy_login_response(&login_response);
+}
+
+static void test_process_login_response_access_denied()
+{
+  rc_api_login_response_t login_response;
+  rc_api_server_response_t response_obj;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Access denied.\",\"Code\":\"access_denied\"}";
+
+  memset(&login_response, 0, sizeof(login_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_login_response(&login_response, server_response), RC_ACCESS_DENIED);
+  ASSERT_NUM_EQUALS(login_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(login_response.response.error_message, "Access denied.");
+  ASSERT_PTR_NULL(login_response.username);
+  ASSERT_PTR_NULL(login_response.api_token);
+  ASSERT_NUM_EQUALS(login_response.score, 0);
+  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
+
+  rc_api_destroy_login_response(&login_response);
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+  response_obj.http_status_code = 403;
+
+  memset(&login_response, 0, sizeof(login_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_login_server_response(&login_response, &response_obj), RC_ACCESS_DENIED);
+  ASSERT_NUM_EQUALS(login_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(login_response.response.error_message, "Access denied.");
+  ASSERT_PTR_NULL(login_response.username);
+  ASSERT_PTR_NULL(login_response.api_token);
+  ASSERT_NUM_EQUALS(login_response.score, 0);
+  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
+
+  rc_api_destroy_login_response(&login_response);
+}
+
+static void test_process_login_response_expired_token()
+{
+  rc_api_login_response_t login_response;
+  rc_api_server_response_t response_obj;
+  const char* server_response = "{\"Success\":false,\"Error\":\"The access token has expired. Please log in again.\",\"Code\":\"expired_token\"}";
+
+  memset(&login_response, 0, sizeof(login_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_login_response(&login_response, server_response), RC_EXPIRED_TOKEN);
+  ASSERT_NUM_EQUALS(login_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(login_response.response.error_message, "The access token has expired. Please log in again.");
+  ASSERT_PTR_NULL(login_response.username);
+  ASSERT_PTR_NULL(login_response.api_token);
+  ASSERT_NUM_EQUALS(login_response.score, 0);
+  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
+  ASSERT_PTR_NULL(login_response.display_name);
+
+  rc_api_destroy_login_response(&login_response);
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+  response_obj.http_status_code = 401;
+
+  memset(&login_response, 0, sizeof(login_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_login_server_response(&login_response, &response_obj), RC_EXPIRED_TOKEN);
+  ASSERT_NUM_EQUALS(login_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(login_response.response.error_message, "The access token has expired. Please log in again.");
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
@@ -556,8 +676,10 @@ void test_rapi_user(void) {
 
   TEST(test_process_login_response_success);
   TEST(test_process_login_response_unique_display_name);
-  TEST(test_process_login_response_error);
+  TEST(test_process_login_response_invalid_credentials);
+  TEST(test_process_login_response_access_denied);
   TEST(test_process_login_response_generic_failure);
+  TEST(test_process_login_response_expired_token);
   TEST(test_process_login_response_empty);
   TEST(test_process_login_response_text);
   TEST(test_process_login_response_html);
