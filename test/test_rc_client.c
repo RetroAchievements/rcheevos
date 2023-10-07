@@ -622,7 +622,7 @@ static void test_login_with_password(void)
 
   g_client = mock_client_not_logged_in();
   reset_mock_api_handlers();
-  mock_api_response("r=login&u=User&p=Pa%24%24word",
+  mock_api_response("r=login2&u=User&p=Pa%24%24word",
 	  "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
 
   rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_success, g_callback_userdata);
@@ -645,7 +645,7 @@ static void test_login_with_token(void)
 
   g_client = mock_client_not_logged_in();
   reset_mock_api_handlers();
-  mock_api_response("r=login&u=User&t=ApiToken",
+  mock_api_response("r=login2&u=User&t=ApiToken",
 	  "{\"Success\":true,\"User\":\"User\",\"DisplayName\":\"Display\",\"Token\":\"ApiToken\",\"Score\":12345,\"Messages\":2}");
 
   rc_client_begin_login_with_token(g_client, "User", "ApiToken", rc_client_callback_expect_success, g_callback_userdata);
@@ -714,7 +714,7 @@ static void test_login_with_incorrect_password(void)
 {
   g_client = mock_client_not_logged_in();
   reset_mock_api_handlers();
-  mock_api_error("r=login&u=User&p=Pa%24%24word",
+  mock_api_error("r=login2&u=User&p=Pa%24%24word",
       "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\","
        "\"Status\":401,\"Code\":\"invalid_credentials\"}", 401);
 
@@ -737,7 +737,7 @@ static void test_login_with_incorrect_token(void)
 {
   g_client = mock_client_not_logged_in();
   reset_mock_api_handlers();
-  mock_api_error("r=login&u=User&t=TOKEN",
+  mock_api_error("r=login2&u=User&t=TOKEN",
       "{\"Success\":false,\"Error\":\"Invalid User/Token combination.\","
       "\"Status\":401,\"Code\":\"invalid_credentials\"}", 401);
 
@@ -760,7 +760,7 @@ static void test_login_with_expired_token(void)
 {
   g_client = mock_client_not_logged_in();
   reset_mock_api_handlers();
-  mock_api_error("r=login&u=User&t=EXPIRED",
+  mock_api_error("r=login2&u=User&t=EXPIRED",
       "{\"Success\":false,\"Error\":\"The access token has expired. Please log in again.\","
       "\"Status\":401,\"Code\":\"expired_token\"}", 403);
 
@@ -783,7 +783,7 @@ static void test_login_with_banned_account(void)
 {
   g_client = mock_client_not_logged_in();
   reset_mock_api_handlers();
-  mock_api_error("r=login&u=User&p=Pa%24%24word",
+  mock_api_error("r=login2&u=User&p=Pa%24%24word",
       "{\"Success\":false,\"Error\":\"Access denied.\","
       "\"Status\":403,\"Code\":\"access_denied\"}", 403);
 
@@ -806,7 +806,7 @@ static void test_login_incomplete_response(void)
 {
   g_client = mock_client_not_logged_in();
   reset_mock_api_handlers();
-  mock_api_response("r=login&u=User&p=Pa%24%24word", "{\"Success\":true,\"User\":\"Username\"}");
+  mock_api_response("r=login2&u=User&p=Pa%24%24word", "{\"Success\":true,\"User\":\"Username\"}");
 
   rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_missing_token, g_callback_userdata);
 
@@ -827,7 +827,7 @@ static void test_login_with_password_async(void)
   user = rc_client_get_user_info(g_client);
   ASSERT_PTR_NULL(user);
 
-  async_api_response("r=login&u=User&p=Pa%24%24word",
+  async_api_response("r=login2&u=User&p=Pa%24%24word",
 	    "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
 
   user = rc_client_get_user_info(g_client);
@@ -857,7 +857,7 @@ static void test_login_with_password_async_aborted(void)
 
   rc_client_abort_async(g_client, handle);
 
-  async_api_response("r=login&u=User&p=Pa%24%24word",
+  async_api_response("r=login2&u=User&p=Pa%24%24word",
     "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
 
   user = rc_client_get_user_info(g_client);
@@ -934,7 +934,7 @@ static void test_logout_during_login(void)
   rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_login_aborted, g_callback_userdata);
   rc_client_logout(g_client);
 
-  async_api_response("r=login&u=User&p=Pa%24%24word",
+  async_api_response("r=login2&u=User&p=Pa%24%24word",
     "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
 
   ASSERT_PTR_NULL(rc_client_get_user_info(g_client));
@@ -1283,7 +1283,7 @@ static void test_load_game_async_login(void)
   assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
 
   /* login completion will trigger process to continue */
-  async_api_response("r=login&u=Username&p=Pa%24%24word",
+  async_api_response("r=login2&u=Username&p=Pa%24%24word",
 	    "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
   assert_api_pending("r=patch&u=Username&t=ApiToken&g=1234");
 
@@ -1322,7 +1322,7 @@ static void test_load_game_async_login_with_incorrect_password(void)
   assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
 
   /* login failure will trigger process to continue */
-  async_api_error("r=login&u=Username&p=Pa%24%24word",
+  async_api_error("r=login2&u=Username&p=Pa%24%24word",
       "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\","
       "\"Status\":401,\"Code\":\"invalid_credentials\"}", 401);
   assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
@@ -1349,7 +1349,7 @@ static void test_load_game_async_login_logout(void)
 
   /* logout will cancel login and allow game load to proceed with failure */
   rc_client_logout(g_client);
-  async_api_response("r=login&u=Username&p=Pa%24%24word",
+  async_api_response("r=login2&u=Username&p=Pa%24%24word",
     "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
   assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
 
@@ -1377,7 +1377,7 @@ static void test_load_game_async_login_aborted(void)
 
   /* login abort will trigger game load process to continue */
   rc_client_abort_async(g_client, handle);
-  async_api_response("r=login&u=Username&p=Pa%24%24word",
+  async_api_response("r=login2&u=Username&p=Pa%24%24word",
     "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
   assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
 

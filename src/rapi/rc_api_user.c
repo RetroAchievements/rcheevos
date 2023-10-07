@@ -16,7 +16,7 @@ int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_requ
     return RC_INVALID_STATE;
 
   rc_url_builder_init(&builder, &request->buffer, 48);
-  rc_url_builder_append_str_param(&builder, "r", "login");
+  rc_url_builder_append_str_param(&builder, "r", "login2");
   rc_url_builder_append_str_param(&builder, "u", api_params->username);
 
   if (api_params->password && api_params->password[0])
