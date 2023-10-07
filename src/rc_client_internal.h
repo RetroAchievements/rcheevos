@@ -11,6 +11,10 @@ extern "C" {
 #include "rc_runtime.h"
 #include "rc_runtime_types.h"
 
+/*****************************************************************************\
+| Callbacks                                                                   |
+\*****************************************************************************/
+
 struct rc_api_fetch_game_data_response_t;
 typedef void (*rc_client_post_process_game_data_response_t)(const rc_api_server_response_t* server_response,
               struct rc_api_fetch_game_data_response_t* game_data_response, rc_client_t* client, void* userdata);
@@ -43,6 +47,10 @@ typedef struct rc_client_scheduled_callback_data_t
 } rc_client_scheduled_callback_data_t;
 
 void rc_client_schedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* scheduled_callback);
+
+/*****************************************************************************\
+| Achievements                                                                |
+\*****************************************************************************/
 
 enum {
   RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_NONE = 0,
@@ -83,6 +91,10 @@ typedef struct rc_client_progress_tracker_t {
   uint8_t action;
 } rc_client_progress_tracker_t;
 
+/*****************************************************************************\
+| Leaderboard Trackers                                                        |
+\*****************************************************************************/
+
 enum {
   RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_NONE = 0,
   RC_CLIENT_LEADERBOARD_TRACKER_PENDING_EVENT_UPDATE = (1 << 1),
@@ -102,6 +114,10 @@ typedef struct rc_client_leaderboard_tracker_info_t {
   uint8_t reference_count;
   uint8_t value_from_hits;
 } rc_client_leaderboard_tracker_info_t;
+
+/*****************************************************************************\
+| Leaderboards                                                                |
+\*****************************************************************************/
 
 enum {
   RC_CLIENT_LEADERBOARD_PENDING_EVENT_NONE = 0,
@@ -127,17 +143,16 @@ typedef struct rc_client_leaderboard_info_t {
   uint8_t hidden;
 } rc_client_leaderboard_info_t;
 
+uint8_t rc_client_map_leaderboard_format(int format);
+
+/*****************************************************************************\
+| Subsets                                                                     |
+\*****************************************************************************/
+
 enum {
   RC_CLIENT_SUBSET_PENDING_EVENT_NONE = 0,
   RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT = (1 << 1),
   RC_CLIENT_SUBSET_PENDING_EVENT_LEADERBOARD = (1 << 2)
-};
-
-enum {
-  RC_CLIENT_GAME_PENDING_EVENT_NONE = 0,
-  RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER = (1 << 1),
-  RC_CLIENT_GAME_PENDING_EVENT_UPDATE_ACTIVE_ACHIEVEMENTS = (1 << 2),
-  RC_CLIENT_GAME_PENDING_EVENT_PROGRESS_TRACKER = (1 << 3)
 };
 
 typedef struct rc_client_subset_info_t {
@@ -160,6 +175,12 @@ typedef struct rc_client_subset_info_t {
   uint8_t pending_events;
 } rc_client_subset_info_t;
 
+void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata);
+
+/*****************************************************************************\
+| Game                                                                        |
+\*****************************************************************************/
+
 typedef struct rc_client_game_hash_t {
   char hash[33];
   uint32_t game_id;
@@ -173,6 +194,13 @@ typedef struct rc_client_media_hash_t {
   struct rc_client_media_hash_t* next;
   uint32_t path_djb2;
 } rc_client_media_hash_t;
+
+enum {
+  RC_CLIENT_GAME_PENDING_EVENT_NONE = 0,
+  RC_CLIENT_GAME_PENDING_EVENT_LEADERBOARD_TRACKER = (1 << 1),
+  RC_CLIENT_GAME_PENDING_EVENT_UPDATE_ACTIVE_ACHIEVEMENTS = (1 << 2),
+  RC_CLIENT_GAME_PENDING_EVENT_PROGRESS_TRACKER = (1 << 3)
+};
 
 typedef struct rc_client_game_info_t {
   rc_client_game_t public_;
@@ -190,17 +218,21 @@ typedef struct rc_client_game_info_t {
   uint8_t waiting_for_reset;
   uint8_t pending_events;
 
-  rc_api_buffer_t buffer;
+  rc_buffer_t buffer;
 } rc_client_game_info_t;
 
+/*****************************************************************************\
+| Client                                                                      |
+\*****************************************************************************/
+
 enum {
-   RC_CLIENT_LOAD_STATE_NONE,
-   RC_CLIENT_LOAD_STATE_IDENTIFYING_GAME,
-   RC_CLIENT_LOAD_STATE_AWAIT_LOGIN,
-   RC_CLIENT_LOAD_STATE_FETCHING_GAME_DATA,
-   RC_CLIENT_LOAD_STATE_STARTING_SESSION,
-   RC_CLIENT_LOAD_STATE_DONE,
-   RC_CLIENT_LOAD_STATE_UNKNOWN_GAME
+  RC_CLIENT_LOAD_STATE_NONE,
+  RC_CLIENT_LOAD_STATE_IDENTIFYING_GAME,
+  RC_CLIENT_LOAD_STATE_AWAIT_LOGIN,
+  RC_CLIENT_LOAD_STATE_FETCHING_GAME_DATA,
+  RC_CLIENT_LOAD_STATE_STARTING_SESSION,
+  RC_CLIENT_LOAD_STATE_DONE,
+  RC_CLIENT_LOAD_STATE_UNKNOWN_GAME
 };
 
 enum {
@@ -232,7 +264,7 @@ struct rc_client_load_state_t;
 
 typedef struct rc_client_state_t {
   rc_mutex_t mutex;
-  rc_api_buffer_t buffer;
+  rc_buffer_t buffer;
 
   rc_client_scheduled_callback_data_t* scheduled_callbacks;
 
@@ -260,6 +292,10 @@ struct rc_client_t {
 
   rc_client_state_t state;
 };
+
+/*****************************************************************************\
+| Helpers                                                                     |
+\*****************************************************************************/
 
 #ifdef RC_NO_VARIADIC_MACROS
  void RC_CLIENT_LOG_ERR_FORMATTED(const rc_client_t* client, const char* format, ...);
@@ -298,8 +334,6 @@ enum {
 };
 
 void rc_client_set_legacy_peek(rc_client_t* client, int method);
-
-void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata);
 
 void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 

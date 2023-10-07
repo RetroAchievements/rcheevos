@@ -3,7 +3,7 @@
 
 #include "../src/rapi/rc_api_common.h"
 #include "../test_framework.h"
-#include "rc_compat.h"
+#include "../rc_compat.h"
 #include "rc_consoles.h"
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"

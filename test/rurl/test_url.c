@@ -1,6 +1,6 @@
 #include "rc_url.h"
 
-#include "../rcheevos/rc_compat.h"
+#include "../rc_compat.h"
 #include "../test_framework.h"
 
 #include <stdlib.h>

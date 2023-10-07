@@ -1,6 +1,6 @@
 #include "data.h"
 
-#include "../src/rcheevos/rc_compat.h"
+#include "../src/rc_compat.h"
 
 #include <stdlib.h>
 #include <string.h>

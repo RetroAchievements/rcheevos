@@ -280,6 +280,9 @@ int rc_test_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State* L) 
 }
 
 void rc_reset_trigger(rc_trigger_t* self) {
+  if (!self)
+    return;
+
   rc_reset_trigger_hitcounts(self);
 
   self->state = RC_TRIGGER_STATE_WAITING;
