@@ -1,10 +1,10 @@
-#include "rc_libretro.h"
+#include "../rc_libretro.h"
 
-#include "rc_compat.h"
+#include "../rc_compat.h"
 #include "rc_consoles.h"
 
-#include "../test_framework.h"
-#include "../rhash/mock_filereader.h"
+#include "test_framework.h"
+#include "rhash/mock_filereader.h"
 
 static void* retro_memory_data[4] = { NULL, NULL, NULL, NULL };
 static size_t retro_memory_size[4] = { 0, 0, 0, 0 };

@@ -4,10 +4,11 @@
 #include "rc_api_runtime.h"
 #include "rc_api_user.h"
 #include "rc_consoles.h"
-#include "rc_internal.h"
 #include "rc_hash.h"
 
-#include "../rapi/rc_api_common.h"
+#include "rapi/rc_api_common.h"
+
+#include "rcheevos/rc_internal.h"
 
 #include <stdarg.h>
 
@@ -97,7 +98,7 @@ rc_client_t* rc_client_create(rc_client_read_memory_func_t read_memory_function,
 
   rc_mutex_init(&client->state.mutex);
 
-  rc_buf_init(&client->state.buffer);
+  rc_buffer_init(&client->state.buffer);
 
   return client;
 }
@@ -109,7 +110,7 @@ void rc_client_destroy(rc_client_t* client)
 
   rc_client_unload_game(client);
 
-  rc_buf_destroy(&client->state.buffer);
+  rc_buffer_destroy(&client->state.buffer);
 
   rc_mutex_destroy(&client->state.mutex);
 
@@ -382,11 +383,15 @@ static int rc_client_should_retry(const rc_api_server_response_t* server_respons
 {
   switch (server_response->http_status_code) {
     case 502: /* 502 Bad Gateway */
-      /* nginx connection pool full. retry */
+      /* nginx connection pool full */
       return 1;
 
     case 503: /* 503 Service Temporarily Unavailable */
-      /* site is in maintenance mode. retry */
+      /* site is in maintenance mode */
+      return 1;
+
+    case 504: /* 504 Gateway Timeout */
+      /* timeout between web server and database server */
       return 1;
 
     case 429: /* 429 Too Many Requests */
@@ -477,14 +482,14 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
       rc_client_begin_fetch_game_data(load_state);
   }
   else {
-    client->user.username = rc_buf_strcpy(&client->state.buffer, login_response.username);
+    client->user.username = rc_buffer_strcpy(&client->state.buffer, login_response.username);
 
     if (strcmp(login_response.username, login_response.display_name) == 0)
       client->user.display_name = client->user.username;
     else
-      client->user.display_name = rc_buf_strcpy(&client->state.buffer, login_response.display_name);
+      client->user.display_name = rc_buffer_strcpy(&client->state.buffer, login_response.display_name);
 
-    client->user.token = rc_buf_strcpy(&client->state.buffer, login_response.api_token);
+    client->user.token = rc_buffer_strcpy(&client->state.buffer, login_response.api_token);
     client->user.score = login_response.score;
     client->user.score_softcore = login_response.score_softcore;
     client->user.num_unread_messages = login_response.num_unread_messages;
@@ -705,7 +710,7 @@ static void rc_client_free_game(rc_client_game_info_t* game)
 {
   rc_runtime_destroy(&game->runtime);
 
-  rc_buf_destroy(&game->buffer);
+  rc_buffer_destroy(&game->buffer);
 
   free(game);
 }
@@ -1238,7 +1243,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
       if (load_state->hash->hash[0] != '[') {
         if (load_state->client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_LOCKED) {
           /* schedule the periodic ping */
-          rc_client_scheduled_callback_data_t* callback_data = rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_scheduled_callback_data_t));
+          rc_client_scheduled_callback_data_t* callback_data = rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_scheduled_callback_data_t));
           memset(callback_data, 0, sizeof(*callback_data));
           callback_data->callback = rc_client_ping;
           callback_data->related_id = load_state->game->public_.id;
@@ -1342,7 +1347,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
   rc_client_achievement_info_t* achievements;
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* scan;
-  rc_api_buffer_t* buffer;
+  rc_buffer_t* buffer;
   rc_parse_state_t parse;
   const char* memaddr;
   size_t size;
@@ -1375,12 +1380,12 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
       + sizeof(rc_trigger_t) + sizeof(rc_condset_t) * 2 /* trigger container */
       + sizeof(rc_condition_t) * 8 /* assume average trigger length of 8 conditions */
       + sizeof(rc_client_achievement_info_t);
-  rc_buf_reserve(&load_state->game->buffer, size * num_achievements);
+  rc_buffer_reserve(&load_state->game->buffer, size * num_achievements);
 
   /* allocate the achievement array */
   size = sizeof(rc_client_achievement_info_t) * num_achievements;
   buffer = &load_state->game->buffer;
-  achievement = achievements = rc_buf_alloc(buffer, size);
+  achievement = achievements = rc_buffer_alloc(buffer, size);
   memset(achievements, 0, size);
 
   /* copy the achievement data */
@@ -1388,8 +1393,8 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE && !load_state->client->state.unofficial_enabled)
       continue;
 
-    achievement->public_.title = rc_buf_strcpy(buffer, read->title);
-    achievement->public_.description = rc_buf_strcpy(buffer, read->description);
+    achievement->public_.title = rc_buffer_strcpy(buffer, read->title);
+    achievement->public_.description = rc_buffer_strcpy(buffer, read->description);
     snprintf(achievement->public_.badge_name, sizeof(achievement->public_.badge_name), "%s", read->badge_name);
     achievement->public_.id = read->id;
     achievement->public_.points = read->points;
@@ -1407,7 +1412,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     }
     else {
       /* populate the item, using the communal memrefs pool */
-      rc_init_parse_state(&parse, rc_buf_reserve(buffer, trigger_size), NULL, 0);
+      rc_init_parse_state(&parse, rc_buffer_reserve(buffer, trigger_size), NULL, 0);
       parse.first_memref = &load_state->game->runtime.memrefs;
       parse.variables = &load_state->game->runtime.variables;
       achievement->trigger = RC_ALLOC(rc_trigger_t, &parse);
@@ -1419,7 +1424,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
         achievement->public_.bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED;
       }
       else {
-        rc_buf_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
+        rc_buffer_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
         achievement->trigger->memrefs = NULL; /* memrefs managed by runtime */
       }
 
@@ -1438,7 +1443,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
       }
     }
     if (!achievement->author)
-      achievement->author = rc_buf_strcpy(buffer, read->author);
+      achievement->author = rc_buffer_strcpy(buffer, read->author);
 
     ++achievement;
   }
@@ -1446,9 +1451,9 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
   subset->achievements = achievements;
 }
 
-static uint8_t rc_client_map_leaderboard_format(const rc_api_leaderboard_definition_t* defn)
+uint8_t rc_client_map_leaderboard_format(int format)
 {
-  switch (defn->format) {
+  switch (format) {
     case RC_FORMAT_SECONDS:
     case RC_FORMAT_CENTISECS:
     case RC_FORMAT_MINUTES:
@@ -1479,7 +1484,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
   const rc_api_leaderboard_definition_t* stop;
   rc_client_leaderboard_info_t* leaderboards;
   rc_client_leaderboard_info_t* leaderboard;
-  rc_api_buffer_t* buffer;
+  rc_buffer_t* buffer;
   rc_parse_state_t parse;
   const char* memaddr;
   const char* ptr;
@@ -1500,22 +1505,22 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
       + (sizeof(rc_value_t) + sizeof(rc_condset_t)) /* value */
       + sizeof(rc_condition_t) * 4 * 4 /* assume average of 4 conditions in each start/submit/cancel/value */
       + sizeof(rc_client_leaderboard_info_t);
-  rc_buf_reserve(&load_state->game->buffer, size * num_leaderboards);
+  rc_buffer_reserve(&load_state->game->buffer, size * num_leaderboards);
 
   /* allocate the achievement array */
   size = sizeof(rc_client_leaderboard_info_t) * num_leaderboards;
   buffer = &load_state->game->buffer;
-  leaderboard = leaderboards = rc_buf_alloc(buffer, size);
+  leaderboard = leaderboards = rc_buffer_alloc(buffer, size);
   memset(leaderboards, 0, size);
 
   /* copy the achievement data */
   read = leaderboard_definitions;
   stop = read + num_leaderboards;
   do {
-    leaderboard->public_.title = rc_buf_strcpy(buffer, read->title);
-    leaderboard->public_.description = rc_buf_strcpy(buffer, read->description);
+    leaderboard->public_.title = rc_buffer_strcpy(buffer, read->title);
+    leaderboard->public_.description = rc_buffer_strcpy(buffer, read->description);
     leaderboard->public_.id = read->id;
-    leaderboard->public_.format = rc_client_map_leaderboard_format(read);
+    leaderboard->public_.format = rc_client_map_leaderboard_format(read->format);
     leaderboard->public_.lower_is_better = read->lower_is_better;
     leaderboard->format = (uint8_t)read->format;
     leaderboard->hidden = (uint8_t)read->hidden;
@@ -1540,7 +1545,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
     }
     else {
       /* populate the item, using the communal memrefs pool */
-      rc_init_parse_state(&parse, rc_buf_reserve(buffer, lboard_size), NULL, 0);
+      rc_init_parse_state(&parse, rc_buffer_reserve(buffer, lboard_size), NULL, 0);
       parse.first_memref = &load_state->game->runtime.memrefs;
       parse.variables = &load_state->game->runtime.variables;
       leaderboard->lboard = RC_ALLOC(rc_lboard_t, &parse);
@@ -1551,7 +1556,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
         leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
       }
       else {
-        rc_buf_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
+        rc_buffer_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
         leaderboard->lboard->memrefs = NULL; /* memrefs managed by runtime */
       }
 
@@ -1572,7 +1577,7 @@ static const char* rc_client_subset_extract_title(rc_client_game_info_t* game, c
     const char* start = subset_prefix + 10;
     const char* stop = strstr(start, "]");
     const size_t len = stop - start;
-    char* result = (char*)rc_buf_alloc(&game->buffer, len + 1);
+    char* result = (char*)rc_buffer_alloc(&game->buffer, len + 1);
 
     memcpy(result, start, len);
     result[len] = '\0';
@@ -1611,7 +1616,7 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
   else {
     rc_client_subset_info_t* subset;
 
-    subset = (rc_client_subset_info_t*)rc_buf_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
+    subset = (rc_client_subset_info_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
     memset(subset, 0, sizeof(*subset));
     subset->public_.id = fetch_game_data_response.id;
     subset->active = 1;
@@ -1643,7 +1648,7 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
     if (!load_state->game->subsets) {
       /* core set */
       rc_mutex_lock(&load_state->client->state.mutex);
-      load_state->game->public_.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
+      load_state->game->public_.title = rc_buffer_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
       load_state->game->subsets = subset;
       load_state->game->public_.badge_name = subset->public_.badge_name;
       load_state->game->public_.console_id = fetch_game_data_response.console_id;
@@ -1675,7 +1680,7 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
            }
         }
 
-        subset->public_.title = rc_buf_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
+        subset->public_.title = rc_buffer_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
       }
 
       /* append to subset list */
@@ -1736,7 +1741,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
         count++;
       }
 
-      ptr = (char*)rc_buf_alloc(&load_state->game->buffer, size);
+      ptr = (char*)rc_buffer_alloc(&load_state->game->buffer, size);
       ptr += size - 1;
       *ptr = '\0';
       game_hash = load_state->game->media_hash->game_hash;
@@ -1869,7 +1874,7 @@ rc_client_game_hash_t* rc_client_find_game_hash(rc_client_t* client, const char*
   }
 
   if (!game_hash) {
-    game_hash = rc_buf_alloc(&client->state.buffer, sizeof(rc_client_game_hash_t));
+    game_hash = rc_buffer_alloc(&client->state.buffer, sizeof(rc_client_game_hash_t));
     memset(game_hash, 0, sizeof(*game_hash));
     snprintf(game_hash->hash, sizeof(game_hash->hash), "%s", hash);
     game_hash->game_id = RC_CLIENT_UNKNOWN_GAME_ID;
@@ -1901,7 +1906,7 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
         return NULL;
       }
 
-      rc_buf_init(&load_state->game->buffer);
+      rc_buffer_init(&load_state->game->buffer);
       rc_runtime_init(&load_state->game->runtime);
     }
   }
@@ -1919,7 +1924,7 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
 
   if (file_path) {
     rc_client_media_hash_t* media_hash =
-        (rc_client_media_hash_t*)rc_buf_alloc(&load_state->game->buffer, sizeof(*media_hash));
+        (rc_client_media_hash_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(*media_hash));
     media_hash->game_hash = load_state->hash;
     media_hash->path_djb2 = rc_djb2(file_path);
     media_hash->next = load_state->game->media_hash;
@@ -2314,7 +2319,7 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
 
     game_hash = rc_client_find_game_hash(client, hash);
 
-    media_hash = (rc_client_media_hash_t*)rc_buf_alloc(&game->buffer, sizeof(*media_hash));
+    media_hash = (rc_client_media_hash_t*)rc_buffer_alloc(&game->buffer, sizeof(*media_hash));
     media_hash->game_hash = game_hash;
     media_hash->path_djb2 = path_djb2;
 
@@ -2528,7 +2533,7 @@ static const char* rc_client_get_subset_achievement_bucket_label(uint8_t bucket_
 
   label = rc_client_get_achievement_bucket_label(bucket_type);
   new_label_len = strlen(subset->public_.title) + strlen(label) + 4;
-  new_label = (char*)rc_buf_alloc(&game->buffer, new_label_len);
+  new_label = (char*)rc_buffer_alloc(&game->buffer, new_label_len);
   snprintf(new_label, new_label_len, "%s - %s", subset->public_.title, label);
 
   *ptr = new_label;
@@ -3131,7 +3136,7 @@ static const char* rc_client_get_subset_leaderboard_bucket_label(uint8_t bucket_
 
   label = rc_client_get_leaderboard_bucket_label(bucket_type);
   new_label_len = strlen(subset->public_.title) + strlen(label) + 4;
-  new_label = (char*)rc_buf_alloc(&game->buffer, new_label_len);
+  new_label = (char*)rc_buffer_alloc(&game->buffer, new_label_len);
   snprintf(new_label, new_label_len, "%s - %s", subset->public_.title, label);
 
   *ptr = new_label;
@@ -3392,7 +3397,7 @@ static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, 
   if (!available_tracker) {
     rc_client_leaderboard_tracker_info_t** next = &game->leaderboard_trackers;
 
-    available_tracker = (rc_client_leaderboard_tracker_info_t*)rc_buf_alloc(&game->buffer, sizeof(*available_tracker));
+    available_tracker = (rc_client_leaderboard_tracker_info_t*)rc_buffer_alloc(&game->buffer, sizeof(*available_tracker));
     memset(available_tracker, 0, sizeof(*available_tracker));
     available_tracker->public_.id = 1;
 
@@ -4149,7 +4154,7 @@ static void rc_client_do_frame_update_progress_tracker(rc_client_t* client, rc_c
 {
   if (!game->progress_tracker.hide_callback) {
     game->progress_tracker.hide_callback = (rc_client_scheduled_callback_data_t*)
-      rc_buf_alloc(&game->buffer, sizeof(rc_client_scheduled_callback_data_t));
+      rc_buffer_alloc(&game->buffer, sizeof(rc_client_scheduled_callback_data_t));
     memset(game->progress_tracker.hide_callback, 0, sizeof(rc_client_scheduled_callback_data_t));
     game->progress_tracker.hide_callback->callback = rc_client_progress_tracker_timer_elapsed;
   }
