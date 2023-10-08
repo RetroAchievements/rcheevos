@@ -1042,6 +1042,86 @@ static void rc_client_activate_achievements(rc_client_game_info_t* game, rc_clie
   rc_client_toggle_hardcore_achievements(game, client, active_bit);
 }
 
+static void rc_client_update_legacy_runtime_leaderboards(rc_client_game_info_t* game, uint32_t active_count)
+{
+  if (active_count > 0)
+  {
+    rc_client_leaderboard_info_t* leaderboard;
+    rc_client_leaderboard_info_t* stop;
+    rc_client_subset_info_t* subset;
+    rc_runtime_lboard_t* lboard;
+
+    if (active_count <= game->runtime.lboard_capacity)
+    {
+      if (active_count != 0)
+        memset(game->runtime.lboards, 0, active_count * sizeof(rc_runtime_lboard_t));
+    }
+    else
+    {
+      if (game->runtime.lboards)
+        free(game->runtime.lboards);
+
+      game->runtime.lboard_capacity = active_count;
+      game->runtime.lboards = (rc_runtime_lboard_t*)calloc(1, active_count * sizeof(rc_runtime_lboard_t));
+    }
+
+    lboard = game->runtime.lboards;
+
+    subset = game->subsets;
+    for (; subset; subset = subset->next)
+    {
+      if (!subset->active)
+        continue;
+
+      leaderboard = subset->leaderboards;
+      stop = leaderboard + subset->public_.num_leaderboards;
+      for (; leaderboard < stop; ++leaderboard)
+      {
+        if (leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_ACTIVE ||
+            leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING)
+        {
+          lboard->id = leaderboard->public_.id;
+          memcpy(lboard->md5, leaderboard->md5, 16);
+          lboard->lboard = leaderboard->lboard;
+          ++lboard;
+        }
+      }
+    }
+  }
+
+  game->runtime.lboard_count = active_count;
+}
+
+void rc_client_update_active_leaderboards(rc_client_game_info_t* game)
+{
+  rc_client_leaderboard_info_t* leaderboard;
+  rc_client_leaderboard_info_t* stop;
+
+  unsigned active_count = 0;
+  rc_client_subset_info_t* subset = game->subsets;
+  for (; subset; subset = subset->next)
+  {
+    if (!subset->active)
+      continue;
+
+    leaderboard = subset->leaderboards;
+    stop = leaderboard + subset->public_.num_leaderboards;
+
+    for (; leaderboard < stop; ++leaderboard)
+    {
+      switch (leaderboard->public_.state)
+      {
+        case RC_CLIENT_LEADERBOARD_STATE_ACTIVE:
+        case RC_CLIENT_LEADERBOARD_STATE_TRACKING:
+          ++active_count;
+          break;
+      }
+    }
+  }
+
+  rc_client_update_legacy_runtime_leaderboards(game, active_count);
+}
+
 static void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_client_t* client)
 {
   rc_client_leaderboard_info_t* leaderboard;
@@ -1079,43 +1159,7 @@ static void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_clie
     }
   }
 
-  if (active_count > 0) {
-    rc_runtime_lboard_t* lboard;
-
-    if (active_count <= game->runtime.lboard_capacity) {
-      if (active_count != 0)
-        memset(game->runtime.lboards, 0, active_count * sizeof(rc_runtime_lboard_t));
-    }
-    else {
-      if (game->runtime.lboards)
-        free(game->runtime.lboards);
-
-      game->runtime.lboard_capacity = active_count;
-      game->runtime.lboards = (rc_runtime_lboard_t*)calloc(1, active_count * sizeof(rc_runtime_lboard_t));
-    }
-
-    lboard = game->runtime.lboards;
-
-    subset = game->subsets;
-    for (; subset; subset = subset->next) {
-      if (!subset->active)
-        continue;
-
-      leaderboard = subset->leaderboards;
-      stop = leaderboard + subset->public_.num_leaderboards;
-      for (; leaderboard < stop; ++leaderboard) {
-        if (leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_ACTIVE ||
-            leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING) {
-          lboard->id = leaderboard->public_.id;
-          memcpy(lboard->md5, leaderboard->md5, 16);
-          lboard->lboard = leaderboard->lboard;
-          ++lboard;
-        }
-      }
-    }
-  }
-
-  game->runtime.lboard_count = active_count;
+  rc_client_update_legacy_runtime_leaderboards(game, active_count);
 }
 
 static void rc_client_deactivate_leaderboards(rc_client_game_info_t* game, rc_client_t* client)

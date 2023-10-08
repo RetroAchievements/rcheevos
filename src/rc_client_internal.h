@@ -222,6 +222,7 @@ typedef struct rc_client_game_info_t {
 } rc_client_game_info_t;
 
 void rc_client_update_active_achievements(rc_client_game_info_t* game);
+void rc_client_update_active_leaderboards(rc_client_game_info_t* game);
 
 /*****************************************************************************\
 | Client                                                                      |
