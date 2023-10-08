@@ -959,7 +959,7 @@ static uint32_t rc_client_subset_count_active_achievements(const rc_client_subse
   return active_count;
 }
 
-static void rc_client_update_active_achievements(rc_client_game_info_t* game)
+void rc_client_update_active_achievements(rc_client_game_info_t* game)
 {
   uint32_t active_count = 0;
   rc_client_subset_info_t* subset = game->subsets;

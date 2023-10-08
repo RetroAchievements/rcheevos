@@ -221,6 +221,8 @@ typedef struct rc_client_game_info_t {
   rc_buffer_t buffer;
 } rc_client_game_info_t;
 
+void rc_client_update_active_achievements(rc_client_game_info_t* game);
+
 /*****************************************************************************\
 | Client                                                                      |
 \*****************************************************************************/
