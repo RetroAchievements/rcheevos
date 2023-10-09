@@ -1734,6 +1734,64 @@ static void test_unload_game_hides_ui(void)
   ASSERT_NUM_EQUALS(event_count, 0);
 }
 
+static void test_unload_game_while_identifying_game(void)
+{
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+  reset_mock_api_handlers();
+
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  rc_client_unload_game(g_client);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_unload_game_while_fetching_game_data(void)
+{
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+  reset_mock_api_handlers();
+
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  rc_client_unload_game(g_client);
+
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_unload_game_while_starting_session(void)
+{
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+  reset_mock_api_handlers();
+
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+
+  rc_client_unload_game(g_client);
+
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- identify and load game ----- */
 
 static void rc_client_callback_expect_data_or_file_path_required(int result, const char* error_message, rc_client_t* client, void* callback_data)
@@ -7974,6 +8032,9 @@ void test_client(void) {
   /* unload game */
   TEST(test_unload_game);
   TEST(test_unload_game_hides_ui);
+  TEST(test_unload_game_while_identifying_game);
+  TEST(test_unload_game_while_fetching_game_data);
+  TEST(test_unload_game_while_starting_session);
 
   /* identify and load game */
   TEST(test_identify_and_load_game_required_fields);

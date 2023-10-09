@@ -2163,7 +2163,12 @@ void rc_client_unload_game(rc_client_t* client)
 
   game = client->game;
   client->game = NULL;
-  client->state.load = NULL;
+
+  if (client->state.load) {
+    /* this mimics rc_client_abort_async without nesting the lock */
+    client->state.load->async_handle.aborted = 1;
+    client->state.load = NULL;
+  }
 
   if (client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_LOCKED)
     client->state.spectator_mode = RC_CLIENT_SPECTATOR_MODE_ON;
