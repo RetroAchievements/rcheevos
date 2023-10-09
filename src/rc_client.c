@@ -27,6 +27,12 @@ struct rc_client_async_handle_t {
   uint8_t aborted;
 };
 
+enum {
+  RC_CLIENT_ASYNC_NOT_ABORTED = 0,
+  RC_CLIENT_ASYNC_ABORTED = 1,
+  RC_CLIENT_ASYNC_DESTROYED = 2
+};
+
 typedef struct rc_client_generic_callback_data_t {
   rc_client_t* client;
   rc_client_callback_t callback;
@@ -107,6 +113,21 @@ void rc_client_destroy(rc_client_t* client)
 {
   if (!client)
     return;
+
+  rc_mutex_lock(&client->state.mutex);
+  {
+    int i;
+    for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
+      if (client->state.async_handles[i])
+        client->state.async_handles[i]->aborted = RC_CLIENT_ASYNC_DESTROYED;
+    }
+
+    if (client->state.load) {
+      client->state.load->async_handle.aborted = RC_CLIENT_ASYNC_DESTROYED;
+      client->state.load = NULL;
+    }
+  }
+  rc_mutex_unlock(&client->state.mutex);
 
   rc_client_unload_game(client);
 
@@ -272,13 +293,39 @@ void rc_client_set_get_time_millisecs_function(rc_client_t* client, rc_get_time_
   client->callbacks.get_time_millisecs = handler ? handler : rc_client_clock_get_now_millisecs;
 }
 
-static int rc_client_async_handle_aborted(rc_client_t* client, rc_client_async_handle_t* async_handle)
+static void rc_client_begin_async(rc_client_t* client, rc_client_async_handle_t* async_handle)
 {
-  int aborted;
+  int i;
 
   rc_mutex_lock(&client->state.mutex);
-  aborted = async_handle->aborted;
+  for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
+    if (!client->state.async_handles[i]) {
+      client->state.async_handles[i] = async_handle;
+      break;
+    }
+  }
   rc_mutex_unlock(&client->state.mutex);
+}
+
+static int rc_client_end_async(rc_client_t* client, rc_client_async_handle_t* async_handle)
+{
+  int aborted = async_handle->aborted;
+
+  /* if client was destroyed, mutex doesn't exist and we don't need to remove the handle from the collection */
+  if (aborted != RC_CLIENT_ASYNC_DESTROYED) {
+    int i;
+
+    rc_mutex_lock(&client->state.mutex);
+    for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
+      if (client->state.async_handles[i] == async_handle) {
+        client->state.async_handles[i] = NULL;
+        break;
+      }
+    }
+    aborted = async_handle->aborted;
+
+    rc_mutex_unlock(&client->state.mutex);
+  }
 
   return aborted;
 }
@@ -287,7 +334,7 @@ void rc_client_abort_async(rc_client_t* client, rc_client_async_handle_t* async_
 {
   if (async_handle && client) {
     rc_mutex_lock(&client->state.mutex);
-    async_handle->aborted = 1;
+    async_handle->aborted = RC_CLIENT_ASYNC_ABORTED;
     rc_mutex_unlock(&client->state.mutex);
   }
 }
@@ -450,8 +497,11 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
   const char* error_message;
   int result;
 
-  if (rc_client_async_handle_aborted(client, &login_callback_data->async_handle)) {
-    rc_client_logout(client); /* logout will reset the user state and call the load game callback */
+  result = rc_client_end_async(client, &login_callback_data->async_handle);
+  if (result) {
+    if (result != RC_CLIENT_ASYNC_DESTROYED)
+      rc_client_logout(client); /* logout will reset the user state and call the load game callback */
+
     free(login_callback_data);
     return;
   }
@@ -547,7 +597,9 @@ static rc_client_async_handle_t* rc_client_begin_login(rc_client_t* client,
   callback_data->callback = callback;
   callback_data->callback_userdata = callback_userdata;
 
+  rc_client_begin_async(client, &callback_data->async_handle);
   client->callbacks.server_call(&request, rc_client_login_callback, callback_data, client);
+
   rc_api_destroy_request(&request);
 
   return &callback_data->async_handle;
@@ -1322,10 +1374,13 @@ static void rc_client_start_session_callback(const rc_api_server_response_t* ser
   const char* error_message;
   int result;
 
-  if (rc_client_async_handle_aborted(load_state->client, &load_state->async_handle)) {
-    rc_client_t* client = load_state->client;
-    rc_client_load_aborted(load_state);
-    RC_CLIENT_LOG_VERBOSE(client, "Load aborted while starting session");
+  result = rc_client_end_async(load_state->client, &load_state->async_handle);
+  if (result) {
+    if (result != RC_CLIENT_ASYNC_DESTROYED) {
+      rc_client_t* client = load_state->client;
+      rc_client_load_aborted(load_state);
+      RC_CLIENT_LOG_VERBOSE(client, "Load aborted while starting session");
+    }
     return;
   }
 
@@ -1377,6 +1432,7 @@ static void rc_client_begin_start_session(rc_client_load_state_t* load_state)
   else {
     rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_STARTING_SESSION, 1);
     RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Starting session for game %u", start_session_params.game_id);
+    rc_client_begin_async(client, &load_state->async_handle);
     client->callbacks.server_call(&start_session_request, rc_client_start_session_callback, load_state, client);
     rc_api_destroy_request(&start_session_request);
   }
@@ -1639,10 +1695,13 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
   const char* error_message;
   int result;
 
-  if (rc_client_async_handle_aborted(load_state->client, &load_state->async_handle)) {
-    rc_client_t* client = load_state->client;
-    rc_client_load_aborted(load_state);
-    RC_CLIENT_LOG_VERBOSE(client, "Load aborted while fetching game data");
+  result = rc_client_end_async(load_state->client, &load_state->async_handle);
+  if (result) {
+    if (result != RC_CLIENT_ASYNC_DESTROYED) {
+      rc_client_t* client = load_state->client;
+      rc_client_load_aborted(load_state);
+      RC_CLIENT_LOG_VERBOSE(client, "Load aborted while fetching game data");
+    }
     return;
   }
 
@@ -1860,7 +1919,9 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_FETCHING_GAME_DATA, 1);
 
   RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Fetching data for game %u", fetch_game_data_request.game_id);
+  rc_client_begin_async(client, &load_state->async_handle);
   client->callbacks.server_call(&request, rc_client_fetch_game_data_callback, load_state, client);
+
   rc_api_destroy_request(&request);
 }
 
@@ -1873,9 +1934,12 @@ static void rc_client_identify_game_callback(const rc_api_server_response_t* ser
   const char* error_message;
   int result;
 
-  if (rc_client_async_handle_aborted(client, &load_state->async_handle)) {
-    rc_client_load_aborted(load_state);
-    RC_CLIENT_LOG_VERBOSE(client, "Load aborted during game identification");
+  result = rc_client_end_async(client, &load_state->async_handle);
+  if (result) {
+    if (result != RC_CLIENT_ASYNC_DESTROYED) {
+      rc_client_load_aborted(load_state);
+      RC_CLIENT_LOG_VERBOSE(client, "Load aborted during game identification");
+    }
     return;
   }
 
@@ -1994,6 +2058,7 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
 
     rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_STATE_IDENTIFYING_GAME, 1);
 
+    rc_client_begin_async(client, &load_state->async_handle);
     client->callbacks.server_call(&request, rc_client_identify_game_callback, load_state, client);
 
     rc_api_destroy_request(&request);
@@ -2166,7 +2231,7 @@ void rc_client_unload_game(rc_client_t* client)
 
   if (client->state.load) {
     /* this mimics rc_client_abort_async without nesting the lock */
-    client->state.load->async_handle.aborted = 1;
+    client->state.load->async_handle.aborted = RC_CLIENT_ASYNC_ABORTED;
     client->state.load = NULL;
   }
 
@@ -2229,11 +2294,14 @@ static void rc_client_identify_changed_media_callback(const rc_api_server_respon
   int result = rc_api_process_resolve_hash_server_response(&resolve_hash_response, server_response);
   const char* error_message = rc_client_server_error_message(&result, server_response->http_status_code, &resolve_hash_response.response);
 
-  if (rc_client_async_handle_aborted(client, &load_state->async_handle)) {
-    RC_CLIENT_LOG_VERBOSE(client, "Media change aborted");
-    /* if lookup succeeded, still capture the new hash */
-    if (result == RC_OK)
-      load_state->hash->game_id = resolve_hash_response.game_id;
+  const int async_aborted = rc_client_end_async(client, &load_state->async_handle);
+  if (async_aborted) {
+    if (async_aborted != RC_CLIENT_ASYNC_DESTROYED) {
+      RC_CLIENT_LOG_VERBOSE(client, "Media change aborted");
+      /* if lookup succeeded, still capture the new hash */
+      if (result == RC_OK)
+        load_state->hash->game_id = resolve_hash_response.game_id;
+    }
   }
   else if (client->game != load_state->game) {
     /* loaded game changed. return success regardless of result */
@@ -2415,6 +2483,7 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
     callback_data->hash = game_hash;
     callback_data->game = game;
 
+    rc_client_begin_async(client, &callback_data->async_handle);
     client->callbacks.server_call(&request, rc_client_identify_changed_media_callback, callback_data, client);
 
     rc_api_destroy_request(&request);
@@ -3741,8 +3810,11 @@ static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_res
   const char* error_message;
   int result;
 
-  if (rc_client_async_handle_aborted(client, &lbinfo_callback_data->async_handle)) {
-    RC_CLIENT_LOG_VERBOSE(client, "Fetch leaderbord entries aborted");
+  result = rc_client_end_async(client, &lbinfo_callback_data->async_handle);
+  if (result) {
+    if (result != RC_CLIENT_ASYNC_DESTROYED) {
+      RC_CLIENT_LOG_VERBOSE(client, "Fetch leaderbord entries aborted");
+    }
     free(lbinfo_callback_data);
     return;
   }
@@ -3828,6 +3900,7 @@ static rc_client_async_handle_t* rc_client_begin_fetch_leaderboard_info(rc_clien
   callback_data->callback_userdata = callback_userdata;
   callback_data->leaderboard_id = lbinfo_request->leaderboard_id;
 
+  rc_client_begin_async(client, &callback_data->async_handle);
   client->callbacks.server_call(&request, rc_client_fetch_leaderboard_entries_callback, callback_data, client);
   rc_api_destroy_request(&request);
 

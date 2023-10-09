@@ -866,6 +866,26 @@ static void test_login_with_password_async_aborted(void)
   rc_client_destroy(g_client);
 }
 
+static void test_login_with_password_async_destroyed(void)
+{
+  const rc_client_user_t* user;
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_not_logged_in_async();
+  reset_mock_api_handlers();
+
+  handle = rc_client_begin_login_with_password(g_client, "User", "Pa$$word",
+    rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  user = rc_client_get_user_info(g_client);
+  ASSERT_PTR_NULL(user);
+
+  rc_client_destroy(g_client);
+
+  async_api_response("r=login2&u=User&p=Pa%24%24word",
+    "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
+}
+
 static void rc_client_callback_expect_login_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_LOGIN_REQUIRED);
@@ -1667,6 +1687,20 @@ static void test_load_game_process_game_data(void)
   ASSERT_NUM_NOT_EQUALS(rc_client_callback_process_game_data_called, 0);
 
   rc_client_destroy(g_client);
+}
+
+static void test_load_game_destroy_while_fetching_game_data(void)
+{
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+  reset_mock_api_handlers();
+
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_uncalled, g_callback_userdata);
+
+  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  rc_client_destroy(g_client);
+
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
 }
 
 /* ----- unload game ----- */
@@ -7994,6 +8028,7 @@ void test_client(void) {
   TEST(test_login_incomplete_response);
   TEST(test_login_with_password_async);
   TEST(test_login_with_password_async_aborted);
+  TEST(test_login_with_password_async_destroyed);
 
   /* logout */
   TEST(test_logout);
@@ -8028,6 +8063,7 @@ void test_client(void) {
   TEST(test_load_game_startsession_aborted);
   TEST(test_load_game_while_spectating);
   TEST(test_load_game_process_game_data);
+  TEST(test_load_game_destroy_while_fetching_game_data);
 
   /* unload game */
   TEST(test_unload_game);
