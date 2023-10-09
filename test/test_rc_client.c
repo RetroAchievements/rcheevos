@@ -869,12 +869,11 @@ static void test_login_with_password_async_aborted(void)
 static void test_login_with_password_async_destroyed(void)
 {
   const rc_client_user_t* user;
-  rc_client_async_handle_t* handle;
 
   g_client = mock_client_not_logged_in_async();
   reset_mock_api_handlers();
 
-  handle = rc_client_begin_login_with_password(g_client, "User", "Pa$$word",
+  rc_client_begin_login_with_password(g_client, "User", "Pa$$word",
     rc_client_callback_expect_uncalled, g_callback_userdata);
 
   user = rc_client_get_user_info(g_client);

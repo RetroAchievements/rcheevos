@@ -116,7 +116,7 @@ void rc_client_destroy(rc_client_t* client)
 
   rc_mutex_lock(&client->state.mutex);
   {
-    int i;
+    unsigned int i;
     for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
       if (client->state.async_handles[i])
         client->state.async_handles[i]->aborted = RC_CLIENT_ASYNC_DESTROYED;
@@ -295,7 +295,7 @@ void rc_client_set_get_time_millisecs_function(rc_client_t* client, rc_get_time_
 
 static void rc_client_begin_async(rc_client_t* client, rc_client_async_handle_t* async_handle)
 {
-  int i;
+  unsigned int i;
 
   rc_mutex_lock(&client->state.mutex);
   for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
@@ -313,7 +313,7 @@ static int rc_client_end_async(rc_client_t* client, rc_client_async_handle_t* as
 
   /* if client was destroyed, mutex doesn't exist and we don't need to remove the handle from the collection */
   if (aborted != RC_CLIENT_ASYNC_DESTROYED) {
-    int i;
+    unsigned int i;
 
     rc_mutex_lock(&client->state.mutex);
     for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
@@ -1380,6 +1380,8 @@ static void rc_client_start_session_callback(const rc_api_server_response_t* ser
       rc_client_t* client = load_state->client;
       rc_client_load_aborted(load_state);
       RC_CLIENT_LOG_VERBOSE(client, "Load aborted while starting session");
+    } else {
+      rc_client_free_load_state(load_state);
     }
     return;
   }
@@ -1701,6 +1703,8 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
       rc_client_t* client = load_state->client;
       rc_client_load_aborted(load_state);
       RC_CLIENT_LOG_VERBOSE(client, "Load aborted while fetching game data");
+    } else {
+      rc_client_free_load_state(load_state);
     }
     return;
   }
@@ -1939,6 +1943,8 @@ static void rc_client_identify_game_callback(const rc_api_server_response_t* ser
     if (result != RC_CLIENT_ASYNC_DESTROYED) {
       rc_client_load_aborted(load_state);
       RC_CLIENT_LOG_VERBOSE(client, "Load aborted during game identification");
+    } else {
+      rc_client_free_load_state(load_state);
     }
     return;
   }
