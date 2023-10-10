@@ -43,7 +43,7 @@ static void test_empty_script() {
 }
 
 static void test_simple_richpresence(const char* script, const char* expected_display_string) {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -72,7 +72,7 @@ static void assert_buffer_boundary(rc_richpresence_t* richpresence, memory_t* me
 }
 
 static void test_buffer_boundary() {
-  unsigned char ram[] = { 0x00, 0x00, 0x00, 0x01, 0x00 };
+  uint8_t ram[] = { 0x00, 0x00, 0x00, 0x01, 0x00 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[2048];
@@ -120,7 +120,7 @@ static void test_buffer_boundary() {
 }
 
 static void test_conditional_display_simple() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -139,7 +139,7 @@ static void test_conditional_display_simple() {
 }
 
 static void test_conditional_display_after_default() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -162,7 +162,7 @@ static void test_conditional_display_no_default() {
 }
 
 static void test_conditional_display_common_condition() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -201,7 +201,7 @@ static void test_conditional_display_common_condition() {
 }
 
 static void test_conditional_display_duplicated_condition() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -226,7 +226,7 @@ static void test_conditional_display_invalid_condition_logic() {
 }
 
 static void test_conditional_display_whitespace_text() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -245,7 +245,7 @@ static void test_conditional_display_whitespace_text() {
 }
 
 static void test_macro_value() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -261,7 +261,7 @@ static void test_macro_value() {
 }
 
 static void test_macro_value_nibble() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -282,7 +282,7 @@ static void test_macro_value_nibble() {
 }
 
 static void test_macro_value_bcd() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -298,7 +298,7 @@ static void test_macro_value_bcd() {
 }
 
 static void test_macro_value_bitcount() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -314,7 +314,7 @@ static void test_macro_value_bitcount() {
 }
 
 static void test_conditional_display_indirect() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -333,7 +333,7 @@ static void test_conditional_display_indirect() {
 }
 
 static void test_conditional_display_unnecessary_measured() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -352,7 +352,7 @@ static void test_conditional_display_unnecessary_measured() {
 }
 
 static void test_conditional_display_unnecessary_measured_indirect() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -371,7 +371,7 @@ static void test_conditional_display_unnecessary_measured_indirect() {
 }
 
 static void test_macro_value_adjusted_negative() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -387,7 +387,7 @@ static void test_macro_value_adjusted_negative() {
 }
 
 static void test_macro_value_from_formula() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -403,7 +403,7 @@ static void test_macro_value_from_formula() {
 }
 
 static void test_macro_value_from_hits() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -421,7 +421,7 @@ static void test_macro_value_from_hits() {
 }
 
 static void test_macro_value_from_indirect() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -442,7 +442,7 @@ static void test_macro_value_from_indirect() {
 }
 
 static void test_macro_value_divide_by_zero() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -461,7 +461,7 @@ static void test_macro_value_divide_by_zero() {
 }
 
 static void test_macro_value_divide_by_self() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -487,7 +487,7 @@ static void test_macro_value_divide_by_self() {
 }
 
 static void test_macro_frames() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -503,7 +503,7 @@ static void test_macro_frames() {
 }
 
 static void test_macro_float(const char* format, unsigned value, const char* expected) {
-  unsigned char ram[4];
+  uint8_t ram[4];
   memory_t memory;
   rc_richpresence_t* richpresence;
   char script[128];
@@ -523,7 +523,7 @@ static void test_macro_float(const char* format, unsigned value, const char* exp
 }
 
 static void test_macro_lookup_simple() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -543,7 +543,7 @@ static void test_macro_lookup_simple() {
 }
 
 static void test_macro_lookup_with_inline_comment() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -563,7 +563,7 @@ static void test_macro_lookup_with_inline_comment() {
 }
 
 static void test_macro_lookup_hex_keys() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -583,7 +583,7 @@ static void test_macro_lookup_hex_keys() {
 }
 
 static void test_macro_lookup_default() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -603,7 +603,7 @@ static void test_macro_lookup_default() {
 }
 
 static void test_macro_lookup_crlf() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -623,7 +623,7 @@ static void test_macro_lookup_crlf() {
 }
 
 static void test_macro_lookup_after_display() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -643,7 +643,7 @@ static void test_macro_lookup_after_display() {
 }
 
 static void test_macro_lookup_from_formula() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -662,7 +662,7 @@ static void test_macro_lookup_from_formula() {
 }
 
 static void test_macro_lookup_from_indirect() {
-  unsigned char ram[] = { 0x00, 0x00, 0x01, 0x00, 0x56 };
+  uint8_t ram[] = { 0x00, 0x00, 0x01, 0x00, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -681,7 +681,7 @@ static void test_macro_lookup_from_indirect() {
 }
 
 static void test_macro_lookup_repeated() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -702,7 +702,7 @@ static void test_macro_lookup_repeated() {
 }
 
 static void test_macro_lookup_shared() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -722,7 +722,7 @@ static void test_macro_lookup_shared() {
 }
 
 static void test_macro_lookup_multiple() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -742,7 +742,7 @@ static void test_macro_lookup_multiple() {
 }
 
 static void test_macro_lookup_and_value() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -761,7 +761,7 @@ static void test_macro_lookup_and_value() {
 }
 
 static void test_macro_lookup_negative_value() {
-  unsigned char ram[] = { 0x00, 0x00, 0x00, 0x00, 0x00 };
+  uint8_t ram[] = { 0x00, 0x00, 0x00, 0x00, 0x00 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -784,7 +784,7 @@ static void test_macro_lookup_negative_value() {
 }
 
 static void test_macro_lookup_value_with_whitespace() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -804,7 +804,7 @@ static void test_macro_lookup_value_with_whitespace() {
 }
 
 static void test_macro_lookup_mapping_repeated() {
-  unsigned char ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -825,7 +825,7 @@ static void test_macro_lookup_mapping_repeated() {
 }
 
 static void test_macro_lookup_mapping_repeated_csv() {
-  unsigned char ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -846,7 +846,7 @@ static void test_macro_lookup_mapping_repeated_csv() {
 }
 
 static void test_macro_lookup_mapping_merged() {
-  unsigned char ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -873,7 +873,7 @@ static void test_macro_lookup_mapping_merged() {
 }
 
 static void test_macro_lookup_mapping_range() {
-  unsigned char ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x04, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -920,7 +920,7 @@ static void test_macro_lookup_invalid() {
 }
 
 static void test_macro_escaped() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -934,7 +934,7 @@ static void test_macro_escaped() {
 }
 
 static void test_macro_undefined() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -947,7 +947,7 @@ static void test_macro_undefined() {
 }
 
 static void test_macro_undefined_at_end_of_line() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -963,7 +963,7 @@ static void test_macro_undefined_at_end_of_line() {
 }
 
 static void test_macro_unterminated() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -1016,7 +1016,7 @@ static void test_macro_non_numeric_parameter() {
 }
 
 static void test_builtin_macro(const char* macro, const char* expected) {
-  unsigned char ram[] = { 0x39, 0x30 };
+  uint8_t ram[] = { 0x39, 0x30 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char script[128];
@@ -1032,7 +1032,7 @@ static void test_builtin_macro(const char* macro, const char* expected) {
 }
 
 static void test_builtin_macro_float(const char* macro, const char* expected) {
-  unsigned char ram[] = { 0x92, 0x44, 0x9A, 0x42 }; /* 77.133926 */
+  uint8_t ram[] = { 0x92, 0x44, 0x9A, 0x42 }; /* 77.133926 */
   memory_t memory;
   rc_richpresence_t* richpresence;
   char script[128];
@@ -1048,7 +1048,7 @@ static void test_builtin_macro_float(const char* macro, const char* expected) {
 }
 
 static void test_builtin_macro_override() {
-  unsigned char ram[] = { 0x39, 0x30 };
+  uint8_t ram[] = { 0x39, 0x30 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[256];
@@ -1061,7 +1061,7 @@ static void test_builtin_macro_override() {
 }
 
 static void test_asciichar() {
-  unsigned char ram[] = { 'K', 'e', 'n', '\0', 'V', 'e', 'g', 'a', 1 };
+  uint8_t ram[] = { 'K', 'e', 'n', '\0', 'V', 'e', 'g', 'a', 1 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -1081,7 +1081,7 @@ static void test_asciichar() {
 
 static void test_ascii8(unsigned char c1, unsigned char c2, unsigned char c3, unsigned char c4,
     unsigned char c5, unsigned char c6, unsigned char c7, unsigned char c8, char* expected) {
-  unsigned char ram[9];
+  uint8_t ram[9];
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -1098,7 +1098,7 @@ static void test_ascii8(unsigned char c1, unsigned char c2, unsigned char c3, un
 }
 
 static void test_unicode4(unsigned short c1, unsigned short c2, unsigned short c3, unsigned short c4, char* expected) {
-  unsigned char ram[10];
+  uint8_t ram[10];
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -1117,7 +1117,7 @@ static void test_unicode4(unsigned short c1, unsigned short c2, unsigned short c
 }
 
 static void test_random_text_between_sections() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -1137,7 +1137,7 @@ static void test_random_text_between_sections() {
 }
 
 static void test_comments() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];
@@ -1157,7 +1157,7 @@ static void test_comments() {
 }
 
 static void test_comments_between_lines() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
   char buffer[1024];

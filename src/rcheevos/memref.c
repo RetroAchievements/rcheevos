@@ -6,7 +6,7 @@
 
 #define MEMREF_PLACEHOLDER_ADDRESS 0xFFFFFFFF
 
-rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, unsigned address, char size, char is_indirect) {
+rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t size, uint8_t is_indirect) {
   rc_memref_t** next_memref;
   rc_memref_t* memref;
 
@@ -41,7 +41,7 @@ rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, unsigned address, char siz
   return memref;
 }
 
-int rc_parse_memref(const char** memaddr, char* size, unsigned* address) {
+int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address) {
   const char* aux = *memaddr;
   char* end;
   unsigned long value;
@@ -114,7 +114,7 @@ int rc_parse_memref(const char** memaddr, char* size, unsigned* address) {
   if (value > 0xffffffffU)
     value = 0xffffffffU;
 
-  *address = (unsigned)value;
+  *address = (uint32_t)value;
   *memaddr = end;
   return RC_OK;
 }
@@ -230,9 +230,9 @@ static void rc_transform_memref_mbf32_le(rc_typed_value_t* value) {
   value->type = RC_VALUE_TYPE_FLOAT;
 }
 
-static const unsigned char rc_bits_set[16] = { 0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4 };
+static const uint8_t rc_bits_set[16] = { 0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4 };
 
-void rc_transform_memref_value(rc_typed_value_t* value, char size) {
+void rc_transform_memref_value(rc_typed_value_t* value, uint8_t size) {
   /* ASSERT: value->type == RC_VALUE_TYPE_UNSIGNED */
   switch (size)
   {
@@ -335,7 +335,7 @@ void rc_transform_memref_value(rc_typed_value_t* value, char size) {
   }
 }
 
-static const unsigned rc_memref_masks[] = {
+static const uint32_t rc_memref_masks[] = {
   0x000000ff, /* RC_MEMSIZE_8_BITS     */
   0x0000ffff, /* RC_MEMSIZE_16_BITS    */
   0x00ffffff, /* RC_MEMSIZE_24_BITS    */
@@ -361,7 +361,7 @@ static const unsigned rc_memref_masks[] = {
   0xffffffff  /* RC_MEMSIZE_VARIABLE   */
 };
 
-unsigned rc_memref_mask(char size) {
+uint32_t rc_memref_mask(uint8_t size) {
   const size_t index = (size_t)size;
   if (index >= sizeof(rc_memref_masks) / sizeof(rc_memref_masks[0]))
     return 0xffffffff;
@@ -372,7 +372,7 @@ unsigned rc_memref_mask(char size) {
 /* all sizes less than 8-bits (1 byte) are mapped to 8-bits. 24-bit is mapped to 32-bit
  * as we don't expect the client to understand a request for 3 bytes. all other reads are
  * mapped to the little-endian read of the same size. */
-static const char rc_memref_shared_sizes[] = {
+static const uint8_t rc_memref_shared_sizes[] = {
   RC_MEMSIZE_8_BITS,  /* RC_MEMSIZE_8_BITS     */
   RC_MEMSIZE_16_BITS, /* RC_MEMSIZE_16_BITS    */
   RC_MEMSIZE_32_BITS, /* RC_MEMSIZE_24_BITS    */
@@ -398,7 +398,7 @@ static const char rc_memref_shared_sizes[] = {
   RC_MEMSIZE_32_BITS  /* RC_MEMSIZE_VARIABLE   */
 };
 
-char rc_memref_shared_size(char size) {
+uint8_t rc_memref_shared_size(uint8_t size) {
   const size_t index = (size_t)size;
   if (index >= sizeof(rc_memref_shared_sizes) / sizeof(rc_memref_shared_sizes[0]))
     return size;
@@ -406,7 +406,7 @@ char rc_memref_shared_size(char size) {
   return rc_memref_shared_sizes[index];
 }
 
-unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void* ud) {
+uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud) {
   if (!peek)
     return 0;
 
@@ -437,7 +437,7 @@ unsigned rc_peek_value(unsigned address, char size, rc_peek_t peek, void* ud) {
   }
 }
 
-void rc_update_memref_value(rc_memref_value_t* memref, unsigned new_value) {
+void rc_update_memref_value(rc_memref_value_t* memref, uint32_t new_value) {
   if (memref->value == new_value) {
     memref->changed = 0;
   }

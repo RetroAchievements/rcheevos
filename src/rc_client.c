@@ -3984,10 +3984,10 @@ static void rc_client_invalidate_processing_memref(rc_client_t* client)
   client->state.processing_memref = NULL;
 }
 
-static unsigned rc_client_peek_le(unsigned address, unsigned num_bytes, void* ud)
+static uint32_t rc_client_peek_le(uint32_t address, uint32_t num_bytes, void* ud)
 {
   rc_client_t* client = (rc_client_t*)ud;
-  unsigned value = 0;
+  uint32_t value = 0;
   uint32_t num_read = 0;
 
   /* if we know the address is out of range, and it's part of a pointer chain
@@ -4007,7 +4007,7 @@ static unsigned rc_client_peek_le(unsigned address, unsigned num_bytes, void* ud
   return 0;
 }
 
-static unsigned rc_client_peek(unsigned address, unsigned num_bytes, void* ud)
+static uint32_t rc_client_peek(uint32_t address, uint32_t num_bytes, void* ud)
 {
   rc_client_t* client = (rc_client_t*)ud;
   uint8_t buffer[4];

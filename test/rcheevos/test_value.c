@@ -6,7 +6,7 @@
 static void test_evaluate_value(const char* memaddr, int expected_value) {
   rc_value_t* self;
   /* bytes 5-8 are the float value for pi */
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56, 0xDB, 0x0F, 0x49, 0x40};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56, 0xDB, 0x0F, 0x49, 0x40};
   memory_t memory;
   char buffer[2048];
   unsigned* overflow;
@@ -59,7 +59,7 @@ static void test_measured_value_target(const char* memaddr, int expected_target)
 
 static void test_evaluate_measured_value_with_pause() {
   rc_value_t* self;
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   char buffer[2048];
   const char* memaddr = "P:0xH0003=hAB_M:0xH0002!=d0xH0002";
@@ -108,7 +108,7 @@ static void test_evaluate_measured_value_with_pause() {
 
 static void test_evaluate_measured_value_with_reset() {
   rc_value_t* self;
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   char buffer[2048];
   const char* memaddr = "R:0xH0003=hAB_M:0xH0002!=d0xH0002";

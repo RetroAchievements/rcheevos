@@ -16,8 +16,8 @@ enum {
 static rc_memref_value_t* rc_alloc_helper_variable_memref_value(const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
   const char* end;
   rc_value_t* variable;
-  unsigned address;
-  char size;
+  uint32_t address;
+  uint8_t size;
 
   /* single memory reference lookups without a modifier flag can be handled without a variable */
   end = memaddr;
@@ -78,7 +78,7 @@ static const char* rc_parse_line(const char* line, const char** end, rc_parse_st
 typedef struct rc_richpresence_builtin_macro_t {
   const char* name;
   size_t name_len;
-  unsigned short display_type;
+  uint8_t display_type;
 } rc_richpresence_builtin_macro_t;
 
 static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const char* line, const char* endline, rc_parse_state_t* parse, rc_richpresence_lookup_t* first_lookup) {
@@ -525,7 +525,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
         memcpy(format, line, chars);
         format[chars] = '\0';
 
-        lookup->format = (unsigned short)rc_parse_format(format);
+        lookup->format = (uint8_t)rc_parse_format(format);
       } else {
         lookup->format = RC_FORMAT_VALUE;
       }

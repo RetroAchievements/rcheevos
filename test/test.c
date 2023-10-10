@@ -23,7 +23,7 @@ static void test_lua(void) {
 
     lua_State* L;
     const char* luacheevo = "return { test = function(peek, ud) return peek(0, 4, ud) end }";
-    unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+    uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
     memory_t memory;
     rc_trigger_t* trigger;
     char buffer[2048];

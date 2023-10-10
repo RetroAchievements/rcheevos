@@ -814,7 +814,7 @@ static void rc_runtime_invalidate_memref(rc_runtime_t* self, rc_memref_t* memref
   }
 }
 
-void rc_runtime_invalidate_address(rc_runtime_t* self, unsigned address) {
+void rc_runtime_invalidate_address(rc_runtime_t* self, uint32_t address) {
   rc_memref_t** last_memref = &self->memrefs;
   rc_memref_t* memref = self->memrefs;
 

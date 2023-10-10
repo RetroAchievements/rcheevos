@@ -2,16 +2,16 @@
 #define MOCK_MEMORY_H
 
 typedef struct {
-  unsigned char* ram;
-  unsigned size;
+  uint8_t* ram;
+  uint32_t size;
 }
 memory_t;
 
-static unsigned peekb(unsigned address, memory_t* memory) {
+static uint32_t peekb(uint32_t address, memory_t* memory) {
   return address < memory->size ? memory->ram[address] : 0;
 }
 
-static unsigned peek(unsigned address, unsigned num_bytes, void* ud) {
+static uint32_t peek(uint32_t address, uint32_t num_bytes, void* ud) {
   memory_t* memory = (memory_t*)ud;
 
   switch (num_bytes) {

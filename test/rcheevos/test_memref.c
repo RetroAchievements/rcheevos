@@ -335,7 +335,7 @@ static void test_update_memref_values() {
   rc_memref_t* memref1;
   rc_memref_t* memref2;
 
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   memory.ram = ram;
   memory.size = sizeof(ram);

@@ -64,7 +64,7 @@ static void assert_richpresence_display_string(rc_runtime_t* runtime, memory_t* 
 
 static void test_two_achievements_activate_and_trigger(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+  uint8_t ram[] = { 0, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -127,7 +127,7 @@ static void test_two_achievements_activate_and_trigger(void)
 
 static void test_deactivate_achievements(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+  uint8_t ram[] = { 0, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -190,7 +190,7 @@ static void test_deactivate_achievements(void)
 static void test_achievement_measured(void)
 {
   /* bytes 3-7 are the float value for 16*pi */
-  unsigned char ram[] = { 0, 10, 10, 0xDB, 0x0F, 0x49, 0x41 };
+  uint8_t ram[] = { 0, 10, 10, 0xDB, 0x0F, 0x49, 0x41 };
   char buffer[32];
   memory_t memory;
   rc_runtime_t runtime;
@@ -313,7 +313,7 @@ static void test_achievement_measured(void)
 
 static void test_achievement_measured_maxint(void)
 {
-  unsigned char ram[] = { 0xFF, 0xFF, 0xFF, 0xFF };
+  uint8_t ram[] = { 0xFF, 0xFF, 0xFF, 0xFF };
   char buffer[32];
   memory_t memory;
   rc_runtime_t runtime;
@@ -387,7 +387,7 @@ static void test_achievement_measured_maxint(void)
 
 static void test_two_achievements_differing_resets_in_alts(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+  uint8_t ram[] = { 0, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -445,7 +445,7 @@ static void test_two_achievements_differing_resets_in_alts(void)
 
 static void test_shared_memref(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+  uint8_t ram[] = { 0, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
   rc_memref_t* memref1;
@@ -516,7 +516,7 @@ static void test_shared_memref(void)
 
 static void test_replace_active_trigger(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+  uint8_t ram[] = { 0, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -570,7 +570,7 @@ static void discarding_event_handler(const rc_runtime_event_t* e)
 
 static void test_trigger_deactivation(void)
 {
-  unsigned char ram[] = { 0, 9, 10 };
+  uint8_t ram[] = { 0, 9, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -612,7 +612,7 @@ static void test_trigger_deactivation(void)
 }
 
 static void test_trigger_with_resetif() {
-  unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  uint8_t ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -655,7 +655,7 @@ static void test_trigger_with_resetif() {
 }
 
 static void test_trigger_with_resetnextif() {
-  unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  uint8_t ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -710,7 +710,7 @@ static void test_trigger_with_resetnextif() {
 
 static void test_reset_event(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+  uint8_t ram[] = { 0, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
   rc_condition_t* cond;
@@ -773,7 +773,7 @@ static void test_reset_event(void)
 
 static void test_paused_event(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+  uint8_t ram[] = { 0, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -825,7 +825,7 @@ static void test_paused_event(void)
 
 static void test_primed_event(void)
 {
-  unsigned char ram[] = { 0, 1, 0, 1, 0, 0 };
+  uint8_t ram[] = { 0, 1, 0, 1, 0, 0 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -899,7 +899,7 @@ static void test_primed_event(void)
 
 static void test_progress_event(void)
 {
-  unsigned char ram[] = { 0, 1 };
+  uint8_t ram[] = { 0, 1 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -958,7 +958,7 @@ static void test_progress_event(void)
 
 static void test_progress_event_as_percent(void)
 {
-  unsigned char ram[] = { 0, 1 };
+  uint8_t ram[] = { 0, 1 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1028,7 +1028,7 @@ static void test_progress_event_as_percent(void)
 
 static void test_lboard(void)
 {
-  unsigned char ram[] = { 2, 10, 10 };
+  uint8_t ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1126,7 +1126,7 @@ static void test_format_lboard_value(int format, int value, const char* expected
 
 static void test_richpresence(void)
 {
-  unsigned char ram[] = { 2, 10, 10 };
+  uint8_t ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1160,7 +1160,7 @@ static void test_richpresence(void)
 
 static void test_richpresence_starts_with_macro(void)
 {
-  unsigned char ram[] = { 2, 10, 10 };
+  uint8_t ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1179,7 +1179,7 @@ static void test_richpresence_starts_with_macro(void)
 
 static void test_richpresence_macro_only(void)
 {
-  unsigned char ram[] = { 2, 10, 10 };
+  uint8_t ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1198,7 +1198,7 @@ static void test_richpresence_macro_only(void)
 
 static void test_richpresence_conditional(void)
 {
-  unsigned char ram[] = { 2, 10, 10 };
+  uint8_t ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1227,7 +1227,7 @@ static void test_richpresence_conditional(void)
 
 static void test_richpresence_conditional_with_hits(void)
 {
-  unsigned char ram[] = { 2, 10, 10 };
+  uint8_t ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1275,7 +1275,7 @@ static void test_richpresence_conditional_with_hits(void)
 
 static void test_richpresence_conditional_with_hits_after_match(void)
 {
-  unsigned char ram[] = { 2, 10, 10 };
+  uint8_t ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1323,7 +1323,7 @@ static void test_richpresence_conditional_with_hits_after_match(void)
 
 static void test_richpresence_reload(void)
 {
-  unsigned char ram[] = { 2, 10, 10 };
+  uint8_t ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1361,7 +1361,7 @@ static void test_richpresence_reload(void)
 static void test_richpresence_reload_addaddress(void)
 {
   /* ram[1] must be non-zero */
-  unsigned char ram[] = { 1, 10, 10, 10 };
+  uint8_t ram[] = { 1, 10, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1399,7 +1399,7 @@ static void test_richpresence_reload_addaddress(void)
 
 static void test_richpresence_static(void)
 {
-  unsigned char ram[] = { 2, 10, 10 };
+  uint8_t ram[] = { 2, 10, 10 };
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1422,11 +1422,11 @@ static void test_richpresence_static(void)
 typedef struct {
   memory_t memory;
   rc_runtime_t* runtime;
-  unsigned invalid_address;
+  uint32_t invalid_address;
 }
 memory_invalid_t;
 
-static unsigned peek_invalid(unsigned address, unsigned num_bytes, void* ud)
+static uint32_t peek_invalid(uint32_t address, uint32_t num_bytes, void* ud)
 {
   memory_invalid_t* memory = (memory_invalid_t*)ud;
   if (memory->invalid_address != address)
@@ -1436,7 +1436,7 @@ static unsigned peek_invalid(unsigned address, unsigned num_bytes, void* ud)
   return 0;
 }
 
-static void assert_do_frame_invalid(rc_runtime_t* runtime, memory_invalid_t* memory, unsigned invalid_address)
+static void assert_do_frame_invalid(rc_runtime_t* runtime, memory_invalid_t* memory, uint32_t invalid_address)
 {
   event_count = 0;
   memory->runtime = runtime;
@@ -1446,7 +1446,7 @@ static void assert_do_frame_invalid(rc_runtime_t* runtime, memory_invalid_t* mem
 
 static void test_invalidate_address(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+  uint8_t ram[] = { 0, 10, 10 };
   memory_invalid_t memory;
   rc_runtime_t runtime;
 
@@ -1499,7 +1499,7 @@ static void test_invalidate_address_no_memrefs(void)
 
 static void test_invalidate_address_shared_memref(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+  uint8_t ram[] = { 0, 10, 10 };
   memory_invalid_t memory;
   rc_runtime_t runtime;
 
@@ -1533,7 +1533,7 @@ static void test_invalidate_address_shared_memref(void)
 
 static void test_invalidate_address_leaderboard(void)
 {
-  unsigned char ram[] = { 0, 10, 10 };
+  uint8_t ram[] = { 0, 10, 10 };
   memory_invalid_t memory;
   rc_runtime_t runtime;
 

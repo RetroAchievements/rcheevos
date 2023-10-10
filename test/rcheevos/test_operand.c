@@ -405,7 +405,7 @@ static void test_parse_float_values() {
 }
 
 static void test_evaluate_memory_references() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -516,7 +516,7 @@ static void test_evaluate_memory_references() {
 }
 
 static void test_evaluate_delta_memory_reference() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_operand_t op;
   const char* memaddr;
@@ -554,7 +554,7 @@ static void test_evaluate_delta_memory_reference() {
 }
 
 void test_evaluate_prior_memory_reference() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_operand_t op;
   const char* memaddr;
@@ -594,7 +594,7 @@ void test_evaluate_prior_memory_reference() {
 }
 
 static void test_evaluate_memory_references_float() {
-  unsigned char ram[] = {0x00, 0x00, 0x80, 0x3F, 0x81, 0x00, 0x00, 0x00, 0x00, 0x81};
+  uint8_t ram[] = {0x00, 0x00, 0x80, 0x3F, 0x81, 0x00, 0x00, 0x00, 0x00, 0x81};
   memory_t memory;
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -627,7 +627,7 @@ static void test_evaluate_memory_references_float() {
 }
 
 static void test_evaluate_delta_memory_reference_float() {
-  unsigned char ram[] = {0x00, 0x00, 0x80, 0x3F};
+  uint8_t ram[] = {0x00, 0x00, 0x80, 0x3F};
   memory_t memory;
   rc_operand_t op;
   const char* memaddr;

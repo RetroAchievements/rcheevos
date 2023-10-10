@@ -73,7 +73,7 @@ static int evaluate_trigger(rc_trigger_t* self, memory_t* memory) {
 /* ======================================================== */
 
 static void test_alt_groups() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -119,7 +119,7 @@ static void test_alt_groups() {
 }
 
 static void test_empty_core() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -154,7 +154,7 @@ static void test_empty_core() {
 }
 
 static void test_empty_alt() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -183,7 +183,7 @@ static void test_empty_alt() {
 }
 
 static void test_empty_last_alt() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -212,7 +212,7 @@ static void test_empty_last_alt() {
 }
 
 static void test_empty_all_alts() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -233,7 +233,7 @@ static void test_empty_all_alts() {
 }
 
 static void test_resetif_in_alt_group() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[1024];
@@ -272,7 +272,7 @@ static void test_resetif_in_alt_group() {
 }
 
 static void test_pauseif_in_alt_group() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[1024];
@@ -311,7 +311,7 @@ static void test_pauseif_in_alt_group() {
 }
 
 static void test_pauseif_resetif_in_alt_group() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[1024];
@@ -358,7 +358,7 @@ static void test_pauseif_resetif_in_alt_group() {
 }
 
 static void test_pauseif_hitcount_with_reset() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -409,7 +409,7 @@ static void test_pauseif_hitcount_with_reset() {
 }
 
 static void test_measured() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[256];
@@ -447,7 +447,7 @@ static void test_measured() {
 }
 
 static void test_measured_as_percent() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[256];
@@ -485,7 +485,7 @@ static void test_measured_as_percent() {
 }
 
 static void test_measured_comparison() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[256];
@@ -526,7 +526,7 @@ static void test_measured_comparison() {
 }
 
 static void test_measured_addhits() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[256];
@@ -586,7 +586,7 @@ static void test_measured_addhits() {
 }
 
 static void test_measured_indirect() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[256];
@@ -626,7 +626,7 @@ static void test_measured_indirect() {
 }
 
 static void test_measured_multiple() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -696,7 +696,7 @@ static void test_measured_multiple() {
 }
 
 static void test_measured_multiple_with_hitcount_in_core() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -731,7 +731,7 @@ static void test_measured_multiple_with_hitcount_in_core() {
 }
 
 static void test_measured_while_paused() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -763,7 +763,7 @@ static void test_measured_while_paused() {
 }
 
 static void test_measured_while_paused_multiple() {
-  unsigned char ram[] = {0x00, 0x00, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x00, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -830,7 +830,7 @@ static void test_measured_while_paused_multiple() {
 }
 
 static void test_measured_while_paused_reset_alt() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -872,7 +872,7 @@ static void test_measured_while_paused_reset_alt() {
 }
 
 static void test_measured_while_paused_reset_core() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -914,7 +914,7 @@ static void test_measured_while_paused_reset_core() {
 }
 
 static void test_measured_while_paused_reset_non_hitcount() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -948,7 +948,7 @@ static void test_measured_while_paused_reset_non_hitcount() {
 }
 
 static void test_measured_reset_hitcount() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -995,7 +995,7 @@ static void test_measured_reset_hitcount() {
 }
 
 static void test_measured_reset_comparison() {
-  unsigned char ram[] = {0x00, 0x12, 0x02, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x02, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1045,7 +1045,7 @@ static void test_measured_reset_comparison() {
 }
 
 static void test_measured_if() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[256];
@@ -1085,7 +1085,7 @@ static void test_measured_if() {
 }
 
 static void test_measured_if_comparison() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[256];
@@ -1133,7 +1133,7 @@ static void test_measured_if_comparison() {
 }
 
 static void test_measured_if_multiple_measured() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1213,7 +1213,7 @@ static void test_measured_if_multiple_measured() {
 }
 
 static void test_measured_if_multiple_measured_if() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1272,7 +1272,7 @@ static void test_measured_if_multiple_measured_if() {
 }
 
 static void test_measured_if_while_paused() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1322,7 +1322,7 @@ static void test_measured_if_while_paused() {
 }
 
 static void test_resetnextif_trigger() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1382,7 +1382,7 @@ static void test_resetnextif_trigger() {
 }
 
 static void test_evaluate_trigger_inactive() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1420,7 +1420,7 @@ static void test_evaluate_trigger_inactive() {
 }
 
 static void test_evaluate_trigger_waiting() {
-  unsigned char ram[] = {0x00, 0x12, 0x18, 0xAB, 0x09};
+  uint8_t ram[] = {0x00, 0x12, 0x18, 0xAB, 0x09};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1460,7 +1460,7 @@ static void test_evaluate_trigger_waiting() {
 }
 
 static void test_evaluate_trigger_reset() {
-  unsigned char ram[] = {0x00, 0x05, 0x10, 0xAB, 0x09};
+  uint8_t ram[] = {0x00, 0x05, 0x10, 0xAB, 0x09};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1488,7 +1488,7 @@ static void test_evaluate_trigger_reset() {
 }
 
 static void test_evaluate_trigger_reset_next() {
-  unsigned char ram[] = {0x00, 0x05, 0x10, 0xAB, 0x09};
+  uint8_t ram[] = {0x00, 0x05, 0x10, 0xAB, 0x09};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1543,7 +1543,7 @@ static void test_evaluate_trigger_reset_next() {
 }
 
 static void test_evaluate_trigger_triggered() {
-  unsigned char ram[] = {0x00, 0x05, 0x10, 0xAB, 0x09};
+  uint8_t ram[] = {0x00, 0x05, 0x10, 0xAB, 0x09};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1579,7 +1579,7 @@ static void test_evaluate_trigger_triggered() {
 }
 
 static void test_evaluate_trigger_paused() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1647,7 +1647,7 @@ static void test_evaluate_trigger_paused() {
 }
 
 static void test_evaluate_trigger_primed() {
-  unsigned char ram[] = {0x00, 0x01, 0x00, 0x01, 0x00};
+  uint8_t ram[] = {0x00, 0x01, 0x00, 0x01, 0x00};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1688,7 +1688,7 @@ static void test_evaluate_trigger_primed() {
 }
 
 static void test_evaluate_trigger_primed_in_alts() {
-  unsigned char ram[] = {0x01, 0x00, 0x00, 0x00, 0x00};
+  uint8_t ram[] = {0x01, 0x00, 0x00, 0x00, 0x00};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[1024];
@@ -1724,7 +1724,7 @@ static void test_evaluate_trigger_primed_in_alts() {
 }
 
 static void test_evaluate_trigger_primed_one_alt() {
-  unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  uint8_t ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1756,7 +1756,7 @@ static void test_evaluate_trigger_primed_one_alt() {
 }
 
 static void test_evaluate_trigger_disabled() {
-  unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  uint8_t ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];
@@ -1773,7 +1773,7 @@ static void test_evaluate_trigger_disabled() {
 }
 
 static void test_evaluate_trigger_chained_resetnextif() {
-  unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  uint8_t ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
   memory_t memory;
   rc_trigger_t* trigger;
   char buffer[512];

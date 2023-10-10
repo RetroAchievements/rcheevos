@@ -123,7 +123,7 @@ static void test_evaluate_condition(const char* memaddr, int expected_comparator
   char buffer[512];
   rc_memref_t* memrefs;
   int ret;
-  unsigned char ram[] = {0x00, 0x11, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x11, 0x34, 0xAB, 0x56};
   memory_t memory;
 
   memory.ram = ram;
@@ -179,7 +179,7 @@ static void test_evaluate_condition_float(const char* memaddr, int expected_resu
   char buffer[512];
   rc_memref_t* memrefs;
   int ret;
-  unsigned char ram[] = {0x00, 0x00, 0x00, 0x40, 0x83, 0x49, 0x0F, 0xDB}; /* FF0=2, FF4=2*pi */
+  uint8_t ram[] = {0x00, 0x00, 0x00, 0x40, 0x83, 0x49, 0x0F, 0xDB}; /* FF0=2, FF4=2*pi */
   memory_t memory;
 
   memory.ram = ram;
@@ -203,7 +203,7 @@ static void test_evaluate_condition_float(const char* memaddr, int expected_resu
 }
 
 static void test_condition_compare_delta() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condition_t* cond;
   rc_parse_state_t parse;
@@ -237,7 +237,7 @@ static void test_condition_compare_delta() {
 }
 
 static void test_condition_delta_24bit() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condition_t* cond;
   rc_parse_state_t parse;
@@ -283,7 +283,7 @@ static void test_condition_delta_24bit() {
 }
 
 static void test_condition_prior_24bit() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condition_t* cond;
   rc_parse_state_t parse;

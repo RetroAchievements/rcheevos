@@ -71,7 +71,7 @@ static void _assert_hit_count(rc_condset_t* condset, int cond_index, unsigned ex
 
 
 static void test_hitcount_increment_when_true() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -88,7 +88,7 @@ static void test_hitcount_increment_when_true() {
 }
 
 static void test_hitcount_does_not_increment_when_false() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -105,7 +105,7 @@ static void test_hitcount_does_not_increment_when_false() {
 }
 
 static void test_hitcount_target() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -141,7 +141,7 @@ static void test_hitcount_target() {
 }
 
 static void test_hitcount_two_conditions(const char* memaddr, unsigned expected_result, unsigned expected_hitcount1, unsigned expected_hitcount2) {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -158,7 +158,7 @@ static void test_hitcount_two_conditions(const char* memaddr, unsigned expected_
 
 static void test_hitcount_three_conditions(const char* memaddr, unsigned expected_result, unsigned expected_hitcount1, 
     unsigned expected_hitcount2, unsigned expected_hitcount3) {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -175,7 +175,7 @@ static void test_hitcount_three_conditions(const char* memaddr, unsigned expecte
 }
 
 static void test_pauseif() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -208,7 +208,7 @@ static void test_pauseif() {
 }
 
 static void test_pauseif_hitcount_one() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -231,7 +231,7 @@ static void test_pauseif_hitcount_one() {
 }
 
 static void test_pauseif_hitcount_two() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -260,7 +260,7 @@ static void test_pauseif_hitcount_two() {
 }
 
 static void test_pauseif_hitcount_with_reset() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -293,7 +293,7 @@ static void test_pauseif_hitcount_with_reset() {
 }
 
 static void test_pauseif_does_not_increment_hits() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -340,7 +340,7 @@ static void test_pauseif_does_not_increment_hits() {
 }
 
 static void test_pauseif_delta_updated() {
-  unsigned char ram[] = {0x00, 0x00, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x00, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -378,7 +378,7 @@ static void test_pauseif_delta_updated() {
 }
 
 static void test_pauseif_indirect_delta_updated() {
-  unsigned char ram[] = {0x00, 0x00, 0x34, 0x3C, 0x56};
+  uint8_t ram[] = {0x00, 0x00, 0x34, 0x3C, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -416,7 +416,7 @@ static void test_pauseif_indirect_delta_updated() {
 }
 
 static void test_pauseif_short_circuit() {
-  unsigned char ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  uint8_t ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -486,7 +486,7 @@ static void test_pauseif_short_circuit() {
 }
 
 static void test_resetif() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -530,7 +530,7 @@ static void test_resetif() {
 }
 
 static void test_resetif_cond_with_hittarget() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -580,7 +580,7 @@ static void test_resetif_cond_with_hittarget() {
 }
 
 static void test_resetif_hitcount() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -619,7 +619,7 @@ static void test_resetif_hitcount() {
 }
 
 static void test_resetif_hitcount_one() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -652,7 +652,7 @@ static void test_resetif_hitcount_one() {
 }
 
 static void test_resetif_hitcount_addhits() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -677,7 +677,7 @@ static void test_resetif_hitcount_addhits() {
 }
 
 static void test_pauseif_resetif_hitcounts() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -718,7 +718,7 @@ static void test_pauseif_resetif_hitcounts() {
 }
 
 static void test_resetnextif() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -768,7 +768,7 @@ static void test_resetnextif() {
 }
 
 static void test_resetnextif_non_hitcount_condition() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -819,7 +819,7 @@ static void test_resetnextif_non_hitcount_condition() {
 }
 
 static void test_resetnextif_addhits() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -859,7 +859,7 @@ static void test_resetnextif_addhits() {
 }
 
 static void test_resetnextif_addhits_chain() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -917,7 +917,7 @@ static void test_resetnextif_addhits_chain() {
 }
 
 static void test_resetnextif_addhits_chain_total() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -961,7 +961,7 @@ static void test_resetnextif_addhits_chain_total() {
 }
 
 static void test_resetnextif_using_andnext() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1010,7 +1010,7 @@ static void test_resetnextif_using_andnext() {
 }
 
 static void test_resetnextif_andnext() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1059,7 +1059,7 @@ static void test_resetnextif_andnext() {
 }
 
 static void test_resetnextif_andnext_hitchain() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1115,7 +1115,7 @@ static void test_resetnextif_andnext_hitchain() {
 }
 
 static void test_resetnextif_addaddress() {
-  unsigned char ram[] = {0x00, 0x00, 0x02, 0x03, 0x04};
+  uint8_t ram[] = {0x00, 0x00, 0x02, 0x03, 0x04};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1191,7 +1191,7 @@ static void test_resetnextif_addaddress() {
 }
 
 static void test_resetnextif_chain() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1248,7 +1248,7 @@ static void test_resetnextif_chain() {
 }
 
 static void test_resetnextif_chain_andnext() {
-  unsigned char ram[] = {0x00, 0x00, 0x01};
+  uint8_t ram[] = {0x00, 0x00, 0x01};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1303,7 +1303,7 @@ static void test_resetnextif_chain_andnext() {
 }
 
 static void test_resetnextif_chain_with_hits() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1391,7 +1391,7 @@ static void test_resetnextif_chain_with_hits() {
 }
 
 static void test_resetnextif_pause_lock() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1454,7 +1454,7 @@ static void test_resetnextif_pause_lock() {
 }
 
 static void test_addsource() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1491,7 +1491,7 @@ static void test_addsource() {
 }
 
 static void test_addsource_overflow() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1513,7 +1513,7 @@ static void test_addsource_overflow() {
 }
 
 static void test_subsource() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1557,7 +1557,7 @@ static void test_subsource() {
 }
 
 static void test_subsource_legacy_garbage() {
-  unsigned char ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1601,7 +1601,7 @@ static void test_subsource_legacy_garbage() {
 }
 
 static void test_subsource_overflow() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1623,7 +1623,7 @@ static void test_subsource_overflow() {
 }
 
 static void test_addsource_subsource() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1672,7 +1672,7 @@ static void test_addsource_subsource() {
 }
 
 static void test_addsource_multiply() {
-  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1709,7 +1709,7 @@ static void test_addsource_multiply() {
 }
 
 static void test_subsource_multiply() {
-  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1746,7 +1746,7 @@ static void test_subsource_multiply() {
 }
 
 static void test_addsource_multiply_fraction() {
-  unsigned char ram[] = {0x00, 0x08, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x08, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1783,7 +1783,7 @@ static void test_addsource_multiply_fraction() {
 }
 
 static void test_addsource_multiply_address() {
-  unsigned char ram[] = {0x00, 0x06, 0x04, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x06, 0x04, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1820,7 +1820,7 @@ static void test_addsource_multiply_address() {
 }
 
 static void test_addsource_divide() {
-  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1857,7 +1857,7 @@ static void test_addsource_divide() {
 }
 
 static void test_addsource_compare_percentage() {
-  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1879,7 +1879,7 @@ static void test_addsource_compare_percentage() {
 }
 
 static void test_subsource_divide() {
-  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1916,7 +1916,7 @@ static void test_subsource_divide() {
 }
 
 static void test_addsource_divide_address() {
-  unsigned char ram[] = {0x00, 0x06, 0x10, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x06, 0x10, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1953,7 +1953,7 @@ static void test_addsource_divide_address() {
 }
 
 static void test_addsource_divide_self() {
-  unsigned char ram[] = {0x00, 0x06, 0x10, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x06, 0x10, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -1990,7 +1990,7 @@ static void test_addsource_divide_self() {
 }
 
 static void test_addsource_mask() {
-  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2027,7 +2027,7 @@ static void test_addsource_mask() {
 }
 
 static void test_addsource_xor() {
-  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x06, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2064,7 +2064,7 @@ static void test_addsource_xor() {
 }
 
 static void test_addsource_float_first() {
-  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0xC0, 0x3F}; /* fF0004 = 1.5 */
+  uint8_t ram[] = {0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0xC0, 0x3F}; /* fF0004 = 1.5 */
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2081,7 +2081,7 @@ static void test_addsource_float_first() {
 }
 
 static void test_addsource_float_second() {
-  unsigned char ram[] = {0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0xC0, 0x3F}; /* fF0004 = 1.5 */
+  uint8_t ram[] = {0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0xC0, 0x3F}; /* fF0004 = 1.5 */
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2112,7 +2112,7 @@ static void test_addsource_float_second() {
 }
 
 static void test_subsource_mask() {
-  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2149,7 +2149,7 @@ static void test_subsource_mask() {
 }
 
 static void test_subsource_overflow_comparison_equal() {
-  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2197,7 +2197,7 @@ static void test_subsource_overflow_comparison_equal() {
 }
 
 static void test_subsource_overflow_comparison_greater() {
-  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2246,7 +2246,7 @@ static void test_subsource_overflow_comparison_greater() {
 }
 
 static void test_subsource_overflow_comparison_greater_or_equal() {
-  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2295,7 +2295,7 @@ static void test_subsource_overflow_comparison_greater_or_equal() {
 }
 
 static void test_subsource_overflow_comparison_lesser() {
-  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2344,7 +2344,7 @@ static void test_subsource_overflow_comparison_lesser() {
 }
 
 static void test_subsource_overflow_comparison_lesser_or_equal() {
-  unsigned char ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x6C, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2393,7 +2393,7 @@ static void test_subsource_overflow_comparison_lesser_or_equal() {
 }
 
 static void test_subsource_float() {
-  unsigned char ram[] = {0x06, 0x00, 0x00, 0x00, 0x92, 0x44, 0x9A, 0x42}; /* fF0004 = 77.133926 */
+  uint8_t ram[] = {0x06, 0x00, 0x00, 0x00, 0x92, 0x44, 0x9A, 0x42}; /* fF0004 = 77.133926 */
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2414,7 +2414,7 @@ static void test_subsource_float() {
 }
 
 static void test_addhits() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2462,7 +2462,7 @@ static void test_addhits() {
 }
 
 static void test_addhits_multiple() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2494,7 +2494,7 @@ static void test_addhits_multiple() {
 }
 
 static void test_addhits_no_target() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2526,7 +2526,7 @@ static void test_addhits_no_target() {
 }
 
 static void test_addhits_with_addsource() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2555,7 +2555,7 @@ static void test_addhits_with_addsource() {
 }
 
 static void test_subhits() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2601,7 +2601,7 @@ static void test_subhits() {
 }
 
 static void test_subhits_below_zero() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2660,7 +2660,7 @@ static void test_subhits_below_zero() {
 }
 
 static void test_andnext() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2742,7 +2742,7 @@ static void test_andnext() {
 }
 
 static void test_andnext_boundaries() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2791,7 +2791,7 @@ static void test_andnext_boundaries() {
 }
 
 static void test_andnext_resetif() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2868,7 +2868,7 @@ static void test_andnext_resetif() {
 }
 
 static void test_andnext_pauseif() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2945,7 +2945,7 @@ static void test_andnext_pauseif() {
 }
 
 static void test_andnext_addsource() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -2986,7 +2986,7 @@ static void test_andnext_addsource() {
 }
 
 static void test_andnext_addhits() {
-  unsigned char ram[] = {0x00, 0x00, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x00, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3032,7 +3032,7 @@ static void test_andnext_addhits() {
 }
 
 static void test_andnext_between_addhits() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3103,7 +3103,7 @@ static void test_andnext_between_addhits() {
 }
 
 static void test_andnext_with_hits_chain() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3186,7 +3186,7 @@ static void test_andnext_with_hits_chain() {
 }
 
 static void test_andnext_changes_to() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3217,7 +3217,7 @@ static void test_andnext_changes_to() {
 }
 
 static void test_ornext() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3287,7 +3287,7 @@ static void test_ornext() {
 }
 
 static void test_andnext_ornext_interaction() {
-  unsigned char ram[] = {0, 0, 0, 0, 0};
+  uint8_t ram[] = {0, 0, 0, 0, 0};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3312,7 +3312,7 @@ static void test_andnext_ornext_interaction() {
 }
 
 static void test_addaddress_direct_pointer() {
-  unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3349,7 +3349,7 @@ static void test_addaddress_direct_pointer() {
 }
 
 static void test_addaddress_direct_pointer_delta() {
-  unsigned char ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3414,7 +3414,7 @@ static void test_addaddress_direct_pointer_delta() {
 }
 
 static void test_addaddress_direct_pointer_prior() {
-  unsigned char ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
+  uint8_t ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3483,7 +3483,7 @@ static void test_addaddress_direct_pointer_prior() {
 }
 
 static void test_addaddress_indirect_pointer() {
-  unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3524,7 +3524,7 @@ static void test_addaddress_indirect_pointer() {
 }
 
 static void test_addaddress_indirect_pointer_negative() {
-  unsigned char ram[] = {0x02, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x02, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3565,7 +3565,7 @@ static void test_addaddress_indirect_pointer_negative() {
 }
 
 static void test_addaddress_indirect_pointer_out_of_range() {
-  unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56, 0x16};
+  uint8_t ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56, 0x16};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3592,7 +3592,7 @@ static void test_addaddress_indirect_pointer_out_of_range() {
 }
 
 static void test_addaddress_indirect_pointer_multiple() {
-  unsigned char ram[] = {0x01, 0x02, 0x03, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x01, 0x02, 0x03, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3636,7 +3636,7 @@ static void test_addaddress_indirect_pointer_multiple() {
 }
 
 static void test_addaddress_pointer_data_size_differs_from_pointer_size() {
-  unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3670,7 +3670,7 @@ static void test_addaddress_pointer_data_size_differs_from_pointer_size() {
 }
 
 static void test_addaddress_double_indirection() {
-  unsigned char ram[] = {0x01, 0x02, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x01, 0x02, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3708,7 +3708,7 @@ static void test_addaddress_double_indirection() {
 }
 
 static void test_addaddress_double_indirection_with_delta() {
-  unsigned char ram[] = { 0, 2, 4 };
+  uint8_t ram[] = { 0, 2, 4 };
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3736,7 +3736,7 @@ static void test_addaddress_double_indirection_with_delta() {
 }
 
 static void test_addaddress_double_indirection_with_delta_incorrect() {
-  unsigned char ram[] = { 0, 2, 4 };
+  uint8_t ram[] = { 0, 2, 4 };
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3769,7 +3769,7 @@ static void test_addaddress_double_indirection_with_delta_incorrect() {
 }
 
 static void test_addaddress_adjust_both_sides() {
-  unsigned char ram[] = {0x02, 0x11, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x02, 0x11, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3803,7 +3803,7 @@ static void test_addaddress_adjust_both_sides() {
 }
 
 static void test_addaddress_adjust_both_sides_different_bases() {
-  unsigned char ram[] = {0x02, 0x11, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x02, 0x11, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3830,7 +3830,7 @@ static void test_addaddress_adjust_both_sides_different_bases() {
 }
 
 static void test_addaddress_scaled() {
-  unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3865,7 +3865,7 @@ static void test_addaddress_scaled() {
 }
 
 static void test_addaddress_scaled_negative() {
-  unsigned char ram[] = {0x01, 0x12, 0x34, 0xAB, 0x01};
+  uint8_t ram[] = {0x01, 0x12, 0x34, 0xAB, 0x01};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
@@ -3900,7 +3900,7 @@ static void test_addaddress_scaled_negative() {
 }
 
 static void test_prior_sequence() {
-  unsigned char ram[] = {0x00};
+  uint8_t ram[] = {0x00};
   memory_t memory;
   rc_condset_t* condset;
   rc_condset_memrefs_t memrefs;
