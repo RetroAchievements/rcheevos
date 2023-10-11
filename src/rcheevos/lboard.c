@@ -262,6 +262,9 @@ int rc_lboard_state_active(int state) {
 }
 
 void rc_reset_lboard(rc_lboard_t* self) {
+  if (!self)
+    return;
+
   self->state = RC_LBOARD_STATE_WAITING;
 
   rc_reset_trigger(&self->start);

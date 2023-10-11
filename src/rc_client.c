@@ -904,33 +904,33 @@ static void rc_client_update_legacy_runtime_achievements(rc_client_game_info_t* 
     rc_client_achievement_info_t* achievement;
     rc_client_achievement_info_t* stop;
     rc_runtime_trigger_t* trigger;
+    rc_client_subset_info_t* subset;
 
-    rc_client_subset_info_t* subset = game->subsets;
-    for (; subset; subset = subset->next) {
+    if (active_count <= game->runtime.trigger_capacity) {
+      if (active_count != 0)
+        memset(game->runtime.triggers, 0, active_count * sizeof(rc_runtime_trigger_t));
+    } else {
+      if (game->runtime.triggers)
+        free(game->runtime.triggers);
+
+      game->runtime.trigger_capacity = active_count;
+      game->runtime.triggers = (rc_runtime_trigger_t*)calloc(1, active_count * sizeof(rc_runtime_trigger_t));
+    }
+
+    trigger = game->runtime.triggers;
+    if (!trigger) {
+      /* malloc failed, no way to report error, just bail */
+      game->runtime.trigger_count = 0;
+      return;
+    }
+
+    for (subset = game->subsets; subset; subset = subset->next) {
       if (!subset->active)
         continue;
 
       achievement = subset->achievements;
       stop = achievement + subset->public_.num_achievements;
 
-      if (active_count <= game->runtime.trigger_capacity) {
-        if (active_count != 0)
-          memset(game->runtime.triggers, 0, active_count * sizeof(rc_runtime_trigger_t));
-      }
-      else {
-        if (game->runtime.triggers)
-          free(game->runtime.triggers);
-
-        game->runtime.trigger_capacity = active_count;
-        game->runtime.triggers = (rc_runtime_trigger_t*)calloc(1, active_count * sizeof(rc_runtime_trigger_t));
-        if (!game->runtime.triggers) {
-          /* Unexpected, no callback available, just fail */
-          break;
-        }
-      }
-
-      trigger = game->runtime.triggers;
-      achievement = subset->achievements;
       for (; achievement < stop; ++achievement) {
         if (achievement->public_.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE) {
           trigger->id = achievement->public_.id;
@@ -1044,20 +1044,16 @@ static void rc_client_activate_achievements(rc_client_game_info_t* game, rc_clie
 
 static void rc_client_update_legacy_runtime_leaderboards(rc_client_game_info_t* game, uint32_t active_count)
 {
-  if (active_count > 0)
-  {
+  if (active_count > 0) {
     rc_client_leaderboard_info_t* leaderboard;
     rc_client_leaderboard_info_t* stop;
     rc_client_subset_info_t* subset;
     rc_runtime_lboard_t* lboard;
 
-    if (active_count <= game->runtime.lboard_capacity)
-    {
+    if (active_count <= game->runtime.lboard_capacity) {
       if (active_count != 0)
         memset(game->runtime.lboards, 0, active_count * sizeof(rc_runtime_lboard_t));
-    }
-    else
-    {
+    } else {
       if (game->runtime.lboards)
         free(game->runtime.lboards);
 
@@ -1066,20 +1062,21 @@ static void rc_client_update_legacy_runtime_leaderboards(rc_client_game_info_t* 
     }
 
     lboard = game->runtime.lboards;
+    if (!lboard) {
+      /* malloc failed. no way to report error, just bail */
+      game->runtime.lboard_count = 0;
+      return;
+    }
 
-    subset = game->subsets;
-    for (; subset; subset = subset->next)
-    {
+    for (subset = game->subsets; subset; subset = subset->next) {
       if (!subset->active)
         continue;
 
       leaderboard = subset->leaderboards;
       stop = leaderboard + subset->public_.num_leaderboards;
-      for (; leaderboard < stop; ++leaderboard)
-      {
+      for (; leaderboard < stop; ++leaderboard) {
         if (leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_ACTIVE ||
-            leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING)
-        {
+            leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING) {
           lboard->id = leaderboard->public_.id;
           memcpy(lboard->md5, leaderboard->md5, 16);
           lboard->lboard = leaderboard->lboard;
