@@ -280,6 +280,7 @@ typedef struct rc_client_state_t {
   uint8_t disconnect;
 
   struct rc_client_load_state_t* load;
+  struct rc_client_async_handle_t* async_handles[4];
   rc_memref_t* processing_memref;
 
   rc_peek_t legacy_peek;
