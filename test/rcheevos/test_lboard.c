@@ -28,7 +28,7 @@ static int evaluate_lboard(rc_lboard_t* lboard, memory_t* memory, int* value) {
 }
 
 static void test_simple_leaderboard() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -80,7 +80,7 @@ static void test_simple_leaderboard() {
 }
 
 static void test_start_and_cancel_same_frame() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -117,7 +117,7 @@ static void test_start_and_cancel_same_frame() {
 }
 
 static void test_start_and_submit_same_frame() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -147,7 +147,7 @@ static void test_start_and_submit_same_frame() {
 }
 
 static void test_start_and_conditions() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -173,7 +173,7 @@ static void test_start_and_conditions() {
 }
 
 static void test_start_or_conditions() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -203,7 +203,7 @@ static void test_start_or_conditions() {
 }
 
 static void test_start_resets_value() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -254,7 +254,7 @@ static void test_start_resets_value() {
 }
 
 static void test_cancel_or_conditions() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -284,7 +284,7 @@ static void test_cancel_or_conditions() {
 }
 
 static void test_submit_and_conditions() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -310,7 +310,7 @@ static void test_submit_and_conditions() {
 }
 
 static void test_submit_or_conditions() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -340,7 +340,7 @@ static void test_submit_or_conditions() {
 }
 
 static void test_progress() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -363,7 +363,7 @@ static void test_progress() {
 }
 
 static void test_value_from_hitcount() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -424,7 +424,7 @@ static void test_value_from_hitcount() {
 }
 
 static void test_value_from_addhits() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -472,7 +472,7 @@ static void test_value_from_addhits() {
 
 static void test_value_from_float() {
   /* bytes 5-8 are the float value for pi */
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56, 0xDB, 0x0F, 0x49, 0x40};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56, 0xDB, 0x0F, 0x49, 0x40};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -505,7 +505,7 @@ static void test_value_from_float() {
 
 static void test_value_from_float_scaled() {
   /* bytes 5-8 are the float value for pi */
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56, 0xDB, 0x0F, 0x49, 0x40};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56, 0xDB, 0x0F, 0x49, 0x40};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];
@@ -537,7 +537,7 @@ static void test_value_from_float_scaled() {
 }
 
 static void test_maximum_value_from_conditions() {
-  unsigned char ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_lboard_t* lboard;
   char buffer[1024];

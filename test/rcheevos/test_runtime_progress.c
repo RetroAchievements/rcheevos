@@ -73,7 +73,7 @@ static void _assert_deserialize(rc_runtime_t* runtime, unsigned char* buffer)
 }
 #define assert_deserialize(runtime, buffer) ASSERT_HELPER(_assert_deserialize(runtime, buffer), "assert_deserialize")
 
-static void _assert_sized_memref(rc_runtime_t* runtime, unsigned address, char size, unsigned value, unsigned prev, unsigned prior)
+static void _assert_sized_memref(rc_runtime_t* runtime, uint32_t address, char size, uint32_t value, uint32_t prev, uint32_t prior)
 {
   rc_memref_t* memref = runtime->memrefs;
   while (memref)
@@ -102,7 +102,7 @@ static void _assert_sized_memref(rc_runtime_t* runtime, unsigned address, char s
 #define assert_sized_memref(runtime, address, size, value, prev, prior) ASSERT_HELPER(_assert_sized_memref(runtime, address, size, value, prev, prior), "assert_sized_memref")
 #define assert_memref(runtime, address, value, prev, prior) ASSERT_HELPER(_assert_sized_memref(runtime, address, RC_MEMSIZE_8_BITS, value, prev, prior), "assert_memref")
 
-static rc_trigger_t* find_trigger(rc_runtime_t* runtime, unsigned ach_id)
+static rc_trigger_t* find_trigger(rc_runtime_t* runtime, uint32_t ach_id)
 {
   unsigned i;
   for (i = 0; i < runtime->trigger_count; ++i) {
@@ -141,7 +141,7 @@ static rc_condition_t* find_trigger_cond(rc_trigger_t* trigger, unsigned group_i
   return cond;
 }
 
-static void _assert_hitcount(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
+static void _assert_hitcount(rc_runtime_t* runtime, uint32_t ach_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_hits)
 {
   rc_trigger_t* trigger = find_trigger(runtime, ach_id);
   rc_condition_t* cond = find_trigger_cond(trigger, group_idx, cond_idx);
@@ -151,7 +151,7 @@ static void _assert_hitcount(rc_runtime_t* runtime, unsigned ach_id, unsigned gr
 }
 #define assert_hitcount(runtime, ach_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_hitcount(runtime, ach_id, group_idx, cond_idx, expected_hits), "assert_hitcount")
 
-static void _assert_cond_memref(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_value, unsigned expected_prior, char expected_changed)
+static void _assert_cond_memref(rc_runtime_t* runtime, uint32_t ach_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_value, uint32_t expected_prior, uint8_t expected_changed)
 {
   rc_trigger_t* trigger = find_trigger(runtime, ach_id);
   rc_condition_t* cond = find_trigger_cond(trigger, group_idx, cond_idx);
@@ -164,7 +164,7 @@ static void _assert_cond_memref(rc_runtime_t* runtime, unsigned ach_id, unsigned
 #define assert_cond_memref(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed) \
  ASSERT_HELPER(_assert_cond_memref(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed), "assert_cond_memref")
 
-static void _assert_cond_memref2(rc_runtime_t* runtime, unsigned ach_id, unsigned group_idx, unsigned cond_idx, unsigned expected_value, unsigned expected_prior, char expected_changed)
+static void _assert_cond_memref2(rc_runtime_t* runtime, uint32_t ach_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_value, uint32_t expected_prior, uint8_t expected_changed)
 {
   rc_trigger_t* trigger = find_trigger(runtime, ach_id);
   rc_condition_t* cond = find_trigger_cond(trigger, group_idx, cond_idx);
@@ -177,7 +177,7 @@ static void _assert_cond_memref2(rc_runtime_t* runtime, unsigned ach_id, unsigne
 #define assert_cond_memref2(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed) \
  ASSERT_HELPER(_assert_cond_memref2(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed), "assert_cond_memref2")
 
-static void _assert_achievement_state(rc_runtime_t* runtime, unsigned ach_id, int state)
+static void _assert_achievement_state(rc_runtime_t* runtime, uint32_t ach_id, uint8_t state)
 {
   rc_trigger_t* trigger = find_trigger(runtime, ach_id);
   ASSERT_PTR_NOT_NULL(trigger);
@@ -186,7 +186,7 @@ static void _assert_achievement_state(rc_runtime_t* runtime, unsigned ach_id, in
 }
 #define assert_achievement_state(runtime, ach_id, state) ASSERT_HELPER(_assert_achievement_state(runtime, ach_id, state), "assert_achievement_state")
 
-static rc_lboard_t* find_lboard(rc_runtime_t* runtime, unsigned lboard_id)
+static rc_lboard_t* find_lboard(rc_runtime_t* runtime, uint32_t lboard_id)
 {
   unsigned i;
   for (i = 0; i < runtime->lboard_count; ++i) {
@@ -198,7 +198,7 @@ static rc_lboard_t* find_lboard(rc_runtime_t* runtime, unsigned lboard_id)
   return NULL;
 }
 
-static void _assert_sta_hitcount(rc_runtime_t* runtime, unsigned lboard_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
+static void _assert_sta_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_hits)
 {
   rc_lboard_t* lboard = find_lboard(runtime, lboard_id);
   rc_condition_t* cond = find_trigger_cond(&lboard->start, group_idx, cond_idx);
@@ -208,7 +208,7 @@ static void _assert_sta_hitcount(rc_runtime_t* runtime, unsigned lboard_id, unsi
 }
 #define assert_sta_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_sta_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits), "assert_sta_hitcount")
 
-static void _assert_sub_hitcount(rc_runtime_t* runtime, unsigned lboard_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
+static void _assert_sub_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_hits)
 {
   rc_lboard_t* lboard = find_lboard(runtime, lboard_id);
   rc_condition_t* cond = find_trigger_cond(&lboard->submit, group_idx, cond_idx);
@@ -218,7 +218,7 @@ static void _assert_sub_hitcount(rc_runtime_t* runtime, unsigned lboard_id, unsi
 }
 #define assert_sub_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_sub_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits), "assert_sub_hitcount")
 
-static void _assert_can_hitcount(rc_runtime_t* runtime, unsigned lboard_id, unsigned group_idx, unsigned cond_idx, unsigned expected_hits)
+static void _assert_can_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_hits)
 {
   rc_lboard_t* lboard = find_lboard(runtime, lboard_id);
   rc_condition_t* cond = find_trigger_cond(&lboard->cancel, group_idx, cond_idx);
@@ -297,7 +297,7 @@ static void reset_runtime(rc_runtime_t* runtime)
 
 static void test_empty()
 {
-  unsigned char buffer[2048];
+  uint8_t buffer[2048];
   rc_runtime_t runtime;
 
   rc_runtime_init(&runtime);
@@ -316,8 +316,8 @@ static void test_empty()
 
 static void test_single_achievement()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -356,8 +356,8 @@ static void test_single_achievement()
 
 static void test_invalid_marker()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -400,8 +400,8 @@ static void test_invalid_marker()
 
 static void test_invalid_memref_chunk_id()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -444,8 +444,8 @@ static void test_invalid_memref_chunk_id()
 
 static void test_modified_data()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -491,8 +491,8 @@ static void test_modified_data()
 
 static void test_single_achievement_deactivated()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -545,8 +545,8 @@ static void test_single_achievement_deactivated()
 
 static void test_single_achievement_md5_changed()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -629,8 +629,8 @@ static void setup_multiple_achievements(rc_runtime_t* runtime, memory_t* memory)
 
 static void test_no_core_group()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -669,8 +669,8 @@ static void test_no_core_group()
 
 static void test_memref_shared_address()
 {
-  unsigned char ram[] = { 2, 3, 0, 0, 0 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 0, 0, 0 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -715,9 +715,9 @@ static void test_memref_shared_address()
 
 static void test_memref_indirect()
 {
-  unsigned char ram[] = { 1, 2, 3, 4, 5 };
-  unsigned char buffer1[512];
-  unsigned char buffer2[512];
+  uint8_t ram[] = { 1, 2, 3, 4, 5 };
+  uint8_t buffer1[512];
+  uint8_t buffer2[512];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -773,9 +773,9 @@ static void test_memref_indirect()
 
 static void test_memref_double_indirect()
 {
-  unsigned char ram[] = { 1, 2, 3, 4, 5 };
-  unsigned char buffer1[512];
-  unsigned char buffer2[512];
+  uint8_t ram[] = { 1, 2, 3, 4, 5 };
+  uint8_t buffer1[512];
+  uint8_t buffer2[512];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -836,8 +836,8 @@ static void test_memref_double_indirect()
 
 static void test_multiple_achievements()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -869,8 +869,8 @@ static void test_multiple_achievements()
 
 static void test_multiple_achievements_ignore_triggered_and_inactive()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -914,8 +914,8 @@ static void test_multiple_achievements_ignore_triggered_and_inactive()
 
 static void test_multiple_achievements_overwrite_waiting()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -950,8 +950,8 @@ static void test_multiple_achievements_overwrite_waiting()
 
 static void test_multiple_achievements_reactivate_waiting()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -990,9 +990,9 @@ static void test_multiple_achievements_reactivate_waiting()
 
 static void test_multiple_achievements_paused_and_primed()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
-  unsigned char buffer2[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
+  uint8_t buffer2[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1055,8 +1055,8 @@ static void test_multiple_achievements_paused_and_primed()
 
 static void test_multiple_achievements_deactivated_memrefs()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1108,8 +1108,8 @@ static void test_multiple_achievements_deactivated_memrefs()
 
 static void test_multiple_achievements_deactivated_no_memrefs()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1161,8 +1161,8 @@ static void test_multiple_achievements_deactivated_no_memrefs()
 
 static void test_single_leaderboard()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1209,8 +1209,8 @@ static void test_single_leaderboard()
 
 static void test_multiple_leaderboards()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1263,8 +1263,8 @@ static void test_multiple_leaderboards()
 
 static void test_multiple_leaderboards_ignore_inactive()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1322,8 +1322,8 @@ static void test_multiple_leaderboards_ignore_inactive()
 
 static void test_multiple_leaderboards_ignore_modified()
 {
-  unsigned char ram[] = { 2, 3, 6 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1380,7 +1380,7 @@ static void test_multiple_leaderboards_ignore_modified()
 
 static void test_rich_presence_none()
 {
-  unsigned char buffer[2048];
+  uint8_t buffer[2048];
   rc_runtime_t runtime;
   rc_runtime_init(&runtime);
 
@@ -1394,7 +1394,7 @@ static void test_rich_presence_none()
 
 static void test_rich_presence_static()
 {
-  unsigned char buffer[2048];
+  uint8_t buffer[2048];
   rc_runtime_t runtime;
   rc_runtime_init(&runtime);
 
@@ -1410,8 +1410,8 @@ static void test_rich_presence_static()
 
 static void test_rich_presence_simple_lookup()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1444,8 +1444,8 @@ static void test_rich_presence_simple_lookup()
 
 static void test_rich_presence_tracked_hits()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1473,8 +1473,8 @@ static void test_rich_presence_tracked_hits()
 
 static void test_rich_presence_tracked_hits_md5_changed()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1503,8 +1503,8 @@ static void test_rich_presence_tracked_hits_md5_changed()
 
 static void test_rich_presence_conditional_display()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1533,8 +1533,8 @@ static void test_rich_presence_conditional_display()
 
 static void test_rich_presence_conditional_display_md5_changed()
 {
-  unsigned char ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  unsigned char buffer[2048];
+  uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+  uint8_t buffer[2048];
   memory_t memory;
   rc_runtime_t runtime;
 

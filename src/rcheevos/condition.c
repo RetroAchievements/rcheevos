@@ -149,7 +149,7 @@ static int rc_parse_operator(const char** memaddr) {
   }
 }
 
-rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse, int is_indirect) {
+rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse, uint8_t is_indirect) {
   rc_condition_t* self;
   const char* aux;
   int result;

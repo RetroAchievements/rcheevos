@@ -29,7 +29,7 @@ static void _assert_activate_achievement(rc_runtime_t* runtime, unsigned int id,
 
 static void do_timing(void)
 {
-  unsigned char ram[256], last, next, bitcount;
+  uint8_t ram[256], last, next, bitcount;
   memory_t memory;
   int i, j, mask;
   clock_t total_clocks = 0, start, end;

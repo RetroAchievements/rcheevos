@@ -8,6 +8,7 @@ extern "C" {
 #include "rc_error.h"
 
 #include <stddef.h>
+#include <stdint.h>
 
 /*****************************************************************************\
 | Forward Declarations (defined in rc_runtime_types.h)                        |
@@ -34,32 +35,32 @@ typedef struct rc_value_t rc_value_t;
  * num_bytes is greater than 1, the value is read in little-endian from
  * memory.
  */
-typedef unsigned (*rc_runtime_peek_t)(unsigned address, unsigned num_bytes, void* ud);
+typedef uint32_t(*rc_runtime_peek_t)(uint32_t address, uint32_t num_bytes, void* ud);
 
 /*****************************************************************************\
 | Runtime                                                                     |
 \*****************************************************************************/
 
 typedef struct rc_runtime_trigger_t {
-  unsigned id;
+  uint32_t id;
   rc_trigger_t* trigger;
   void* buffer;
   rc_memref_t* invalid_memref;
   unsigned char md5[16];
-  int serialized_size;
-  char owns_memrefs;
+  int32_t serialized_size;
+  uint8_t owns_memrefs;
 }
 rc_runtime_trigger_t;
 
 typedef struct rc_runtime_lboard_t {
-  unsigned id;
-  int value;
+  uint32_t id;
+  int32_t value;
   rc_lboard_t* lboard;
   void* buffer;
   rc_memref_t* invalid_memref;
   unsigned char md5[16];
-  int serialized_size;
-  char owns_memrefs;
+  uint32_t serialized_size;
+  uint8_t owns_memrefs;
 }
 rc_runtime_lboard_t;
 
@@ -68,18 +69,18 @@ typedef struct rc_runtime_richpresence_t {
   void* buffer;
   struct rc_runtime_richpresence_t* previous;
   unsigned char md5[16];
-  char owns_memrefs;
+  uint8_t owns_memrefs;
 }
 rc_runtime_richpresence_t;
 
 typedef struct rc_runtime_t {
   rc_runtime_trigger_t* triggers;
-  unsigned trigger_count;
-  unsigned trigger_capacity;
+  uint32_t trigger_count;
+  uint32_t trigger_capacity;
 
   rc_runtime_lboard_t* lboards;
-  unsigned lboard_count;
-  unsigned lboard_capacity;
+  uint32_t lboard_count;
+  uint32_t lboard_capacity;
 
   rc_runtime_richpresence_t* richpresence;
 
@@ -89,7 +90,7 @@ typedef struct rc_runtime_t {
   rc_value_t* variables;
   rc_value_t** next_variable;
 
-  char owns_self;
+  uint8_t owns_self;
 }
 rc_runtime_t;
 
@@ -129,9 +130,9 @@ enum {
 };
 
 typedef struct rc_runtime_event_t {
-  unsigned id;
-  int value;
-  char type;
+  uint32_t id;
+  int32_t value;
+  uint8_t type;
 }
 rc_runtime_event_t;
 
@@ -140,9 +141,9 @@ typedef void (*rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_eve
 void rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_peek_t peek, void* ud, lua_State* L);
 void rc_runtime_reset(rc_runtime_t* runtime);
 
-typedef int (*rc_runtime_validate_address_t)(unsigned address);
+typedef int (*rc_runtime_validate_address_t)(uint32_t address);
 void rc_runtime_validate_addresses(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_validate_address_t validate_handler);
-void rc_runtime_invalidate_address(rc_runtime_t* runtime, unsigned address);
+void rc_runtime_invalidate_address(rc_runtime_t* runtime, uint32_t address);
 
 int rc_runtime_progress_size(const rc_runtime_t* runtime, lua_State* L);
 int rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua_State* L);
