@@ -676,46 +676,49 @@ void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
   rc_file_seek(file_handle, 0, SEEK_SET);
 
   m3u_contents = (char*)malloc((size_t)file_len + 1);
-  rc_file_read(file_handle, m3u_contents, (int)file_len);
-  m3u_contents[file_len] = '\0';
-
-  rc_file_close(file_handle);
-
-  ptr = m3u_contents;
-  do
+  if (m3u_contents)
   {
-    /* ignore whitespace */
-    while (isspace((int)*ptr))
-      ++ptr;
+    rc_file_read(file_handle, m3u_contents, (int)file_len);
+    m3u_contents[file_len] = '\0';
 
-    if (*ptr == '#')
+    rc_file_close(file_handle);
+
+    ptr = m3u_contents;
+    do
     {
-      /* ignore comment unless it's the special SAVEDISK extension */
-      if (memcmp(ptr, "#SAVEDISK:", 10) == 0)
+      /* ignore whitespace */
+      while (isspace((int)*ptr))
+        ++ptr;
+
+      if (*ptr == '#')
       {
-        /* get the path to the save disk from the frontend, assign it a bogus hash so
-         * it doesn't get hashed later */
-        if (get_image_path(index, image_path, sizeof(image_path)))
+        /* ignore comment unless it's the special SAVEDISK extension */
+        if (memcmp(ptr, "#SAVEDISK:", 10) == 0)
         {
-          const char save_disk_hash[33] = "[SAVE DISK]";
-          rc_libretro_hash_set_add(hash_set, image_path, -1, save_disk_hash);
-          ++index;
+          /* get the path to the save disk from the frontend, assign it a bogus hash so
+           * it doesn't get hashed later */
+          if (get_image_path(index, image_path, sizeof(image_path)))
+          {
+            const char save_disk_hash[33] = "[SAVE DISK]";
+            rc_libretro_hash_set_add(hash_set, image_path, -1, save_disk_hash);
+            ++index;
+          }
         }
       }
-    }
-    else
-    {
-      /* non-empty line, tally a file */
-      ++index;
-    }
+      else
+      {
+        /* non-empty line, tally a file */
+        ++index;
+      }
 
-    /* find the end of the line */
-    while (*ptr && *ptr != '\n')
-      ++ptr;
+      /* find the end of the line */
+      while (*ptr && *ptr != '\n')
+        ++ptr;
 
-  } while (*ptr);
+    } while (*ptr);
 
-  free(m3u_contents);
+    free(m3u_contents);
+  }
 
   if (hash_set->entries_count > 0)
   {

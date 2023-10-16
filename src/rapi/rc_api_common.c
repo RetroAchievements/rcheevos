@@ -259,12 +259,7 @@ static int rc_json_extract_html_error(rc_api_response_t* response, const rc_api_
     if (isdigit((int)*title_start)) {
       const char* title_end = strstr(title_start + 7, "</title>");
       if (title_end) {
-        char* dst = rc_buffer_reserve(&response->buffer, (title_end - title_start) + 1);
-        response->error_message = dst;
-        memcpy(dst, title_start, title_end - title_start);
-        dst += (title_end - title_start);
-        *dst++ = '\0';
-        rc_buffer_consume(&response->buffer, response->error_message, dst);
+        response->error_message = rc_buffer_strncpy(&response->buffer, title_start, title_end - title_start);
         response->succeeded = 0;
         return RC_INVALID_JSON;
       }
@@ -277,14 +272,8 @@ static int rc_json_extract_html_error(rc_api_response_t* response, const rc_api_
   if (end > json && end[-1] == '\r')
     --end;
 
-  if (end > json) {
-    char* dst = rc_buffer_reserve(&response->buffer, (end - json) + 1);
-    response->error_message = dst;
-    memcpy(dst, json, end - json);
-    dst += (end - json);
-    *dst++ = '\0';
-    rc_buffer_consume(&response->buffer, response->error_message, dst);
-  }
+  if (end > json)
+    response->error_message = rc_buffer_strncpy(&response->buffer, json, end - json);
 
   response->succeeded = 0;
   return RC_INVALID_JSON;
@@ -363,14 +352,14 @@ static int rc_json_missing_field(rc_api_response_t* response, const rc_json_fiel
   const size_t not_found_len = strlen(not_found);
   const size_t field_len = strlen(field->name);
 
-  char* write = rc_buffer_reserve(&response->buffer, field_len + not_found_len + 1);
+  uint8_t* write = rc_buffer_reserve(&response->buffer, field_len + not_found_len + 1);
   if (write) {
-    response->error_message = write;
+    response->error_message = (char*)write;
     memcpy(write, field->name, field_len);
     write += field_len;
     memcpy(write, not_found, not_found_len + 1);
     write += not_found_len + 1;
-    rc_buffer_consume(&response->buffer, response->error_message, write);
+    rc_buffer_consume(&response->buffer, (uint8_t*)response->error_message, write);
   }
 
   response->succeeded = 0;
@@ -507,7 +496,7 @@ static unsigned rc_json_decode_hex4(const char* input) {
   return (unsigned)strtoul(hex, NULL, 16);
 }
 
-static int rc_json_ucs32_to_utf8(unsigned char* dst, unsigned ucs32_char) {
+static int rc_json_ucs32_to_utf8(uint8_t* dst, uint32_t ucs32_char) {
   if (ucs32_char < 0x80) {
     dst[0] = (ucs32_char & 0x7F);
     return 1;
@@ -583,7 +572,7 @@ int rc_json_get_string(const char** out, rc_buffer_t* buffer, const rc_json_fiel
       return 1;
     }
 
-    *out = dst = rc_buffer_reserve(buffer, len - 1); /* -2 for quotes, +1 for null terminator */
+    *out = dst = (char*)rc_buffer_reserve(buffer, len - 1); /* -2 for quotes, +1 for null terminator */
 
     do {
       if (*src == '\\') {
@@ -643,13 +632,13 @@ int rc_json_get_string(const char** out, rc_buffer_t* buffer, const rc_json_fiel
     } while (*src != '\"');
 
   } else {
-    *out = dst = rc_buffer_reserve(buffer, len + 1); /* +1 for null terminator */
+    *out = dst = (char*)rc_buffer_reserve(buffer, len + 1); /* +1 for null terminator */
     memcpy(dst, src, len);
     dst += len;
   }
 
   *dst++ = '\0';
-  rc_buffer_consume(buffer, *out, dst);
+  rc_buffer_consume(buffer, (uint8_t*)(*out), (uint8_t*)dst);
   return 1;
 }
 
@@ -863,13 +852,13 @@ void rc_url_builder_init(rc_api_url_builder_t* builder, rc_buffer_t* buffer, siz
 
   memset(builder, 0, sizeof(*builder));
   builder->buffer = buffer;
-  builder->write = builder->start = rc_buffer_reserve(buffer, estimated_size);
+  builder->write = builder->start = (char*)rc_buffer_reserve(buffer, estimated_size);
 
   used_buffer = &buffer->chunk;
-  while (used_buffer && used_buffer->write != builder->write)
+  while (used_buffer && used_buffer->write != (uint8_t*)builder->write)
     used_buffer = used_buffer->next;
 
-  builder->end = (used_buffer) ? used_buffer->end : builder->start + estimated_size;
+  builder->end = (used_buffer) ? (char*)used_buffer->end : builder->start + estimated_size;
 }
 
 const char* rc_url_builder_finalize(rc_api_url_builder_t* builder) {
@@ -878,7 +867,7 @@ const char* rc_url_builder_finalize(rc_api_url_builder_t* builder) {
   if (builder->result != RC_OK)
     return NULL;
 
-  rc_buffer_consume(builder->buffer, builder->start, builder->write);
+  rc_buffer_consume(builder->buffer, (uint8_t*)builder->start, (uint8_t*)builder->write);
   return builder->start;
 }
 
@@ -903,7 +892,7 @@ static int rc_url_builder_reserve(rc_api_url_builder_t* builder, size_t amount) 
       if ((remaining - amount) > buffer_prefix_size)
         new_size -= buffer_prefix_size;
 
-      new_start = rc_buffer_reserve(builder->buffer, new_size);
+      new_start = (char*)rc_buffer_reserve(builder->buffer, new_size);
       if (!new_start) {
         builder->result = RC_OUT_OF_MEMORY;
         return RC_OUT_OF_MEMORY;
@@ -1026,13 +1015,13 @@ void rc_api_url_build_dorequest_url(rc_api_request_t* request) {
     const size_t endpoint_len = sizeof(DOREQUEST_ENDPOINT);
     const size_t host_len = strlen(g_host);
     const size_t url_len = host_len + endpoint_len;
-    char* url = rc_buffer_reserve(&request->buffer, url_len);
+    uint8_t* url = rc_buffer_reserve(&request->buffer, url_len);
 
     memcpy(url, g_host, host_len);
     memcpy(url + host_len, DOREQUEST_ENDPOINT, endpoint_len);
     rc_buffer_consume(&request->buffer, url, url + url_len);
 
-    request->url = url;
+    request->url = (char*)url;
   }
   #undef DOREQUEST_ENDPOINT
 }

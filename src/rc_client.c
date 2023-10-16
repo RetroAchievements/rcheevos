@@ -1523,7 +1523,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
         achievement->public_.bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED;
       }
       else {
-        rc_buffer_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
+        rc_buffer_consume(buffer, parse.buffer, (uint8_t*)parse.buffer + parse.offset);
         achievement->trigger->memrefs = NULL; /* memrefs managed by runtime */
       }
 
@@ -1655,7 +1655,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
         leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
       }
       else {
-        rc_buffer_consume(buffer, parse.buffer, (char*)parse.buffer + parse.offset);
+        rc_buffer_consume(buffer, parse.buffer, (uint8_t*)parse.buffer + parse.offset);
         leaderboard->lboard->memrefs = NULL; /* memrefs managed by runtime */
       }
 
