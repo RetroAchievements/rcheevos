@@ -65,6 +65,10 @@ typedef struct rc_api_start_session_request_t {
   const char* api_token;
   /* The unique identifier of the game */
   uint32_t game_id;
+  /* (recommended) The hash associated to the game being played */
+  const char* game_hash;
+  /* Non-zero if hardcore is currently enabled (ignored if game_hash is null) */
+  uint32_t hardcore;
 }
 rc_api_start_session_request_t;
 

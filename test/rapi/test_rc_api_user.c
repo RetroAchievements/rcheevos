@@ -39,6 +39,45 @@ static void test_init_start_session_request_no_game()
   rc_api_destroy_request(&request);
 }
 
+static void test_init_start_session_request_game_hash_softcore()
+{
+  rc_api_start_session_request_t start_session_request;
+  rc_api_request_t request;
+
+  memset(&start_session_request, 0, sizeof(start_session_request));
+  start_session_request.username = "Username";
+  start_session_request.api_token = "API_TOKEN";
+  start_session_request.game_id = 1234;
+  start_session_request.game_hash = "ABCDEF0123456789";
+
+  ASSERT_NUM_EQUALS(rc_api_init_start_session_request(&request, &start_session_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=startsession&u=Username&t=API_TOKEN&g=1234&h=0&m=ABCDEF0123456789&l=" RCHEEVOS_VERSION_STRING);
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_start_session_request_game_hash_hardcore()
+{
+  rc_api_start_session_request_t start_session_request;
+  rc_api_request_t request;
+
+  memset(&start_session_request, 0, sizeof(start_session_request));
+  start_session_request.username = "Username";
+  start_session_request.api_token = "API_TOKEN";
+  start_session_request.game_id = 1234;
+  start_session_request.hardcore = 1;
+  start_session_request.game_hash = "ABCDEF0123456789";
+
+  ASSERT_NUM_EQUALS(rc_api_init_start_session_request(&request, &start_session_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=startsession&u=Username&t=API_TOKEN&g=1234&h=1&m=ABCDEF0123456789&l=" RCHEEVOS_VERSION_STRING);
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_process_start_session_response_legacy()
 {
   rc_api_start_session_response_t start_session_response;
@@ -661,6 +700,8 @@ void test_rapi_user(void) {
   /* start session */
   TEST(test_init_start_session_request);
   TEST(test_init_start_session_request_no_game);
+  TEST(test_init_start_session_request_game_hash_softcore);
+  TEST(test_init_start_session_request_game_hash_hardcore);
 
   TEST(test_process_start_session_response_legacy);
   TEST(test_process_start_session_response);
