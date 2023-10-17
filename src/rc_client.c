@@ -3978,8 +3978,12 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
   char buffer[256];
   int result;
 
-  rc_runtime_get_richpresence(&client->game->runtime, buffer, sizeof(buffer),
-      client->state.legacy_peek, client, NULL);
+  if (client->callbacks.can_submit_rich_presence && !client->callbacks.can_submit_rich_presence(client)) {
+    buffer[0] = '\0';
+  } else {
+    rc_runtime_get_richpresence(&client->game->runtime, buffer, sizeof(buffer),
+        client->state.legacy_peek, client, NULL);
+  }
 
   memset(&api_params, 0, sizeof(api_params));
   api_params.username = client->user.username;
