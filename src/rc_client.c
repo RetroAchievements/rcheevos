@@ -896,6 +896,8 @@ static void rc_client_load_error(rc_client_load_state_t* load_state, int result,
 
   rc_mutex_unlock(&load_state->client->state.mutex);
 
+  RC_CLIENT_LOG_ERR_FORMATTED(load_state->client, "Load failed (%d): %s", result, error_message);
+
   if (load_state->callback)
     load_state->callback(result, error_message, load_state->client, load_state->callback_userdata);
 
