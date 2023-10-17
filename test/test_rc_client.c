@@ -7253,18 +7253,64 @@ static void test_do_frame_ping_rich_presence(void)
   rc_client_destroy(g_client);
 }
 
-static int rc_client_callback_deny_rich_presence(rc_client_t* client)
+static int rc_client_callback_rich_presence_override_allow(rc_client_t* client, char buffer[], size_t buffersize)
 {
+  memcpy(buffer, "Custom", 7);
   return 0;
 }
 
-static void test_do_frame_ping_rich_presence_blocked(void)
+static int rc_client_callback_rich_presence_override_replace(rc_client_t* client, char buffer[], size_t buffersize)
+{
+  memcpy(buffer, "Custom", 7);
+  return 6;
+}
+
+static void test_do_frame_ping_rich_presence_override_allowed(void)
 {
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
   g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
-  g_client->callbacks.can_submit_rich_presence = rc_client_callback_deny_rich_presence;
+  g_client->callbacks.rich_presence_override = rc_client_callback_rich_presence_override_allow;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    rc_client_scheduled_callback_t ping_callback;
+
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+    ping_callback = g_client->state.scheduled_callbacks->callback;
+
+    ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 30 * 1000);
+    g_now += 30 * 1000;
+
+    mock_memory(memory, sizeof(memory));
+    memory[0x03] = 25;
+
+    /* before rc_client_do_frame, memory will not have been read. all values will be 0 */
+    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a0", "{\"Success\":true}");
+
+    rc_client_idle(g_client);
+
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+    ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
+    ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 120 * 1000);
+    g_now += 120 * 1000;
+
+    /* rc_client_do_frame will update the memory, so the message will contain appropriate data */
+    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25", "{\"Success\":true}");
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_ping_rich_presence_override_replaced(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  g_client->callbacks.rich_presence_override = rc_client_callback_rich_presence_override_replace;
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game)
@@ -7281,7 +7327,7 @@ static void test_do_frame_ping_rich_presence_blocked(void)
     memory[0x03] = 25;
 
     /* before rc_client_do_frame, can_submit only ignores the m parameter. ping still occurs */
-    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234", "{\"Success\":true}");
+    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Custom", "{\"Success\":true}");
 
     rc_client_idle(g_client);
 
@@ -7291,7 +7337,7 @@ static void test_do_frame_ping_rich_presence_blocked(void)
     g_now += 120 * 1000;
 
     /* ping still happens every two minutes, even if message not provided */
-    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234", "{\"Success\":true}");
+    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Custom", "{\"Success\":true}");
   }
 
   rc_client_destroy(g_client);
@@ -8215,7 +8261,8 @@ void test_client(void) {
   /* ping */
   TEST(test_idle_ping);
   TEST(test_do_frame_ping_rich_presence);
-  TEST(test_do_frame_ping_rich_presence_blocked);
+  TEST(test_do_frame_ping_rich_presence_override_allowed);
+  TEST(test_do_frame_ping_rich_presence_override_replaced);
 
   /* reset */
   TEST(test_reset_hides_widgets);

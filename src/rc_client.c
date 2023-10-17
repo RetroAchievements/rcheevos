@@ -3978,9 +3978,8 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
   char buffer[256];
   int result;
 
-  if (client->callbacks.can_submit_rich_presence && !client->callbacks.can_submit_rich_presence(client)) {
-    buffer[0] = '\0';
-  } else {
+  if (!client->callbacks.rich_presence_override ||
+      !client->callbacks.rich_presence_override(client, buffer, sizeof(buffer))) {
     rc_runtime_get_richpresence(&client->game->runtime, buffer, sizeof(buffer),
         client->state.legacy_peek, client, NULL);
   }
