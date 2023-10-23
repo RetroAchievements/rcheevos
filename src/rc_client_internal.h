@@ -20,6 +20,7 @@ typedef void (*rc_client_post_process_game_data_response_t)(const rc_api_server_
               struct rc_api_fetch_game_data_response_t* game_data_response, rc_client_t* client, void* userdata);
 typedef int (*rc_client_can_submit_achievement_unlock_t)(uint32_t achievement_id, rc_client_t* client);
 typedef int (*rc_client_can_submit_leaderboard_entry_t)(uint32_t leaderboard_id, rc_client_t* client);
+typedef int (*rc_client_rich_presence_override_t)(rc_client_t* client, char buffer[], size_t buffersize);
 
 typedef struct rc_client_callbacks_t {
   rc_client_read_memory_func_t read_memory;
@@ -30,6 +31,7 @@ typedef struct rc_client_callbacks_t {
   rc_client_post_process_game_data_response_t post_process_game_data_response;
   rc_client_can_submit_achievement_unlock_t can_submit_achievement_unlock;
   rc_client_can_submit_leaderboard_entry_t can_submit_leaderboard_entry;
+  rc_client_rich_presence_override_t rich_presence_override;
 
   void* client_data;
 } rc_client_callbacks_t;
