@@ -318,7 +318,38 @@ int rc_json_parse_server_response(rc_api_response_t* response, const rc_api_serv
 
   response->error_message = NULL;
 
-  if (!server_response || !server_response->body || !*server_response->body) {
+  if (!server_response) {
+    response->succeeded = 0;
+    return RC_NO_RESPONSE;
+  }
+
+  if (server_response->http_status_code == RC_API_SERVER_RESPONSE_CLIENT_ERROR ||
+      server_response->http_status_code == RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR) {
+    /* client provided error message is passed as the response body */
+    response->error_message = server_response->body;
+    response->succeeded = 0;
+    return RC_NO_RESPONSE;
+  }
+
+  if (!server_response->body || !*server_response->body) {
+    /* expect valid HTTP status codes to have bodies that we can extract the message from,
+     * but provide some default messages in case they don't. */
+    switch (server_response->http_status_code) {
+      case 504: /* 504 Gateway Timeout */
+      case 522: /* 522 Connection Timed Out */
+      case 524: /* 524 A Timeout Occurred */
+        response->error_message = "Request has timed out.";
+        break;
+
+      case 521: /* 521 Web Server is Down */
+      case 523: /* 523 Origin is Unreachable */
+        response->error_message = "Could not connect to server.";
+        break;
+
+      default:
+        break;
+    }
+
     response->succeeded = 0;
     return RC_NO_RESPONSE;
   }

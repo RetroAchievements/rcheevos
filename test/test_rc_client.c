@@ -1467,8 +1467,7 @@ static void test_load_game_startsession_failure(void)
   rc_client_destroy(g_client);
 }
 
-#ifdef _WIN32
-static void rc_client_callback_expect_wininet_timeout(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+static void rc_client_callback_expect_timeout(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_NO_RESPONSE);
   ASSERT_STR_EQUALS(error_message, "Request has timed out.");
@@ -1476,23 +1475,40 @@ static void rc_client_callback_expect_wininet_timeout(int result, const char* er
   ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
-static void test_load_game_startsession_wininet_timeout(void)
+static void test_load_game_startsession_timeout(void)
 {
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "", 12002);
+  mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING, "", 504);
 
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_wininet_timeout, g_callback_userdata);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_timeout, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
 
   rc_client_destroy(g_client);
 }
-#endif
+
+static void test_load_game_startsession_custom_timeout(void)
+{
+  g_client = mock_client_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&l=" RCHEEVOS_VERSION_STRING,
+    "Request has timed out.", RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR);
+
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_timeout, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
 
 static void test_load_game_gameid_aborted(void)
 {
@@ -5206,12 +5222,15 @@ static void test_do_frame_achievement_trigger_automatic_retry_503(void)
   test_do_frame_achievement_trigger_automatic_retry(response_503, 503);
 }
 
-#ifdef _WIN32
-static void test_do_frame_achievement_trigger_automatic_retry_wininet_12002(void)
+static void test_do_frame_achievement_trigger_automatic_retry_custom_timeout(void)
 {
-  test_do_frame_achievement_trigger_automatic_retry("", 12002);
+  test_do_frame_achievement_trigger_automatic_retry("Request has timed out.", RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR);
 }
-#endif
+
+static void test_do_frame_achievement_trigger_automatic_retry_generic_empty_response(void)
+{
+  test_do_frame_achievement_trigger_automatic_retry("", 0);
+}
 
 static void test_do_frame_achievement_trigger_subset(void)
 {
@@ -7965,9 +7984,8 @@ void test_client(void) {
   TEST(test_load_game_gameid_failure);
   TEST(test_load_game_patch_failure);
   TEST(test_load_game_startsession_failure);
-#ifdef _WIN32
-  TEST(test_load_game_startsession_wininet_timeout);
-#endif
+  TEST(test_load_game_startsession_timeout);
+  TEST(test_load_game_startsession_custom_timeout);
   TEST(test_load_game_gameid_aborted);
   TEST(test_load_game_patch_aborted);
   TEST(test_load_game_startsession_aborted);
@@ -8057,9 +8075,8 @@ void test_client(void) {
   TEST(test_do_frame_achievement_trigger_automatic_retry_429);
   TEST(test_do_frame_achievement_trigger_automatic_retry_502);
   TEST(test_do_frame_achievement_trigger_automatic_retry_503);
-#ifdef _WIN32
-  TEST(test_do_frame_achievement_trigger_automatic_retry_wininet_12002);
-#endif
+  TEST(test_do_frame_achievement_trigger_automatic_retry_custom_timeout);
+  TEST(test_do_frame_achievement_trigger_automatic_retry_generic_empty_response);
   TEST(test_do_frame_achievement_trigger_subset);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_measured_progress_event);
