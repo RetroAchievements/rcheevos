@@ -321,7 +321,7 @@ static void rc_client_event_handler(const rc_client_event_t* e, rc_client_t* cli
       static rc_client_leaderboard_scoreboard_t scoreboard;
       static rc_client_leaderboard_scoreboard_entry_t scoreboard_entries[2];
       static char scoreboard_top_usernames[2][128];
-      unsigned i;
+      uint32_t i;
 
       /* cap the entries at 2, none of the mocked responses have anything larger */
       memcpy(&scoreboard, e->leaderboard_scoreboard, sizeof(scoreboard));

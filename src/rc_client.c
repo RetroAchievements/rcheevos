@@ -116,7 +116,7 @@ void rc_client_destroy(rc_client_t* client)
 
   rc_mutex_lock(&client->state.mutex);
   {
-    unsigned int i;
+    size_t i;
     for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
       if (client->state.async_handles[i])
         client->state.async_handles[i]->aborted = RC_CLIENT_ASYNC_DESTROYED;
@@ -295,7 +295,7 @@ void rc_client_set_get_time_millisecs_function(rc_client_t* client, rc_get_time_
 
 static void rc_client_begin_async(rc_client_t* client, rc_client_async_handle_t* async_handle)
 {
-  unsigned int i;
+  size_t i;
 
   rc_mutex_lock(&client->state.mutex);
   for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
@@ -313,7 +313,7 @@ static int rc_client_end_async(rc_client_t* client, rc_client_async_handle_t* as
 
   /* if client was destroyed, mutex doesn't exist and we don't need to remove the handle from the collection */
   if (aborted != RC_CLIENT_ASYNC_DESTROYED) {
-    unsigned int i;
+    size_t i;
 
     rc_mutex_lock(&client->state.mutex);
     for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
@@ -1160,7 +1160,7 @@ void rc_client_update_active_leaderboards(rc_client_game_info_t* game)
   rc_client_leaderboard_info_t* leaderboard;
   rc_client_leaderboard_info_t* stop;
 
-  unsigned active_count = 0;
+  uint32_t active_count = 0;
   rc_client_subset_info_t* subset = game->subsets;
   for (; subset; subset = subset->next)
   {
@@ -1190,7 +1190,7 @@ static void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_clie
   rc_client_leaderboard_info_t* leaderboard;
   rc_client_leaderboard_info_t* stop;
 
-  unsigned active_count = 0;
+  uint32_t active_count = 0;
   rc_client_subset_info_t* subset = game->subsets;
   for (; subset; subset = subset->next) {
     if (!subset->active)
@@ -3629,7 +3629,7 @@ static void rc_client_raise_scoreboard_event(rc_client_submit_leaderboard_entry_
     sboard.top_entries = (rc_client_leaderboard_scoreboard_entry_t*)calloc(
       response->num_top_entries, sizeof(rc_client_leaderboard_scoreboard_entry_t));
     if (sboard.top_entries != NULL) {
-      unsigned i;
+      uint32_t i;
       for (i = 0; i < response->num_top_entries; i++) {
         sboard.top_entries[i].username = response->top_entries[i].username;
         sboard.top_entries[i].rank = response->top_entries[i].rank;
@@ -3846,7 +3846,7 @@ static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_res
     rc_client_leaderboard_entry_list_t* list;
     const size_t list_size = sizeof(*list) + sizeof(rc_client_leaderboard_entry_t) * lbinfo_response.num_entries;
     size_t needed_size = list_size;
-    unsigned i;
+    uint32_t i;
 
     for (i = 0; i < lbinfo_response.num_entries; i++)
       needed_size += strlen(lbinfo_response.entries[i].username) + 1;
@@ -4185,7 +4185,7 @@ int rc_client_is_processing_required(rc_client_t* client)
 static void rc_client_update_memref_values(rc_client_t* client)
 {
   rc_memref_t* memref = client->game->runtime.memrefs;
-  unsigned value;
+  uint32_t value;
   int invalidated_memref = 0;
 
   for (; memref; memref = memref->next) {
@@ -4219,7 +4219,7 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
   for (; achievement < stop; ++achievement) {
     rc_trigger_t* trigger = achievement->trigger;
     int old_state, new_state;
-    unsigned old_measured_value;
+    uint32_t old_measured_value;
 
     if (!trigger || achievement->public_.state != RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE)
       continue;
@@ -4238,8 +4238,8 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
 
       if (trigger->measured_as_percent) {
         /* if reporting the measured value as a percentage, only show the popup if the percentage changes */
-        const unsigned old_percent = (unsigned)(((unsigned long long)old_measured_value * 100) / trigger->measured_target);
-        const unsigned new_percent = (unsigned)(((unsigned long long)trigger->measured_value * 100) / trigger->measured_target);
+        const uint32_t old_percent = (uint32_t)(((unsigned long long)old_measured_value * 100) / trigger->measured_target);
+        const uint32_t new_percent = (uint32_t)(((unsigned long long)trigger->measured_value * 100) / trigger->measured_target);
         if (old_percent == new_percent)
           progress = -1.0;
       }

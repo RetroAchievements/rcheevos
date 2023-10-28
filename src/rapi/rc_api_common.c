@@ -184,7 +184,7 @@ static int rc_json_get_next_field(rc_json_iterator_t* iterator, rc_json_field_t*
 
 static int rc_json_parse_object(rc_json_iterator_t* iterator, rc_json_field_t* fields, size_t field_count, unsigned* fields_seen) {
   size_t i;
-  unsigned num_fields = 0;
+  uint32_t num_fields = 0;
   rc_json_field_t field;
   int result;
 
@@ -433,7 +433,7 @@ static int rc_json_get_array_entry_value(rc_json_field_t* field, rc_json_iterato
   return 1;
 }
 
-int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+int rc_json_get_required_unum_array(uint32_t** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
   rc_json_iterator_t iterator;
   rc_json_field_t array;
   rc_json_field_t value;
@@ -469,7 +469,7 @@ int rc_json_get_required_unum_array(unsigned** entries, unsigned* num_entries, r
   return RC_OK;
 }
 
-int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* array_field, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+int rc_json_get_required_array(uint32_t* num_entries, rc_json_field_t* array_field, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
@@ -481,7 +481,7 @@ int rc_json_get_required_array(unsigned* num_entries, rc_json_field_t* array_fie
   return 1;
 }
 
-int rc_json_get_optional_array(unsigned* num_entries, rc_json_field_t* array_field, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+int rc_json_get_optional_array(uint32_t* num_entries, rc_json_field_t* array_field, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;
@@ -518,13 +518,13 @@ int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, 
   return 1;
 }
 
-static unsigned rc_json_decode_hex4(const char* input) {
+static uint32_t rc_json_decode_hex4(const char* input) {
   char hex[5];
 
   memcpy(hex, input, 4);
   hex[4] = '\0';
 
-  return (unsigned)strtoul(hex, NULL, 16);
+  return (uint32_t)strtoul(hex, NULL, 16);
 }
 
 static int rc_json_ucs32_to_utf8(uint8_t* dst, uint32_t ucs32_char) {
@@ -624,13 +624,13 @@ int rc_json_get_string(const char** out, rc_buffer_t* buffer, const rc_json_fiel
 
         if (*src == 'u') {
           /* unicode character */
-          unsigned ucs32_char = rc_json_decode_hex4(src + 1);
+          uint32_t ucs32_char = rc_json_decode_hex4(src + 1);
           src += 5;
 
           if (ucs32_char >= 0xD800 && ucs32_char < 0xE000) {
             /* surrogate lead - look for surrogate tail */
             if (ucs32_char < 0xDC00 && src[0] == '\\' && src[1] == 'u') {
-              const unsigned surrogate = rc_json_decode_hex4(src + 2);
+              const uint32_t surrogate = rc_json_decode_hex4(src + 2);
               src += 6;
 
               if (surrogate >= 0xDC00 && surrogate < 0xE000) {
@@ -685,9 +685,9 @@ int rc_json_get_required_string(const char** out, rc_api_response_t* response, c
   return rc_json_missing_field(response, field);
 }
 
-int rc_json_get_num(int* out, const rc_json_field_t* field, const char* field_name) {
+int rc_json_get_num(int32_t* out, const rc_json_field_t* field, const char* field_name) {
   const char* src = field->value_start;
-  int value = 0;
+  int32_t value = 0;
   int negative = 0;
 
 #ifndef NDEBUG
@@ -727,21 +727,21 @@ int rc_json_get_num(int* out, const rc_json_field_t* field, const char* field_na
   return 1;
 }
 
-void rc_json_get_optional_num(int* out, const rc_json_field_t* field, const char* field_name, int default_value) {
+void rc_json_get_optional_num(int32_t* out, const rc_json_field_t* field, const char* field_name, int default_value) {
   if (!rc_json_get_num(out, field, field_name))
     *out = default_value;
 }
 
-int rc_json_get_required_num(int* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+int rc_json_get_required_num(int32_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
   if (rc_json_get_num(out, field, field_name))
     return 1;
 
   return rc_json_missing_field(response, field);
 }
 
-int rc_json_get_unum(unsigned* out, const rc_json_field_t* field, const char* field_name) {
+int rc_json_get_unum(uint32_t* out, const rc_json_field_t* field, const char* field_name) {
   const char* src = field->value_start;
-  int value = 0;
+  uint32_t value = 0;
 
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
@@ -771,12 +771,12 @@ int rc_json_get_unum(unsigned* out, const rc_json_field_t* field, const char* fi
   return 1;
 }
 
-void rc_json_get_optional_unum(unsigned* out, const rc_json_field_t* field, const char* field_name, unsigned default_value) {
+void rc_json_get_optional_unum(uint32_t* out, const rc_json_field_t* field, const char* field_name, uint32_t default_value) {
   if (!rc_json_get_unum(out, field, field_name))
     *out = default_value;
 }
 
-int rc_json_get_required_unum(unsigned* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+int rc_json_get_required_unum(uint32_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
   if (rc_json_get_unum(out, field, field_name))
     return 1;
 
@@ -1014,7 +1014,7 @@ static int rc_url_builder_append_param_equals(rc_api_url_builder_t* builder, con
   return builder->result;
 }
 
-void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char* param, unsigned value) {
+void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char* param, uint32_t value) {
   if (rc_url_builder_append_param_equals(builder, param) == RC_OK) {
     char num[16];
     int chars = snprintf(num, sizeof(num), "%u", value);
@@ -1022,7 +1022,7 @@ void rc_url_builder_append_unum_param(rc_api_url_builder_t* builder, const char*
   }
 }
 
-void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, int value) {
+void rc_url_builder_append_num_param(rc_api_url_builder_t* builder, const char* param, int32_t value) {
   if (rc_url_builder_append_param_equals(builder, param) == RC_OK) {
     char num[16];
     int chars = snprintf(num, sizeof(num), "%d", value);

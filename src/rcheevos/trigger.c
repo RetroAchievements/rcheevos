@@ -96,7 +96,7 @@ int rc_trigger_state_active(int state)
   }
 }
 
-static int rc_condset_is_measured_from_hitcount(const rc_condset_t* condset, unsigned measured_value)
+static int rc_condset_is_measured_from_hitcount(const rc_condset_t* condset, uint32_t measured_value)
 {
   const rc_condition_t* condition;
   for (condition = condset->conditions; condition; condition = condition->next) {

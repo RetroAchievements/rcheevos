@@ -255,11 +255,11 @@ static void test_json_get_required_num() {
   ASSERT_NUM_EQUALS(response.succeeded, 0);
 }
 
-static void test_json_get_unum(const char* input, unsigned expected) {
+static void test_json_get_unum(const char* input, uint32_t expected) {
   rc_api_response_t response;
   rc_json_field_t field;
   char buffer[64];
-  unsigned value = 0;
+  uint32_t value = 0;
   snprintf(buffer, sizeof(buffer), "{\"Test\":%s}", input);
 
   assert_json_parse_response(&response, &field, buffer, RC_OK);
@@ -277,7 +277,7 @@ static void test_json_get_unum(const char* input, unsigned expected) {
 static void test_json_get_optional_unum() {
   rc_api_response_t response;
   rc_json_field_t field;
-  unsigned value = 0;
+  uint32_t value = 0;
 
   assert_json_parse_response(&response, &field, "{\"Test\":12345678}", RC_OK);
 
@@ -293,7 +293,7 @@ static void test_json_get_optional_unum() {
 static void test_json_get_required_unum() {
   rc_api_response_t response;
   rc_json_field_t field;
-  unsigned value = 0;
+  uint32_t value = 0;
 
   assert_json_parse_response(&response, &field, "{\"Test\":12345678}", RC_OK);
 
@@ -390,12 +390,12 @@ static void test_json_get_datetime(const char* input, int expected) {
   }
 }
 
-static void test_json_get_unum_array(const char* input, unsigned expected_count, int expected_result) {
+static void test_json_get_unum_array(const char* input, uint32_t expected_count, int expected_result) {
   rc_api_response_t response;
   rc_json_field_t field;
   int result;
-  unsigned count = 0xFFFFFFFF;
-  unsigned *values;
+  uint32_t count = 0xFFFFFFFF;
+  uint32_t*values;
   char buffer[128];
 
   snprintf(buffer, sizeof(buffer), "{\"Test\":%s}", input);

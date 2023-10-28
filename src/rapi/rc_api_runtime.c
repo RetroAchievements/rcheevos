@@ -102,7 +102,7 @@ int rc_api_process_fetch_game_data_server_response(rc_api_fetch_game_data_respon
   const char* last_author_field = "";
   size_t last_author_len = 0;
   size_t len;
-  unsigned timet;
+  uint32_t timet;
   int result;
   char format[16];
 

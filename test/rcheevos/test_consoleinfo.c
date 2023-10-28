@@ -7,12 +7,12 @@ static void test_name(int console_id, const char* expected_name)
   ASSERT_STR_EQUALS(rc_console_name(console_id), expected_name);
 }
 
-static void test_memory(int console_id, unsigned expected_total_memory)
+static void test_memory(int console_id, uint32_t expected_total_memory)
 {
   const rc_memory_regions_t* regions = rc_console_memory_regions(console_id);
-  unsigned total_memory = 0;
-  unsigned max_address = 0;
-  unsigned i;
+  uint32_t total_memory = 0;
+  uint32_t max_address = 0;
+  uint32_t i;
   ASSERT_PTR_NOT_NULL(regions);
 
   if (expected_total_memory == 0)

@@ -166,7 +166,7 @@ uint8_t* generate_fds_file(size_t sides, int with_header, size_t* image_size)
   return image;
 }
 
-uint8_t* generate_nds_file(size_t mb, unsigned arm9_size, unsigned arm7_size, size_t* image_size)
+uint8_t* generate_nds_file(size_t mb, uint32_t arm9_size, uint32_t arm7_size, size_t* image_size)
 {
   uint8_t* image;
   const size_t size_needed = mb * 1024 * 1024;
@@ -291,7 +291,7 @@ uint8_t* generate_atari_7800_file(size_t kb, int with_header, size_t* image_size
   return image;
 }
 
-uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size, size_t* image_size)
+uint8_t* generate_3do_bin(uint32_t root_directory_sectors, uint32_t binary_size, size_t* image_size)
 {
   const uint8_t volume_header[] = {
     0x01, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x01, 0x00, /* header */
@@ -352,7 +352,7 @@ uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size,
   size_t size_needed = (root_directory_sectors + 1 + ((binary_size + 2047) / 2048)) * 2048;
   uint8_t* image = (uint8_t*)calloc(size_needed, 1);
   size_t offset = 2048;
-  unsigned i;
+  uint32_t i;
 
   if (!image)
     return NULL;
@@ -404,7 +404,7 @@ uint8_t* generate_3do_bin(unsigned root_directory_sectors, unsigned binary_size,
   return image;
 }
 
-uint8_t* generate_dreamcast_bin(unsigned track_first_sector, unsigned binary_size, size_t* image_size)
+uint8_t* generate_dreamcast_bin(uint32_t track_first_sector, uint32_t binary_size, size_t* image_size)
 {
   /* https://mc.pp.se/dc/ip0000.bin.html */
   const uint8_t volume_header[] =
@@ -469,7 +469,7 @@ uint8_t* generate_dreamcast_bin(unsigned track_first_sector, unsigned binary_siz
   return image;
 }
 
-uint8_t* generate_pce_cd_bin(unsigned binary_sectors, size_t* image_size)
+uint8_t* generate_pce_cd_bin(uint32_t binary_sectors, size_t* image_size)
 {
   const uint8_t volume_header[] = {
     0x00, 0x00, 0x02,       /* first sector of boot code */
@@ -505,7 +505,7 @@ uint8_t* generate_pce_cd_bin(unsigned binary_sectors, size_t* image_size)
   return image;
 }
 
-uint8_t* generate_pcfx_bin(unsigned binary_sectors, size_t* image_size)
+uint8_t* generate_pcfx_bin(uint32_t binary_sectors, size_t* image_size)
 {
   const uint8_t volume_header[] = {
     'G', 'A', 'M', 'E', 'N', 'A', 'M', 'E', 0, 0, 0, 0, 0, 0, 0, 0, /* title (32-bytes) */
@@ -542,7 +542,7 @@ uint8_t* generate_pcfx_bin(unsigned binary_sectors, size_t* image_size)
   return image;
 }
 
-uint8_t* generate_iso9660_bin(unsigned num_sectors, const char* volume_label, size_t* image_size)
+uint8_t* generate_iso9660_bin(uint32_t num_sectors, const char* volume_label, size_t* image_size)
 {
   const uint8_t identifier[] = { 0x01, 'C', 'D', '0', '0', '1', 0x01, 0x00 };
   uint8_t* volume_descriptor;;
@@ -582,11 +582,11 @@ uint8_t* generate_iso9660_bin(unsigned num_sectors, const char* volume_label, si
 
 uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8_t* contents, size_t contents_size)
 {
-  const unsigned root_directory_record_offset = 17 * 2048;
+  const uint32_t root_directory_record_offset = 17 * 2048;
   uint8_t* file_entry_start = &image[root_directory_record_offset];
   uint8_t* file_contents_start;
   size_t filename_len;
-  unsigned next_free_sector = image[root_directory_record_offset - 4] |
+  uint32_t next_free_sector = image[root_directory_record_offset - 4] |
       (image[root_directory_record_offset - 3] << 8) | (image[root_directory_record_offset - 2] << 16);
   const char* separator;
 
@@ -611,7 +611,7 @@ uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8
       if (file_entry_start[25] && /* is directory */
           file_entry_start[33 + filename_len] == '\0' && memcmp(&file_entry_start[33], filename, filename_len) == 0)
       {
-        const unsigned directory_sector = file_entry_start[2];
+        const uint32_t directory_sector = file_entry_start[2];
         file_entry_start = &image[directory_sector * 2048];
         found = 1;
         break;
@@ -688,7 +688,7 @@ uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8
   return file_contents_start;
 }
 
-uint8_t* generate_jaguarcd_bin(unsigned header_offset, unsigned binary_size, int byteswapped, size_t* image_size)
+uint8_t* generate_jaguarcd_bin(uint32_t header_offset, uint32_t binary_size, int byteswapped, size_t* image_size)
 {
   size_t size_needed = (((binary_size + 64 + 32 + 8) + 2351) / 2352) * 2352;
   uint8_t* image = (uint8_t*)calloc(size_needed, 1);
@@ -723,9 +723,9 @@ uint8_t* generate_jaguarcd_bin(unsigned header_offset, unsigned binary_size, int
   return image;
 }
 
-uint8_t* generate_psx_bin(const char* binary_name, unsigned binary_size, size_t* image_size)
+uint8_t* generate_psx_bin(const char* binary_name, uint32_t binary_size, size_t* image_size)
 {
-  const unsigned sectors_needed = (((binary_size + 2047) / 2048) + 20);
+  const uint32_t sectors_needed = (((binary_size + 2047) / 2048) + 20);
   char system_cnf[256];
   uint8_t* image;
   uint8_t* exe;
@@ -748,9 +748,9 @@ uint8_t* generate_psx_bin(const char* binary_name, unsigned binary_size, size_t*
   return image;
 }
 
-uint8_t* generate_ps2_bin(const char* binary_name, unsigned binary_size, size_t* image_size)
+uint8_t* generate_ps2_bin(const char* binary_name, uint32_t binary_size, size_t* image_size)
 {
-  const unsigned sectors_needed = (((binary_size + 2047) / 2048) + 20);
+  const uint32_t sectors_needed = (((binary_size + 2047) / 2048) + 20);
   char system_cnf[256];
   uint8_t* image;
   uint8_t* exe;
