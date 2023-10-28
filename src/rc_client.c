@@ -350,16 +350,6 @@ static const char* rc_client_server_error_message(int* result, int http_status_c
 
     if (response->error_message)
       return response->error_message;
-
-#ifdef _WIN32
-    switch (http_status_code) {
-      case 12002: return "Request has timed out.";
-      case 12007: return "Server name could not be resolved.";
-      case 12029: return "Could not connect to server.";
-      case 12163: return "Connection has been lost.";
-      default: break;
-    }
-#endif
   }
 
   if (*result != RC_OK)
@@ -471,53 +461,19 @@ static int rc_client_should_retry(const rc_api_server_response_t* server_respons
       /* connection to server from cloudfare was dropped before request was completed */
       return 1;
 
-#ifdef _WIN32
-    case 12002: /* ERROR_INTERNET_TIMEOUT */
-      /* timeout */
+    case RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR:
+      /* client provided non-HTTP error (explicitly retryable) */
       return 1;
 
-    case 12007: /* ERROR_INTERNET_NAME_NOT_RESOLVED */
-      /* DNS lookup failed */
-      return 1;
-
-    case 12017: /* ERROR_INTERNET_OPERATION_CANCELLED */
-      /* Handle closed before request complete */
-      return 1;
-
-    case 12019: /* ERROR_INTERNET_INCORRECT_HANDLE_STATE */
-      /* Handle not initialized */
-      return 1;
-
-    case 12028: /* ERROR_INTERNET_ITEM_NOT_FOUND */
-      /* Data not available at this time */
-      return 1;
-
-    case 12029: /* ERROR_INTERNET_CANNOT_CONNECT */
-      /* Handshake failed */
-      return 1;
-
-    case 12030: /* ERROR_INTERNET_CONNECTION_ABORTED */
-      /* Connection aborted */
-      return 1;
-
-    case 12031: /* ERROR_INTERNET_CONNECTION_RESET */
-      /* Connection reset */
-      return 1;
-
-    case 12032: /* ERROR_INTERNET_FORCE_RETRY */
-      /* Explicit request to retry */
-      return 1;
-
-    case 12152: /* ERROR_HTTP_INVALID_SERVER_RESPONSE */
-      /* Response could not be parsed, corrupt ? */
-      return 1;
-
-    case 12163: /* ERROR_INTERNET_DISCONNECTED */
-      /* Lost connection during request */
-      return 1;
-#endif
+    case RC_API_SERVER_RESPONSE_CLIENT_ERROR:
+      /* client provided non-HTTP error (implicitly non-retryable) */
+      return 0;
 
     default:
+      /* assume any error not handled above where no response was received should be retried */
+      if (server_response->body_length == 0 || !server_response->body || !server_response->body[0])
+        return 1;
+
       return 0;
   }
 }
