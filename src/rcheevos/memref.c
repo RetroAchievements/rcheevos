@@ -119,10 +119,10 @@ int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address) {
   return RC_OK;
 }
 
-static float rc_build_float(unsigned mantissa_bits, int exponent, int sign) {
+static float rc_build_float(uint32_t mantissa_bits, int32_t exponent, int sign) {
   /* 32-bit float has a 23-bit mantissa and 8-bit exponent */
-  const unsigned implied_bit = 1 << 23;
-  const unsigned mantissa = mantissa_bits | implied_bit;
+  const uint32_t implied_bit = 1 << 23;
+  const uint32_t mantissa = mantissa_bits | implied_bit;
   double dbl = ((double)mantissa) / ((double)implied_bit);
 
   if (exponent > 127) {
@@ -179,8 +179,8 @@ static float rc_build_float(unsigned mantissa_bits, int exponent, int sign) {
 
 static void rc_transform_memref_float(rc_typed_value_t* value) {
   /* decodes an IEEE 754 float */
-  const unsigned mantissa = (value->value.u32 & 0x7FFFFF);
-  const int exponent = (int)((value->value.u32 >> 23) & 0xFF) - 127;
+  const uint32_t mantissa = (value->value.u32 & 0x7FFFFF);
+  const int32_t exponent = (int32_t)((value->value.u32 >> 23) & 0xFF) - 127;
   const int sign = (value->value.u32 & 0x80000000);
   value->value.f32 = rc_build_float(mantissa, exponent, sign);
   value->type = RC_VALUE_TYPE_FLOAT;
@@ -188,11 +188,11 @@ static void rc_transform_memref_float(rc_typed_value_t* value) {
 
 static void rc_transform_memref_float_be(rc_typed_value_t* value) {
   /* decodes an IEEE 754 float in big endian format */
-  const unsigned mantissa = ((value->value.u32 & 0xFF000000) >> 24) |
+  const uint32_t mantissa = ((value->value.u32 & 0xFF000000) >> 24) |
                             ((value->value.u32 & 0x00FF0000) >> 8) |
                             ((value->value.u32 & 0x00007F00) << 8);
-  const int exponent = (int)(((value->value.u32 & 0x0000007F) << 1) |
-                             ((value->value.u32 & 0x00008000) >> 15)) - 127;
+  const int32_t exponent = (int32_t)(((value->value.u32 & 0x0000007F) << 1) |
+                                     ((value->value.u32 & 0x00008000) >> 15)) - 127;
   const int sign = (value->value.u32 & 0x00000080);
   value->value.f32 = rc_build_float(mantissa, exponent, sign);
   value->type = RC_VALUE_TYPE_FLOAT;
@@ -201,10 +201,10 @@ static void rc_transform_memref_float_be(rc_typed_value_t* value) {
 static void rc_transform_memref_mbf32(rc_typed_value_t* value) {
   /* decodes a Microsoft Binary Format float */
   /* NOTE: 32-bit MBF is stored in memory as big endian (at least for Apple II) */
-  const unsigned mantissa = ((value->value.u32 & 0xFF000000) >> 24) |
+  const uint32_t mantissa = ((value->value.u32 & 0xFF000000) >> 24) |
                             ((value->value.u32 & 0x00FF0000) >> 8) |
                             ((value->value.u32 & 0x00007F00) << 8);
-  const int exponent = (int)(value->value.u32 & 0xFF) - 129;
+  const int32_t exponent = (int32_t)(value->value.u32 & 0xFF) - 129;
   const int sign = (value->value.u32 & 0x00008000);
 
   if (mantissa == 0 && exponent == -129)
@@ -218,8 +218,8 @@ static void rc_transform_memref_mbf32(rc_typed_value_t* value) {
 static void rc_transform_memref_mbf32_le(rc_typed_value_t* value) {
   /* decodes a Microsoft Binary Format float */
   /* Locomotive BASIC (CPC) uses MBF40, but in little endian format */
-  const unsigned mantissa = value->value.u32 & 0x007FFFFF;
-  const int exponent = (int)(value->value.u32 >> 24) - 129;
+  const uint32_t mantissa = value->value.u32 & 0x007FFFFF;
+  const int32_t exponent = (int32_t)(value->value.u32 >> 24) - 129;
   const int sign = (value->value.u32 & 0x00800000);
 
   if (mantissa == 0 && exponent == -129)
@@ -423,7 +423,7 @@ uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud)
 
     default:
     {
-      unsigned value;
+      uint32_t value;
       const size_t index = (size_t)size;
       if (index >= sizeof(rc_memref_shared_sizes) / sizeof(rc_memref_shared_sizes[0]))
         return 0;
@@ -463,7 +463,7 @@ void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_t** memrefs)
   *memrefs = 0;
 }
 
-static unsigned rc_get_memref_value_value(const rc_memref_value_t* memref, int operand_type) {
+static uint32_t rc_get_memref_value_value(const rc_memref_value_t* memref, int operand_type) {
   switch (operand_type)
   {
     /* most common case explicitly first, even though it could be handled by default case.
@@ -483,10 +483,10 @@ static unsigned rc_get_memref_value_value(const rc_memref_value_t* memref, int o
   }
 }
 
-unsigned rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state) {
+uint32_t rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state) {
   /* if this is an indirect reference, handle the indirection. */
   if (memref->value.is_indirect) {
-    const unsigned new_address = memref->address + eval_state->add_address;
+    const uint32_t new_address = memref->address + eval_state->add_address;
     rc_update_memref_value(&memref->value, rc_peek_value(new_address, memref->value.size, eval_state->peek, eval_state->peek_userdata));
   }
 

@@ -58,7 +58,7 @@ static rc_condition_t* trigger_get_cond(rc_trigger_t* trigger, int group_index, 
   return cond;
 }
 
-static void _assert_hit_count(rc_trigger_t* trigger, int group_index, int cond_index, unsigned expected_hit_count) {
+static void _assert_hit_count(rc_trigger_t* trigger, int group_index, int cond_index, uint32_t expected_hit_count) {
   rc_condition_t* cond = trigger_get_cond(trigger, group_index, cond_index);
   ASSERT_PTR_NOT_NULL(cond);
 

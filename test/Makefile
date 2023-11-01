@@ -121,7 +121,7 @@ ifeq ($(BUILD), c89)
     CFLAGS += -std=c89
 else ifeq ($(BUILD), retroarch)
     # RetroArch builds with gcc8 and gnu99 which adds some extra warning validations
-    SRC_CFLAGS += -std=gnu99 -D_GNU_SOURCE -Wall -Warray-bounds=2
+    SRC_CFLAGS += -std=gnu99 -D_GNU_SOURCE -Wall -Warray-bounds=2 -Wincompatible-pointer-types
 else
     $(error unknown BUILD "$(BUILD)")
 endif

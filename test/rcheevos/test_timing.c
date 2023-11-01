@@ -20,7 +20,7 @@ static void event_handler(const rc_runtime_event_t* e)
   }
 }
 
-static void _assert_activate_achievement(rc_runtime_t* runtime, unsigned int id, const char* memaddr)
+static void _assert_activate_achievement(rc_runtime_t* runtime, uint32_t id, const char* memaddr)
 {
   int result = rc_runtime_activate_achievement(runtime, id, memaddr, NULL, 0);
   ASSERT_NUM_EQUALS(result, RC_OK);

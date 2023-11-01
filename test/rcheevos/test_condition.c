@@ -3,7 +3,7 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-static void _assert_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
+static void _assert_operand(rc_operand_t* self, uint8_t expected_type, uint8_t expected_size, uint32_t expected_address) {
   ASSERT_NUM_EQUALS(self->type, expected_type);
 
   switch (expected_type) {
@@ -22,11 +22,11 @@ static void _assert_operand(rc_operand_t* self, char expected_type, char expecte
 #define assert_operand(operand, expected_type, expected_size, expected_address) ASSERT_HELPER(_assert_operand(operand, expected_type, expected_size, expected_address), "assert_operand")
 
 static void _assert_parse_condition(
-    const char* memaddr, char expected_type,
-    char expected_left_type, char expected_left_size, unsigned expected_left_value,
-    char expected_operator,
-    char expected_right_type, char expected_right_size, unsigned expected_right_value,
-    unsigned expected_required_hits
+    const char* memaddr, uint8_t expected_type,
+    uint8_t expected_left_type, uint8_t expected_left_size, uint32_t expected_left_value,
+    uint8_t expected_operator,
+    uint8_t expected_right_type, uint8_t expected_right_size, uint32_t expected_right_value,
+    uint32_t expected_required_hits
 ) {
     rc_condition_t* self;
     rc_parse_state_t parse;
@@ -49,8 +49,8 @@ static void _assert_parse_condition(
     ASSERT_HELPER(_assert_parse_condition(memaddr, expected_type, expected_left_type, expected_left_size, expected_left_value, \
                                           expected_operator, expected_right_type, expected_right_size, expected_right_value, expected_required_hits), "assert_parse_condition")
 
-static void test_parse_condition(const char* memaddr, char expected_type, char expected_left_type,
-    char expected_operator, int expected_required_hits) {
+static void test_parse_condition(const char* memaddr, uint8_t expected_type, uint8_t expected_left_type,
+    uint8_t expected_operator, uint32_t expected_required_hits) {
   if (expected_operator == RC_OPERATOR_NONE) {
     assert_parse_condition(memaddr, expected_type,
       expected_left_type, RC_MEMSIZE_8_BITS, 0x1234U,
@@ -70,8 +70,8 @@ static void test_parse_condition(const char* memaddr, char expected_type, char e
 }
 
 static void test_parse_operands(const char* memaddr,
-    char expected_left_type, char expected_left_size, unsigned expected_left_value,
-    char expected_right_type, char expected_right_size, unsigned expected_right_value) {
+    uint8_t expected_left_type, uint8_t expected_left_size, uint32_t expected_left_value,
+    uint8_t expected_right_type, uint8_t expected_right_size, uint32_t expected_right_value) {
   assert_parse_condition(memaddr, RC_CONDITION_STANDARD,
     expected_left_type, expected_left_size, expected_left_value,
     RC_OPERATOR_EQ,
@@ -80,7 +80,7 @@ static void test_parse_operands(const char* memaddr,
   );
 }
 
-static void test_parse_modifier(const char* memaddr, char expected_operator, char expected_operand, double expected_multiplier) {
+static void test_parse_modifier(const char* memaddr, uint8_t expected_operator, uint8_t expected_operand, double expected_multiplier) {
   assert_parse_condition(memaddr, RC_CONDITION_ADD_SOURCE,
     RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
     expected_operator,
@@ -89,7 +89,7 @@ static void test_parse_modifier(const char* memaddr, char expected_operator, cha
   );
 }
 
-static void test_parse_modifier_shorthand(const char* memaddr, char expected_type) {
+static void test_parse_modifier_shorthand(const char* memaddr, uint8_t expected_type) {
   assert_parse_condition(memaddr, expected_type,
     RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0x1234U,
     RC_OPERATOR_NONE,
@@ -117,7 +117,7 @@ static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_
   return rc_test_condition(cond, &eval_state);
 }
 
-static void test_evaluate_condition(const char* memaddr, int expected_comparator, int expected_result) {
+static void test_evaluate_condition(const char* memaddr, uint8_t expected_comparator, int expected_result) {
   rc_condition_t* self;
   rc_parse_state_t parse;
   char buffer[512];

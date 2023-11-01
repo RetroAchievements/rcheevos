@@ -296,7 +296,7 @@ static int validate_leaderboard(const char* leaderboard, char result[], const si
 
 static int validate_macros(const rc_richpresence_t* richpresence, const char* script, char result[], const size_t result_size)
 {
-  const unsigned short RC_FORMAT_UNKNOWN_MACRO = 103; /* enum not exposed by header */
+  const uint16_t RC_FORMAT_UNKNOWN_MACRO = 103; /* enum not exposed by header */
 
   rc_richpresence_display_t* display = richpresence->first_display;
   while (display != NULL) {

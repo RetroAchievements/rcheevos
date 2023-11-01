@@ -13,7 +13,7 @@ static void event_handler(const rc_runtime_event_t* e)
   memcpy(&events[event_count++], e, sizeof(rc_runtime_event_t));
 }
 
-static void _assert_event(char type, unsigned id, int value)
+static void _assert_event(uint8_t type, uint32_t id, int32_t value)
 {
   int i;
 
@@ -26,14 +26,14 @@ static void _assert_event(char type, unsigned id, int value)
 }
 #define assert_event(type, id, value) ASSERT_HELPER(_assert_event(type, id, value), "assert_event")
 
-static void _assert_activate_achievement(rc_runtime_t* runtime, unsigned int id, const char* memaddr)
+static void _assert_activate_achievement(rc_runtime_t* runtime, uint32_t id, const char* memaddr)
 {
   int result = rc_runtime_activate_achievement(runtime, id, memaddr, NULL, 0);
   ASSERT_NUM_EQUALS(result, RC_OK);
 }
 #define assert_activate_achievement(runtime, id, memaddr) ASSERT_HELPER(_assert_activate_achievement(runtime, id, memaddr), "assert_activate_achievement")
 
-static void _assert_activate_lboard(rc_runtime_t* runtime, unsigned int id, const char* memaddr)
+static void _assert_activate_lboard(rc_runtime_t* runtime, uint32_t id, const char* memaddr)
 {
   int result = rc_runtime_activate_lboard(runtime, id, memaddr, NULL, 0);
   ASSERT_NUM_EQUALS(result, RC_OK);
@@ -194,7 +194,7 @@ static void test_achievement_measured(void)
   char buffer[32];
   memory_t memory;
   rc_runtime_t runtime;
-  unsigned value, target;
+  uint32_t value, target;
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -317,7 +317,7 @@ static void test_achievement_measured_maxint(void)
   char buffer[32];
   memory_t memory;
   rc_runtime_t runtime;
-  unsigned value, target;
+  uint32_t value, target;
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -1562,7 +1562,7 @@ static void test_invalidate_address_leaderboard(void)
   rc_runtime_destroy(&runtime);
 }
 
-static int validate_address_handler(unsigned address)
+static int validate_address_handler(uint32_t address)
 {
   return (address & 1) == 0; /* all even addresses are valid */
 }

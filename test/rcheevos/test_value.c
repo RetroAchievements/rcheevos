@@ -155,7 +155,7 @@ static void test_evaluate_measured_value_with_reset() {
   ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
 }
 
-static void init_typed_value(rc_typed_value_t* value, char type, unsigned u32, double f32) {
+static void init_typed_value(rc_typed_value_t* value, uint8_t type, uint32_t u32, double f32) {
   value->type = type;
 
   switch (type) {
@@ -180,7 +180,7 @@ static void init_typed_value(rc_typed_value_t* value, char type, unsigned u32, d
   }
 }
 
-static void _assert_typed_value(const rc_typed_value_t* value, char type, unsigned u32, double f32) {
+static void _assert_typed_value(const rc_typed_value_t* value, uint8_t type, uint32_t u32, double f32) {
   ASSERT_NUM_EQUALS(value->type, type);
 
   switch (type) {
@@ -202,7 +202,7 @@ static void _assert_typed_value(const rc_typed_value_t* value, char type, unsign
 }
 #define assert_typed_value(value, type, u32, f32) ASSERT_HELPER(_assert_typed_value(value, type, u32, f32), "assert_typed_value")
 
-static void test_typed_value_convert(char type, unsigned u32, double f32, char new_type, unsigned new_u32, double new_f32) {
+static void test_typed_value_convert(uint8_t type, uint32_t u32, double f32, uint8_t new_type, uint32_t new_u32, double new_f32) {
   rc_typed_value_t value;
   init_typed_value(&value, type, u32, f32);
 
@@ -275,8 +275,8 @@ static void test_typed_value_conversion() {
   TEST_PARAMS6(test_typed_value_convert, RC_VALUE_TYPE_FLOAT, 0, -3.14159, RC_VALUE_TYPE_NONE, 0, 0);
 }
 
-static void test_typed_value_add(char type, unsigned u32, double f32,
-    char amount_type, unsigned amount_u32, double amount_f32, unsigned result_u32, double result_f32) {
+static void test_typed_value_add(uint8_t type, uint32_t u32, double f32,
+    uint8_t amount_type, uint32_t amount_u32, double amount_f32, uint32_t result_u32, double result_f32) {
   rc_typed_value_t value, amount;
 
   init_typed_value(&value, type, u32, f32);
@@ -338,9 +338,9 @@ static void test_typed_value_addition() {
   TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_NONE, 0, 0.0, 0, 3.14159);
 }
 
-static void test_typed_value_multiply(char type, unsigned u32, double f32,
-    char amount_type, unsigned amount_u32, double amount_f32,
-    char result_type, unsigned result_u32, double result_f32) {
+static void test_typed_value_multiply(char type, uint32_t u32, double f32,
+    uint8_t amount_type, uint32_t amount_u32, double amount_f32,
+    uint8_t result_type, uint32_t result_u32, double result_f32) {
   rc_typed_value_t value, amount;
 
   init_typed_value(&value, type, u32, f32);
@@ -388,9 +388,9 @@ static void test_typed_value_multiplication() {
   TEST_PARAMS9(test_typed_value_multiply, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_NONE, 0, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0);
 }
 
-static void test_typed_value_divide(char type, unsigned u32, double f32,
-    char amount_type, unsigned amount_u32, double amount_f32,
-    char result_type, unsigned result_u32, double result_f32) {
+static void test_typed_value_divide(uint8_t type, uint32_t u32, double f32,
+    uint8_t amount_type, uint32_t amount_u32, double amount_f32,
+    uint8_t result_type, uint32_t result_u32, double result_f32) {
   rc_typed_value_t value, amount;
 
   init_typed_value(&value, type, u32, f32);

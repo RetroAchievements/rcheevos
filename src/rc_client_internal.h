@@ -42,7 +42,7 @@ typedef void (*rc_client_scheduled_callback_t)(struct rc_client_scheduled_callba
 typedef struct rc_client_scheduled_callback_data_t
 {
   rc_clock_t when;
-  unsigned related_id;
+  uint32_t related_id;
   rc_client_scheduled_callback_t callback;
   void* data;
   struct rc_client_scheduled_callback_data_t* next;
@@ -107,7 +107,7 @@ enum {
 typedef struct rc_client_leaderboard_tracker_info_t {
   rc_client_leaderboard_tracker_t public_;
   struct rc_client_leaderboard_tracker_info_t* next;
-  int raw_value;
+  int32_t raw_value;
 
   uint32_t value_djb2;
 
@@ -137,7 +137,7 @@ typedef struct rc_client_leaderboard_info_t {
   rc_client_leaderboard_tracker_info_t* tracker;
 
   uint32_t value_djb2;
-  int value;
+  int32_t value;
 
   uint8_t format;
   uint8_t pending_events;
@@ -323,7 +323,7 @@ void rc_client_log_message(const rc_client_t* client, const char* message);
 #define RC_CLIENT_LOG_VERBOSE(client, message) { if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_VERBOSE) rc_client_log_message(client, message); }
 
 /* internals pulled from runtime.c */
-void rc_runtime_checksum(const char* memaddr, unsigned char* md5);
+void rc_runtime_checksum(const char* memaddr, uint8_t* md5);
 int rc_trigger_contains_memref(const rc_trigger_t* trigger, const rc_memref_t* memref);
 int rc_value_contains_memref(const rc_value_t* value, const rc_memref_t* memref);
 /* end runtime.c internals */

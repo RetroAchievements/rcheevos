@@ -5,7 +5,7 @@
 
 #include <float.h>
 
-static void test_mask(char size, unsigned expected)
+static void test_mask(char size, uint32_t expected)
 {
   ASSERT_NUM_EQUALS(rc_memref_mask(size), expected);
 }
@@ -68,7 +68,7 @@ static void test_shared_sizes(void)
   TEST_PARAMS2(test_shared_size, RC_MEMSIZE_VARIABLE, RC_MEMSIZE_32_BITS);
 }
 
-static void test_transform(unsigned value, char size, unsigned expected)
+static void test_transform(uint32_t value, uint8_t size, uint32_t expected)
 {
   rc_typed_value_t typed_value;
   typed_value.type = RC_VALUE_TYPE_UNSIGNED;
@@ -77,7 +77,7 @@ static void test_transform(unsigned value, char size, unsigned expected)
   ASSERT_NUM_EQUALS(typed_value.value.u32, expected);
 }
 
-static void test_transform_float(unsigned value, char size, double expected)
+static void test_transform_float(uint32_t value, uint8_t size, double expected)
 {
   rc_typed_value_t typed_value;
   typed_value.type = RC_VALUE_TYPE_UNSIGNED;
@@ -86,7 +86,7 @@ static void test_transform_float(unsigned value, char size, double expected)
   ASSERT_FLOAT_EQUALS(typed_value.value.f32, expected);
 }
 
-static void test_transform_float_inf(unsigned value, char size)
+static void test_transform_float_inf(uint32_t value, uint8_t size)
 {
   /* C89 does not provide defines for NAN and INFINITY, nor does it provide isnan() or isinf() functions */
   rc_typed_value_t typed_value;
@@ -100,7 +100,7 @@ static void test_transform_float_inf(unsigned value, char size)
   }
 }
 
-static void test_transform_float_nan(unsigned value, char size)
+static void test_transform_float_nan(uint32_t value, uint8_t size)
 {
   /* C89 does not provide defines for NAN and INFINITY, nor does it provide isnan() or isinf() functions */
   rc_typed_value_t typed_value;

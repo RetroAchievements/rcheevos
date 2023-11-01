@@ -44,7 +44,7 @@ char* rc_buffer_strncpy(rc_buffer_t* buffer, const char* src, size_t len);
 
 uint32_t rc_djb2(const char* input);
 
-void rc_format_md5(char checksum[33], const unsigned char digest[16]);
+void rc_format_md5(char checksum[33], const uint8_t digest[16]);
 
 #ifdef __cplusplus
 }

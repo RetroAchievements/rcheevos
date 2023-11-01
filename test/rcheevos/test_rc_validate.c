@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int validate_trigger(const char* trigger, char result[], const size_t result_size, unsigned max_address) {
+int validate_trigger(const char* trigger, char result[], const size_t result_size, uint32_t max_address) {
   char* buffer;
   rc_trigger_t* compiled;
   int success = 0;
@@ -25,7 +25,7 @@ int validate_trigger(const char* trigger, char result[], const size_t result_siz
   if (compiled == NULL) {
     snprintf(result, result_size, "parse failed");
   }
-  else if (*(unsigned*)&buffer[ret] != 0xCDCDCDCD) {
+  else if (*(uint32_t*)&buffer[ret] != 0xCDCDCDCD) {
     snprintf(result, result_size, "write past end of buffer");
   }
   else if (rc_validate_trigger(compiled, result, result_size, max_address)) {
@@ -36,7 +36,7 @@ int validate_trigger(const char* trigger, char result[], const size_t result_siz
   return success;
 }
 
-static void test_validate_trigger_max_address(const char* trigger, const char* expected_error, unsigned max_address) {
+static void test_validate_trigger_max_address(const char* trigger, const char* expected_error, uint32_t max_address) {
   char buffer[512];
   int valid = validate_trigger(trigger, buffer, sizeof(buffer), max_address);
 
