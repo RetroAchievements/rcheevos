@@ -1,3 +1,18 @@
+# v11.0.0
+* add rc_client_t and related functions
+* add RC_MEMSIZE_FLOAT_BE
+* add Game Pak SRAM to GBA memory map
+* add hash method for Super Cassettevision
+* add PSP to potential consoles for chd iterator
+* add content_type to rc_api_request_t for client to pass to server
+* add rc_api_process_X_server_response methods to pass status_code and body_length to response processing functions
+* add additional error codes to rc_api_process_login_response: RC_INVALID_CREDENTIALS, RC_EXPIRED_TOKEN, RC_ACCESS_DENIED
+* rc_api_start_session now also returns unlocks without having to explicitly call rc_api_fetch_user_unlocks separately
+* add validation warning for using hit target of 1 on ResetIf condition
+* move compat.c up a directory and rename to rc_compat.c as it's shared by all subfolders
+* move rc_libretro.c up a directory as it uses files from all subfolders
+* convert loosely sized types to strongly sized types (unsigned -> uint32t, unsigned char -> uint8_t, etc)
+
 # v10.7.1
 * add rc_runtime_alloc
 * add rc_libretro_memory_find_avail
