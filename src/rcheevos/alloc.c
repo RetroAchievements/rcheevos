@@ -22,11 +22,13 @@ void* rc_alloc_scratch(void* pointer, int32_t* offset, uint32_t size, uint32_t a
   buffer = &scratch->buffer;
   do {
     const uint32_t aligned_buffer_offset = (buffer->offset + alignment - 1) & ~(alignment - 1);
-    const uint32_t remaining = sizeof(buffer->buffer) - aligned_buffer_offset;
+    if (aligned_buffer_offset < sizeof(buffer->buffer)) {
+      const uint32_t remaining = sizeof(buffer->buffer) - aligned_buffer_offset;
 
-    if (remaining >= size) {
-      /* claim the required space from an existing buffer */
-      return rc_alloc(buffer->buffer, &buffer->offset, size, alignment, NULL, -1);
+      if (remaining >= size) {
+        /* claim the required space from an existing buffer */
+        return rc_alloc(buffer->buffer, &buffer->offset, size, alignment, NULL, -1);
+      }
     }
 
     if (!buffer->next)
@@ -76,7 +78,7 @@ void* rc_alloc(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment
     void** scratch_object_pointer = (void**)((char*)&scratch->objs + scratch_object_pointer_offset);
     ptr = *scratch_object_pointer;
     if (!ptr) {
-      int used;
+      int32_t used;
       ptr = *scratch_object_pointer = rc_alloc_scratch(NULL, &used, size, alignment, scratch, -1);
     }
   }
