@@ -450,7 +450,7 @@ void rc_client_server_call(const rc_api_request_t* request, rc_client_server_cal
   callback(&server_response, callback_data);
 }
 
-static void rc_client_server_call_async(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client)
+void rc_client_server_call_async(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client)
 {
   g_mock_api_responses[g_num_mock_api_responses].request_params = strdup(request->post_data);
   g_mock_api_responses[g_num_mock_api_responses].async_callback = callback;
@@ -484,12 +484,12 @@ static void _async_api_response(const char* request_params, const char* response
   ASSERT_FAIL("No pending API request for: %s", request_params);
 }
 
-static void async_api_response(const char* request_params, const char* response_body)
+void async_api_response(const char* request_params, const char* response_body)
 {
   _async_api_response(request_params, response_body, 200);
 }
 
-static void async_api_error(const char* request_params, const char* response_body, int http_status_code)
+void async_api_error(const char* request_params, const char* response_body, int http_status_code)
 {
   _async_api_response(request_params, response_body, http_status_code);
 }

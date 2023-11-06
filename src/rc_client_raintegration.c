@@ -2,7 +2,7 @@
 
 #include "rc_client_internal.h"
 
-#include "../rapi/rc_api_common.h"
+#include "rapi/rc_api_common.h"
 
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
 
@@ -132,6 +132,57 @@ int rc_client_version_less(const char* left, const char* right)
   return 0;
 }
 
+static void rc_client_init_raintegration(rc_client_t* client,
+    rc_client_version_validation_callback_data_t* version_validation_callback_data)
+{
+  rc_client_raintegration_init_client_func init_func = client->state.raintegration->init_client;
+
+  if (client->state.raintegration->get_host_url)
+  {
+    const char* host_url = client->state.raintegration->get_host_url();
+    if (host_url && strcmp(host_url, "OFFLINE") == 0 && client->state.raintegration->init_client_offline)
+    {
+      init_func = client->state.raintegration->init_client_offline;
+      RC_CLIENT_LOG_INFO(client, "Initializing in offline mode");
+    }
+  }
+
+  if (!init_func || !init_func(version_validation_callback_data->main_window_handle,
+    version_validation_callback_data->client_name,
+    version_validation_callback_data->client_version))
+  {
+    const char* error_message = "RA_Integration initialization failed";
+
+    rc_client_unload_raintegration(client);
+
+    RC_CLIENT_LOG_ERR(client, error_message);
+    version_validation_callback_data->callback(RC_ABORTED, error_message, client, version_validation_callback_data->callback_userdata);
+  }
+  else
+  {
+    client->state.external_client = (rc_client_external_t*)
+      rc_buffer_alloc(&client->state.buffer, sizeof(*client->state.external_client));
+    memset(client->state.external_client, 0, sizeof(*client->state.external_client));
+
+    if (!client->state.raintegration->get_external_client(client->state.external_client, RC_CLIENT_EXTERNAL_VERSION))
+    {
+      const char* error_message = "RA_Integration external client export failed";
+
+      rc_client_unload_raintegration(client);
+
+      RC_CLIENT_LOG_ERR(client, error_message);
+      version_validation_callback_data->callback(RC_ABORTED, error_message, client, version_validation_callback_data->callback_userdata);
+    }
+    else
+    {
+      // TODO: copy settings through (read_memory/server_call/log functions,hardcore/encore/spectator) 
+
+      version_validation_callback_data->callback(RC_OK, NULL,
+        client, version_validation_callback_data->callback_userdata);
+    }
+  }
+}
+
 static void rc_client_version_validation_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_version_validation_callback_data_t* version_validation_callback_data =
@@ -184,48 +235,9 @@ static void rc_client_version_validation_callback(const rc_api_server_response_t
         version_validation_callback_data->callback(RC_ABORTED, error_message, client, version_validation_callback_data->callback_userdata);
       }
       else {
-        rc_client_raintegration_init_client_func init_func = client->state.raintegration->init_client;
-
         RC_CLIENT_LOG_INFO_FORMATTED(client, "Validated RA_Integration version %s (minimum %s)", current_version, minimum_version);
 
-        if (client->state.raintegration->get_host_url) {
-          const char* host_url = client->state.raintegration->get_host_url();
-          if (host_url && strcmp(host_url, "OFFLINE") == 0 && client->state.raintegration->init_client_offline) {
-            init_func = client->state.raintegration->init_client_offline;
-            RC_CLIENT_LOG_INFO(client, "Initializing in offline mode");
-          }
-        }
-
-        if (!init_func || !init_func(version_validation_callback_data->main_window_handle,
-                                     version_validation_callback_data->client_name,
-                                     version_validation_callback_data->client_version)) {
-          const char* error_message = "RA_Integration initialization failed";
-
-          rc_client_unload_raintegration(client);
-
-          RC_CLIENT_LOG_ERR(client, error_message);
-          version_validation_callback_data->callback(RC_ABORTED, error_message, client, version_validation_callback_data->callback_userdata);
-        }
-        else {
-          client->state.external_client = (rc_client_external_t*)
-              rc_buffer_alloc(&client->state.buffer, sizeof(*client->state.external_client));
-          memset(client->state.external_client, 0, sizeof(*client->state.external_client));
-
-          if (!client->state.raintegration->get_external_client(client->state.external_client, RC_CLIENT_EXTERNAL_VERSION)) {
-            const char* error_message = "RA_Integration external client export failed";
-
-            rc_client_unload_raintegration(client);
-
-            RC_CLIENT_LOG_ERR(client, error_message);
-            version_validation_callback_data->callback(RC_ABORTED, error_message, client, version_validation_callback_data->callback_userdata);
-          }
-          else {
-            // TODO: copy settings through (read_memory/server_call/log functions,hardcore/encore/spectator) 
-
-            version_validation_callback_data->callback(RC_OK, NULL,
-                client, version_validation_callback_data->callback_userdata);
-          }
-        }
+        rc_client_init_raintegration(client, version_validation_callback_data);
       }
     }
 
@@ -298,6 +310,7 @@ rc_client_async_handle_t* rc_client_begin_load_raintegration(rc_client_t* client
   callback_data->callback_userdata = callback_userdata;
   callback_data->client_name = strdup(client_name);
   callback_data->client_version = strdup(client_version);
+  callback_data->main_window_handle = main_window_handle;
 
   client->callbacks.server_call(&request, rc_client_version_validation_callback, callback_data, client);
   return &callback_data->async_handle;

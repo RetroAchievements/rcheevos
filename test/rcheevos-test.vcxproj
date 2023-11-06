@@ -218,6 +218,7 @@
     <ClCompile Include="test.c" />
     <ClCompile Include="test_rc_client.c" />
     <ClCompile Include="test_rc_client_external.c" />
+    <ClCompile Include="test_rc_client_raintegration.c" />
     <ClCompile Include="test_rc_libretro.c" />
     <ClInclude Include="..\..\..\RetroArch\deps\rcheevos\src\rcheevos\rc_client_external.h" />
     <ClInclude Include="..\include\rcheevos.h" />

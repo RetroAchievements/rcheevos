@@ -1,14 +1,7 @@
 #include "rc_client.h"
 
-#include "rc_consoles.h"
-#include "rc_hash.h"
-#include "rc_internal.h"
-#include "rc_api_runtime.h"
-
 #include "../src/rc_client_internal.h"
-#include "../src/rc_version.h"
 
-#include "rhash/data.h"
 #include "test_framework.h"
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
