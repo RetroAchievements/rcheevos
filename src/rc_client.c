@@ -339,6 +339,29 @@ void rc_client_abort_async(rc_client_t* client, rc_client_async_handle_t* async_
   }
 }
 
+static int rc_client_async_handle_valid(rc_client_t* client, rc_client_async_handle_t* async_handle)
+{
+  int valid = 0;
+  int aborted = async_handle->aborted;
+
+  /* if client was destroyed, mutex doesn't exist and we don't need to remove the handle from the collection */
+  if (aborted != RC_CLIENT_ASYNC_DESTROYED) {
+    size_t i;
+
+    rc_mutex_lock(&client->state.mutex);
+    for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
+      if (client->state.async_handles[i] == async_handle) {
+        valid = 1;
+        break;
+      }
+    }
+
+    rc_mutex_unlock(&client->state.mutex);
+  }
+
+  return valid;
+}
+
 static const char* rc_client_server_error_message(int* result, int http_status_code, const rc_api_response_t* response)
 {
   if (!response->succeeded) {
@@ -459,6 +482,10 @@ static int rc_client_should_retry(const rc_api_server_response_t* server_respons
 
     case 524: /* 524 A Timeout Occurred */
       /* connection to server from cloudfare was dropped before request was completed */
+      return 1;
+
+    case 525: /* 525 SSL Handshake Failed */
+      /* web server worker connection pool is exhausted */
       return 1;
 
     case RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR:
@@ -614,7 +641,13 @@ static rc_client_async_handle_t* rc_client_begin_login(rc_client_t* client,
 
   rc_api_destroy_request(&request);
 
-  return &callback_data->async_handle;
+  /* if the user state has changed, the async operation completed synchronously */
+  rc_mutex_lock(&client->state.mutex);
+  if (client->state.user != RC_CLIENT_USER_STATE_LOGIN_REQUESTED)
+    callback_data = NULL;
+  rc_mutex_unlock(&client->state.mutex);
+
+  return callback_data ? &callback_data->async_handle : NULL;
 }
 
 rc_client_async_handle_t* rc_client_begin_login_with_password(rc_client_t* client,
@@ -2475,6 +2508,7 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
   else {
     /* call the server to make sure the hash is valid for the loaded game */
     rc_client_load_state_t* callback_data;
+    rc_client_async_handle_t* async_handle;
     rc_api_resolve_hash_request_t resolve_hash_request;
     rc_api_request_t request;
     int result;
@@ -2500,12 +2534,14 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
     callback_data->hash = game_hash;
     callback_data->game = game;
 
-    rc_client_begin_async(client, &callback_data->async_handle);
+    async_handle = &callback_data->async_handle;
+    rc_client_begin_async(client, async_handle);
     client->callbacks.server_call(&request, rc_client_identify_changed_media_callback, callback_data, client);
 
     rc_api_destroy_request(&request);
 
-    return &callback_data->async_handle;
+    /* if handle is no longer valid, the async operation completed synchronously */
+    return rc_client_async_handle_valid(client, async_handle) ? async_handle : NULL;
   }
 }
 
@@ -3894,6 +3930,7 @@ static rc_client_async_handle_t* rc_client_begin_fetch_leaderboard_info(rc_clien
     rc_client_fetch_leaderboard_entries_callback_t callback, void* callback_userdata)
 {
   rc_client_fetch_leaderboard_entries_callback_data_t* callback_data;
+  rc_client_async_handle_t* async_handle;
   rc_api_request_t request;
   int result;
   const char* error_message;
@@ -3917,11 +3954,12 @@ static rc_client_async_handle_t* rc_client_begin_fetch_leaderboard_info(rc_clien
   callback_data->callback_userdata = callback_userdata;
   callback_data->leaderboard_id = lbinfo_request->leaderboard_id;
 
-  rc_client_begin_async(client, &callback_data->async_handle);
+  async_handle = &callback_data->async_handle;
+  rc_client_begin_async(client, async_handle);
   client->callbacks.server_call(&request, rc_client_fetch_leaderboard_entries_callback, callback_data, client);
   rc_api_destroy_request(&request);
 
-  return &callback_data->async_handle;
+  return rc_client_async_handle_valid(client, async_handle) ? async_handle : NULL;
 }
 
 rc_client_async_handle_t* rc_client_begin_fetch_leaderboard_entries(rc_client_t* client, uint32_t leaderboard_id,
