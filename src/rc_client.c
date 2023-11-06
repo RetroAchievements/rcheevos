@@ -342,22 +342,21 @@ void rc_client_abort_async(rc_client_t* client, rc_client_async_handle_t* async_
 static int rc_client_async_handle_valid(rc_client_t* client, rc_client_async_handle_t* async_handle)
 {
   int valid = 0;
-  int aborted = async_handle->aborted;
+  size_t i;
 
-  /* if client was destroyed, mutex doesn't exist and we don't need to remove the handle from the collection */
-  if (aborted != RC_CLIENT_ASYNC_DESTROYED) {
-    size_t i;
+  /* there is a small window of opportunity where the client could have been destroyed before calling
+   * this function, but this function assumes the possibility that the handle has been destroyed, so
+   * we can't check it for RC_CLIENT_ASYNC_DESTROYED before attempting to scan the client data */
+  rc_mutex_lock(&client->state.mutex);
 
-    rc_mutex_lock(&client->state.mutex);
-    for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
-      if (client->state.async_handles[i] == async_handle) {
-        valid = 1;
-        break;
-      }
+  for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
+    if (client->state.async_handles[i] == async_handle) {
+      valid = 1;
+      break;
     }
-
-    rc_mutex_unlock(&client->state.mutex);
   }
+
+  rc_mutex_unlock(&client->state.mutex);
 
   return valid;
 }
