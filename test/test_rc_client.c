@@ -917,6 +917,8 @@ static void test_login_with_password_client_error(void)
   ASSERT_PTR_NULL(user);
 
   ASSERT_PTR_NULL(handle);
+
+  rc_client_destroy(g_client);
 }
 
 static void rc_client_callback_expect_login_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
