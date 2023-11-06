@@ -122,6 +122,10 @@ ifeq ($(BUILD), c89)
 else ifeq ($(BUILD), retroarch)
     # RetroArch builds with gcc8 and gnu99 which adds some extra warning validations
     SRC_CFLAGS += -std=gnu99 -D_GNU_SOURCE -Wall -Warray-bounds=2 -Wincompatible-pointer-types
+    # Also include the RC_CLIENT_SUPPORTS_EXTERNAL flag to ensure we do the full level of validation on the
+    # most code. The c89 build will ensure things still build without the RC_CLIENT_SUPPORTS_EXTERNAL flag.
+    CFLAGS += -DRC_CLIENT_SUPPORTS_EXTERNAL
+    OBJ += test_rc_client_external.o
 else
     $(error unknown BUILD "$(BUILD)")
 endif

@@ -7,6 +7,13 @@ extern "C" {
 
 #include "rc_client.h"
 
+#ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
+ #include "rc_client_raintegration_internal.h"
+#endif
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+ #include "rc_client_external.h"
+#endif
+
 #include "rc_compat.h"
 #include "rc_runtime.h"
 #include "rc_runtime_types.h"
@@ -49,6 +56,12 @@ typedef struct rc_client_scheduled_callback_data_t
 } rc_client_scheduled_callback_data_t;
 
 void rc_client_schedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* scheduled_callback);
+
+struct rc_client_async_handle_t {
+  uint8_t aborted;
+};
+
+int rc_client_async_handle_aborted(rc_client_t* client, rc_client_async_handle_t* async_handle);
 
 /*****************************************************************************\
 | Achievements                                                                |
@@ -272,6 +285,13 @@ typedef struct rc_client_state_t {
   rc_buffer_t buffer;
 
   rc_client_scheduled_callback_data_t* scheduled_callbacks;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  rc_client_external_t* external_client;
+#endif
+#ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
+  rc_client_raintegration_t* raintegration;
+#endif
 
   uint8_t hardcore;
   uint8_t encore_mode;

@@ -23,10 +23,6 @@
 #define RC_CLIENT_UNKNOWN_GAME_ID (uint32_t)-1
 #define RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS (10 * 60) /* ten minutes */
 
-struct rc_client_async_handle_t {
-  uint8_t aborted;
-};
-
 enum {
   RC_CLIENT_ASYNC_NOT_ABORTED = 0,
   RC_CLIENT_ASYNC_ABORTED = 1,
@@ -291,6 +287,17 @@ static rc_clock_t rc_client_clock_get_now_millisecs(const rc_client_t* client)
 void rc_client_set_get_time_millisecs_function(rc_client_t* client, rc_get_time_millisecs_func_t handler)
 {
   client->callbacks.get_time_millisecs = handler ? handler : rc_client_clock_get_now_millisecs;
+}
+
+int rc_client_async_handle_aborted(rc_client_t* client, rc_client_async_handle_t* async_handle)
+{
+  int aborted;
+
+  rc_mutex_lock(&client->state.mutex);
+  aborted = async_handle->aborted;
+  rc_mutex_unlock(&client->state.mutex);
+
+  return aborted;
 }
 
 static void rc_client_begin_async(rc_client_t* client, rc_client_async_handle_t* async_handle)
@@ -637,6 +644,11 @@ rc_client_async_handle_t* rc_client_begin_login_with_password(rc_client_t* clien
     return NULL;
   }
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->begin_login_with_password)
+    return client->state.external_client->begin_login_with_password(client, username, password, callback, callback_userdata);
+#endif
+
   memset(&login_request, 0, sizeof(login_request));
   login_request.username = username;
   login_request.password = password;
@@ -665,6 +677,11 @@ rc_client_async_handle_t* rc_client_begin_login_with_token(rc_client_t* client,
     return NULL;
   }
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->begin_login_with_token)
+    return client->state.external_client->begin_login_with_token(client, username, token, callback, callback_userdata);
+#endif
+
   memset(&login_request, 0, sizeof(login_request));
   login_request.username = username;
   login_request.api_token = token;
@@ -679,6 +696,13 @@ void rc_client_logout(rc_client_t* client)
 
   if (!client)
     return;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->logout) {
+    client->state.external_client->logout();
+    return;
+  }
+#endif
 
   switch (client->state.user) {
     case RC_CLIENT_USER_STATE_LOGGED_IN:
@@ -707,7 +731,15 @@ void rc_client_logout(rc_client_t* client)
 
 const rc_client_user_t* rc_client_get_user_info(const rc_client_t* client)
 {
-  return (client && client->state.user == RC_CLIENT_USER_STATE_LOGGED_IN) ? &client->user : NULL;
+  if (!client)
+    return NULL;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_user_info)
+    return client->state.external_client->get_user_info();
+#endif
+
+  return (client->state.user == RC_CLIENT_USER_STATE_LOGGED_IN) ? &client->user : NULL;
 }
 
 int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], size_t buffer_size)

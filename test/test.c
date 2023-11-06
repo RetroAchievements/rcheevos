@@ -59,7 +59,11 @@ extern void test_lboard();
 extern void test_richpresence();
 extern void test_runtime();
 extern void test_runtime_progress();
+
 extern void test_client();
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+extern void test_client_external();
+#endif
 
 extern void test_consoleinfo();
 extern void test_rc_libretro();
@@ -111,6 +115,9 @@ int main(void) {
   test_rapi_editor();
 
   test_client();
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  test_client_external();
+#endif
 
   test_cdreader();
   test_hash();
