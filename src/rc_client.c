@@ -223,6 +223,11 @@ void rc_client_enable_logging(rc_client_t* client, int level, rc_client_message_
 {
   client->callbacks.log_call = callback;
   client->state.log_level = callback ? level : RC_CLIENT_LOG_LEVEL_NONE;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->enable_logging)
+    client->state.external_client->enable_logging(level, callback);
+#endif
 }
 
 /* ===== Common ===== */
@@ -5020,6 +5025,13 @@ void rc_client_set_hardcore_enabled(rc_client_t* client, int enabled)
   if (!client)
     return;
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_hardcore_enabled) {
+    client->state.external_client->set_hardcore_enabled(enabled);
+    return;
+  }
+#endif
+
   rc_mutex_lock(&client->state.mutex);
 
   enabled = enabled ? 1 : 0;
@@ -5054,51 +5066,107 @@ void rc_client_set_hardcore_enabled(rc_client_t* client, int enabled)
 
 int rc_client_get_hardcore_enabled(const rc_client_t* client)
 {
-  return client && client->state.hardcore;
+  if (!client)
+    return 0;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_hardcore_enabled)
+    return client->state.external_client->get_hardcore_enabled();
+#endif
+
+  return client->state.hardcore;
 }
 
 void rc_client_set_unofficial_enabled(rc_client_t* client, int enabled)
 {
-  if (client) {
-    RC_CLIENT_LOG_INFO_FORMATTED(client, "Unofficial %s", enabled ? "enabled" : "disabled");
-    client->state.unofficial_enabled = enabled ? 1 : 0;
+  if (!client)
+    return;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->set_unofficial_enabled) {
+    client->state.external_client->set_unofficial_enabled(enabled);
+    return;
   }
+#endif
+
+  RC_CLIENT_LOG_INFO_FORMATTED(client, "Unofficial %s", enabled ? "enabled" : "disabled");
+  client->state.unofficial_enabled = enabled ? 1 : 0;
 }
 
 int rc_client_get_unofficial_enabled(const rc_client_t* client)
 {
-  return client && client->state.unofficial_enabled;
+  if (!client)
+    return 0;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_unofficial_enabled)
+    return client->state.external_client->get_unofficial_enabled();
+#endif
+
+  return client->state.unofficial_enabled;
 }
 
 void rc_client_set_encore_mode_enabled(rc_client_t* client, int enabled)
 {
-  if (client) {
-    RC_CLIENT_LOG_INFO_FORMATTED(client, "Encore mode %s", enabled ? "enabled" : "disabled");
-    client->state.encore_mode = enabled ? 1 : 0;
+  if (!client)
+    return;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->set_encore_mode_enabled) {
+    client->state.external_client->set_encore_mode_enabled(enabled);
+    return;
   }
+#endif
+
+  RC_CLIENT_LOG_INFO_FORMATTED(client, "Encore mode %s", enabled ? "enabled" : "disabled");
+  client->state.encore_mode = enabled ? 1 : 0;
 }
 
 int rc_client_get_encore_mode_enabled(const rc_client_t* client)
 {
-  return client && client->state.encore_mode;
+  if (!client)
+    return 0;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_encore_mode_enabled)
+    return client->state.external_client->get_encore_mode_enabled();
+#endif
+
+  return client->state.encore_mode;
 }
 
 void rc_client_set_spectator_mode_enabled(rc_client_t* client, int enabled)
 {
-  if (client) {
-    if (!enabled && client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_LOCKED) {
-      RC_CLIENT_LOG_WARN(client, "Spectator mode cannot be disabled if it was enabled prior to loading game.");
-      return;
-    }
+  if (!client)
+    return;
 
-    RC_CLIENT_LOG_INFO_FORMATTED(client, "Spectator mode %s", enabled ? "enabled" : "disabled");
-    client->state.spectator_mode = enabled ? RC_CLIENT_SPECTATOR_MODE_ON : RC_CLIENT_SPECTATOR_MODE_OFF;
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->set_spectator_mode_enabled) {
+    client->state.external_client->set_spectator_mode_enabled(enabled);
+    return;
   }
+#endif
+
+  if (!enabled && client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_LOCKED) {
+    RC_CLIENT_LOG_WARN(client, "Spectator mode cannot be disabled if it was enabled prior to loading game.");
+    return;
+  }
+
+  RC_CLIENT_LOG_INFO_FORMATTED(client, "Spectator mode %s", enabled ? "enabled" : "disabled");
+  client->state.spectator_mode = enabled ? RC_CLIENT_SPECTATOR_MODE_ON : RC_CLIENT_SPECTATOR_MODE_OFF;
 }
 
 int rc_client_get_spectator_mode_enabled(const rc_client_t* client)
 {
-  return client && (client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_OFF) ? 0 : 1;
+  if (!client)
+    return 0;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_spectator_mode_enabled)
+    return client->state.external_client->get_spectator_mode_enabled();
+#endif
+
+  return (client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_OFF) ? 0 : 1;
 }
 
 void rc_client_set_userdata(rc_client_t* client, void* userdata)

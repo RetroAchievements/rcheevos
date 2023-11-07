@@ -10,6 +10,11 @@ extern "C" {
 #include "rc_client.h"
 #include "rc_compat.h"
 
+typedef void (*rc_client_external_enable_logging_func_t)(int level, rc_client_message_callback_t callback);
+
+typedef void (*rc_client_external_set_int_func_t)(int value);
+typedef int (*rc_client_external_get_int_func_t)(void);
+
 /* client must be passed back to callback along with callback_userdata */
 typedef rc_client_async_handle_t* (*rc_client_external_begin_login_func_t)(rc_client_t* client,
     const char* username, const char* pass_token, rc_client_callback_t callback, void* callback_userdata);
@@ -20,6 +25,17 @@ typedef void (*rc_client_external_action_func_t)(void);
 
 typedef struct rc_client_external_t
 {
+  rc_client_external_enable_logging_func_t enable_logging;
+
+  rc_client_external_set_int_func_t set_hardcore_enabled;
+  rc_client_external_get_int_func_t get_hardcore_enabled;
+  rc_client_external_set_int_func_t set_unofficial_enabled;
+  rc_client_external_get_int_func_t get_unofficial_enabled;
+  rc_client_external_set_int_func_t set_encore_mode_enabled;
+  rc_client_external_get_int_func_t get_encore_mode_enabled;
+  rc_client_external_set_int_func_t set_spectator_mode_enabled;
+  rc_client_external_get_int_func_t get_spectator_mode_enabled;
+
   rc_client_external_begin_login_func_t begin_login_with_password;
   rc_client_external_begin_login_func_t begin_login_with_token;
   rc_client_external_action_func_t logout;

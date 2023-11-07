@@ -8,6 +8,7 @@
 
 static rc_client_t* g_client;
 static const char* g_external_event;
+static int g_external_int = 0;
 static void* g_callback_userdata = &g_client; /* dummy object to use for callback userdata validation */
 
 /* begin from test_rc_client.c */
@@ -34,6 +35,7 @@ static rc_client_t* mock_client_with_external()
   rc_api_set_host(NULL);
   reset_mock_api_handlers();
   g_external_event = "none";
+  g_external_int = 0;
 
   return client;
 }
@@ -44,6 +46,94 @@ static void rc_client_callback_expect_success(int result, const char* error_mess
   ASSERT_PTR_NULL(error_message);
   ASSERT_PTR_EQUALS(client, g_client);
   ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
+/* ----- settings ----- */
+
+static int rc_client_external_get_int(void)
+{
+  return g_external_int;
+}
+
+static void rc_client_external_set_int(int value)
+{
+  g_external_int = value;
+}
+
+static void test_hardcore_enabled(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_hardcore_enabled = rc_client_external_get_int;
+  g_client->state.external_client->set_hardcore_enabled = rc_client_external_set_int;
+
+  g_external_int = 0;
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 0);
+
+  g_external_int = 1;
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
+
+  rc_client_set_hardcore_enabled(g_client, 0);
+  ASSERT_NUM_EQUALS(g_external_int, 0);
+
+  rc_client_set_hardcore_enabled(g_client, 1);
+  ASSERT_NUM_EQUALS(g_external_int, 1);
+}
+
+static void test_unofficial_enabled(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_unofficial_enabled = rc_client_external_get_int;
+  g_client->state.external_client->set_unofficial_enabled = rc_client_external_set_int;
+
+  g_external_int = 0;
+  ASSERT_NUM_EQUALS(rc_client_get_unofficial_enabled(g_client), 0);
+
+  g_external_int = 1;
+  ASSERT_NUM_EQUALS(rc_client_get_unofficial_enabled(g_client), 1);
+
+  rc_client_set_unofficial_enabled(g_client, 0);
+  ASSERT_NUM_EQUALS(g_external_int, 0);
+
+  rc_client_set_unofficial_enabled(g_client, 1);
+  ASSERT_NUM_EQUALS(g_external_int, 1);
+}
+
+static void test_encore_mode_enabled(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_encore_mode_enabled = rc_client_external_get_int;
+  g_client->state.external_client->set_encore_mode_enabled = rc_client_external_set_int;
+
+  g_external_int = 0;
+  ASSERT_NUM_EQUALS(rc_client_get_encore_mode_enabled(g_client), 0);
+
+  g_external_int = 1;
+  ASSERT_NUM_EQUALS(rc_client_get_encore_mode_enabled(g_client), 1);
+
+  rc_client_set_encore_mode_enabled(g_client, 0);
+  ASSERT_NUM_EQUALS(g_external_int, 0);
+
+  rc_client_set_encore_mode_enabled(g_client, 1);
+  ASSERT_NUM_EQUALS(g_external_int, 1);
+}
+
+static void test_spectator_mode_enabled(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_spectator_mode_enabled = rc_client_external_get_int;
+  g_client->state.external_client->set_spectator_mode_enabled = rc_client_external_set_int;
+
+  g_external_int = 0;
+  ASSERT_NUM_EQUALS(rc_client_get_spectator_mode_enabled(g_client), 0);
+
+  g_external_int = 1;
+  ASSERT_NUM_EQUALS(rc_client_get_spectator_mode_enabled(g_client), 1);
+
+  rc_client_set_spectator_mode_enabled(g_client, 0);
+  ASSERT_NUM_EQUALS(g_external_int, 0);
+
+  rc_client_set_spectator_mode_enabled(g_client, 1);
+  ASSERT_NUM_EQUALS(g_external_int, 1);
 }
 
 /* ----- login ----- */
@@ -193,6 +283,12 @@ static void test_logout(void)
 
 void test_client_external(void) {
   TEST_SUITE_BEGIN();
+
+  /* settings */
+  TEST(test_hardcore_enabled);
+  TEST(test_unofficial_enabled);
+  TEST(test_encore_mode_enabled);
+  TEST(test_spectator_mode_enabled);
 
   /* login */
   TEST(test_login_with_password);
