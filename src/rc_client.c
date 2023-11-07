@@ -345,6 +345,13 @@ static int rc_client_end_async(rc_client_t* client, rc_client_async_handle_t* as
 void rc_client_abort_async(rc_client_t* client, rc_client_async_handle_t* async_handle)
 {
   if (async_handle && client) {
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+    if (client->state.external_client && client->state.external_client->abort_async) {
+      client->state.external_client->abort_async(async_handle);
+      return;
+    }
+#endif
+
     rc_mutex_lock(&client->state.mutex);
     async_handle->aborted = RC_CLIENT_ASYNC_ABORTED;
     rc_mutex_unlock(&client->state.mutex);
@@ -4092,14 +4099,28 @@ size_t rc_client_get_rich_presence_message(rc_client_t* client, char buffer[], s
 
 void rc_client_set_event_handler(rc_client_t* client, rc_client_event_handler_t handler)
 {
-  if (client)
-    client->callbacks.event_handler = handler;
+  if (!client)
+    return;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->set_event_handler)
+    client->state.external_client->set_event_handler(handler);
+#endif
+
+  client->callbacks.event_handler = handler;
 }
 
 void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memory_func_t handler)
 {
-  if (client)
-    client->callbacks.read_memory = handler;
+  if (!client)
+    return;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->set_read_memory)
+    client->state.external_client->set_read_memory(handler);
+#endif
+
+  client->callbacks.read_memory = handler;
 }
 
 static void rc_client_invalidate_processing_memref(rc_client_t* client)

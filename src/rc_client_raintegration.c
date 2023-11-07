@@ -137,20 +137,22 @@ static void rc_client_init_raintegration(rc_client_t* client,
 {
   rc_client_raintegration_init_client_func init_func = client->state.raintegration->init_client;
 
-  if (client->state.raintegration->get_host_url)
-  {
+  if (client->state.raintegration->get_host_url) {
     const char* host_url = client->state.raintegration->get_host_url();
-    if (host_url && strcmp(host_url, "OFFLINE") == 0 && client->state.raintegration->init_client_offline)
-    {
-      init_func = client->state.raintegration->init_client_offline;
-      RC_CLIENT_LOG_INFO(client, "Initializing in offline mode");
+    if (host_url) {
+      if (strcmp(host_url, "OFFLINE") != 0) {
+        rc_client_set_host(client, host_url);
+      }
+      else if (client->state.raintegration->init_client_offline) {
+        init_func = client->state.raintegration->init_client_offline;
+        RC_CLIENT_LOG_INFO(client, "Initializing in offline mode");
+      }
     }
   }
 
   if (!init_func || !init_func(version_validation_callback_data->main_window_handle,
-    version_validation_callback_data->client_name,
-    version_validation_callback_data->client_version))
-  {
+      version_validation_callback_data->client_name,
+      version_validation_callback_data->client_version)) {
     const char* error_message = "RA_Integration initialization failed";
 
     rc_client_unload_raintegration(client);
@@ -158,14 +160,12 @@ static void rc_client_init_raintegration(rc_client_t* client,
     RC_CLIENT_LOG_ERR(client, error_message);
     version_validation_callback_data->callback(RC_ABORTED, error_message, client, version_validation_callback_data->callback_userdata);
   }
-  else
-  {
-    client->state.external_client = (rc_client_external_t*)
-      rc_buffer_alloc(&client->state.buffer, sizeof(*client->state.external_client));
-    memset(client->state.external_client, 0, sizeof(*client->state.external_client));
+  else {
+    rc_client_external_t* external_client = (rc_client_external_t*)
+        rc_buffer_alloc(&client->state.buffer, sizeof(*external_client));
+    memset(external_client, 0, sizeof(*external_client));
 
-    if (!client->state.raintegration->get_external_client(client->state.external_client, RC_CLIENT_EXTERNAL_VERSION))
-    {
+    if (!client->state.raintegration->get_external_client(external_client, RC_CLIENT_EXTERNAL_VERSION)) {
       const char* error_message = "RA_Integration external client export failed";
 
       rc_client_unload_raintegration(client);
@@ -173,12 +173,30 @@ static void rc_client_init_raintegration(rc_client_t* client,
       RC_CLIENT_LOG_ERR(client, error_message);
       version_validation_callback_data->callback(RC_ABORTED, error_message, client, version_validation_callback_data->callback_userdata);
     }
-    else
-    {
-      // TODO: copy settings through (read_memory/server_call/log functions,hardcore/encore/spectator) 
+    else {
+      /* copy state to the external client */
+      if (external_client->enable_logging)
+        external_client->enable_logging(client->state.log_level, client->callbacks.log_call);
+
+      if (external_client->set_event_handler)
+        external_client->set_event_handler(client->callbacks.event_handler);
+      if (external_client->set_read_memory)
+        external_client->set_read_memory(client->callbacks.read_memory);
+
+      if (external_client->set_hardcore_enabled)
+        external_client->set_hardcore_enabled(rc_client_get_hardcore_enabled(client));
+      if (external_client->set_unofficial_enabled)
+        external_client->set_unofficial_enabled(rc_client_get_unofficial_enabled(client));
+      if (external_client->set_encore_mode_enabled)
+        external_client->set_encore_mode_enabled(rc_client_get_encore_mode_enabled(client));
+      if (external_client->set_spectator_mode_enabled)
+        external_client->set_spectator_mode_enabled(rc_client_get_spectator_mode_enabled(client));
+
+      /* attach the external client and call the callback */
+      client->state.external_client = external_client;
 
       version_validation_callback_data->callback(RC_OK, NULL,
-        client, version_validation_callback_data->callback_userdata);
+         client, version_validation_callback_data->callback_userdata);
     }
   }
 }
