@@ -68,6 +68,20 @@ static void rc_client_callback_expect_uncalled(int result, const char* error_mes
   ASSERT_FAIL("Callback should not have been called.");
 }
 
+/* ----- version ----- */
+
+extern int rc_client_version_less(const char* left, const char* right);
+
+static void test_version_less(const char* left, const char* right, int expected)
+{
+  if (expected == 0) {
+    ASSERT_FALSE(rc_client_version_less(left, right));
+  }
+  else {
+    ASSERT_TRUE(rc_client_version_less(left, right));
+  }
+}
+
 /* ----- login ----- */
 
 static void assert_init_params(HWND hWnd, const char* client_name, const char* client_version)
@@ -205,6 +219,16 @@ static void test_load_raintegration_offline(void)
 
 void test_client_raintegration(void) {
   TEST_SUITE_BEGIN();
+
+  /* version */
+  TEST_PARAMS3(test_version_less, "0.0.0", "1.0.0", 1);
+  TEST_PARAMS3(test_version_less, "1.0.0", "0.0.0", 0);
+  TEST_PARAMS3(test_version_less, "1.2.0", "1.2.0", 0);
+  TEST_PARAMS3(test_version_less, "1.2.0", "1.1.0", 0);
+  TEST_PARAMS3(test_version_less, "1.2.0", "1.3.0", 1);
+  TEST_PARAMS3(test_version_less, "1.2.0", "1.10.0", 1);
+  TEST_PARAMS3(test_version_less, "1.2.0", "2.1.0", 1);
+  TEST_PARAMS3(test_version_less, "2.1.0", "1.2.0", 0);
 
   /* login */
   TEST(test_load_raintegration);
