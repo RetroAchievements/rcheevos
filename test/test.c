@@ -1,5 +1,9 @@
 #include "rc_internal.h"
 
+#ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
+#include "rc_client_raintegration.h"
+#endif
+
 #include "test_framework.h"
 
 #include <assert.h>
@@ -64,7 +68,7 @@ extern void test_client();
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
 extern void test_client_external();
 #endif
-#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+#ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
 extern void test_client_raintegration();
 #endif
 
