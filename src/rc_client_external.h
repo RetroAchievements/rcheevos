@@ -8,7 +8,6 @@ extern "C" {
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
 
 #include "rc_client.h"
-#include "rc_compat.h"
 
 typedef void (*rc_client_external_enable_logging_func_t)(int level, rc_client_message_callback_t callback);
 typedef void (*rc_client_external_set_event_handler_func_t)(rc_client_event_handler_t handler);

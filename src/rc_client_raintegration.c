@@ -291,6 +291,11 @@ rc_client_async_handle_t* rc_client_begin_load_raintegration(rc_client_t* client
     return NULL;
   }
 
+  if (client->state.user != RC_CLIENT_USER_STATE_NONE) {
+    callback(RC_INVALID_STATE, "Cannot initialize RAIntegration after login", client, callback_userdata);
+    return NULL;
+  }
+
   if (!client->state.raintegration) {
     if (!main_window_handle) {
       callback(RC_INVALID_STATE, "main_window_handle is required", client, callback_userdata);

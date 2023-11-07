@@ -215,6 +215,33 @@ static void test_load_raintegration_offline(void)
   rc_client_destroy(g_client);
 }
 
+static void rc_client_callback_expect_after_login_failure(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
+  ASSERT_STR_EQUALS(error_message, "Cannot initialize RAIntegration after login");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
+
+static void test_load_raintegration_after_login(void)
+{
+  g_client = mock_client_with_integration();
+  g_client->state.raintegration->get_version = rc_client_integration_get_version;
+  g_client->state.raintegration->init_client = rc_client_integration_init;
+  g_client->state.raintegration->get_external_client = rc_client_get_external_client;
+  g_client->state.user = RC_CLIENT_USER_STATE_LOGIN_REQUESTED;
+
+  mock_api_response("r=latestintegration", "{\"Success\":true,\"MinimumVersion\":\"1.3.0\"}");
+
+  rc_client_begin_load_raintegration(g_client, L"C:\\Client", (HWND)0x1234, "TestClient", "1.0.1",
+      rc_client_callback_expect_after_login_failure, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_integration_event, "none");
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- harness ----- */
 
 void test_client_raintegration(void) {
@@ -236,6 +263,7 @@ void test_client_raintegration(void) {
   TEST(test_load_raintegration_outdated_version);
   TEST(test_load_raintegration_supported_version);
   TEST(test_load_raintegration_offline);
+  TEST(test_load_raintegration_after_login);
 
   TEST_SUITE_END();
 }
