@@ -807,7 +807,17 @@ void rc_client_get_user_game_summary(const rc_client_t* client, rc_client_user_g
     return;
 
   memset(summary, 0, sizeof(*summary));
-  if (!client || !client->game)
+  if (!client)
+    return;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_user_game_summary) {
+    client->state.external_client->get_user_game_summary(summary);
+    return;
+  }
+#endif
+
+  if (!client->game)
     return;
 
   rc_mutex_lock((rc_mutex_t*)&client->state.mutex); /* remove const cast for mutex access */
@@ -2160,6 +2170,11 @@ rc_client_async_handle_t* rc_client_begin_load_game(rc_client_t* client, const c
     return NULL;
   }
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->begin_load_game)
+    return client->state.external_client->begin_load_game(client, hash, callback, callback_userdata);
+#endif
+
   load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
   if (!load_state) {
     callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
@@ -2185,6 +2200,11 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
     callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
     return NULL;
   }
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->begin_identify_and_load_game)
+    return client->state.external_client->begin_identify_and_load_game(client, console_id, file_path, data, data_size, callback, callback_userdata);
+#endif
 
   if (data) {
     if (file_path) {
@@ -2289,6 +2309,13 @@ void rc_client_unload_game(rc_client_t* client)
 
   if (!client)
     return;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->unload_game) {
+    client->state.external_client->unload_game();
+    return;
+  }
+#endif
 
   rc_mutex_lock(&client->state.mutex);
 
@@ -2560,7 +2587,15 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
 
 const rc_client_game_t* rc_client_get_game_info(const rc_client_t* client)
 {
-  return (client && client->game) ? &client->game->public_ : NULL;
+  if (!client)
+    return NULL;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_game_info)
+    return client->state.external_client->get_game_info();
+#endif
+
+  return client->game ? &client->game->public_ : NULL;
 }
 
 int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], size_t buffer_size)

@@ -23,8 +23,15 @@ typedef void (*rc_client_external_async_handle_func_t)(rc_client_async_handle_t*
 
 typedef rc_client_async_handle_t* (*rc_client_external_begin_login_func_t)(rc_client_t* client,
     const char* username, const char* pass_token, rc_client_callback_t callback, void* callback_userdata);
-
 typedef const rc_client_user_t* (*rc_client_external_get_user_info_func_t)(void);
+
+typedef rc_client_async_handle_t* (*rc_client_external_begin_identify_and_load_game_func_t)(
+  rc_client_t* client, uint32_t console_id, const char* file_path,
+  const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata);
+typedef rc_client_async_handle_t* (*rc_client_external_begin_load_game_func_t)(rc_client_t* client,
+  const char* hash, rc_client_callback_t callback, void* callback_userdata);
+typedef const rc_client_game_t* (*rc_client_external_get_game_info_func_t)(void);
+typedef void (*rc_client_external_get_user_game_summary_func_t)(rc_client_user_game_summary_t* summary);
 
 typedef void (*rc_client_external_action_func_t)(void);
 
@@ -52,11 +59,11 @@ typedef struct rc_client_external_t
   rc_client_external_action_func_t logout;
   rc_client_external_get_user_info_func_t get_user_info;
 
-  //[] rc_client_begin_identify_and_load_game
-  //  [] rc_client_begin_load_game
-  //  [] rc_client_get_game_info
-  //  [] rc_client_unload_game
-  //  [] rc_client_get_user_game_summary
+  rc_client_external_begin_identify_and_load_game_func_t begin_identify_and_load_game;
+  rc_client_external_begin_load_game_func_t begin_load_game;
+  rc_client_external_get_game_info_func_t get_game_info;
+  rc_client_external_action_func_t unload_game;
+  rc_client_external_get_user_game_summary_func_t get_user_game_summary;
 
 } rc_client_external_t;
 

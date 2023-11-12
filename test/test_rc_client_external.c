@@ -1,6 +1,8 @@
 #include "rc_client.h"
 
 #include "../src/rc_client_internal.h"
+#include "rc_consoles.h"
+#include "rhash/data.h"
 
 #include "test_framework.h"
 
@@ -184,7 +186,7 @@ static const rc_client_user_t* rc_client_external_get_user_info(void)
 
 static void test_login_with_password(void)
 {
-  const v1_rc_client_user_t* user;
+  const rc_client_user_t* user;
 
   g_client = mock_client_with_external();
   g_client->state.external_client->begin_login_with_password = rc_client_external_login_with_password;
@@ -195,7 +197,7 @@ static void test_login_with_password(void)
   ASSERT_STR_EQUALS(g_external_event, "login");
 
   /* user data should come from external client. validate structure */
-  user = (const v1_rc_client_user_t*)rc_client_get_user_info(g_client);
+  user = rc_client_get_user_info(g_client);
   ASSERT_PTR_NOT_NULL(user);
   ASSERT_STR_EQUALS(user->username, "User");
   ASSERT_STR_EQUALS(user->display_name, "User");
@@ -231,7 +233,7 @@ static rc_client_async_handle_t* rc_client_external_login_with_token(rc_client_t
 
 static void test_login_with_token(void)
 {
-  const v1_rc_client_user_t* user;
+  const rc_client_user_t* user;
 
   g_client = mock_client_with_external();
   g_client->state.external_client->begin_login_with_token = rc_client_external_login_with_token;
@@ -242,7 +244,7 @@ static void test_login_with_token(void)
   ASSERT_STR_EQUALS(g_external_event, "login");
 
   /* user data should come from external client. validate structure */
-  user = (const v1_rc_client_user_t*)rc_client_get_user_info(g_client);
+  user = rc_client_get_user_info(g_client);
   ASSERT_PTR_NOT_NULL(user);
   ASSERT_STR_EQUALS(user->username, "User");
   ASSERT_STR_EQUALS(user->display_name, "User");
@@ -279,6 +281,173 @@ static void test_logout(void)
   rc_client_destroy(g_client);
 }
 
+/* ----- load game ----- */
+
+typedef struct v1_rc_client_game_t {
+  uint32_t id;
+  uint32_t console_id;
+  const char* title;
+  const char* hash;
+  const char* badge_name;
+} v1_rc_client_game_t;
+
+static const rc_client_game_t* rc_client_external_get_game_info(void)
+{
+  v1_rc_client_game_t* game = (v1_rc_client_game_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_game_t));
+
+  memset(game, 0, sizeof(*game));
+  game->id = 1234;
+  game->console_id = RC_CONSOLE_PLAYSTATION;
+  game->title = "Game Title";
+  game->hash = "GAME_HASH";
+  game->badge_name = "BDG001";
+
+  return (const rc_client_game_t*)game;
+}
+
+static void assert_identify_and_load_game(rc_client_t* client,
+    uint32_t console_id, const char* file_path, const uint8_t* data, size_t data_size)
+{
+  ASSERT_PTR_EQUALS(client, g_client);
+
+  ASSERT_NUM_EQUALS(console_id, RC_CONSOLE_NINTENDO);
+  ASSERT_STR_EQUALS(file_path, "foo.zip#foo.nes");
+  ASSERT_PTR_NOT_NULL(data);
+  ASSERT_NUM_EQUALS(32784, data_size);
+}
+
+static rc_client_async_handle_t* rc_client_external_identify_and_load_game(rc_client_t* client,
+    uint32_t console_id, const char* file_path, const uint8_t* data, size_t data_size,
+    rc_client_callback_t callback, void* callback_userdata)
+{
+  assert_identify_and_load_game(client, console_id, file_path, data, data_size);
+
+  g_external_event = "load_game";
+
+  callback(RC_OK, NULL, client, callback_userdata);
+  return NULL;
+}
+
+static void test_identify_and_load_game(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const rc_client_game_t* game;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_identify_and_load_game = rc_client_external_identify_and_load_game;
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game");
+
+  /* user data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  /* ensure non-external client user was not initialized */
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void assert_load_game(rc_client_t* client, const char* hash)
+{
+  ASSERT_PTR_EQUALS(client, g_client);
+
+  ASSERT_STR_EQUALS(hash, "ABCDEF0123456789");
+}
+
+static rc_client_async_handle_t* rc_client_external_load_game(rc_client_t* client,
+  const char* hash, rc_client_callback_t callback, void* callback_userdata)
+{
+  assert_load_game(client, hash);
+
+  g_external_event = "load_game";
+
+  callback(RC_OK, NULL, client, callback_userdata);
+  return NULL;
+}
+
+static void test_load_game(void)
+{
+  const rc_client_game_t* game;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_load_game = rc_client_external_load_game;
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
+
+  rc_client_begin_load_game(g_client, "ABCDEF0123456789", rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game");
+
+  /* user data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  /* ensure non-external client user was not initialized */
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_external_get_user_game_summary(rc_client_user_game_summary_t* summary)
+{
+  summary->num_core_achievements = 20;
+  summary->num_unlocked_achievements = 6;
+  summary->num_unofficial_achievements = 3;
+  summary->num_unsupported_achievements = 1;
+  summary->points_core = 100;
+  summary->points_unlocked = 23;
+}
+
+static void test_get_user_game_summary(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_user_game_summary = rc_client_external_get_user_game_summary;
+
+  rc_client_get_user_game_summary(g_client, &summary);
+
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 20);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 6);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 3);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 1);
+  ASSERT_NUM_EQUALS(summary.points_core, 100);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 23);
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_external_unload_game(void)
+{
+  g_external_event = "unload_game";
+}
+
+static void test_unload_game(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->unload_game = rc_client_external_unload_game;
+
+  rc_client_unload_game(g_client);
+
+  ASSERT_STR_EQUALS(g_external_event, "unload_game");
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- harness ----- */
 
 void test_client_external(void) {
@@ -295,6 +464,13 @@ void test_client_external(void) {
   TEST(test_login_with_token);
 
   TEST(test_logout);
+
+  /* load game */
+  TEST(test_identify_and_load_game);
+  TEST(test_load_game);
+  TEST(test_get_user_game_summary);
+
+  TEST(test_unload_game);
 
   TEST_SUITE_END();
 }
