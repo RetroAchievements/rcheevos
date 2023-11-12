@@ -3337,7 +3337,15 @@ const rc_client_leaderboard_t* rc_client_get_leaderboard_info(const rc_client_t*
 {
   rc_client_subset_info_t* subset;
 
-  if (!client || !client->game)
+  if (!client)
+    return NULL;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_leaderboard_info)
+    return client->state.external_client->get_leaderboard_info(id);
+#endif
+
+  if (!client->game)
     return NULL;
 
   for (subset = client->game->subsets; subset; subset = subset->next) {
@@ -3428,7 +3436,15 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
     RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED
   };
 
-  if (!client || !client->game)
+  if (!client)
+    return calloc(1, sizeof(rc_client_leaderboard_list_t));
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->create_leaderboard_list)
+    return client->state.external_client->create_leaderboard_list(grouping);
+#endif
+
+  if (!client->game)
     return calloc(1, sizeof(rc_client_leaderboard_list_t));
 
   memset(&bucket_counts, 0, sizeof(bucket_counts));
@@ -3578,7 +3594,15 @@ int rc_client_has_leaderboards(rc_client_t* client)
   rc_client_subset_info_t* subset;
   int result;
 
-  if (!client || !client->game)
+  if (!client)
+    return 0;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->has_leaderboards)
+    return client->state.external_client->has_leaderboards();
+#endif
+
+  if (!client->game)
     return 0;
 
   rc_mutex_lock(&client->state.mutex);

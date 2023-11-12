@@ -39,6 +39,12 @@ typedef void (*rc_client_external_get_user_game_summary_func_t)(rc_client_user_g
 typedef rc_client_achievement_list_t* (*rc_client_external_create_achievement_list_func_t)(int category, int grouping);
 typedef const rc_client_achievement_t* (*rc_client_external_get_achievement_info_func_t)(uint32_t id);
 
+/* NOTE: rc_client_external_create_leaderboard_list_func_t must return a singular malloc'd pointer that
+ *       can be free'd by rc_client_destroy_leaderboard_list, as that doesn't accept an rc_client_t to
+ *       redirect the free logic to the external client implementation. */
+typedef rc_client_leaderboard_list_t* (*rc_client_external_create_leaderboard_list_func_t)(int grouping);
+typedef const rc_client_leaderboard_t* (*rc_client_external_get_leaderboard_info_func_t)(uint32_t id);
+
 typedef void (*rc_client_external_action_func_t)(void);
 
 typedef struct rc_client_external_t
@@ -74,6 +80,10 @@ typedef struct rc_client_external_t
   rc_client_external_create_achievement_list_func_t create_achievement_list;
   rc_client_external_get_int_func_t has_achievements;
   rc_client_external_get_achievement_info_func_t get_achievement_info;
+
+  rc_client_external_create_leaderboard_list_func_t create_leaderboard_list;
+  rc_client_external_get_int_func_t has_leaderboards;
+  rc_client_external_get_leaderboard_info_func_t get_leaderboard_info;
 
 } rc_client_external_t;
 
