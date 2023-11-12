@@ -499,10 +499,10 @@ typedef struct v1_rc_client_achievement_list_t {
   uint32_t num_buckets;
 } v1_rc_client_achievement_list_t;
 
-typedef struct v1_rc_client_external_achievement_list_t {
+typedef struct v1_rc_client_achievement_list_info_t {
   v1_rc_client_achievement_list_t public_;
   rc_client_destroy_achievement_list_func_t destroy_func;
-} v1_rc_client_external_achievement_list_t;
+} v1_rc_client_achievement_list_info_t;
 
 static void assert_achievement_list_category_grouping(int category, int grouping)
 {
@@ -510,19 +510,19 @@ static void assert_achievement_list_category_grouping(int category, int grouping
   ASSERT_NUM_EQUALS(grouping, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
 }
 
-static void rc_client_external_destroy_achievement_list(rc_client_external_achievement_list_t* list)
+static void rc_client_external_destroy_achievement_list(rc_client_achievement_list_info_t* list)
 {
   g_external_event = "destroyed";
   free(list);
 }
 
-static rc_client_external_achievement_list_t* rc_client_external_create_achievement_list(int category, int grouping)
+static rc_client_achievement_list_info_t* rc_client_external_create_achievement_list(int category, int grouping)
 {
-  v1_rc_client_external_achievement_list_t* list;
+  v1_rc_client_achievement_list_info_t* list;
 
   assert_achievement_list_category_grouping(category, grouping);
 
-  list = (v1_rc_client_external_achievement_list_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_achievement_bucket_t));
+  list = (v1_rc_client_achievement_list_info_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_achievement_bucket_t));
   if (list) {
     list->public_.num_buckets = 1;
     list->public_.buckets = (v1_rc_client_achievement_bucket_t*)((uint8_t*)list + sizeof(*list));
@@ -534,7 +534,7 @@ static rc_client_external_achievement_list_t* rc_client_external_create_achievem
     list->destroy_func = rc_client_external_destroy_achievement_list;
   }
 
-  return (rc_client_external_achievement_list_t*)list;
+  return (rc_client_achievement_list_info_t*)list;
 }
 
 static void test_create_achievement_list(void)
@@ -640,29 +640,29 @@ typedef struct v1_rc_client_leaderboard_list_t {
   uint32_t num_buckets;
 } v1_rc_client_leaderboard_list_t;
 
-typedef struct v1_rc_client_external_leaderboard_list_t {
+typedef struct v1_rc_client_leaderboard_list_info_t {
   v1_rc_client_leaderboard_list_t public_;
   rc_client_destroy_leaderboard_list_func_t destroy_func;
-} v1_rc_client_external_leaderboard_list_t;
+} v1_rc_client_leaderboard_list_info_t;
 
 static void assert_leaderboard_list_grouping(int grouping)
 {
   ASSERT_NUM_EQUALS(grouping, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
 }
 
-static void rc_client_external_destroy_leaderboard_list(rc_client_external_leaderboard_list_t* list)
+static void rc_client_external_destroy_leaderboard_list(rc_client_leaderboard_list_info_t* list)
 {
   g_external_event = "destroyed";
   free(list);
 }
 
-static rc_client_external_leaderboard_list_t* rc_client_external_create_leaderboard_list(int grouping)
+static rc_client_leaderboard_list_info_t* rc_client_external_create_leaderboard_list(int grouping)
 {
-  v1_rc_client_external_leaderboard_list_t* list;
+  v1_rc_client_leaderboard_list_info_t* list;
 
   assert_leaderboard_list_grouping(grouping);
 
-  list = (v1_rc_client_external_leaderboard_list_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_leaderboard_bucket_t));
+  list = (v1_rc_client_leaderboard_list_info_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_leaderboard_bucket_t));
   if (list) {
     list->public_.num_buckets = 1;
     list->public_.buckets = (v1_rc_client_leaderboard_bucket_t*)((uint8_t*)list + sizeof(*list));
@@ -674,7 +674,7 @@ static rc_client_external_leaderboard_list_t* rc_client_external_create_leaderbo
     list->destroy_func = rc_client_external_destroy_leaderboard_list;
   }
 
-  return (rc_client_external_leaderboard_list_t*)list;
+  return (rc_client_leaderboard_list_info_t*)list;
 }
 
 static void test_create_leaderboard_list(void)

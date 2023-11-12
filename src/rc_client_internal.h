@@ -91,6 +91,14 @@ typedef struct rc_client_achievement_info_t {
   time_t updated_time;
 } rc_client_achievement_info_t;
 
+struct rc_client_achievement_list_info_t;
+typedef void (*rc_client_destroy_achievement_list_func_t)(struct rc_client_achievement_list_info_t* list);
+
+typedef struct rc_client_achievement_list_info_t {
+  rc_client_achievement_list_t public_;
+  rc_client_destroy_achievement_list_func_t destroy_func;
+} rc_client_achievement_list_info_t;
+
 enum {
   RC_CLIENT_PROGRESS_TRACKER_ACTION_NONE,
   RC_CLIENT_PROGRESS_TRACKER_ACTION_SHOW,
@@ -157,6 +165,14 @@ typedef struct rc_client_leaderboard_info_t {
   uint8_t bucket;
   uint8_t hidden;
 } rc_client_leaderboard_info_t;
+
+struct rc_client_leaderboard_list_info_t;
+typedef void (*rc_client_destroy_leaderboard_list_func_t)(struct rc_client_leaderboard_list_info_t* list);
+
+typedef struct rc_client_leaderboard_list_info_t {
+  rc_client_leaderboard_list_t public_;
+  rc_client_destroy_leaderboard_list_func_t destroy_func;
+} rc_client_leaderboard_list_info_t;
 
 uint8_t rc_client_map_leaderboard_format(int format);
 
