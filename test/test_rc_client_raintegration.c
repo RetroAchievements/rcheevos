@@ -99,7 +99,7 @@ static int rc_client_integration_init(HWND hWnd, const char* client_name, const 
   return 1;
 }
 
-static int rc_client_get_external_client(rc_client_external_t* external_client, int nVersion, rc_client_t* client)
+static int rc_client_get_external_client(rc_client_external_t* client, int nVersion)
 {
   if (strcmp(g_integration_event, "init") == 0)
     g_integration_event = "init2";

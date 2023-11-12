@@ -231,7 +231,7 @@ void rc_client_enable_logging(rc_client_t* client, int level, rc_client_message_
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->enable_logging)
-    client->state.external_client->enable_logging(level, callback);
+    client->state.external_client->enable_logging(client, level, callback);
 #endif
 }
 
@@ -4109,7 +4109,7 @@ void rc_client_set_event_handler(rc_client_t* client, rc_client_event_handler_t 
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->set_event_handler)
-    client->state.external_client->set_event_handler(handler);
+    client->state.external_client->set_event_handler(client, handler);
 #endif
 
   client->callbacks.event_handler = handler;
@@ -4122,7 +4122,7 @@ void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memo
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->set_read_memory)
-    client->state.external_client->set_read_memory(handler);
+    client->state.external_client->set_read_memory(client, handler);
 #endif
 
   client->callbacks.read_memory = handler;

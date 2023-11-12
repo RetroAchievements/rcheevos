@@ -165,7 +165,7 @@ static void rc_client_init_raintegration(rc_client_t* client,
         rc_buffer_alloc(&client->state.buffer, sizeof(*external_client));
     memset(external_client, 0, sizeof(*external_client));
 
-    if (!client->state.raintegration->get_external_client(external_client, RC_CLIENT_EXTERNAL_VERSION, client)) {
+    if (!client->state.raintegration->get_external_client(external_client, RC_CLIENT_EXTERNAL_VERSION)) {
       const char* error_message = "RA_Integration external client export failed";
 
       rc_client_unload_raintegration(client);
@@ -176,12 +176,12 @@ static void rc_client_init_raintegration(rc_client_t* client,
     else {
       /* copy state to the external client */
       if (external_client->enable_logging)
-        external_client->enable_logging(client->state.log_level, client->callbacks.log_call);
+        external_client->enable_logging(client, client->state.log_level, client->callbacks.log_call);
 
       if (external_client->set_event_handler)
-        external_client->set_event_handler(client->callbacks.event_handler);
+        external_client->set_event_handler(client, client->callbacks.event_handler);
       if (external_client->set_read_memory)
-        external_client->set_read_memory(client->callbacks.read_memory);
+        external_client->set_read_memory(client, client->callbacks.read_memory);
 
       if (external_client->set_hardcore_enabled)
         external_client->set_hardcore_enabled(rc_client_get_hardcore_enabled(client));

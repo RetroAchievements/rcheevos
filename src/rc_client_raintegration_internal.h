@@ -19,7 +19,7 @@ extern "C" {
 typedef void (CCONV* rc_client_raintegration_action_func)(void);
 typedef const char* (CCONV* rc_client_raintegration_get_string_func)(void);
 typedef int (CCONV* rc_client_raintegration_init_client_func)(HWND hMainWnd, const char* sClientName, const char* sClientVersion);
-typedef int (CCONV* rc_client_raintegration_get_external_client)(rc_client_external_t* pClientExternal, int nVersion, rc_client_t* pClient);
+typedef int (CCONV* rc_client_raintegration_get_external_client)(rc_client_external_t* pClient, int nVersion);
 
 typedef struct rc_client_raintegration_t
 {
