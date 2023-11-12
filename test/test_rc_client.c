@@ -545,6 +545,22 @@ static void rc_client_callback_expect_success(int result, const char* error_mess
   ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
+static void rc_client_callback_expect_timeout(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_NO_RESPONSE);
+  ASSERT_STR_EQUALS(error_message, "Request has timed out.");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
+static void rc_client_callback_expect_no_internet(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_NO_RESPONSE);
+  ASSERT_STR_EQUALS(error_message, "Internet not available.");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
 static void rc_client_callback_expect_uncalled(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_FAIL("Callback should not have been called.");
@@ -883,6 +899,26 @@ static void test_login_with_password_async_destroyed(void)
 
   async_api_response("r=login2&u=User&p=Pa%24%24word",
     "{\"Success\":true,\"User\":\"User\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
+}
+
+static void test_login_with_password_client_error(void)
+{
+  const rc_client_user_t* user;
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_not_logged_in();
+
+  mock_api_error("r=login2&u=User&p=Pa%24%24word", "Internet not available.", RC_API_SERVER_RESPONSE_CLIENT_ERROR);
+
+  handle = rc_client_begin_login_with_password(g_client, "User", "Pa$$word",
+      rc_client_callback_expect_no_internet, g_callback_userdata);
+
+  user = rc_client_get_user_info(g_client);
+  ASSERT_PTR_NULL(user);
+
+  ASSERT_PTR_NULL(handle);
+
+  rc_client_destroy(g_client);
 }
 
 static void rc_client_callback_expect_login_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
@@ -1465,14 +1501,6 @@ static void test_load_game_startsession_failure(void)
   ASSERT_PTR_NULL(g_client->game);
 
   rc_client_destroy(g_client);
-}
-
-static void rc_client_callback_expect_timeout(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
-{
-  ASSERT_NUM_EQUALS(result, RC_NO_RESPONSE);
-  ASSERT_STR_EQUALS(error_message, "Request has timed out.");
-  ASSERT_PTR_EQUALS(client, g_client);
-  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
 static void test_load_game_startsession_timeout(void)
@@ -2676,7 +2704,7 @@ static void test_change_media_while_loading_later(void)
   free(image);
 }
 
-static void test_change_media_aborted(void)
+static void test_change_media_async_aborted(void)
 {
   rc_client_async_handle_t* handle;
   const size_t image_size = 32768;
@@ -2717,6 +2745,39 @@ static void test_change_media_aborted(void)
 
   ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_change_media_client_error(void)
+{
+  rc_client_async_handle_t* handle;
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
+  mock_api_error("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "Internet not available.", RC_API_SERVER_RESPONSE_CLIENT_ERROR);
+
+  handle = rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+      rc_client_callback_expect_no_internet, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF"); /* old hash retained */
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+  }
+
+  ASSERT_PTR_NULL(handle);
 
   rc_client_destroy(g_client);
   free(image);
@@ -4718,7 +4779,7 @@ static void rc_client_callback_expect_leaderboard_uncalled(int result, const cha
   ASSERT_FAIL("Callback should not have been called.")
 }
 
-static void test_fetch_leaderboard_entries_aborted(void)
+static void test_fetch_leaderboard_entries_async_aborted(void)
 {
   rc_client_async_handle_t* handle;
 
@@ -4733,6 +4794,35 @@ static void test_fetch_leaderboard_entries_aborted(void)
   rc_client_abort_async(g_client, handle);
 
   async_api_response("r=lbinfo&i=4401&c=10", lbinfo_4401_top_10);
+  ASSERT_PTR_NULL(g_leaderboard_entries);
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_callback_expect_leaderboard_internet_not_available(int result, const char* error_message,
+    rc_client_leaderboard_entry_list_t* list, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_NO_RESPONSE);
+  ASSERT_STR_EQUALS(error_message, "Internet not available.");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+  ASSERT_PTR_NULL(list);
+}
+
+static void test_fetch_leaderboard_entries_client_error(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
+
+  g_leaderboard_entries = NULL;
+
+  mock_api_error("r=lbinfo&i=4401&c=10", "Internet not available.", RC_API_SERVER_RESPONSE_CLIENT_ERROR);
+
+  handle = rc_client_begin_fetch_leaderboard_entries(g_client, 4401, 1, 10,
+      rc_client_callback_expect_leaderboard_internet_not_available, g_callback_userdata);
+
+  ASSERT_PTR_NULL(handle);
   ASSERT_PTR_NULL(g_leaderboard_entries);
 
   rc_client_destroy(g_client);
@@ -7955,6 +8045,7 @@ void test_client(void) {
   TEST(test_login_with_password_async);
   TEST(test_login_with_password_async_aborted);
   TEST(test_login_with_password_async_destroyed);
+  TEST(test_login_with_password_client_error);
 
   /* logout */
   TEST(test_logout);
@@ -8024,7 +8115,8 @@ void test_client(void) {
   TEST(test_change_media_back_and_forth);
   TEST(test_change_media_while_loading);
   TEST(test_change_media_while_loading_later);
-  TEST(test_change_media_aborted);
+  TEST(test_change_media_async_aborted);
+  TEST(test_change_media_client_error);
 
   /* game */
   TEST(test_game_get_image_url);
@@ -8061,7 +8153,8 @@ void test_client(void) {
   TEST(test_fetch_leaderboard_entries_no_user);
   TEST(test_fetch_leaderboard_entries_around_user);
   TEST(test_fetch_leaderboard_entries_around_user_not_logged_in);
-  TEST(test_fetch_leaderboard_entries_aborted);
+  TEST(test_fetch_leaderboard_entries_async_aborted);
+  TEST(test_fetch_leaderboard_entries_client_error);
 
   /* do frame */
   TEST(test_do_frame_bounds_check_system);
