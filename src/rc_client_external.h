@@ -34,16 +34,28 @@ typedef rc_client_async_handle_t* (*rc_client_external_begin_load_game_func_t)(r
 typedef const rc_client_game_t* (*rc_client_external_get_game_info_func_t)(void);
 typedef void (*rc_client_external_get_user_game_summary_func_t)(rc_client_user_game_summary_t* summary);
 
-/* NOTE: rc_client_external_create_achievement_list_func_t must return a singular malloc'd pointer that
- *       can be free'd by rc_client_destroy_achievement_list, as that doesn't accept an rc_client_t to
- *       redirect the free logic to the external client implementation. */
-typedef rc_client_achievement_list_t* (*rc_client_external_create_achievement_list_func_t)(int category, int grouping);
+/* NOTE: rc_client_external_create_achievement_list_func_t returns an internal wrapper structure which contains the public list and a destructor function. */
+struct rc_client_external_achievement_list_t;
+typedef void (*rc_client_destroy_achievement_list_func_t)(struct rc_client_external_achievement_list_t* list);
+
+typedef struct rc_client_external_achievement_list_t {
+  rc_client_achievement_list_t public_;
+  rc_client_destroy_achievement_list_func_t destroy_func;
+} rc_client_external_achievement_list_t;
+
+typedef struct rc_client_external_achievement_list_t* (*rc_client_external_create_achievement_list_func_t)(int category, int grouping);
 typedef const rc_client_achievement_t* (*rc_client_external_get_achievement_info_func_t)(uint32_t id);
 
-/* NOTE: rc_client_external_create_leaderboard_list_func_t must return a singular malloc'd pointer that
- *       can be free'd by rc_client_destroy_leaderboard_list, as that doesn't accept an rc_client_t to
- *       redirect the free logic to the external client implementation. */
-typedef rc_client_leaderboard_list_t* (*rc_client_external_create_leaderboard_list_func_t)(int grouping);
+/* NOTE: rc_client_external_create_leaderboard_list_func_t returns an internal wrapper structure which contains the public list and a destructor function. */
+struct rc_client_external_leaderboard_list_t;
+typedef void (*rc_client_destroy_leaderboard_list_func_t)(struct rc_client_external_leaderboard_list_t* list);
+
+typedef struct rc_client_external_leaderboard_list_t {
+  rc_client_leaderboard_list_t public_;
+  rc_client_destroy_leaderboard_list_func_t destroy_func;
+} rc_client_external_leaderboard_list_t;
+
+typedef struct rc_client_external_leaderboard_list_t* (*rc_client_external_create_leaderboard_list_func_t)(int grouping);
 typedef const rc_client_leaderboard_t* (*rc_client_external_get_leaderboard_info_func_t)(uint32_t id);
 
 typedef void (*rc_client_external_action_func_t)(void);

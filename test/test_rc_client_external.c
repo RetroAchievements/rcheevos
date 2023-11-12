@@ -499,29 +499,42 @@ typedef struct v1_rc_client_achievement_list_t {
   uint32_t num_buckets;
 } v1_rc_client_achievement_list_t;
 
+typedef struct v1_rc_client_external_achievement_list_t {
+  v1_rc_client_achievement_list_t public_;
+  rc_client_destroy_achievement_list_func_t destroy_func;
+} v1_rc_client_external_achievement_list_t;
+
 static void assert_achievement_list_category_grouping(int category, int grouping)
 {
   ASSERT_NUM_EQUALS(category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
   ASSERT_NUM_EQUALS(grouping, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
 }
 
-static rc_client_achievement_list_t* rc_client_external_create_achievement_list(int category, int grouping)
+static void rc_client_external_destroy_achievement_list(rc_client_external_achievement_list_t* list)
 {
-  v1_rc_client_achievement_list_t* list;
+  g_external_event = "destroyed";
+  free(list);
+}
+
+static rc_client_external_achievement_list_t* rc_client_external_create_achievement_list(int category, int grouping)
+{
+  v1_rc_client_external_achievement_list_t* list;
 
   assert_achievement_list_category_grouping(category, grouping);
 
-  list = (v1_rc_client_achievement_list_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_achievement_bucket_t));
+  list = (v1_rc_client_external_achievement_list_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_achievement_bucket_t));
   if (list) {
-    list->num_buckets = 1;
-    list->buckets = (v1_rc_client_achievement_bucket_t*)((uint8_t*)list + sizeof(*list));
-    list->buckets[0].num_achievements = 2; /* didn't actually allocate these */
-    list->buckets[0].bucket_type = RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
-    list->buckets[0].label = "Locked";
-    list->buckets[0].subset_id = 1234;
+    list->public_.num_buckets = 1;
+    list->public_.buckets = (v1_rc_client_achievement_bucket_t*)((uint8_t*)list + sizeof(*list));
+    list->public_.buckets[0].num_achievements = 2; /* didn't actually allocate these */
+    list->public_.buckets[0].bucket_type = RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
+    list->public_.buckets[0].label = "Locked";
+    list->public_.buckets[0].subset_id = 1234;
+
+    list->destroy_func = rc_client_external_destroy_achievement_list;
   }
 
-  return (rc_client_achievement_list_t*)list;
+  return (rc_client_external_achievement_list_t*)list;
 }
 
 static void test_create_achievement_list(void)
@@ -541,6 +554,8 @@ static void test_create_achievement_list(void)
   ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
 
   rc_client_destroy_achievement_list(list);
+
+  ASSERT_STR_EQUALS(g_external_event, "destroyed");
 
   rc_client_destroy(g_client);
 }
@@ -625,28 +640,41 @@ typedef struct v1_rc_client_leaderboard_list_t {
   uint32_t num_buckets;
 } v1_rc_client_leaderboard_list_t;
 
+typedef struct v1_rc_client_external_leaderboard_list_t {
+  v1_rc_client_leaderboard_list_t public_;
+  rc_client_destroy_leaderboard_list_func_t destroy_func;
+} v1_rc_client_external_leaderboard_list_t;
+
 static void assert_leaderboard_list_grouping(int grouping)
 {
   ASSERT_NUM_EQUALS(grouping, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
 }
 
-static rc_client_leaderboard_list_t* rc_client_external_create_leaderboard_list(int grouping)
+static void rc_client_external_destroy_leaderboard_list(rc_client_external_leaderboard_list_t* list)
 {
-  v1_rc_client_leaderboard_list_t* list;
+  g_external_event = "destroyed";
+  free(list);
+}
+
+static rc_client_external_leaderboard_list_t* rc_client_external_create_leaderboard_list(int grouping)
+{
+  v1_rc_client_external_leaderboard_list_t* list;
 
   assert_leaderboard_list_grouping(grouping);
 
-  list = (v1_rc_client_leaderboard_list_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_leaderboard_bucket_t));
+  list = (v1_rc_client_external_leaderboard_list_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_leaderboard_bucket_t));
   if (list) {
-    list->num_buckets = 1;
-    list->buckets = (v1_rc_client_leaderboard_bucket_t*)((uint8_t*)list + sizeof(*list));
-    list->buckets[0].num_leaderboards = 2; /* didn't actually allocate these */
-    list->buckets[0].bucket_type = RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE;
-    list->buckets[0].label = "Inactive";
-    list->buckets[0].subset_id = 1234;
+    list->public_.num_buckets = 1;
+    list->public_.buckets = (v1_rc_client_leaderboard_bucket_t*)((uint8_t*)list + sizeof(*list));
+    list->public_.buckets[0].num_leaderboards = 2; /* didn't actually allocate these */
+    list->public_.buckets[0].bucket_type = RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE;
+    list->public_.buckets[0].label = "Inactive";
+    list->public_.buckets[0].subset_id = 1234;
+
+    list->destroy_func = rc_client_external_destroy_leaderboard_list;
   }
 
-  return (rc_client_leaderboard_list_t*)list;
+  return (rc_client_external_leaderboard_list_t*)list;
 }
 
 static void test_create_leaderboard_list(void)
