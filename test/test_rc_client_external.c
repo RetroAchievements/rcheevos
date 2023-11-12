@@ -448,6 +448,140 @@ static void test_unload_game(void)
   rc_client_destroy(g_client);
 }
 
+/* ----- achievements ----- */
+
+typedef struct v1_rc_client_achievement_t {
+  const char* title;
+  const char* description;
+  char badge_name[8];
+  char measured_progress[24];
+  float measured_percent;
+  uint32_t id;
+  uint32_t points;
+  time_t unlock_time;
+  uint8_t state;
+  uint8_t category;
+  uint8_t bucket;
+  uint8_t unlocked;
+} v1_rc_client_achievement_t;
+
+static const rc_client_achievement_t* rc_client_external_get_achievement_info(uint32_t id)
+{
+  v1_rc_client_achievement_t* achievement = (v1_rc_client_achievement_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_achievement_t));
+
+  memset(achievement, 0, sizeof(*achievement));
+  achievement->id = 1234;
+  achievement->title = "Achievement Title";
+  achievement->description = "Do something cool";
+  memcpy(achievement->badge_name, "BDG1234", 8);
+  achievement->measured_percent = 33.5;
+  achievement->points = 5;
+  achievement->state = RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE;
+  achievement->category = RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE;
+  achievement->bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
+  achievement->unlocked = RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE;
+
+  return (const rc_client_achievement_t*)achievement;
+}
+
+typedef struct v1_rc_client_achievement_bucket_t {
+  rc_client_achievement_t** achievements;
+  uint32_t num_achievements;
+
+  const char* label;
+  uint32_t subset_id;
+  uint8_t bucket_type;
+} v1_rc_client_achievement_bucket_t;
+
+typedef struct v1_rc_client_achievement_list_t {
+  v1_rc_client_achievement_bucket_t* buckets;
+  uint32_t num_buckets;
+} v1_rc_client_achievement_list_t;
+
+static void assert_achievement_list_category_grouping(int category, int grouping)
+{
+  ASSERT_NUM_EQUALS(category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+  ASSERT_NUM_EQUALS(grouping, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+}
+
+static rc_client_achievement_list_t* rc_client_external_create_achievement_list(int category, int grouping)
+{
+  v1_rc_client_achievement_list_t* list;
+
+  assert_achievement_list_category_grouping(category, grouping);
+
+  list = (v1_rc_client_achievement_list_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_achievement_bucket_t));
+  if (list) {
+    list->num_buckets = 1;
+    list->buckets = (v1_rc_client_achievement_bucket_t*)((uint8_t*)list + sizeof(*list));
+    list->buckets[0].num_achievements = 2; /* didn't actually allocate these */
+    list->buckets[0].bucket_type = RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
+    list->buckets[0].label = "Locked";
+    list->buckets[0].subset_id = 1234;
+  }
+
+  return (rc_client_achievement_list_t*)list;
+}
+
+static void test_create_achievement_list(void)
+{
+  rc_client_achievement_list_t* list;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->create_achievement_list = rc_client_external_create_achievement_list;
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  ASSERT_NUM_EQUALS(list->num_buckets, 1);
+  ASSERT_PTR_NOT_NULL(list->buckets);
+  ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
+  ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+  ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
+  ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+
+  rc_client_destroy_achievement_list(list);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_has_achievements(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->has_achievements = rc_client_external_get_int;
+
+  g_external_int = 0;
+  ASSERT_NUM_EQUALS(rc_client_has_achievements(g_client), 0);
+
+  g_external_int = 1;
+  ASSERT_NUM_EQUALS(rc_client_has_achievements(g_client), 1);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_achievement_info(void)
+{
+  const rc_client_achievement_t* achievement;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_achievement_info = rc_client_external_get_achievement_info;
+
+  achievement = rc_client_get_achievement_info(g_client, 4);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->id, 1234);
+  ASSERT_STR_EQUALS(achievement->title, "Achievement Title");
+  ASSERT_STR_EQUALS(achievement->description, "Do something cool");
+  ASSERT_STR_EQUALS(achievement->badge_name, "BDG1234");
+  ASSERT_FLOAT_EQUALS(achievement->measured_percent, 33.5);
+  ASSERT_NUM_EQUALS(achievement->points, 5);
+  ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(achievement->category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+  ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+  ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- harness ----- */
 
 void test_client_external(void) {
@@ -471,6 +605,11 @@ void test_client_external(void) {
   TEST(test_get_user_game_summary);
 
   TEST(test_unload_game);
+
+  /* achievements */
+  TEST(test_create_achievement_list);
+  TEST(test_has_achievements);
+  TEST(test_get_achievement_info);
 
   TEST_SUITE_END();
 }

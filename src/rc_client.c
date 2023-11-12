@@ -2829,7 +2829,15 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   };
   const time_t recent_unlock_time = time(NULL) - RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS;
 
-  if (!client || !client->game)
+  if (!client)
+    return calloc(1, sizeof(rc_client_achievement_list_t));
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->create_achievement_list)
+    return client->state.external_client->create_achievement_list(category, grouping);
+#endif
+
+  if (!client->game)
     return calloc(1, sizeof(rc_client_achievement_list_t));
 
   memset(&bucket_counts, 0, sizeof(bucket_counts));
@@ -2990,7 +2998,15 @@ int rc_client_has_achievements(rc_client_t* client)
   rc_client_subset_info_t* subset;
   int result;
 
-  if (!client || !client->game)
+  if (!client)
+    return 0;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->has_achievements)
+    return client->state.external_client->has_achievements();
+#endif
+
+  if (!client->game)
     return 0;
 
   rc_mutex_lock(&client->state.mutex);
@@ -3036,7 +3052,15 @@ const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* clien
 {
   rc_client_subset_info_t* subset;
 
-  if (!client || !client->game)
+  if (!client)
+    return NULL;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_achievement_info)
+    return client->state.external_client->get_achievement_info(id);
+#endif
+
+  if (!client->game)
     return NULL;
 
   for (subset = client->game->subsets; subset; subset = subset->next) {
