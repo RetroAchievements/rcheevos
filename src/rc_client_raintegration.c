@@ -165,7 +165,7 @@ static void rc_client_init_raintegration(rc_client_t* client,
         rc_buffer_alloc(&client->state.buffer, sizeof(*external_client));
     memset(external_client, 0, sizeof(*external_client));
 
-    if (!client->state.raintegration->get_external_client(external_client, RC_CLIENT_EXTERNAL_VERSION)) {
+    if (!client->state.raintegration->get_external_client(external_client, RC_CLIENT_EXTERNAL_VERSION, client)) {
       const char* error_message = "RA_Integration external client export failed";
 
       rc_client_unload_raintegration(client);

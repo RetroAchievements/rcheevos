@@ -127,6 +127,11 @@ void rc_client_destroy(rc_client_t* client)
 
   rc_client_unload_game(client);
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->destroy)
+    client->state.external_client->destroy();
+#endif
+
   rc_buffer_destroy(&client->state.buffer);
 
   rc_mutex_destroy(&client->state.mutex);

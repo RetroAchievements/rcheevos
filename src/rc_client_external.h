@@ -28,6 +28,8 @@ typedef void (*rc_client_external_action_func_t)(void);
 
 typedef struct rc_client_external_t
 {
+  rc_client_external_action_func_t destroy;
+
   rc_client_external_enable_logging_func_t enable_logging;
   rc_client_external_set_event_handler_func_t set_event_handler;
   rc_client_external_set_read_memory_func_t set_read_memory;
