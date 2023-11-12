@@ -704,6 +704,32 @@ static void test_get_leaderboard_info(void)
   rc_client_destroy(g_client);
 }
 
+/* ----- rich presence ----- */
+
+static size_t rc_client_external_get_rich_presence_message(char buffer[], size_t buffer_size)
+{
+  size_t result = snprintf(buffer, buffer_size, "Playing Game Title");
+  if (result >= buffer_size)
+    return (buffer_size - 1);
+  return result;
+}
+
+static void test_get_rich_presence_message(void)
+{
+  char buffer[16];
+  size_t result;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_rich_presence_message = rc_client_external_get_rich_presence_message;
+
+  result = rc_client_get_rich_presence_message(g_client, buffer, sizeof(buffer));
+
+  ASSERT_STR_EQUALS(buffer, "Playing Game Ti");
+  ASSERT_NUM_EQUALS(result, 15);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- harness ----- */
 
 void test_client_external(void) {
@@ -737,6 +763,9 @@ void test_client_external(void) {
   TEST(test_create_leaderboard_list);
   TEST(test_has_leaderboards);
   TEST(test_get_leaderboard_info);
+
+  /* rich presence */
+  TEST(test_get_rich_presence_message);
 
   TEST_SUITE_END();
 }

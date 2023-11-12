@@ -4167,7 +4167,15 @@ size_t rc_client_get_rich_presence_message(rc_client_t* client, char buffer[], s
 {
   int result;
 
-  if (!client || !client->game || !buffer)
+  if (!client || !buffer)
+    return 0;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_rich_presence_message)
+    return client->state.external_client->get_rich_presence_message(buffer, buffer_size);
+#endif
+
+  if (!client->game)
     return 0;
 
   rc_mutex_lock(&client->state.mutex);
@@ -4177,8 +4185,12 @@ size_t rc_client_get_rich_presence_message(rc_client_t* client, char buffer[], s
 
   rc_mutex_unlock(&client->state.mutex);
 
-  if (result == 0)
+  if (result == 0) {
     result = snprintf(buffer, buffer_size, "Playing %s", client->game->public_.title);
+    /* snprintf will return the amount of space needed, we want to return the number of chars written */
+    if (result >= buffer_size)
+      return (buffer_size - 1);
+  }
 
   return result;
 }

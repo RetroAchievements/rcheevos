@@ -18,6 +18,7 @@ typedef void (*rc_client_external_set_read_memory_func_t)(rc_client_t* client, r
 
 typedef void (*rc_client_external_set_int_func_t)(int value);
 typedef int (*rc_client_external_get_int_func_t)(void);
+typedef size_t (*rc_client_external_get_string_func_t)(char buffer[], size_t buffer_size);
 
 typedef void (*rc_client_external_async_handle_func_t)(rc_client_async_handle_t* handle);
 
@@ -84,6 +85,8 @@ typedef struct rc_client_external_t
   rc_client_external_create_leaderboard_list_func_t create_leaderboard_list;
   rc_client_external_get_int_func_t has_leaderboards;
   rc_client_external_get_leaderboard_info_func_t get_leaderboard_info;
+
+  rc_client_external_get_string_func_t get_rich_presence_message;
 
 } rc_client_external_t;
 
