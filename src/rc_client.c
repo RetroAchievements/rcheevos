@@ -4339,7 +4339,15 @@ void rc_client_set_legacy_peek(rc_client_t* client, int method)
 
 int rc_client_is_processing_required(rc_client_t* client)
 {
-  if (!client || !client->game)
+  if (!client)
+    return 0;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->is_processing_required)
+    return client->state.external_client->is_processing_required();
+#endif
+
+  if (!client->game)
     return 0;
 
   if (client->game->runtime.trigger_count || client->game->runtime.lboard_count)
@@ -4760,6 +4768,13 @@ void rc_client_do_frame(rc_client_t* client)
   if (!client)
     return;
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->do_frame) {
+    client->state.external_client->do_frame();
+    return;
+  }
+#endif
+
   if (client->game && !client->game->waiting_for_reset) {
     rc_runtime_richpresence_t* richpresence;
     rc_client_subset_info_t* subset;
@@ -4804,6 +4819,13 @@ void rc_client_idle(rc_client_t* client)
 
   if (!client)
     return;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->idle) {
+    client->state.external_client->idle();
+    return;
+  }
+#endif
 
   scheduled_callback = client->state.scheduled_callbacks;
   if (scheduled_callback) {
@@ -4931,7 +4953,17 @@ static void rc_client_reset_all(rc_client_t* client)
 void rc_client_reset(rc_client_t* client)
 {
   rc_client_game_hash_t* game_hash;
-  if (!client || !client->game)
+  if (!client)
+    return;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->reset) {
+    client->state.external_client->reset();
+    return;
+  }
+#endif
+
+  if (!client->game)
     return;
 
   game_hash = rc_client_find_game_hash(client, client->game->public_.hash);

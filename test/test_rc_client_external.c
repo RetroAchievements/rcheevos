@@ -758,6 +758,73 @@ static void test_get_rich_presence_message(void)
   rc_client_destroy(g_client);
 }
 
+/* ----- processing ----- */
+
+static void test_is_processing_required(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->is_processing_required = rc_client_external_get_int;
+
+  g_external_int = 0;
+  ASSERT_NUM_EQUALS(rc_client_is_processing_required(g_client), 0);
+
+  g_external_int = 1;
+  ASSERT_NUM_EQUALS(rc_client_is_processing_required(g_client), 1);
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_external_do_frame(void)
+{
+  g_external_event = "do_frame";
+}
+
+static void test_do_frame(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->do_frame = rc_client_external_do_frame;
+
+  rc_client_do_frame(g_client);
+
+  ASSERT_STR_EQUALS(g_external_event, "do_frame");
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_external_idle(void)
+{
+  g_external_event = "idle";
+}
+
+static void test_idle(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->idle = rc_client_external_idle;
+
+  rc_client_idle(g_client);
+
+  ASSERT_STR_EQUALS(g_external_event, "idle");
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_external_reset(void)
+{
+  g_external_event = "reset";
+}
+
+static void test_reset(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->reset = rc_client_external_reset;
+
+  rc_client_reset(g_client);
+
+  ASSERT_STR_EQUALS(g_external_event, "reset");
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- harness ----- */
 
 void test_client_external(void) {
@@ -794,6 +861,12 @@ void test_client_external(void) {
 
   /* rich presence */
   TEST(test_get_rich_presence_message);
+
+  /* processing */
+  TEST(test_is_processing_required);
+  TEST(test_do_frame);
+  TEST(test_idle);
+  TEST(test_reset);
 
   TEST_SUITE_END();
 }
