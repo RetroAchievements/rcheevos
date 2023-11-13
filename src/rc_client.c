@@ -297,6 +297,11 @@ static rc_clock_t rc_client_clock_get_now_millisecs(const rc_client_t* client)
 void rc_client_set_get_time_millisecs_function(rc_client_t* client, rc_get_time_millisecs_func_t handler)
 {
   client->callbacks.get_time_millisecs = handler ? handler : rc_client_clock_get_now_millisecs;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->set_get_time_millisecs)
+    client->state.external_client->set_get_time_millisecs(client, handler);
+#endif
 }
 
 int rc_client_async_handle_aborted(rc_client_t* client, rc_client_async_handle_t* async_handle)
@@ -2441,6 +2446,11 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
     return NULL;
   }
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->begin_change_media)
+    return client->state.external_client->begin_change_media(client, file_path, data, data_size, callback, callback_userdata);
+#endif
+
   rc_mutex_lock(&client->state.mutex);
   if (client->state.load) {
     game = client->state.load->game;
@@ -2608,19 +2618,24 @@ int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], si
 
 /* ===== Subsets ===== */
 
-void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata)
+rc_client_async_handle_t* rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata)
 {
   char buffer[32];
   rc_client_load_state_t* load_state;
 
   if (!client) {
     callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
-    return;
+    return NULL;
   }
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->begin_load_subset)
+    return client->state.external_client->begin_load_subset(client, subset_id, callback, callback_userdata);
+#endif
 
   if (!client->game) {
     callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client, callback_userdata);
-    return;
+    return NULL;
   }
 
   snprintf(buffer, sizeof(buffer), "[SUBSET%lu]", (unsigned long)subset_id);
@@ -2628,7 +2643,7 @@ void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_cli
   load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
   if (!load_state) {
     callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
-    return;
+    return NULL;
   }
 
   load_state->client = client;
@@ -2640,13 +2655,23 @@ void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_cli
   client->state.load = load_state;
 
   rc_client_begin_fetch_game_data(load_state);
+
+  return (client->state.load == load_state) ? &load_state->async_handle : NULL;
 }
 
 const rc_client_subset_t* rc_client_get_subset_info(rc_client_t* client, uint32_t subset_id)
 {
   rc_client_subset_info_t* subset;
 
-  if (!client || !client->game)
+  if (!client)
+    return NULL;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_subset_info)
+    return client->state.external_client->get_subset_info(subset_id);
+#endif
+
+  if (!client->game)
     return NULL;
 
   for (subset = client->game->subsets; subset; subset = subset->next) {
@@ -4162,10 +4187,15 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
 
 int rc_client_has_rich_presence(rc_client_t* client)
 {
-  if (!client || !client->game)
+  if (!client)
     return 0;
 
-  if (!client->game->runtime.richpresence || !client->game->runtime.richpresence->richpresence)
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->has_rich_presence)
+    return client->state.external_client->has_rich_presence();
+#endif
+
+  if (!client->game || !client->game->runtime.richpresence || !client->game->runtime.richpresence->richpresence)
     return 0;
 
   return 1;
@@ -5379,4 +5409,9 @@ void rc_client_set_host(const rc_client_t* client, const char* hostname)
     RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Using host: %s", hostname);
   }
   rc_api_set_host(hostname);
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->set_host)
+    client->state.external_client->set_host(hostname);
+#endif
 }

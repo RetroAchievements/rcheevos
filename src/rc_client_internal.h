@@ -206,7 +206,7 @@ typedef struct rc_client_subset_info_t {
   uint8_t pending_events;
 } rc_client_subset_info_t;
 
-void rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata);
+rc_client_async_handle_t* rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata);
 
 /*****************************************************************************\
 | Game                                                                        |

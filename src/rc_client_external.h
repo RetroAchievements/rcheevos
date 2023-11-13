@@ -15,10 +15,12 @@ extern "C" {
 typedef void (*rc_client_external_enable_logging_func_t)(rc_client_t* client, int level, rc_client_message_callback_t callback);
 typedef void (*rc_client_external_set_event_handler_func_t)(rc_client_t* client, rc_client_event_handler_t handler);
 typedef void (*rc_client_external_set_read_memory_func_t)(rc_client_t* client, rc_client_read_memory_func_t handler);
+typedef void (*rc_client_external_set_get_time_millisecs_func_t)(rc_client_t* client, rc_get_time_millisecs_func_t handler);
 
 typedef void (*rc_client_external_set_int_func_t)(int value);
 typedef int (*rc_client_external_get_int_func_t)(void);
-typedef size_t (*rc_client_external_get_string_func_t)(char buffer[], size_t buffer_size);
+typedef void (*rc_client_external_set_string_func_t)(const char* value);
+typedef size_t (*rc_client_external_copy_string_func_t)(char buffer[], size_t buffer_size);
 typedef void (*rc_client_external_action_func_t)(void);
 
 typedef void (*rc_client_external_async_handle_func_t)(rc_client_async_handle_t* handle);
@@ -32,8 +34,13 @@ typedef rc_client_async_handle_t* (*rc_client_external_begin_identify_and_load_g
   const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata);
 typedef rc_client_async_handle_t* (*rc_client_external_begin_load_game_func_t)(rc_client_t* client,
   const char* hash, rc_client_callback_t callback, void* callback_userdata);
+typedef rc_client_async_handle_t* (*rc_client_external_begin_load_subset_t)(rc_client_t* client,
+  uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata);
 typedef const rc_client_game_t* (*rc_client_external_get_game_info_func_t)(void);
+typedef const rc_client_subset_t* (*rc_client_external_get_subset_info_func_t)(uint32_t subset_id);
 typedef void (*rc_client_external_get_user_game_summary_func_t)(rc_client_user_game_summary_t* summary);
+typedef rc_client_async_handle_t* (*rc_client_external_begin_change_media_func_t)(rc_client_t* client, const char* file_path,
+  const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata);
 
 /* NOTE: this returns an internal wrapper structure which contains the public list and a destructor function. */
 struct rc_client_achievement_list_info_t;
@@ -56,6 +63,8 @@ typedef struct rc_client_external_t
   rc_client_external_enable_logging_func_t enable_logging;
   rc_client_external_set_event_handler_func_t set_event_handler;
   rc_client_external_set_read_memory_func_t set_read_memory;
+  rc_client_external_set_get_time_millisecs_func_t set_get_time_millisecs;
+  rc_client_external_set_string_func_t set_host;
 
   rc_client_external_set_int_func_t set_hardcore_enabled;
   rc_client_external_get_int_func_t get_hardcore_enabled;
@@ -76,8 +85,11 @@ typedef struct rc_client_external_t
   rc_client_external_begin_identify_and_load_game_func_t begin_identify_and_load_game;
   rc_client_external_begin_load_game_func_t begin_load_game;
   rc_client_external_get_game_info_func_t get_game_info;
+  rc_client_external_begin_load_subset_t begin_load_subset;
+  rc_client_external_get_subset_info_func_t get_subset_info;
   rc_client_external_action_func_t unload_game;
   rc_client_external_get_user_game_summary_func_t get_user_game_summary;
+  rc_client_external_begin_change_media_func_t begin_change_media;
 
   rc_client_external_create_achievement_list_func_t create_achievement_list;
   rc_client_external_get_int_func_t has_achievements;
@@ -87,7 +99,8 @@ typedef struct rc_client_external_t
   rc_client_external_get_int_func_t has_leaderboards;
   rc_client_external_get_leaderboard_info_func_t get_leaderboard_info;
 
-  rc_client_external_get_string_func_t get_rich_presence_message;
+  rc_client_external_copy_string_func_t get_rich_presence_message;
+  rc_client_external_get_int_func_t has_rich_presence;
 
   rc_client_external_action_func_t do_frame;
   rc_client_external_action_func_t idle;

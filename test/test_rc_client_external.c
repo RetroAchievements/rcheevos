@@ -138,6 +138,116 @@ static void test_spectator_mode_enabled(void)
   ASSERT_NUM_EQUALS(g_external_int, 1);
 }
 
+static void rc_client_external_log_message(const char* message, const rc_client_t* client)
+{
+}
+
+static void rc_client_external_enable_logging(rc_client_t* client, int level, rc_client_message_callback_t callback)
+{
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_NUM_EQUALS(level, RC_CLIENT_LOG_LEVEL_INFO);
+  ASSERT_PTR_EQUALS(callback, rc_client_external_log_message);
+
+  g_external_event = "enable_logging";
+}
+
+static void test_enable_logging(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->enable_logging = rc_client_external_enable_logging;
+
+  rc_client_enable_logging(g_client, RC_CLIENT_LOG_LEVEL_INFO, rc_client_external_log_message);
+
+  ASSERT_STR_EQUALS(g_external_event, "enable_logging");
+}
+
+static void rc_client_external_event_handler(const rc_client_event_t* event, rc_client_t* client)
+{
+}
+
+static void rc_client_external_set_event_handler(rc_client_t* client, rc_client_event_handler_t handler)
+{
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(handler, rc_client_external_event_handler);
+
+  g_external_event = "event_handler";
+}
+
+static void test_event_handler(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->set_event_handler = rc_client_external_set_event_handler;
+
+  rc_client_set_event_handler(g_client, rc_client_external_event_handler);
+
+  ASSERT_STR_EQUALS(g_external_event, "event_handler");
+}
+static uint32_t rc_client_external_read_memory(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client)
+{
+  return 0;
+}
+
+static void rc_client_external_set_read_memory_function(rc_client_t* client, rc_client_read_memory_func_t handler)
+{
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(handler, rc_client_external_read_memory);
+
+  g_external_event = "read_memory";
+}
+
+static void test_read_memory(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->set_read_memory = rc_client_external_set_read_memory_function;
+
+  rc_client_set_read_memory_function(g_client, rc_client_external_read_memory);
+
+  ASSERT_STR_EQUALS(g_external_event, "read_memory");
+}
+
+static rc_clock_t rc_client_external_now_millisecs(const rc_client_t* client)
+{
+  return (rc_clock_t)12345678;
+}
+
+static void rc_client_external_set_get_time_millisecs(rc_client_t* client, rc_get_time_millisecs_func_t handler)
+{
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(handler, rc_client_external_now_millisecs);
+
+  g_external_event = "set_milli";
+}
+
+static void test_get_time_millisecs(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->set_get_time_millisecs = rc_client_external_set_get_time_millisecs;
+
+  rc_client_set_get_time_millisecs_function(g_client, rc_client_external_now_millisecs);
+
+  ASSERT_STR_EQUALS(g_external_event, "set_milli");
+}
+
+static void rc_client_external_set_host(const char* hostname)
+{
+  ASSERT_STR_EQUALS(hostname, "localhost");
+
+  g_external_event = "set_host";
+}
+
+static void test_set_host(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->set_host = rc_client_external_set_host;
+
+  rc_client_set_host(g_client, "localhost");
+
+  ASSERT_STR_EQUALS(g_external_event, "set_host");
+
+  rc_api_set_host(NULL);
+  rc_api_set_image_host(NULL);
+}
+
 /* ----- login ----- */
 
 typedef struct v1_rc_client_user_t {
@@ -356,6 +466,7 @@ static void test_identify_and_load_game(void)
   ASSERT_PTR_NULL(g_client->game);
 
   rc_client_destroy(g_client);
+  free(image);
 }
 
 static void assert_load_game(rc_client_t* client, const char* hash)
@@ -427,6 +538,107 @@ static void test_get_user_game_summary(void)
   ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 1);
   ASSERT_NUM_EQUALS(summary.points_core, 100);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 23);
+
+  rc_client_destroy(g_client);
+}
+
+static void assert_change_media(rc_client_t* client, const char* file_path, const uint8_t* data, size_t data_size)
+{
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_STR_EQUALS(file_path, "foo.zip#foo.nes");
+  ASSERT_PTR_NOT_NULL(data);
+  ASSERT_NUM_EQUALS(data_size, 32784);
+}
+
+static rc_client_async_handle_t* rc_client_external_begin_change_media(rc_client_t* client, const char* file_path,
+  const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata)
+{
+  assert_change_media(client, file_path, data, data_size);
+
+  g_external_event = "change_media";
+
+  callback(RC_OK, NULL, client, callback_userdata);
+  return NULL;
+}
+
+static void test_change_media(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_change_media = rc_client_external_begin_change_media;
+
+  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "change_media");
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+typedef struct v1_rc_client_subset_t {
+  uint32_t id;
+  const char* title;
+  char badge_name[16];
+
+  uint32_t num_achievements;
+  uint32_t num_leaderboards;
+} v1_rc_client_subset_t;
+
+static const rc_client_subset_t* rc_client_external_get_subset_info(uint32_t subset_id)
+{
+  v1_rc_client_subset_t* subset = (v1_rc_client_subset_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_subset_t));
+
+  memset(subset, 0, sizeof(*subset));
+  subset->id = 1234;
+  subset->title = "Game Title";
+  memcpy(subset->badge_name, "BDG001", 7);
+  subset->num_achievements = 6;
+  subset->num_leaderboards = 2;
+
+  return (const rc_client_subset_t*)subset;
+}
+
+static void assert_load_subset(rc_client_t* client, uint32_t subset_id)
+{
+  ASSERT_PTR_EQUALS(client, g_client);
+
+  ASSERT_NUM_EQUALS(subset_id, 2345);
+}
+
+static rc_client_async_handle_t* rc_client_external_load_subset(rc_client_t* client,
+  uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata)
+{
+  assert_load_subset(client, subset_id);
+
+  g_external_event = "load_subset";
+
+  callback(RC_OK, NULL, client, callback_userdata);
+  return NULL;
+}
+
+static void test_load_subset(void)
+{
+  const rc_client_subset_t* subset;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_load_subset = rc_client_external_load_subset;
+  g_client->state.external_client->get_subset_info = rc_client_external_get_subset_info;
+
+  rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_subset");
+
+  /* user data should come from external client. validate structure */
+  subset = rc_client_get_subset_info(g_client, 2345);
+  ASSERT_PTR_NOT_NULL(subset);
+  ASSERT_NUM_EQUALS(subset->id, 1234);
+  ASSERT_STR_EQUALS(subset->title, "Game Title");
+  ASSERT_STR_EQUALS(subset->badge_name, "BDG001");
+  ASSERT_NUM_EQUALS(subset->num_achievements, 6);
+  ASSERT_NUM_EQUALS(subset->num_leaderboards, 2);
 
   rc_client_destroy(g_client);
 }
@@ -758,6 +970,20 @@ static void test_get_rich_presence_message(void)
   rc_client_destroy(g_client);
 }
 
+static void test_has_rich_presence(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->has_rich_presence = rc_client_external_get_int;
+
+  g_external_int = 0;
+  ASSERT_NUM_EQUALS(rc_client_has_rich_presence(g_client), 0);
+
+  g_external_int = 1;
+  ASSERT_NUM_EQUALS(rc_client_has_rich_presence(g_client), 1);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- processing ----- */
 
 static void test_is_processing_required(void)
@@ -902,6 +1128,11 @@ void test_client_external(void) {
   TEST(test_unofficial_enabled);
   TEST(test_encore_mode_enabled);
   TEST(test_spectator_mode_enabled);
+  TEST(test_enable_logging);
+  TEST(test_event_handler);
+  TEST(test_read_memory);
+  TEST(test_get_time_millisecs);
+  TEST(test_set_host);
 
   /* login */
   TEST(test_login_with_password);
@@ -913,6 +1144,8 @@ void test_client_external(void) {
   TEST(test_identify_and_load_game);
   TEST(test_load_game);
   TEST(test_get_user_game_summary);
+  TEST(test_change_media);
+  TEST(test_load_subset);
 
   TEST(test_unload_game);
 
@@ -928,6 +1161,7 @@ void test_client_external(void) {
 
   /* rich presence */
   TEST(test_get_rich_presence_message);
+  TEST(test_has_rich_presence);
 
   /* processing */
   TEST(test_is_processing_required);
