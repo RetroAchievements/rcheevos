@@ -4008,24 +4008,26 @@ static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_res
     lbinfo_callback_data->callback(result, error_message, NULL, client, lbinfo_callback_data->callback_userdata);
   }
   else {
-    rc_client_leaderboard_entry_list_t* list;
-    const size_t list_size = sizeof(*list) + sizeof(rc_client_leaderboard_entry_t) * lbinfo_response.num_entries;
+    rc_client_leaderboard_entry_list_info_t* info;
+    const size_t list_size = sizeof(*info) + sizeof(rc_client_leaderboard_entry_t) * lbinfo_response.num_entries;
     size_t needed_size = list_size;
     uint32_t i;
 
     for (i = 0; i < lbinfo_response.num_entries; i++)
       needed_size += strlen(lbinfo_response.entries[i].username) + 1;
 
-    list = (rc_client_leaderboard_entry_list_t*)malloc(needed_size);
-    if (!list) {
+    info = (rc_client_leaderboard_entry_list_info_t*)malloc(needed_size);
+    if (!info) {
       lbinfo_callback_data->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), NULL, client, lbinfo_callback_data->callback_userdata);
     }
     else {
-      rc_client_leaderboard_entry_t* entry = list->entries = (rc_client_leaderboard_entry_t*)((uint8_t*)list + sizeof(*list));
+      rc_client_leaderboard_entry_list_t* list = &info->public_;
+      rc_client_leaderboard_entry_t* entry = list->entries = (rc_client_leaderboard_entry_t*)((uint8_t*)info + sizeof(*info));
       char* user = (char*)((uint8_t*)list + list_size);
       const rc_api_lboard_info_entry_t* lbentry = lbinfo_response.entries;
       const rc_api_lboard_info_entry_t* stop = lbentry + lbinfo_response.num_entries;
       const size_t logged_in_user_len = strlen(client->user.display_name) + 1;
+      info->destroy_func = NULL;
       list->user_index = -1;
 
       for (; lbentry < stop; ++lbentry, ++entry) {
@@ -4094,6 +4096,11 @@ rc_client_async_handle_t* rc_client_begin_fetch_leaderboard_entries(rc_client_t*
 {
   rc_api_fetch_leaderboard_info_request_t lbinfo_request;
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->begin_fetch_leaderboard_entries)
+    return client->state.external_client->begin_fetch_leaderboard_entries(client, leaderboard_id, first_entry, count, callback, callback_userdata);
+#endif
+
   memset(&lbinfo_request, 0, sizeof(lbinfo_request));
   lbinfo_request.leaderboard_id = leaderboard_id;
   lbinfo_request.first_entry = first_entry;
@@ -4106,6 +4113,11 @@ rc_client_async_handle_t* rc_client_begin_fetch_leaderboard_entries_around_user(
   uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback, void* callback_userdata)
 {
   rc_api_fetch_leaderboard_info_request_t lbinfo_request;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->begin_fetch_leaderboard_entries_around_user)
+    return client->state.external_client->begin_fetch_leaderboard_entries_around_user(client, leaderboard_id, count, callback, callback_userdata);
+#endif
 
   memset(&lbinfo_request, 0, sizeof(lbinfo_request));
   lbinfo_request.leaderboard_id = leaderboard_id;
@@ -4122,7 +4134,10 @@ rc_client_async_handle_t* rc_client_begin_fetch_leaderboard_entries_around_user(
 
 void rc_client_destroy_leaderboard_entry_list(rc_client_leaderboard_entry_list_t* list)
 {
-  if (list)
+  rc_client_leaderboard_entry_list_info_t* info = (rc_client_leaderboard_entry_list_info_t*)list;
+  if (info->destroy_func)
+    info->destroy_func(info);
+  else
     free(list);
 }
 

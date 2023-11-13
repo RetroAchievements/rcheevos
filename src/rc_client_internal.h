@@ -174,6 +174,14 @@ typedef struct rc_client_leaderboard_list_info_t {
   rc_client_destroy_leaderboard_list_func_t destroy_func;
 } rc_client_leaderboard_list_info_t;
 
+struct rc_client_leaderboard_entry_list_info_t;
+typedef void (*rc_client_destroy_leaderboard_entry_list_func_t)(struct rc_client_leaderboard_entry_list_info_t* list);
+
+typedef struct rc_client_leaderboard_entry_list_info_t {
+  rc_client_leaderboard_entry_list_t public_;
+  rc_client_destroy_leaderboard_entry_list_func_t destroy_func;
+} rc_client_leaderboard_entry_list_info_t;
+
 uint8_t rc_client_map_leaderboard_format(int format);
 
 /*****************************************************************************\

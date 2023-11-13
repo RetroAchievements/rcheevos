@@ -42,15 +42,26 @@ typedef void (*rc_client_external_get_user_game_summary_func_t)(rc_client_user_g
 typedef rc_client_async_handle_t* (*rc_client_external_begin_change_media_func_t)(rc_client_t* client, const char* file_path,
   const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata);
 
-/* NOTE: this returns an internal wrapper structure which contains the public list and a destructor function. */
+/* NOTE: rc_client_external_create_achievement_list_func_t returns an internal wrapper structure which contains the public list
+ * and a destructor function. */
 struct rc_client_achievement_list_info_t;
 typedef struct rc_client_achievement_list_info_t* (*rc_client_external_create_achievement_list_func_t)(int category, int grouping);
 typedef const rc_client_achievement_t* (*rc_client_external_get_achievement_info_func_t)(uint32_t id);
 
-/* NOTE: this returns an internal wrapper structure which contains the public list and a destructor function. */
+/* NOTE: rc_client_external_create_leaderboard_list_func_t returns an internal wrapper structure which contains the public list
+ * and a destructor function. */
 struct rc_client_leaderboard_list_info_t;
 typedef struct rc_client_leaderboard_list_info_t* (*rc_client_external_create_leaderboard_list_func_t)(int grouping);
 typedef const rc_client_leaderboard_t* (*rc_client_external_get_leaderboard_info_func_t)(uint32_t id);
+
+/* NOTE: rc_client_external_begin_fetch_leaderboard_entries_func_t and rc_client_external_begin_fetch_leaderboard_entries_around_user_func_t
+ * pass an internal wrapper structure around the list, which contains the public list and a destructor function. */
+typedef rc_client_async_handle_t* (*rc_client_external_begin_fetch_leaderboard_entries_func_t)(rc_client_t* client,
+  uint32_t leaderboard_id, uint32_t first_entry, uint32_t count,
+  rc_client_fetch_leaderboard_entries_callback_t callback, void* callback_userdata);
+typedef rc_client_async_handle_t* (*rc_client_external_begin_fetch_leaderboard_entries_around_user_func_t)(rc_client_t* client,
+  uint32_t leaderboard_id, uint32_t count, rc_client_fetch_leaderboard_entries_callback_t callback, void* callback_userdata);
+
 
 typedef size_t (*rc_client_external_progress_size_func_t)(void);
 typedef int (*rc_client_external_serialize_progress_func_t)(uint8_t* buffer);
@@ -98,6 +109,8 @@ typedef struct rc_client_external_t
   rc_client_external_create_leaderboard_list_func_t create_leaderboard_list;
   rc_client_external_get_int_func_t has_leaderboards;
   rc_client_external_get_leaderboard_info_func_t get_leaderboard_info;
+  rc_client_external_begin_fetch_leaderboard_entries_func_t begin_fetch_leaderboard_entries;
+  rc_client_external_begin_fetch_leaderboard_entries_around_user_func_t begin_fetch_leaderboard_entries_around_user;
 
   rc_client_external_copy_string_func_t get_rich_presence_message;
   rc_client_external_get_int_func_t has_rich_presence;
