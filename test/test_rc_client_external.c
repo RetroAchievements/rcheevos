@@ -825,6 +825,73 @@ static void test_reset(void)
   rc_client_destroy(g_client);
 }
 
+/* ----- progress ----- */
+
+static size_t rc_client_external_progress_size(void)
+{
+  return 12345678;
+}
+
+static void test_progress_size(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->progress_size = rc_client_external_progress_size;
+
+  ASSERT_NUM_EQUALS(rc_client_progress_size(g_client), 12345678);
+
+  rc_client_destroy(g_client);
+}
+
+static int rc_client_external_serialize_progress(uint8_t* buffer)
+{
+  memcpy(buffer, "SAVED", 6);
+
+  g_external_event = "serialize_progress";
+
+  return RC_OK;
+}
+
+static void test_serialize_progress(void)
+{
+  int result;
+  uint8_t buffer[8] = { 0 };
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->serialize_progress = rc_client_external_serialize_progress;
+
+  result = rc_client_serialize_progress(g_client, buffer);
+
+  ASSERT_STR_EQUALS(g_external_event, "serialize_progress");
+  ASSERT_STR_EQUALS(buffer, "SAVED");
+  ASSERT_NUM_EQUALS(result, RC_OK);
+
+  rc_client_destroy(g_client);
+}
+
+static int rc_client_external_deserialize_progress(const uint8_t* buffer)
+{
+  if (memcmp(buffer, "SAVE", 5) == 0)
+    g_external_event = "deserialize_progress";
+
+  return RC_OK;
+}
+
+static void test_deserialize_progress(void)
+{
+  int result;
+  uint8_t buffer[8] = {'S', 'A', 'V', 'E'};
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->deserialize_progress = rc_client_external_deserialize_progress;
+
+  result = rc_client_deserialize_progress(g_client, buffer);
+
+  ASSERT_STR_EQUALS(g_external_event, "deserialize_progress");
+  ASSERT_NUM_EQUALS(result, RC_OK);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- harness ----- */
 
 void test_client_external(void) {
@@ -867,6 +934,11 @@ void test_client_external(void) {
   TEST(test_do_frame);
   TEST(test_idle);
   TEST(test_reset);
+
+  /* progress */
+  TEST(test_progress_size);
+  TEST(test_serialize_progress);
+  TEST(test_deserialize_progress);
 
   TEST_SUITE_END();
 }

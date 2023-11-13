@@ -4994,7 +4994,15 @@ size_t rc_client_progress_size(rc_client_t* client)
 {
   size_t result;
 
-  if (!client || !client->game)
+  if (!client)
+    return 0;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->progress_size)
+    return client->state.external_client->progress_size();
+#endif
+
+  if (!client->game)
     return 0;
 
   rc_mutex_lock(&client->state.mutex);
@@ -5008,7 +5016,15 @@ int rc_client_serialize_progress(rc_client_t* client, uint8_t* buffer)
 {
   int result;
 
-  if (!client || !client->game)
+  if (!client)
+    return RC_NO_GAME_LOADED;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->serialize_progress)
+    return client->state.external_client->serialize_progress(buffer);
+#endif
+
+  if (!client->game)
     return RC_NO_GAME_LOADED;
 
   if (!buffer)
@@ -5119,7 +5135,15 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
   rc_client_subset_info_t* subset;
   int result;
 
-  if (!client || !client->game)
+  if (!client)
+    return RC_NO_GAME_LOADED;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->deserialize_progress)
+    return client->state.external_client->deserialize_progress(serialized);
+#endif
+
+  if (!client->game)
     return RC_NO_GAME_LOADED;
 
   rc_mutex_lock(&client->state.mutex);
