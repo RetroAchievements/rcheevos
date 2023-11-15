@@ -676,6 +676,9 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "Mesen-S", "mesen-s_region", "NTSC");
   TEST_PARAMS3(test_disallowed_setting, "Mesen-S", "mesen-s_region", "PAL");
 
+  TEST_PARAMS3(test_allowed_setting,    "NeoCD", "neocd_bios", "neocd.bin (CDZ)");
+  TEST_PARAMS3(test_disallowed_setting, "NeoCD", "neocd_bios", "uni-bioscd.rom (CDZ, Universe 3.3)");
+
   TEST_PARAMS3(test_allowed_setting,    "PPSSPP", "ppsspp_cheats", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "PPSSPP", "ppsspp_cheats", "enabled");
 
