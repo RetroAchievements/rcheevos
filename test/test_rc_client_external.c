@@ -79,6 +79,8 @@ static void test_hardcore_enabled(void)
 
   rc_client_set_hardcore_enabled(g_client, 1);
   ASSERT_NUM_EQUALS(g_external_int, 1);
+
+  rc_client_destroy(g_client);
 }
 
 static void test_unofficial_enabled(void)
@@ -98,6 +100,8 @@ static void test_unofficial_enabled(void)
 
   rc_client_set_unofficial_enabled(g_client, 1);
   ASSERT_NUM_EQUALS(g_external_int, 1);
+
+  rc_client_destroy(g_client);
 }
 
 static void test_encore_mode_enabled(void)
@@ -117,6 +121,8 @@ static void test_encore_mode_enabled(void)
 
   rc_client_set_encore_mode_enabled(g_client, 1);
   ASSERT_NUM_EQUALS(g_external_int, 1);
+
+  rc_client_destroy(g_client);
 }
 
 static void test_spectator_mode_enabled(void)
@@ -136,6 +142,8 @@ static void test_spectator_mode_enabled(void)
 
   rc_client_set_spectator_mode_enabled(g_client, 1);
   ASSERT_NUM_EQUALS(g_external_int, 1);
+
+  rc_client_destroy(g_client);
 }
 
 static void rc_client_external_log_message(const char* message, const rc_client_t* client)
@@ -159,6 +167,8 @@ static void test_enable_logging(void)
   rc_client_enable_logging(g_client, RC_CLIENT_LOG_LEVEL_INFO, rc_client_external_log_message);
 
   ASSERT_STR_EQUALS(g_external_event, "enable_logging");
+
+  rc_client_destroy(g_client);
 }
 
 static void rc_client_external_event_handler(const rc_client_event_t* event, rc_client_t* client)
@@ -181,7 +191,10 @@ static void test_event_handler(void)
   rc_client_set_event_handler(g_client, rc_client_external_event_handler);
 
   ASSERT_STR_EQUALS(g_external_event, "event_handler");
+
+  rc_client_destroy(g_client);
 }
+
 static uint32_t rc_client_external_read_memory(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client)
 {
   return 0;
@@ -203,6 +216,8 @@ static void test_read_memory(void)
   rc_client_set_read_memory_function(g_client, rc_client_external_read_memory);
 
   ASSERT_STR_EQUALS(g_external_event, "read_memory");
+
+  rc_client_destroy(g_client);
 }
 
 static rc_clock_t rc_client_external_now_millisecs(const rc_client_t* client)
@@ -226,6 +241,8 @@ static void test_get_time_millisecs(void)
   rc_client_set_get_time_millisecs_function(g_client, rc_client_external_now_millisecs);
 
   ASSERT_STR_EQUALS(g_external_event, "set_milli");
+
+  rc_client_destroy(g_client);
 }
 
 static void rc_client_external_set_host(const char* hostname)
@@ -246,6 +263,8 @@ static void test_set_host(void)
 
   rc_api_set_host(NULL);
   rc_api_set_image_host(NULL);
+
+  rc_client_destroy(g_client);
 }
 
 /* ----- login ----- */
