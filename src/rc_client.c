@@ -4241,7 +4241,7 @@ size_t rc_client_get_rich_presence_message(rc_client_t* client, char buffer[], s
   if (result == 0) {
     result = snprintf(buffer, buffer_size, "Playing %s", client->game->public_.title);
     /* snprintf will return the amount of space needed, we want to return the number of chars written */
-    if (result >= buffer_size)
+    if ((size_t)result >= buffer_size)
       return (buffer_size - 1);
   }
 
