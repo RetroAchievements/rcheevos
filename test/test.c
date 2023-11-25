@@ -1,5 +1,9 @@
 #include "rc_internal.h"
 
+#ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
+#include "rc_client_raintegration.h"
+#endif
+
 #include "test_framework.h"
 
 #include <assert.h>
@@ -59,7 +63,14 @@ extern void test_lboard();
 extern void test_richpresence();
 extern void test_runtime();
 extern void test_runtime_progress();
+
 extern void test_client();
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+extern void test_client_external();
+#endif
+#ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
+extern void test_client_raintegration();
+#endif
 
 extern void test_consoleinfo();
 extern void test_rc_libretro();
@@ -111,6 +122,12 @@ int main(void) {
   test_rapi_editor();
 
   test_client();
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  test_client_external();
+#endif
+#ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
+  test_client_raintegration();
+#endif
 
   test_cdreader();
   test_hash();

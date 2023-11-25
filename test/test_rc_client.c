@@ -428,7 +428,7 @@ typedef struct rc_mock_api_response
 static rc_mock_api_response g_mock_api_responses[12];
 static int g_num_mock_api_responses = 0;
 
-static void rc_client_server_call(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client)
+void rc_client_server_call(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client)
 {
   rc_api_server_response_t server_response;
 
@@ -450,7 +450,7 @@ static void rc_client_server_call(const rc_api_request_t* request, rc_client_ser
   callback(&server_response, callback_data);
 }
 
-static void rc_client_server_call_async(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client)
+void rc_client_server_call_async(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client)
 {
   g_mock_api_responses[g_num_mock_api_responses].request_params = strdup(request->post_data);
   g_mock_api_responses[g_num_mock_api_responses].async_callback = callback;
@@ -484,12 +484,12 @@ static void _async_api_response(const char* request_params, const char* response
   ASSERT_FAIL("No pending API request for: %s", request_params);
 }
 
-static void async_api_response(const char* request_params, const char* response_body)
+void async_api_response(const char* request_params, const char* response_body)
 {
   _async_api_response(request_params, response_body, 200);
 }
 
-static void async_api_error(const char* request_params, const char* response_body, int http_status_code)
+void async_api_error(const char* request_params, const char* response_body, int http_status_code)
 {
   _async_api_response(request_params, response_body, http_status_code);
 }
@@ -513,13 +513,13 @@ static void _assert_api_called(const char* request_params, int count)
 #define assert_api_pending(request_params) ASSERT_HELPER(_assert_api_called(request_params, -1), "assert_api_pending")
 #define assert_api_not_pending(request_params) ASSERT_HELPER(_assert_api_called(request_params, 0), "assert_api_not_pending")
 
-static void reset_mock_api_handlers(void)
+void reset_mock_api_handlers(void)
 {
   g_num_mock_api_responses = 0;
   memset(g_mock_api_responses, 0, sizeof(g_mock_api_responses));
 }
 
-static void mock_api_response(const char* request_params, const char* response_body)
+void mock_api_response(const char* request_params, const char* response_body)
 {
   g_mock_api_responses[g_num_mock_api_responses].request_params = request_params;
   g_mock_api_responses[g_num_mock_api_responses].server_response.body = response_body;
@@ -528,7 +528,7 @@ static void mock_api_response(const char* request_params, const char* response_b
   g_num_mock_api_responses++;
 }
 
-static void mock_api_error(const char* request_params, const char* response_body, int http_status_code)
+void mock_api_error(const char* request_params, const char* response_body, int http_status_code)
 {
   g_mock_api_responses[g_num_mock_api_responses].request_params = request_params;
   g_mock_api_responses[g_num_mock_api_responses].server_response.body = response_body;
