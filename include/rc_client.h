@@ -630,6 +630,12 @@ void rc_client_do_frame(rc_client_t* client);
 void rc_client_idle(rc_client_t* client);
 
 /**
+ * Determines if a sufficient amount of frames have been processed since the last call to rc_client_can_pause.
+ * Should not be called unless the client is trying to pause.
+ */
+int rc_client_can_pause(rc_client_t* client);
+
+/**
  * Informs the runtime that the emulator has been reset. Will reset all achievements and leaderboards
  * to their initial state (includes hiding indicators/trackers).
  */
