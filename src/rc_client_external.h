@@ -118,6 +118,7 @@ typedef struct rc_client_external_t
   rc_client_external_action_func_t do_frame;
   rc_client_external_action_func_t idle;
   rc_client_external_get_int_func_t is_processing_required;
+  rc_client_external_get_int_func_t can_pause;
   rc_client_external_action_func_t reset;
 
   rc_client_external_progress_size_func_t progress_size;

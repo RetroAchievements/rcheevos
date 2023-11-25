@@ -1058,6 +1058,20 @@ static void rc_client_external_reset(void)
   g_external_event = "reset";
 }
 
+static void test_can_pause(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->can_pause = rc_client_external_get_int;
+
+  g_external_int = 0;
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 0);
+
+  g_external_int = 1;
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 1);
+
+  rc_client_destroy(g_client);
+}
+
 static void test_reset(void)
 {
   g_client = mock_client_with_external();
@@ -1186,6 +1200,7 @@ void test_client_external(void) {
   TEST(test_is_processing_required);
   TEST(test_do_frame);
   TEST(test_idle);
+  TEST(test_can_pause);
   TEST(test_reset);
 
   /* progress */
