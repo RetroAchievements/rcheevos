@@ -5094,12 +5094,15 @@ void rc_client_reset(rc_client_t* client)
   rc_client_raise_pending_events(client, client->game);
 }
 
-int rc_client_can_pause(rc_client_t* client)
+int rc_client_can_pause(rc_client_t* client, uint32_t* frames_remaining)
 {
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->can_pause)
-    return client->state.external_client->can_pause();
+    return client->state.external_client->can_pause(frames_remaining);
 #endif
+
+  if (frames_remaining)
+    *frames_remaining = 0;
 
   /* pause is always allowed in softcore */
   if (!rc_client_get_hardcore_enabled(client))
@@ -5110,8 +5113,13 @@ int rc_client_can_pause(rc_client_t* client)
     return 1;
 
   /* if less than RC_MINIMUM_UNPAUSED_FRAMES have been processed, don't allow the pause */
-  if (client->state.unpaused_frame_decay >= client->state.required_unpaused_frames * (RC_PAUSE_DECAY_MULTIPLIER - 1))
+  if (client->state.unpaused_frame_decay > client->state.required_unpaused_frames * (RC_PAUSE_DECAY_MULTIPLIER - 1)) {
+    if (frames_remaining) {
+      *frames_remaining = client->state.unpaused_frame_decay -
+                          client->state.required_unpaused_frames * (RC_PAUSE_DECAY_MULTIPLIER - 1);
+    }
     return 0;
+  }
 
   /* we're going to allow the emulator to pause. calculate how many frames are needed before the next
    * pause will be allowed. */
@@ -5119,7 +5127,7 @@ int rc_client_can_pause(rc_client_t* client)
   if (client->state.unpaused_frame_decay > 0) {
     /* The user has paused within the decay window. Require a longer
      * run of unpaused frames before allowing the next pause */
-    if (client->state.required_unpaused_frames < 30 * 60) /* don't make delay longer then 30 seconds */
+    if (client->state.required_unpaused_frames < 5 * 60) /* don't make delay longer then 5 seconds */
       client->state.required_unpaused_frames += RC_MINIMUM_UNPAUSED_FRAMES;
   }
 

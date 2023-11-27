@@ -1058,16 +1058,26 @@ static void rc_client_external_reset(void)
   g_external_event = "reset";
 }
 
+static int rc_client_external_can_pause(uint32_t* frames_remaining)
+{
+  *frames_remaining = g_external_int ? 0 : 10;
+
+  return g_external_int;
+}
+
 static void test_can_pause(void)
 {
+  uint32_t frames_remaining;
   g_client = mock_client_with_external();
-  g_client->state.external_client->can_pause = rc_client_external_get_int;
+  g_client->state.external_client->can_pause = rc_client_external_can_pause;
 
   g_external_int = 0;
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 0);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 0);
+  ASSERT_NUM_EQUALS(frames_remaining, 10);
 
   g_external_int = 1;
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 1);
+  ASSERT_NUM_EQUALS(frames_remaining, 0);
 
   rc_client_destroy(g_client);
 }

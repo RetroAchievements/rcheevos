@@ -1148,6 +1148,25 @@ static void test_get_user_game_summary_with_unsupported_unlocks(void)
   rc_client_destroy(g_client);
 }
 
+static void test_get_user_game_summary_no_achievements(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_unofficial_enabled(g_client, 1);
+  mock_client_load_game(patchdata_empty, no_unlocks);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 0);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 0);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
+
+  rc_client_destroy(g_client);
+}
 
 /* ----- load game ----- */
 
@@ -7345,6 +7364,7 @@ static void test_reset_hides_widgets(void)
 static void test_can_pause(void)
 {
   uint16_t frames_needed, frames_needed2, frames_needed3, frames_needed4;
+  uint32_t frames_remaining;
   int i;
 
   g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
@@ -7353,18 +7373,21 @@ static void test_can_pause(void)
   rc_client_do_frame(g_client);
 
   /* first pause should always be allowed */
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 1);
+  ASSERT_NUM_EQUALS(frames_remaining, 0);
   frames_needed = g_client->state.unpaused_frame_decay;
 
   /* if no frames have been processed, the client is still paused, so pause is allowed */
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 1);
+  ASSERT_NUM_EQUALS(frames_remaining, 0);
   ASSERT_NUM_EQUALS(g_client->state.unpaused_frame_decay, frames_needed);
 
   /* do a few frames (not enough to allow pause) - pause should still not be allowed */
   for (i = 0; i < 10; i++)
     rc_client_do_frame(g_client);
 
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 0);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 0);
+  ASSERT_NUM_EQUALS(frames_remaining, 10);
   ASSERT_NUM_EQUALS(g_client->state.unpaused_frame_decay, frames_needed - 10);
 
   /* do enough frames to allow pause, but not clear out the decay value.
@@ -7373,24 +7396,27 @@ static void test_can_pause(void)
     rc_client_do_frame(g_client);
 
   ASSERT_NUM_GREATER(g_client->state.unpaused_frame_decay, 0);
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 1);
+  ASSERT_NUM_EQUALS(frames_remaining, 0);
   frames_needed2 = g_client->state.unpaused_frame_decay;
   ASSERT_NUM_GREATER(frames_needed2, frames_needed);
 
   /* do enough frames to allow pause before - should not allow pause now */
-  for (i = 0; i < 30; i++)
+  for (i = 0; i < 25; i++)
     rc_client_do_frame(g_client);
 
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 0);
-  ASSERT_NUM_EQUALS(g_client->state.unpaused_frame_decay, frames_needed2 - 30);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 0);
+  ASSERT_NUM_EQUALS(frames_remaining, 15);
+  ASSERT_NUM_EQUALS(g_client->state.unpaused_frame_decay, frames_needed2 - 25);
 
   /* do enough frames to allow pause, but not clear out the decay value.
    * pause should be allowed, and the decay value should be reset to an even higher value. */
-  for (i = 0; i < 30; i++)
+  for (i = 0; i < 35; i++)
     rc_client_do_frame(g_client);
 
   ASSERT_NUM_GREATER(g_client->state.unpaused_frame_decay, 0);
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 1);
+  ASSERT_NUM_EQUALS(frames_remaining, 0);
   frames_needed3 = g_client->state.unpaused_frame_decay;
   ASSERT_NUM_GREATER(frames_needed3, frames_needed2);
 
@@ -7398,7 +7424,8 @@ static void test_can_pause(void)
   for (i = 0; i < frames_needed3; i++)
     rc_client_do_frame(g_client);
 
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 1);
+  ASSERT_NUM_EQUALS(frames_remaining, 0);
   frames_needed4 = g_client->state.unpaused_frame_decay;
   ASSERT_NUM_LESS(frames_needed4, frames_needed3);
   ASSERT_NUM_GREATER(frames_needed4, frames_needed);
@@ -7408,12 +7435,14 @@ static void test_can_pause(void)
   for (i = 0; i < frames_needed4 * 2; i++)
     rc_client_do_frame(g_client);
 
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 1);
+  ASSERT_NUM_EQUALS(frames_remaining, 0);
   ASSERT_NUM_EQUALS(g_client->state.unpaused_frame_decay, frames_needed);
 
   /* disable hardcore. pause should be allowed immediately */
   rc_client_set_hardcore_enabled(g_client, 0);
-  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client), 1);
+  ASSERT_NUM_EQUALS(rc_client_can_pause(g_client, &frames_remaining), 1);
+  ASSERT_NUM_EQUALS(frames_remaining, 0);
 
   rc_client_destroy(g_client);
 }
@@ -8139,6 +8168,7 @@ void test_client(void) {
   TEST(test_get_user_game_summary_encore_mode);
   TEST(test_get_user_game_summary_with_unsupported_and_unofficial);
   TEST(test_get_user_game_summary_with_unsupported_unlocks);
+  TEST(test_get_user_game_summary_no_achievements);
 
   /* load game */
   TEST(test_load_game_required_fields);

@@ -632,8 +632,10 @@ void rc_client_idle(rc_client_t* client);
 /**
  * Determines if a sufficient amount of frames have been processed since the last call to rc_client_can_pause.
  * Should not be called unless the client is trying to pause.
+ * If false is returned, and frames_remaining is not NULL, frames_remaining will be set to the number of frames
+ * still required before pause is allowed, which can be converted to a time in seconds for displaying to the user.
  */
-int rc_client_can_pause(rc_client_t* client);
+int rc_client_can_pause(rc_client_t* client, uint32_t* frames_remaining);
 
 /**
  * Informs the runtime that the emulator has been reset. Will reset all achievements and leaderboards
