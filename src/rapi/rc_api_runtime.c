@@ -270,7 +270,7 @@ int rc_api_process_fetch_game_data_server_response(rc_api_fetch_game_data_respon
         }
       }
 
-      // legacy support: if title contains [m], change type to missable and remove [m] from title
+      /* legacy support : if title contains[m], change type to missable and remove[m] from title */
       if (memcmp(achievement->title, "[m]", 3) == 0) {
         len = 3;
         while (achievement->title[len] == ' ')

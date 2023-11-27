@@ -361,7 +361,7 @@ static void test_json_get_required_float()
   assert_json_parse_response(&response, &field, "{\"Test\":1.5}", RC_OK);
 
   ASSERT_TRUE(rc_json_get_required_float(&value, &response, &field, "Test"));
-  ASSERT_NUM_EQUALS(value, 1.5);
+  ASSERT_FLOAT_EQUALS(value, 1.5f);
 
   ASSERT_PTR_NULL(response.error_message);
   ASSERT_NUM_EQUALS(response.succeeded, 1);
@@ -369,7 +369,7 @@ static void test_json_get_required_float()
   assert_json_parse_response(&response, &field, "{\"Test2\":1.5}", RC_OK);
 
   ASSERT_FALSE(rc_json_get_required_float(&value, &response, &field, "Test"));
-  ASSERT_NUM_EQUALS(value, 0.0);
+  ASSERT_FLOAT_EQUALS(value, 0.0f);
 
   ASSERT_PTR_NOT_NULL(response.error_message);
   ASSERT_STR_EQUALS(response.error_message, "Test not found in response");
@@ -756,7 +756,7 @@ void test_rapi_common(void) {
   TEST_PARAMS2(test_json_get_float, "3.14159", 3.14159f);
   TEST_PARAMS2(test_json_get_float, "-6.7", -6.7f);
   TEST(test_json_get_optional_float);
-  TEST(test_json_get_required_num);
+  TEST(test_json_get_required_float);
 
   /* rc_json_get_bool */
   TEST_PARAMS2(test_json_get_bool, "true", 1);

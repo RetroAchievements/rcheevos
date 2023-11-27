@@ -1185,9 +1185,10 @@ static void test_get_user_game_summary_with_unofficial_off(void)
   rc_client_set_unofficial_enabled(g_client, 0);
   mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks);
 
+  /* unofficial achievements are not copied from the patch data to the runtime if unofficial is off */
   rc_client_get_user_game_summary(g_client, &summary);
   ASSERT_NUM_EQUALS(summary.num_core_achievements, 2);
-  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 1);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
   ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 1);
   ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 0);
 

@@ -787,6 +787,11 @@ int rc_json_get_float(float* out, const rc_json_field_t* field, const char* fiel
   int32_t whole, fraction, fraction_denominator;
   const char* decimal = field->value_start;
 
+  if (!decimal) {
+    *out = 0.0f;
+    return 0;
+  }
+
   if (!rc_json_get_num(&whole, field, field_name))
     return 0;
 
