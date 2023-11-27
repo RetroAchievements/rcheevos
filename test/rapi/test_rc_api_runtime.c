@@ -250,6 +250,140 @@ static void test_process_fetch_game_data_response_achievements() {
   rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
 }
 
+static void test_process_fetch_game_data_response_achievement_types() {
+  rc_api_fetch_game_data_response_t fetch_game_data_response;
+  const char* server_response = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":20,\"Title\":\"Another Amazing Game\",\"ConsoleID\":19,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":["
+    "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+     "\"MemAddr\":\"0=1\",\"Author\":\"User1\",\"BadgeName\":\"00234\",\"Type\":\"\","
+     "\"Created\":1367266583,\"Modified\":1376929305},"
+    "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
+     "\"MemAddr\":\"0=2\",\"Author\":\"User1\",\"BadgeName\":\"00235\",\"Type\":\"missable\","
+     "\"Created\":1376970283,\"Modified\":1376970283},"
+    "{\"ID\":5503,\"Title\":\"Ach3\",\"Description\":\"Desc3\",\"Flags\":5,\"Points\":0,"
+     "\"MemAddr\":\"0=3\",\"Author\":\"User2\",\"BadgeName\":\"00236\",\"Type\":\"progression\","
+     "\"Created\":1376969412,\"Modified\":1376969412},"
+    "{\"ID\":5504,\"Title\":\"Ach4\",\"Description\":\"Desc4\",\"Flags\":3,\"Points\":10,"
+     "\"MemAddr\":\"0=4\",\"Author\":\"User1\",\"BadgeName\":\"00236\",\"Type\":\"win_condition\","
+     "\"Created\":1504474554,\"Modified\":1504474554},"
+    "{\"ID\":5505,\"Title\":\"Ach5 [m]\",\"Description\":\"Desc5\",\"Flags\":3,\"Points\":10,"
+     "\"MemAddr\":\"0=4\",\"Author\":\"User1\",\"BadgeName\":\"00236\",\"Type\":\"\","
+     "\"Created\":1504474554,\"Modified\":1504474554},"
+    "{\"ID\":5506,\"Title\":\"[m] Ach6\",\"Description\":\"Desc6\",\"Flags\":3,\"Points\":10,"
+     "\"MemAddr\":\"0=4\",\"Author\":\"User1\",\"BadgeName\":\"00236\",\"Type\":\"\","
+     "\"Created\":1504474554,\"Modified\":1504474554},"
+    "{\"ID\":5507,\"Title\":\"Ach7\",\"Description\":\"Desc7\",\"Flags\":3,\"Points\":5,"
+     "\"MemAddr\":\"0=1\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+     "\"Created\":1367266583,\"Modified\":1376929305}"
+    "],\"Leaderboards\":[]"
+    "}}";
+  rc_api_achievement_definition_t* achievement;
+
+  memset(&fetch_game_data_response, 0, sizeof(fetch_game_data_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_data_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 7);
+
+  ASSERT_PTR_NOT_NULL(fetch_game_data_response.achievements);
+  achievement = fetch_game_data_response.achievements;
+
+  ASSERT_NUM_EQUALS(achievement->id, 5501);
+  ASSERT_STR_EQUALS(achievement->title, "Ach1");
+  ASSERT_NUM_EQUALS(achievement->type, RC_ACHIEVEMENT_TYPE_STANDARD);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5502);
+  ASSERT_STR_EQUALS(achievement->title, "Ach2");
+  ASSERT_NUM_EQUALS(achievement->type, RC_ACHIEVEMENT_TYPE_MISSABLE);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5503);
+  ASSERT_STR_EQUALS(achievement->title, "Ach3");
+  ASSERT_NUM_EQUALS(achievement->type, RC_ACHIEVEMENT_TYPE_PROGRESSION);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5504);
+  ASSERT_STR_EQUALS(achievement->title, "Ach4");
+  ASSERT_NUM_EQUALS(achievement->type, RC_ACHIEVEMENT_TYPE_WIN);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5505);
+  ASSERT_STR_EQUALS(achievement->title, "Ach5");
+  ASSERT_NUM_EQUALS(achievement->type, RC_ACHIEVEMENT_TYPE_MISSABLE);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5506);
+  ASSERT_STR_EQUALS(achievement->title, "Ach6");
+  ASSERT_NUM_EQUALS(achievement->type, RC_ACHIEVEMENT_TYPE_MISSABLE);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5507);
+  ASSERT_STR_EQUALS(achievement->title, "Ach7");
+  ASSERT_NUM_EQUALS(achievement->type, RC_ACHIEVEMENT_TYPE_STANDARD);
+
+  rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
+}
+
+static void test_process_fetch_game_data_response_achievement_rarity() {
+  rc_api_fetch_game_data_response_t fetch_game_data_response;
+  const char* server_response = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":20,\"Title\":\"Another Amazing Game\",\"ConsoleID\":19,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":["
+    "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+     "\"MemAddr\":\"0=1\",\"Author\":\"User1\",\"BadgeName\":\"00234\",\"Rarity\":100.0,\"RarityHardcore\":66.67,"
+     "\"Created\":1367266583,\"Modified\":1376929305},"
+    "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
+     "\"MemAddr\":\"0=2\",\"Author\":\"User1\",\"BadgeName\":\"00235\",\"Rarity\":57.43,\"RarityHardcore\":57.43,"
+     "\"Created\":1376970283,\"Modified\":1376970283},"
+    "{\"ID\":5503,\"Title\":\"Ach3\",\"Description\":\"Desc3\",\"Flags\":5,\"Points\":0,"
+     "\"MemAddr\":\"0=3\",\"Author\":\"User2\",\"BadgeName\":\"00236\",\"Rarity\":6.8,\"RarityHardcore\":0,"
+     "\"Created\":1376969412,\"Modified\":1376969412},"
+    "{\"ID\":5504,\"Title\":\"Ach4\",\"Description\":\"Desc4\",\"Flags\":5,\"Points\":0,"
+     "\"MemAddr\":\"0=3\",\"Author\":\"User2\",\"BadgeName\":\"00236\","
+     "\"Created\":1376969412,\"Modified\":1376969412}"
+    "],\"Leaderboards\":[]"
+    "}}";
+  rc_api_achievement_definition_t* achievement;
+
+  memset(&fetch_game_data_response, 0, sizeof(fetch_game_data_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_data_response(&fetch_game_data_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_data_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 4);
+
+  ASSERT_PTR_NOT_NULL(fetch_game_data_response.achievements);
+  achievement = fetch_game_data_response.achievements;
+
+  ASSERT_NUM_EQUALS(achievement->id, 5501);
+  ASSERT_STR_EQUALS(achievement->title, "Ach1");
+  ASSERT_FLOAT_EQUALS(achievement->rarity, 100.0f);
+  ASSERT_FLOAT_EQUALS(achievement->rarity_hardcore, 66.67f);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5502);
+  ASSERT_STR_EQUALS(achievement->title, "Ach2");
+  ASSERT_FLOAT_EQUALS(achievement->rarity, 57.43f);
+  ASSERT_FLOAT_EQUALS(achievement->rarity_hardcore, 57.43f);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5503);
+  ASSERT_STR_EQUALS(achievement->title, "Ach3");
+  ASSERT_FLOAT_EQUALS(achievement->rarity, 6.8f);
+  ASSERT_FLOAT_EQUALS(achievement->rarity_hardcore, 0.0f);
+
+  ++achievement;
+  ASSERT_NUM_EQUALS(achievement->id, 5504);
+  ASSERT_STR_EQUALS(achievement->title, "Ach4");
+  ASSERT_FLOAT_EQUALS(achievement->rarity, 100.0f);
+  ASSERT_FLOAT_EQUALS(achievement->rarity_hardcore, 100.0f);
+
+  rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
+}
+
 static void test_process_fetch_game_data_response_leaderboards() {
   rc_api_fetch_game_data_response_t fetch_game_data_response;
   const char* server_response = "{\"Success\":true,\"PatchData\":{"
@@ -958,6 +1092,8 @@ void test_rapi_runtime(void) {
   TEST(test_process_fetch_game_data_response_empty);
   TEST(test_process_fetch_game_data_response_invalid_credentials);
   TEST(test_process_fetch_game_data_response_achievements);
+  TEST(test_process_fetch_game_data_response_achievement_types);
+  TEST(test_process_fetch_game_data_response_achievement_rarity);
   TEST(test_process_fetch_game_data_response_leaderboards);
   TEST(test_process_fetch_game_data_response_rich_presence);
   TEST(test_process_fetch_game_data_response_rich_presence_null);
