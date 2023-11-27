@@ -298,6 +298,13 @@ enum {
 };
 
 enum {
+  RC_CLIENT_ACHIEVEMENT_TYPE_STANDARD = 0,
+  RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE = 1,
+  RC_CLIENT_ACHIEVEMENT_TYPE_PROGRESSION = 2,
+  RC_CLIENT_ACHIEVEMENT_TYPE_WIN = 3
+};
+
+enum {
   RC_CLIENT_ACHIEVEMENT_BUCKET_UNKNOWN = 0,
   RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED = 1,
   RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED = 2,
@@ -329,6 +336,10 @@ typedef struct rc_client_achievement_t {
   uint8_t category;
   uint8_t bucket;
   uint8_t unlocked;
+  /* minimum version: 11.1 */
+  float rarity;
+  float rarity_hardcore;
+  uint8_t type;
 } rc_client_achievement_t;
 
 /**
