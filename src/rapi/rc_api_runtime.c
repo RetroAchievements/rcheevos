@@ -275,7 +275,7 @@ int rc_api_process_fetch_game_data_server_response(rc_api_fetch_game_data_respon
         len = 3;
         while (achievement->title[len] == ' ')
           ++len;
-        strcpy_s((char*)achievement->title, strlen(achievement->title) + 1, &achievement->title[len]);
+        achievement->title += len;
         achievement->type = RC_ACHIEVEMENT_TYPE_MISSABLE;
       }
       else if (achievement_fields[1].value_end && memcmp(achievement_fields[1].value_end - 4, "[m]", 3) == 0) {
