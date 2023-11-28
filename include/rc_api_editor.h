@@ -108,6 +108,8 @@ typedef struct rc_api_update_achievement_request_t {
   uint32_t points;
   /* The category of the achievement */
   uint32_t category;
+  /* The type of the achievement */
+  uint32_t type;
 }
 rc_api_update_achievement_request_t;
 
