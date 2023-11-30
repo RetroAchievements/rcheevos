@@ -5,8 +5,6 @@
 extern "C" {
 #endif
 
-#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-
 #include "rc_client.h"
 
 /* NOTE: any function that is passed a callback also needs to be passed a client instance to pass
@@ -127,8 +125,6 @@ typedef struct rc_client_external_t
 } rc_client_external_t;
 
 #define RC_CLIENT_EXTERNAL_VERSION 1
-
-#endif /* RC_CLIENT_SUPPORTS_EXTERNAL */
 
 #ifdef __cplusplus
 }

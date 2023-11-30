@@ -220,7 +220,6 @@
     <ClCompile Include="test_rc_client_external.c" />
     <ClCompile Include="test_rc_client_raintegration.c" />
     <ClCompile Include="test_rc_libretro.c" />
-    <ClInclude Include="..\..\..\RetroArch\deps\rcheevos\src\rcheevos\rc_client_external.h" />
     <ClInclude Include="..\include\rcheevos.h" />
     <ClInclude Include="..\include\rc_api_editor.h" />
     <ClInclude Include="..\include\rc_api_info.h" />
@@ -238,6 +237,7 @@
     <ClInclude Include="..\include\rc_error.h" />
     <ClInclude Include="..\src\rapi\rc_api_common.h" />
     <ClInclude Include="..\src\rcheevos\rc_validate.h" />
+    <ClInclude Include="..\src\rc_client_external.h" />
     <ClInclude Include="..\src\rc_client_internal.h" />
     <ClInclude Include="..\src\rc_compat.h" />
     <ClInclude Include="..\src\rc_libretro.h" />
