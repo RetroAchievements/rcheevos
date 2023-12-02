@@ -317,6 +317,9 @@ typedef struct rc_client_state_t {
   rc_client_raintegration_t* raintegration;
 #endif
 
+  uint16_t unpaused_frame_decay;
+  uint16_t required_unpaused_frames;
+
   uint8_t hardcore;
   uint8_t encore_mode;
   uint8_t spectator_mode;
