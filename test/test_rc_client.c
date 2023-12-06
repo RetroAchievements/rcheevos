@@ -3706,7 +3706,7 @@ static void test_achievement_list_buckets_with_unsynced(void)
     rc_client_destroy_achievement_list(list);
   }
 
-  // allow unlock request to succeed
+  /* allow unlock request to succeed */
   g_now += 2 * 1000;
   rc_client_idle(g_client);
   assert_api_pending(unlock_request_params);
