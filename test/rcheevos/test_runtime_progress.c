@@ -5,14 +5,14 @@
 #include "../rhash/md5.h"
 #include "mock_memory.h"
 
-static void _assert_activate_achievement(rc_runtime_t* runtime, unsigned int id, const char* memaddr)
+static void _assert_activate_achievement(rc_runtime_t* runtime, uint32_t id, const char* memaddr)
 {
   int result = rc_runtime_activate_achievement(runtime, id, memaddr, NULL, 0);
   ASSERT_NUM_EQUALS(result, RC_OK);
 }
 #define assert_activate_achievement(runtime, id, memaddr) ASSERT_HELPER(_assert_activate_achievement(runtime, id, memaddr), "assert_activate_achievement")
 
-static void _assert_activate_leaderboard(rc_runtime_t* runtime, unsigned int id, const char* script)
+static void _assert_activate_leaderboard(rc_runtime_t* runtime, uint32_t id, const char* script)
 {
   int result = rc_runtime_activate_lboard(runtime, id, script, NULL, 0);
   ASSERT_NUM_EQUALS(result, RC_OK);
@@ -46,15 +46,15 @@ static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)
   rc_runtime_do_frame(runtime, event_handler, peek, memory, NULL);
 }
 
-static void _assert_serialize(rc_runtime_t* runtime, unsigned char* buffer, unsigned buffer_size)
+static void _assert_serialize(rc_runtime_t* runtime, uint8_t* buffer, size_t buffer_size)
 {
   int result;
   unsigned* overflow;
 
-  unsigned size = rc_runtime_progress_size(runtime, NULL);
+  uint32_t size = rc_runtime_progress_size(runtime, NULL);
   ASSERT_NUM_LESS(size, buffer_size);
 
-  overflow = (unsigned*)(((char*)buffer) + size);
+  overflow = (unsigned*)(buffer + size);
   *overflow = 0xCDCDCDCD;
 
   result = rc_runtime_serialize_progress(buffer, runtime, NULL);
@@ -66,14 +66,14 @@ static void _assert_serialize(rc_runtime_t* runtime, unsigned char* buffer, unsi
 }
 #define assert_serialize(runtime, buffer, buffer_size) ASSERT_HELPER(_assert_serialize(runtime, buffer, buffer_size), "assert_serialize")
 
-static void _assert_deserialize(rc_runtime_t* runtime, unsigned char* buffer)
+static void _assert_deserialize(rc_runtime_t* runtime, uint8_t* buffer)
 {
   int result = rc_runtime_deserialize_progress(runtime, buffer, NULL);
   ASSERT_NUM_EQUALS(result, RC_OK);
 }
 #define assert_deserialize(runtime, buffer) ASSERT_HELPER(_assert_deserialize(runtime, buffer), "assert_deserialize")
 
-static void _assert_sized_memref(rc_runtime_t* runtime, uint32_t address, char size, uint32_t value, uint32_t prev, uint32_t prior)
+static void _assert_sized_memref(rc_runtime_t* runtime, uint32_t address, uint8_t size, uint32_t value, uint32_t prev, uint32_t prior)
 {
   rc_memref_t* memref = runtime->memrefs;
   while (memref)
@@ -104,7 +104,7 @@ static void _assert_sized_memref(rc_runtime_t* runtime, uint32_t address, char s
 
 static rc_trigger_t* find_trigger(rc_runtime_t* runtime, uint32_t ach_id)
 {
-  unsigned i;
+  uint32_t i;
   for (i = 0; i < runtime->trigger_count; ++i) {
     if (runtime->triggers[i].id == ach_id && runtime->triggers[i].trigger)
       return runtime->triggers[i].trigger;
@@ -114,7 +114,7 @@ static rc_trigger_t* find_trigger(rc_runtime_t* runtime, uint32_t ach_id)
   return NULL;
 }
 
-static rc_condition_t* find_trigger_cond(rc_trigger_t* trigger, unsigned group_idx, unsigned cond_idx)
+static rc_condition_t* find_trigger_cond(rc_trigger_t* trigger, uint32_t group_idx, uint32_t cond_idx)
 {
   rc_condset_t* condset;
   rc_condition_t* cond;
@@ -141,7 +141,7 @@ static rc_condition_t* find_trigger_cond(rc_trigger_t* trigger, unsigned group_i
   return cond;
 }
 
-static void _assert_hitcount(rc_runtime_t* runtime, uint32_t ach_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_hits)
+static void _assert_hitcount(rc_runtime_t* runtime, uint32_t ach_id, uint32_t group_idx, uint32_t cond_idx, uint32_t expected_hits)
 {
   rc_trigger_t* trigger = find_trigger(runtime, ach_id);
   rc_condition_t* cond = find_trigger_cond(trigger, group_idx, cond_idx);
@@ -151,7 +151,7 @@ static void _assert_hitcount(rc_runtime_t* runtime, uint32_t ach_id, unsigned gr
 }
 #define assert_hitcount(runtime, ach_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_hitcount(runtime, ach_id, group_idx, cond_idx, expected_hits), "assert_hitcount")
 
-static void _assert_cond_memref(rc_runtime_t* runtime, uint32_t ach_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_value, uint32_t expected_prior, uint8_t expected_changed)
+static void _assert_cond_memref(rc_runtime_t* runtime, uint32_t ach_id, uint32_t group_idx, uint32_t cond_idx, uint32_t expected_value, uint32_t expected_prior, uint8_t expected_changed)
 {
   rc_trigger_t* trigger = find_trigger(runtime, ach_id);
   rc_condition_t* cond = find_trigger_cond(trigger, group_idx, cond_idx);
@@ -164,7 +164,7 @@ static void _assert_cond_memref(rc_runtime_t* runtime, uint32_t ach_id, unsigned
 #define assert_cond_memref(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed) \
  ASSERT_HELPER(_assert_cond_memref(runtime, ach_id, group_idx, cond_idx, expected_value, expected_prior, expected_changed), "assert_cond_memref")
 
-static void _assert_cond_memref2(rc_runtime_t* runtime, uint32_t ach_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_value, uint32_t expected_prior, uint8_t expected_changed)
+static void _assert_cond_memref2(rc_runtime_t* runtime, uint32_t ach_id, uint32_t group_idx, uint32_t cond_idx, uint32_t expected_value, uint32_t expected_prior, uint8_t expected_changed)
 {
   rc_trigger_t* trigger = find_trigger(runtime, ach_id);
   rc_condition_t* cond = find_trigger_cond(trigger, group_idx, cond_idx);
@@ -188,7 +188,7 @@ static void _assert_achievement_state(rc_runtime_t* runtime, uint32_t ach_id, ui
 
 static rc_lboard_t* find_lboard(rc_runtime_t* runtime, uint32_t lboard_id)
 {
-  unsigned i;
+  uint32_t i;
   for (i = 0; i < runtime->lboard_count; ++i) {
     if (runtime->lboards[i].id == lboard_id && runtime->lboards[i].lboard)
       return runtime->lboards[i].lboard;
@@ -198,7 +198,7 @@ static rc_lboard_t* find_lboard(rc_runtime_t* runtime, uint32_t lboard_id)
   return NULL;
 }
 
-static void _assert_sta_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_hits)
+static void _assert_sta_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, uint32_t group_idx, uint32_t cond_idx, uint32_t expected_hits)
 {
   rc_lboard_t* lboard = find_lboard(runtime, lboard_id);
   rc_condition_t* cond = find_trigger_cond(&lboard->start, group_idx, cond_idx);
@@ -208,7 +208,7 @@ static void _assert_sta_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, unsi
 }
 #define assert_sta_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_sta_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits), "assert_sta_hitcount")
 
-static void _assert_sub_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_hits)
+static void _assert_sub_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, uint32_t group_idx, uint32_t cond_idx, uint32_t expected_hits)
 {
   rc_lboard_t* lboard = find_lboard(runtime, lboard_id);
   rc_condition_t* cond = find_trigger_cond(&lboard->submit, group_idx, cond_idx);
@@ -218,7 +218,7 @@ static void _assert_sub_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, unsi
 }
 #define assert_sub_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_sub_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits), "assert_sub_hitcount")
 
-static void _assert_can_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, unsigned group_idx, unsigned cond_idx, uint32_t expected_hits)
+static void _assert_can_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, uint32_t group_idx, uint32_t cond_idx, uint32_t expected_hits)
 {
   rc_lboard_t* lboard = find_lboard(runtime, lboard_id);
   rc_condition_t* cond = find_trigger_cond(&lboard->cancel, group_idx, cond_idx);
@@ -228,11 +228,11 @@ static void _assert_can_hitcount(rc_runtime_t* runtime, uint32_t lboard_id, unsi
 }
 #define assert_can_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits) ASSERT_HELPER(_assert_can_hitcount(runtime, lboard_id, group_idx, cond_idx, expected_hits), "assert_can_hitcount")
 
-static void update_md5(unsigned char* buffer)
+static void update_md5(uint8_t* buffer)
 {
   md5_state_t state;
 
-  unsigned char* ptr = buffer;
+  uint8_t* ptr = buffer;
   while (ptr[0] != 'D' || ptr[1] != 'O' || ptr[2] != 'N' || ptr[3] != 'E')
     ++ptr;
 
@@ -249,7 +249,7 @@ static void reset_runtime(rc_runtime_t* runtime)
   rc_trigger_t* trigger;
   rc_condition_t* cond;
   rc_condset_t* condset;
-  unsigned i;
+  uint32_t i;
 
   memref = runtime->memrefs;
   while (memref)

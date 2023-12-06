@@ -7,6 +7,7 @@ extern "C" {
 
 #include "rc_error.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifndef RC_RUNTIME_H /* prevents pedantic redefiniton error */
@@ -304,7 +305,7 @@ struct rc_value_t {
 
 int rc_value_size(const char* memaddr);
 rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
-int rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
+int32_t rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 
 /*****************************************************************************\
 | Leaderboards                                                                |
@@ -334,7 +335,7 @@ struct rc_lboard_t {
 
 int rc_lboard_size(const char* memaddr);
 rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
-int rc_evaluate_lboard(rc_lboard_t* lboard, int* value, rc_peek_t peek, void* peek_ud, lua_State* L);
+int rc_evaluate_lboard(rc_lboard_t* lboard, int32_t* value, rc_peek_t peek, void* peek_ud, lua_State* L);
 void rc_reset_lboard(rc_lboard_t* lboard);
 
 /*****************************************************************************\
@@ -359,7 +360,7 @@ enum {
 };
 
 int rc_parse_format(const char* format_str);
-int rc_format_value(char* buffer, int size, int value, int format);
+int rc_format_value(char* buffer, int size, int32_t value, int format);
 
 /*****************************************************************************\
 | Rich Presence                                                               |
@@ -413,9 +414,9 @@ struct rc_richpresence_t {
 int rc_richpresence_size(const char* script);
 int rc_richpresence_size_lines(const char* script, int* lines_read);
 rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_State* L, int funcs_ndx);
-int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
+int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
 void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, lua_State* L);
-int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
+int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
 void rc_reset_richpresence(rc_richpresence_t* self);
 
 #ifdef __cplusplus

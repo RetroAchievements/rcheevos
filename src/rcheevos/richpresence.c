@@ -279,7 +279,6 @@ static void rc_rebalance_richpresence_lookup_rebuild(rc_richpresence_lookup_item
 static void rc_rebalance_richpresence_lookup(rc_richpresence_lookup_item_t** root, rc_parse_state_t* parse)
 {
   rc_richpresence_lookup_item_t** items;
-  rc_scratch_buffer_t* buffer;
   int index;
   int size;
 
@@ -288,29 +287,13 @@ static void rc_rebalance_richpresence_lookup(rc_richpresence_lookup_item_t** roo
   if (count < 3)
     return;
 
-  /* allocate space for the flattened list - prefer scratch memory if available */
+  /* allocate space for the flattened list in scratch memory */
   size = count * sizeof(rc_richpresence_lookup_item_t*);
-  buffer = &parse->scratch.buffer;
-  do {
-    const int aligned_offset = RC_ALIGN(buffer->offset);
-    const int remaining = sizeof(buffer->buffer) - aligned_offset;
+  items = (rc_richpresence_lookup_item_t**)rc_buffer_alloc(&parse->scratch.buffer, size);
 
-    if (remaining >= size) {
-      items = (rc_richpresence_lookup_item_t**)&buffer->buffer[aligned_offset];
-      break;
-    }
-
-    buffer = buffer->next;
-    if (buffer == NULL) {
-      /* could not find large enough block of scratch memory; allocate. if allocation fails,
-       * we can still use the unbalanced tree, so just bail out */
-      items = (rc_richpresence_lookup_item_t**)malloc(size);
-      if (items == NULL)
-        return;
-
-      break;
-    }
-  } while (1);
+  /* if allocation fails, we can still use the unbalanced tree, so just bail out */
+  if (items == NULL)
+    return;
 
   /* flatten the list */
   index = 0;
@@ -318,13 +301,10 @@ static void rc_rebalance_richpresence_lookup(rc_richpresence_lookup_item_t** roo
 
   /* and rebuild it as a balanced tree */
   rc_rebalance_richpresence_lookup_rebuild(root, items, 0, count - 1);
-
-  if (buffer == NULL)
-    free(items);
 }
 
 static void rc_insert_richpresence_lookup_item(rc_richpresence_lookup_t* lookup,
-    unsigned first, unsigned last, const char* label, int label_len, rc_parse_state_t* parse)
+    uint32_t first, uint32_t last, const char* label, size_t label_len, rc_parse_state_t* parse)
 {
   rc_richpresence_lookup_item_t** next;
   rc_richpresence_lookup_item_t* item;
@@ -370,7 +350,7 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
   const char* endline;
   const char* label;
   char* endptr = 0;
-  unsigned first, last;
+  uint32_t first, last;
   int base;
 
   do
@@ -663,7 +643,7 @@ void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, voi
   }
 }
 
-static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part, char* buffer, unsigned buffersize)
+static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part, char* buffer, size_t buffersize)
 {
   rc_richpresence_lookup_item_t* item;
   rc_typed_value_t value;
@@ -807,7 +787,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
   return (int)(ptr - buffer);
 }
 
-int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
+int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
   rc_richpresence_display_t* display;
 
   for (display = richpresence->first_display; display; display = display->next) {
@@ -828,7 +808,7 @@ int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* bu
   return 0;
 }
 
-int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, unsigned buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
+int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
   rc_update_richpresence(richpresence, peek, peek_ud, L);
   return rc_get_richpresence_display_string(richpresence, buffer, buffersize, peek, peek_ud, L);
 }

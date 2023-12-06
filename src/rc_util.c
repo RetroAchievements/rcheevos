@@ -35,7 +35,7 @@ void rc_buffer_destroy(rc_buffer_t* buffer)
   {
     rc_buffer_chunk_t* next = chunk->next;
 #ifdef DEBUG_BUFFERS
-    total += (int)(chunk->end - chunk->data);
+    total += (int)(chunk->end - chunk->start);
     wasted += (int)(chunk->end - chunk->write);
     ++count;
 #endif
@@ -125,7 +125,7 @@ char* rc_buffer_strcpy(rc_buffer_t* buffer, const char* src)
 
 /* --- other --- */
 
-void rc_format_md5(char checksum[33], const unsigned char digest[16])
+void rc_format_md5(char checksum[33], const uint8_t digest[16])
 {
   snprintf(checksum, 33, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
     digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],

@@ -61,7 +61,7 @@ static rc_condition_t* condset_get_cond(rc_condset_t* condset, int cond_index) {
   return cond;
 }
 
-static void _assert_hit_count(rc_condset_t* condset, int cond_index, unsigned expected_hit_count) {
+static void _assert_hit_count(rc_condset_t* condset, int cond_index, uint32_t expected_hit_count) {
   rc_condition_t* cond = condset_get_cond(condset, cond_index);
   ASSERT_PTR_NOT_NULL(cond);
 
@@ -140,7 +140,7 @@ static void test_hitcount_target() {
   assert_hit_count(condset, 1, 5);
 }
 
-static void test_hitcount_two_conditions(const char* memaddr, unsigned expected_result, unsigned expected_hitcount1, unsigned expected_hitcount2) {
+static void test_hitcount_two_conditions(const char* memaddr, int expected_result, uint32_t expected_hitcount1, uint32_t expected_hitcount2) {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;
@@ -156,8 +156,8 @@ static void test_hitcount_two_conditions(const char* memaddr, unsigned expected_
   assert_hit_count(condset, 1, expected_hitcount2);
 }
 
-static void test_hitcount_three_conditions(const char* memaddr, unsigned expected_result, unsigned expected_hitcount1, 
-    unsigned expected_hitcount2, unsigned expected_hitcount3) {
+static void test_hitcount_three_conditions(const char* memaddr, int expected_result, uint32_t expected_hitcount1,
+    uint32_t expected_hitcount2, uint32_t expected_hitcount3) {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_condset_t* condset;

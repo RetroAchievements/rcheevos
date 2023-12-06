@@ -9,13 +9,13 @@
 static void* retro_memory_data[4] = { NULL, NULL, NULL, NULL };
 static size_t retro_memory_size[4] = { 0, 0, 0, 0 };
 
-static void libretro_get_core_memory_info(unsigned id, rc_libretro_core_memory_info_t* info)
+static void libretro_get_core_memory_info(uint32_t id, rc_libretro_core_memory_info_t* info)
 {
   info->data = retro_memory_data[id];
   info->size = retro_memory_size[id];
 }
 
-static int libretro_get_image_path(unsigned index, char* buffer, size_t buffer_size)
+static int libretro_get_image_path(uint32_t index, char* buffer, size_t buffer_size)
 {
   if (index < 0 || index > 9)
     return 0;
@@ -38,19 +38,19 @@ static void test_disallowed_setting(const char* library_name, const char* settin
   ASSERT_FALSE(rc_libretro_is_setting_allowed(settings, setting, value));
 }
 
-static void test_allowed_system(const char* library_name, int console_id) {
+static void test_allowed_system(const char* library_name, uint32_t console_id) {
   ASSERT_TRUE(rc_libretro_is_system_allowed(library_name, console_id));
 }
 
-static void test_disallowed_system(const char* library_name, int console_id) {
+static void test_disallowed_system(const char* library_name, uint32_t console_id) {
   ASSERT_FALSE(rc_libretro_is_system_allowed(library_name, console_id));
 }
 
 static void test_memory_init_without_regions() {
   rc_libretro_memory_regions_t regions;
-  unsigned avail;
-  unsigned char buffer1[16], buffer2[8], buffer3[4];
-  int i;
+  uint32_t avail;
+  uint8_t buffer1[16], buffer2[8], buffer3[4];
+  uint32_t i;
 
   for (i = 0; i < sizeof(buffer1); ++i)
       buffer1[i] = i;
@@ -91,7 +91,7 @@ static void test_memory_init_without_regions() {
 
 static void test_memory_init_without_regions_system_ram_only() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[16];
+  uint8_t buffer1[16];
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = sizeof(buffer1);
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
@@ -107,7 +107,7 @@ static void test_memory_init_without_regions_system_ram_only() {
 
 static void test_memory_init_without_regions_save_ram_only() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer2[8];
+  uint8_t buffer2[8];
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = NULL;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = 0;
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
@@ -137,7 +137,7 @@ static void test_memory_init_without_regions_no_ram() {
 
 static void test_memory_init_from_unmapped_memory() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[8], buffer2[8];
+  uint8_t buffer1[8], buffer2[8];
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = 0x10000;
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
@@ -154,8 +154,8 @@ static void test_memory_init_from_unmapped_memory() {
 
 static void test_memory_init_from_unmapped_memory_null_filler() {
   rc_libretro_memory_regions_t regions;
-  unsigned avail;
-  unsigned char buffer1[16], buffer2[8];
+  uint32_t avail;
+  uint8_t buffer1[16], buffer2[8];
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = sizeof(buffer1);
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
@@ -183,7 +183,7 @@ static void test_memory_init_from_unmapped_memory_null_filler() {
 
 static void test_memory_init_from_unmapped_memory_no_save_ram() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[16];
+  uint8_t buffer1[16];
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = 0x10000;
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
@@ -200,7 +200,7 @@ static void test_memory_init_from_unmapped_memory_no_save_ram() {
 
 static void test_memory_init_from_unmapped_memory_merge_neighbors() {
   rc_libretro_memory_regions_t regions;
-  unsigned char* buffer1 = malloc(0x10000); /* have to malloc to prevent array-bounds compiler warnings */
+  uint8_t* buffer1 = (uint8_t*)malloc(0x10000); /* have to malloc to prevent array-bounds compiler warnings */
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
   retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = 0x10000;
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
@@ -238,7 +238,7 @@ static void test_memory_init_from_unmapped_memory_no_ram() {
 
 static void test_memory_init_from_memory_map() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[8], buffer2[8];
+  uint8_t buffer1[8], buffer2[8];
   const struct retro_memory_descriptor mmap_desc[] = {
     { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" },
     { RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" }
@@ -256,7 +256,7 @@ static void test_memory_init_from_memory_map() {
 
 static void test_memory_init_from_memory_map_null_filler() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[8], buffer2[8];
+  uint8_t buffer1[8], buffer2[8];
   const struct retro_memory_descriptor mmap_desc[] = {
     { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" },
     { RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" }
@@ -274,7 +274,7 @@ static void test_memory_init_from_memory_map_null_filler() {
 
 static void test_memory_init_from_memory_map_no_save_ram() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[8];
+  uint8_t buffer1[8];
   const struct retro_memory_descriptor mmap_desc[] = {
     { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" }
   };
@@ -291,7 +291,7 @@ static void test_memory_init_from_memory_map_no_save_ram() {
 
 static void test_memory_init_from_memory_map_merge_neighbors() {
   rc_libretro_memory_regions_t regions;
-  unsigned char* buffer1 = malloc(0x10000); /* have to malloc to prevent array-bounds compiler warnings */
+  uint8_t* buffer1 = (uint8_t*)malloc(0x10000); /* have to malloc to prevent array-bounds compiler warnings */
   const struct retro_memory_descriptor mmap_desc[] = {
     { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0x0000], 0, 0x0000U, 0, 0, 0xFC00, "RAM" },
     { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0xFC00], 0, 0xFC00U, 0, 0, 0x0400, "Hardware controllers" }
@@ -331,7 +331,7 @@ static void test_memory_init_from_memory_map_no_ram() {
 
 static void test_memory_init_from_memory_map_splice() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[8], buffer2[8], buffer3[8];
+  uint8_t buffer1[8], buffer2[8], buffer3[8];
   const struct retro_memory_descriptor mmap_desc[] = {
     { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x08000, "RAM1" },
     { RETRO_MEMDESC_SYSTEM_RAM, &buffer2[0], 0, 0xFF8000U, 0, 0, 0x08000, "RAM2" },
@@ -351,7 +351,7 @@ static void test_memory_init_from_memory_map_splice() {
 
 static void test_memory_init_from_memory_map_mirrored() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[8], buffer2[8];
+  uint8_t buffer1[8], buffer2[8];
   const struct retro_memory_descriptor mmap_desc[] = {
     { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0xFF0000U, 0x00C000U, 0x04000, "RAM" },
     { RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0x000000U, 0x000000U, 0x10000, "SRAM" }
@@ -373,7 +373,7 @@ static void test_memory_init_from_memory_map_mirrored() {
 
 static void test_memory_init_from_memory_map_out_of_order() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer1[8], buffer2[8];
+  uint8_t buffer1[8], buffer2[8];
   const struct retro_memory_descriptor mmap_desc[] = {
     { RETRO_MEMDESC_SAVE_RAM,   &buffer2[0], 0, 0x000000U, 0, 0, 0x10000, "SRAM" },
     { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0xFF0000U, 0, 0, 0x10000, "RAM" }
@@ -391,7 +391,7 @@ static void test_memory_init_from_memory_map_out_of_order() {
 
 static void test_memory_init_from_memory_map_disconnect_gaps() {
   rc_libretro_memory_regions_t regions;
-  unsigned char buffer[256];
+  uint8_t buffer[256];
   /* the disconnect bit is smaller than the region size, so only parts of the memory map
    * will be filled by the region. in this case, 00-1F will be buffer[00-1F], but
    * buffer[20-3F] will be associated to addresses 40-5F! */
@@ -581,7 +581,7 @@ static void test_hash_set_m3u_savedisk_multiple_with_comments_and_whitespace() {
   rc_libretro_hash_set_destroy(&hash_set);
 }
 
-static int libretro_get_image_path_no_core_support(unsigned index, char* buffer, size_t buffer_size)
+static int libretro_get_image_path_no_core_support(uint32_t index, char* buffer, size_t buffer_size)
 {
   if (index < 0 || index > 1)
     return 0;
@@ -675,6 +675,9 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "Mesen-S", "mesen-s_region", "Auto");
   TEST_PARAMS3(test_allowed_setting,    "Mesen-S", "mesen-s_region", "NTSC");
   TEST_PARAMS3(test_disallowed_setting, "Mesen-S", "mesen-s_region", "PAL");
+
+  TEST_PARAMS3(test_allowed_setting,    "NeoCD", "neocd_bios", "neocd.bin (CDZ)");
+  TEST_PARAMS3(test_disallowed_setting, "NeoCD", "neocd_bios", "uni-bioscd.rom (CDZ, Universe 3.3)");
 
   TEST_PARAMS3(test_allowed_setting,    "PPSSPP", "ppsspp_cheats", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "PPSSPP", "ppsspp_cheats", "enabled");

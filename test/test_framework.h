@@ -2,6 +2,7 @@
 #define TEST_FRAMEWORK_H
 
 #include <string.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -11,11 +12,11 @@ typedef struct
   const char* current_test;
   const char* current_test_file_stack[16];
   const char* current_test_func_stack[16];
-  unsigned current_test_line_stack[16];
-  unsigned current_test_stack_index;
+  uint32_t current_test_line_stack[16];
+  uint32_t current_test_stack_index;
   int current_test_fail;
-  int fail_count;
-  int run_count;
+  uint32_t fail_count;
+  uint32_t run_count;
   time_t time_start;
 } test_framework_state_t;
 
@@ -129,7 +130,7 @@ extern const char* test_framework_basename(const char* path);
 }
 
 #define ASSERT_MESSAGE(message, ...) { \
-  unsigned __stack_index; \
+  uint32_t __stack_index; \
   if (!__test_framework_state.current_test_fail) { \
     __test_framework_state.current_test_fail = 1; \
     ++__test_framework_state.fail_count; \

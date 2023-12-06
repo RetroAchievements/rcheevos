@@ -16,7 +16,7 @@ extern "C" {
  */
 typedef struct rc_api_fetch_code_notes_request_t {
   /* The unique identifier of the game */
-  unsigned game_id;
+  uint32_t game_id;
 }
 rc_api_fetch_code_notes_request_t;
 

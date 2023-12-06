@@ -297,6 +297,15 @@
     <ClCompile Include="..\src\rc_util.c">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rc_client_raintegration.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_client_external.c">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_client_raintegration.c">
+      <Filter>tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">
@@ -378,6 +387,12 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\include\rc_consoles.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rc_client_raintegration.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rc_client_external.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

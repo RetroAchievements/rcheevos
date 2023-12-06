@@ -74,6 +74,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>_MBCS;RC_CLIENT_SUPPORTS_RAINTEGRATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -87,6 +88,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>_MBCS;RC_CLIENT_SUPPORTS_RAINTEGRATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -102,6 +104,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>_MBCS;RC_CLIENT_SUPPORTS_RAINTEGRATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -119,6 +122,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos;$(ProjectDir)lua\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>_MBCS;RC_CLIENT_SUPPORTS_RAINTEGRATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -146,6 +150,7 @@
     <ClCompile Include="..\src\rcheevos\trigger.c" />
     <ClCompile Include="..\src\rcheevos\value.c" />
     <ClCompile Include="..\src\rc_client.c" />
+    <ClCompile Include="..\src\rc_client_raintegration.c" />
     <ClCompile Include="..\src\rc_compat.c" />
     <ClCompile Include="..\src\rc_libretro.c" />
     <ClCompile Include="..\src\rc_util.c" />
@@ -212,6 +217,8 @@
     <ClCompile Include="rurl\test_url.c" />
     <ClCompile Include="test.c" />
     <ClCompile Include="test_rc_client.c" />
+    <ClCompile Include="test_rc_client_external.c" />
+    <ClCompile Include="test_rc_client_raintegration.c" />
     <ClCompile Include="test_rc_libretro.c" />
     <ClInclude Include="..\include\rcheevos.h" />
     <ClInclude Include="..\include\rc_api_editor.h" />
@@ -219,6 +226,7 @@
     <ClInclude Include="..\include\rc_api_request.h" />
     <ClInclude Include="..\include\rc_api_runtime.h" />
     <ClInclude Include="..\include\rc_api_user.h" />
+    <ClInclude Include="..\include\rc_client_raintegration.h" />
     <ClInclude Include="..\include\rc_consoles.h" />
     <ClInclude Include="..\include\rc_hash.h" />
     <ClInclude Include="..\include\rc_runtime.h" />
@@ -229,6 +237,7 @@
     <ClInclude Include="..\include\rc_error.h" />
     <ClInclude Include="..\src\rapi\rc_api_common.h" />
     <ClInclude Include="..\src\rcheevos\rc_validate.h" />
+    <ClInclude Include="..\src\rc_client_external.h" />
     <ClInclude Include="..\src\rc_client_internal.h" />
     <ClInclude Include="..\src\rc_compat.h" />
     <ClInclude Include="..\src\rc_libretro.h" />

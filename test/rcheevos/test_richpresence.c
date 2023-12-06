@@ -502,7 +502,7 @@ static void test_macro_frames() {
   assert_richpresence_output(richpresence, &memory, "3:42.20");
 }
 
-static void test_macro_float(const char* format, unsigned value, const char* expected) {
+static void test_macro_float(const char* format, uint32_t value, const char* expected) {
   uint8_t ram[4];
   memory_t memory;
   rc_richpresence_t* richpresence;

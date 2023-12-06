@@ -123,7 +123,7 @@ int rc_api_process_start_session_server_response(rc_api_start_session_response_t
   rc_api_unlock_entry_t* unlock;
   rc_json_field_t array_field;
   rc_json_iterator_t iterator;
-  unsigned timet;
+  uint32_t timet;
   int result;
 
   rc_json_field_t fields[] = {

@@ -47,7 +47,7 @@ int rc_api_process_fetch_achievement_info_server_response(rc_api_fetch_achieveme
   rc_api_achievement_awarded_entry_t* entry;
   rc_json_field_t array_field;
   rc_json_iterator_t iterator;
-  unsigned timet;
+  uint32_t timet;
   int result;
 
   rc_json_field_t fields[] = {
@@ -165,7 +165,7 @@ int rc_api_process_fetch_leaderboard_info_server_response(rc_api_fetch_leaderboa
   rc_api_lboard_info_entry_t* entry;
   rc_json_field_t array_field;
   rc_json_iterator_t iterator;
-  unsigned timet;
+  uint32_t timet;
   int result;
   size_t len;
   char format[16];

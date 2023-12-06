@@ -18,7 +18,7 @@ static void _assert_parse_operand(rc_operand_t* self, char* buffer, const char**
 }
 #define assert_parse_operand(operand, buffer, memaddr_out) ASSERT_HELPER(_assert_parse_operand(operand, buffer, memaddr_out), "assert_parse_operand")
 
-static void _assert_operand(rc_operand_t* self, char expected_type, char expected_size, unsigned expected_address) {
+static void _assert_operand(rc_operand_t* self, uint8_t expected_type, uint8_t expected_size, uint32_t expected_address) {
   ASSERT_NUM_EQUALS(expected_type, self->type);
   switch (expected_type) {
     case RC_OPERAND_ADDRESS:
@@ -35,14 +35,14 @@ static void _assert_operand(rc_operand_t* self, char expected_type, char expecte
 }
 #define assert_operand(operand, expected_type, expected_size, expected_address) ASSERT_HELPER(_assert_operand(operand, expected_type, expected_size, expected_address), "assert_operand")
 
-static void test_parse_operand(const char* memaddr, char expected_type, char expected_size, unsigned expected_value) {
+static void test_parse_operand(const char* memaddr, uint8_t expected_type, uint8_t expected_size, uint32_t expected_value) {
   char buffer[256];
   rc_operand_t self;
   assert_parse_operand(&self, buffer, &memaddr);
   assert_operand(&self, expected_type, expected_size, expected_value);
 }
 
-static void test_parse_operand_fp(const char* memaddr, char expected_type, double expected_value) {
+static void test_parse_operand_fp(const char* memaddr, uint8_t expected_type, double expected_value) {
   char buffer[256];
   rc_operand_t self;
   assert_parse_operand(&self, buffer, &memaddr);
@@ -74,7 +74,7 @@ static void test_parse_error_operand(const char* memaddr, int valid_chars, int e
   ASSERT_NUM_EQUALS(memaddr - begin, valid_chars);
 }
 
-static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_t* memrefs)
+static uint32_t evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_t* memrefs)
 {
   rc_eval_state_t eval_state;
   rc_typed_value_t value;
@@ -88,12 +88,12 @@ static unsigned evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memref_t
   return value.value.u32;
 }
 
-static void test_evaluate_operand(const char* memaddr, memory_t* memory, unsigned expected_value) {
+static void test_evaluate_operand(const char* memaddr, memory_t* memory, uint32_t expected_value) {
   rc_operand_t self;
   rc_parse_state_t parse;
   rc_memref_t* memrefs;
   char buffer[512];
-  unsigned value;
+  uint32_t value;
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);

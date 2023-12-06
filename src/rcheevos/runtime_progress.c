@@ -63,7 +63,7 @@ static uint32_t rc_runtime_progress_read_uint(rc_runtime_progress_t* progress)
   return value;
 }
 
-static void rc_runtime_progress_write_md5(rc_runtime_progress_t* progress, unsigned char* md5)
+static void rc_runtime_progress_write_md5(rc_runtime_progress_t* progress, uint8_t* md5)
 {
   if (progress->buffer)
     memcpy(&progress->buffer[progress->offset], md5, 16);
@@ -71,7 +71,7 @@ static void rc_runtime_progress_write_md5(rc_runtime_progress_t* progress, unsig
   progress->offset += 16;
 }
 
-static int rc_runtime_progress_match_md5(rc_runtime_progress_t* progress, unsigned char* md5)
+static int rc_runtime_progress_match_md5(rc_runtime_progress_t* progress, uint8_t* md5)
 {
   int result = 0;
   if (progress->buffer)
@@ -82,7 +82,7 @@ static int rc_runtime_progress_match_md5(rc_runtime_progress_t* progress, unsign
   return result;
 }
 
-static void rc_runtime_progress_start_chunk(rc_runtime_progress_t* progress, unsigned chunk_id)
+static void rc_runtime_progress_start_chunk(rc_runtime_progress_t* progress, uint32_t chunk_id)
 {
   rc_runtime_progress_write_uint(progress, chunk_id);
 
@@ -93,14 +93,14 @@ static void rc_runtime_progress_start_chunk(rc_runtime_progress_t* progress, uns
 
 static void rc_runtime_progress_end_chunk(rc_runtime_progress_t* progress)
 {
-  unsigned length;
-  int offset;
+  uint32_t length;
+  uint32_t offset;
 
   progress->offset = (progress->offset + 3) & ~0x03; /* align to 4 byte boundary */
 
   if (progress->buffer) {
     /* ignore chunk size field when calculating chunk size */
-    length = (unsigned)(progress->offset - progress->chunk_size_offset - 4);
+    length = (uint32_t)(progress->offset - progress->chunk_size_offset - 4);
 
     /* temporarily update the write pointer to write the chunk size field */
     offset = progress->offset;
@@ -287,7 +287,7 @@ static int rc_runtime_progress_read_condset(rc_runtime_progress_t* progress, rc_
   return RC_OK;
 }
 
-static unsigned rc_runtime_progress_should_serialize_variable_condset(const rc_condset_t* conditions)
+static uint32_t rc_runtime_progress_should_serialize_variable_condset(const rc_condset_t* conditions)
 {
   const rc_condition_t* condition;
 
@@ -702,7 +702,7 @@ static int rc_runtime_progress_read_rich_presence(rc_runtime_progress_t* progres
 static int rc_runtime_progress_serialize_internal(rc_runtime_progress_t* progress)
 {
   md5_state_t state;
-  unsigned char md5[16];
+  uint8_t md5[16];
   int result;
 
   rc_runtime_progress_write_uint(progress, RC_RUNTIME_MARKER);
@@ -758,7 +758,7 @@ int rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua
     return RC_INVALID_STATE;
 
   rc_runtime_progress_init(&progress, runtime, L);
-  progress.buffer = (unsigned char*)buffer;
+  progress.buffer = (uint8_t*)buffer;
 
   return rc_runtime_progress_serialize_internal(&progress);
 }
@@ -767,7 +767,7 @@ int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const uint8_t* serial
 {
   rc_runtime_progress_t progress;
   md5_state_t state;
-  unsigned char md5[16];
+  uint8_t md5[16];
   uint32_t chunk_id;
   uint32_t chunk_size;
   uint32_t next_chunk_offset;
