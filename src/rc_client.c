@@ -79,6 +79,7 @@ static void rc_client_raise_leaderboard_events(rc_client_t* client, rc_client_su
 static void rc_client_raise_pending_events(rc_client_t* client, rc_client_game_info_t* game);
 static void rc_client_reschedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* callback, rc_clock_t when);
 static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
+static int rc_client_is_award_achievement_pending(const rc_client_t* client, uint32_t achievement_id);
 static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
 
 /* ===== Construction/Destruction ===== */
@@ -2735,7 +2736,14 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
 
   if (achievement->public_.state == RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED) {
     /* achievement unlocked */
-    new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED;
+    if (achievement->public_.unlock_time >= recent_unlock_time) {
+      new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED;
+    } else {
+      new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED;
+
+      if (client->state.disconnect && rc_client_is_award_achievement_pending(client, achievement->public_.id))
+        new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNSYNCED;
+    }
   }
   else {
     /* active achievement */
@@ -2776,9 +2784,6 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
     }
   }
 
-  if (new_bucket == RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED && achievement->public_.unlock_time >= recent_unlock_time)
-    new_bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED;
-
   achievement->public_.bucket = new_bucket;
 }
 
@@ -2792,6 +2797,7 @@ static const char* rc_client_get_achievement_bucket_label(uint8_t bucket_type)
     case RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED: return "Recently Unlocked";
     case RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE: return "Active Challenges";
     case RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE: return "Almost There";
+    case RC_CLIENT_ACHIEVEMENT_BUCKET_UNSYNCED: return "Unlocks Not Synced to Server";
     default: return "Unknown";
   }
 }
@@ -2849,6 +2855,7 @@ static uint8_t rc_client_map_bucket(uint8_t bucket, int grouping)
   if (grouping == RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE) {
     switch (bucket) {
       case RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED:
+      case RC_CLIENT_ACHIEVEMENT_BUCKET_UNSYNCED:
         return RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED;
 
       case RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE:
@@ -2873,7 +2880,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   rc_client_achievement_list_info_t* list;
   rc_client_subset_info_t* subset;
   const uint32_t list_size = RC_ALIGN(sizeof(*list));
-  uint32_t bucket_counts[16];
+  uint32_t bucket_counts[NUM_RC_CLIENT_ACHIEVEMENT_BUCKETS];
   uint32_t num_buckets;
   uint32_t num_achievements;
   size_t buckets_size;
@@ -2883,7 +2890,8 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   const uint8_t shared_bucket_order[] = {
     RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE,
     RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED,
-    RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE
+    RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE,
+    RC_CLIENT_ACHIEVEMENT_BUCKET_UNSYNCED,
   };
   const uint8_t subset_bucket_order[] = {
     RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED,
@@ -3161,6 +3169,24 @@ typedef struct rc_client_award_achievement_callback_data_t
   rc_client_t* client;
   rc_client_scheduled_callback_data_t* scheduled_callback_data;
 } rc_client_award_achievement_callback_data_t;
+
+static int rc_client_is_award_achievement_pending(const rc_client_t* client, uint32_t achievement_id)
+{
+  /* assume lock already held */
+  rc_client_scheduled_callback_data_t* scheduled_callback = client->state.scheduled_callbacks;
+  for (; scheduled_callback; scheduled_callback = scheduled_callback->next)
+  {
+    if (scheduled_callback->callback == rc_client_award_achievement_retry)
+    {
+      rc_client_award_achievement_callback_data_t* ach_data =
+        (rc_client_award_achievement_callback_data_t*)scheduled_callback->data;
+      if (ach_data->id == achievement_id)
+        return 1;
+    }
+  }
+
+  return 0;
+}
 
 static void rc_client_award_achievement_server_call(rc_client_award_achievement_callback_data_t* ach_data);
 
@@ -5528,7 +5554,7 @@ void rc_client_set_host(const rc_client_t* client, const char* hostname)
   rc_api_set_host(hostname);
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->set_host)
+  if (client && client->state.external_client && client->state.external_client->set_host)
     client->state.external_client->set_host(hostname);
 #endif
 }
