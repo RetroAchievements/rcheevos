@@ -1538,6 +1538,8 @@ static void rc_client_begin_start_session(rc_client_load_state_t* load_state)
   start_session_params.username = client->user.username;
   start_session_params.api_token = client->user.token;
   start_session_params.game_id = load_state->hash->game_id;
+  start_session_params.game_hash = load_state->hash->hash;
+  start_session_params.hardcore = client->state.hardcore;
 
   result = rc_api_init_start_session_request(&start_session_request, &start_session_params);
   if (result != RC_OK) {
@@ -4257,6 +4259,8 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
   api_params.api_token = client->user.token;
   api_params.game_id = client->game->public_.id;
   api_params.rich_presence = buffer;
+  api_params.game_hash = client->game->public_.hash;
+  api_params.hardcore = client->state.hardcore;
 
   result = rc_api_init_ping_request(&request, &api_params);
   if (result != RC_OK) {

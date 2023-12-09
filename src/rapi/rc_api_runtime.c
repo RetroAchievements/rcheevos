@@ -360,6 +360,11 @@ int rc_api_init_ping_request(rc_api_request_t* request, const rc_api_ping_reques
     if (api_params->rich_presence && *api_params->rich_presence)
       rc_url_builder_append_str_param(&builder, "m", api_params->rich_presence);
 
+    if (api_params->game_hash && *api_params->game_hash) {
+      rc_url_builder_append_unum_param(&builder, "h", api_params->hardcore);
+      rc_url_builder_append_str_param(&builder, "x", api_params->game_hash);
+    }
+
     request->post_data = rc_url_builder_finalize(&builder);
     request->content_type = RC_CONTENT_TYPE_URLENCODED;
   }

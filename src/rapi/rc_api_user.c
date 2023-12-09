@@ -94,7 +94,14 @@ int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_st
   rc_url_builder_init(&builder, &request->buffer, 48);
   if (rc_api_url_build_dorequest(&builder, "startsession", api_params->username, api_params->api_token)) {
     rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
+
+    if (api_params->game_hash && *api_params->game_hash) {
+      rc_url_builder_append_unum_param(&builder, "h", api_params->hardcore);
+      rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
+    }
+
     rc_url_builder_append_str_param(&builder, "l", RCHEEVOS_VERSION_STRING);
+
     request->post_data = rc_url_builder_finalize(&builder);
     request->content_type = RC_CONTENT_TYPE_URLENCODED;
   }

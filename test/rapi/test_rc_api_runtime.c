@@ -595,6 +595,43 @@ static void test_init_ping_request_rich_presence_empty() {
   rc_api_destroy_request(&request);
 }
 
+static void test_init_ping_request_game_hash_softcore() {
+  rc_api_ping_request_t ping_request;
+  rc_api_request_t request;
+
+  memset(&ping_request, 0, sizeof(ping_request));
+  ping_request.username = "Username";
+  ping_request.api_token = "API_TOKEN";
+  ping_request.game_id = 1234;
+  ping_request.game_hash = "ABCDEF0123456789";
+
+  ASSERT_NUM_EQUALS(rc_api_init_ping_request(&request, &ping_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=ping&u=Username&t=API_TOKEN&g=1234&h=0&x=ABCDEF0123456789");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_ping_request_game_hash_hardcore() {
+  rc_api_ping_request_t ping_request;
+  rc_api_request_t request;
+
+  memset(&ping_request, 0, sizeof(ping_request));
+  ping_request.username = "Username";
+  ping_request.api_token = "API_TOKEN";
+  ping_request.game_id = 1234;
+  ping_request.hardcore = 1;
+  ping_request.game_hash = "ABCDEF0123456789";
+
+  ASSERT_NUM_EQUALS(rc_api_init_ping_request(&request, &ping_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=ping&u=Username&t=API_TOKEN&g=1234&h=1&x=ABCDEF0123456789");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_process_ping_response() {
   rc_api_ping_response_t ping_response;
   const char* server_response = "{\"Success\":true}";
@@ -1105,6 +1142,8 @@ void test_rapi_runtime(void) {
   TEST(test_init_ping_request_rich_presence);
   TEST(test_init_ping_request_rich_presence_unicode);
   TEST(test_init_ping_request_rich_presence_empty);
+  TEST(test_init_ping_request_game_hash_softcore);
+  TEST(test_init_ping_request_game_hash_hardcore);
 
   TEST(test_process_ping_response);
 
