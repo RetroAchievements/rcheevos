@@ -114,7 +114,9 @@ else
 endif
 
 # more strict validation for source files to eliminate warnings/errors in upstream consumers
-SRC_CFLAGS=-pedantic -Wsign-compare -Wtype-limits -Wimplicit-fallthrough=3 -Wunused-parameter
+# -Wextra includes -Wsign-compare -Wtype-limits -Wimplicit-fallthrough=3 -Wunused-parameter and more
+# -pedantic issues errors when using GNU extensions or other things that are not strictly ISO C
+SRC_CFLAGS=-Wextra -pedantic
 # 3DS build (retroarch) doesn't support signed char
 SRC_CFLAGS += -fno-signed-char
 
