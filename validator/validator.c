@@ -170,7 +170,7 @@ static void append_invalid_trigger_condition(char result[], size_t result_size, 
   }
 }
 
-static int validate_trigger(const char* trigger, char result[], size_t result_size, int console_id) {
+static int validate_trigger(const char* trigger, char result[], size_t result_size, uint32_t console_id) {
   char* buffer;
   rc_trigger_t* compiled;
   int success = 0;
@@ -207,7 +207,7 @@ static int validate_trigger(const char* trigger, char result[], size_t result_si
   return success;
 }
 
-static int validate_leaderboard(const char* leaderboard, char result[], const size_t result_size, int console_id)
+static int validate_leaderboard(const char* leaderboard, char result[], const size_t result_size, uint32_t console_id)
 {
   char* buffer;
   rc_lboard_t* compiled;
@@ -349,7 +349,7 @@ static int validate_macros(const rc_richpresence_t* richpresence, const char* sc
   return 1;
 }
 
-static int validate_richpresence(const char* script, char result[], const size_t result_size, int console_id)
+static int validate_richpresence(const char* script, char result[], const size_t result_size, uint32_t console_id)
 {
   char* buffer;
   rc_richpresence_t* compiled;

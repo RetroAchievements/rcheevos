@@ -198,8 +198,7 @@ const rc_client_user_t* rc_client_get_user_info(const rc_client_t* client);
  */
 int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], size_t buffer_size);
 
-typedef struct rc_client_user_game_summary_t
-{
+typedef struct rc_client_user_game_summary_t {
   uint32_t num_core_achievements;
   uint32_t num_unofficial_achievements;
   uint32_t num_unlocked_achievements;
@@ -577,16 +576,14 @@ enum {
   RC_CLIENT_EVENT_RECONNECTED = 18 /* all pending unlocks have been completed */
 };
 
-typedef struct rc_client_server_error_t
-{
+typedef struct rc_client_server_error_t {
   const char* error_message;
   const char* api;
   int result;
   uint32_t related_id;
 } rc_client_server_error_t;
 
-typedef struct rc_client_event_t
-{
+typedef struct rc_client_event_t {
   uint32_t type;
 
   rc_client_achievement_t* achievement;

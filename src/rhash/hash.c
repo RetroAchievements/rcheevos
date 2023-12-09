@@ -1957,7 +1957,7 @@ void rc_file_close_buffered_file(void* file_handle)
   free(file_handle);
 }
 
-static int rc_hash_file_from_buffer(char hash[33], int console_id, const uint8_t* buffer, size_t buffer_size)
+static int rc_hash_file_from_buffer(char hash[33], uint32_t console_id, const uint8_t* buffer, size_t buffer_size)
 {
   struct rc_hash_filereader buffered_filereader_funcs;
   struct rc_hash_filereader* old_filereader = filereader;
@@ -1980,7 +1980,7 @@ static int rc_hash_file_from_buffer(char hash[33], int console_id, const uint8_t
   return result;
 }
 
-int rc_hash_generate_from_buffer(char hash[33], int console_id, const uint8_t* buffer, size_t buffer_size)
+int rc_hash_generate_from_buffer(char hash[33], uint32_t console_id, const uint8_t* buffer, size_t buffer_size)
 {
   switch (console_id)
   {
@@ -2115,7 +2115,7 @@ static int rc_hash_whole_file(char hash[33], const char* path)
   return result;
 }
 
-static int rc_hash_buffered_file(char hash[33], int console_id, const char* path)
+static int rc_hash_buffered_file(char hash[33], uint32_t console_id, const char* path)
 {
   uint8_t* buffer;
   int64_t size;
@@ -2261,7 +2261,7 @@ static const char* rc_hash_get_first_item_from_playlist(const char* path)
   return disc_path;
 }
 
-static int rc_hash_generate_from_playlist(char hash[33], int console_id, const char* path)
+static int rc_hash_generate_from_playlist(char hash[33], uint32_t console_id, const char* path)
 {
   int result;
   const char* disc_path;
@@ -2283,7 +2283,7 @@ static int rc_hash_generate_from_playlist(char hash[33], int console_id, const c
   return result;
 }
 
-int rc_hash_generate_from_file(char hash[33], int console_id, const char* path)
+int rc_hash_generate_from_file(char hash[33], uint32_t console_id, const char* path)
 {
   switch (console_id)
   {

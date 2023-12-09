@@ -98,7 +98,7 @@ enum {
   RC_CONSOLE_EVENTS = 101
 };
 
-const char* rc_console_name(int console_id);
+const char* rc_console_name(uint32_t console_id);
 
 /*****************************************************************************\
 | Memory mapping                                                              |

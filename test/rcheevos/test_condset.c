@@ -1229,6 +1229,7 @@ static void test_resetnextif_addaddress_andnext_chain()
 
   /* first resetnextif not true, conditions 2, 4 and 6 are true */
   ram[1] = 0;
+  ram[3] = 0;
   assert_evaluate_condset(condset, memrefs, &memory, 0);
   assert_hit_count(condset, 1, 6);
   assert_hit_count(condset, 2, 1);

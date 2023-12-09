@@ -52,7 +52,7 @@ typedef struct rc_libretro_core_memory_info_t
 typedef void (*rc_libretro_get_core_memory_info_func)(uint32_t id, rc_libretro_core_memory_info_t* info);
 
 int rc_libretro_memory_init(rc_libretro_memory_regions_t* regions, const struct retro_memory_map* mmap,
-                            rc_libretro_get_core_memory_info_func get_core_memory_info, int console_id);
+                            rc_libretro_get_core_memory_info_func get_core_memory_info, uint32_t console_id);
 void rc_libretro_memory_destroy(rc_libretro_memory_regions_t* regions);
 
 uint8_t* rc_libretro_memory_find(const rc_libretro_memory_regions_t* regions, uint32_t address);
