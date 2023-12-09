@@ -114,8 +114,9 @@ else
 endif
 
 # more strict validation for source files to eliminate warnings/errors in upstream consumers
+SRC_CFLAGS=-pedantic -Wsign-compare -Wtype-limits -Wimplicit-fallthrough=3 -Wunused-parameter
 # 3DS build (retroarch) doesn't support signed char
-SRC_CFLAGS=-pedantic -Wsign-compare -Wtype-limits -Wimplicit-fallthrough=3 -fno-signed-char
+SRC_CFLAGS += -fno-signed-char
 
 ifeq ($(BUILD), c89)
     CFLAGS += -std=c89
