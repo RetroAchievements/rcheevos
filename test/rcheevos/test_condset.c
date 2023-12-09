@@ -1114,6 +1114,137 @@ static void test_resetnextif_andnext_hitchain() {
   assert_hit_count(condset, 3, 1);
 }
 
+static void test_resetnextif_andnext_chain()
+{
+  uint8_t ram[] = { 0x00, 0x00, 0x00, 0x01, 0x00 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* ResetNextIf byte(0x0001)!=0
+   * AndNext     byte(0x0002)=0
+   * ResetNextIf byte(0x0001)=0 (2)
+   *             byte(0x0003)=1 (5)
+   */
+  assert_parse_condset(&condset, &memrefs, buffer, "Z:0xH0001!=0_N:0xH0002=0_Z:0xH0001=0.2._0xH0003=1.5.");
+
+  /* first resetnextif not true, conditions 1, 2 and 3 are true */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 3, 1);
+
+  /* first resetnextif true, conditions 1 and 2 should reset, but not 3 */
+  ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 0);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 3, 2);
+
+  /* first resetnextif not true, condition 1, 2 and 3 are true */
+  ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 3, 3);
+
+  /* hitcount on condition 2 reached, condition 3 is reset */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 2);
+  assert_hit_count(condset, 2, 2);
+  assert_hit_count(condset, 3, 0);
+}
+
+static void test_resetnextif_addaddress_andnext_chain()
+{
+  uint8_t ram[] = { 0x00, 0x00, 0x00, 0x01, 0x00 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* AddAddress  byte(0x0004)
+   * ResetNextIf byte(0x0001)!=0
+   * AndNext     byte(0x0002)=0
+   * AddAddress  byte(0x0004)
+   * ResetNextIf byte(0x0001)=0 (2)
+   * AddAddress  byte(0x0004)
+   *             byte(0x0003)=1 (5)
+   * Trigger     byte(0x0003)=6
+   */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:0xH0004_Z:0xH0001!=0_N:0xH0002=0_A:0xH0004_Z:0xH0001=0.2._A:0xH0004_0xH0003=1.5._T:0xH0003=6");
+
+  /* first resetnextif not true, conditions 2, 4 and 6 are true */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 0);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 4, 1);
+  assert_hit_count(condset, 6, 1);
+
+  /* first resetnextif true, conditions 2 and 4 should reset, but not 6 */
+  ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 4, 0);
+  assert_hit_count(condset, 6, 2);
+
+  /* first resetnextif not true, conditions 2, 4 and 6 are true */
+  ram[1] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 4, 1);
+  assert_hit_count(condset, 6, 3);
+
+  /* hitcount on condition 4 reached, condition 6 is reset */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 2);
+  assert_hit_count(condset, 4, 2);
+  assert_hit_count(condset, 6, 0);
+
+  /* allow last condition to reach hit target */
+  ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 6);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 4, 0);
+  assert_hit_count(condset, 6, 5);
+
+  /* first resetnextif not true, conditions 2, 4 and 6 are true */
+  ram[1] = 0;
+  ram[3] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 6);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 4, 1);
+  assert_hit_count(condset, 6, 5);
+
+  /* first resetnextif true, conditions 2 and 4 should reset, but not 6 */
+  ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 7);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 4, 0);
+  assert_hit_count(condset, 6, 5);
+}
+
 static void test_resetnextif_addaddress() {
   uint8_t ram[] = {0x00, 0x00, 0x02, 0x03, 0x04};
   memory_t memory;
@@ -4021,8 +4152,10 @@ void test_condset(void) {
   TEST(test_resetnextif_addhits_chain_total);
   TEST(test_resetnextif_using_andnext);
   TEST(test_resetnextif_andnext);
+  TEST(test_resetnextif_andnext_chain);
   TEST(test_resetnextif_andnext_hitchain);
   TEST(test_resetnextif_addaddress);
+  TEST(test_resetnextif_addaddress_andnext_chain);
   TEST(test_resetnextif_chain);
   TEST(test_resetnextif_chain_andnext);
   TEST(test_resetnextif_chain_with_hits);

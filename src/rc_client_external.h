@@ -5,8 +5,6 @@
 extern "C" {
 #endif
 
-#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-
 #include "rc_client.h"
 
 /* NOTE: any function that is passed a callback also needs to be passed a client instance to pass
@@ -16,6 +14,7 @@ typedef void (*rc_client_external_enable_logging_func_t)(rc_client_t* client, in
 typedef void (*rc_client_external_set_event_handler_func_t)(rc_client_t* client, rc_client_event_handler_t handler);
 typedef void (*rc_client_external_set_read_memory_func_t)(rc_client_t* client, rc_client_read_memory_func_t handler);
 typedef void (*rc_client_external_set_get_time_millisecs_func_t)(rc_client_t* client, rc_get_time_millisecs_func_t handler);
+typedef int (*rc_client_external_can_pause_func_t)(uint32_t* frames_remaining);
 
 typedef void (*rc_client_external_set_int_func_t)(int value);
 typedef int (*rc_client_external_get_int_func_t)(void);
@@ -118,6 +117,7 @@ typedef struct rc_client_external_t
   rc_client_external_action_func_t do_frame;
   rc_client_external_action_func_t idle;
   rc_client_external_get_int_func_t is_processing_required;
+  rc_client_external_can_pause_func_t can_pause;
   rc_client_external_action_func_t reset;
 
   rc_client_external_progress_size_func_t progress_size;
@@ -127,8 +127,6 @@ typedef struct rc_client_external_t
 } rc_client_external_t;
 
 #define RC_CLIENT_EXTERNAL_VERSION 1
-
-#endif /* RC_CLIENT_SUPPORTS_EXTERNAL */
 
 #ifdef __cplusplus
 }

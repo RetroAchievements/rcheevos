@@ -2,12 +2,12 @@
 
 #include "../test_framework.h"
 
-static void test_name(int console_id, const char* expected_name)
+static void test_name(uint32_t console_id, const char* expected_name)
 {
   ASSERT_STR_EQUALS(rc_console_name(console_id), expected_name);
 }
 
-static void test_memory(int console_id, uint32_t expected_total_memory)
+static void test_memory(uint32_t console_id, uint32_t expected_total_memory)
 {
   const rc_memory_regions_t* regions = rc_console_memory_regions(console_id);
   uint32_t total_memory = 0;

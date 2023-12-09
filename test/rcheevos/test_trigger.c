@@ -1321,6 +1321,52 @@ static void test_measured_if_while_paused() {
   ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
 }
 
+static void test_measured_trigger() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* never(byte(0) != 0) && trigger_when(measured(repeated(3, byte(2) == 52))) */
+  assert_parse_trigger(&trigger, buffer, "R:0xH0000!=0SM:0xH0002=52(3)ST:0=1");
+  ASSERT_NUM_EQUALS(trigger->measured_as_percent, 0);
+
+  /* condition is true - hit count should be incremented, and trigger shown */
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_PRIMED);
+  assert_hit_count(trigger, 1, 0, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* core condition is false - trigger should not be shown and hit count reset */
+  ram[0] = 1;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_RESET);
+  assert_hit_count(trigger, 1, 0, 0U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 0U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* core condition is true again - hit count should be incremented, and trigger shown */
+  ram[0] = 0;
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_PRIMED);
+  assert_hit_count(trigger, 1, 0, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* increment hit count */
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_PRIMED);
+  assert_hit_count(trigger, 1, 0, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+
+  /* trigger */
+  ASSERT_NUM_EQUALS(evaluate_trigger(trigger, &memory), RC_TRIGGER_STATE_TRIGGERED);
+  assert_hit_count(trigger, 1, 0, 3U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 3U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 3U);
+}
+
 static void test_resetnextif_trigger() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -1934,6 +1980,7 @@ void test_trigger(void) {
   TEST(test_measured_if_multiple_measured);
   TEST(test_measured_if_multiple_measured_if);
   TEST(test_measured_if_while_paused);
+  TEST(test_measured_trigger);
 
   /* trigger */
   TEST(test_resetnextif_trigger);

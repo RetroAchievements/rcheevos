@@ -389,10 +389,10 @@
     <ClInclude Include="..\include\rc_consoles.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\RetroArch\deps\rcheevos\src\rcheevos\rc_client_external.h">
+    <ClInclude Include="..\include\rc_client_raintegration.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\rc_client_raintegration.h">
+    <ClInclude Include="..\src\rc_client_external.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

@@ -62,7 +62,7 @@ static void test_validate_trigger_128k(const char* trigger, const char* expected
   test_validate_trigger_max_address(trigger, expected_error, 0x1FFFF);
 }
 
-int validate_trigger_for_console(const char* trigger, char result[], const size_t result_size, int console_id) {
+int validate_trigger_for_console(const char* trigger, char result[], const size_t result_size, uint32_t console_id) {
   char* buffer;
   rc_trigger_t* compiled;
   int success = 0;
@@ -90,7 +90,7 @@ int validate_trigger_for_console(const char* trigger, char result[], const size_
   return success;
 }
 
-static void test_validate_trigger_console(const char* trigger, const char* expected_error, int console_id) {
+static void test_validate_trigger_console(const char* trigger, const char* expected_error, uint32_t console_id) {
   char buffer[512];
   int valid = validate_trigger_for_console(trigger, buffer, sizeof(buffer), console_id);
 

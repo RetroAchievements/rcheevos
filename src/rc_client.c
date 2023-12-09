@@ -23,6 +23,9 @@
 #define RC_CLIENT_UNKNOWN_GAME_ID (uint32_t)-1
 #define RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS (10 * 60) /* ten minutes */
 
+#define RC_MINIMUM_UNPAUSED_FRAMES 20
+#define RC_PAUSE_DECAY_MULTIPLIER 4
+
 enum {
   RC_CLIENT_ASYNC_NOT_ABORTED = 0,
   RC_CLIENT_ASYNC_ABORTED = 1,
@@ -91,6 +94,7 @@ rc_client_t* rc_client_create(rc_client_read_memory_func_t read_memory_function,
     return NULL;
 
   client->state.hardcore = 1;
+  client->state.required_unpaused_frames = RC_MINIMUM_UNPAUSED_FRAMES;
 
   client->callbacks.read_memory = read_memory_function;
   client->callbacks.server_call = server_call_function;
@@ -4895,6 +4899,24 @@ void rc_client_do_frame(rc_client_t* client)
     rc_client_raise_pending_events(client, client->game);
   }
 
+  /* we've processed a frame. if there's a pause delay in effect, process it */
+  if (client->state.unpaused_frame_decay > 0) {
+    client->state.unpaused_frame_decay--;
+
+    if (client->state.unpaused_frame_decay == 0 &&
+        client->state.required_unpaused_frames > RC_MINIMUM_UNPAUSED_FRAMES) {
+      /* the full decay has elapsed and a penalty still exists.
+       * lower the penalty and reset the decay counter */
+      client->state.required_unpaused_frames >>= 1;
+
+      if (client->state.required_unpaused_frames <= RC_MINIMUM_UNPAUSED_FRAMES)
+        client->state.required_unpaused_frames = RC_MINIMUM_UNPAUSED_FRAMES;
+
+      client->state.unpaused_frame_decay =
+        client->state.required_unpaused_frames * (RC_PAUSE_DECAY_MULTIPLIER - 1) - 1;
+    }
+  }
+
   rc_client_idle(client);
 }
 
@@ -5073,6 +5095,49 @@ void rc_client_reset(rc_client_t* client)
   rc_mutex_unlock(&client->state.mutex);
 
   rc_client_raise_pending_events(client, client->game);
+}
+
+int rc_client_can_pause(rc_client_t* client, uint32_t* frames_remaining)
+{
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->can_pause)
+    return client->state.external_client->can_pause(frames_remaining);
+#endif
+
+  if (frames_remaining)
+    *frames_remaining = 0;
+
+  /* pause is always allowed in softcore */
+  if (!rc_client_get_hardcore_enabled(client))
+    return 1;
+
+  /* a full decay means we haven't processed any frames since the last time this was called. */
+  if (client->state.unpaused_frame_decay == client->state.required_unpaused_frames * RC_PAUSE_DECAY_MULTIPLIER)
+    return 1;
+
+  /* if less than RC_MINIMUM_UNPAUSED_FRAMES have been processed, don't allow the pause */
+  if (client->state.unpaused_frame_decay > client->state.required_unpaused_frames * (RC_PAUSE_DECAY_MULTIPLIER - 1)) {
+    if (frames_remaining) {
+      *frames_remaining = client->state.unpaused_frame_decay -
+                          client->state.required_unpaused_frames * (RC_PAUSE_DECAY_MULTIPLIER - 1);
+    }
+    return 0;
+  }
+
+  /* we're going to allow the emulator to pause. calculate how many frames are needed before the next
+   * pause will be allowed. */
+
+  if (client->state.unpaused_frame_decay > 0) {
+    /* The user has paused within the decay window. Require a longer
+     * run of unpaused frames before allowing the next pause */
+    if (client->state.required_unpaused_frames < 5 * 60) /* don't make delay longer then 5 seconds */
+      client->state.required_unpaused_frames += RC_MINIMUM_UNPAUSED_FRAMES;
+  }
+
+  /* require multiple unpaused_frames windows to decay the penalty */
+  client->state.unpaused_frame_decay = client->state.required_unpaused_frames * RC_PAUSE_DECAY_MULTIPLIER;
+
+  return 1;
 }
 
 size_t rc_client_progress_size(rc_client_t* client)

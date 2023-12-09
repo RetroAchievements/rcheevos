@@ -198,8 +198,7 @@ const rc_client_user_t* rc_client_get_user_info(const rc_client_t* client);
  */
 int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], size_t buffer_size);
 
-typedef struct rc_client_user_game_summary_t
-{
+typedef struct rc_client_user_game_summary_t {
   uint32_t num_core_achievements;
   uint32_t num_unofficial_achievements;
   uint32_t num_unlocked_achievements;
@@ -588,16 +587,14 @@ enum {
   RC_CLIENT_EVENT_RECONNECTED = 18 /* all pending unlocks have been completed */
 };
 
-typedef struct rc_client_server_error_t
-{
+typedef struct rc_client_server_error_t {
   const char* error_message;
   const char* api;
   int result;
   uint32_t related_id;
 } rc_client_server_error_t;
 
-typedef struct rc_client_event_t
-{
+typedef struct rc_client_event_t {
   uint32_t type;
 
   rc_client_achievement_t* achievement;
@@ -639,6 +636,14 @@ void rc_client_do_frame(rc_client_t* client);
  * Should be explicitly called if rc_client_do_frame is not being called because emulation is paused.
  */
 void rc_client_idle(rc_client_t* client);
+
+/**
+ * Determines if a sufficient amount of frames have been processed since the last call to rc_client_can_pause.
+ * Should not be called unless the client is trying to pause.
+ * If false is returned, and frames_remaining is not NULL, frames_remaining will be set to the number of frames
+ * still required before pause is allowed, which can be converted to a time in seconds for displaying to the user.
+ */
+int rc_client_can_pause(rc_client_t* client, uint32_t* frames_remaining);
 
 /**
  * Informs the runtime that the emulator has been reset. Will reset all achievements and leaderboards

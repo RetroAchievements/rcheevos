@@ -7,7 +7,7 @@
 
 #include <stdlib.h>
 
-static int hash_mock_file(const char* filename, char hash[33], int console_id, const uint8_t* buffer, size_t buffer_size)
+static int hash_mock_file(const char* filename, char hash[33], uint32_t console_id, const uint8_t* buffer, size_t buffer_size)
 {
   mock_file(0, filename, buffer, buffer_size);
 
@@ -23,7 +23,7 @@ static void iterate_mock_file(struct rc_hash_iterator *iterator, const char* fil
 
 /* ========================================================================= */
 
-static void test_hash_full_file(int console_id, const char* filename, size_t size, const char* expected_md5)
+static void test_hash_full_file(uint32_t console_id, const char* filename, size_t size, const char* expected_md5)
 {
   uint8_t* image = generate_generic_file(size);
   char hash_buffer[33], hash_file[33], hash_iterator[33];
@@ -56,7 +56,7 @@ static void test_hash_full_file(int console_id, const char* filename, size_t siz
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
-static void test_hash_unknown_format(int console_id, const char* path)
+static void test_hash_unknown_format(uint32_t console_id, const char* path)
 {
   char hash_file[33] = "", hash_iterator[33] = "";
 
@@ -79,7 +79,7 @@ static void test_hash_unknown_format(int console_id, const char* path)
   ASSERT_STR_EQUALS(hash_iterator, "");
 }
 
-static void test_hash_m3u(int console_id, const char* filename, size_t size, const char* expected_md5)
+static void test_hash_m3u(uint32_t console_id, const char* filename, size_t size, const char* expected_md5)
 {
   uint8_t* image = generate_generic_file(size);
   char hash_file[33], hash_iterator[33];
@@ -110,7 +110,7 @@ static void test_hash_m3u(int console_id, const char* filename, size_t size, con
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
-static void test_hash_filename(int console_id, const char* path, const char* expected_md5)
+static void test_hash_filename(uint32_t console_id, const char* path, const char* expected_md5)
 {
   char hash_file[33], hash_iterator[33];
 
