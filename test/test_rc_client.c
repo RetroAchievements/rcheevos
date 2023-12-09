@@ -3446,6 +3446,7 @@ static void test_achievement_list_buckets(void)
     rc_client_destroy_achievement_list(list);
   }
 
+  /* also check mapping to lock state */
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
@@ -3643,6 +3644,147 @@ static void test_achievement_list_buckets_progress_sort_big_ids(void)
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
     ASSERT_FLOAT_EQUALS(list->buckets[1].achievements[0]->measured_percent, 0.0f);
     ASSERT_STR_EQUALS(list->buckets[1].achievements[0]->measured_progress, "");
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_achievement_list_buckets_with_unsynced(void)
+{
+  rc_client_achievement_list_t* list;
+  rc_client_achievement_t* achievement;
+  const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5&h=1&m=0123456789ABCDEF&v=732f8e30e9c1eb08948dda098c305d8b";
+
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, unlock_8);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+  mock_memory(memory, sizeof(memory));
+
+  /* discard the queued ping to make finding the retry easier */
+  g_client->state.scheduled_callbacks = NULL;
+
+  rc_client_do_frame(g_client); /* advance achievements out of waiting state */
+  event_count = 0;
+
+  memory[5] = 5; /* trigger achievement 5 */
+  memory[1] = 1; /* begin challenge achievement 7 */
+  rc_client_do_frame(g_client);
+  event_count = 0;
+
+  /* first failure will immediately requeue the request */
+  async_api_error(unlock_request_params, response_503, 503);
+  assert_api_pending(unlock_request_params);
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+  rc_client_idle(g_client);
+
+  /* second failure will queue it */
+  async_api_error(unlock_request_params, response_503, 503);
+  assert_api_call_count(unlock_request_params, 0);
+  ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+  rc_client_idle(g_client);
+  event_count = 0;
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list)
+  {
+    ASSERT_NUM_EQUALS(list->num_buckets, 4);
+
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Active Challenges");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 7);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Recently Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 4);
+
+    ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[3].label, "Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 8);
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  /* adjust unlock time on achievement 5 so it's no longer recent */
+  achievement = (rc_client_achievement_t*)rc_client_get_achievement_info(g_client, 5);
+  achievement->unlock_time -= 15 * 60;
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list)
+  {
+    ASSERT_NUM_EQUALS(list->num_buckets, 4);
+
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Active Challenges");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 7);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSYNCED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Unlocks Not Synced to Server");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 4);
+
+    ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[3].label, "Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 8);
+
+    rc_client_destroy_achievement_list(list);
+  }
+
+  /* allow unlock request to succeed */
+  g_now += 2 * 1000;
+  rc_client_idle(g_client);
+  assert_api_pending(unlock_request_params);
+  async_api_response(unlock_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list)
+  {
+    ASSERT_NUM_EQUALS(list->num_buckets, 3);
+
+    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[0].label, "Active Challenges");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 7);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Locked");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 4);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 0);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Unlocked");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 2);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[1]->id, 8);
 
     rc_client_destroy_achievement_list(list);
   }
@@ -8341,6 +8483,7 @@ void test_client(void) {
   TEST(test_achievement_list_buckets);
   TEST(test_achievement_list_buckets_progress_sort);
   TEST(test_achievement_list_buckets_progress_sort_big_ids);
+  TEST(test_achievement_list_buckets_with_unsynced);
   TEST(test_achievement_list_subset_with_unofficial_and_unsupported);
   TEST(test_achievement_list_subset_buckets);
   TEST(test_achievement_list_subset_buckets_subset_first);
