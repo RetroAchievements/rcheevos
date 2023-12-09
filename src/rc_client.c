@@ -1347,7 +1347,7 @@ static void rc_client_deactivate_leaderboards(rc_client_game_info_t* game, rc_cl
 
         case RC_CLIENT_LEADERBOARD_STATE_TRACKING:
           rc_client_release_leaderboard_tracker(client->game, leaderboard);
-          /* fallthrough to default */
+          /* fallthrough */ /* to default */
         default:
           leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_INACTIVE;
           break;
@@ -4030,7 +4030,7 @@ static void rc_client_subset_reset_leaderboards(rc_client_game_info_t* game, rc_
 
       case RC_CLIENT_LEADERBOARD_STATE_TRACKING:
         rc_client_release_leaderboard_tracker(game, leaderboard);
-        /* fallthrough to default */
+        /* fallthrough */ /* to default */
       default:
         leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_ACTIVE;
         rc_reset_lboard(lboard);
