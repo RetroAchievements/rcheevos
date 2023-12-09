@@ -783,6 +783,52 @@ int rc_json_get_required_unum(uint32_t* out, rc_api_response_t* response, const 
   return rc_json_missing_field(response, field);
 }
 
+int rc_json_get_float(float* out, const rc_json_field_t* field, const char* field_name) {
+  int32_t whole, fraction, fraction_denominator;
+  const char* decimal = field->value_start;
+
+  if (!decimal) {
+    *out = 0.0f;
+    return 0;
+  }
+
+  if (!rc_json_get_num(&whole, field, field_name))
+    return 0;
+
+  while (decimal < field->value_end && *decimal != '.')
+    ++decimal;
+
+  fraction = 0;
+  fraction_denominator = 1;
+  if (decimal) {
+    ++decimal;
+    while (decimal < field->value_end && *decimal >= '0' && *decimal <= '9') {
+      fraction *= 10;
+      fraction += *decimal - '0';
+      fraction_denominator *= 10;
+      ++decimal;
+    }
+  }
+
+  if (whole < 0)
+    fraction = -fraction;
+
+  *out = (float)whole + ((float)fraction / (float)fraction_denominator);
+  return 1;
+}
+
+void rc_json_get_optional_float(float* out, const rc_json_field_t* field, const char* field_name, float default_value) {
+  if (!rc_json_get_float(out, field, field_name))
+    *out = default_value;
+}
+
+int rc_json_get_required_float(float* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+  if (rc_json_get_float(out, field, field_name))
+    return 1;
+
+  return rc_json_missing_field(response, field);
+}
+
 int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* field_name) {
   struct tm tm;
 

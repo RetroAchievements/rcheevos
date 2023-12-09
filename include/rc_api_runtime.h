@@ -119,11 +119,22 @@ typedef struct rc_api_achievement_definition_t {
   time_t created;
   /* When the achievement was last modified on the server */
   time_t updated;
+  /* The achievement type (win/progression/missable) */
+  uint32_t type;
+  /* The approximate rarity of the achievement (X% of users have earned the achievement) */
+  float rarity;
+  /* The approximate rarity of the achievement in hardcore (X% of users have earned the achievement in hardcore) */
+  float rarity_hardcore;
 }
 rc_api_achievement_definition_t;
 
 #define RC_ACHIEVEMENT_CATEGORY_CORE 3
 #define RC_ACHIEVEMENT_CATEGORY_UNOFFICIAL 5
+
+#define RC_ACHIEVEMENT_TYPE_STANDARD 0
+#define RC_ACHIEVEMENT_TYPE_MISSABLE 1
+#define RC_ACHIEVEMENT_TYPE_PROGRESSION 2
+#define RC_ACHIEVEMENT_TYPE_WIN 3
 
 /**
  * Response data for a fetch game data request.

@@ -313,6 +313,69 @@ static void test_json_get_required_unum() {
   ASSERT_NUM_EQUALS(response.succeeded, 0);
 }
 
+static void test_json_get_float(const char* input, float expected)
+{
+  rc_api_response_t response;
+  rc_json_field_t field;
+  char buffer[64];
+  float value = 0.0;
+  snprintf(buffer, sizeof(buffer), "{\"Test\":%s}", input);
+
+  assert_json_parse_response(&response, &field, buffer, RC_OK);
+
+  if (expected)
+  {
+    ASSERT_TRUE(rc_json_get_float(&value, &field, "Test"));
+  }
+  else
+  {
+    ASSERT_FALSE(rc_json_get_float(&value, &field, "Test"));
+  }
+
+  ASSERT_FLOAT_EQUALS(value, expected);
+}
+
+static void test_json_get_optional_float()
+{
+  rc_api_response_t response;
+  rc_json_field_t field;
+  float value = 0.0;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":1.5}", RC_OK);
+
+  rc_json_get_optional_float(&value, &field, "Test", 9999);
+  ASSERT_FLOAT_EQUALS(value, 1.5);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":1.5}", RC_OK);
+
+  rc_json_get_optional_float(&value, &field, "Test", 2.5);
+  ASSERT_FLOAT_EQUALS(value, 2.5);
+}
+
+static void test_json_get_required_float()
+{
+  rc_api_response_t response;
+  rc_json_field_t field;
+  float value = 0.0;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":1.5}", RC_OK);
+
+  ASSERT_TRUE(rc_json_get_required_float(&value, &response, &field, "Test"));
+  ASSERT_FLOAT_EQUALS(value, 1.5f);
+
+  ASSERT_PTR_NULL(response.error_message);
+  ASSERT_NUM_EQUALS(response.succeeded, 1);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":1.5}", RC_OK);
+
+  ASSERT_FALSE(rc_json_get_required_float(&value, &response, &field, "Test"));
+  ASSERT_FLOAT_EQUALS(value, 0.0f);
+
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "Test not found in response");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
 static void test_json_get_bool(const char* input, int expected) {
   rc_api_response_t response;
   rc_json_field_t field;
@@ -683,6 +746,17 @@ void test_rapi_common(void) {
   TEST_PARAMS2(test_json_get_unum, "3.14159", 3);
   TEST(test_json_get_optional_unum);
   TEST(test_json_get_required_unum);
+
+  /* rc_json_get_num */
+  TEST_PARAMS2(test_json_get_float, "Banana", 0.0f);
+  TEST_PARAMS2(test_json_get_float, "True", 0.0f);
+  TEST_PARAMS2(test_json_get_float, "2468", 2468.0f);
+  TEST_PARAMS2(test_json_get_float, "+55", 55.0f);
+  TEST_PARAMS2(test_json_get_float, "-16", -16.0f);
+  TEST_PARAMS2(test_json_get_float, "3.14159", 3.14159f);
+  TEST_PARAMS2(test_json_get_float, "-6.7", -6.7f);
+  TEST(test_json_get_optional_float);
+  TEST(test_json_get_required_float);
 
   /* rc_json_get_bool */
   TEST_PARAMS2(test_json_get_bool, "true", 1);

@@ -1613,6 +1613,9 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     achievement->public_.points = read->points;
     achievement->public_.category = (read->category != RC_ACHIEVEMENT_CATEGORY_CORE) ?
       RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL : RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE;
+    achievement->public_.rarity = read->rarity;
+    achievement->public_.rarity_hardcore = read->rarity_hardcore;
+    achievement->public_.type = read->type; /* assert: mapping is 1:1 */
 
     memaddr = read->definition;
     rc_runtime_checksum(memaddr, achievement->md5);

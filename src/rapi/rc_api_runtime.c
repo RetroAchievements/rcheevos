@@ -92,6 +92,20 @@ int rc_api_process_fetch_game_data_response(rc_api_fetch_game_data_response_t* r
   return rc_api_process_fetch_game_data_server_response(response, &response_obj);
 }
 
+static int rc_parse_achievement_type(const char* type)
+{
+  if (strcmp(type, "missable") == 0)
+    return RC_ACHIEVEMENT_TYPE_MISSABLE;
+
+  if (strcmp(type, "win_condition") == 0)
+    return RC_ACHIEVEMENT_TYPE_WIN;
+
+  if (strcmp(type, "progression") == 0)
+    return RC_ACHIEVEMENT_TYPE_PROGRESSION;
+
+  return RC_ACHIEVEMENT_TYPE_STANDARD;
+}
+
 int rc_api_process_fetch_game_data_server_response(rc_api_fetch_game_data_response_t* response, const rc_api_server_response_t* server_response) {
   rc_api_achievement_definition_t* achievement;
   rc_api_leaderboard_definition_t* leaderboard;
@@ -120,10 +134,6 @@ int rc_api_process_fetch_game_data_server_response(rc_api_fetch_game_data_respon
     RC_JSON_NEW_FIELD("RichPresencePatch"),
     RC_JSON_NEW_FIELD("Achievements"), /* array */
     RC_JSON_NEW_FIELD("Leaderboards") /* array */
-    /* unused fields
-    RC_JSON_NEW_FIELD("ForumTopicID"),
-    RC_JSON_NEW_FIELD("Flags")
-     * unused fields */
   };
 
   rc_json_field_t achievement_fields[] = {
@@ -136,7 +146,10 @@ int rc_api_process_fetch_game_data_server_response(rc_api_fetch_game_data_respon
     RC_JSON_NEW_FIELD("Author"),
     RC_JSON_NEW_FIELD("BadgeName"),
     RC_JSON_NEW_FIELD("Created"),
-    RC_JSON_NEW_FIELD("Modified")
+    RC_JSON_NEW_FIELD("Modified"),
+    RC_JSON_NEW_FIELD("Type"),
+    RC_JSON_NEW_FIELD("Rarity"),
+    RC_JSON_NEW_FIELD("RarityHardcore")
   };
 
   rc_json_field_t leaderboard_fields[] = {
@@ -246,6 +259,35 @@ int rc_api_process_fetch_game_data_server_response(rc_api_fetch_game_data_respon
       if (!rc_json_get_required_unum(&timet, &response->response, &achievement_fields[9], "Modified"))
         return RC_MISSING_VALUE;
       achievement->updated = (time_t)timet;
+
+      achievement->type = RC_ACHIEVEMENT_TYPE_STANDARD;
+      if (achievement_fields[10].value_end) {
+        len = achievement_fields[10].value_end - achievement_fields[10].value_start - 2;
+        if (len < sizeof(format) - 1) {
+          memcpy(format, achievement_fields[10].value_start + 1, len);
+          format[len] = '\0';
+          achievement->type = rc_parse_achievement_type(format);
+        }
+      }
+
+      /* legacy support : if title contains[m], change type to missable and remove[m] from title */
+      if (memcmp(achievement->title, "[m]", 3) == 0) {
+        len = 3;
+        while (achievement->title[len] == ' ')
+          ++len;
+        achievement->title += len;
+        achievement->type = RC_ACHIEVEMENT_TYPE_MISSABLE;
+      }
+      else if (achievement_fields[1].value_end && memcmp(achievement_fields[1].value_end - 4, "[m]", 3) == 0) {
+        len = strlen(achievement->title) - 3;
+        while (achievement->title[len - 1] == ' ')
+          --len;
+        ((char*)achievement->title)[len] = '\0';
+        achievement->type = RC_ACHIEVEMENT_TYPE_MISSABLE;
+      }
+
+      rc_json_get_optional_float(&achievement->rarity, &achievement_fields[11], "Rarity", 100.0);
+      rc_json_get_optional_float(&achievement->rarity_hardcore, &achievement_fields[12], "RarityHardcore", 100.0);
 
       ++achievement;
     }
