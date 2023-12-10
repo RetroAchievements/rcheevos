@@ -71,8 +71,11 @@ static void rc_client_raintegration_load_dll(rc_client_t* client,
   raintegration->init_client_offline = (rc_client_raintegration_init_client_func)GetProcAddress(hDLL, "_RA_InitOffline");
   raintegration->shutdown = (rc_client_raintegration_action_func)GetProcAddress(hDLL, "_RA_Shutdown");
 
+  raintegration->update_main_window_handle = (rc_client_raintegration_hwnd_action_func)GetProcAddress(hDLL, "_RA_UpdateHWnd");
+
   raintegration->get_external_client = (rc_client_raintegration_get_external_client_func)GetProcAddress(hDLL, "_Rcheevos_GetExternalClient");
   raintegration->get_menu = (rc_client_raintegration_get_menu_func)GetProcAddress(hDLL, "_Rcheevos_RAIntegrationGetMenu");
+  raintegration->activate_menu_item = (rc_client_raintegration_activate_menuitem_func)GetProcAddress(hDLL, "_Rcheevos_ActivateRAIntegrationMenuItem");
   raintegration->set_event_handler = (rc_client_raintegration_set_event_handler_func)GetProcAddress(hDLL, "_Rcheevos_SetRAIntegrationEventHandler");
 
   if (!raintegration->get_version ||
@@ -196,6 +199,8 @@ static void rc_client_init_raintegration(rc_client_t* client,
 
       /* attach the external client and call the callback */
       client->state.external_client = external_client;
+
+      client->state.raintegration->bIsInited = 1;
 
       version_validation_callback_data->callback(RC_OK, NULL,
          client, version_validation_callback_data->callback_userdata);
@@ -341,6 +346,16 @@ rc_client_async_handle_t* rc_client_begin_load_raintegration(rc_client_t* client
   return &callback_data->async_handle;
 }
 
+void rc_client_raintegration_update_main_window_handle(rc_client_t* client, HWND main_window_handle)
+{
+   if (client && client->state.raintegration &&
+       client->state.raintegration->bIsInited &&
+       client->state.raintegration->update_main_window_handle)
+   {
+      client->state.raintegration->update_main_window_handle(main_window_handle);
+   }
+}
+
 void rc_client_raintegration_set_event_handler(rc_client_t* client,
     rc_client_raintegration_event_handler_t handler)
 {
@@ -350,10 +365,103 @@ void rc_client_raintegration_set_event_handler(rc_client_t* client,
 
 const rc_client_raintegration_menu_t* rc_client_raintegration_get_menu(const rc_client_t* client)
 {
-  if (!client || !client->state.raintegration || !client->state.raintegration->get_menu)
+  if (!client || !client->state.raintegration ||
+      !client->state.raintegration->bIsInited ||
+      !client->state.raintegration->get_menu)
+  {
     return NULL;
+  }
 
   return client->state.raintegration->get_menu();
+}
+
+void rc_client_raintegration_rebuild_submenu(rc_client_t* client, HMENU hMenu)
+{
+   HMENU hPopupMenu = NULL;
+   const rc_client_raintegration_menu_t* menu;
+
+   if (!client || !client->state.raintegration)
+      return;
+
+   /* destroy the existing menu */
+   if (client->state.raintegration->hPopupMenu)
+      DestroyMenu(client->state.raintegration->hPopupMenu);
+
+   /* create the popup menu */
+   hPopupMenu = CreatePopupMenu();
+
+   menu = rc_client_raintegration_get_menu(client);
+   if (menu && menu->num_items)
+   {
+      const rc_client_raintegration_menu_item_t* menuitem = menu->items;
+      const rc_client_raintegration_menu_item_t* stop = menu->items + menu->num_items;
+
+      for (; menuitem < stop; ++menuitem)
+      {
+         if (menuitem->id == 0)
+            AppendMenuA(hPopupMenu, MF_SEPARATOR, 0U, NULL);
+         else
+         {
+            UINT flags = MF_STRING;
+            if (menuitem->checked)
+               flags |= MF_CHECKED;
+            if (!menuitem->enabled)
+               flags |= MF_DISABLED | MF_GRAYED;
+
+            AppendMenuA(hPopupMenu, flags, menuitem->id, menuitem->label);
+         }
+      }
+   }
+
+   /* add/update the item containing the popup menu */
+   {
+      int nIndex = GetMenuItemCount(hMenu);
+      const char* menuText = "&RetroAchievements";
+      char buffer[64];
+
+      UINT flags = MF_POPUP | MF_STRING;
+      if (!menu || !menu->num_items)
+         flags |= MF_DISABLED | MF_GRAYED;
+
+      while (--nIndex >= 0)
+      {
+         if (GetMenuStringA(hMenu, nIndex, buffer, sizeof(buffer) - 1, MF_BYPOSITION))
+         {
+            if (strcmp(buffer, menuText) == 0)
+               break;
+         }
+      }
+
+      if (nIndex == -1)
+         AppendMenuA(hMenu, flags, (UINT_PTR)hPopupMenu, menuText);
+      else
+         ModifyMenuA(hMenu, nIndex, flags | MF_BYPOSITION, (UINT_PTR)hPopupMenu, menuText);
+   }
+
+   client->state.raintegration->hPopupMenu = hPopupMenu;
+}
+
+void rc_client_raintegration_update_menu_item(const rc_client_t* client, const rc_client_raintegration_menu_item_t* menuitem)
+{
+   if (client && client->state.raintegration && client->state.raintegration->hPopupMenu)
+   {
+      UINT flags = MF_STRING;
+      if (menuitem->checked)
+         flags |= MF_CHECKED;
+      if (!menuitem->enabled)
+         flags |= MF_DISABLED | MF_GRAYED;
+
+      ModifyMenuA(client->state.raintegration->hPopupMenu, menuitem->id, flags | MF_BYCOMMAND,
+         (UINT_PTR)client->state.raintegration->hPopupMenu, menuitem->label);
+   }
+}
+
+int rc_client_raintegration_activate_menu_item(const rc_client_t* client, uint32_t nMenuItemId)
+{
+   if (!client || !client->state.raintegration || !client->state.raintegration->activate_menu_item)
+      return 0;
+
+   return client->state.raintegration->activate_menu_item(nMenuItemId);
 }
 
 void rc_client_unload_raintegration(rc_client_t* client)

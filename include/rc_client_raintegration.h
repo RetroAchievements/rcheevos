@@ -60,7 +60,13 @@ rc_client_async_handle_t* rc_client_begin_load_raintegration(rc_client_t* client
 
 void rc_client_unload_raintegration(rc_client_t* client);
 
+void rc_client_raintegration_update_main_window_handle(rc_client_t* client, HWND main_window_handle);
+
 const rc_client_raintegration_menu_t* rc_client_raintegration_get_menu(const rc_client_t* client);
+
+void rc_client_raintegration_rebuild_submenu(rc_client_t* client, HMENU hMenu);
+void rc_client_raintegration_update_menu_item(const rc_client_t* client, const rc_client_raintegration_menu_item_t* menu_item);
+int rc_client_raintegration_activate_menu_item(const rc_client_t* client, uint32_t nMenuItemId);
 
 void rc_client_raintegration_set_event_handler(rc_client_t* client,
     rc_client_raintegration_event_handler_t handler);

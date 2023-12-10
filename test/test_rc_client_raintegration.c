@@ -68,6 +68,13 @@ static void rc_client_callback_expect_uncalled(int result, const char* error_mes
   ASSERT_FAIL("Callback should not have been called.");
 }
 
+static uint32_t g_uint32;
+
+static void rc_client_integration_set_uint(uint32_t value)
+{
+  g_uint32 = value;
+}
+
 /* ----- version ----- */
 
 extern int rc_client_version_less(const char* left, const char* right);
@@ -241,7 +248,36 @@ static void test_load_raintegration_after_login(void)
   rc_client_destroy(g_client);
 }
 
-/* ----- get_menu ----- */
+/* ----- windows ----- */
+
+static HWND g_hWnd;
+
+static void rc_client_integration_update_main_window_handle(HWND hWnd)
+{
+  g_hWnd = hWnd;
+}
+
+static void test_update_main_window_handle(void)
+{
+  HWND hWnd = (HWND)0x12345678;
+  g_hWnd = NULL;
+
+  g_client = mock_client_with_integration();
+  g_client->state.raintegration->update_main_window_handle = rc_client_integration_update_main_window_handle;
+
+  /* does nothing if raintegration hasn't been initialized */
+  ASSERT_NUM_EQUALS(g_client->state.raintegration->bIsInited, 0);
+  rc_client_raintegration_update_main_window_handle(g_client, hWnd);
+  ASSERT_PTR_NULL(g_hWnd);
+
+  g_client->state.raintegration->bIsInited = 1;
+  rc_client_raintegration_update_main_window_handle(g_client, hWnd);
+  ASSERT_PTR_EQUALS(g_hWnd, hWnd);
+
+  g_hWnd = NULL;
+}
+
+/* ----- menu ----- */
 
 static rc_client_raintegration_menu_t* g_menu;
 
@@ -271,6 +307,12 @@ static void test_get_menu(void)
   g_client = mock_client_with_integration();
   g_client->state.raintegration->get_menu = rc_client_integration_get_menu;
 
+  /* returns null if raintegration hasn't been initialized */
+  ASSERT_NUM_EQUALS(g_client->state.raintegration->bIsInited, 0);
+  menu = rc_client_raintegration_get_menu(g_client);
+  ASSERT_PTR_NULL(menu);
+
+  g_client->state.raintegration->bIsInited = 1;
   menu = rc_client_raintegration_get_menu(g_client);
   ASSERT_PTR_NOT_NULL(menu);
 
@@ -289,6 +331,28 @@ static void test_get_menu(void)
   ASSERT_NUM_EQUALS(menu->items[2].enabled, 0);
 
   g_menu = NULL;
+}
+
+static int rc_client_integration_activate_menu_item(uint32_t id)
+{
+  if (id < 1700)
+    return 0;
+
+  g_uint32 = id;
+  return 1;
+}
+
+static void test_activate_menu_item(void)
+{
+  g_client = mock_client_with_integration();
+  g_client->state.raintegration->activate_menu_item = rc_client_integration_activate_menu_item;
+
+  g_uint32 = 0;
+  ASSERT_NUM_EQUALS(rc_client_raintegration_activate_menu_item(g_client, 1600), 0);
+  ASSERT_NUM_EQUALS(g_uint32, 0);
+
+  ASSERT_NUM_EQUALS(rc_client_raintegration_activate_menu_item(g_client, 1704), 1);
+  ASSERT_NUM_EQUALS(g_uint32, 1704);
 }
 
 /* ----- harness ----- */
@@ -314,8 +378,12 @@ void test_client_raintegration(void) {
   TEST(test_load_raintegration_offline);
   TEST(test_load_raintegration_after_login);
 
-  /* get_menu */
+  /* windows */
+  TEST(test_update_main_window_handle);
+
+  /* menu */
   TEST(test_get_menu);
+  TEST(test_activate_menu_item);
 
   TEST_SUITE_END();
 }
