@@ -223,7 +223,6 @@ static void rc_client_callback_expect_after_login_failure(int result, const char
   ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
-
 static void test_load_raintegration_after_login(void)
 {
   g_client = mock_client_with_integration();
@@ -240,6 +239,56 @@ static void test_load_raintegration_after_login(void)
   ASSERT_STR_EQUALS(g_integration_event, "none");
 
   rc_client_destroy(g_client);
+}
+
+/* ----- get_menu ----- */
+
+static rc_client_raintegration_menu_t* g_menu;
+
+static const rc_client_raintegration_menu_t* rc_client_integration_get_menu(void)
+{
+  return g_menu;
+}
+
+static void test_get_menu(void)
+{
+  const rc_client_raintegration_menu_t* menu;
+  rc_client_raintegration_menu_t local_menu;
+  rc_client_raintegration_menu_item_t local_menu_items[3];
+
+  memset(&local_menu_items, 0, sizeof(local_menu_items));
+  local_menu_items[0].id = 1234;
+  local_menu_items[0].label = "Label 1";
+  local_menu_items[0].checked = 1;
+  local_menu_items[0].enabled = 1;
+  local_menu_items[2].id = 2345;
+  local_menu_items[2].label = "Label 2";
+
+  local_menu.num_items = sizeof(local_menu_items) / sizeof(local_menu_items[0]);
+  local_menu.items = local_menu_items;
+  g_menu = &local_menu;
+
+  g_client = mock_client_with_integration();
+  g_client->state.raintegration->get_menu = rc_client_integration_get_menu;
+
+  menu = rc_client_raintegration_get_menu(g_client);
+  ASSERT_PTR_NOT_NULL(menu);
+
+  ASSERT_NUM_EQUALS(menu->num_items, 3);
+  ASSERT_NUM_EQUALS(menu->items[0].id, 1234);
+  ASSERT_STR_EQUALS(menu->items[0].label, "Label 1");
+  ASSERT_NUM_EQUALS(menu->items[0].checked, 1);
+  ASSERT_NUM_EQUALS(menu->items[0].enabled, 1);
+  ASSERT_NUM_EQUALS(menu->items[1].id, 0);
+  ASSERT_PTR_NULL(menu->items[1].label);
+  ASSERT_NUM_EQUALS(menu->items[1].checked, 0);
+  ASSERT_NUM_EQUALS(menu->items[1].enabled, 0);
+  ASSERT_NUM_EQUALS(menu->items[2].id, 2345);
+  ASSERT_STR_EQUALS(menu->items[2].label, "Label 2");
+  ASSERT_NUM_EQUALS(menu->items[2].checked, 0);
+  ASSERT_NUM_EQUALS(menu->items[2].enabled, 0);
+
+  g_menu = NULL;
 }
 
 /* ----- harness ----- */
@@ -264,6 +313,9 @@ void test_client_raintegration(void) {
   TEST(test_load_raintegration_supported_version);
   TEST(test_load_raintegration_offline);
   TEST(test_load_raintegration_after_login);
+
+  /* get_menu */
+  TEST(test_get_menu);
 
   TEST_SUITE_END();
 }

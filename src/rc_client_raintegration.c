@@ -71,7 +71,9 @@ static void rc_client_raintegration_load_dll(rc_client_t* client,
   raintegration->init_client_offline = (rc_client_raintegration_init_client_func)GetProcAddress(hDLL, "_RA_InitOffline");
   raintegration->shutdown = (rc_client_raintegration_action_func)GetProcAddress(hDLL, "_RA_Shutdown");
 
-  raintegration->get_external_client = (rc_client_raintegration_get_external_client)GetProcAddress(hDLL, "_Rcheevos_GetExternalClient");
+  raintegration->get_external_client = (rc_client_raintegration_get_external_client_func)GetProcAddress(hDLL, "_Rcheevos_GetExternalClient");
+  raintegration->get_menu = (rc_client_raintegration_get_menu_func)GetProcAddress(hDLL, "_Rcheevos_RAIntegrationGetMenu");
+  raintegration->set_event_handler = (rc_client_raintegration_set_event_handler_func)GetProcAddress(hDLL, "_Rcheevos_SetRAIntegrationEventHandler");
 
   if (!raintegration->get_version ||
       !raintegration->init_client ||
@@ -339,6 +341,21 @@ rc_client_async_handle_t* rc_client_begin_load_raintegration(rc_client_t* client
   return &callback_data->async_handle;
 }
 
+void rc_client_raintegration_set_event_handler(rc_client_t* client,
+    rc_client_raintegration_event_handler_t handler)
+{
+  if (client && client->state.raintegration && client->state.raintegration->set_event_handler)
+    client->state.raintegration->set_event_handler(client, handler);
+}
+
+const rc_client_raintegration_menu_t* rc_client_raintegration_get_menu(const rc_client_t* client)
+{
+  if (!client || !client->state.raintegration || !client->state.raintegration->get_menu)
+    return NULL;
+
+  return client->state.raintegration->get_menu();
+}
+
 void rc_client_unload_raintegration(rc_client_t* client)
 {
   HINSTANCE hDLL;
@@ -348,17 +365,8 @@ void rc_client_unload_raintegration(rc_client_t* client)
 
   RC_CLIENT_LOG_INFO(client, "Unloading RA_Integration")
 
-  if (client->state.raintegration->shutdown) {
-#ifdef __cplusplus
-    try {
-#endif
-      client->state.raintegration->shutdown();
-#ifdef __cplusplus
-    }
-    catch (std::runtime_error&) {
-    }
-#endif
-  }
+  if (client->state.raintegration->shutdown)
+    client->state.raintegration->shutdown();
 
   rc_mutex_lock(&client->state.mutex);
   hDLL = client->state.raintegration->hDLL;

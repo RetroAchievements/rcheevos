@@ -51,6 +51,8 @@ typedef void (*rc_client_raintegration_event_handler_t)(const rc_client_raintegr
 
 #include <wtypes.h> /* HWND */
 
+#include "rc_client.h"
+
 rc_client_async_handle_t* rc_client_begin_load_raintegration(rc_client_t* client,
     const wchar_t* search_directory, HWND main_window_handle,
     const char* client_name, const char* client_version,

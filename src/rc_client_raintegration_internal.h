@@ -21,6 +21,7 @@ typedef const char* (CCONV* rc_client_raintegration_get_string_func)(void);
 typedef int (CCONV* rc_client_raintegration_init_client_func)(HWND hMainWnd, const char* sClientName, const char* sClientVersion);
 typedef int (CCONV* rc_client_raintegration_get_external_client_func)(rc_client_external_t* pClient, int nVersion);
 typedef const rc_client_raintegration_menu_t* (CCONV* rc_client_raintegration_get_menu_func)(void);
+typedef void (CCONV* rc_client_raintegration_set_event_handler_func)(rc_client_t* pClient, rc_client_raintegration_event_handler_t handler);
 
 typedef struct rc_client_raintegration_t
 {
@@ -32,6 +33,7 @@ typedef struct rc_client_raintegration_t
   rc_client_raintegration_init_client_func init_client_offline;
   rc_client_raintegration_action_func shutdown;
 
+  rc_client_raintegration_set_event_handler_func set_event_handler;
   rc_client_raintegration_get_menu_func get_menu;
 
   rc_client_raintegration_get_external_client_func get_external_client;
