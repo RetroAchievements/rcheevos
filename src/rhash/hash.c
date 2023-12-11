@@ -1120,6 +1120,219 @@ static int rc_hash_n64(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
+static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_t header[0x200])
+{
+  uint8_t* hash_buffer;
+  int64_t plain_region_offset, logo_region_offset, exefs_offset, romfs_offset;
+  uint64_t plain_region_size, logo_region_size, exefs_size, romfs_size;
+  uint32_t buffer_size;
+
+  plain_region_offset = ((uint32_t)header[0x193] << 24) | (header[0x192] << 16) | (header[0x191] << 8) | header[0x190];
+  plain_region_size = ((uint32_t)header[0x197] << 24) | (header[0x196] << 16) | (header[0x195] << 8) | header[0x194];
+  logo_region_offset = ((uint32_t)header[0x19B] << 24) | (header[0x19A] << 16) | (header[0x199] << 8) | header[0x198];
+  logo_region_size = ((uint32_t)header[0x19F] << 24) | (header[0x19E] << 16) | (header[0x19D] << 8) | header[0x19C];
+  exefs_offset = ((uint32_t)header[0x1A3] << 24) | (header[0x1A2] << 16) | (header[0x1A1] << 8) | header[0x1A0];
+  exefs_size = ((uint32_t)header[0x1A7] << 24) | (header[0x1A6] << 16) | (header[0x1A5] << 8) | header[0x1A4];
+  romfs_offset = ((uint32_t)header[0x1B3] << 24) | (header[0x1B2] << 16) | (header[0x1B1] << 8) | header[0x1B0];
+  romfs_size = ((uint32_t)header[0x1B7] << 24) | (header[0x1B6] << 16) | (header[0x1B5] << 8) | header[0x1B4];
+
+  /* Offsets and sizes are in "media units" (1 media unit = 0x200 bytes) */
+  plain_region_offset *= 0x200;
+  plain_region_size *= 0x200;
+  logo_region_offset *= 0x200;
+  logo_region_size *= 0x200;
+  exefs_offset *= 0x200;
+  exefs_size *= 0x200;
+  romfs_offset *= 0x200;
+  romfs_size *= 0x200;
+
+  /* Constrict sizes so we don't hash possibly GiBs of data */
+  /* (This is very likely going to occur for romfs, maybe it should just be excluded from hashng?) */
+  if (plain_region_size > MAX_BUFFER_SIZE)
+    plain_region_size = MAX_BUFFER_SIZE;
+  if (logo_region_size > MAX_BUFFER_SIZE)
+    logo_region_size = MAX_BUFFER_SIZE;
+  if (exefs_size > MAX_BUFFER_SIZE)
+    exefs_size = MAX_BUFFER_SIZE;
+  if (romfs_size > MAX_BUFFER_SIZE)
+    romfs_size = MAX_BUFFER_SIZE;
+
+  buffer_size = plain_region_size;
+  if (buffer_size < logo_region_size)
+    buffer_size = logo_region_size;
+  if (buffer_size < exefs_size)
+    buffer_size = exefs_size;
+  if (buffer_size < romfs_size)
+    buffer_size = romfs_size;
+
+  hash_buffer = malloc(buffer_size);
+  if (!hash_buffer)
+  {
+    snprintf((char*)header, 0x200, "Failed to allocate %u bytes", buffer_size);
+    return rc_hash_error((const char*)header);
+  }
+
+  rc_hash_verbose("Hashing 512 byte NCCH header");
+  md5_append(md5, header, 0x200);
+
+  /* This region is optional (some formats will not have it) */
+  if (plain_region_size == 0)
+  {
+    rc_hash_verbose("Plain region is unavailable, skipping");
+  }
+  else
+  {
+    if (verbose_message_callback)
+    {
+      snprintf((char*)header, 0x200, "Hashing %u bytes for plain region (at %08lX)", (unsigned)plain_region_size, (unsigned long)plain_region_offset);
+      verbose_message_callback((const char*)header);
+    }
+
+    rc_file_seek(file_handle, plain_region_offset, SEEK_SET);
+    if (rc_file_read(file_handle, hash_buffer, plain_region_size) != plain_region_size)
+    {
+      free(hash_buffer);
+      return rc_hash_error("Could not read plain region data");
+    }
+
+    md5_append(md5, hash_buffer, plain_region_size);
+  }
+
+  /* This region is optional (older games will not have it) */
+  if (logo_region_size == 0)
+  {
+    rc_hash_verbose("Logo region is unavailable, skipping");
+  }
+  else
+  {
+    if (verbose_message_callback)
+    {
+      snprintf((char*)header, 0x200, "Hashing %u bytes for logo region (at %08lX)", (unsigned)logo_region_size, (unsigned long)logo_region_offset);
+      verbose_message_callback((const char*)header);
+    }
+
+    rc_file_seek(file_handle, logo_region_offset, SEEK_SET);
+    if (rc_file_read(file_handle, hash_buffer, logo_region_size) != logo_region_size)
+    {
+      free(hash_buffer);
+      return rc_hash_error("Could not read logo region data");
+    }
+
+    md5_append(md5, hash_buffer, logo_region_size);
+  }
+
+  /* This region is technically optional, but if it's not present, something probably went wrong */
+  if (exefs_size == 0)
+  {
+    free(hash_buffer);
+    return rc_hash_error("ExeFS region was not available");
+  }
+  else
+  {
+    if (verbose_message_callback)
+    {
+      snprintf((char*)header, 0x200, "Hashing %u bytes for ExeFS (at %08lX)", (unsigned)exefs_size, (unsigned long)exefs_offset);
+      verbose_message_callback((const char*)header);
+    }
+
+    rc_file_seek(file_handle, exefs_offset, SEEK_SET);
+    if (rc_file_read(file_handle, hash_buffer, exefs_size) != exefs_size)
+    {
+      free(hash_buffer);
+      return rc_hash_error("Could not read ExeFS data");
+    }
+
+    md5_append(md5, hash_buffer, exefs_size);
+  }
+
+  /* This region is technically optional (if this isn't available, it is probably in a different NCCH partition) */
+  if (romfs_size == 0)
+  {
+    rc_hash_verbose("RomFS is unavailable, skipping");
+  }
+  else
+  {
+    if (verbose_message_callback)
+    {
+      snprintf((char*)header, 0x200, "Hashing %u bytes for RomFS (at %08lX)", (unsigned)romfs_size, (unsigned long)romfs_offset);
+      verbose_message_callback((const char*)header);
+    }
+
+    rc_file_seek(file_handle, romfs_offset, SEEK_SET);
+    if (rc_file_read(file_handle, hash_buffer, romfs_size) != romfs_size)
+    {
+      free(hash_buffer);
+      return rc_hash_error("Could not read RomFS data");
+    }
+
+    md5_append(md5, hash_buffer, romfs_size);
+  }
+
+  free(hash_buffer);
+  return 1;
+}
+
+static int rc_hash_nintendo_3ds(char hash[33], const char* path)
+{
+  md5_state_t md5;
+  void* file_handle;
+  uint8_t header[0x200]; /* NCCH and NCSD headers are both 0x200 bytes */
+  int64_t header_offset;
+
+  file_handle = rc_file_open(path);
+  if (!file_handle)
+    return rc_hash_error("Could not open file");
+
+  rc_file_seek(file_handle, 0, SEEK_SET);
+
+  /* If we don't have a full header, this is probably not a 3DS ROM */
+  if (rc_file_read(file_handle, header, sizeof(header)) != sizeof(header))
+  {
+    rc_file_close(file_handle);
+    return rc_hash_error("Could not read 3DS ROM header");
+  }
+
+  if (memcmp(&header[0x100], "NCSD", 4) == 0)
+  {
+    /* A NCSD container contains 1-8 NCCH partitions */
+    /* The first partition (index 0) is reserved for executable content */
+    header_offset = ((uint32_t)header[0x123] << 24) | (header[0x122] << 16) | (header[0x121] << 8) | header[0x120];
+    /* Offset is in "media units" (1 media unit = 0x200 bytes) */
+    header_offset *= 0x200;
+
+    rc_file_seek(file_handle, header_offset, SEEK_SET);
+    if (rc_file_read(file_handle, header, sizeof(header)) != sizeof(header))
+    {
+      rc_file_close(file_handle);
+      return rc_hash_error("Could not read 3DS NCCH header");
+    }
+
+    if (memcmp(&header[0x100], "NCCH", 4) != 0)
+    {
+      rc_file_close(file_handle);
+      return rc_hash_error("Could not read 3DS NCCH header");
+    }
+  }
+
+  if (memcmp(&header[0x100], "NCCH", 4) == 0)
+  {
+    md5_init(&md5);
+    if (rc_hash_nintendo_3ds_ncch(&md5, file_handle, header))
+    {
+      rc_file_close(file_handle);
+      return rc_hash_finalize(&md5, hash);
+    }
+
+    rc_file_close(file_handle);
+    return rc_hash_error("Failed to hash 3DS NCCH container");
+  }
+
+  /* Couldn't identify either an NCSD or NCCH */
+  /* TODO: Add CIA hashing (this should just contain an NCCH, but the NCCH header would be encrypted) */
+  rc_file_close(file_handle);
+  return rc_hash_error("Not a 3DS ROM");
+}
+
 static int rc_hash_nintendo_ds(char hash[33], const char* path)
 {
   uint8_t header[512];
@@ -2083,6 +2296,7 @@ int rc_hash_generate_from_buffer(char hash[33], uint32_t console_id, const uint8
       return rc_hash_snes(hash, buffer, buffer_size);
 
     case RC_CONSOLE_NINTENDO_64:
+    case RC_CONSOLE_NINTENDO_3DS:
     case RC_CONSOLE_NINTENDO_DS:
     case RC_CONSOLE_NINTENDO_DSI:
       return rc_hash_file_from_buffer(hash, console_id, buffer, buffer_size);
@@ -2407,6 +2621,9 @@ int rc_hash_generate_from_file(char hash[33], uint32_t console_id, const char* p
     case RC_CONSOLE_NINTENDO_64:
       return rc_hash_n64(hash, path);
 
+    case RC_CONSOLE_NINTENDO_3DS:
+      return rc_hash_nintendo_3ds(hash, path);
+
     case RC_CONSOLE_NINTENDO_DS:
     case RC_CONSOLE_NINTENDO_DSI:
       return rc_hash_nintendo_ds(hash, path);
@@ -2539,6 +2756,13 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         break;
 
+      case '3':
+        if (rc_path_compare_extension(ext, "3ds"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
+        }
+        break;
+
       case '7':
         if (rc_path_compare_extension(ext, "7z"))
         {
@@ -2561,6 +2785,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         if (rc_path_compare_extension(ext, "a78"))
         {
           iterator->consoles[0] = RC_CONSOLE_ATARI_7800;
+        }
+        else if (rc_path_compare_extension(ext, "app"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
         }
         break;
 
@@ -2646,6 +2874,11 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         else if (rc_path_compare_extension(ext, "cart"))
         {
           iterator->consoles[0] = RC_CONSOLE_SUPER_CASSETTEVISION;
+        }
+        else if (rc_path_compare_extension(ext, "cci") ||
+                 rc_path_compare_extension(ext, "cxi"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
         }
         break;
 
