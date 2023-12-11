@@ -1122,10 +1122,10 @@ static int rc_hash_n64(char hash[33], const char* path)
 
 static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_t header[0x200])
 {
+  const uint32_t MAX_BUFFER_SIZE_IN_MEDIA_UNITS = MAX_BUFFER_SIZE / 0x200;
   uint8_t* hash_buffer;
   int64_t plain_region_offset, logo_region_offset, exefs_offset, romfs_offset;
-  uint64_t plain_region_size, logo_region_size, exefs_size, romfs_size;
-  uint32_t buffer_size;
+  uint32_t buffer_size, plain_region_size, logo_region_size, exefs_size, romfs_size;
 
   plain_region_offset = ((uint32_t)header[0x193] << 24) | (header[0x192] << 16) | (header[0x191] << 8) | header[0x190];
   plain_region_size = ((uint32_t)header[0x197] << 24) | (header[0x196] << 16) | (header[0x195] << 8) | header[0x194];
@@ -1136,6 +1136,17 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   romfs_offset = ((uint32_t)header[0x1B3] << 24) | (header[0x1B2] << 16) | (header[0x1B1] << 8) | header[0x1B0];
   romfs_size = ((uint32_t)header[0x1B7] << 24) | (header[0x1B6] << 16) | (header[0x1B5] << 8) | header[0x1B4];
 
+  /* Constrict sizes so we don't hash possibly GiBs of data */
+  /* (This is very likely going to occur for romfs, maybe it should just be excluded from hashng?) */
+  if (plain_region_size > MAX_BUFFER_SIZE_IN_MEDIA_UNITS)
+    plain_region_size = MAX_BUFFER_SIZE_IN_MEDIA_UNITS;
+  if (logo_region_size > MAX_BUFFER_SIZE_IN_MEDIA_UNITS)
+    logo_region_size = MAX_BUFFER_SIZE_IN_MEDIA_UNITS;
+  if (exefs_size > MAX_BUFFER_SIZE_IN_MEDIA_UNITS)
+    exefs_size = MAX_BUFFER_SIZE_IN_MEDIA_UNITS;
+  if (romfs_size > MAX_BUFFER_SIZE_IN_MEDIA_UNITS)
+    romfs_size = MAX_BUFFER_SIZE_IN_MEDIA_UNITS;
+
   /* Offsets and sizes are in "media units" (1 media unit = 0x200 bytes) */
   plain_region_offset *= 0x200;
   plain_region_size *= 0x200;
@@ -1145,17 +1156,6 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   exefs_size *= 0x200;
   romfs_offset *= 0x200;
   romfs_size *= 0x200;
-
-  /* Constrict sizes so we don't hash possibly GiBs of data */
-  /* (This is very likely going to occur for romfs, maybe it should just be excluded from hashng?) */
-  if (plain_region_size > MAX_BUFFER_SIZE)
-    plain_region_size = MAX_BUFFER_SIZE;
-  if (logo_region_size > MAX_BUFFER_SIZE)
-    logo_region_size = MAX_BUFFER_SIZE;
-  if (exefs_size > MAX_BUFFER_SIZE)
-    exefs_size = MAX_BUFFER_SIZE;
-  if (romfs_size > MAX_BUFFER_SIZE)
-    romfs_size = MAX_BUFFER_SIZE;
 
   buffer_size = plain_region_size;
   if (buffer_size < logo_region_size)
