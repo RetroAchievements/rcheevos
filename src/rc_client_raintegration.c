@@ -65,18 +65,19 @@ static void rc_client_raintegration_load_dll(rc_client_t* client,
   memset(raintegration, 0, sizeof(*raintegration));
   raintegration->hDLL = hDLL;
 
-  raintegration->get_version = (rc_client_raintegration_get_string_func)GetProcAddress(hDLL, "_RA_IntegrationVersion");
-  raintegration->get_host_url = (rc_client_raintegration_get_string_func)GetProcAddress(hDLL, "_RA_HostUrl");
-  raintegration->init_client = (rc_client_raintegration_init_client_func)GetProcAddress(hDLL, "_RA_InitClient");
-  raintegration->init_client_offline = (rc_client_raintegration_init_client_func)GetProcAddress(hDLL, "_RA_InitOffline");
-  raintegration->shutdown = (rc_client_raintegration_action_func)GetProcAddress(hDLL, "_RA_Shutdown");
+  raintegration->get_version = (rc_client_raintegration_get_string_func_t)GetProcAddress(hDLL, "_RA_IntegrationVersion");
+  raintegration->get_host_url = (rc_client_raintegration_get_string_func_t)GetProcAddress(hDLL, "_RA_HostUrl");
+  raintegration->init_client = (rc_client_raintegration_init_client_func_t)GetProcAddress(hDLL, "_RA_InitClient");
+  raintegration->init_client_offline = (rc_client_raintegration_init_client_func_t)GetProcAddress(hDLL, "_RA_InitOffline");
+  raintegration->shutdown = (rc_client_raintegration_action_func_t)GetProcAddress(hDLL, "_RA_Shutdown");
 
-  raintegration->update_main_window_handle = (rc_client_raintegration_hwnd_action_func)GetProcAddress(hDLL, "_RA_UpdateHWnd");
+  raintegration->update_main_window_handle = (rc_client_raintegration_hwnd_action_func_t)GetProcAddress(hDLL, "_RA_UpdateHWnd");
 
-  raintegration->get_external_client = (rc_client_raintegration_get_external_client_func)GetProcAddress(hDLL, "_Rcheevos_GetExternalClient");
-  raintegration->get_menu = (rc_client_raintegration_get_menu_func)GetProcAddress(hDLL, "_Rcheevos_RAIntegrationGetMenu");
-  raintegration->activate_menu_item = (rc_client_raintegration_activate_menuitem_func)GetProcAddress(hDLL, "_Rcheevos_ActivateRAIntegrationMenuItem");
-  raintegration->set_event_handler = (rc_client_raintegration_set_event_handler_func)GetProcAddress(hDLL, "_Rcheevos_SetRAIntegrationEventHandler");
+  raintegration->get_external_client = (rc_client_raintegration_get_external_client_func_t)GetProcAddress(hDLL, "_Rcheevos_GetExternalClient");
+  raintegration->get_menu = (rc_client_raintegration_get_menu_func_t)GetProcAddress(hDLL, "_Rcheevos_RAIntegrationGetMenu");
+  raintegration->activate_menu_item = (rc_client_raintegration_activate_menuitem_func_t)GetProcAddress(hDLL, "_Rcheevos_ActivateRAIntegrationMenuItem");
+  raintegration->set_write_memory_function = (rc_client_raintegration_set_write_memory_func_t)GetProcAddress(hDLL, "_Rcheevos_SetRAIntegrationWriteMemoryFunction");
+  raintegration->set_event_handler = (rc_client_raintegration_set_event_handler_func_t)GetProcAddress(hDLL, "_Rcheevos_SetRAIntegrationEventHandler");
 
   if (!raintegration->get_version ||
       !raintegration->init_client ||
@@ -140,7 +141,7 @@ int rc_client_version_less(const char* left, const char* right)
 static void rc_client_init_raintegration(rc_client_t* client,
     rc_client_version_validation_callback_data_t* version_validation_callback_data)
 {
-  rc_client_raintegration_init_client_func init_func = client->state.raintegration->init_client;
+  rc_client_raintegration_init_client_func_t init_func = client->state.raintegration->init_client;
 
   if (client->state.raintegration->get_host_url) {
     const char* host_url = client->state.raintegration->get_host_url();
@@ -354,6 +355,12 @@ void rc_client_raintegration_update_main_window_handle(rc_client_t* client, HWND
    {
       client->state.raintegration->update_main_window_handle(main_window_handle);
    }
+}
+
+void rc_client_raintegration_set_write_memory_function(rc_client_t* client, rc_client_raintegration_write_memory_func_t handler)
+{
+  if (client && client->state.raintegration && client->state.raintegration->set_write_memory_function)
+    client->state.raintegration->set_write_memory_function(client, handler);
 }
 
 void rc_client_raintegration_set_event_handler(rc_client_t* client,

@@ -41,6 +41,9 @@ typedef struct rc_client_raintegration_event_t {
 typedef void (*rc_client_raintegration_event_handler_t)(const rc_client_raintegration_event_t* event,
                                                         rc_client_t* client);
 
+typedef void (*rc_client_raintegration_write_memory_func_t)(uint32_t address, uint8_t* buffer,
+                                                            uint32_t num_bytes, rc_client_t* client);
+
 /* types needed to integrate raintegration */
 
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
@@ -67,6 +70,8 @@ const rc_client_raintegration_menu_t* rc_client_raintegration_get_menu(const rc_
 void rc_client_raintegration_rebuild_submenu(rc_client_t* client, HMENU hMenu);
 void rc_client_raintegration_update_menu_item(const rc_client_t* client, const rc_client_raintegration_menu_item_t* menu_item);
 int rc_client_raintegration_activate_menu_item(const rc_client_t* client, uint32_t nMenuItemId);
+
+void rc_client_raintegration_set_write_memory_function(rc_client_t* client, rc_client_raintegration_write_memory_func_t handler);
 
 void rc_client_raintegration_set_event_handler(rc_client_t* client,
     rc_client_raintegration_event_handler_t handler);
