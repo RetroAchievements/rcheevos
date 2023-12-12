@@ -7,6 +7,11 @@
 #include <stdio.h>
 #include <ctype.h>
 
+#if defined(_WIN32) && defined(_UNICODE)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 /* arbitrary limit to prevent allocating and hashing large files */
 #define MAX_BUFFER_SIZE 64 * 1024 * 1024
 
@@ -48,7 +53,34 @@ static struct rc_hash_filereader* filereader = NULL;
 
 static void* filereader_open(const char* path)
 {
+#if defined(_WIN32) && defined(_UNICODE)
+  /* Windows requires using wchar APIs for Unicode paths */
+  wchar_t* wpath;
+  int wpath_length;
+  FILE* fp;
+
+  /* Calculate wpath length from path */
+  wpath_length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, NULL, 0);
+  if (wpath_length == 0) /* 0 indicates error (this is likely from invalid UTF-8) */
+    return NULL;
+
+  wpath = (wchar_t*)malloc(wpath_length * sizeof(wchar_t));
+  if (!wpath)
+    return NULL;
+
+  if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, wpath_length) == 0)
+  {
+    free(wpath);
+    return NULL;
+  }
 #if defined(__STDC_WANT_SECURE_LIB__)
+  _wfopen_s(&fp, wpath, L"rb");
+#else
+  fp = _wfopen(wpath, L"rb");
+#endif
+  free(wpath);
+  return fp;
+#elif defined(__STDC_WANT_SECURE_LIB__)
   FILE* fp;
   fopen_s(&fp, path, "rb");
   return fp;
@@ -1925,7 +1957,7 @@ void rc_file_seek_buffered_file(void* file_handle, int64_t offset, int origin)
   {
     case SEEK_SET: buffered_file->read_ptr = buffered_file->data + offset; break;
     case SEEK_CUR: buffered_file->read_ptr += offset; break;
-    case SEEK_END: buffered_file->read_ptr = buffered_file->data + buffered_file->data_size - offset; break;
+    case SEEK_END: buffered_file->read_ptr = buffered_file->data + buffered_file->data_size + offset; break;
   }
 
   if (buffered_file->read_ptr < buffered_file->data)
