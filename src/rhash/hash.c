@@ -1124,149 +1124,47 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
 {
   const uint32_t MAX_BUFFER_SIZE_IN_MEDIA_UNITS = MAX_BUFFER_SIZE / 0x200;
   uint8_t* hash_buffer;
-  int64_t plain_region_offset, logo_region_offset, exefs_offset, romfs_offset;
-  uint32_t buffer_size, plain_region_size, logo_region_size, exefs_size, romfs_size;
+  int64_t exefs_offset;
+  uint32_t exefs_size;
 
-  plain_region_offset = ((uint32_t)header[0x193] << 24) | (header[0x192] << 16) | (header[0x191] << 8) | header[0x190];
-  plain_region_size = ((uint32_t)header[0x197] << 24) | (header[0x196] << 16) | (header[0x195] << 8) | header[0x194];
-  logo_region_offset = ((uint32_t)header[0x19B] << 24) | (header[0x19A] << 16) | (header[0x199] << 8) | header[0x198];
-  logo_region_size = ((uint32_t)header[0x19F] << 24) | (header[0x19E] << 16) | (header[0x19D] << 8) | header[0x19C];
   exefs_offset = ((uint32_t)header[0x1A3] << 24) | (header[0x1A2] << 16) | (header[0x1A1] << 8) | header[0x1A0];
   exefs_size = ((uint32_t)header[0x1A7] << 24) | (header[0x1A6] << 16) | (header[0x1A5] << 8) | header[0x1A4];
-  romfs_offset = ((uint32_t)header[0x1B3] << 24) | (header[0x1B2] << 16) | (header[0x1B1] << 8) | header[0x1B0];
-  romfs_size = ((uint32_t)header[0x1B7] << 24) | (header[0x1B6] << 16) | (header[0x1B5] << 8) | header[0x1B4];
 
-  /* Constrict sizes so we don't hash possibly GiBs of data */
-  /* (This is very likely going to occur for romfs, maybe it should just be excluded from hashng?) */
-  if (plain_region_size > MAX_BUFFER_SIZE_IN_MEDIA_UNITS)
-    plain_region_size = MAX_BUFFER_SIZE_IN_MEDIA_UNITS;
-  if (logo_region_size > MAX_BUFFER_SIZE_IN_MEDIA_UNITS)
-    logo_region_size = MAX_BUFFER_SIZE_IN_MEDIA_UNITS;
   if (exefs_size > MAX_BUFFER_SIZE_IN_MEDIA_UNITS)
     exefs_size = MAX_BUFFER_SIZE_IN_MEDIA_UNITS;
-  if (romfs_size > MAX_BUFFER_SIZE_IN_MEDIA_UNITS)
-    romfs_size = MAX_BUFFER_SIZE_IN_MEDIA_UNITS;
 
-  /* Offsets and sizes are in "media units" (1 media unit = 0x200 bytes) */
-  plain_region_offset *= 0x200;
-  plain_region_size *= 0x200;
-  logo_region_offset *= 0x200;
-  logo_region_size *= 0x200;
+  /* Offset and size are in "media units" (1 media unit = 0x200 bytes) */
   exefs_offset *= 0x200;
   exefs_size *= 0x200;
-  romfs_offset *= 0x200;
-  romfs_size *= 0x200;
 
-  buffer_size = plain_region_size;
-  if (buffer_size < logo_region_size)
-    buffer_size = logo_region_size;
-  if (buffer_size < exefs_size)
-    buffer_size = exefs_size;
-  if (buffer_size < romfs_size)
-    buffer_size = romfs_size;
+  /* This region is technically optional, but it should always be present for executable content (i.e. games) */
+  if (exefs_size == 0)
+    return rc_hash_error("ExeFS was not available");
 
-  hash_buffer = malloc(buffer_size);
+  hash_buffer = malloc(exefs_size);
   if (!hash_buffer)
   {
-    snprintf((char*)header, 0x200, "Failed to allocate %u bytes", buffer_size);
+    snprintf((char*)header, 0x200, "Failed to allocate %u bytes", (unsigned)exefs_size);
     return rc_hash_error((const char*)header);
   }
 
   rc_hash_verbose("Hashing 512 byte NCCH header");
   md5_append(md5, header, 0x200);
 
-  /* This region is optional (some formats will not have it) */
-  if (plain_region_size == 0)
+  if (verbose_message_callback)
   {
-    rc_hash_verbose("Plain region is unavailable, skipping");
-  }
-  else
-  {
-    if (verbose_message_callback)
-    {
-      snprintf((char*)header, 0x200, "Hashing %u bytes for plain region (at %08lX)", (unsigned)plain_region_size, (unsigned long)plain_region_offset);
-      verbose_message_callback((const char*)header);
-    }
-
-    rc_file_seek(file_handle, plain_region_offset, SEEK_SET);
-    if (rc_file_read(file_handle, hash_buffer, plain_region_size) != plain_region_size)
-    {
-      free(hash_buffer);
-      return rc_hash_error("Could not read plain region data");
-    }
-
-    md5_append(md5, hash_buffer, plain_region_size);
+    snprintf((char*)header, 0x200, "Hashing %u bytes for ExeFS (at %04X%04X)", (unsigned)exefs_size, (unsigned)(exefs_offset >> 32), (unsigned)exefs_offset);
+    verbose_message_callback((const char*)header);
   }
 
-  /* This region is optional (older games will not have it) */
-  if (logo_region_size == 0)
-  {
-    rc_hash_verbose("Logo region is unavailable, skipping");
-  }
-  else
-  {
-    if (verbose_message_callback)
-    {
-      snprintf((char*)header, 0x200, "Hashing %u bytes for logo region (at %08lX)", (unsigned)logo_region_size, (unsigned long)logo_region_offset);
-      verbose_message_callback((const char*)header);
-    }
-
-    rc_file_seek(file_handle, logo_region_offset, SEEK_SET);
-    if (rc_file_read(file_handle, hash_buffer, logo_region_size) != logo_region_size)
-    {
-      free(hash_buffer);
-      return rc_hash_error("Could not read logo region data");
-    }
-
-    md5_append(md5, hash_buffer, logo_region_size);
-  }
-
-  /* This region is technically optional, but if it's not present, something probably went wrong */
-  if (exefs_size == 0)
+  rc_file_seek(file_handle, exefs_offset, SEEK_SET);
+  if (rc_file_read(file_handle, hash_buffer, exefs_size) != exefs_size)
   {
     free(hash_buffer);
-    return rc_hash_error("ExeFS region was not available");
-  }
-  else
-  {
-    if (verbose_message_callback)
-    {
-      snprintf((char*)header, 0x200, "Hashing %u bytes for ExeFS (at %08lX)", (unsigned)exefs_size, (unsigned long)exefs_offset);
-      verbose_message_callback((const char*)header);
-    }
-
-    rc_file_seek(file_handle, exefs_offset, SEEK_SET);
-    if (rc_file_read(file_handle, hash_buffer, exefs_size) != exefs_size)
-    {
-      free(hash_buffer);
-      return rc_hash_error("Could not read ExeFS data");
-    }
-
-    md5_append(md5, hash_buffer, exefs_size);
+    return rc_hash_error("Could not read ExeFS data");
   }
 
-  /* This region is technically optional (if this isn't available, it is probably in a different NCCH partition) */
-  if (romfs_size == 0)
-  {
-    rc_hash_verbose("RomFS is unavailable, skipping");
-  }
-  else
-  {
-    if (verbose_message_callback)
-    {
-      snprintf((char*)header, 0x200, "Hashing %u bytes for RomFS (at %08lX)", (unsigned)romfs_size, (unsigned long)romfs_offset);
-      verbose_message_callback((const char*)header);
-    }
-
-    rc_file_seek(file_handle, romfs_offset, SEEK_SET);
-    if (rc_file_read(file_handle, hash_buffer, romfs_size) != romfs_size)
-    {
-      free(hash_buffer);
-      return rc_hash_error("Could not read RomFS data");
-    }
-
-    md5_append(md5, hash_buffer, romfs_size);
-  }
+  md5_append(md5, hash_buffer, exefs_size);
 
   free(hash_buffer);
   return 1;
@@ -1300,6 +1198,13 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
     /* Offset is in "media units" (1 media unit = 0x200 bytes) */
     header_offset *= 0x200;
 
+    if (verbose_message_callback)
+    {
+      char message[64];
+      snprintf(message, sizeof(message), "Detected NCSD header, seeking to NCCH partition at %04X%04X", (unsigned)(header_offset >> 32), (unsigned)header_offset);
+      verbose_message_callback((const char*)header);
+    }
+
     rc_file_seek(file_handle, header_offset, SEEK_SET);
     if (rc_file_read(file_handle, header, sizeof(header)) != sizeof(header))
     {
@@ -1310,7 +1215,8 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
     if (memcmp(&header[0x100], "NCCH", 4) != 0)
     {
       rc_file_close(file_handle);
-      return rc_hash_error("Could not read 3DS NCCH header");
+      snprintf((char*)header, sizeof(header), "3DS NCCH header was not at %04X%04X", (unsigned)(header_offset >> 32), (unsigned)header_offset);
+      return rc_hash_error((const char*)header);
     }
   }
 
