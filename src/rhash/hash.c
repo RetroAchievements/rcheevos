@@ -2,6 +2,7 @@
 
 #include "../rc_compat.h"
 
+#include "aes.h"
 #include "md5.h"
 
 #include <stdio.h>
@@ -358,6 +359,15 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uin
   } while (1);
 
   return 0;
+}
+
+/* ===================================================== */
+
+static rc_hash_3ds_cia_normal_key_callback _3ds_cia_normal_key_callback = NULL;
+
+void rc_hash_init_3ds_cia_normal_key_callback(rc_hash_3ds_cia_normal_key_callback callback)
+{
+  _3ds_cia_normal_key_callback = callback;
 }
 
 /* ===================================================== */
@@ -1120,12 +1130,12 @@ static int rc_hash_n64(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
-static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_t header[0x200])
+static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_t header[0x200], struct AES_ctx* aes)
 {
   const uint32_t MAX_BUFFER_SIZE_IN_MEDIA_UNITS = MAX_BUFFER_SIZE / 0x200;
   uint8_t* hash_buffer;
   int64_t exefs_offset;
-  uint32_t exefs_size;
+  uint32_t exefs_size, i;
 
   exefs_offset = ((uint32_t)header[0x1A3] << 24) | (header[0x1A2] << 16) | (header[0x1A1] << 8) | header[0x1A0];
   exefs_size = ((uint32_t)header[0x1A7] << 24) | (header[0x1A6] << 16) | (header[0x1A5] << 8) | header[0x1A4];
@@ -1153,21 +1163,201 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
 
   if (verbose_message_callback)
   {
-    snprintf((char*)header, 0x200, "Hashing %u bytes for ExeFS (at %04X%04X)", (unsigned)exefs_size, (unsigned)(exefs_offset >> 32), (unsigned)exefs_offset);
+    snprintf((char*)header, 0x200, "Hashing %u bytes for ExeFS (at %08X%08X)", (unsigned)exefs_size, (unsigned)(exefs_offset >> 32), (unsigned)exefs_offset);
     verbose_message_callback((const char*)header);
   }
 
-  rc_file_seek(file_handle, exefs_offset, SEEK_SET);
+  /* ASSERT: file position must be +0x200 from start of NCCH (i.e. end of header) */
+
+  if (aes)
+  {
+    /* This is annoying, we might have to "decrypt" the data in-between the header and ExeFS */
+    /* Luckily this typically isn't a lot of data */
+    /* TODO: Sanity check this */
+    while (exefs_offset)
+    {
+      i = (uint64_t)exefs_offset > exefs_size ? exefs_size : exefs_offset;
+      if (rc_file_read(file_handle, hash_buffer, i) != i)
+      {
+        free(hash_buffer);
+        return rc_hash_error("Could not read NCCH data");
+      }
+
+      AES_CBC_decrypt_buffer(aes, hash_buffer, i);
+      exefs_offset -= i;
+    }
+  }
+  else
+  {
+    rc_file_seek(file_handle, exefs_offset - 0x200, SEEK_CUR);
+  }
+
   if (rc_file_read(file_handle, hash_buffer, exefs_size) != exefs_size)
   {
     free(hash_buffer);
     return rc_hash_error("Could not read ExeFS data");
   }
 
+  if (aes)
+  {
+    AES_CBC_decrypt_buffer(aes, hash_buffer, exefs_size);
+  }
+
   md5_append(md5, hash_buffer, exefs_size);
 
   free(hash_buffer);
   return 1;
+}
+
+static uint32_t rc_hash_nintendo_3ds_cia_signature_size(uint8_t header[0x200])
+{
+  uint32_t signature_type;
+
+  signature_type = ((uint32_t)header[0] << 24) | (header[1] << 16) | (header[2] << 8) | header[3];
+  switch (signature_type)
+  {
+    case 0x010000:
+    case 0x010003:
+      return 0x200 + 0x3C;
+    case 0x010001:
+    case 0x010004:
+      return 0x100 + 0x3C;
+    case 0x010002:
+    case 0x010005:
+      return 0x3C + 0x40;
+    default:
+      snprintf((char*)header, 0x200, "Invalid signature type %08X", (unsigned)signature_type);
+      return rc_hash_error((const char*)header);
+  }
+}
+
+static int rc_hash_nintendo_3ds_cia(md5_state_t* md5, void* file_handle, uint8_t header[0x200])
+{
+  const uint32_t CIA_HEADER_SIZE = 0x2020; /* Yes, this is larger than the header[0x200], but we only use the beginning of the header */
+  const uint64_t CIA_ALIGNMENT_MASK = 64 - 1; /* sizes are aligned by 64 bytes */
+  struct AES_ctx aes;
+  uint8_t iv[AES_BLOCKLEN], normal_key[AES_KEYLEN], title_key[AES_KEYLEN], title_id[sizeof(uint64_t)];
+  uint32_t cert_size, tik_size, tmd_size;
+  int64_t cert_offset, tik_offset, tmd_offset, content_offset;
+  uint32_t signature_size, i;
+  uint16_t content_count;
+  uint8_t common_key_index;
+
+  cert_size = ((uint32_t)header[0x0B] << 24) | (header[0x0A] << 16) | (header[0x09] << 8) | header[0x08];
+  tik_size = ((uint32_t)header[0x0F] << 24) | (header[0x0E] << 16) | (header[0x0D] << 8) | header[0x0C];
+  tmd_size = ((uint32_t)header[0x13] << 24) | (header[0x12] << 16) | (header[0x11] << 8) | header[0x10];
+
+  cert_offset = (CIA_HEADER_SIZE + CIA_ALIGNMENT_MASK) & ~CIA_ALIGNMENT_MASK;
+  tik_offset = (cert_offset + cert_size + CIA_ALIGNMENT_MASK) & ~CIA_ALIGNMENT_MASK;
+  tmd_offset = (tik_offset + tik_size + CIA_ALIGNMENT_MASK) & ~CIA_ALIGNMENT_MASK;
+  content_offset = (tmd_offset + tmd_size + CIA_ALIGNMENT_MASK) & ~CIA_ALIGNMENT_MASK;
+
+  /* Check if this CIA is encrypted, if it isn't, we can hash it right away */
+
+  rc_file_seek(file_handle, tmd_offset, SEEK_SET);
+  if (rc_file_read(file_handle, header, 4) != 4)
+    return rc_hash_error("Could not read TMD signature type");
+
+  signature_size = rc_hash_nintendo_3ds_cia_signature_size(header);
+  if (signature_size == 0)
+    return 0; /* rc_hash_nintendo_3ds_cia_signature_size will call rc_hash_error, so we don't need to do so here */
+
+  rc_file_seek(file_handle, signature_size + 0x9E, SEEK_CUR);
+  if (rc_file_read(file_handle, header, 2) != 2)
+    return rc_hash_error("Could not read TMD content count");
+
+  content_count = (header[0] << 8) | header[1];
+
+  rc_file_seek(file_handle, 0x9C4 - 0x9E, SEEK_CUR);
+  for (i = 0; i < content_count; i++)
+  {
+    if (rc_file_read(file_handle, header, 0x30) != 0x30)
+      return rc_hash_error("Could not read TMD content chunk");
+
+    /* Content index 0 is the main content (i.e. the 3DS executable)  */
+    if (((header[4] << 8) | header[5]) == 0)
+      break;
+
+    content_offset += ((uint32_t)header[0xC] << 24) | (header[0xD] << 16) | (header[0xE] << 8) | header[0xF];
+  }
+
+  if (i == content_count)
+    return rc_hash_error("Could not find main content chunk in TMD");
+
+  if ((header[7] & 1) == 0)
+  {
+    /* Not encrypted, we can hash the NCCH immediately */
+    rc_file_seek(file_handle, content_offset, SEEK_SET);
+    if (rc_file_read(file_handle, header, 0x200) != 0x200)
+      return rc_hash_error("Could not read NCCH header");
+
+    if (memcmp(&header[0x100], "NCCH", 4) != 0)
+    {
+      snprintf((char*)header, 0x200, "NCCH header was not at %08X%08X", (unsigned)(content_offset >> 32), (unsigned)content_offset);
+      return rc_hash_error((const char*)header);
+    }
+
+    return rc_hash_nintendo_3ds_ncch(md5, file_handle, header, NULL);
+  }
+
+  if (_3ds_cia_normal_key_callback == NULL)
+    return rc_hash_error("An encrypted CIA was detected, but the CIA normal key callback was not set");
+
+  /* Acquire the encrypted title key, title id, and common key index from the ticket */
+  /* These will be needed to decrypt the title key, and that will be needed to decrypt the CIA */
+
+  rc_file_seek(file_handle, tik_offset, SEEK_SET);
+  if (rc_file_read(file_handle, header, 4) != 4)
+    return rc_hash_error("Could not read ticket signature type");
+
+  signature_size = rc_hash_nintendo_3ds_cia_signature_size(header);
+  if (signature_size == 0)
+    return 0;
+
+  rc_file_seek(file_handle, signature_size, SEEK_CUR);
+  if (rc_file_read(file_handle, header, 0xB2) != 0xB2)
+    return rc_hash_error("Could not read ticket data");
+
+  memcpy(title_key, &header[0x7F], sizeof(title_key));
+  memcpy(title_id, &header[0x9C], sizeof(title_id));
+  common_key_index = header[0xB1];
+
+  if (common_key_index > 5)
+  {
+    snprintf((char*)header, 0x200, "Invalid common key index %02X", (unsigned)common_key_index);
+    return rc_hash_error((const char*)header);
+  }
+
+  if (_3ds_cia_normal_key_callback(common_key_index, normal_key) == 0)
+  {
+    snprintf((char*)header, 0x200, "Could not obtain common key %02X", (unsigned)common_key_index);
+    return rc_hash_error((const char*)header);
+  }
+
+  memset(iv, 0, sizeof(iv));
+  memcpy(iv, title_id, sizeof(title_id));
+  AES_init_ctx_iv(&aes, normal_key, iv);
+
+  /* Finally, decrypt the title key */
+  AES_CBC_decrypt_buffer(&aes, title_key, sizeof(title_key));
+
+  /* Now we can hash the NCCH */
+
+  rc_file_seek(file_handle, content_offset, SEEK_SET);
+  if (rc_file_read(file_handle, header, 0x200) != 0x200)
+    return rc_hash_error("Could not read NCCH header");
+
+  memset(iv, 0, sizeof(iv)); /* Content index is iv (which is always 0 for main content) */
+  AES_init_ctx_iv(&aes, title_key, iv);
+  AES_CBC_decrypt_buffer(&aes, header, 0x200);
+
+  if (memcmp(&header[0x100], "NCCH", 4) != 0)
+  {
+    snprintf((char*)header, 0x200, "NCCH header was not at %08X%08X", (unsigned)(content_offset >> 32), (unsigned)content_offset);
+    return rc_hash_error((const char*)header);
+  }
+
+  return rc_hash_nintendo_3ds_ncch(md5, file_handle, header, &aes);
 }
 
 static int rc_hash_nintendo_3ds(char hash[33], const char* path)
@@ -1201,7 +1391,7 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
     if (verbose_message_callback)
     {
       char message[64];
-      snprintf(message, sizeof(message), "Detected NCSD header, seeking to NCCH partition at %04X%04X", (unsigned)(header_offset >> 32), (unsigned)header_offset);
+      snprintf(message, sizeof(message), "Detected NCSD header, seeking to NCCH partition at %08X%08X", (unsigned)(header_offset >> 32), (unsigned)header_offset);
       verbose_message_callback((const char*)header);
     }
 
@@ -1215,15 +1405,16 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
     if (memcmp(&header[0x100], "NCCH", 4) != 0)
     {
       rc_file_close(file_handle);
-      snprintf((char*)header, sizeof(header), "3DS NCCH header was not at %04X%04X", (unsigned)(header_offset >> 32), (unsigned)header_offset);
+      snprintf((char*)header, sizeof(header), "3DS NCCH header was not at %08X%08X", (unsigned)(header_offset >> 32), (unsigned)header_offset);
       return rc_hash_error((const char*)header);
     }
   }
 
+  md5_init(&md5);
+
   if (memcmp(&header[0x100], "NCCH", 4) == 0)
   {
-    md5_init(&md5);
-    if (rc_hash_nintendo_3ds_ncch(&md5, file_handle, header))
+    if (rc_hash_nintendo_3ds_ncch(&md5, file_handle, header, NULL))
     {
       rc_file_close(file_handle);
       return rc_hash_finalize(&md5, hash);
@@ -1234,7 +1425,23 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
   }
 
   /* Couldn't identify either an NCSD or NCCH */
-  /* TODO: Add CIA hashing (this should just contain an NCCH, but the NCCH header would be encrypted) */
+
+  /* Try to identify this as a CIA */
+  if (header[0] == 0x20 && header[1] == 0x20 && header[2] == 0x00 && header[3] == 0x00)
+  {
+    rc_hash_verbose("Detected CIA, attempting to find executable NCCH");
+
+    if (rc_hash_nintendo_3ds_cia(&md5, file_handle, header))
+    {
+      rc_file_close(file_handle);
+      return rc_hash_finalize(&md5, hash);
+    }
+
+    rc_file_close(file_handle);
+    return rc_hash_error("Failed to hash 3DS CIA container");
+  }
+
+  /* TODO: Add 3DSX/AXF/ELF hashing (homebrew formats Citra accepts) */
   rc_file_close(file_handle);
   return rc_hash_error("Not a 3DS ROM");
 }
