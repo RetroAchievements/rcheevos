@@ -1172,11 +1172,18 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   if (aes)
   {
     /* This is annoying, we might have to "decrypt" the data in-between the header and ExeFS */
-    /* Luckily this typically isn't a lot of data */
-    /* TODO: Sanity check this */
+    /* Luckily this shouldn't be a lot of data */
+
+    /* This should never happen in practice, but just in case */
+    if (exefs_offset > MAX_BUFFER_SIZE)
+    {
+      free(hash_buffer);
+      return rc_hash_error("Too much data required to decrypt in order to hash");
+    }
+
     while (exefs_offset)
     {
-      i = (uint64_t)exefs_offset > exefs_size ? exefs_size : exefs_offset;
+      i = (uint32_t)exefs_offset > exefs_size ? exefs_size : (uint32_t)exefs_offset;
       if (rc_file_read(file_handle, hash_buffer, i) != i)
       {
         free(hash_buffer);
