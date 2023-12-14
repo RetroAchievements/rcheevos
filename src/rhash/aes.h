@@ -1,5 +1,5 @@
-#ifndef _AES_H_
-#define _AES_H_
+#ifndef AES_H
+#define AES_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -14,6 +14,10 @@ struct AES_ctx
   uint8_t Iv[AES_BLOCKLEN];
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void AES_init_ctx(struct AES_ctx* ctx, const uint8_t key[AES_KEYLEN]);
 void AES_init_ctx_iv(struct AES_ctx* ctx, const uint8_t key[AES_KEYLEN], const uint8_t iv[AES_BLOCKLEN]);
 void AES_ctx_set_iv(struct AES_ctx* ctx, const uint8_t iv[AES_BLOCKLEN]);
@@ -25,4 +29,8 @@ void AES_ctx_set_iv(struct AES_ctx* ctx, const uint8_t iv[AES_BLOCKLEN]);
  */
 void AES_CBC_decrypt_buffer(struct AES_ctx* ctx, uint8_t* buf, size_t length);
 
-#endif /* _AES_H_ */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* AES_H */
