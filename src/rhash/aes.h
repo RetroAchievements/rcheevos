@@ -25,4 +25,4 @@ void AES_ctx_set_iv(struct AES_ctx* ctx, const uint8_t iv[AES_BLOCKLEN]);
  */
 void AES_CBC_decrypt_buffer(struct AES_ctx* ctx, uint8_t* buf, size_t length);
 
-#endif // _AES_H_
+#endif /* _AES_H_ */
