@@ -92,7 +92,7 @@ OBJ=$(RC_SRC)/rc_compat.o \
     test.o
 
 # compile flags
-CFLAGS=-Wall -Wno-long-long -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+CFLAGS=-Wall -Wno-long-long -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -DRC_STATIC
 INCLUDES=-I../include -I$(RC_CHEEVOS_SRC) -I.
 
 ifeq ($(ARCH), x86)

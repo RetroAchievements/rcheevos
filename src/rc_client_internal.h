@@ -23,11 +23,11 @@ extern "C" {
 \*****************************************************************************/
 
 struct rc_api_fetch_game_data_response_t;
-typedef void (*rc_client_post_process_game_data_response_t)(const rc_api_server_response_t* server_response,
+typedef void (RC_CCONV *rc_client_post_process_game_data_response_t)(const rc_api_server_response_t* server_response,
               struct rc_api_fetch_game_data_response_t* game_data_response, rc_client_t* client, void* userdata);
-typedef int (*rc_client_can_submit_achievement_unlock_t)(uint32_t achievement_id, rc_client_t* client);
-typedef int (*rc_client_can_submit_leaderboard_entry_t)(uint32_t leaderboard_id, rc_client_t* client);
-typedef int (*rc_client_rich_presence_override_t)(rc_client_t* client, char buffer[], size_t buffersize);
+typedef int (RC_CCONV *rc_client_can_submit_achievement_unlock_t)(uint32_t achievement_id, rc_client_t* client);
+typedef int (RC_CCONV *rc_client_can_submit_leaderboard_entry_t)(uint32_t leaderboard_id, rc_client_t* client);
+typedef int (RC_CCONV *rc_client_rich_presence_override_t)(rc_client_t* client, char buffer[], size_t buffersize);
 
 typedef struct rc_client_callbacks_t {
   rc_client_read_memory_func_t read_memory;
@@ -44,7 +44,7 @@ typedef struct rc_client_callbacks_t {
 } rc_client_callbacks_t;
 
 struct rc_client_scheduled_callback_data_t;
-typedef void (*rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
+typedef void (RC_CCONV *rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
 
 typedef struct rc_client_scheduled_callback_data_t
 {
@@ -92,7 +92,7 @@ typedef struct rc_client_achievement_info_t {
 } rc_client_achievement_info_t;
 
 struct rc_client_achievement_list_info_t;
-typedef void (*rc_client_destroy_achievement_list_func_t)(struct rc_client_achievement_list_info_t* list);
+typedef void (RC_CCONV *rc_client_destroy_achievement_list_func_t)(struct rc_client_achievement_list_info_t* list);
 
 typedef struct rc_client_achievement_list_info_t {
   rc_client_achievement_list_t public_;
@@ -167,7 +167,7 @@ typedef struct rc_client_leaderboard_info_t {
 } rc_client_leaderboard_info_t;
 
 struct rc_client_leaderboard_list_info_t;
-typedef void (*rc_client_destroy_leaderboard_list_func_t)(struct rc_client_leaderboard_list_info_t* list);
+typedef void (RC_CCONV *rc_client_destroy_leaderboard_list_func_t)(struct rc_client_leaderboard_list_info_t* list);
 
 typedef struct rc_client_leaderboard_list_info_t {
   rc_client_leaderboard_list_t public_;
@@ -175,7 +175,7 @@ typedef struct rc_client_leaderboard_list_info_t {
 } rc_client_leaderboard_list_info_t;
 
 struct rc_client_leaderboard_entry_list_info_t;
-typedef void (*rc_client_destroy_leaderboard_entry_list_func_t)(struct rc_client_leaderboard_entry_list_info_t* list);
+typedef void (RC_CCONV *rc_client_destroy_leaderboard_entry_list_func_t)(struct rc_client_leaderboard_entry_list_info_t* list);
 
 typedef struct rc_client_leaderboard_entry_list_info_t {
   rc_client_leaderboard_entry_list_t public_;

@@ -1,9 +1,7 @@
 #ifndef RC_CONSOLES_H
 #define RC_CONSOLES_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "rc_export.h"
 
 #include <stdint.h>
 
@@ -98,7 +96,7 @@ enum {
   RC_CONSOLE_EVENTS = 101
 };
 
-const char* rc_console_name(uint32_t console_id);
+RC_EXPORT const char* RC_CCONV rc_console_name(uint32_t console_id);
 
 /*****************************************************************************\
 | Memory mapping                                                              |
@@ -129,11 +127,6 @@ typedef struct rc_memory_regions_t {
 }
 rc_memory_regions_t;
 
-const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id);
-
-
-#ifdef __cplusplus
-}
-#endif
+RC_EXPORT const rc_memory_regions_t* RC_CCONV rc_console_memory_regions(uint32_t console_id);
 
 #endif /* RC_CONSOLES_H */
