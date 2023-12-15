@@ -2997,6 +2997,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
           iterator->consoles[0] = RC_CONSOLE_SUPER_CASSETTEVISION;
         }
         else if (rc_path_compare_extension(ext, "cci") ||
+                 rc_path_compare_extension(ext, "cia") ||
                  rc_path_compare_extension(ext, "cxi"))
         {
           iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
