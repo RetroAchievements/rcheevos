@@ -1135,7 +1135,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   const uint32_t MAX_BUFFER_SIZE_IN_MEDIA_UNITS = MAX_BUFFER_SIZE / 0x200;
   uint8_t* hash_buffer;
   int64_t exefs_offset;
-  uint32_t exefs_size, i;
+  uint32_t exefs_size;
 
   exefs_offset = ((uint32_t)header[0x1A3] << 24) | (header[0x1A2] << 16) | (header[0x1A1] << 8) | header[0x1A0];
   exefs_size = ((uint32_t)header[0x1A7] << 24) | (header[0x1A6] << 16) | (header[0x1A5] << 8) | header[0x1A4];
@@ -1151,6 +1151,39 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   if (exefs_offset == 0 || exefs_size == 0)
     return rc_hash_error("ExeFS was not available");
 
+  /* ASSERT: file position must be +0x200 from start of NCCH (i.e. end of header) */
+  exefs_offset -= 0x200;
+
+  if (aes)
+  {
+    /* This is annoying, we might have to "decrypt" the data in-between the header and ExeFS */
+    /* Luckily this shouldn't be a lot of data */
+
+    /* This should never happen in practice, but just in case */
+    if (exefs_offset > MAX_BUFFER_SIZE)
+      return rc_hash_error("Too much data required to decrypt in order to hash");
+
+    hash_buffer = malloc((uint32_t)exefs_offset);
+    if (!hash_buffer)
+    {
+      snprintf((char*)header, 0x200, "Failed to allocate %u bytes", (unsigned)exefs_offset);
+      return rc_hash_error((const char*)header);
+    }
+
+    if (rc_file_read(file_handle, hash_buffer, (uint32_t)exefs_offset) != (uint32_t)exefs_offset)
+    {
+      free(hash_buffer);
+      return rc_hash_error("Could not read NCCH data");
+    }
+
+    AES_CBC_decrypt_buffer(aes, hash_buffer, (uint32_t)exefs_offset);
+    free(hash_buffer);
+  }
+  else
+  {
+    rc_file_seek(file_handle, exefs_offset, SEEK_CUR);
+  }
+
   hash_buffer = malloc(exefs_size);
   if (!hash_buffer)
   {
@@ -1165,39 +1198,6 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   {
     snprintf((char*)header, 0x200, "Hashing %u bytes for ExeFS (at %08X%08X)", (unsigned)exefs_size, (unsigned)(exefs_offset >> 32), (unsigned)exefs_offset);
     verbose_message_callback((const char*)header);
-  }
-
-  /* ASSERT: file position must be +0x200 from start of NCCH (i.e. end of header) */
-  exefs_offset -= 0x200;
-
-  if (aes)
-  {
-    /* This is annoying, we might have to "decrypt" the data in-between the header and ExeFS */
-    /* Luckily this shouldn't be a lot of data */
-
-    /* This should never happen in practice, but just in case */
-    if (exefs_offset > MAX_BUFFER_SIZE)
-    {
-      free(hash_buffer);
-      return rc_hash_error("Too much data required to decrypt in order to hash");
-    }
-
-    while (exefs_offset)
-    {
-      i = (uint32_t)exefs_offset > exefs_size ? exefs_size : (uint32_t)exefs_offset;
-      if (rc_file_read(file_handle, hash_buffer, i) != i)
-      {
-        free(hash_buffer);
-        return rc_hash_error("Could not read NCCH data");
-      }
-
-      AES_CBC_decrypt_buffer(aes, hash_buffer, i);
-      exefs_offset -= i;
-    }
-  }
-  else
-  {
-    rc_file_seek(file_handle, exefs_offset, SEEK_CUR);
   }
 
   if (rc_file_read(file_handle, hash_buffer, exefs_size) != exefs_size)
