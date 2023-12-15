@@ -1197,7 +1197,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
 
   if (verbose_message_callback)
   {
-    snprintf((char*)header, 0x200, "Hashing %u bytes for ExeFS (at %08X%08X)", (unsigned)exefs_size, (unsigned)(exefs_offset >> 32), (unsigned)exefs_offset);
+    snprintf((char*)header, 0x200, "Hashing %u bytes for ExeFS (at NCCH offset %08X%08X)", (unsigned)exefs_size, (unsigned)(exefs_offset >> 32), (unsigned)exefs_offset);
     verbose_message_callback((const char*)header);
   }
 
@@ -1209,6 +1209,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
 
   if (aes)
   {
+    rc_hash_verbose("Performing CIA decryption for ExeFS");
     AES_CBC_decrypt_buffer(aes, hash_buffer, exefs_size);
   }
 
