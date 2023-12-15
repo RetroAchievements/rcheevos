@@ -1148,7 +1148,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   exefs_size *= 0x200;
 
   /* This region is technically optional, but it should always be present for executable content (i.e. games) */
-  if (exefs_size == 0)
+  if (exefs_offset == 0 || exefs_size == 0)
     return rc_hash_error("ExeFS was not available");
 
   hash_buffer = malloc(exefs_size);
@@ -1168,6 +1168,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   }
 
   /* ASSERT: file position must be +0x200 from start of NCCH (i.e. end of header) */
+  exefs_offset -= 0x200;
 
   if (aes)
   {
@@ -1196,7 +1197,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   }
   else
   {
-    rc_file_seek(file_handle, exefs_offset - 0x200, SEEK_CUR);
+    rc_file_seek(file_handle, exefs_offset, SEEK_CUR);
   }
 
   if (rc_file_read(file_handle, hash_buffer, exefs_size) != exefs_size)
@@ -1275,7 +1276,7 @@ static int rc_hash_nintendo_3ds_cia(md5_state_t* md5, void* file_handle, uint8_t
 
   content_count = (header[0] << 8) | header[1];
 
-  rc_file_seek(file_handle, 0x9C4 - 0x9E, SEEK_CUR);
+  rc_file_seek(file_handle, 0x9C4 - 0x9E - 2, SEEK_CUR);
   for (i = 0; i < content_count; i++)
   {
     if (rc_file_read(file_handle, header, 0x30) != 0x30)
