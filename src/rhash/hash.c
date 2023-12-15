@@ -17,6 +17,7 @@
 #define MAX_BUFFER_SIZE 64 * 1024 * 1024
 
 const char* rc_path_get_filename(const char* path);
+static int rc_hash_whole_file(char hash[33], const char* path);
 
 /* ===================================================== */
 
@@ -1508,7 +1509,7 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
   }
 
   /* Raw ELF marker (AXF/ELF files) */
-  if (memcmp(buffer, "\x7f\x45\x4c\x46", 4) == 0)
+  if (memcmp(&header[0], "\x7f\x45\x4c\x46", 4) == 0)
   {
     rc_hash_verbose("Detected AXF/ELF file, hashing entire file");
 
