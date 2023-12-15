@@ -1400,7 +1400,7 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
     {
       char message[128];
       snprintf(message, sizeof(message), "Detected NCSD header, seeking to NCCH partition at %08X%08X", (unsigned)(header_offset >> 32), (unsigned)header_offset);
-      verbose_message_callback((const char*)header);
+      verbose_message_callback((const char*)message);
     }
 
     rc_file_seek(file_handle, header_offset, SEEK_SET);
