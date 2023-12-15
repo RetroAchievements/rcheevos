@@ -1163,7 +1163,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
     if (exefs_offset > MAX_BUFFER_SIZE)
       return rc_hash_error("Too much data required to decrypt in order to hash");
 
-    hash_buffer = malloc((uint32_t)exefs_offset);
+    hash_buffer = (uint8_t*)malloc((uint32_t)exefs_offset);
     if (!hash_buffer)
     {
       snprintf((char*)header, 0x200, "Failed to allocate %u bytes", (unsigned)exefs_offset);
@@ -1184,7 +1184,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
     rc_file_seek(file_handle, exefs_offset, SEEK_CUR);
   }
 
-  hash_buffer = malloc(exefs_size);
+  hash_buffer = (uint8_t*)malloc(exefs_size);
   if (!hash_buffer)
   {
     snprintf((char*)header, 0x200, "Failed to allocate %u bytes", (unsigned)exefs_size);
@@ -1368,6 +1368,49 @@ static int rc_hash_nintendo_3ds_cia(md5_state_t* md5, void* file_handle, uint8_t
   return rc_hash_nintendo_3ds_ncch(md5, file_handle, header, &aes);
 }
 
+static int rc_hash_nintendo_3ds_3dsx(md5_state_t* md5, void* file_handle, uint8_t header[0x200])
+{
+  uint8_t* hash_buffer;
+  uint32_t header_size, reloc_header_size, code_size;
+  int64_t code_offset;
+
+  header_size = (header[5] << 8) | header[4];
+  reloc_header_size = (header[7] << 8) | header[6];
+  code_size = ((uint32_t)header[0x13] << 24) | (header[0x12] << 16) | (header[0x11] << 8) | header[0x10];
+
+  /* 3 relocation headers are in-between the 3DSX header and code segment */
+  code_offset = header_size + reloc_header_size * 3;
+
+  if (code_size > MAX_BUFFER_SIZE)
+    code_size = MAX_BUFFER_SIZE;
+
+  hash_buffer = (uint8_t*)malloc(code_size);
+  if (!hash_buffer)
+  {
+    snprintf((char*)header, 0x200, "Failed to allocate %u bytes", (unsigned)code_size);
+    return rc_hash_error((const char*)header);
+  }
+
+  rc_file_seek(file_handle, code_offset, SEEK_SET);
+
+  if (verbose_message_callback)
+  {
+    snprintf((char*)header, 0x200, "Hashing %u bytes for 3DSX (at %08X)", (unsigned)code_size, (unsigned)code_offset);
+    verbose_message_callback((const char*)header);
+  }
+
+  if (rc_file_read(file_handle, hash_buffer, code_size) != code_size)
+  {
+    free(hash_buffer);
+    return rc_hash_error("Could not read 3DSX code segment");
+  }
+
+  md5_append(md5, hash_buffer, code_size);
+
+  free(hash_buffer);
+  return 1;
+}
+
 static int rc_hash_nintendo_3ds(char hash[33], const char* path)
 {
   md5_state_t md5;
@@ -1449,7 +1492,31 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
     return rc_hash_error("Failed to hash 3DS CIA container");
   }
 
-  /* TODO: Add 3DSX/AXF/ELF hashing (homebrew formats Citra accepts) */
+  /* This might be a homebrew game, try to detect that */
+  if (memcmp(&header[0], "3DSX", 4) == 0)
+  {
+    rc_hash_verbose("Detected 3DSX");
+
+    if (rc_hash_nintendo_3ds_3dsx(&md5, file_handle, header))
+    {
+      rc_file_close(file_handle);
+      return rc_hash_finalize(&md5, hash);
+    }
+
+    rc_file_close(file_handle);
+    return rc_hash_error("Failed to hash 3DS 3DSX container");
+  }
+
+  /* Raw ELF marker (AXF/ELF files) */
+  if (memcmp(buffer, "\x7f\x45\x4c\x46", 4) == 0)
+  {
+    rc_hash_verbose("Detected AXF/ELF file, hashing entire file");
+
+    /* Don't bother doing anything fancy here, just hash entire file */
+    rc_file_close(file_handle);
+    return rc_hash_whole_file(hash, path);
+  }
+
   rc_file_close(file_handle);
   return rc_hash_error("Not a 3DS ROM");
 }
@@ -2878,7 +2945,8 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         break;
 
       case '3':
-        if (rc_path_compare_extension(ext, "3ds"))
+        if (rc_path_compare_extension(ext, "3ds") ||
+            rc_path_compare_extension(ext, "3dsx"))
         {
           iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
         }
@@ -2907,7 +2975,8 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_ATARI_7800;
         }
-        else if (rc_path_compare_extension(ext, "app"))
+        else if (rc_path_compare_extension(ext, "app") ||
+                 rc_path_compare_extension(ext, "axf"))
         {
           iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
         }
@@ -3017,6 +3086,15 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_PC8800;
           iterator->consoles[1] = RC_CONSOLE_SHARPX1;
+        }
+        break;
+
+      case 'e':
+        if (rc_path_compare_extension(ext, "elf"))
+        {
+          /* This should probably apply to more consoles in the future */
+          /* Although in any case this just hashes the entire file */
+          iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
         }
         break;
 
