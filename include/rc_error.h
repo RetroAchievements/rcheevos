@@ -3,6 +3,8 @@
 
 #include "rc_export.h"
 
+RC_CXX_GUARD_BEGIN
+
 /*****************************************************************************\
 | Return values                                                               |
 \*****************************************************************************/
@@ -47,5 +49,7 @@ enum {
 };
 
 RC_EXPORT const char* RC_CCONV rc_error_str(int ret);
+
+RC_CXX_GUARD_END
 
 #endif /* RC_ERROR_H */

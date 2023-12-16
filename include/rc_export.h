@@ -3,33 +3,51 @@
 
 /* These macros control how callbacks and public functions are defined */
 
-/* RC_SHARED should be defined when building rcheevos as a shared library (e.g. dll/dylib/so) */
-/* RC_STATIC should be defined when building rcheevos as a static library */
-/* BUILDING_RC should be defined when building rcheevos itself, and should not be defined for external code */
+/* RC_SHARED should be defined when building rcheevos as a shared library (e.g. dll/dylib/so). External code should not define this macro. */
+/* RC_STATIC should be defined when building rcheevos as a static library. External code should also define this macro. */
+/* RC_IMPORT should be defined for external code using rcheevos as a shared library. */
 
-/* TODO: BUILDING_RC currently only has an effect for RC_SHARED (this is abused for test code), perhaps when it is undefined internal definitions should be hidden? */
+/* For compatibility, if none of these three macros are defined, then the build is assumed to be RC_STATIC */
 
-#if !defined(RC_SHARED) && !defined(RC_STATIC)
-  #error RC_SHARED or RC_STATIC must be defined
+#if !defined(RC_SHARED) && !defined(RC_STATIC) && !defined(RC_IMPORT)
+  #define RC_STATIC
 #endif
 
-#if defined(RC_SHARED) && defined(RC_STATIC)
-  #error RC_SHARED and RC_STATIC are mutually exclusive
+#if (defined(RC_SHARED) && defined(RC_STATIC)) || (defined(RC_SHARED) && defined(RC_IMPORT)) || (defined(RC_STATIC) && defined(RC_IMPORT))
+  #error RC_SHARED, RC_STATIC, and RC_IMPORT are mutually exclusive
 #endif
 
-/* RC_C_LINKAGE should be used for callbacks, to enforce the C calling convention */
-/* RC_C_LINKAGE should be placed before the return type, or before typedef if present */
-/* RC_C_LINKAGE void (*rc_callback)(void) */
-/* RC_C_LINKAGE typedef void (*rc_callback_t)(void) */
+/* RC_CXX_GUARD_BEGIN and RC_CXX_GUARD_END should be used for all headers, to enforce C linkage and the C calling convention */
+/* RC_CXX_GUARD_BEGIN should be placed after #include's and before header declarations */
+/* RC_CXX_GUARD_END should be placed after header declarations */
+
+/* example usage */
+/*
+ * #ifndef RC_HEADER_H
+ * #define RC_HEADER_H
+ *
+ * #include <stdint.h>
+ *
+ * RC_CXX_GUARD_BEGIN
+ *
+ * uint8_t rc_function(void);
+ *
+ * RC_CXX_GUARD_END
+ *
+ * #endif /* RC_HEADER_H */
 
 #ifdef __cplusplus
-  #define RC_C_LINKAGE extern "C"
+  #define RC_CXX_GUARD_BEGIN extern "C" {
+  #define RC_CXX_GUARD_END }
 #else
-  #define RC_C_LINKAGE
+  #define RC_CXX_GUARD_BEGIN
+  #define RC_CXX_GUARD_END
 #endif
 
 /* RC_CCONV should be used for public functions and callbacks, to enforce the cdecl calling convention, if applicable */
-/* RC_CCONV should be placed after the return type, and between the (* for callbacks */
+/* RC_CCONV should be placed after the return type, and between the ( and * for callbacks */
+
+/* example usage */
 /* void RC_CCONV rc_function(void) */
 /* void (RC_CCONV *rc_callback)(void) */
 
@@ -44,26 +62,38 @@
 #endif
 
 /* RC_EXPORT should be used for public functions */
-/* RC_EXPORT will enforce C linkage, and will provide necessary hints for shared library usage, if applicable */
+/* RC_EXPORT will provide necessary hints for shared library usage, if applicable */
 /* RC_EXPORT should be placed before the return type */
+
+/* example usage */
 /* RC_EXPORT void rc_function(void) */
 
 #ifdef RC_SHARED
   #if defined(_WIN32)
-    #ifdef BUILDING_RC
-      #define RC_EXPORT RC_C_LINKAGE __declspec(dllexport)
-    #else
-      #define RC_EXPORT RC_C_LINKAGE __declspec(dllimport)
-    #endif
-  #elif defined(__GNUC__)
-    #define RC_EXPORT RC_C_LINKAGE __attribute__((visibility("default")))
+    #define RC_EXPORT __declspec(dllexport)
+  #elif defined(__GNUC__) && __GNUC__ >= 4
+    #define RC_EXPORT __attribute__((visibility("default")))
   #else
-    #define RC_EXPORT RC_C_LINKAGE
+    #define RC_EXPORT
+  #endif
+#endif
+
+#ifdef RC_IMPORT
+  #if defined(_WIN32)
+    #define RC_EXPORT __declspec(dllimport)
+  #elif defined(__GNUC__) && __GNUC__ >= 4
+    #define RC_EXPORT __attribute__((visibility("default")))
+  #else
+    #define RC_EXPORT
   #endif
 #endif
 
 #ifdef RC_STATIC
-  #define RC_EXPORT RC_C_LINKAGE
+  #if defined(__GNUC__) && __GNUC__ >= 4
+    #define RC_EXPORT __attribute__((visibility("default")))
+  #else
+    #define RC_EXPORT
+  #endif
 #endif
 
 #endif /* RC_EXPORT_H */

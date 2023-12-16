@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <time.h>
 
+RC_CXX_GUARD_BEGIN
+
 /* implementation abstracted in rc_client_internal.h */
 typedef struct rc_client_t rc_client_t;
 typedef struct rc_client_async_handle_t rc_client_async_handle_t;
@@ -20,27 +22,27 @@ typedef struct rc_client_async_handle_t rc_client_async_handle_t;
  * Callback used to read num_bytes bytes from memory starting at address into buffer.
  * Returns the number of bytes read. A return value of 0 indicates the address was invalid.
  */
-RC_C_LINKAGE typedef uint32_t (RC_CCONV *rc_client_read_memory_func_t)(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client);
+typedef uint32_t (RC_CCONV *rc_client_read_memory_func_t)(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client);
 
 /**
  * Internal method passed to rc_client_server_call_t to process the server response.
  */
-RC_C_LINKAGE typedef void (RC_CCONV *rc_client_server_callback_t)(const rc_api_server_response_t* server_response, void* callback_data);
+typedef void (RC_CCONV *rc_client_server_callback_t)(const rc_api_server_response_t* server_response, void* callback_data);
 
 /**
  * Callback used to issue a request to the server.
  */
-RC_C_LINKAGE typedef void (RC_CCONV *rc_client_server_call_t)(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client);
+typedef void (RC_CCONV *rc_client_server_call_t)(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client);
 
 /**
  * Generic callback for asynchronous eventing.
  */
-RC_C_LINKAGE typedef void (RC_CCONV *rc_client_callback_t)(int result, const char* error_message, rc_client_t* client, void* userdata);
+typedef void (RC_CCONV *rc_client_callback_t)(int result, const char* error_message, rc_client_t* client, void* userdata);
 
 /**
  * Callback for logging or displaying a message.
  */
-RC_C_LINKAGE typedef void (RC_CCONV *rc_client_message_callback_t)(const char* message, const rc_client_t* client);
+typedef void (RC_CCONV *rc_client_message_callback_t)(const char* message, const rc_client_t* client);
 
 /*****************************************************************************\
 | Runtime                                                                     |
@@ -122,7 +124,7 @@ RC_EXPORT void* RC_CCONV rc_client_get_userdata(const rc_client_t* client);
 RC_EXPORT void RC_CCONV rc_client_set_host(const rc_client_t* client, const char* hostname);
 
 typedef uint64_t rc_clock_t;
-RC_C_LINKAGE typedef rc_clock_t (RC_CCONV *rc_get_time_millisecs_func_t)(const rc_client_t* client);
+typedef rc_clock_t (RC_CCONV *rc_get_time_millisecs_func_t)(const rc_client_t* client);
 
 /**
  * Specifies a function that returns a value that increases once per millisecond.
@@ -483,7 +485,7 @@ typedef struct rc_client_leaderboard_entry_list_t {
   int32_t user_index;
 } rc_client_leaderboard_entry_list_t;
 
-RC_C_LINKAGE typedef void (RC_CCONV *rc_client_fetch_leaderboard_entries_callback_t)(int result, const char* error_message,
+typedef void (RC_CCONV *rc_client_fetch_leaderboard_entries_callback_t)(int result, const char* error_message,
     rc_client_leaderboard_entry_list_t* list, rc_client_t* client, void* callback_userdata);
 
 /**
@@ -605,7 +607,7 @@ typedef struct rc_client_event_t {
 /**
  * Callback used to notify the client when certain events occur.
  */
-RC_C_LINKAGE typedef void (RC_CCONV *rc_client_event_handler_t)(const rc_client_event_t* event, rc_client_t* client);
+typedef void (RC_CCONV *rc_client_event_handler_t)(const rc_client_event_t* event, rc_client_t* client);
 
 /**
  * Provides a callback for event handling.
@@ -664,5 +666,7 @@ RC_EXPORT int RC_CCONV rc_client_serialize_progress(rc_client_t* client, uint8_t
  * Returns RC_OK on success, or an error indicator.
  */
 RC_EXPORT int RC_CCONV rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialized);
+
+RC_CXX_GUARD_END
 
 #endif /* RC_RUNTIME_H */

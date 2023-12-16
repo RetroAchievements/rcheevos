@@ -10,6 +10,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+RC_CXX_GUARD_BEGIN
+
 /*****************************************************************************\
 | Disallowed Settings                                                         |
 \*****************************************************************************/
@@ -29,7 +31,7 @@ RC_EXPORT int RC_CCONV rc_libretro_is_system_allowed(const char* library_name, u
 \*****************************************************************************/
 
 /* specifies a function to call for verbose logging */
-RC_C_LINKAGE typedef void (RC_CCONV *rc_libretro_message_callback)(const char*);
+typedef void (RC_CCONV *rc_libretro_message_callback)(const char*);
 RC_EXPORT void RC_CCONV rc_libretro_init_verbose_message_callback(rc_libretro_message_callback callback);
 
 #define RC_LIBRETRO_MAX_MEMORY_REGIONS 32
@@ -75,7 +77,7 @@ typedef struct rc_libretro_hash_set_t
   uint16_t                         entries_size;
 } rc_libretro_hash_set_t;
 
-RC_C_LINKAGE typedef int (RC_CCONV *rc_libretro_get_image_path_func)(uint32_t index, char* buffer, size_t buffer_size);
+typedef int (RC_CCONV *rc_libretro_get_image_path_func)(uint32_t index, char* buffer, size_t buffer_size);
 
 RC_EXPORT void RC_CCONV rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
                                const char* m3u_path, rc_libretro_get_image_path_func get_image_path);
@@ -85,5 +87,7 @@ RC_EXPORT void RC_CCONV rc_libretro_hash_set_add(struct rc_libretro_hash_set_t* 
                                                  const char* path, uint32_t game_id, const char hash[33]);
 RC_EXPORT const char* RC_CCONV rc_libretro_hash_set_get_hash(const struct rc_libretro_hash_set_t* hash_set, const char* path);
 RC_EXPORT int RC_CCONV rc_libretro_hash_set_get_game_id(const struct rc_libretro_hash_set_t* hash_set, const char* hash);
+
+RC_CXX_GUARD_END
 
 #endif /* RC_LIBRETRO_H */

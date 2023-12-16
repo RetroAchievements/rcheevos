@@ -41,6 +41,7 @@ OBJ=$(RC_SRC)/rc_compat.o \
     $(RC_SRC)/rc_client.o \
     $(RC_SRC)/rc_libretro.o \
     $(RC_SRC)/rc_util.o \
+    $(RC_SRC)/rc_version.o \
     $(RC_CHEEVOS_SRC)/alloc.o \
     $(RC_CHEEVOS_SRC)/condition.o \
     $(RC_CHEEVOS_SRC)/condset.o \
@@ -92,7 +93,7 @@ OBJ=$(RC_SRC)/rc_compat.o \
     test.o
 
 # compile flags
-CFLAGS=-Wall -Wno-long-long -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -DRC_STATIC
+CFLAGS=-Wall -Wno-long-long -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 INCLUDES=-I../include -I$(RC_CHEEVOS_SRC) -I.
 
 ifeq ($(ARCH), x86)

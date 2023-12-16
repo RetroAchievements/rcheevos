@@ -1,9 +1,9 @@
 #ifndef RC_VERSION_H
 #define RC_VERSION_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "rc_export.h"
+
+RC_CXX_GUARD_BEGIN
 
 #define RCHEEVOS_VERSION_MAJOR 11
 #define RCHEEVOS_VERSION_MINOR 0
@@ -22,8 +22,9 @@ extern "C" {
  #define RCHEEVOS_VERSION_STRING RCHEEVOS_MAKE_VERSION_STRING_SHORT(RCHEEVOS_VERSION_MAJOR, RCHEEVOS_VERSION_MINOR)
 #endif
 
-#ifdef __cplusplus
-}
-#endif
+RC_EXPORT uint32_t rc_version(void);
+RC_EXPORT const char* rc_version_string(void);
+
+RC_CXX_GUARD_END
 
 #endif /* RC_VERSION_H */

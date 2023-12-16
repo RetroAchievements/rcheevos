@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <time.h>
 
+RC_CXX_GUARD_BEGIN
+
 /* --- Fetch Image --- */
 
 /**
@@ -302,5 +304,7 @@ RC_EXPORT int RC_CCONV rc_api_init_submit_lboard_entry_request(rc_api_request_t*
 RC_EXPORT int RC_CCONV rc_api_process_submit_lboard_entry_response(rc_api_submit_lboard_entry_response_t* response, const char* server_response);
 RC_EXPORT int RC_CCONV rc_api_process_submit_lboard_entry_server_response(rc_api_submit_lboard_entry_response_t* response, const rc_api_server_response_t* server_response);
 RC_EXPORT void RC_CCONV rc_api_destroy_submit_lboard_entry_response(rc_api_submit_lboard_entry_response_t* response);
+
+RC_CXX_GUARD_END
 
 #endif /* RC_API_RUNTIME_H */

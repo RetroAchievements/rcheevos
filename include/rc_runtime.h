@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+RC_CXX_GUARD_BEGIN
+
 /*****************************************************************************\
 | Forward Declarations (defined in rc_runtime_types.h)                        |
 \*****************************************************************************/
@@ -31,7 +33,7 @@ typedef struct rc_value_t rc_value_t;
  * num_bytes is greater than 1, the value is read in little-endian from
  * memory.
  */
-RC_C_LINKAGE typedef uint32_t(RC_CCONV *rc_runtime_peek_t)(uint32_t address, uint32_t num_bytes, void* ud);
+typedef uint32_t(RC_CCONV *rc_runtime_peek_t)(uint32_t address, uint32_t num_bytes, void* ud);
 
 /*****************************************************************************\
 | Runtime                                                                     |
@@ -132,17 +134,19 @@ typedef struct rc_runtime_event_t {
 }
 rc_runtime_event_t;
 
-RC_C_LINKAGE typedef void (RC_CCONV *rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_event);
+typedef void (RC_CCONV *rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_event);
 
 RC_EXPORT void RC_CCONV rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_peek_t peek, void* ud, lua_State* L);
 RC_EXPORT void RC_CCONV rc_runtime_reset(rc_runtime_t* runtime);
 
-RC_C_LINKAGE typedef int (RC_CCONV *rc_runtime_validate_address_t)(uint32_t address);
+typedef int (RC_CCONV *rc_runtime_validate_address_t)(uint32_t address);
 RC_EXPORT void RC_CCONV rc_runtime_validate_addresses(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_validate_address_t validate_handler);
 RC_EXPORT void RC_CCONV rc_runtime_invalidate_address(rc_runtime_t* runtime, uint32_t address);
 
 RC_EXPORT int RC_CCONV rc_runtime_progress_size(const rc_runtime_t* runtime, lua_State* L);
 RC_EXPORT int RC_CCONV rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua_State* L);
 RC_EXPORT int RC_CCONV rc_runtime_deserialize_progress(rc_runtime_t* runtime, const uint8_t* serialized, lua_State* L);
+
+RC_CXX_GUARD_END
 
 #endif /* RC_RUNTIME_H */

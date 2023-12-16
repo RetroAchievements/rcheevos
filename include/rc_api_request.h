@@ -6,6 +6,8 @@
 
 #include <stddef.h>
 
+RC_CXX_GUARD_BEGIN
+
 /**
  * A constructed request to send to the retroachievements server.
  */
@@ -56,5 +58,7 @@ enum {
   RC_API_SERVER_RESPONSE_CLIENT_ERROR = -1,
   RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR = -2
 };
+
+RC_CXX_GUARD_END
 
 #endif /* RC_API_REQUEST_H */

@@ -7,6 +7,8 @@
 
 #include "rc_consoles.h"
 
+RC_CXX_GUARD_BEGIN
+
   /* ===================================================== */
 
   /* generates a hash from a block of memory.
@@ -50,7 +52,7 @@
   /* ===================================================== */
 
   /* specifies a function to call when an error occurs to display the error message */
-  RC_C_LINKAGE typedef void (RC_CCONV *rc_hash_message_callback)(const char*);
+  typedef void (RC_CCONV *rc_hash_message_callback)(const char*);
   RC_EXPORT void RC_CCONV rc_hash_init_error_message_callback(rc_hash_message_callback callback);
 
   /* specifies a function to call for verbose logging */
@@ -59,21 +61,21 @@
   /* ===================================================== */
 
   /* opens a file */
-  RC_C_LINKAGE typedef void* (RC_CCONV *rc_hash_filereader_open_file_handler)(const char* path_utf8);
+  typedef void* (RC_CCONV *rc_hash_filereader_open_file_handler)(const char* path_utf8);
 
   /* moves the file pointer - standard fseek parameters */
-  RC_C_LINKAGE typedef void (RC_CCONV *rc_hash_filereader_seek_handler)(void* file_handle, int64_t offset, int origin);
+  typedef void (RC_CCONV *rc_hash_filereader_seek_handler)(void* file_handle, int64_t offset, int origin);
 
   /* locates the file pointer */
-  RC_C_LINKAGE typedef int64_t (RC_CCONV *rc_hash_filereader_tell_handler)(void* file_handle);
+  typedef int64_t (RC_CCONV *rc_hash_filereader_tell_handler)(void* file_handle);
 
   /* reads the specified number of bytes from the file starting at the read pointer.
    * returns the number of bytes actually read.
    */
-  RC_C_LINKAGE typedef size_t (RC_CCONV *rc_hash_filereader_read_handler)(void* file_handle, void* buffer, size_t requested_bytes);
+  typedef size_t (RC_CCONV *rc_hash_filereader_read_handler)(void* file_handle, void* buffer, size_t requested_bytes);
 
   /* closes the file */
-  RC_C_LINKAGE typedef void (RC_CCONV *rc_hash_filereader_close_file_handler)(void* file_handle);
+  typedef void (RC_CCONV *rc_hash_filereader_close_file_handler)(void* file_handle);
 
   struct rc_hash_filereader
   {
@@ -96,18 +98,18 @@
   /* opens a track from the specified file. see the RC_HASH_CDTRACK_ defines for special tracks.
    * returns a handle to be passed to the other functions, or NULL if the track could not be opened.
    */
-  RC_C_LINKAGE typedef void* (RC_CCONV *rc_hash_cdreader_open_track_handler)(const char* path, uint32_t track);
+  typedef void* (RC_CCONV *rc_hash_cdreader_open_track_handler)(const char* path, uint32_t track);
 
   /* attempts to read the specified number of bytes from the file starting at the specified absolute sector.
    * returns the number of bytes actually read.
    */
-  RC_C_LINKAGE typedef size_t (RC_CCONV *rc_hash_cdreader_read_sector_handler)(void* track_handle, uint32_t sector, void* buffer, size_t requested_bytes);
+  typedef size_t (RC_CCONV *rc_hash_cdreader_read_sector_handler)(void* track_handle, uint32_t sector, void* buffer, size_t requested_bytes);
 
   /* closes the track handle */
-  RC_C_LINKAGE typedef void (RC_CCONV *rc_hash_cdreader_close_track_handler)(void* track_handle);
+  typedef void (RC_CCONV *rc_hash_cdreader_close_track_handler)(void* track_handle);
 
   /* gets the absolute sector index for the first sector of a track */
-  RC_C_LINKAGE typedef uint32_t(RC_CCONV *rc_hash_cdreader_first_track_sector_handler)(void* track_handle);
+  typedef uint32_t(RC_CCONV *rc_hash_cdreader_first_track_sector_handler)(void* track_handle);
 
   struct rc_hash_cdreader
   {
@@ -122,5 +124,7 @@
   RC_EXPORT void RC_CCONV rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader);
 
   /* ===================================================== */
+
+RC_CXX_GUARD_END
 
 #endif /* RC_HASH_H */

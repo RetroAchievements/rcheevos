@@ -1,10 +1,6 @@
 #ifndef RC_CLIENT_INTERNAL_H
 #define RC_CLIENT_INTERNAL_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "rc_client.h"
 
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
@@ -17,6 +13,8 @@ extern "C" {
 #include "rc_compat.h"
 #include "rc_runtime.h"
 #include "rc_runtime_types.h"
+
+RC_CXX_GUARD_BEGIN
 
 /*****************************************************************************\
 | Callbacks                                                                   |
@@ -390,8 +388,6 @@ void rc_client_set_legacy_peek(rc_client_t* client, int method);
 
 void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 
-#ifdef __cplusplus
-}
-#endif
+RC_CXX_GUARD_END
 
 #endif /* RC_CLIENT_INTERNAL_H */

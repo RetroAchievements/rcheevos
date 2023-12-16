@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <time.h>
 
+RC_CXX_GUARD_BEGIN
+
 /* --- Fetch Achievement Info --- */
 
 /**
@@ -174,5 +176,7 @@ RC_EXPORT int RC_CCONV rc_api_init_fetch_games_list_request(rc_api_request_t* re
 RC_EXPORT int RC_CCONV rc_api_process_fetch_games_list_response(rc_api_fetch_games_list_response_t* response, const char* server_response);
 RC_EXPORT int RC_CCONV rc_api_process_fetch_games_list_server_response(rc_api_fetch_games_list_response_t* response, const rc_api_server_response_t* server_response);
 RC_EXPORT void RC_CCONV rc_api_destroy_fetch_games_list_response(rc_api_fetch_games_list_response_t* response);
+
+RC_CXX_GUARD_END
 
 #endif /* RC_API_INFO_H */

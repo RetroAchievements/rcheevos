@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+RC_CXX_GUARD_BEGIN
+
 #ifndef RC_RUNTIME_H /* prevents pedantic redefiniton error */
 
 typedef struct lua_State lua_State;
@@ -27,7 +29,7 @@ typedef struct rc_value_t rc_value_t;
  * num_bytes is greater than 1, the value is read in little-endian from
  * memory.
  */
-RC_C_LINKAGE typedef uint32_t(RC_CCONV *rc_peek_t)(uint32_t address, uint32_t num_bytes, void* ud);
+typedef uint32_t(RC_CCONV *rc_peek_t)(uint32_t address, uint32_t num_bytes, void* ud);
 
 /*****************************************************************************\
 | Memory References                                                           |
@@ -414,5 +416,7 @@ RC_EXPORT int RC_CCONV rc_evaluate_richpresence(rc_richpresence_t* richpresence,
 RC_EXPORT void RC_CCONV rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, lua_State* L);
 RC_EXPORT int RC_CCONV rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
 RC_EXPORT void RC_CCONV rc_reset_richpresence(rc_richpresence_t* self);
+
+RC_CXX_GUARD_END
 
 #endif /* RC_RUNTIME_TYPES_H */
