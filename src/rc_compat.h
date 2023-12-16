@@ -1,7 +1,7 @@
 #ifndef RC_COMPAT_H
 #define RC_COMPAT_H
 
-#define "rc_export.h"
+#include "rc_export.h"
 
 #include <stdio.h>
 #include <stdlib.h>
