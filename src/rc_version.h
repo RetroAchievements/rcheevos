@@ -3,6 +3,8 @@
 
 #include "rc_export.h"
 
+#include <stdint.h>
+
 RC_CXX_GUARD_BEGIN
 
 #define RCHEEVOS_VERSION_MAJOR 11
