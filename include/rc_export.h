@@ -21,8 +21,8 @@
 /* RC_CXX_GUARD_BEGIN should be placed after #include's and before header declarations */
 /* RC_CXX_GUARD_END should be placed after header declarations */
 
-/* example usage */
-/*
+/* example usage
+ *
  * #ifndef RC_HEADER_H
  * #define RC_HEADER_H
  *
@@ -34,7 +34,8 @@
  *
  * RC_CXX_GUARD_END
  *
- * #endif /* RC_HEADER_H */
+ * #endif
+ */
 
 #ifdef __cplusplus
   #define RC_CXX_GUARD_BEGIN extern "C" {
