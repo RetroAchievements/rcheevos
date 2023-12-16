@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#if defined(_WIN32) && defined(_UNICODE)
+#if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
@@ -53,8 +53,9 @@ static struct rc_hash_filereader* filereader = NULL;
 
 static void* filereader_open(const char* path)
 {
-#if defined(_WIN32) && defined(_UNICODE)
+#if defined(WINVER) && WINVER >= 0x0500
   /* Windows requires using wchar APIs for Unicode paths */
+  /* Note that MultiByteToWideChar will only be defined for >= Windows 2000 */
   wchar_t* wpath;
   int wpath_length;
   FILE* fp;
