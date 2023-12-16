@@ -55,7 +55,7 @@ void rc_json_get_optional_num(int32_t* out, const rc_json_field_t* field, const 
 void rc_json_get_optional_unum(uint32_t* out, const rc_json_field_t* field, const char* field_name, uint32_t default_value);
 void rc_json_get_optional_float(float* out, const rc_json_field_t* field, const char* field_name, float default_value);
 void rc_json_get_optional_bool(int* out, const rc_json_field_t* field, const char* field_name, int default_value);
-int rc_json_get_optional_array(uint32_t* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
+int rc_json_get_optional_array(uint32_t* num_entries, rc_json_field_t* iterator, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_string(const char** out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_num(int32_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_unum(uint32_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
