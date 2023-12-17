@@ -364,11 +364,11 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uin
 
 /* ===================================================== */
 
-static rc_hash_3ds_cia_normal_key_callback _3ds_cia_normal_key_callback = NULL;
+static rc_hash_3ds_get_cia_normal_key_func _3ds_get_cia_normal_key_func = NULL;
 
-void rc_hash_init_3ds_cia_normal_key_callback(rc_hash_3ds_cia_normal_key_callback callback)
+void rc_hash_init_3ds_get_cia_normal_key_func(rc_hash_3ds_get_cia_normal_key_func func)
 {
-  _3ds_cia_normal_key_callback = callback;
+  _3ds_get_cia_normal_key_func = func;
 }
 
 /* ===================================================== */
@@ -1157,8 +1157,8 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
 
   if (aes)
   {
-    /* This is annoying, we might have to "decrypt" the data in-between the header and ExeFS */
-    /* Luckily this shouldn't be a lot of data */
+    /* We have to decrypt the data between the header and the ExeFS so the AES state is correct
+     * when we reach the ExeFS. This decrypted data is not included in the RetroAchievements hash */
 
     /* This should never happen in practice, but just in case */
     if (exefs_offset > MAX_BUFFER_SIZE)
@@ -1182,6 +1182,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   }
   else
   {
+    /* no decryption needed, just skip over the in-between data */
     rc_file_seek(file_handle, exefs_offset, SEEK_CUR);
   }
 
@@ -1310,7 +1311,7 @@ static int rc_hash_nintendo_3ds_cia(md5_state_t* md5, void* file_handle, uint8_t
     return rc_hash_nintendo_3ds_ncch(md5, file_handle, header, NULL);
   }
 
-  if (_3ds_cia_normal_key_callback == NULL)
+  if (_3ds_get_cia_normal_key_func == NULL)
     return rc_hash_error("An encrypted CIA was detected, but the CIA normal key callback was not set");
 
   /* Acquire the encrypted title key, title id, and common key index from the ticket */
@@ -1338,7 +1339,7 @@ static int rc_hash_nintendo_3ds_cia(md5_state_t* md5, void* file_handle, uint8_t
     return rc_hash_error((const char*)header);
   }
 
-  if (_3ds_cia_normal_key_callback(common_key_index, normal_key) == 0)
+  if (_3ds_get_cia_normal_key_func(common_key_index, normal_key) == 0)
   {
     snprintf((char*)header, 0x200, "Could not obtain common key %02X", (unsigned)common_key_index);
     return rc_hash_error((const char*)header);

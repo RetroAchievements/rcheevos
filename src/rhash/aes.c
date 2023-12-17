@@ -1,3 +1,8 @@
+/* This file is sourced from https://github.com/kokke/tiny-AES-c, with unused code excised.
+ * This code is licensed under the Unlicense license, effectively public domain.
+ * https://github.com/kokke/tiny-AES-c/blob/f06ac37/unlicense.txt
+ */
+
 /*
 
 This is an implementation of the AES algorithm, specifically ECB, CTR and CBC mode.

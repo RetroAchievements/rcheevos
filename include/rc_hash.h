@@ -125,10 +125,11 @@ RC_BEGIN_C_DECLS
 
   /* specifies a function called to obtain a 3DS CIA decryption normal key.
    * this key would be derived from slot0x3DKeyX and the common key specified by the passed index.
+   * the normal key should be written in big endian format
    * returns non-zero on success, or zero on failure.
    */
-  typedef int (*rc_hash_3ds_cia_normal_key_callback)(uint8_t index, uint8_t key[16]);
-  void rc_hash_init_3ds_cia_normal_key_callback(rc_hash_3ds_cia_normal_key_callback callback);
+  typedef int (*rc_hash_3ds_get_cia_normal_key_func)(uint8_t common_key_index, uint8_t out_normal_key[16]);
+  void rc_hash_init_3ds_get_cia_normal_key_func(rc_hash_3ds_get_cia_normal_key_func func);
 
   /* ===================================================== */
 
