@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
 #define RCHEEVOS_VERSION_MAJOR 11
 #define RCHEEVOS_VERSION_MINOR 0
@@ -27,6 +27,6 @@ RC_CXX_GUARD_BEGIN
 RC_EXPORT uint32_t rc_version(void);
 RC_EXPORT const char* rc_version_string(void);
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_VERSION_H */

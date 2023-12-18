@@ -1,12 +1,12 @@
 #ifndef RHASH_MOCK_FILEREADER_H
 #define RHASH_MOCK_FILEREADER_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "rc_export.h"
 
 #include <stdint.h>
 #include <stddef.h>
+
+RC_BEGIN_C_DECLS
 
 void init_mock_filereader();
 void init_mock_cdreader();
@@ -23,8 +23,6 @@ void mock_cd_num_tracks(int num_tracks);
 
 const char* get_mock_filename(void* file_handle);
 
-#ifdef __cplusplus
-}
-#endif
+RC_END_C_DECLS
 
 #endif /* RHASH_MOCK_FILEREADER_H */

@@ -7,7 +7,7 @@
 
 #include "rc_consoles.h"
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
   /* ===================================================== */
 
@@ -125,6 +125,6 @@ RC_CXX_GUARD_BEGIN
 
   /* ===================================================== */
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_HASH_H */

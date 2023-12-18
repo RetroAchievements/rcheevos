@@ -14,7 +14,7 @@
 #include "rc_runtime.h"
 #include "rc_runtime_types.h"
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
 /*****************************************************************************\
 | Callbacks                                                                   |
@@ -388,6 +388,6 @@ void rc_client_set_legacy_peek(rc_client_t* client, int method);
 
 void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_CLIENT_INTERNAL_H */

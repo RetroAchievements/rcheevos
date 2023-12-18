@@ -10,7 +10,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
 /*****************************************************************************\
 | Disallowed Settings                                                         |
@@ -88,6 +88,6 @@ RC_EXPORT void RC_CCONV rc_libretro_hash_set_add(struct rc_libretro_hash_set_t* 
 RC_EXPORT const char* RC_CCONV rc_libretro_hash_set_get_hash(const struct rc_libretro_hash_set_t* hash_set, const char* path);
 RC_EXPORT int RC_CCONV rc_libretro_hash_set_get_game_id(const struct rc_libretro_hash_set_t* hash_set, const char* hash);
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_LIBRETRO_H */

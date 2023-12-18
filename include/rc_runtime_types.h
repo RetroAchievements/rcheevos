@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
 #ifndef RC_RUNTIME_H /* prevents pedantic redefiniton error */
 
@@ -417,6 +417,6 @@ RC_EXPORT void RC_CCONV rc_update_richpresence(rc_richpresence_t* richpresence, 
 RC_EXPORT int RC_CCONV rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
 RC_EXPORT void RC_CCONV rc_reset_richpresence(rc_richpresence_t* self);
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_RUNTIME_TYPES_H */

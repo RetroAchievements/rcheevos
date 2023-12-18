@@ -17,9 +17,9 @@
   #error RC_SHARED, RC_STATIC, and RC_IMPORT are mutually exclusive
 #endif
 
-/* RC_CXX_GUARD_BEGIN and RC_CXX_GUARD_END should be used for all headers, to enforce C linkage and the C calling convention */
-/* RC_CXX_GUARD_BEGIN should be placed after #include's and before header declarations */
-/* RC_CXX_GUARD_END should be placed after header declarations */
+/* RC_BEGIN_C_DECLS and RC_END_C_DECLS should be used for all headers, to enforce C linkage and the C calling convention */
+/* RC_BEGIN_C_DECLS should be placed after #include's and before header declarations */
+/* RC_END_C_DECLS should be placed after header declarations */
 
 /* example usage
  *
@@ -28,21 +28,21 @@
  *
  * #include <stdint.h>
  *
- * RC_CXX_GUARD_BEGIN
+ * RC_BEGIN_C_DECLS
  *
  * uint8_t rc_function(void);
  *
- * RC_CXX_GUARD_END
+ * RC_END_C_DECLS
  *
  * #endif
  */
 
 #ifdef __cplusplus
-  #define RC_CXX_GUARD_BEGIN extern "C" {
-  #define RC_CXX_GUARD_END }
+  #define RC_BEGIN_C_DECLS extern "C" {
+  #define RC_END_C_DECLS }
 #else
-  #define RC_CXX_GUARD_BEGIN
-  #define RC_CXX_GUARD_END
+  #define RC_BEGIN_C_DECLS
+  #define RC_END_C_DECLS
 #endif
 
 /* RC_CCONV should be used for public functions and callbacks, to enforce the cdecl calling convention, if applicable */

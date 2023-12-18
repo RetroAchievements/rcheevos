@@ -8,7 +8,7 @@
 #include "rc_client_external.h"
 #include "rc_compat.h"
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
 /* RAIntegration follows the same calling convention as rcheevos */
 
@@ -31,7 +31,7 @@ typedef struct rc_client_raintegration_t
 
 } rc_client_raintegration_t;
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_CLIENT_SUPPORTS_RAINTEGRATION */
 

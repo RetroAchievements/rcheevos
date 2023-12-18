@@ -3,7 +3,7 @@
 
 #include "rc_client.h"
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
 /* NOTE: any function that is passed a callback also needs to be passed a client instance to pass
  * to the callback, and the external interface has to capture both. */
@@ -126,6 +126,6 @@ typedef struct rc_client_external_t
 
 #define RC_CLIENT_EXTERNAL_VERSION 1
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_CLIENT_EXTERNAL_H */

@@ -15,7 +15,7 @@
 
 #include <wtypes.h> /* HWND */
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
 RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_load_raintegration(rc_client_t* client,
     const wchar_t* search_directory, HWND main_window_handle,
@@ -24,7 +24,7 @@ RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_load_raintegration(
 
 RC_EXPORT void RC_CCONV rc_client_unload_raintegration(rc_client_t* client);
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_CLIENT_SUPPORTS_RAINTEGRATION */
 

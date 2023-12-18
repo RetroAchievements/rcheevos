@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
 /**
  * A block of memory for variable length data (like strings and arrays).
@@ -46,6 +46,6 @@ uint32_t rc_djb2(const char* input);
 
 void rc_format_md5(char checksum[33], const uint8_t digest[16]);
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_UTIL_H */

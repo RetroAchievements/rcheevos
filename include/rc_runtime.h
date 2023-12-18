@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
 /*****************************************************************************\
 | Forward Declarations (defined in rc_runtime_types.h)                        |
@@ -147,6 +147,6 @@ RC_EXPORT int RC_CCONV rc_runtime_progress_size(const rc_runtime_t* runtime, lua
 RC_EXPORT int RC_CCONV rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua_State* L);
 RC_EXPORT int RC_CCONV rc_runtime_deserialize_progress(rc_runtime_t* runtime, const uint8_t* serialized, lua_State* L);
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_RUNTIME_H */

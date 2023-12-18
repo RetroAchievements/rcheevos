@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 
-RC_CXX_GUARD_BEGIN
+RC_BEGIN_C_DECLS
 
 /*****************************************************************************\
 | Console identifiers                                                         |
@@ -131,6 +131,6 @@ rc_memory_regions_t;
 
 RC_EXPORT const rc_memory_regions_t* RC_CCONV rc_console_memory_regions(uint32_t console_id);
 
-RC_CXX_GUARD_END
+RC_END_C_DECLS
 
 #endif /* RC_CONSOLES_H */
