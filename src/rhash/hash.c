@@ -365,10 +365,16 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uin
 /* ===================================================== */
 
 static rc_hash_3ds_get_cia_normal_key_func _3ds_get_cia_normal_key_func = NULL;
+static rc_hash_3ds_get_ncch_normal_keys_func _3ds_get_ncch_normal_keys_func = NULL;
 
 void rc_hash_init_3ds_get_cia_normal_key_func(rc_hash_3ds_get_cia_normal_key_func func)
 {
   _3ds_get_cia_normal_key_func = func;
+}
+
+void rc_hash_init_3ds_get_ncch_normal_keys_func(rc_hash_3ds_get_ncch_normal_keys_func func)
+{
+  _3ds_get_ncch_normal_keys_func = func;
 }
 
 /* ===================================================== */
@@ -1131,33 +1137,137 @@ static int rc_hash_n64(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
-static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_t header[0x200], struct AES_ctx* aes)
+static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_t header[0x200], struct AES_ctx* cia_aes)
 {
-  const uint32_t MAX_BUFFER_SIZE_IN_MEDIA_UNITS = MAX_BUFFER_SIZE / 0x200;
+  struct AES_ctx ncch_aes;
   uint8_t* hash_buffer;
-  int64_t exefs_offset;
-  uint32_t exefs_size;
+  uint64_t exefs_offset, exefs_real_size;
+  uint32_t exefs_buffer_size;
+  uint8_t primary_key[AES_KEYLEN], secondary_key[AES_KEYLEN];
+  uint8_t fixed_key_flag, no_crypto_flag, seed_crypto_flag;
+  uint8_t crypto_method, secondary_key_x_slot;
+  uint16_t ncch_version;
+  uint32_t i;
+  uint8_t primary_key_y[AES_KEYLEN], program_id[sizeof(uint64_t)];
+  uint8_t iv[AES_BLOCKLEN];
+  uint8_t exefs_section_name[8];
+  uint64_t exefs_section_offset;
+  uint32_t exefs_section_size;
 
   exefs_offset = ((uint32_t)header[0x1A3] << 24) | (header[0x1A2] << 16) | (header[0x1A1] << 8) | header[0x1A0];
-  exefs_size = ((uint32_t)header[0x1A7] << 24) | (header[0x1A6] << 16) | (header[0x1A5] << 8) | header[0x1A4];
-
-  if (exefs_size > MAX_BUFFER_SIZE_IN_MEDIA_UNITS)
-    exefs_size = MAX_BUFFER_SIZE_IN_MEDIA_UNITS;
+  exefs_real_size = ((uint32_t)header[0x1A7] << 24) | (header[0x1A6] << 16) | (header[0x1A5] << 8) | header[0x1A4];
 
   /* Offset and size are in "media units" (1 media unit = 0x200 bytes) */
   exefs_offset *= 0x200;
-  exefs_size *= 0x200;
+  exefs_real_size *= 0x200;
+
+  if (exefs_real_size > MAX_BUFFER_SIZE)
+    exefs_buffer_size = MAX_BUFFER_SIZE;
+  else
+    exefs_buffer_size = (uint32_t)exefs_real_size;
 
   /* This region is technically optional, but it should always be present for executable content (i.e. games) */
-  if (exefs_offset == 0 || exefs_size == 0)
+  if (exefs_offset == 0 || exefs_real_size == 0)
     return rc_hash_error("ExeFS was not available");
+
+  /* NCCH flag 7 is a bitfield of various crypto related flags */
+  fixed_key_flag = header[0x188 + 7] & 0x01;
+  no_crypto_flag = header[0x188 + 7] & 0x04;
+  seed_crypto_flag = header[0x188 + 7] & 0x20;
+
+  if (no_crypto_flag == 0)
+  {
+    if (fixed_key_flag != 0)
+    {
+      /* Fixed crypto key means all 0s for both keys */
+      memset(primary_key, 0, sizeof(primary_key));
+      memset(secondary_key, 0, sizeof(secondary_key));
+    }
+    else
+    {
+      if (_3ds_get_ncch_normal_keys_func == NULL)
+        return rc_hash_error("An encrypted NCCH was detected, but the NCCH normal keys callback was not set");
+
+      /* Primary key y is just the first 16 bytes of the header */
+      memcpy(primary_key_y, header, sizeof(primary_key_y));
+
+      /* NCCH flag 3 indicates which secondary key x slot is used */
+      crypto_method = header[0x188 + 3];
+
+      switch (crypto_method)
+      {
+        case 0x00:
+          secondary_key_x_slot = 0x2C;
+          break;
+        case 0x01:
+          secondary_key_x_slot = 0x25;
+          break;
+        case 0x0A:
+          secondary_key_x_slot = 0x18;
+          break;
+        case 0x0B:
+          secondary_key_x_slot = 0x1B;
+          break;
+        default:
+          snprintf((char*)header, 0x200, "Invalid crypto method %02X", (unsigned)crypto_method);
+          return rc_hash_error((const char*)header);
+      }
+
+      /* We only need the program id if we're doing seed crypto */
+      if (seed_crypto_flag != 0)
+      {
+        memcpy(program_id, &header[0x118], sizeof(program_id));
+      }
+
+      if (_3ds_get_ncch_normal_keys_func(primary_key_y, secondary_key_x_slot, seed_crypto_flag != 0 ? program_id : NULL, primary_key, secondary_key) == 0)
+        return rc_hash_error("Could not obtain NCCH normal keys");
+    }
+
+    ncch_version = (header[0x113] << 8) | header[0x112];
+    switch (ncch_version)
+    {
+      case 0:
+      case 2:
+        for (i = 0; i < 8; i++)
+        {
+          /* first 8 bytes is the partition id in reverse byte order */
+          iv[7 - i] = header[0x108 + i];
+        }
+
+        /* magic number for ExeFS */
+        iv[8] = 2;
+
+        /* rest of the bytes are 0 */
+        memset(&iv[9], 0, sizeof(iv) - 9);
+        break;
+      case 1:
+        for (i = 0; i < 8; i++)
+        {
+          /* first 8 bytes is the partition id in normal byte order */
+          iv[i] = header[0x108 + i];
+        }
+
+        /* next 4 bytes are 0 */
+        memset(&iv[8], 0, 4);
+
+        /* last 4 bytes is the ExeFS byte offset in big endian */
+        iv[12] = (exefs_offset >> 24) & 0xFF;
+        iv[13] = (exefs_offset >> 16) & 0xFF;
+        iv[14] = (exefs_offset >> 8) & 0xFF;
+        iv[15] = exefs_offset & 0xFF;
+        break;
+      default:
+        snprintf((char*)header, 0x200, "Invalid NCCH version %04X", (unsigned)ncch_version);
+        return rc_hash_error((const char*)header);
+    }
+  }
 
   /* ASSERT: file position must be +0x200 from start of NCCH (i.e. end of header) */
   exefs_offset -= 0x200;
 
-  if (aes)
+  if (cia_aes)
   {
-    /* We have to decrypt the data between the header and the ExeFS so the AES state is correct
+    /* We have to decrypt the data between the header and the ExeFS so the CIA AES state is correct
      * when we reach the ExeFS. This decrypted data is not included in the RetroAchievements hash */
 
     /* This should never happen in practice, but just in case */
@@ -1177,19 +1287,19 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
       return rc_hash_error("Could not read NCCH data");
     }
 
-    AES_CBC_decrypt_buffer(aes, hash_buffer, (uint32_t)exefs_offset);
+    AES_CBC_decrypt_buffer(cia_aes, hash_buffer, (uint32_t)exefs_offset);
     free(hash_buffer);
   }
   else
   {
     /* no decryption needed, just skip over the in-between data */
-    rc_file_seek(file_handle, exefs_offset, SEEK_CUR);
+    rc_file_seek(file_handle, (int64_t)exefs_offset, SEEK_CUR);
   }
 
-  hash_buffer = (uint8_t*)malloc(exefs_size);
+  hash_buffer = (uint8_t*)malloc(exefs_buffer_size);
   if (!hash_buffer)
   {
-    snprintf((char*)header, 0x200, "Failed to allocate %u bytes", (unsigned)exefs_size);
+    snprintf((char*)header, 0x200, "Failed to allocate %u bytes", (unsigned)exefs_buffer_size);
     return rc_hash_error((const char*)header);
   }
 
@@ -1198,23 +1308,66 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
 
   if (verbose_message_callback)
   {
-    snprintf((char*)header, 0x200, "Hashing %u bytes for ExeFS (at NCCH offset %08X%08X)", (unsigned)exefs_size, (unsigned)(exefs_offset >> 32), (unsigned)exefs_offset);
+    snprintf((char*)header, 0x200, "Hashing %u bytes for ExeFS (at NCCH offset %08X%08X)", (unsigned)exefs_buffer_size, (unsigned)(exefs_offset >> 32), (unsigned)exefs_offset);
     verbose_message_callback((const char*)header);
   }
 
-  if (rc_file_read(file_handle, hash_buffer, exefs_size) != exefs_size)
+  if (rc_file_read(file_handle, hash_buffer, exefs_buffer_size) != exefs_buffer_size)
   {
     free(hash_buffer);
     return rc_hash_error("Could not read ExeFS data");
   }
 
-  if (aes)
+  if (cia_aes)
   {
     rc_hash_verbose("Performing CIA decryption for ExeFS");
-    AES_CBC_decrypt_buffer(aes, hash_buffer, exefs_size);
+    AES_CBC_decrypt_buffer(cia_aes, hash_buffer, exefs_buffer_size);
   }
 
-  md5_append(md5, hash_buffer, exefs_size);
+  if (no_crypto_flag == 0)
+  {
+    rc_hash_verbose("Performing NCCH decryption for ExeFS");
+
+    AES_init_ctx_iv(&ncch_aes, primary_key, iv);
+    AES_CTR_xcrypt_buffer(&ncch_aes, hash_buffer, 0x200);
+
+    for (i = 0; i < 8; i++)
+    {
+      memcpy(exefs_section_name, &hash_buffer[i * 16], sizeof(exefs_section_name));
+      exefs_section_offset = ((uint32_t)hash_buffer[i * 16 + 11] << 24) | (hash_buffer[i * 16 + 10] << 16) | (hash_buffer[i * 16 + 9] << 8) | hash_buffer[i * 16 + 8];
+      exefs_section_size = ((uint32_t)hash_buffer[i * 16 + 15] << 24) | (hash_buffer[i * 16 + 14] << 16) | (hash_buffer[i * 16 + 13] << 8) | hash_buffer[i * 16 + 12];
+
+      /* 0 size indicates an unused section */
+      if (exefs_section_size == 0)
+        continue;
+
+      /* Offset is relative to the end of the header */
+      exefs_section_offset += 0x200;
+
+      /* Check against malformed sections */
+      if (exefs_section_offset + exefs_section_size > (uint64_t)exefs_real_size)
+        return rc_hash_error("ExeFS section would overflow");
+
+      /* In theory, the section offset + size could be greated than the buffer size */
+      /* In practice, this likely never occurs, but just in case it does, ignore the section or constrict the size */
+      if (exefs_section_offset + exefs_section_size > exefs_buffer_size)
+      {
+        if (exefs_section_offset >= exefs_buffer_size)
+          continue;
+
+        exefs_section_size = exefs_buffer_size - (uint32_t)exefs_section_offset;
+      }
+
+      if (memcmp(exefs_section_name, "icon", 4) == 0 || memcmp(exefs_section_name, "banner", 6) == 0)
+        AES_init_ctx_iv(&ncch_aes, primary_key, iv);
+      else
+        AES_init_ctx_iv(&ncch_aes, secondary_key, iv);
+
+      AES_CTR_xcrypt_buffer(&ncch_aes, &hash_buffer[exefs_section_offset], exefs_section_size);
+    }
+  }
+
+  md5_append(md5, hash_buffer, exefs_buffer_size);
 
   free(hash_buffer);
   return 1;

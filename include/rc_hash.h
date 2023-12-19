@@ -131,6 +131,19 @@ RC_BEGIN_C_DECLS
   typedef int (*rc_hash_3ds_get_cia_normal_key_func)(uint8_t common_key_index, uint8_t out_normal_key[16]);
   void rc_hash_init_3ds_get_cia_normal_key_func(rc_hash_3ds_get_cia_normal_key_func func);
 
+  /* specifies a function called to obtain 3DS NCCH decryption normal keys.
+   * the primary key will always use slot0x2CKeyX and the passed primary KeyY.
+   * the secondary key will use the KeyX slot passed
+   * the secondary KeyY will be identical to the primary keyY if the passed program id is NULL
+   * if the program id is not null, then the secondary KeyY will be obtained with "seed crypto"
+   * the secondary KeyX and seed will then be hashed with SHA256, and the upper 16 bytes of the digest will be the secondary KeyY used
+   * the normal keys should be written in big endian format
+   * returns non-zero on success, or zero on failure.
+   */
+  typedef int (*rc_hash_3ds_get_ncch_normal_keys_func)(uint8_t primary_key_y[16], uint8_t secondary_key_x_slot, uint8_t optional_program_id[8],
+                                                       uint8_t out_primary_key[16], uint8_t out_secondary_key[16]);
+  void rc_hash_init_3ds_get_cia_normal_keys_func(rc_hash_3ds_get_ncch_normal_keys_func func);
+
   /* ===================================================== */
 
 RC_END_C_DECLS
