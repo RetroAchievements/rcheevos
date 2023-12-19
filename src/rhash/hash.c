@@ -1303,8 +1303,8 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
     return rc_hash_error((const char*)header);
   }
 
-  rc_hash_verbose("Hashing 512 byte NCCH header");
-  md5_append(md5, header, 0x200);
+  /*rc_hash_verbose("Hashing 512 byte NCCH header");
+   *md5_append(md5, header, 0x200); /* We can't blindly hash this, it will change depending on if the rom is encrypted or not  */
 
   if (verbose_message_callback)
   {
@@ -1331,6 +1331,9 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
     AES_init_ctx_iv(&ncch_aes, primary_key, iv);
     AES_CTR_xcrypt_buffer(&ncch_aes, hash_buffer, 0x200);
 
+    /* We may need the ExeFS offset again, so undo the previous mutation */
+    exefs_offset += 0x200;
+
     for (i = 0; i < 8; i++)
     {
       memcpy(exefs_section_name, &hash_buffer[i * 16], sizeof(exefs_section_name));
@@ -1348,6 +1351,20 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
       if (exefs_section_offset + exefs_section_size > (uint64_t)exefs_real_size)
         return rc_hash_error("ExeFS section would overflow");
 
+      if (memcmp(exefs_section_name, "icon", 4) == 0 || memcmp(exefs_section_name, "banner", 6) == 0)
+        AES_init_ctx_iv(&ncch_aes, primary_key, iv);
+      else
+        AES_init_ctx_iv(&ncch_aes, secondary_key, iv);
+
+      if (ncch_version == 1)
+      {
+        exefs_offset += exefs_section_size;
+        iv[12] = (exefs_offset >> 24) & 0xFF;
+        iv[13] = (exefs_offset >> 16) & 0xFF;
+        iv[14] = (exefs_offset >> 8) & 0xFF;
+        iv[15] = exefs_offset & 0xFF;
+      }
+
       /* In theory, the section offset + size could be greated than the buffer size */
       /* In practice, this likely never occurs, but just in case it does, ignore the section or constrict the size */
       if (exefs_section_offset + exefs_section_size > exefs_buffer_size)
@@ -1357,11 +1374,6 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
 
         exefs_section_size = exefs_buffer_size - (uint32_t)exefs_section_offset;
       }
-
-      if (memcmp(exefs_section_name, "icon", 4) == 0 || memcmp(exefs_section_name, "banner", 6) == 0)
-        AES_init_ctx_iv(&ncch_aes, primary_key, iv);
-      else
-        AES_init_ctx_iv(&ncch_aes, secondary_key, iv);
 
       AES_CTR_xcrypt_buffer(&ncch_aes, &hash_buffer[exefs_section_offset], exefs_section_size);
     }
