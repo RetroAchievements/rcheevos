@@ -1175,6 +1175,8 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   no_crypto_flag = header[0x188 + 7] & 0x04;
   seed_crypto_flag = header[0x188 + 7] & 0x20;
 
+  ncch_version = 0; /* Prevent maybe-uninitialized warning false positives */
+
   if (no_crypto_flag == 0)
   {
     if (fixed_key_flag != 0)
@@ -1304,7 +1306,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   }
 
   /*rc_hash_verbose("Hashing 512 byte NCCH header");
-   *md5_append(md5, header, 0x200); /* We can't blindly hash this, it will change depending on if the rom is encrypted or not  */
+   *md5_append(md5, header, 0x200); We can't blindly hash this, it will change depending on if the rom is encrypted or not */
 
   if (verbose_message_callback)
   {
