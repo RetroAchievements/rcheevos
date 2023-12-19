@@ -142,7 +142,7 @@ RC_BEGIN_C_DECLS
    */
   typedef int (*rc_hash_3ds_get_ncch_normal_keys_func)(uint8_t primary_key_y[16], uint8_t secondary_key_x_slot, uint8_t optional_program_id[8],
                                                        uint8_t out_primary_key[16], uint8_t out_secondary_key[16]);
-  void rc_hash_init_3ds_get_cia_normal_keys_func(rc_hash_3ds_get_ncch_normal_keys_func func);
+  void rc_hash_init_3ds_get_ncch_normal_keys_func(rc_hash_3ds_get_ncch_normal_keys_func func);
 
   /* ===================================================== */
 
