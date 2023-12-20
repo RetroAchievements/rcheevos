@@ -1366,8 +1366,8 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
       /* Adjust IV for new region, if needed */
       if (ncch_version == 0 || ncch_version == 2)
       {
-        exefs_iv = exefs_section_offset / 0x10;
-        iv[12] = (exefs_iv >> 24) & 0xFF;
+        exefs_iv = (uint32_t)(exefs_section_offset / 0x10);
+        iv[12] = exefs_iv >> 24;
         iv[13] = (exefs_iv >> 16) & 0xFF;
         iv[14] = (exefs_iv >> 8) & 0xFF;
         iv[15] = exefs_iv & 0xFF;
