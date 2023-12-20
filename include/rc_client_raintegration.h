@@ -78,8 +78,8 @@ RC_EXPORT void RC_CCONV rc_client_raintegration_set_write_memory_function(rc_cli
 RC_EXPORT void RC_CCONV rc_client_raintegration_set_event_handler(rc_client_t* client,
     rc_client_raintegration_event_handler_t handler);
 
-RC_END_C_DECLS
-
 #endif /* RC_CLIENT_SUPPORTS_RAINTEGRATION */
+
+RC_END_C_DECLS
 
 #endif /* RC_CLIENT_RAINTEGRATION_H */
