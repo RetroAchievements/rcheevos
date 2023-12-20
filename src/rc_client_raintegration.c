@@ -455,11 +455,8 @@ void rc_client_raintegration_update_menu_item(const rc_client_t* client, const r
       UINT flags = MF_STRING;
       if (menuitem->checked)
          flags |= MF_CHECKED;
-      if (!menuitem->enabled)
-         flags |= MF_DISABLED | MF_GRAYED;
 
-      ModifyMenuA(client->state.raintegration->hPopupMenu, menuitem->id, flags | MF_BYCOMMAND,
-         (UINT_PTR)client->state.raintegration->hPopupMenu, menuitem->label);
+      CheckMenuItem(client->state.raintegration->hPopupMenu, menuitem->id, flags | MF_BYCOMMAND);
    }
 }
 

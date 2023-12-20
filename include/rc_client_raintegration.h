@@ -30,6 +30,8 @@ typedef struct rc_client_raintegration_menu_t {
 enum {
   RC_CLIENT_RAINTEGRATION_EVENT_TYPE_NONE = 0,
   RC_CLIENT_RAINTEGRATION_EVENT_MENUITEM_CHECKED_CHANGED = 1, /* [menu_item] checked changed */
+  RC_CLIENT_RAINTEGRATION_EVENT_HARDCORE_CHANGED = 2, /* hardcore was enabled or disabled */
+  RC_CLIENT_RAINTEGRATION_EVENT_PAUSE = 3 /* emulated system should be paused */
 };
 
 typedef struct rc_client_raintegration_event_t {
