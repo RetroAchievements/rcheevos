@@ -1395,7 +1395,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
       if (verbose_message_callback)
       {
         exefs_section_name[7] = '\0';
-        snprintf((char*)header, 0x200, "Decrypting ExeFS file %s at ExeFS offset %04X with size %04X", (const char*)exefs_section_name, (unsigned)exefs_section_offset, (unsigned)exefs_section_size);
+        snprintf((char*)header, 0x200, "Decrypting ExeFS file %s at ExeFS offset %08X with size %08X", (const char*)exefs_section_name, (unsigned)exefs_section_offset, (unsigned)exefs_section_size);
         verbose_message_callback((const char*)header);
       }
 
