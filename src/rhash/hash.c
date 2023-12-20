@@ -1151,8 +1151,8 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   uint8_t primary_key_y[AES_KEYLEN], program_id[sizeof(uint64_t)];
   uint8_t iv[AES_BLOCKLEN];
   uint8_t exefs_section_name[8];
-  uint64_t exefs_section_offset;
-  uint32_t exefs_section_size;
+  uint64_t exefs_section_offset, exefs_section_size;
+  uint32_t exefs_iv;
 
   exefs_offset = ((uint32_t)header[0x1A3] << 24) | (header[0x1A2] << 16) | (header[0x1A1] << 8) | header[0x1A0];
   exefs_real_size = ((uint32_t)header[0x1A7] << 24) | (header[0x1A6] << 16) | (header[0x1A5] << 8) | header[0x1A4];
@@ -1175,15 +1175,18 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   no_crypto_flag = header[0x188 + 7] & 0x04;
   seed_crypto_flag = header[0x188 + 7] & 0x20;
 
-  ncch_version = 0; /* Prevent maybe-uninitialized warning false positives */
+  ncch_version = (header[0x113] << 8) | header[0x112];
 
   if (no_crypto_flag == 0)
   {
+    rc_hash_verbose("Encrypted NCCH detected");
+
     if (fixed_key_flag != 0)
     {
       /* Fixed crypto key means all 0s for both keys */
       memset(primary_key, 0, sizeof(primary_key));
       memset(secondary_key, 0, sizeof(secondary_key));
+      rc_hash_verbose("Using fixed key crypto");
     }
     else
     {
@@ -1199,15 +1202,19 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
       switch (crypto_method)
       {
         case 0x00:
+          rc_hash_verbose("Using NCCH crypto method v1");
           secondary_key_x_slot = 0x2C;
           break;
         case 0x01:
+          rc_hash_verbose("Using NCCH crypto method v2");
           secondary_key_x_slot = 0x25;
           break;
         case 0x0A:
+          rc_hash_verbose("Using NCCH crypto method v3");
           secondary_key_x_slot = 0x18;
           break;
         case 0x0B:
+          rc_hash_verbose("Using NCCH crypto method v4");
           secondary_key_x_slot = 0x1B;
           break;
         default:
@@ -1218,6 +1225,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
       /* We only need the program id if we're doing seed crypto */
       if (seed_crypto_flag != 0)
       {
+        rc_hash_verbose("Using seed crypto");
         memcpy(program_id, &header[0x118], sizeof(program_id));
       }
 
@@ -1225,34 +1233,35 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
         return rc_hash_error("Could not obtain NCCH normal keys");
     }
 
-    ncch_version = (header[0x113] << 8) | header[0x112];
     switch (ncch_version)
     {
       case 0:
       case 2:
+        rc_hash_verbose("Detected NCCH version 0/2");
         for (i = 0; i < 8; i++)
         {
-          /* first 8 bytes is the partition id in reverse byte order */
+          /* First 8 bytes is the partition id in reverse byte order */
           iv[7 - i] = header[0x108 + i];
         }
 
-        /* magic number for ExeFS */
+        /* Magic number for ExeFS */
         iv[8] = 2;
 
-        /* rest of the bytes are 0 */
+        /* Rest of the bytes are 0 */
         memset(&iv[9], 0, sizeof(iv) - 9);
         break;
       case 1:
+        rc_hash_verbose("Detected NCCH version 1");
         for (i = 0; i < 8; i++)
         {
-          /* first 8 bytes is the partition id in normal byte order */
+          /* First 8 bytes is the partition id in normal byte order */
           iv[i] = header[0x108 + i];
         }
 
-        /* next 4 bytes are 0 */
+        /* Next 4 bytes are 0 */
         memset(&iv[8], 0, 4);
 
-        /* last 4 bytes is the ExeFS byte offset in big endian */
+        /* Last 4 bytes is the ExeFS byte offset in big endian */
         iv[12] = (exefs_offset >> 24) & 0xFF;
         iv[13] = (exefs_offset >> 16) & 0xFF;
         iv[14] = (exefs_offset >> 8) & 0xFF;
@@ -1294,7 +1303,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   }
   else
   {
-    /* no decryption needed, just skip over the in-between data */
+    /* No decryption needed, just skip over the in-between data */
     rc_file_seek(file_handle, (int64_t)exefs_offset, SEEK_CUR);
   }
 
@@ -1305,8 +1314,12 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
     return rc_hash_error((const char*)header);
   }
 
-  /*rc_hash_verbose("Hashing 512 byte NCCH header");
-   *md5_append(md5, header, 0x200); We can't blindly hash this, it will change depending on if the rom is encrypted or not */
+  /* Clear out no crypto flag to ensure we get the same hash for decrypted and encrypted ROMs */
+  /* TODO: Do other flags need to be cleared out? */
+  header[0x188 + 7] &= ~0x04;
+
+  rc_hash_verbose("Hashing 512 byte NCCH header");
+  md5_append(md5, header, 0x200);
 
   if (verbose_message_callback)
   {
@@ -1333,8 +1346,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
     AES_init_ctx_iv(&ncch_aes, primary_key, iv);
     AES_CTR_xcrypt_buffer(&ncch_aes, hash_buffer, 0x200);
 
-    /* We may need the ExeFS offset again, so undo the previous mutation */
-    exefs_offset += 0x200;
+    exefs_offset = ((uint32_t)iv[12] << 24) | (iv[13] << 16) | (iv[14] << 8) | iv[15];
 
     for (i = 0; i < 8; i++)
     {
@@ -1348,6 +1360,18 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
 
       /* Offset is relative to the end of the header */
       exefs_section_offset += 0x200;
+      /* Size is aligned up by a media unit */
+      exefs_section_size = (exefs_section_size + 0x1FF) & ~(uint32_t)0x1FF;
+
+      /* Adjust IV for new region, if needed */
+      if (ncch_version == 0 || ncch_version == 2)
+      {
+        exefs_iv = exefs_section_offset / 0x10;
+        iv[12] = (exefs_iv >> 24) & 0xFF;
+        iv[13] = (exefs_iv >> 16) & 0xFF;
+        iv[14] = (exefs_iv >> 8) & 0xFF;
+        iv[15] = exefs_iv & 0xFF;
+      }
 
       /* Check against malformed sections */
       if (exefs_section_offset + exefs_section_size > (uint64_t)exefs_real_size)
@@ -1358,23 +1382,21 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
       else
         AES_init_ctx_iv(&ncch_aes, secondary_key, iv);
 
-      if (ncch_version == 1)
-      {
-        exefs_offset += exefs_section_size;
-        iv[12] = (exefs_offset >> 24) & 0xFF;
-        iv[13] = (exefs_offset >> 16) & 0xFF;
-        iv[14] = (exefs_offset >> 8) & 0xFF;
-        iv[15] = exefs_offset & 0xFF;
-      }
-
-      /* In theory, the section offset + size could be greated than the buffer size */
+      /* In theory, the section offset + size could be greater than the buffer size */
       /* In practice, this likely never occurs, but just in case it does, ignore the section or constrict the size */
       if (exefs_section_offset + exefs_section_size > exefs_buffer_size)
       {
         if (exefs_section_offset >= exefs_buffer_size)
           continue;
 
-        exefs_section_size = exefs_buffer_size - (uint32_t)exefs_section_offset;
+        exefs_section_size = exefs_buffer_size - exefs_section_offset;
+      }
+
+      if (verbose_message_callback)
+      {
+        exefs_section_name[7] = '\0';
+        snprintf((char*)header, 0x200, "Decrypting ExeFS file %s at ExeFS offset %04X with size %04X", (const char*)exefs_section_name, (unsigned)exefs_section_offset, (unsigned)exefs_section_size);
+        verbose_message_callback((const char*)header);
       }
 
       AES_CTR_xcrypt_buffer(&ncch_aes, &hash_buffer[exefs_section_offset], exefs_section_size);
