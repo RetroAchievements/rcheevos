@@ -1314,9 +1314,9 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
     return rc_hash_error((const char*)header);
   }
 
-  /* Clear out no crypto flag to ensure we get the same hash for decrypted and encrypted ROMs */
-  /* TODO: Do other flags need to be cleared out? */
-  header[0x188 + 7] &= ~0x04;
+  /* Clear out crypto flags to ensure we get the same hash for decrypted and encrypted ROMs */
+  header[0x188 + 3] = 0;
+  header[0x188 + 7] &= ~(0x20 | 0x04 | 0x01);
 
   rc_hash_verbose("Hashing 512 byte NCCH header");
   md5_append(md5, header, 0x200);
