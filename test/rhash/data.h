@@ -1,12 +1,12 @@
 #ifndef RHASH_TEST_DATA_H
 #define RHASH_TEST_DATA_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "rc_export.h"
 
 #include <stdint.h>
 #include <stddef.h>
+
+RC_BEGIN_C_DECLS
 
 uint8_t* generate_generic_file(size_t size);
 
@@ -34,8 +34,6 @@ extern uint8_t test_rom_n64[64];
 extern uint8_t test_rom_v64[64];
 extern uint8_t test_rom_ndd[64];
 
-#ifdef __cplusplus
-}
-#endif
+RC_END_C_DECLS
 
 #endif /* RHASH_TEST_DATA_H */

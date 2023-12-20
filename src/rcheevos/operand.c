@@ -6,16 +6,12 @@
 
 #ifndef RC_DISABLE_LUA
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+RC_BEGIN_C_DECLS
 
 #include <lua.h>
 #include <lauxlib.h>
 
-#ifdef __cplusplus
-}
-#endif
+RC_END_C_DECLS
 
 #endif /* RC_DISABLE_LUA */
 

@@ -6,9 +6,7 @@
 #include <stddef.h>
 #include <time.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+RC_BEGIN_C_DECLS
 
 #define RC_CONTENT_TYPE_URLENCODED "application/x-www-form-urlencoded"
 
@@ -77,8 +75,6 @@ void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* 
 void rc_api_url_build_dorequest_url(rc_api_request_t* request);
 int rc_api_url_build_dorequest(rc_api_url_builder_t* builder, const char* api, const char* username, const char* api_token);
 
-#ifdef __cplusplus
-}
-#endif
+RC_END_C_DECLS
 
 #endif /* RC_API_COMMON_H */

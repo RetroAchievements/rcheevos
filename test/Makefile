@@ -41,6 +41,7 @@ OBJ=$(RC_SRC)/rc_compat.o \
     $(RC_SRC)/rc_client.o \
     $(RC_SRC)/rc_libretro.o \
     $(RC_SRC)/rc_util.o \
+    $(RC_SRC)/rc_version.o \
     $(RC_CHEEVOS_SRC)/alloc.o \
     $(RC_CHEEVOS_SRC)/condition.o \
     $(RC_CHEEVOS_SRC)/condset.o \
