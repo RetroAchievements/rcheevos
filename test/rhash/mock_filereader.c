@@ -19,7 +19,7 @@ static int mock_cd_tracks;
 
 static void* _mock_file_open(const char* path)
 {
-  int i;
+  size_t i;
   for (i = 0; i < sizeof(mock_file_instance) / sizeof(mock_file_instance[0]); ++i)
   {
     if (strcmp(path, mock_file_instance[i].path) == 0)
@@ -85,7 +85,7 @@ static void _mock_file_close(void* file_handle)
 
 static void reset_mock_files()
 {
-  int i;
+  size_t i;
 
   memset(&mock_file_instance, 0, sizeof(mock_file_instance));
   for (i = 0; i < sizeof(mock_file_instance) / sizeof(mock_file_instance[0]); ++i)

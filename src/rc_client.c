@@ -86,6 +86,8 @@ static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callbac
 
 static void rc_client_dummy_event_handler(const rc_client_event_t* event, rc_client_t* client)
 {
+  (void)event;
+  (void)client;
 }
 
 rc_client_t* rc_client_create(rc_client_read_memory_func_t read_memory_function, rc_client_server_call_t server_call_function)
@@ -246,6 +248,8 @@ static rc_clock_t rc_client_clock_get_now_millisecs(const rc_client_t* client)
 {
 #if defined(CLOCK_MONOTONIC)
   struct timespec now;
+  (void)client;
+
   if (clock_gettime(CLOCK_MONOTONIC, &now) < 0)
     return 0;
 
@@ -254,6 +258,8 @@ static rc_clock_t rc_client_clock_get_now_millisecs(const rc_client_t* client)
 #elif defined(_WIN32)
   static LARGE_INTEGER freq;
   LARGE_INTEGER ticks;
+
+  (void)client;
 
   /* Frequency is the number of ticks per second and is guaranteed to not change. */
   if (!freq.QuadPart) {
@@ -270,6 +276,9 @@ static rc_clock_t rc_client_clock_get_now_millisecs(const rc_client_t* client)
   return (rc_clock_t)(ticks.QuadPart / freq.QuadPart);
 #else
   const clock_t clock_now = clock();
+
+  (void)client;
+
   if (sizeof(clock_t) == 4) {
     static uint32_t clock_wraps = 0;
     static clock_t last_clock = 0;
@@ -407,6 +416,8 @@ static const char* rc_client_server_error_message(int* result, int http_status_c
     if (response->error_message)
       return response->error_message;
   }
+
+  (void)http_status_code;
 
   if (*result != RC_OK)
     return rc_error_str(*result);
@@ -1347,7 +1358,7 @@ static void rc_client_deactivate_leaderboards(rc_client_game_info_t* game, rc_cl
 
         case RC_CLIENT_LEADERBOARD_STATE_TRACKING:
           rc_client_release_leaderboard_tracker(client->game, leaderboard);
-          /* fallthrough to default */
+          /* fallthrough */ /* to default */
         default:
           leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_INACTIVE;
           break;
@@ -3200,6 +3211,9 @@ static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_
   rc_client_award_achievement_callback_data_t* ach_data =
     (rc_client_award_achievement_callback_data_t*)callback_data->data;
 
+  (void)client;
+  (void)now;
+
   rc_client_award_achievement_server_call(ach_data);
 }
 
@@ -3828,6 +3842,9 @@ static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callbac
   rc_client_submit_leaderboard_entry_callback_data_t* lboard_data =
       (rc_client_submit_leaderboard_entry_callback_data_t*)callback_data->data;
 
+  (void)client;
+  (void)now;
+
   rc_client_submit_leaderboard_entry_server_call(lboard_data);
 }
 
@@ -4030,7 +4047,7 @@ static void rc_client_subset_reset_leaderboards(rc_client_game_info_t* game, rc_
 
       case RC_CLIENT_LEADERBOARD_STATE_TRACKING:
         rc_client_release_leaderboard_tracker(game, leaderboard);
-        /* fallthrough to default */
+        /* fallthrough */ /* to default */
       default:
         leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_ACTIVE;
         rc_reset_lboard(lboard);
@@ -4581,6 +4598,9 @@ static void rc_client_progress_tracker_timer_elapsed(rc_client_scheduled_callbac
 {
   rc_client_event_t client_event;
   memset(&client_event, 0, sizeof(client_event));
+
+  (void)callback_data;
+  (void)now;
 
   rc_mutex_lock(&client->state.mutex);
   if (client->game->progress_tracker.action == RC_CLIENT_PROGRESS_TRACKER_ACTION_NONE) {

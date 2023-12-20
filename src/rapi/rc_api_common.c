@@ -475,13 +475,13 @@ int rc_json_get_required_array(uint32_t* num_entries, rc_json_field_t* array_fie
     return 0;
 #endif
 
-  if (!rc_json_get_optional_array(num_entries, array_field, response, field, field_name))
+  if (!rc_json_get_optional_array(num_entries, array_field, field, field_name))
     return rc_json_missing_field(response, field);
 
   return 1;
 }
 
-int rc_json_get_optional_array(uint32_t* num_entries, rc_json_field_t* array_field, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+int rc_json_get_optional_array(uint32_t* num_entries, rc_json_field_t* array_field, const rc_json_field_t* field, const char* field_name) {
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
     return 0;

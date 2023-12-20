@@ -6,9 +6,7 @@
 #include <stddef.h>
 #include <time.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+RC_BEGIN_C_DECLS
 
 #define RC_CONTENT_TYPE_URLENCODED "application/x-www-form-urlencoded"
 
@@ -55,7 +53,7 @@ void rc_json_get_optional_num(int32_t* out, const rc_json_field_t* field, const 
 void rc_json_get_optional_unum(uint32_t* out, const rc_json_field_t* field, const char* field_name, uint32_t default_value);
 void rc_json_get_optional_float(float* out, const rc_json_field_t* field, const char* field_name, float default_value);
 void rc_json_get_optional_bool(int* out, const rc_json_field_t* field, const char* field_name, int default_value);
-int rc_json_get_optional_array(uint32_t* num_entries, rc_json_field_t* iterator, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
+int rc_json_get_optional_array(uint32_t* num_entries, rc_json_field_t* iterator, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_string(const char** out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_num(int32_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_unum(uint32_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
@@ -77,8 +75,6 @@ void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* 
 void rc_api_url_build_dorequest_url(rc_api_request_t* request);
 int rc_api_url_build_dorequest(rc_api_url_builder_t* builder, const char* api, const char* username, const char* api_token);
 
-#ifdef __cplusplus
-}
-#endif
+RC_END_C_DECLS
 
 #endif /* RC_API_COMMON_H */

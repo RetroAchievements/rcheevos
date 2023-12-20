@@ -146,7 +146,7 @@ int rc_api_process_start_session_server_response(rc_api_start_session_response_t
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
-  if (rc_json_get_optional_array(&response->num_unlocks, &array_field, &response->response, &fields[2], "Unlocks") && response->num_unlocks) {
+  if (rc_json_get_optional_array(&response->num_unlocks, &array_field, &fields[2], "Unlocks") && response->num_unlocks) {
     response->unlocks = (rc_api_unlock_entry_t*)rc_buffer_alloc(&response->response.buffer, response->num_unlocks * sizeof(rc_api_unlock_entry_t));
     if (!response->unlocks)
       return RC_OUT_OF_MEMORY;
@@ -167,7 +167,7 @@ int rc_api_process_start_session_server_response(rc_api_start_session_response_t
     }
   }
 
-  if (rc_json_get_optional_array(&response->num_hardcore_unlocks, &array_field, &response->response, &fields[3], "HardcoreUnlocks") && response->num_hardcore_unlocks) {
+  if (rc_json_get_optional_array(&response->num_hardcore_unlocks, &array_field, &fields[3], "HardcoreUnlocks") && response->num_hardcore_unlocks) {
     response->hardcore_unlocks = (rc_api_unlock_entry_t*)rc_buffer_alloc(&response->response.buffer, response->num_hardcore_unlocks * sizeof(rc_api_unlock_entry_t));
     if (!response->hardcore_unlocks)
       return RC_OUT_OF_MEMORY;
