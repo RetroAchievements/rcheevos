@@ -1152,7 +1152,6 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   uint8_t iv[AES_BLOCKLEN];
   uint8_t exefs_section_name[8];
   uint64_t exefs_section_offset, exefs_section_size;
-  uint32_t exefs_iv;
 
   exefs_offset = ((uint32_t)header[0x1A3] << 24) | (header[0x1A2] << 16) | (header[0x1A1] << 8) | header[0x1A0];
   exefs_real_size = ((uint32_t)header[0x1A7] << 24) | (header[0x1A6] << 16) | (header[0x1A5] << 8) | header[0x1A4];
@@ -1346,8 +1345,6 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
     AES_init_ctx_iv(&ncch_aes, primary_key, iv);
     AES_CTR_xcrypt_buffer(&ncch_aes, hash_buffer, 0x200);
 
-    exefs_offset = ((uint32_t)iv[12] << 24) | (iv[13] << 16) | (iv[14] << 8) | iv[15];
-
     for (i = 0; i < 8; i++)
     {
       memcpy(exefs_section_name, &hash_buffer[i * 16], sizeof(exefs_section_name));
@@ -1358,29 +1355,28 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
       if (exefs_section_size == 0)
         continue;
 
+      /* Offsets must be aligned by a media unit */
+      if (exefs_section_offset & 0x1FF)
+        return rc_hash_error("ExeFS section offset is misaligned");
+
       /* Offset is relative to the end of the header */
       exefs_section_offset += 0x200;
-      /* Size is aligned up by a media unit */
-      exefs_section_size = (exefs_section_size + 0x1FF) & ~(uint32_t)0x1FF;
-
-      /* Adjust IV for new region, if needed */
-      if (ncch_version == 0 || ncch_version == 2)
-      {
-        exefs_iv = (uint32_t)(exefs_section_offset / 0x10);
-        iv[12] = exefs_iv >> 24;
-        iv[13] = (exefs_iv >> 16) & 0xFF;
-        iv[14] = (exefs_iv >> 8) & 0xFF;
-        iv[15] = exefs_iv & 0xFF;
-      }
 
       /* Check against malformed sections */
-      if (exefs_section_offset + exefs_section_size > (uint64_t)exefs_real_size)
+      if (exefs_section_offset + ((exefs_section_size + 0x1FF) & ~(uint64_t)0x1FF) > (uint64_t)exefs_real_size)
         return rc_hash_error("ExeFS section would overflow");
 
       if (memcmp(exefs_section_name, "icon", 4) == 0 || memcmp(exefs_section_name, "banner", 6) == 0)
-        AES_init_ctx_iv(&ncch_aes, primary_key, iv);
+      {
+        /* Align size up by a media unit */
+        exefs_section_size = (exefs_section_size + 0x1FF) & ~(uint64_t)0x1FF;
+        AES_init_ctx(&ncch_aes, primary_key);
+      }
       else
-        AES_init_ctx_iv(&ncch_aes, secondary_key, iv);
+      {
+        /* We don't align size up here, as the padding bytes will use the primary key rather than the secondary key */
+        AES_init_ctx(&ncch_aes, secondary_key);
+      }
 
       /* In theory, the section offset + size could be greater than the buffer size */
       /* In practice, this likely never occurs, but just in case it does, ignore the section or constrict the size */
@@ -1399,7 +1395,42 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
         verbose_message_callback((const char*)header);
       }
 
-      AES_CTR_xcrypt_buffer(&ncch_aes, &hash_buffer[exefs_section_offset], exefs_section_size);
+      AES_CTR_xcrypt_buffer(&ncch_aes, &hash_buffer[exefs_section_offset], exefs_section_size & ~(uint64_t)0xF);
+
+      if (exefs_section_size & 0x1FF)
+      {
+        /* Handle padding bytes, these always use the primary key */
+        exefs_section_offset += exefs_section_size;
+        exefs_section_size = 0x200 - (exefs_section_size & 0x1FF);
+
+        if (verbose_message_callback)
+        {
+          snprintf((char*)header, 0x200, "Decrypting ExeFS padding at ExeFS offset %08X with size %08X", (unsigned)exefs_section_offset, (unsigned)exefs_section_size);
+          verbose_message_callback((const char*)header);
+        }
+
+        /* Align our decryption start to an AES block boundary */
+        if (exefs_section_size & 0xF)
+        {
+          /* We're a little evil here re-using the IV like this, but this seems to be the best way to deal with this... */
+          memcpy(iv, ncch_aes.Iv, sizeof(iv));
+          exefs_section_offset &= ~(uint64_t)0xF;
+
+          /* First decrypt these last bytes using the secondary key */
+          AES_CTR_xcrypt_buffer(&ncch_aes, &hash_buffer[exefs_section_offset], 0x10 - (exefs_section_size & 0xF));
+
+          /* Now re-encrypt these bytes using the primary key */
+          AES_init_ctx_iv(&ncch_aes, primary_key, iv);
+          AES_CTR_xcrypt_buffer(&ncch_aes, &hash_buffer[exefs_section_offset], 0x10 - (exefs_section_size & 0xF));
+
+          /* All of the padding can now be decrypted using the primary key */
+          AES_ctx_set_iv(&ncch_aes, iv);
+          exefs_section_size += 0x10 - (exefs_section_size & 0xF);
+        }
+
+        AES_init_ctx(&ncch_aes, primary_key);
+        AES_CTR_xcrypt_buffer(&ncch_aes, &hash_buffer[exefs_section_offset], exefs_section_size);
+      }
     }
   }
 
