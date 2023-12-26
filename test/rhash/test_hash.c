@@ -886,6 +886,79 @@ static void test_hash_gamecube()
 
 /* ========================================================================= */
 
+static void test_hash_msdos_dosz()
+{
+  size_t image_size;
+  uint8_t* image = generate_zip_file(&image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "4cef392530883f23ccebf413f1898023";
+
+  mock_file(0, "game.dosz", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_MS_DOS, "game.dosz");
+
+  /* test file identification from iterator */
+  struct rc_hash_iterator iterator;
+  rc_hash_initialize_iterator(&iterator, "game.dosz", NULL, 0);
+  int result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_msdos_dosz_zip64()
+{
+  size_t image_size;
+  uint8_t* image = generate_zip64_file(&image_size);
+  char hash_file[33];
+  const char* expected_md5 = "927dad0a57a2860267ab7bcdb8bc3f61";
+
+  mock_file(0, "game.dosz", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_MS_DOS, "game.dosz");
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+}
+
+static void test_hash_msdos_dosz_with_dosc()
+{
+  size_t image_size;
+  uint8_t* image = generate_zip_file(&image_size);
+  char hash_dosc[33];
+  const char* expected_dosc_md5 = "b22fae2e4e4c17b9c9c4b094b86aeb1e";
+
+  /* Add main dosz file and overlay dosc file which will get hashed together */
+  mock_file(0, "game.dosz", image, image_size);
+  mock_file(1, "game.dosc", image, image_size);
+
+  /* test file hash */
+  int result_dosc = rc_hash_generate_from_file(hash_dosc, RC_CONSOLE_MS_DOS, "game.dosz");
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_dosc, 1);
+  ASSERT_STR_EQUALS(hash_dosc, expected_dosc_md5);
+}
+
+/* ========================================================================= */
+
 static void test_hash_nes_32k()
 {
   size_t image_size;
@@ -2188,6 +2261,11 @@ void test_hash(void) {
   /* MSX */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
+
+  /* MS DOS */
+  TEST(test_hash_msdos_dosz);
+  TEST(test_hash_msdos_dosz_zip64);
+  TEST(test_hash_msdos_dosz_with_dosc);
 
   /* Neo Geo CD */
   TEST(test_hash_neogeocd);

@@ -564,6 +564,25 @@ static const rc_memory_region_t _rc_memory_regions_msx[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_msx = { _rc_memory_regions_msx, 1 };
 
+/* ===== MS DOS ===== */
+static const rc_memory_region_t _rc_memory_regions_ms_dos[] = {
+    /* DOS emulators split the 640 KB conventional memory into two regions.
+     * First the part of the conventional memory given to the running game at $000000.
+     * Then the remaining conventional memory which contains DOS and BIOS controlled
+     * memory at $100000. The length of this can vary depending on the hardware
+     * and DOS version (or emulated DOS shell).
+     * These first two regions will only ever total to 640 KB but the regions map
+     * to 1 MB each to make resulting memory addresses more readable.
+     */
+    { 0x00000000U, 0x000FFFFFU, 0x00000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Game Conventional Memory" },
+    { 0x00100000U, 0x001FFFFFU, 0x00100000U, RC_MEMORY_TYPE_SYSTEM_RAM, "OS Conventional Memory" },
+    /* Last is all the expanded memory which for now we map up to 64 MB which should be
+     * enough for the games we want to cover. An emulator might emulate more than that.
+     */
+    { 0x00200000U, 0x041FFFFFU, 0x00200000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Expanded Memory" }
+};
+static const rc_memory_regions_t rc_memory_regions_ms_dos = { _rc_memory_regions_ms_dos, 3 };
+
 /* ===== Neo Geo Pocket ===== */
 /* http://neopocott.emuunlim.com/docs/tech-11.txt */
 static const rc_memory_region_t _rc_memory_regions_neo_geo_pocket[] = {
@@ -968,6 +987,9 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
 
     case RC_CONSOLE_MSX:
       return &rc_memory_regions_msx;
+
+    case RC_CONSOLE_MS_DOS:
+      return &rc_memory_regions_ms_dos;
 
     case RC_CONSOLE_NEOGEO_POCKET:
       return &rc_memory_regions_neo_geo_pocket;

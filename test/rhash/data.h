@@ -29,6 +29,9 @@ uint8_t* generate_gamecube_iso(size_t mb, size_t* image_size);
 uint8_t* generate_iso9660_bin(uint32_t binary_sectors, const char* volume_label, size_t* image_size);
 uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8_t* contents, size_t contents_size);
 
+uint8_t* generate_zip_file(size_t* image_size);
+uint8_t* generate_zip64_file(size_t* image_size);
+
 extern uint8_t test_rom_z64[64];
 extern uint8_t test_rom_n64[64];
 extern uint8_t test_rom_v64[64];
