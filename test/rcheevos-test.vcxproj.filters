@@ -306,6 +306,7 @@
     <ClCompile Include="test_rc_client_raintegration.c">
       <Filter>tests</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rc_version.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">
