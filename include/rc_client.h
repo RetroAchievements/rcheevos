@@ -136,6 +136,11 @@ RC_EXPORT void RC_CCONV rc_client_set_get_time_millisecs_function(rc_client_t* c
  */
 RC_EXPORT void RC_CCONV rc_client_abort_async(rc_client_t* client, rc_client_async_handle_t* async_handle);
 
+/**
+ * Gets a clause that can be added to the User-Agent to identify the version of rcheevos being used.
+ */
+RC_EXPORT size_t RC_CCONV rc_client_get_user_agent_clause(rc_client_t* client, char buffer[], size_t buffer_size);
+
 /*****************************************************************************\
 | Logging                                                                     |
 \*****************************************************************************/

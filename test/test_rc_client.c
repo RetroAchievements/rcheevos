@@ -8414,6 +8414,23 @@ static void test_set_encore_mode_disable(void)
   rc_client_destroy(g_client);
 }
 
+static void test_get_user_agent_clause(void)
+{
+  char expected_clause[] = "rcheevos/" RCHEEVOS_VERSION_STRING;
+  char buffer[64];
+
+  g_client = mock_client_not_logged_in();
+  ASSERT_NUM_EQUALS(rc_client_get_user_agent_clause(g_client, buffer, sizeof(buffer)), sizeof(expected_clause) - 1);
+  ASSERT_STR_EQUALS(buffer, expected_clause);
+
+  /* snprintf will return the number of characters it wants, even if the buffer is too small,
+   * but will only fill as much of the buffer is available */
+  ASSERT_NUM_EQUALS(rc_client_get_user_agent_clause(g_client, buffer, 8), sizeof(expected_clause) - 1);
+  ASSERT_STR_EQUALS(buffer, "rcheevo");
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- harness ----- */
 
 void test_client(void) {
@@ -8617,6 +8634,8 @@ void test_client(void) {
   TEST(test_set_hardcore_enable_encore_mode);
   TEST(test_set_encore_mode_enable);
   TEST(test_set_encore_mode_disable);
+
+  TEST(test_get_user_agent_clause);
 
   TEST_SUITE_END();
 }

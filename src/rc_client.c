@@ -5,6 +5,7 @@
 #include "rc_api_user.h"
 #include "rc_consoles.h"
 #include "rc_hash.h"
+#include "rc_version.h"
 
 #include "rapi/rc_api_common.h"
 
@@ -5591,4 +5592,19 @@ void rc_client_set_host(const rc_client_t* client, const char* hostname)
   if (client && client->state.external_client && client->state.external_client->set_host)
     client->state.external_client->set_host(hostname);
 #endif
+}
+
+size_t rc_client_get_user_agent_clause(rc_client_t* client, char buffer[], size_t buffer_size)
+{
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client && client->state.external_client && client->state.external_client->get_user_agent_clause) {
+    size_t external_len = client->state.external_client->get_user_agent_clause(buffer, buffer_size);
+    if (external_len > 0) {
+      external_len += snprintf(buffer + external_len, buffer_size - external_len, " rc_client/" RCHEEVOS_VERSION_STRING);
+      return external_len;
+    }
+  }
+#endif
+
+  return snprintf(buffer, buffer_size, "rcheevos/" RCHEEVOS_VERSION_STRING);
 }
