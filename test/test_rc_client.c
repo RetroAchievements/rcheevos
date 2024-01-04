@@ -5054,6 +5054,31 @@ static void test_fetch_leaderboard_entries_client_error(void)
   rc_client_destroy(g_client);
 }
 
+static void test_map_leaderboard_format(void)
+{
+  int i;
+
+  for (i = 0; i < 30; ++i) {
+    switch (i) {
+      case RC_FORMAT_SECONDS:
+      case RC_FORMAT_CENTISECS:
+      case RC_FORMAT_MINUTES:
+      case RC_FORMAT_SECONDS_AS_MINUTES:
+      case RC_FORMAT_FRAMES:
+        ASSERT_NUM_EQUALS(rc_client_map_leaderboard_format(i), RC_CLIENT_LEADERBOARD_FORMAT_TIME);
+        break;
+
+      case RC_FORMAT_SCORE:
+        ASSERT_NUM_EQUALS(rc_client_map_leaderboard_format(i), RC_CLIENT_LEADERBOARD_FORMAT_SCORE);
+        break;
+
+      default:
+        ASSERT_NUM_EQUALS(rc_client_map_leaderboard_format(i), RC_CLIENT_LEADERBOARD_FORMAT_VALUE);
+        break;
+    }
+  }
+}
+
 /* ----- do frame ----- */
 
 static void test_do_frame_bounds_check_system(void)
@@ -8519,6 +8544,8 @@ void test_client(void) {
   TEST(test_fetch_leaderboard_entries_around_user_not_logged_in);
   TEST(test_fetch_leaderboard_entries_async_aborted);
   TEST(test_fetch_leaderboard_entries_client_error);
+
+  TEST(test_map_leaderboard_format);
 
   /* do frame */
   TEST(test_do_frame_bounds_check_system);

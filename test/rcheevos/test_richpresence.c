@@ -486,6 +486,28 @@ static void test_macro_value_divide_by_self() {
   assert_richpresence_output(richpresence, &memory, "Result is 0");
 }
 
+static void test_macro_hundreds() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Format:Value\nFormatType=HUNDREDS\n\nDisplay:\nResult is @Value(0xH00)");
+  assert_richpresence_output(richpresence, &memory, "Result is 0");
+
+  ram[0] = 18;
+  assert_richpresence_output(richpresence, &memory, "Result is 1800");
+
+  ram[0] = 255;
+  assert_richpresence_output(richpresence, &memory, "Result is 25500");
+
+  ram[0] = 0;
+  assert_richpresence_output(richpresence, &memory, "Result is 0");
+}
+
 static void test_macro_frames() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -1047,6 +1069,19 @@ static void test_builtin_macro_float(const char* macro, const char* expected) {
   assert_richpresence_output(richpresence, &memory, expected);
 }
 
+static void test_builtin_macro_unsigned_large() {
+  uint8_t ram[] = { 0x85, 0xE2, 0x59, 0xC7 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[256];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Display:\n@Unsigned(0xX0)");
+  assert_richpresence_output(richpresence, &memory, "3344556677");
+}
+
 static void test_builtin_macro_override() {
   uint8_t ram[] = { 0x39, 0x30 };
   memory_t memory;
@@ -1249,6 +1284,9 @@ void test_richpresence(void) {
   TEST(test_macro_value_divide_by_zero);
   TEST(test_macro_value_divide_by_self);
 
+  /* hundreds macro */
+  TEST(test_macro_hundreds);
+
   /* frames macros */
   TEST(test_macro_frames);
 
@@ -1312,6 +1350,11 @@ void test_richpresence(void) {
   TEST_PARAMS2(test_builtin_macro_float, "Float4", "77.1339");
   TEST_PARAMS2(test_builtin_macro_float, "Float5", "77.13393");
   TEST_PARAMS2(test_builtin_macro_float, "Float6", "77.133926");
+  TEST_PARAMS2(test_builtin_macro, "Fixed1", "1234.5");
+  TEST_PARAMS2(test_builtin_macro, "Fixed2", "123.45");
+  TEST_PARAMS2(test_builtin_macro, "Fixed3", "12.345");
+  TEST_PARAMS2(test_builtin_macro, "Unsigned", "12345");
+  TEST(test_builtin_macro_unsigned_large);
   TEST(test_builtin_macro_override);
 
   /* asciichar */

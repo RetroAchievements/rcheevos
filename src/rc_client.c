@@ -1701,6 +1701,13 @@ uint8_t rc_client_map_leaderboard_format(int format)
     case RC_FORMAT_FLOAT4:
     case RC_FORMAT_FLOAT5:
     case RC_FORMAT_FLOAT6:
+    case RC_FORMAT_FIXED1:
+    case RC_FORMAT_FIXED2:
+    case RC_FORMAT_FIXED3:
+    case RC_FORMAT_TENS:
+    case RC_FORMAT_HUNDREDS:
+    case RC_FORMAT_THOUSANDS:
+    case RC_FORMAT_UNSIGNED_VALUE:
     default:
       return RC_CLIENT_LEADERBOARD_FORMAT_VALUE;
   }
