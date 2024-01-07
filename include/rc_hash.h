@@ -136,11 +136,12 @@ RC_BEGIN_C_DECLS
    * the secondary key will use the KeyX slot passed
    * the secondary KeyY will be identical to the primary keyY if the passed program id is NULL
    * if the program id is not null, then the secondary KeyY will be obtained with "seed crypto"
-   * the secondary KeyX and seed will then be hashed with SHA256, and the upper 16 bytes of the digest will be the secondary KeyY used
+   * with "seed crypto" the 8 byte program id can be used to obtain a 16 byte "seed" within the seeddb.bin firmware file
+   * the primary KeyY then the seed will then be hashed with SHA256, and the upper 16 bytes of the digest will be the secondary KeyY used
    * the normal keys should be written in big endian format
    * returns non-zero on success, or zero on failure.
    */
-  typedef int (RC_CCONV *rc_hash_3ds_get_ncch_normal_keys_func)(uint8_t primary_key_y[16], uint8_t secondary_key_x_slot, uint8_t optional_program_id[8],
+  typedef int (RC_CCONV *rc_hash_3ds_get_ncch_normal_keys_func)(uint8_t primary_key_y[16], uint8_t secondary_key_x_slot, uint8_t* optional_program_id,
                                                                 uint8_t out_primary_key[16], uint8_t out_secondary_key[16]);
   RC_EXPORT void RC_CCONV rc_hash_init_3ds_get_ncch_normal_keys_func(rc_hash_3ds_get_ncch_normal_keys_func func);
 

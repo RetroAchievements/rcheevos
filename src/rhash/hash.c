@@ -1655,6 +1655,8 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
     return rc_hash_error("Could not read 3DS ROM header");
   }
 
+  md5_init(&md5);
+
   if (memcmp(&header[0x100], "NCSD", 4) == 0)
   {
     /* A NCSD container contains 1-8 NCCH partitions */
@@ -1663,11 +1665,16 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
     /* Offset is in "media units" (1 media unit = 0x200 bytes) */
     header_offset *= 0x200;
 
+    /* We include the NCSD header in the hash, as that will ensure different versions of a game result in a different hash
+     * This is due to some revisions / languages only ever changing other NCCH paritions (e.g. the game manual)
+     */
+    rc_hash_verbose("Hashing 512 byte NCSD header");
+    md5_append(&md5, header, sizeof(header));
+
     if (verbose_message_callback)
     {
-      char message[128];
-      snprintf(message, sizeof(message), "Detected NCSD header, seeking to NCCH partition at %08X%08X", (unsigned)(header_offset >> 32), (unsigned)header_offset);
-      verbose_message_callback((const char*)message);
+      snprintf((char*)header, sizeof(header), "Detected NCSD header, seeking to NCCH partition at %08X%08X", (unsigned)(header_offset >> 32), (unsigned)header_offset);
+      verbose_message_callback((const char*)header);
     }
 
     rc_file_seek(file_handle, header_offset, SEEK_SET);
@@ -1684,8 +1691,6 @@ static int rc_hash_nintendo_3ds(char hash[33], const char* path)
       return rc_hash_error((const char*)header);
     }
   }
-
-  md5_init(&md5);
 
   if (memcmp(&header[0x100], "NCCH", 4) == 0)
   {
