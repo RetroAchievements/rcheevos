@@ -96,7 +96,7 @@ enum {
 
   RC_CONSOLE_HUBS = 100,
   RC_CONSOLE_EVENTS = 101,
-  RC_CONSOLE_STANDALONES = 102
+  RC_CONSOLE_STANDALONE = 102
 };
 
 RC_EXPORT const char* RC_CCONV rc_console_name(uint32_t console_id);
