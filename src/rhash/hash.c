@@ -694,32 +694,19 @@ static int rc_hash_zip_idx_sort(const void* a, const void* b)
 
 static int rc_hash_zip_file(md5_state_t* md5, void* file_handle)
 {
-  /* Constants used in this function for reading ZIP and ZIP64 files */
-  const uint8_t  RC_ZIP_END_OF_CENTRAL_DIR_HEADER_SIZE = 22;
-  const uint32_t RC_ZIP_END_OF_CENTRAL_DIR_HEADER_SIG = 0x06054b50;
-  const uint8_t  RC_ZIP_ECDH_CDIR_TOTAL_ENTRIES_OFS = 10;
-  const uint8_t  RC_ZIP_ECDH_CDIR_SIZE_OFS = 12;
-  const uint8_t  RC_ZIP_ECDH_CDIR_OFS_OFS = 16;
-  const uint8_t  RC_ZIP_CENTRAL_DIR_HEADER_SIZE = 46;
-  const uint32_t RC_ZIP_CENTRAL_DIR_HEADER_SIG = 0x02014b50;
-  const uint8_t  RC_ZIP_CDH_METHOD_OFS = 10;
-  const uint8_t  RC_ZIP_CDH_CRC32_OFS = 16;
-  const uint8_t  RC_ZIP_CDH_COMPRESSED_SIZE_OFS = 20;
-  const uint8_t  RC_ZIP_CDH_DECOMPRESSED_SIZE_OFS = 24;
-  const uint8_t  RC_ZIP_CDH_FILENAME_LEN_OFS = 28;
-  const uint8_t  RC_ZIP_CDH_EXTRA_LEN_OFS = 30;
-  const uint8_t  RC_ZIP_CDH_LOCAL_HEADER_OFS = 42;
-  const uint8_t  RC_ZIP_CDH_COMMENT_LEN_OFS = 32;
-  const uint8_t  RC_ZIP_LOCAL_DIR_HEADER_SIZE = 30;
-  const uint32_t RC_ZIP64_END_OF_CENTRAL_DIR_LOCATOR_SIG = 0x07064b50;
-  const uint8_t  RC_ZIP64_END_OF_CENTRAL_DIR_HEADER_SIZE = 56;
-  const uint8_t  RC_ZIP64_END_OF_CENTRAL_DIR_LOCATOR_SIZE = 20;
-  const uint8_t  RC_ZIP64_ECDL_REL_OFS_TO_ZIP64_ECDR_OFS = 8;
-  const uint32_t RC_ZIP64_END_OF_CENTRAL_DIR_HEADER_SIG = 0x06064b50;
-  const uint8_t  RC_ZIP64_ECDH_CDIR_TOTAL_ENTRIES_OFS = 32;
-  const uint8_t  RC_ZIP64_ECDH_CDIR_SIZE_OFS = 40;
-  const uint8_t  RC_ZIP64_ECDH_CDIR_OFS_OFS = 48;
-  const size_t sizeof_idx = sizeof(struct rc_hash_zip_idx);
+  uint8_t buf[2048], *alloc_buf, *cdir_start, *cdir_max, *cdir, *hashdata, eocdirhdr_size, cdirhdr_size;
+  uint32_t cdir_entry_len;
+  size_t sizeof_idx, indices_offset, alloc_size;
+  int64_t i_file, archive_size, ecdh_ofs, total_files, cdir_size, cdir_ofs;
+  struct rc_hash_zip_idx* hashindices, *hashindex;
+
+  rc_file_seek(file_handle, 0, SEEK_END);
+  archive_size = rc_file_tell(file_handle);
+
+  /* Basic sanity checks - reject files which are too small */
+  eocdirhdr_size = 22; /* the 'end of central directory header' is 22 bytes */
+  if (archive_size < eocdirhdr_size)
+    return rc_hash_error("ZIP is too small");
 
   /* Macros used for reading ZIP and writing to a buffer for hashing (undefined again at the end of the function) */
   #define RC_ZIP_READ_LE16(p) ((uint16_t)(((const uint8_t*)(p))[0]) | ((uint16_t)(((const uint8_t*)(p))[1]) << 8U))
@@ -728,114 +715,87 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle)
   #define RC_ZIP_WRITE_LE32(p,v) { ((uint8_t*)(p))[0] = (uint8_t)((uint32_t)(v) & 0xFF); ((uint8_t*)(p))[1] = (uint8_t)(((uint32_t)(v) >> 8) & 0xFF); ((uint8_t*)(p))[2] = (uint8_t)(((uint32_t)(v) >> 16) & 0xFF); ((uint8_t*)(p))[3] = (uint8_t)((uint32_t)(v) >> 24); }
   #define RC_ZIP_WRITE_LE64(p,v) { ((uint8_t*)(p))[0] = (uint8_t)((uint64_t)(v) & 0xFF); ((uint8_t*)(p))[1] = (uint8_t)(((uint64_t)(v) >> 8) & 0xFF); ((uint8_t*)(p))[2] = (uint8_t)(((uint64_t)(v) >> 16) & 0xFF); ((uint8_t*)(p))[3] = (uint8_t)(((uint64_t)(v) >> 24) & 0xFF); ((uint8_t*)(p))[4] = (uint8_t)(((uint64_t)(v) >> 32) & 0xFF); ((uint8_t*)(p))[5] = (uint8_t)(((uint64_t)(v) >> 40) & 0xFF); ((uint8_t*)(p))[6] = (uint8_t)(((uint64_t)(v) >> 48) & 0xFF); ((uint8_t*)(p))[7] = (uint8_t)((uint64_t)(v) >> 56); }
 
-  uint8_t buf[2048], *alloc_buf, *cdir_start, *cdir_max, *cdir, *hashdata;
-  uint32_t cdir_entry_len;
-  size_t indices_offset, alloc_size;
-  int64_t i_file, archive_size, ecdh_ofs, total_files, cdir_size, cdir_ofs;
-  struct rc_hash_zip_idx* hashindices, *hashindex;
-
-  rc_file_seek(file_handle, 0, SEEK_END);
-  archive_size = rc_file_tell(file_handle);
-
-  /* Basic sanity checks - reject files which are too small. */
-  if (archive_size < RC_ZIP_END_OF_CENTRAL_DIR_HEADER_SIZE)
-  {
-    rc_file_close(file_handle);
-    return rc_hash_error("ZIP is too small");
-  }
-
-  /* Find the end of central directory record by scanning the file from the end towards the beginning. */
+  /* Find the end of central directory record by scanning the file from the end towards the beginning */
   for (ecdh_ofs = archive_size - sizeof(buf); ; ecdh_ofs -= (sizeof(buf) - 3))
   {
     int i, n = sizeof(buf);
-    if (ecdh_ofs < 0) ecdh_ofs = 0;
-    if (n > archive_size) n = (int)archive_size;
+    if (ecdh_ofs < 0)
+      ecdh_ofs = 0;
+    if (n > archive_size)
+      n = (int)archive_size;
     rc_file_seek(file_handle, ecdh_ofs, SEEK_SET);
     if (rc_file_read(file_handle, buf, n) != (size_t)n)
-    {
-      rc_file_close(file_handle);
       return rc_hash_error("ZIP read error");
-    }
     for (i = n - 4; i >= 0; --i)
-      if (RC_ZIP_READ_LE32(buf + i) == RC_ZIP_END_OF_CENTRAL_DIR_HEADER_SIG)
+      if (RC_ZIP_READ_LE32(buf + i) == 0x06054b50) /* end of central directory header signature */
         break;
     if (i >= 0)
     {
       ecdh_ofs += i;
       break;
     }
-    if (!ecdh_ofs || (archive_size - ecdh_ofs) >= (0xFFFF + RC_ZIP_END_OF_CENTRAL_DIR_HEADER_SIZE))
-    {
-      rc_file_close(file_handle);
+    if (!ecdh_ofs || (archive_size - ecdh_ofs) >= (0xFFFF + eocdirhdr_size))
       return rc_hash_error("Failed to find ZIP central directory");
-    }
   }
 
   /* Read and verify the end of central directory record. */
   rc_file_seek(file_handle, ecdh_ofs, SEEK_SET);
-  if (rc_file_read(file_handle, buf, RC_ZIP_END_OF_CENTRAL_DIR_HEADER_SIZE) != RC_ZIP_END_OF_CENTRAL_DIR_HEADER_SIZE)
-  {
-    rc_file_close(file_handle);
+  if (rc_file_read(file_handle, buf, eocdirhdr_size) != eocdirhdr_size)
     return rc_hash_error("Failed to read ZIP central directory");
-  }
 
-  total_files = RC_ZIP_READ_LE16(buf + RC_ZIP_ECDH_CDIR_TOTAL_ENTRIES_OFS);
-  cdir_size   = RC_ZIP_READ_LE32(buf + RC_ZIP_ECDH_CDIR_SIZE_OFS);
-  cdir_ofs    = RC_ZIP_READ_LE32(buf + RC_ZIP_ECDH_CDIR_OFS_OFS);
+  /* Read central dir information from end of central directory header */
+  total_files = RC_ZIP_READ_LE16(buf + 0x0A);
+  cdir_size   = RC_ZIP_READ_LE32(buf + 0x0C);
+  cdir_ofs    = RC_ZIP_READ_LE32(buf + 0x10);
 
-  /* Check if this is a Zip64 file */
-  if ((cdir_ofs == 0xFFFFFFFF || cdir_size == 0xFFFFFFFF || total_files == 0xFFFF)
-    && ecdh_ofs >= (RC_ZIP64_END_OF_CENTRAL_DIR_LOCATOR_SIZE + RC_ZIP64_END_OF_CENTRAL_DIR_HEADER_SIZE))
+  /* Check if this is a Zip64 file. In the block of code below:
+   * - 20 is the size of the ZIP64 end of central directory locator
+   * - 56 is the size of the ZIP64 end of central directory header
+   */
+  if ((cdir_ofs == 0xFFFFFFFF || cdir_size == 0xFFFFFFFF || total_files == 0xFFFF) && ecdh_ofs >= (20 + 56))
   {
-    rc_file_seek(file_handle, ecdh_ofs - RC_ZIP64_END_OF_CENTRAL_DIR_LOCATOR_SIZE, SEEK_SET);
-    if (rc_file_read(file_handle, buf, RC_ZIP64_END_OF_CENTRAL_DIR_LOCATOR_SIZE) == RC_ZIP64_END_OF_CENTRAL_DIR_LOCATOR_SIZE
-      && RC_ZIP_READ_LE32(buf) == RC_ZIP64_END_OF_CENTRAL_DIR_LOCATOR_SIG)
+    /* Read the ZIP64 end of central directory locator if it actually exists */
+    rc_file_seek(file_handle, ecdh_ofs - 20, SEEK_SET);
+    if (rc_file_read(file_handle, buf, 20) == 20 && RC_ZIP_READ_LE32(buf) == 0x07064b50) /* locator signature */
     {
-      int64_t ecdh64_ofs = (int64_t)RC_ZIP_READ_LE64(buf + RC_ZIP64_ECDL_REL_OFS_TO_ZIP64_ECDR_OFS);
-      if (ecdh64_ofs <= (archive_size - RC_ZIP64_END_OF_CENTRAL_DIR_HEADER_SIZE))
+      /* Found the locator, now read the actual ZIP64 end of central directory header */ 
+      int64_t ecdh64_ofs = (int64_t)RC_ZIP_READ_LE64(buf + 0x08);
+      if (ecdh64_ofs <= (archive_size - 56))
       {
         rc_file_seek(file_handle, ecdh64_ofs, SEEK_SET);
-        if (rc_file_read(file_handle, buf, RC_ZIP64_END_OF_CENTRAL_DIR_HEADER_SIZE) == RC_ZIP64_END_OF_CENTRAL_DIR_HEADER_SIZE
-          && RC_ZIP_READ_LE32(buf) == RC_ZIP64_END_OF_CENTRAL_DIR_HEADER_SIG)
+        if (rc_file_read(file_handle, buf, 56) == 56 && RC_ZIP_READ_LE32(buf) == 0x06064b50) /* header signature */
         {
-          total_files = RC_ZIP_READ_LE64(buf + RC_ZIP64_ECDH_CDIR_TOTAL_ENTRIES_OFS);
-          cdir_size   = RC_ZIP_READ_LE64(buf + RC_ZIP64_ECDH_CDIR_SIZE_OFS);
-          cdir_ofs    = RC_ZIP_READ_LE64(buf + RC_ZIP64_ECDH_CDIR_OFS_OFS);
+          total_files = RC_ZIP_READ_LE64(buf + 0x20);
+          cdir_size   = RC_ZIP_READ_LE64(buf + 0x28);
+          cdir_ofs    = RC_ZIP_READ_LE64(buf + 0x30);
         }
       }
     }
   }
 
-  /* Basic verificaton of central directory */
-  if ((cdir_size >= 0x10000000) || /* limit to 256MB content directory */
-    (cdir_size < total_files * RC_ZIP_CENTRAL_DIR_HEADER_SIZE) ||
-    ((cdir_ofs + cdir_size) > archive_size))
-  {
-    rc_file_close(file_handle);
+  /* Basic verificaton of central directory (limit to a 256MB content directory) */
+  cdirhdr_size = 46; /* the 'central directory header' is 46 bytes */
+  if ((cdir_size >= 0x10000000) || (cdir_size < total_files * cdirhdr_size) || ((cdir_ofs + cdir_size) > archive_size))
     return rc_hash_error("Central directory of ZIP file is invalid");
-  }
 
   /* Allocate once for both directory and our temporary sort index (memory aligned to sizeof(rc_hash_zip_idx)) */
+  sizeof_idx = sizeof(struct rc_hash_zip_idx);
   indices_offset = (size_t)((cdir_size + sizeof_idx - 1) / sizeof_idx * sizeof_idx);
   alloc_size = (size_t)(indices_offset + total_files * sizeof_idx);
   alloc_buf = (uint8_t*)malloc(alloc_size);
 
   /* Read entire central directory to a buffer */
   if (!alloc_buf)
-  {
-    rc_file_close(file_handle);
     return rc_hash_error("Could not allocate temporary buffer");
-  }
   rc_file_seek(file_handle, cdir_ofs, SEEK_SET);
   if ((int64_t)rc_file_read(file_handle, alloc_buf, (int)cdir_size) != cdir_size)
   {
-    rc_file_close(file_handle);
     free(alloc_buf);
     return rc_hash_error("Failed to read central directory of ZIP file");
   }
 
   cdir_start = alloc_buf;
-  cdir_max = cdir_start + cdir_size - RC_ZIP_CENTRAL_DIR_HEADER_SIZE;
+  cdir_max = cdir_start + cdir_size - cdirhdr_size;
   cdir = cdir_start;
 
   /* Write our temporary hash data to the same buffer we read the central directory from.
@@ -846,23 +806,28 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle)
   hashindex = hashindices;
 
   /* Now process the central directory file records */
-  for (i_file = 0, cdir = cdir_start; i_file < total_files && cdir >= cdir_start && cdir <= cdir_max && RC_ZIP_READ_LE32(cdir) == RC_ZIP_CENTRAL_DIR_HEADER_SIG; i_file++, cdir += cdir_entry_len)
+  for (i_file = 0, cdir = cdir_start; i_file < total_files && cdir >= cdir_start && cdir <= cdir_max; i_file++, cdir += cdir_entry_len)
   {
     const uint8_t *name, *name_end;
-    uint32_t method           = RC_ZIP_READ_LE16(cdir + RC_ZIP_CDH_METHOD_OFS);
-    uint32_t crc              = RC_ZIP_READ_LE32(cdir + RC_ZIP_CDH_CRC32_OFS);
-    uint64_t comp_size        = RC_ZIP_READ_LE32(cdir + RC_ZIP_CDH_COMPRESSED_SIZE_OFS);
-    uint64_t decomp_size      = RC_ZIP_READ_LE32(cdir + RC_ZIP_CDH_DECOMPRESSED_SIZE_OFS);
-    uint32_t filename_len     = RC_ZIP_READ_LE16(cdir + RC_ZIP_CDH_FILENAME_LEN_OFS);
-    int32_t  extra_len        = RC_ZIP_READ_LE16(cdir + RC_ZIP_CDH_EXTRA_LEN_OFS);
-    uint64_t local_header_ofs = RC_ZIP_READ_LE32(cdir + RC_ZIP_CDH_LOCAL_HEADER_OFS);
-    cdir_entry_len = RC_ZIP_CENTRAL_DIR_HEADER_SIZE + filename_len + extra_len + RC_ZIP_READ_LE16(cdir + RC_ZIP_CDH_COMMENT_LEN_OFS);
+    uint32_t signature     = RC_ZIP_READ_LE32(cdir + 0x00);
+    uint32_t method        = RC_ZIP_READ_LE16(cdir + 0x0A);
+    uint32_t crc32         = RC_ZIP_READ_LE32(cdir + 0x10);
+    uint64_t comp_size     = RC_ZIP_READ_LE32(cdir + 0x14);
+    uint64_t decomp_size   = RC_ZIP_READ_LE32(cdir + 0x18);
+    uint32_t filename_len  = RC_ZIP_READ_LE16(cdir + 0x1C);
+    int32_t  extra_len     = RC_ZIP_READ_LE16(cdir + 0x1E);
+    int32_t  comment_len   = RC_ZIP_READ_LE16(cdir + 0x20);
+    uint64_t local_hdr_ofs = RC_ZIP_READ_LE32(cdir + 0x2A);
+    cdir_entry_len = cdirhdr_size + filename_len + extra_len + comment_len;
+
+    if (signature != 0x02014b50) /* expected central directory entry signature */
+      break;
 
     /* Handle Zip64 fields */
-    if (decomp_size == 0xFFFFFFFF || comp_size == 0xFFFFFFFF || local_header_ofs == 0xFFFFFFFF)
+    if (decomp_size == 0xFFFFFFFF || comp_size == 0xFFFFFFFF || local_hdr_ofs == 0xFFFFFFFF)
     {
       int invalid = 0;
-      const uint8_t *x = cdir + RC_ZIP_CENTRAL_DIR_HEADER_SIZE + filename_len, *xEnd, *field, *fieldEnd;
+      const uint8_t *x = cdir + cdirhdr_size + filename_len, *xEnd, *field, *fieldEnd;
       for (xEnd = x + extra_len; (x + (sizeof(uint16_t) * 2)) < xEnd; x = fieldEnd)
       {
         field = x + (sizeof(uint16_t) * 2);
@@ -882,10 +847,10 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle)
           comp_size = RC_ZIP_READ_LE64(field);
           field += sizeof(uint64_t);
         }
-        if (local_header_ofs == 0xFFFFFFFF)
+        if (local_hdr_ofs == 0xFFFFFFFF)
         {
           if ((unsigned)(fieldEnd - field) < sizeof(uint64_t)) { invalid = 1; break; }
-          local_header_ofs = RC_ZIP_READ_LE64(field);
+          local_hdr_ofs = RC_ZIP_READ_LE64(field);
           field += sizeof(uint64_t);
         }
         break;
@@ -898,12 +863,12 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle)
     }
 
     /* Basic sanity check on file record */
-    if ((!method && (decomp_size != comp_size)) || (decomp_size && !comp_size) ||
-      ((local_header_ofs + RC_ZIP_LOCAL_DIR_HEADER_SIZE + comp_size) > (uint64_t)archive_size))
-      {
-        free(alloc_buf);
-        return rc_hash_error("Encountered invalid entry in ZIP central directory");
-      }
+    /* 30 is the length of the local directory header preceeding the compressed data */
+    if ((!method && decomp_size != comp_size) || (decomp_size && !comp_size) || ((local_hdr_ofs + 30 + comp_size) > (uint64_t)archive_size))
+    {
+      free(alloc_buf);
+      return rc_hash_error("Encountered invalid entry in ZIP central directory");
+    }
 
     /* Write the pointer and length of the data we record about this file */
     hashindex->data = hashdata;
@@ -911,7 +876,7 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle)
     hashindex++;
 
     /* Convert and store the file name in the hash data buffer */
-    for (name = (cdir + RC_ZIP_CENTRAL_DIR_HEADER_SIZE), name_end = name + filename_len; name != name_end; name++)
+    for (name = (cdir + cdirhdr_size), name_end = name + filename_len; name != name_end; name++)
     {
       *(hashdata++) =
         (*name == '\\' ? '/' : /* convert back-slashes to regular slashes */
@@ -921,7 +886,7 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle)
 
     /* Add zero terminator, CRC32 and decompressed size to the hash data buffer */
     *(hashdata++) = '\0';
-    RC_ZIP_WRITE_LE32(hashdata, crc);
+    RC_ZIP_WRITE_LE32(hashdata, crc32);
     hashdata += 4;
     RC_ZIP_WRITE_LE64(hashdata, decomp_size);
     hashdata += 8;
@@ -929,7 +894,7 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle)
     if (verbose_message_callback)
     {
       char message[1024];
-      snprintf(message, sizeof(message), "File in ZIP: %.*s (%u bytes, CRC32 = %08X)", filename_len, (const char*)(cdir + RC_ZIP_CENTRAL_DIR_HEADER_SIZE), (unsigned)decomp_size, crc);
+      snprintf(message, sizeof(message), "File in ZIP: %.*s (%u bytes, CRC32 = %08X)", filename_len, (const char*)(cdir + cdirhdr_size), (unsigned)decomp_size, crc32);
       verbose_message_callback(message);
     }
   }
@@ -990,8 +955,11 @@ static int rc_hash_ms_dos(char hash[33], const char* path)
     free((void*)dosc_path);
     if (file_handle)
     {
-      rc_hash_zip_file(&md5, file_handle);
+      res = rc_hash_zip_file(&md5, file_handle);
       rc_file_close(file_handle);
+
+      if (!res)
+        return 0;
     }
   }
 
