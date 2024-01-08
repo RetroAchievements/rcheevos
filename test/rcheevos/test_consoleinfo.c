@@ -123,6 +123,7 @@ void test_consoleinfo(void) {
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
+  TEST_PARAMS2(test_name, 102, "Standalone");
 
   /* memory maps */
   TEST_PARAMS2(test_memory, RC_CONSOLE_UNKNOWN, 0x000000);
