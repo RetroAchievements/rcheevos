@@ -378,7 +378,7 @@
     <ClInclude Include="..\src\rc_libretro.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\rc_util.h">
+    <ClInclude Include="..\include\rc_util.h">
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\include\rc_client.h">
