@@ -6885,6 +6885,7 @@ static void test_do_frame_leaderboard_submit_blocked(void)
   ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
   ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
 
+  /* but make sure the server wasn't called */
   assert_api_not_called(api_call);
 
   event_count = 0;
@@ -6900,6 +6901,90 @@ static void test_do_frame_leaderboard_submit_blocked(void)
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 44));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD, 44));
 
+  /* make sure the server was called */
+  assert_api_called(api_call);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_leaderboard_submit_softcore(void)
+{
+  rc_client_leaderboard_info_t* leaderboard;
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  const char* api_call = "r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&v=a27fa205f7f30c8d13d74806ea5425b6";
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  rc_client_set_hardcore_enabled(g_client, 0);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  mock_memory(memory, sizeof(memory));
+
+  mock_api_response(api_call,
+    "{\"Success\":true,\"Response\":{\"Score\":17,\"BestScore\":23,"
+    "\"TopEntries\":[{\"User\":\"Player1\",\"Score\":44,\"Rank\":1},{\"User\":\"Username\",\"Score\":23,\"Rank\":2}],"
+    "\"RankInfo\":{\"Rank\":2,\"NumEntries\":\"2\"}}}");
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* start the leaderboard - will be ignored in softcore */
+  memory[0x0B] = 1;
+  memory[0x0E] = 17;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* allow leaderboards to be processed in softcore. have to manually activate as it wasn't activated on game load */
+  g_client->state.allow_leaderboards_in_softcore = 1;
+  leaderboard = (rc_client_leaderboard_info_t*)rc_client_get_leaderboard_info(g_client, 44);
+  leaderboard->public_.state = RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE;
+  leaderboard->lboard->state = RC_LBOARD_STATE_ACTIVE;
+
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 44));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  /* submit the leaderboard */
+  memory[0x0B] = 0;
+  memory[0x0D] = 1;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 2);
+
+  event = find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 44);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+  ASSERT_STR_EQUALS(event->leaderboard->tracker_value, "000017");
+  ASSERT_PTR_EQUALS(event->leaderboard, rc_client_get_leaderboard_info(g_client, 44));
+
+  event = find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->leaderboard_tracker->id, 1);
+  ASSERT_STR_EQUALS(event->leaderboard_tracker->display, "000017");
+
+  /* but make sure the server wasn't called */
+  assert_api_not_called(api_call);
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  g_client->state.hardcore = 1;
+
+  /* restart the leaderboard - will immediately submit */
+  memory[0x0B] = 1;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED, 44));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD, 44));
+
+  /* make sure the server was called */
   assert_api_called(api_call);
 
   rc_client_destroy(g_client);
@@ -8729,6 +8814,7 @@ void test_client(void) {
   TEST(test_do_frame_leaderboard_submit_immediate);
   TEST(test_do_frame_leaderboard_submit_hidden);
   TEST(test_do_frame_leaderboard_submit_blocked);
+  TEST(test_do_frame_leaderboard_submit_softcore);
   TEST(test_do_frame_leaderboard_tracker_sharing);
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
   TEST(test_do_frame_leaderboard_submit_automatic_retry);

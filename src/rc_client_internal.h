@@ -325,6 +325,7 @@ typedef struct rc_client_state_t {
   uint8_t log_level;
   uint8_t user;
   uint8_t disconnect;
+  uint8_t allow_leaderboards_in_softcore;
 
   struct rc_client_load_state_t* load;
   struct rc_client_async_handle_t* async_handles[4];
