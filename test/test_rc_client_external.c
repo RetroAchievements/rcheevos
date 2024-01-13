@@ -1,6 +1,7 @@
 #include "rc_client.h"
 
 #include "../src/rc_client_internal.h"
+#include "../src/rc_version.h"
 #include "rc_consoles.h"
 #include "rhash/data.h"
 
@@ -263,6 +264,33 @@ static void test_set_host(void)
 
   rc_api_set_host(NULL);
   rc_api_set_image_host(NULL);
+
+  rc_client_destroy(g_client);
+}
+
+static size_t rc_client_external_get_user_agent_clause(char buffer[], size_t buffer_size)
+{
+  return snprintf(buffer, buffer_size, "external/2.1");
+}
+
+static void test_get_user_agent_clause(void)
+{
+  char expected_clause[] = "external/2.1 rc_client/" RCHEEVOS_VERSION_STRING;
+  char buffer[64];
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_user_agent_clause = rc_client_external_get_user_agent_clause;
+
+  ASSERT_NUM_EQUALS(rc_client_get_user_agent_clause(g_client, buffer, sizeof(buffer)), sizeof(expected_clause) - 1);
+  ASSERT_STR_EQUALS(buffer, expected_clause);
+
+  /* snprintf will return the number of characters it wants, even if the buffer is too small,
+   * but will only fill as much of the buffer is available */
+  ASSERT_NUM_EQUALS(rc_client_get_user_agent_clause(g_client, buffer, 8), sizeof(expected_clause) - 1);
+  ASSERT_STR_EQUALS(buffer, "externa");
+
+  ASSERT_NUM_EQUALS(rc_client_get_user_agent_clause(g_client, buffer, 20), sizeof(expected_clause) - 1);
+  ASSERT_STR_EQUALS(buffer, "external/2.1 rc_cli");
 
   rc_client_destroy(g_client);
 }
@@ -1176,6 +1204,7 @@ void test_client_external(void) {
   TEST(test_read_memory);
   TEST(test_get_time_millisecs);
   TEST(test_set_host);
+  TEST(test_get_user_agent_clause);
 
   /* login */
   TEST(test_login_with_password);
