@@ -1302,6 +1302,8 @@ static void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_clie
 {
   rc_client_leaderboard_info_t* leaderboard;
   rc_client_leaderboard_info_t* stop;
+  const uint8_t leaderboards_allowed =
+      client->state.hardcore || client->state.allow_leaderboards_in_softcore;
 
   uint32_t active_count = 0;
   rc_client_subset_info_t* subset = game->subsets;
@@ -1318,7 +1320,7 @@ static void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_clie
           continue;
 
         case RC_CLIENT_LEADERBOARD_STATE_INACTIVE:
-          if (client->state.hardcore) {
+          if (leaderboards_allowed) {
             rc_reset_lboard(leaderboard->lboard);
             leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_ACTIVE;
             ++active_count;
@@ -1326,7 +1328,7 @@ static void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_clie
           break;
 
         default:
-          if (client->state.hardcore)
+          if (leaderboards_allowed)
             ++active_count;
           else
             leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_INACTIVE;
@@ -4008,6 +4010,11 @@ static void rc_client_submit_leaderboard_entry(rc_client_t* client, rc_client_le
 {
   rc_client_submit_leaderboard_entry_callback_data_t* callback_data;
 
+  if (!client->state.hardcore) {
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Leaderboard %u entry submission not allowed in softcore", leaderboard->public_.id);
+    return;
+  }
+
   if (client->callbacks.can_submit_leaderboard_entry &&
       !client->callbacks.can_submit_leaderboard_entry(leaderboard->public_.id, client)) {
     RC_CLIENT_LOG_INFO_FORMATTED(client, "Leaderboard %u entry submission blocked by client", leaderboard->public_.id);
@@ -4946,7 +4953,7 @@ void rc_client_do_frame(rc_client_t* client)
     if (client->game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_PROGRESS_TRACKER)
       rc_client_do_frame_update_progress_tracker(client, client->game);
 
-    if (client->state.hardcore) {
+    if (client->state.hardcore || client->state.allow_leaderboards_in_softcore) {
       for (subset = client->game->subsets; subset; subset = subset->next) {
         if (subset->active)
           rc_client_do_frame_process_leaderboards(client, subset);
@@ -5412,7 +5419,9 @@ static void rc_client_disable_hardcore(rc_client_t* client)
 
   if (client->game) {
     rc_client_toggle_hardcore_achievements(client->game, client, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
-    rc_client_deactivate_leaderboards(client->game, client);
+
+    if (!client->state.allow_leaderboards_in_softcore)
+      rc_client_deactivate_leaderboards(client->game, client);
   }
 }
 
