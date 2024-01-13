@@ -85,7 +85,7 @@ static void test_memory_init_without_regions() {
   ASSERT_TRUE(memcmp(buffer3, &buffer1[2], 1) == 0);
   ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 7, buffer3, 4), 4);
   ASSERT_TRUE(memcmp(buffer3, &buffer1[7], 4) == 0);
-  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, sizeof(buffer1) - 2, buffer3, 3), 2);
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, sizeof(buffer1) - 2, buffer3, 3), 3); /* read across boundary */
   ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, sizeof(buffer1) + sizeof(buffer2) + 2, buffer3, 1), 0);
 }
 
@@ -415,6 +415,80 @@ static void test_memory_init_from_memory_map_disconnect_gaps() {
   ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x0102), &buffer[0x82]);
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x0122));
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x0142));
+}
+
+
+static void test_memory_read()
+{
+  rc_libretro_memory_regions_t regions;
+  /* intentionally put buffer3 between buffer1 and buffer2 for the read that spans buffers */
+  uint8_t buffer1[8], buffer3[4], buffer2[8];
+  const struct retro_memory_descriptor mmap_desc[] = {
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0x000000U, 0, 0, 0x000008, "RAM A" },
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer2[0], 0, 0x000008U, 0, 0, 0x000008, "RAM B" }
+  };
+  const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
+  int i;
+
+  for (i = 0; i < 8; ++i) {
+    buffer1[i] = i;
+    buffer2[i] = i + 8;
+  }
+
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_NINTENDO));
+
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 0, buffer3, 4), 4);
+  ASSERT_NUM_EQUALS(buffer3[0], 0);
+  ASSERT_NUM_EQUALS(buffer3[1], 1);
+  ASSERT_NUM_EQUALS(buffer3[2], 2);
+  ASSERT_NUM_EQUALS(buffer3[3], 3);
+
+  /* only requesting two bytes, other two remain unmodified */
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 3, buffer3, 2), 2);
+  ASSERT_NUM_EQUALS(buffer3[0], 3);
+  ASSERT_NUM_EQUALS(buffer3[1], 4);
+  ASSERT_NUM_EQUALS(buffer3[2], 2);
+  ASSERT_NUM_EQUALS(buffer3[3], 3);
+
+  /* one two bytes are available in buffer1, the rest have to be read from buffer2 */
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 6, buffer3, 4), 4);
+  ASSERT_NUM_EQUALS(buffer3[0], 6);
+  ASSERT_NUM_EQUALS(buffer3[1], 7);
+  ASSERT_NUM_EQUALS(buffer3[2], 8); /* this comes from buffer2 */
+  ASSERT_NUM_EQUALS(buffer3[3], 9);
+
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 8, buffer3, 4), 4);
+  ASSERT_NUM_EQUALS(buffer3[0], 8);
+  ASSERT_NUM_EQUALS(buffer3[1], 9);
+  ASSERT_NUM_EQUALS(buffer3[2], 10);
+  ASSERT_NUM_EQUALS(buffer3[3], 11);
+
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 11, buffer3, 4), 4);
+  ASSERT_NUM_EQUALS(buffer3[0], 11);
+  ASSERT_NUM_EQUALS(buffer3[1], 12);
+  ASSERT_NUM_EQUALS(buffer3[2], 13);
+  ASSERT_NUM_EQUALS(buffer3[3], 14);
+
+  /* only requesting 1 byte. other three remain unmodified */
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 13, buffer3, 1), 1);
+  ASSERT_NUM_EQUALS(buffer3[0], 13);
+  ASSERT_NUM_EQUALS(buffer3[1], 12);
+  ASSERT_NUM_EQUALS(buffer3[2], 13);
+  ASSERT_NUM_EQUALS(buffer3[3], 14);
+
+  /* only two bytes are available at address 14 */
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 14, buffer3, 3), 2);
+  ASSERT_NUM_EQUALS(buffer3[0], 14);
+  ASSERT_NUM_EQUALS(buffer3[1], 15);
+  ASSERT_NUM_EQUALS(buffer3[2], 13);
+  ASSERT_NUM_EQUALS(buffer3[3], 14);
+
+  /* no bytes are available at invalid address */
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 16, buffer3, 4), 0);
+  ASSERT_NUM_EQUALS(buffer3[0], 14);
+  ASSERT_NUM_EQUALS(buffer3[1], 15);
+  ASSERT_NUM_EQUALS(buffer3[2], 13);
+  ASSERT_NUM_EQUALS(buffer3[3], 14);
 }
 
 static void test_hash_set_add_single() {
@@ -754,6 +828,9 @@ void test_rc_libretro(void) {
   TEST(test_memory_init_from_memory_map_mirrored);
   TEST(test_memory_init_from_memory_map_out_of_order);
   TEST(test_memory_init_from_memory_map_disconnect_gaps);
+
+  /* rc_libretro_memory_read */
+  TEST(test_memory_read)
 
   /* rc_libretro_hash_set_t */
   TEST(test_hash_set_add_single);
