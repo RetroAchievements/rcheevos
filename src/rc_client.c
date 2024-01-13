@@ -4546,6 +4546,11 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
     old_state = trigger->state;
     new_state = rc_evaluate_trigger(trigger, client->state.legacy_peek, client, NULL);
 
+    /* trigger->state doesn't actually change to RESET - RESET just serves as a notification.
+     * we don't care about that particular notification, so look at the actual state. */
+    if (new_state == RC_TRIGGER_STATE_RESET)
+      new_state = trigger->state;
+
     /* if the measured value changed and the achievement hasn't triggered, show a progress indicator */
     if (trigger->measured_value != old_measured_value && old_measured_value != RC_MEASURED_UNKNOWN &&
         trigger->measured_value <= trigger->measured_target &&

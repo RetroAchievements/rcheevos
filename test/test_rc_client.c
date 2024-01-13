@@ -6048,6 +6048,139 @@ static void test_do_frame_achievement_challenge_indicator(void)
   rc_client_destroy(g_client);
 }
 
+static void test_do_frame_achievement_challenge_indicator_primed_while_reset(void)
+{
+  static const char* patchdata = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":["
+     "{\"ID\":7,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+      "\"MemAddr\":\"0xH0001=3_T:0xH0002=4_R:0xH0003=3\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+      "\"Created\":1367266583,\"Modified\":1376929305}"
+    "],"
+    "\"Leaderboards\":[]"
+    "}}";
+
+  rc_client_event_t* event;
+  rc_client_achievement_info_t* achievement;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata, no_unlocks);
+  mock_memory(memory, sizeof(memory));
+
+  mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=7&h=1&m=0123456789ABCDEF&v=c39308ba325ba4a72919b081fb18fdd4",
+    "{\"Success\":true,\"Score\":5432,\"AchievementID\":7,\"AchievementsRemaining\":11}");
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  achievement = (rc_client_achievement_info_t*)rc_client_get_achievement_info(g_client, 7);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->trigger->state, RC_TRIGGER_STATE_ACTIVE);
+
+  memory[1] = 3; /* primed */
+  memory[3] = 3; /* but reset */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+  ASSERT_NUM_EQUALS(achievement->trigger->state, RC_TRIGGER_STATE_ACTIVE);
+
+  memory[3] = 0; /* disable reset */
+
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 1); /* show indicator event */
+  event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+  ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+  ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+  ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 7));
+
+  ASSERT_NUM_EQUALS(achievement->trigger->state, RC_TRIGGER_STATE_PRIMED);
+
+  memory[3] = 3; /* reset active */
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 1); /* hide indicator event */
+  event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+  ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+  ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+  ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 7));
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_achievement_challenge_indicator_primed_while_reset_next(void)
+{
+  static const char* patchdata = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":["
+    "{\"ID\":7,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+    "\"MemAddr\":\"0xH0001=3_T:0xH0002=4_Z:0xH0003=3_P:0xH0006=1.10.\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+    "\"Created\":1367266583,\"Modified\":1376929305}"
+    "],"
+    "\"Leaderboards\":[]"
+    "}}";
+
+  rc_client_event_t* event;
+  rc_client_achievement_info_t* achievement;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata, no_unlocks);
+  mock_memory(memory, sizeof(memory));
+
+  mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=7&h=1&m=0123456789ABCDEF&v=c39308ba325ba4a72919b081fb18fdd4",
+    "{\"Success\":true,\"Score\":5432,\"AchievementID\":7,\"AchievementsRemaining\":11}");
+
+  memory[6] = 1; /* pause condition will gain a hit, but not enough to pause it */
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  achievement = (rc_client_achievement_info_t*)rc_client_get_achievement_info(g_client, 7);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->trigger->state, RC_TRIGGER_STATE_ACTIVE);
+
+  /* ResetNextIf will clear hits on condition 4, _and_ the trigger will be primed at the same time.
+   * The ResetNextIf will cause rc_evaluate_trigger to return RESET, but we still want to raise a
+   * PRIMED event out of rc_client. */
+  memory[1] = 3; /* primed */
+  memory[3] = 3; /* reset pause condition */
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 1); /* show indicator event */
+  event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7);
+  ASSERT_PTR_NOT_NULL(event);
+  ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+  ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
+  ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE);
+  ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 7));
+
+  ASSERT_NUM_EQUALS(achievement->trigger->state, RC_TRIGGER_STATE_PRIMED);
+
+  memory[3] = 0; /* disable reset, pause counter increases */
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  memory[3] = 0; /* re-enable reset. don't expect any events */
+
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  rc_client_destroy(g_client);
+}
+
 static void test_do_frame_mastery(void)
 {
   rc_client_event_t* event;
@@ -8583,6 +8716,8 @@ void test_client(void) {
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_measured_progress_event);
   TEST(test_do_frame_achievement_challenge_indicator);
+  TEST(test_do_frame_achievement_challenge_indicator_primed_while_reset);
+  TEST(test_do_frame_achievement_challenge_indicator_primed_while_reset_next);
   TEST(test_do_frame_mastery);
   TEST(test_do_frame_mastery_encore);
   TEST(test_do_frame_leaderboard_started);
