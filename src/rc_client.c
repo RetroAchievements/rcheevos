@@ -1021,6 +1021,8 @@ static void rc_client_invalidate_memref_leaderboards(rc_client_game_info_t* game
     for (; leaderboard < stop; ++leaderboard) {
       if (leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_DISABLED)
         continue;
+      if (!leaderboard->lboard)
+        continue;
 
       if (rc_trigger_contains_memref(&leaderboard->lboard->start, memref))
         leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
@@ -1033,8 +1035,7 @@ static void rc_client_invalidate_memref_leaderboards(rc_client_game_info_t* game
       else
         continue;
 
-      if (leaderboard->lboard)
-        leaderboard->lboard->state = RC_LBOARD_STATE_DISABLED;
+      leaderboard->lboard->state = RC_LBOARD_STATE_DISABLED;
 
       RC_CLIENT_LOG_WARN_FORMATTED(client, "Disabled leaderboard %u. Invalid address %06X", leaderboard->public_.id, memref->address);
     }
