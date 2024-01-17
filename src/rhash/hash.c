@@ -511,8 +511,8 @@ static int rc_hash_cd_file(md5_state_t* md5, void* track_handle, uint32_t sector
     verbose_message_callback(message);
   }
 
-  if (size < (unsigned)num_read)
-    size = (unsigned)num_read;
+  if (size < (unsigned)num_read) /* we read a whole sector - only hash the part containing file data */
+    num_read = (size_t)size;
 
   do
   {
