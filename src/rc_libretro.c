@@ -51,6 +51,11 @@ static const rc_disallowed_setting_t _rc_disallowed_dolphin_settings[] = {
   { NULL, NULL }
 };
 
+static const rc_disallowed_setting_t _rc_disallowed_dosbox_pure_settings[] = {
+  { "dosbox_pure_strict_mode", "false" },
+  { NULL, NULL }
+};
+
 static const rc_disallowed_setting_t _rc_disallowed_duckstation_settings[] = {
   { "duckstation_CDROM.LoadImagePatches", "true" },
   { NULL, NULL }
@@ -149,6 +154,7 @@ static const rc_disallowed_core_settings_t rc_disallowed_core_settings[] = {
   { "bsnes-mercury", _rc_disallowed_bsnes_settings },
   { "cap32", _rc_disallowed_cap32_settings },
   { "dolphin-emu", _rc_disallowed_dolphin_settings },
+  { "DOSBox-pure", _rc_disallowed_dosbox_pure_settings },
   { "DuckStation", _rc_disallowed_duckstation_settings },
   { "ecwolf", _rc_disallowed_ecwolf_settings },
   { "FCEUmm", _rc_disallowed_fceumm_settings },

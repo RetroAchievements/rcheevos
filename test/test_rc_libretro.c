@@ -699,6 +699,9 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "dolphin-emu", "dolphin_cheats_enabled", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "dolphin-emu", "dolphin_cheats_enabled", "enabled");
 
+  TEST_PARAMS3(test_allowed_setting,    "DOSBox-pure", "dosbox_pure_strict_mode", "true");
+  TEST_PARAMS3(test_disallowed_setting, "DOSBox-pure", "dosbox_pure_strict_mode", "false");
+
   TEST_PARAMS3(test_allowed_setting,    "DuckStation", "duckstation_CDROM.LoadImagePatches", "false");
   TEST_PARAMS3(test_disallowed_setting, "DuckStation", "duckstation_CDROM.LoadImagePatches", "true");
 
