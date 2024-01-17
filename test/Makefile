@@ -56,6 +56,7 @@ OBJ=$(RC_SRC)/rc_compat.o \
     $(RC_CHEEVOS_SRC)/runtime_progress.o \
     $(RC_CHEEVOS_SRC)/trigger.o \
     $(RC_CHEEVOS_SRC)/value.o \
+    $(RC_HASH_SRC)/aes.o \
     $(RC_HASH_SRC)/cdreader.o \
     $(RC_HASH_SRC)/hash.o \
     $(RC_HASH_SRC)/md5.o \
