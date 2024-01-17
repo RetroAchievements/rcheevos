@@ -466,7 +466,7 @@ static const rc_memory_regions_t rc_memory_regions_gamecube = { _rc_memory_regio
 /* https://www.smspower.org/Development/MemoryMap */
 /* https://www.smspower.org/Development/Mappers */
 static const rc_memory_region_t _rc_memory_regions_game_gear[] = {
-    { 0x000000U, 0x001FFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+    { 0x000000U, 0x001FFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
     /* GG/SMS have various possible mappings for cartridge memory depending on the mapper used.
      * However, these ultimately do not map all of their memory at once, typically requiring banking.
      * Thus, the "real address" used is just a virtual address mapping all cartridge memory in one contiguous block.
@@ -542,7 +542,7 @@ static const rc_memory_regions_t rc_memory_regions_magnavox_odyssey_2 = { _rc_me
 /* https://www.smspower.org/Development/MemoryMap */
 /* https://www.smspower.org/Development/Mappers */
 static const rc_memory_region_t _rc_memory_regions_master_system[] = {
-    { 0x000000U, 0x001FFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+    { 0x000000U, 0x001FFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
     /* GG/SMS have various possible mappings for cartridge memory depending on the mapper used.
      * However, these ultimately do not map all of their memory at once, typically requiring banking.
      * Thus, the "real address" used is just a virtual address mapping all cartridge memory in one contiguous block.
