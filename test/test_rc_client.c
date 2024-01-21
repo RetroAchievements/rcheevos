@@ -8649,6 +8649,12 @@ static void test_get_user_agent_clause(void)
   rc_client_destroy(g_client);
 }
 
+static void test_version(void)
+{
+  ASSERT_STR_EQUALS(rc_version_string(), RCHEEVOS_VERSION_STRING);
+  ASSERT_NUM_EQUALS(rc_version(), RCHEEVOS_VERSION);
+}
+
 /* ----- harness ----- */
 
 void test_client(void) {
@@ -8857,6 +8863,7 @@ void test_client(void) {
   TEST(test_set_encore_mode_disable);
 
   TEST(test_get_user_agent_clause);
+  TEST(test_version);
 
   TEST_SUITE_END();
 }
