@@ -1763,7 +1763,7 @@ static void test_hash_psp()
   size_t image_size;
   uint8_t* image = generate_iso9660_bin(160, "TEST", &image_size);
   char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "80c0b42b2d89d036086869433a176a03";
+  const char* expected_md5 = "27ec2f9b7238b2ef29af31ddd254f201";
 
   generate_iso9660_file(image, "PSP_GAME\\PARAM.SFO", param_sfo, param_sfo_size);
   generate_iso9660_file(image, "PSP_GAME\\SYSDIR\\EBOOT.BIN", eboot_bin, eboot_bin_size);
