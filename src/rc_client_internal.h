@@ -387,6 +387,7 @@ enum {
 
 void rc_client_set_legacy_peek(rc_client_t* client, int method);
 
+void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 
 RC_END_C_DECLS

@@ -3753,7 +3753,7 @@ int rc_client_has_leaderboards(rc_client_t* client)
   return result;
 }
 
-static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
+void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
 {
   rc_client_leaderboard_tracker_info_t* tracker;
   rc_client_leaderboard_tracker_info_t* available_tracker = NULL;
