@@ -689,6 +689,63 @@ static void test_init_fetch_image_request_unknown() {
   rc_api_destroy_request(&request);
 }
 
+static void test_init_fetch_image_request_custom_host()
+{
+  rc_api_fetch_image_request_t fetch_image_request;
+  rc_api_request_t request;
+
+  rc_api_set_host("http://localhost");
+
+  memset(&fetch_image_request, 0, sizeof(fetch_image_request));
+  fetch_image_request.image_name = "0123324";
+  fetch_image_request.image_type = RC_IMAGE_TYPE_GAME;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, "http://localhost/Images/0123324.png");
+  ASSERT_PTR_NULL(request.post_data);
+
+  rc_api_destroy_request(&request);
+  rc_api_set_host(NULL);
+}
+
+static void test_init_fetch_image_request_explicit_default_host()
+{
+  rc_api_fetch_image_request_t fetch_image_request;
+  rc_api_request_t request;
+
+  rc_api_set_host("https://retroachievements.org");
+
+  memset(&fetch_image_request, 0, sizeof(fetch_image_request));
+  fetch_image_request.image_name = "0123324";
+  fetch_image_request.image_type = RC_IMAGE_TYPE_GAME;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, "https://media.retroachievements.org/Images/0123324.png");
+  ASSERT_PTR_NULL(request.post_data);
+
+  rc_api_destroy_request(&request);
+  rc_api_set_host(NULL);
+}
+
+static void test_init_fetch_image_request_explicit_nonssl_host()
+{
+  rc_api_fetch_image_request_t fetch_image_request;
+  rc_api_request_t request;
+
+  rc_api_set_host("http://retroachievements.org");
+
+  memset(&fetch_image_request, 0, sizeof(fetch_image_request));
+  fetch_image_request.image_name = "0123324";
+  fetch_image_request.image_type = RC_IMAGE_TYPE_GAME;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, "http://media.retroachievements.org/Images/0123324.png");
+  ASSERT_PTR_NULL(request.post_data);
+
+  rc_api_destroy_request(&request);
+  rc_api_set_host(NULL);
+}
+
 void test_rapi_common(void) {
   TEST_SUITE_BEGIN();
 
@@ -812,6 +869,9 @@ void test_rapi_common(void) {
   TEST(test_init_fetch_image_request_achievement_locked);
   TEST(test_init_fetch_image_request_user);
   TEST(test_init_fetch_image_request_unknown);
+  TEST(test_init_fetch_image_request_custom_host);
+  TEST(test_init_fetch_image_request_explicit_default_host);
+  TEST(test_init_fetch_image_request_explicit_nonssl_host);
 
 
   TEST_SUITE_END();
