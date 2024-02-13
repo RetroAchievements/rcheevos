@@ -1270,10 +1270,13 @@ static void test_load_game_unknown_hash(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
 
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
+
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
   if (g_client->game) {
     ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
@@ -1338,10 +1341,13 @@ static void test_load_game_not_logged_in(void)
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
 
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
+
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1357,10 +1363,13 @@ static void test_load_game(void)
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
+
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
   if (g_client->game) {
     ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
@@ -1414,19 +1423,26 @@ static void test_load_game_async_login(void)
   reset_mock_api_handlers();
 
   rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_success, g_callback_userdata);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   /* game load process will stop here waiting for the login to complete */
   assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN);
 
   /* login completion will trigger process to continue */
   async_api_response("r=login2&u=Username&p=Pa%24%24word",
 	    "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
   assert_api_pending("r=patch&u=Username&t=ApiToken&g=1234");
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA);
 
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION);
+
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
 
   ASSERT_STR_EQUALS(g_client->user.username, "Username");
 
@@ -1454,6 +1470,7 @@ static void test_load_game_async_login_with_incorrect_password(void)
 
   rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_credentials_error, g_callback_userdata);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required, g_callback_userdata);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   /* game load process will stop here waiting for the login to complete */
@@ -1469,6 +1486,7 @@ static void test_load_game_async_login_with_incorrect_password(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1495,6 +1513,7 @@ static void test_load_game_async_login_logout(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1523,6 +1542,7 @@ static void test_load_game_async_login_aborted(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1548,6 +1568,7 @@ static void test_load_game_gameid_failure(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1565,6 +1586,7 @@ static void test_load_game_patch_failure(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1582,6 +1604,7 @@ static void test_load_game_startsession_failure(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1599,6 +1622,7 @@ static void test_load_game_startsession_timeout(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1617,6 +1641,7 @@ static void test_load_game_startsession_custom_timeout(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1640,6 +1665,7 @@ static void test_load_game_gameid_aborted(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1665,6 +1691,7 @@ static void test_load_game_patch_aborted(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1690,6 +1717,7 @@ static void test_load_game_startsession_aborted(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
   rc_client_destroy(g_client);
 }
@@ -1710,6 +1738,7 @@ static void test_load_game_while_spectating(void)
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
   if (g_client->game) {
     ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
