@@ -20,6 +20,7 @@ typedef void (RC_CCONV* rc_client_raintegration_hwnd_action_func_t)(HWND hWnd);
 typedef const rc_client_raintegration_menu_t* (RC_CCONV* rc_client_raintegration_get_menu_func_t)(void);
 typedef int (RC_CCONV* rc_client_raintegration_activate_menuitem_func_t)(uint32_t nMenuItemId);
 typedef void (RC_CCONV* rc_client_raintegration_set_write_memory_func_t)(rc_client_t* pClient, rc_client_raintegration_write_memory_func_t handler);
+typedef void (RC_CCONV* rc_client_raintegration_set_get_game_name_func_t)(rc_client_t* pClient, rc_client_raintegration_get_game_name_func_t handler);
 typedef void (RC_CCONV* rc_client_raintegration_set_event_handler_func_t)(rc_client_t* pClient, rc_client_raintegration_event_handler_t handler);
 typedef int (RC_CCONV* rc_client_raintegration_get_int_func_t)(void);
 
@@ -38,6 +39,7 @@ typedef struct rc_client_raintegration_t
   rc_client_raintegration_hwnd_action_func_t update_main_window_handle;
 
   rc_client_raintegration_set_write_memory_func_t set_write_memory_function;
+  rc_client_raintegration_set_get_game_name_func_t set_get_game_name_function;
   rc_client_raintegration_set_event_handler_func_t set_event_handler;
   rc_client_raintegration_get_menu_func_t get_menu;
   rc_client_raintegration_activate_menuitem_func_t activate_menu_item;

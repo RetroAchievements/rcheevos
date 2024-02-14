@@ -77,6 +77,7 @@ static void rc_client_raintegration_load_dll(rc_client_t* client,
   raintegration->get_menu = (rc_client_raintegration_get_menu_func_t)GetProcAddress(hDLL, "_Rcheevos_RAIntegrationGetMenu");
   raintegration->activate_menu_item = (rc_client_raintegration_activate_menuitem_func_t)GetProcAddress(hDLL, "_Rcheevos_ActivateRAIntegrationMenuItem");
   raintegration->set_write_memory_function = (rc_client_raintegration_set_write_memory_func_t)GetProcAddress(hDLL, "_Rcheevos_SetRAIntegrationWriteMemoryFunction");
+  raintegration->set_get_game_name_function = (rc_client_raintegration_set_get_game_name_func_t)GetProcAddress(hDLL, "_Rcheevos_SetRAIntegrationGetGameNameFunction");
   raintegration->set_event_handler = (rc_client_raintegration_set_event_handler_func_t)GetProcAddress(hDLL, "_Rcheevos_SetRAIntegrationEventHandler");
   raintegration->has_modifications = (rc_client_raintegration_get_int_func_t)GetProcAddress(hDLL, "_Rcheevos_HasModifications");
 
@@ -363,6 +364,12 @@ void rc_client_raintegration_set_write_memory_function(rc_client_t* client, rc_c
 {
   if (client && client->state.raintegration && client->state.raintegration->set_write_memory_function)
     client->state.raintegration->set_write_memory_function(client, handler);
+}
+
+void rc_client_raintegration_set_get_game_name_function(rc_client_t* client, rc_client_raintegration_get_game_name_func_t handler)
+{
+  if (client && client->state.raintegration && client->state.raintegration->set_get_game_name_function)
+    client->state.raintegration->set_get_game_name_function(client, handler);
 }
 
 void rc_client_raintegration_set_event_handler(rc_client_t* client,

@@ -27,24 +27,17 @@ typedef struct rc_client_raintegration_menu_t {
   uint32_t num_items;
 } rc_client_raintegration_menu_t;
 
-typedef struct rc_client_raintegration_buffer_t {
-  char* data;
-  size_t size;
-} rc_client_raintegration_buffer_t;
-
 enum {
   RC_CLIENT_RAINTEGRATION_EVENT_TYPE_NONE = 0,
   RC_CLIENT_RAINTEGRATION_EVENT_MENUITEM_CHECKED_CHANGED = 1, /* [menu_item] checked changed */
   RC_CLIENT_RAINTEGRATION_EVENT_HARDCORE_CHANGED = 2, /* hardcore was enabled or disabled */
-  RC_CLIENT_RAINTEGRATION_EVENT_PAUSE = 3, /* emulated system should be paused */
-  RC_CLIENT_RAINTEGRATION_EVENT_GET_GAME_NAME = 4 /* [buffer] should be filled with the name of the game being loaded (usually the filename without an extension) */
+  RC_CLIENT_RAINTEGRATION_EVENT_PAUSE = 3 /* emulated system should be paused */
 };
 
 typedef struct rc_client_raintegration_event_t {
   uint32_t type;
 
   const rc_client_raintegration_menu_item_t* menu_item;
-  rc_client_raintegration_buffer_t* buffer;
 } rc_client_raintegration_event_t;
 
 typedef void (RC_CCONV *rc_client_raintegration_event_handler_t)(const rc_client_raintegration_event_t* event,
@@ -52,6 +45,8 @@ typedef void (RC_CCONV *rc_client_raintegration_event_handler_t)(const rc_client
 
 typedef void (RC_CCONV *rc_client_raintegration_write_memory_func_t)(uint32_t address, uint8_t* buffer,
                                                                      uint32_t num_bytes, rc_client_t* client);
+
+typedef void (RC_CCONV* rc_client_raintegration_get_game_name_func_t)(char* buffer, uint32_t buffer_size, rc_client_t* client);
 
 /* types needed to integrate raintegration */
 
@@ -72,8 +67,6 @@ RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_load_raintegration(
 
 RC_EXPORT void RC_CCONV rc_client_unload_raintegration(rc_client_t* client);
 
-RC_EXPORT int RC_CCONV rc_client_raintegration_has_modifications(const rc_client_t* client);
-
 RC_EXPORT void RC_CCONV rc_client_raintegration_update_main_window_handle(rc_client_t* client, HWND main_window_handle);
 
 RC_EXPORT const rc_client_raintegration_menu_t* RC_CCONV rc_client_raintegration_get_menu(const rc_client_t* client);
@@ -83,6 +76,8 @@ RC_EXPORT void RC_CCONV rc_client_raintegration_update_menu_item(const rc_client
 RC_EXPORT int RC_CCONV rc_client_raintegration_activate_menu_item(const rc_client_t* client, uint32_t nMenuItemId);
 
 RC_EXPORT void RC_CCONV rc_client_raintegration_set_write_memory_function(rc_client_t* client, rc_client_raintegration_write_memory_func_t handler);
+RC_EXPORT void RC_CCONV rc_client_raintegration_set_get_game_name_function(rc_client_t* client, rc_client_raintegration_get_game_name_func_t handler);
+RC_EXPORT int RC_CCONV rc_client_raintegration_has_modifications(const rc_client_t* client);
 
 RC_EXPORT void RC_CCONV rc_client_raintegration_set_event_handler(rc_client_t* client,
     rc_client_raintegration_event_handler_t handler);
