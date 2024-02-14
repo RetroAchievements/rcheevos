@@ -2010,18 +2010,30 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
       /* only a single hash was tried, capture it */
       load_state->game->public_.console_id = load_state->hash_console_id;
       load_state->game->public_.hash = load_state->hash->hash;
+
+      if (client->callbacks.identify_unknown_hash) {
+        load_state->hash->game_id = client->callbacks.identify_unknown_hash(
+            load_state->hash_console_id, load_state->hash->hash, client, load_state->callback_userdata);
+
+        if (load_state->hash->game_id != 0) {
+          RC_CLIENT_LOG_INFO_FORMATTED(load_state->client, "Client says to load game %u for unidentified hash %s",
+            load_state->hash->game_id, load_state->hash->hash);
+        }
+      }
     }
 
-    load_state->game->public_.title = "Unknown Game";
-    load_state->game->public_.badge_name = "";
-    client->game = load_state->game;
-    load_state->game = NULL;
+    if (load_state->hash->game_id == 0) {
+      load_state->game->public_.title = "Unknown Game";
+      load_state->game->public_.badge_name = "";
+      client->game = load_state->game;
+      load_state->game = NULL;
 
-    rc_client_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
-    return;
+      rc_client_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
+      return;
+    }
   }
 
-  if (load_state->hash->hash[0] != '[') {
+  if (load_state->hash->hash[0] != '[') { /* not [NO HASH] or [SUBSETxx] */
     load_state->game->public_.id = load_state->hash->game_id;
     load_state->game->public_.hash = load_state->hash->hash;
   }
@@ -3753,7 +3765,7 @@ int rc_client_has_leaderboards(rc_client_t* client)
   return result;
 }
 
-static void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
+void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard)
 {
   rc_client_leaderboard_tracker_info_t* tracker;
   rc_client_leaderboard_tracker_info_t* available_tracker = NULL;

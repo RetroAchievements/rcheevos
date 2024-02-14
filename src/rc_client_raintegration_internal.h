@@ -21,6 +21,7 @@ typedef const rc_client_raintegration_menu_t* (RC_CCONV* rc_client_raintegration
 typedef int (RC_CCONV* rc_client_raintegration_activate_menuitem_func_t)(uint32_t nMenuItemId);
 typedef void (RC_CCONV* rc_client_raintegration_set_write_memory_func_t)(rc_client_t* pClient, rc_client_raintegration_write_memory_func_t handler);
 typedef void (RC_CCONV* rc_client_raintegration_set_event_handler_func_t)(rc_client_t* pClient, rc_client_raintegration_event_handler_t handler);
+typedef int (RC_CCONV* rc_client_raintegration_get_int_func_t)(void);
 
 typedef struct rc_client_raintegration_t
 {
@@ -40,6 +41,7 @@ typedef struct rc_client_raintegration_t
   rc_client_raintegration_set_event_handler_func_t set_event_handler;
   rc_client_raintegration_get_menu_func_t get_menu;
   rc_client_raintegration_activate_menuitem_func_t activate_menu_item;
+  rc_client_raintegration_get_int_func_t has_modifications;
 
   rc_client_raintegration_get_external_client_func_t get_external_client;
 

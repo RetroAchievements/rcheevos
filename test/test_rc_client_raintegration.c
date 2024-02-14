@@ -355,6 +355,29 @@ static void test_activate_menu_item(void)
   ASSERT_NUM_EQUALS(g_uint32, 1704);
 }
 
+static int rc_client_integration_has_modifications(void)
+{
+  return (int)g_uint32;
+}
+
+static void test_has_modifications(void)
+{
+  g_client = mock_client_with_integration();
+  g_client->state.raintegration->has_modifications = rc_client_integration_has_modifications;
+
+  g_uint32 = 0;
+  ASSERT_NUM_EQUALS(rc_client_raintegration_has_modifications(g_client), 0);
+
+  g_uint32 = 1;
+  ASSERT_NUM_EQUALS(rc_client_raintegration_has_modifications(g_client), 0);
+
+  g_client->state.raintegration->bIsInited = 1;
+  ASSERT_NUM_EQUALS(rc_client_raintegration_has_modifications(g_client), 1);
+
+  g_uint32 = 0;
+  ASSERT_NUM_EQUALS(rc_client_raintegration_has_modifications(g_client), 0);
+}
+
 /* ----- harness ----- */
 
 void test_client_raintegration(void) {
@@ -384,6 +407,9 @@ void test_client_raintegration(void) {
   /* menu */
   TEST(test_get_menu);
   TEST(test_activate_menu_item);
+
+  /* has_modifications */
+  TEST(test_has_modifications);
 
   TEST_SUITE_END();
 }

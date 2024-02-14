@@ -26,6 +26,8 @@ typedef void (RC_CCONV *rc_client_post_process_game_data_response_t)(const rc_ap
 typedef int (RC_CCONV *rc_client_can_submit_achievement_unlock_t)(uint32_t achievement_id, rc_client_t* client);
 typedef int (RC_CCONV *rc_client_can_submit_leaderboard_entry_t)(uint32_t leaderboard_id, rc_client_t* client);
 typedef int (RC_CCONV *rc_client_rich_presence_override_t)(rc_client_t* client, char buffer[], size_t buffersize);
+typedef uint32_t (RC_CCONV* rc_client_identify_hash_func_t)(uint32_t console_id, const char* hash,
+                  rc_client_t* client, void* callback_userdata);
 
 typedef struct rc_client_callbacks_t {
   rc_client_read_memory_func_t read_memory;
@@ -33,6 +35,7 @@ typedef struct rc_client_callbacks_t {
   rc_client_server_call_t server_call;
   rc_client_message_callback_t log_call;
   rc_get_time_millisecs_func_t get_time_millisecs;
+  rc_client_identify_hash_func_t identify_unknown_hash;
   rc_client_post_process_game_data_response_t post_process_game_data_response;
   rc_client_can_submit_achievement_unlock_t can_submit_achievement_unlock;
   rc_client_can_submit_leaderboard_entry_t can_submit_leaderboard_entry;
@@ -387,6 +390,7 @@ enum {
 
 void rc_client_set_legacy_peek(rc_client_t* client, int method);
 
+void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 
 RC_END_C_DECLS

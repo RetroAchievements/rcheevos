@@ -2323,6 +2323,55 @@ static void test_identify_and_load_game_unknown_hash_console_specified(void)
   free(image);
 }
 
+static void assert_unknown_hash_parameters(uint32_t console_id, const char* hash, rc_client_t* client, void* callback_data)
+{
+  ASSERT_NUM_EQUALS(console_id, 7);
+  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_data, g_callback_userdata);
+}
+
+static uint32_t rc_client_identify_unknown_hash(uint32_t console_id, const char* hash, rc_client_t* client, void* callback_data)
+{
+  assert_unknown_hash_parameters(console_id, hash, client, callback_data);
+  return 1234;
+}
+
+static void test_identify_and_load_game_unknown_hash_client_provided(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.identify_unknown_hash = rc_client_identify_unknown_hash;
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17); /* patchdata returns 17 */
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
 static void test_identify_and_load_game_multihash(void)
 {
   const size_t image_size = 32768;
@@ -8730,6 +8779,7 @@ void test_client(void) {
   TEST(test_identify_and_load_game_unknown_hash_repeated);
   TEST(test_identify_and_load_game_unknown_hash_multiconsole);
   TEST(test_identify_and_load_game_unknown_hash_console_specified);
+  TEST(test_identify_and_load_game_unknown_hash_client_provided);
   TEST(test_identify_and_load_game_multihash);
   TEST(test_identify_and_load_game_multihash_unknown_game);
   TEST(test_identify_and_load_game_multihash_differ);
