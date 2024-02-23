@@ -135,6 +135,10 @@ void rc_client_destroy(rc_client_t* client)
 
   rc_client_unload_game(client);
 
+#ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
+  rc_client_unload_raintegration(client);
+#endif
+
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->destroy)
     client->state.external_client->destroy();
