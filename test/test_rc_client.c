@@ -1,15 +1,18 @@
 #include "rc_client.h"
 
 #include "rc_consoles.h"
-#include "rc_hash.h"
 #include "rc_internal.h"
 #include "rc_api_runtime.h"
 
 #include "../src/rc_client_internal.h"
 #include "../src/rc_version.h"
 
-#include "rhash/data.h"
 #include "test_framework.h"
+
+#ifdef RC_CLIENT_SUPPORTS_HASH
+#include "rc_hash.h"
+#include "rhash/data.h"
+#endif
 
 #if defined(_WIN32)
 #include <Windows.h>
@@ -2008,6 +2011,8 @@ static void test_unload_game_while_starting_session(void)
   rc_client_destroy(g_client);
 }
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
+
 /* ----- identify and load game ----- */
 
 static void rc_client_callback_expect_data_or_file_path_required(int result, const char* error_message, rc_client_t* client, void* callback_data)
@@ -2943,6 +2948,8 @@ static void test_change_media_client_error(void)
   rc_client_destroy(g_client);
   free(image);
 }
+
+#endif
 
 /* ----- get game image ----- */
 
@@ -8798,6 +8805,7 @@ void test_client(void) {
   TEST(test_unload_game_while_fetching_game_data);
   TEST(test_unload_game_while_starting_session);
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
   /* identify and load game */
   TEST(test_identify_and_load_game_required_fields);
   TEST(test_identify_and_load_game_console_specified);
@@ -8825,6 +8833,7 @@ void test_client(void) {
   TEST(test_change_media_while_loading_later);
   TEST(test_change_media_async_aborted);
   TEST(test_change_media_client_error);
+#endif
 
   /* game */
   TEST(test_game_get_image_url);

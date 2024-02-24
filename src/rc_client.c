@@ -4,6 +4,7 @@
 #include "rc_api_runtime.h"
 #include "rc_api_user.h"
 #include "rc_consoles.h"
+
 #include "rc_hash.h"
 #include "rc_version.h"
 
@@ -40,6 +41,7 @@ typedef struct rc_client_generic_callback_data_t {
   rc_client_async_handle_t async_handle;
 } rc_client_generic_callback_data_t;
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
 typedef struct rc_client_pending_media_t
 {
   const char* file_path;
@@ -48,6 +50,7 @@ typedef struct rc_client_pending_media_t
   rc_client_callback_t callback;
   void* callback_userdata;
 } rc_client_pending_media_t;
+#endif
 
 typedef struct rc_client_load_state_t
 {
@@ -59,8 +62,10 @@ typedef struct rc_client_load_state_t
   rc_client_subset_info_t* subset;
   rc_client_game_hash_t* hash;
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
   rc_hash_iterator_t hash_iterator;
   rc_client_pending_media_t* pending_media;
+#endif
 
   rc_api_start_session_response_t *start_session_response;
 
@@ -68,7 +73,9 @@ typedef struct rc_client_load_state_t
 
   uint8_t progress;
   uint8_t outstanding_requests;
+#ifdef RC_CLIENT_SUPPORTS_HASH
   uint8_t hash_console_id;
+#endif
 } rc_client_load_state_t;
 
 static void rc_client_begin_fetch_game_data(rc_client_load_state_t* callback_data);
@@ -151,9 +158,11 @@ void rc_client_destroy(rc_client_t* client)
 
 static rc_client_t* g_hash_client = NULL;
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
 static void rc_client_log_hash_message(const char* message) {
   rc_client_log_message(g_hash_client, message);
 }
+#endif
 
 void rc_client_log_message(const rc_client_t* client, const char* message)
 {
@@ -1440,6 +1449,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
         load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
     }
     else {
+#ifdef RC_CLIENT_SUPPORTS_HASH
       /* if a change media request is pending, kick it off */
       rc_client_pending_media_t* pending_media;
 
@@ -1456,6 +1466,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
         free((void*)pending_media->file_path);
         free(pending_media);
       }
+#endif
 
       /* client->game must be set before calling this function so it can query the console_id */
       rc_client_validate_addresses(load_state->game, client);
@@ -1962,6 +1973,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   int result;
 
   if (load_state->hash->game_id == 0) {
+#ifdef RC_CLIENT_SUPPORTS_HASH
     char hash[33];
 
     if (rc_hash_iterate(hash, &load_state->hash_iterator)) {
@@ -2021,6 +2033,10 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
         }
       }
     }
+#else
+    load_state->game->public_.console_id = RC_CONSOLE_UNKNOWN;
+    load_state->game->public_.hash = load_state->hash->hash;
+#endif /* RC_CLIENT_SUPPORTS_HASH */
 
     if (load_state->hash->game_id == 0) {
       load_state->game->public_.title = "Unknown Game";
@@ -2229,14 +2245,6 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
   return (client->state.load == load_state) ? &load_state->async_handle : NULL;
 }
 
-rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client)
-{
-  if (client && client->state.load)
-    return &client->state.load->hash_iterator;
-
-  return NULL;
-}
-
 rc_client_async_handle_t* rc_client_begin_load_game(rc_client_t* client, const char* hash, rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_load_state_t* load_state;
@@ -2267,6 +2275,16 @@ rc_client_async_handle_t* rc_client_begin_load_game(rc_client_t* client, const c
   load_state->callback_userdata = callback_userdata;
 
   return rc_client_load_game(load_state, hash, NULL);
+}
+
+#ifdef RC_CLIENT_SUPPORTS_HASH
+
+rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client)
+{
+  if (client && client->state.load)
+    return &client->state.load->hash_iterator;
+
+  return NULL;
 }
 
 rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* client,
@@ -2351,6 +2369,8 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
 
   return rc_client_load_game(load_state, hash, file_path);
 }
+
+#endif /* RC_CLIENT_SUPPORTS_HASH */
 
 int rc_client_get_load_game_state(const rc_client_t* client)
 {
@@ -2453,6 +2473,8 @@ void rc_client_unload_game(rc_client_t* client)
     rc_client_free_game(game);
   }
 }
+
+#ifdef RC_CLIENT_SUPPORTS_HASH
 
 static void rc_client_change_media(rc_client_t* client, const rc_client_game_hash_t* game_hash, rc_client_callback_t callback, void* callback_userdata)
 {
@@ -2687,6 +2709,8 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
     return rc_client_async_handle_valid(client, async_handle) ? async_handle : NULL;
   }
 }
+
+#endif /* RC_CLIENT_SUPPORTS_HASH */
 
 const rc_client_game_t* rc_client_get_game_info(const rc_client_t* client)
 {

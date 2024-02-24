@@ -463,6 +463,8 @@ static const rc_client_game_t* rc_client_external_get_game_info(void)
   return (const rc_client_game_t*)game;
 }
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
+
 static void assert_identify_and_load_game(rc_client_t* client,
     uint32_t console_id, const char* file_path, const uint8_t* data, size_t data_size)
 {
@@ -515,6 +517,8 @@ static void test_identify_and_load_game(void)
   rc_client_destroy(g_client);
   free(image);
 }
+
+#endif /* RC_CLIENT_SUPPORTS_HASH */
 
 static void assert_load_game(rc_client_t* client, const char* hash)
 {
@@ -589,6 +593,8 @@ static void test_get_user_game_summary(void)
   rc_client_destroy(g_client);
 }
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
+
 static void assert_change_media(rc_client_t* client, const char* file_path, const uint8_t* data, size_t data_size)
 {
   ASSERT_PTR_EQUALS(client, g_client);
@@ -623,6 +629,8 @@ static void test_change_media(void)
   rc_client_destroy(g_client);
   free(image);
 }
+
+#endif
 
 typedef struct v1_rc_client_subset_t {
   uint32_t id;
@@ -1213,10 +1221,14 @@ void test_client_external(void) {
   TEST(test_logout);
 
   /* load game */
+#ifdef RC_CLIENT_SUPPORTS_HASH
   TEST(test_identify_and_load_game);
+#endif
   TEST(test_load_game);
   TEST(test_get_user_game_summary);
+#ifdef RC_CLIENT_SUPPORTS_HASH
   TEST(test_change_media);
+#endif
   TEST(test_load_subset);
 
   TEST(test_unload_game);
