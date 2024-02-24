@@ -64,6 +64,9 @@ void test_format(void) {
   TEST_PARAMS3(test_format_value, RC_FORMAT_THOUSANDS, 1234, "1234000");
   TEST_PARAMS3(test_format_value, RC_FORMAT_THOUSANDS, -1234, "-1234000");
 
+  /* because of the internal conversion to centiseconds, anything above MAX_INT / 10 could overflow */
+  TEST_PARAMS3(test_format_value, RC_FORMAT_FRAMES, 0x19999999, "1988h24:38.81");
+
   /* rc_parse_format */
   TEST_PARAMS2(test_parse_format, "VALUE", RC_FORMAT_VALUE);
   TEST_PARAMS2(test_parse_format, "SECS", RC_FORMAT_SECONDS);

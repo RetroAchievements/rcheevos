@@ -434,7 +434,7 @@ void rc_client_raintegration_rebuild_submenu(rc_client_t* client, HMENU hMenu)
             if (menuitem->checked)
                flags |= MF_CHECKED;
             if (!menuitem->enabled)
-               flags |= MF_DISABLED | MF_GRAYED;
+               flags |= MF_GRAYED;
 
             AppendMenuA(hPopupMenu, flags, menuitem->id, menuitem->label);
          }
@@ -449,7 +449,7 @@ void rc_client_raintegration_rebuild_submenu(rc_client_t* client, HMENU hMenu)
 
       UINT flags = MF_POPUP | MF_STRING;
       if (!menu || !menu->num_items)
-         flags |= MF_DISABLED | MF_GRAYED;
+         flags |= MF_GRAYED;
 
       while (--nIndex >= 0)
       {
@@ -478,15 +478,18 @@ void rc_client_raintegration_update_menu_item(const rc_client_t* client, const r
          flags |= MF_CHECKED;
 
       CheckMenuItem(client->state.raintegration->hPopupMenu, menuitem->id, flags | MF_BYCOMMAND);
+
+      flags = (menuitem->enabled) ? MF_ENABLED : MF_GRAYED;
+      EnableMenuItem(client->state.raintegration->hPopupMenu, menuitem->id, flags | MF_BYCOMMAND);
    }
 }
 
-int rc_client_raintegration_activate_menu_item(const rc_client_t* client, uint32_t nMenuItemId)
+int rc_client_raintegration_activate_menu_item(const rc_client_t* client, uint32_t menu_item_id)
 {
    if (!client || !client->state.raintegration || !client->state.raintegration->activate_menu_item)
       return 0;
 
-   return client->state.raintegration->activate_menu_item(nMenuItemId);
+   return client->state.raintegration->activate_menu_item(menu_item_id);
 }
 
 void rc_client_unload_raintegration(rc_client_t* client)
@@ -497,6 +500,9 @@ void rc_client_unload_raintegration(rc_client_t* client)
     return;
 
   RC_CLIENT_LOG_INFO(client, "Unloading RA_Integration")
+
+  if (client->state.external_client && client->state.external_client->destroy)
+    client->state.external_client->destroy();
 
   if (client->state.raintegration->shutdown)
     client->state.raintegration->shutdown();

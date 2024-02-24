@@ -73,7 +73,7 @@ RC_EXPORT const rc_client_raintegration_menu_t* RC_CCONV rc_client_raintegration
 
 RC_EXPORT void RC_CCONV rc_client_raintegration_rebuild_submenu(rc_client_t* client, HMENU hMenu);
 RC_EXPORT void RC_CCONV rc_client_raintegration_update_menu_item(const rc_client_t* client, const rc_client_raintegration_menu_item_t* menu_item);
-RC_EXPORT int RC_CCONV rc_client_raintegration_activate_menu_item(const rc_client_t* client, uint32_t nMenuItemId);
+RC_EXPORT int RC_CCONV rc_client_raintegration_activate_menu_item(const rc_client_t* client, uint32_t menu_item_id);
 
 RC_EXPORT void RC_CCONV rc_client_raintegration_set_write_memory_function(rc_client_t* client, rc_client_raintegration_write_memory_func_t handler);
 RC_EXPORT void RC_CCONV rc_client_raintegration_set_get_game_name_function(rc_client_t* client, rc_client_raintegration_get_game_name_func_t handler);
