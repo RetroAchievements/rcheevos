@@ -765,6 +765,11 @@ int rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua
 
 int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const uint8_t* serialized, lua_State* L)
 {
+  return rc_runtime_deserialize_progress_sized(runtime, serialized, 0xFFFFFFFF, L);
+}
+
+int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* serialized, uint32_t serialized_size, lua_State* L)
+{
   rc_runtime_progress_t progress;
   md5_state_t state;
   uint8_t md5[16];
@@ -775,7 +780,7 @@ int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const uint8_t* serial
   int seen_rich_presence = 0;
   int result = RC_OK;
 
-  if (!serialized) {
+  if (!serialized || serialized_size < 4 + 8 + 16) { /* RUNTIME_MARKER, DONE_MARKER, MD5 */
     rc_runtime_reset(runtime);
     return RC_INVALID_STATE;
   }
@@ -813,12 +818,21 @@ int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const uint8_t* serial
   }
 
   do {
+    if (progress.offset + 8 >= serialized_size) {
+      result = RC_INVALID_STATE;
+      break;
+    }
+
     chunk_id = rc_runtime_progress_read_uint(&progress);
     chunk_size = rc_runtime_progress_read_uint(&progress);
     next_chunk_offset = progress.offset + chunk_size;
 
-    switch (chunk_id)
-    {
+    if (next_chunk_offset > serialized_size) {
+      result = RC_INVALID_STATE;
+      break;
+    }
+
+    switch (chunk_id) {
       case RC_RUNTIME_CHUNK_MEMREFS:
         result = rc_runtime_progress_read_memrefs(&progress);
         break;

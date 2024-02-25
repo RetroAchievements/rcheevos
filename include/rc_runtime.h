@@ -146,6 +146,7 @@ RC_EXPORT void RC_CCONV rc_runtime_invalidate_address(rc_runtime_t* runtime, uin
 RC_EXPORT int RC_CCONV rc_runtime_progress_size(const rc_runtime_t* runtime, lua_State* L);
 RC_EXPORT int RC_CCONV rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua_State* L);
 RC_EXPORT int RC_CCONV rc_runtime_deserialize_progress(rc_runtime_t* runtime, const uint8_t* serialized, lua_State* L);
+RC_EXPORT int RC_CCONV rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* serialized, uint32_t serialized_size, lua_State* L);
 
 RC_END_C_DECLS
 
