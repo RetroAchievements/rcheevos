@@ -659,11 +659,14 @@ static void test_single_achievement_sized()
   size = rc_runtime_progress_size(&runtime, NULL);
   ASSERT_NUM_LESS(size, sizeof(buffer));
 
-  result = rc_runtime_serialize_progress(buffer, &runtime, NULL);
+  result = rc_runtime_serialize_progress_sized(buffer, size - 1, &runtime, NULL);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
+
+  result = rc_runtime_serialize_progress_sized(buffer, size, &runtime, NULL);
   ASSERT_NUM_EQUALS(result, RC_OK);
 
   result = rc_runtime_deserialize_progress_sized(&runtime, buffer, size - 1, NULL);
-  ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
 
   assert_memref(&runtime, 1, 5, 5, 4); /* memrefs don't get reset on failure */
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -671,10 +674,10 @@ static void test_single_achievement_sized()
   assert_hitcount(&runtime, 1, 0, 1, 0);
 
   result = rc_runtime_deserialize_progress_sized(&runtime, buffer, 16, NULL);
-  ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
 
   result = rc_runtime_deserialize_progress_sized(&runtime, buffer, 0, NULL);
-  ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
 
   assert_memref(&runtime, 1, 5, 5, 4); /* memrefs don't get reset on failure */
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -704,17 +707,20 @@ static void test_empty_sized()
   size = rc_runtime_progress_size(&runtime, NULL);
   ASSERT_NUM_LESS(size, sizeof(buffer));
 
-  result = rc_runtime_serialize_progress(buffer, &runtime, NULL);
+  result = rc_runtime_serialize_progress_sized(buffer, size - 1, &runtime, NULL);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
+
+  result = rc_runtime_serialize_progress_sized(buffer, size, &runtime, NULL);
   ASSERT_NUM_EQUALS(result, RC_OK);
 
   result = rc_runtime_deserialize_progress_sized(&runtime, buffer, size - 1, NULL);
-  ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
 
   result = rc_runtime_deserialize_progress_sized(&runtime, buffer, 16, NULL);
-  ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
 
   result = rc_runtime_deserialize_progress_sized(&runtime, buffer, 0, NULL);
-  ASSERT_NUM_EQUALS(result, RC_INVALID_STATE);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
 
   result = rc_runtime_deserialize_progress_sized(&runtime, buffer, size, NULL);
   ASSERT_NUM_EQUALS(result, RC_OK);
