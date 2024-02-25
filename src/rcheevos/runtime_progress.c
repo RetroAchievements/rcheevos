@@ -32,7 +32,7 @@ typedef struct rc_runtime_progress_t {
   lua_State* L;
 } rc_runtime_progress_t;
 
-#define assert_chunk_size(expected_size) assert((progress->offset - progress->chunk_size_offset - 4) == (expected_size))
+#define assert_chunk_size(expected_size) assert((uint32_t)(progress->offset - progress->chunk_size_offset - 4) == (uint32_t)(expected_size))
 
 #define RC_TRIGGER_STATE_UNUPDATED 0x7F
 
@@ -123,7 +123,7 @@ static void rc_runtime_progress_init(rc_runtime_progress_t* progress, const rc_r
   progress->L = L;
 }
 
-#define RC_RUNTIME_SERIALIZED_MEMREF_SIZE 16 // 4x uint: address, flags, value, prior
+#define RC_RUNTIME_SERIALIZED_MEMREF_SIZE 16 /* 4x uint: address, flags, value, prior */
 
 static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
 {
