@@ -5263,7 +5263,7 @@ size_t rc_client_progress_size(rc_client_t* client)
   return result;
 }
 
-int rc_client_serialize_progress(rc_client_t* client, uint8_t* buffer)
+int rc_client_serialize_progress(rc_client_t* client, void* buffer, size_t buffer_size, size_t* serialized_size)
 {
   int result;
 
@@ -5272,7 +5272,7 @@ int rc_client_serialize_progress(rc_client_t* client, uint8_t* buffer)
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->serialize_progress)
-    return client->state.external_client->serialize_progress(buffer);
+    return client->state.external_client->serialize_progress(buffer, buffer_size, serialized_size);
 #endif
 
   if (!client->game)
@@ -5282,7 +5282,7 @@ int rc_client_serialize_progress(rc_client_t* client, uint8_t* buffer)
     return RC_INVALID_STATE;
 
   rc_mutex_lock(&client->state.mutex);
-  result = rc_runtime_serialize_progress(buffer, &client->game->runtime, NULL);
+  result = rc_runtime_serialize_progress(&client->game->runtime, buffer, buffer_size, serialized_size, NULL);
   rc_mutex_unlock(&client->state.mutex);
 
   return result;
@@ -5381,7 +5381,7 @@ static void rc_client_subset_after_deserialize_progress(rc_client_game_info_t* g
   }
 }
 
-int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialized)
+int rc_client_deserialize_progress(rc_client_t* client, const void* buffer, size_t buffer_size)
 {
   rc_client_subset_info_t* subset;
   int result;
@@ -5391,7 +5391,7 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->deserialize_progress)
-    return client->state.external_client->deserialize_progress(serialized);
+    return client->state.external_client->deserialize_progress(buffer, buffer_size);
 #endif
 
   if (!client->game)
@@ -5406,12 +5406,12 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
 
   rc_client_hide_progress_tracker(client, client->game);
 
-  if (!serialized) {
+  if (!buffer) {
     rc_client_reset_all(client);
     result = RC_OK;
   }
   else {
-    result = rc_runtime_deserialize_progress(&client->game->runtime, serialized, NULL);
+    result = rc_runtime_deserialize_progress(&client->game->runtime, buffer, buffer_size, NULL);
   }
 
   for (subset = client->game->subsets; subset; subset = subset->next)

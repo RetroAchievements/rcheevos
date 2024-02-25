@@ -61,8 +61,8 @@ typedef rc_client_async_handle_t* (RC_CCONV *rc_client_external_begin_fetch_lead
 
 
 typedef size_t (RC_CCONV *rc_client_external_progress_size_func_t)(void);
-typedef int (RC_CCONV *rc_client_external_serialize_progress_func_t)(uint8_t* buffer);
-typedef int (RC_CCONV *rc_client_external_deserialize_progress_func_t)(const uint8_t* buffer);
+typedef int (RC_CCONV *rc_client_external_serialize_progress_func_t)(void* buffer, size_t buffer_size, size_t* serialized_size);
+typedef int (RC_CCONV *rc_client_external_deserialize_progress_func_t)(const void* buffer, size_t buffer_size);
 
 typedef struct rc_client_external_t
 {

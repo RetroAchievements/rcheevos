@@ -46,32 +46,35 @@ static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)
   rc_runtime_do_frame(runtime, event_handler, peek, memory, NULL);
 }
 
-static void _assert_serialize(rc_runtime_t* runtime, uint8_t* buffer, size_t buffer_size)
+static void _assert_serialize(rc_runtime_t* runtime, uint8_t* buffer, size_t buffer_size, size_t* serialized_size)
 {
+  unsigned overflow = 0xCDCDCDCD;
+
   int result;
-  unsigned* overflow;
+  size_t size;
 
-  uint32_t size = rc_runtime_progress_size(runtime, NULL);
-  ASSERT_NUM_LESS(size, buffer_size);
+  size = rc_runtime_progress_size(runtime, NULL);
+  ASSERT_NUM_LESS_EQUALS(size + sizeof(overflow), buffer_size);
 
-  overflow = (unsigned*)(buffer + size);
-  *overflow = 0xCDCDCDCD;
+  memcpy(buffer + size, &overflow, sizeof(overflow));
 
-  result = rc_runtime_serialize_progress(buffer, runtime, NULL);
+  result = rc_runtime_serialize_progress(runtime, buffer, size, serialized_size, NULL);
+  ASSERT_NUM_LESS_EQUALS(*serialized_size, size);
   ASSERT_NUM_EQUALS(result, RC_OK);
 
-  if (*overflow != 0xCDCDCDCD) {
+  memcpy(&overflow, buffer + size, sizeof(overflow));
+  if (overflow != 0xCDCDCDCD) {
     ASSERT_FAIL("write past end of buffer");
   }
 }
-#define assert_serialize(runtime, buffer, buffer_size) ASSERT_HELPER(_assert_serialize(runtime, buffer, buffer_size), "assert_serialize")
+#define assert_serialize(runtime, buffer, buffer_size, serialized_size) ASSERT_HELPER(_assert_serialize(runtime, buffer, buffer_size, serialized_size), "assert_serialize")
 
-static void _assert_deserialize(rc_runtime_t* runtime, uint8_t* buffer)
+static void _assert_deserialize(rc_runtime_t* runtime, uint8_t* buffer, size_t serialized_size)
 {
-  int result = rc_runtime_deserialize_progress(runtime, buffer, NULL);
+  int result = rc_runtime_deserialize_progress(runtime, buffer, serialized_size, NULL);
   ASSERT_NUM_EQUALS(result, RC_OK);
 }
-#define assert_deserialize(runtime, buffer) ASSERT_HELPER(_assert_deserialize(runtime, buffer), "assert_deserialize")
+#define assert_deserialize(runtime, buffer, serialized_size) ASSERT_HELPER(_assert_deserialize(runtime, buffer, serialized_size), "assert_deserialize")
 
 static void _assert_sized_memref(rc_runtime_t* runtime, uint32_t address, uint8_t size, uint32_t value, uint32_t prev, uint32_t prior)
 {
@@ -298,14 +301,15 @@ static void reset_runtime(rc_runtime_t* runtime)
 static void test_empty()
 {
   uint8_t buffer[2048];
+  size_t serialized_size;
   rc_runtime_t runtime;
 
   rc_runtime_init(&runtime);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   ASSERT_PTR_NULL(runtime.memrefs);
   ASSERT_NUM_EQUALS(runtime.trigger_count, 0);
@@ -318,6 +322,7 @@ static void test_single_achievement()
 {
   uint8_t ram[] = { 2, 3, 6 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -341,10 +346,10 @@ static void test_single_achievement()
   assert_hitcount(&runtime, 1, 0, 0, 3);
   assert_hitcount(&runtime, 1, 0, 1, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -358,6 +363,7 @@ static void test_invalid_marker()
 {
   uint8_t ram[] = { 2, 3, 6 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -381,14 +387,14 @@ static void test_invalid_marker()
   assert_hitcount(&runtime, 1, 0, 0, 3);
   assert_hitcount(&runtime, 1, 0, 1, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   /* invalid header prevents anything from being deserialized */
   buffer[0] = 0x40;
   update_md5(buffer);
 
   reset_runtime(&runtime);
-  ASSERT_NUM_EQUALS(rc_runtime_deserialize_progress(&runtime, buffer, NULL), RC_INVALID_STATE);
+  ASSERT_NUM_EQUALS(rc_runtime_deserialize_progress(&runtime, buffer, serialized_size, NULL), RC_INVALID_STATE);
 
   assert_memref(&runtime, 1, 0xFF, 0xFF, 0xFF);
   assert_memref(&runtime, 2, 0xFF, 0xFF, 0xFF);
@@ -402,6 +408,7 @@ static void test_invalid_memref_chunk_id()
 {
   uint8_t ram[] = { 2, 3, 6 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -425,14 +432,14 @@ static void test_invalid_memref_chunk_id()
   assert_hitcount(&runtime, 1, 0, 0, 3);
   assert_hitcount(&runtime, 1, 0, 1, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   /* invalid chunk is ignored, achievement hits will still be read */
   buffer[5] = 0x40;
   update_md5(buffer);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_memref(&runtime, 1, 0xFF, 0xFF, 0xFF);
   assert_memref(&runtime, 2, 0xFF, 0xFF, 0xFF);
@@ -446,6 +453,7 @@ static void test_modified_data()
 {
   uint8_t ram[] = { 2, 3, 6 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -469,14 +477,14 @@ static void test_modified_data()
   assert_hitcount(&runtime, 1, 0, 0, 3);
   assert_hitcount(&runtime, 1, 0, 1, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   /* this changes the current hits for the test condition to 6, but doesn't update the checksum, so should be ignored */
   ASSERT_NUM_EQUALS(buffer[84], 3);
   buffer[84] = 6;
 
   reset_runtime(&runtime);
-  ASSERT_NUM_EQUALS(rc_runtime_deserialize_progress(&runtime, buffer, NULL), RC_INVALID_STATE);
+  ASSERT_NUM_EQUALS(rc_runtime_deserialize_progress(&runtime, buffer, serialized_size, NULL), RC_INVALID_STATE);
 
   /* memrefs will have been processed and cannot be "reset" */
   assert_memref(&runtime, 1, 5, 5, 4);
@@ -489,10 +497,10 @@ static void test_modified_data()
   rc_runtime_destroy(&runtime);
 }
 
-static void test_single_achievement_deactivated()
-{
+static void test_buffer_overflow() {
   uint8_t ram[] = { 2, 3, 6 };
-  uint8_t buffer[2048];
+  uint8_t buffer[2048], buffer2[4];
+  size_t serialized_size, serialized_size2;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -516,13 +524,54 @@ static void test_single_achievement_deactivated()
   assert_hitcount(&runtime, 1, 0, 0, 3);
   assert_hitcount(&runtime, 1, 0, 1, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
+
+  /* write to 4 byte buffer should run out of space */
+  ASSERT_NUM_EQUALS(rc_runtime_serialize_progress(&runtime, buffer2, sizeof(buffer2), &serialized_size2, NULL), RC_BUFFER_OVERFLOW);
+
+  /* and chopping 4 bytes off the end should also fail */
+  reset_runtime(&runtime);
+  ASSERT_NUM_GREATER_EQUALS(serialized_size, 4);
+  ASSERT_NUM_EQUALS(rc_runtime_deserialize_progress(&runtime, buffer, serialized_size - 4, NULL), RC_BUFFER_OVERFLOW);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_single_achievement_deactivated()
+{
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
+  size_t serialized_size;
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0002=5");
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 4;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 5;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+
+  assert_memref(&runtime, 1, 5, 5, 4);
+  assert_memref(&runtime, 2, 6, 6, 0);
+  assert_hitcount(&runtime, 1, 0, 0, 3);
+  assert_hitcount(&runtime, 1, 0, 1, 0);
+
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   reset_runtime(&runtime);
 
   /* disabled achievement */
   rc_runtime_deactivate_achievement(&runtime, 1);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -534,7 +583,7 @@ static void test_single_achievement_deactivated()
   assert_hitcount(&runtime, 1, 0, 1, 0);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
   assert_hitcount(&runtime, 1, 0, 0, 3);
@@ -547,6 +596,7 @@ static void test_single_achievement_md5_changed()
 {
   uint8_t ram[] = { 2, 3, 6 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -570,7 +620,7 @@ static void test_single_achievement_md5_changed()
   assert_hitcount(&runtime, 1, 0, 0, 3);
   assert_hitcount(&runtime, 1, 0, 1, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   reset_runtime(&runtime);
 
@@ -585,7 +635,7 @@ static void test_single_achievement_md5_changed()
   assert_hitcount(&runtime, 1, 0, 1, 0);
   assert_memref(&runtime, 1, 4, 4, 3);
 
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   /* memrefs should be restored */
   assert_memref(&runtime, 1, 5, 5, 4);
@@ -631,6 +681,7 @@ static void test_no_core_group()
 {
   uint8_t ram[] = { 2, 3, 6 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -654,10 +705,10 @@ static void test_no_core_group()
   assert_hitcount(&runtime, 1, 1, 0, 3);
   assert_hitcount(&runtime, 1, 1, 1, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -671,6 +722,7 @@ static void test_memref_shared_address()
 {
   uint8_t ram[] = { 2, 3, 0, 0, 0 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -698,10 +750,10 @@ static void test_memref_shared_address()
   assert_hitcount(&runtime, 1, 0, 1, 2);
   assert_hitcount(&runtime, 1, 0, 2, 1);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_sized_memref(&runtime, 1, RC_MEMSIZE_8_BITS, 6, 5, 5);
   assert_sized_memref(&runtime, 1, RC_MEMSIZE_16_BITS, 6, 5, 5);
@@ -718,6 +770,8 @@ static void test_memref_indirect()
   uint8_t ram[] = { 1, 2, 3, 4, 5 };
   uint8_t buffer1[512];
   uint8_t buffer2[512];
+  size_t serialized_size1;
+  size_t serialized_size2;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -741,7 +795,7 @@ static void test_memref_indirect()
   assert_cond_memref(&runtime, 1, 0, 0, 0, 3, 0);
   assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
 
-  assert_serialize(&runtime, buffer1, sizeof(buffer1));
+  assert_serialize(&runtime, buffer1, sizeof(buffer1), &serialized_size1);
 
   assert_do_frame(&runtime, &memory);
   ram[1] = 6;
@@ -752,17 +806,17 @@ static void test_memref_indirect()
   assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 1);
   assert_cond_memref(&runtime, 1, 0, 1, 1, 3, 1);
 
-  assert_serialize(&runtime, buffer2, sizeof(buffer2));
+  assert_serialize(&runtime, buffer2, sizeof(buffer2), &serialized_size2);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer1);
+  assert_deserialize(&runtime, buffer1, serialized_size1);
   assert_hitcount(&runtime, 1, 0, 0, 0);
   assert_hitcount(&runtime, 1, 0, 1, 4);
   assert_cond_memref(&runtime, 1, 0, 0, 0, 3, 0);
   assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer2);
+  assert_deserialize(&runtime, buffer2, serialized_size2);
   assert_hitcount(&runtime, 1, 0, 0, 0);
   assert_hitcount(&runtime, 1, 0, 1, 5);
   assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 1);
@@ -776,6 +830,8 @@ static void test_memref_double_indirect()
   uint8_t ram[] = { 1, 2, 3, 4, 5 };
   uint8_t buffer1[512];
   uint8_t buffer2[512];
+  size_t serialized_size1;
+  size_t serialized_size2;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -801,7 +857,7 @@ static void test_memref_double_indirect()
   assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
   assert_cond_memref2(&runtime, 1, 0, 1, 3, 4, 0);
 
-  assert_serialize(&runtime, buffer1, sizeof(buffer1));
+  assert_serialize(&runtime, buffer1, sizeof(buffer1), &serialized_size1);
 
   assert_do_frame(&runtime, &memory);
   ram[1] = 6;
@@ -813,10 +869,10 @@ static void test_memref_double_indirect()
   assert_cond_memref(&runtime, 1, 0, 1, 1, 3, 1);
   assert_cond_memref2(&runtime, 1, 0, 1, 6, 3, 1);
 
-  assert_serialize(&runtime, buffer2, sizeof(buffer2));
+  assert_serialize(&runtime, buffer2, sizeof(buffer2), &serialized_size2);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer1);
+  assert_deserialize(&runtime, buffer1, serialized_size1);
   assert_hitcount(&runtime, 1, 0, 0, 0);
   assert_hitcount(&runtime, 1, 0, 1, 4);
   assert_cond_memref(&runtime, 1, 0, 0, 0, 3, 0);
@@ -824,7 +880,7 @@ static void test_memref_double_indirect()
   assert_cond_memref2(&runtime, 1, 0, 1, 3, 4, 0);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer2);
+  assert_deserialize(&runtime, buffer2, serialized_size2);
   assert_hitcount(&runtime, 1, 0, 0, 0);
   assert_hitcount(&runtime, 1, 0, 1, 5);
   assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 1);
@@ -838,6 +894,7 @@ static void test_multiple_achievements()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -845,10 +902,10 @@ static void test_multiple_achievements()
   memory.size = sizeof(ram);
   setup_multiple_achievements(&runtime, &memory);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_memref(&runtime, 0, 0, 0, 0);
   assert_memref(&runtime, 1, 4, 4, 1);
@@ -871,6 +928,7 @@ static void test_multiple_achievements_ignore_triggered_and_inactive()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -878,7 +936,7 @@ static void test_multiple_achievements_ignore_triggered_and_inactive()
   memory.size = sizeof(ram);
   setup_multiple_achievements(&runtime, &memory);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   /* trigger achievement 3 */
   ram[0] = 3;
@@ -889,7 +947,7 @@ static void test_multiple_achievements_ignore_triggered_and_inactive()
   find_trigger(&runtime, 2)->state = RC_TRIGGER_STATE_INACTIVE;
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_memref(&runtime, 0, 0, 0, 0);
   assert_memref(&runtime, 1, 4, 4, 1);
@@ -916,6 +974,7 @@ static void test_multiple_achievements_overwrite_waiting()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -923,14 +982,14 @@ static void test_multiple_achievements_overwrite_waiting()
   memory.size = sizeof(ram);
   setup_multiple_achievements(&runtime, &memory);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   /* reset achievement 2 to waiting */
   rc_reset_trigger(find_trigger(&runtime, 2));
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_WAITING);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_achievement_state(&runtime, 1, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_ACTIVE);
@@ -952,6 +1011,7 @@ static void test_multiple_achievements_reactivate_waiting()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -963,14 +1023,14 @@ static void test_multiple_achievements_reactivate_waiting()
   rc_reset_trigger(find_trigger(&runtime, 2));
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_WAITING);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   /* reactivate achievement 2 */
   assert_do_frame(&runtime, &memory);
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_ACTIVE);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_achievement_state(&runtime, 1, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_WAITING);
@@ -993,6 +1053,8 @@ static void test_multiple_achievements_paused_and_primed()
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
   uint8_t buffer2[2048];
+  size_t serialized_size;
+  size_t serialized_size2;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1018,7 +1080,7 @@ static void test_multiple_achievements_paused_and_primed()
   assert_achievement_state(&runtime, 4, RC_TRIGGER_STATE_PRIMED);
   ASSERT_TRUE(find_trigger(&runtime, 2)->requirement->is_paused);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   /* unpause achievement 2 and unprime achievement 4 */
   ram[5] = 2;
@@ -1030,10 +1092,10 @@ static void test_multiple_achievements_paused_and_primed()
   assert_achievement_state(&runtime, 4, RC_TRIGGER_STATE_ACTIVE);
   ASSERT_FALSE(find_trigger(&runtime, 2)->requirement->is_paused);
 
-  assert_serialize(&runtime, buffer2, sizeof(buffer2));
+  assert_serialize(&runtime, buffer2, sizeof(buffer2), &serialized_size2);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_achievement_state(&runtime, 1, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_PAUSED);
@@ -1042,7 +1104,7 @@ static void test_multiple_achievements_paused_and_primed()
   ASSERT_TRUE(find_trigger(&runtime, 2)->requirement->is_paused);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer2);
+  assert_deserialize(&runtime, buffer2, serialized_size2);
 
   assert_achievement_state(&runtime, 1, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_ACTIVE);
@@ -1057,6 +1119,7 @@ static void test_multiple_achievements_deactivated_memrefs()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1088,13 +1151,13 @@ static void test_multiple_achievements_deactivated_memrefs()
   rc_runtime_deactivate_achievement(&runtime, 1);
   ASSERT_NUM_EQUALS(runtime.trigger_count, 3);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   /* reactivate achievement 1 */
   assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0000=2");
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_achievement_state(&runtime, 1, RC_TRIGGER_STATE_WAITING);
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_ACTIVE);
@@ -1110,6 +1173,7 @@ static void test_multiple_achievements_deactivated_no_memrefs()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1141,13 +1205,13 @@ static void test_multiple_achievements_deactivated_no_memrefs()
   rc_runtime_deactivate_achievement(&runtime, 2);
   ASSERT_NUM_EQUALS(runtime.trigger_count, 2);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   /* reactivate achievement 2 */
   assert_activate_achievement(&runtime, 2, "0xH0001=5_0xH0000=2");
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_achievement_state(&runtime, 1, RC_TRIGGER_STATE_ACTIVE);
   assert_achievement_state(&runtime, 2, RC_TRIGGER_STATE_WAITING);
@@ -1163,6 +1227,7 @@ static void test_single_leaderboard()
 {
   uint8_t ram[] = { 2, 3, 6 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1190,10 +1255,10 @@ static void test_single_leaderboard()
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.value, 6);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 1)->value.value.prior, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_memref(&runtime, 1, 5, 5, 4);
   assert_memref(&runtime, 2, 6, 6, 0);
@@ -1211,6 +1276,7 @@ static void test_multiple_leaderboards()
 {
   uint8_t ram[] = { 2, 3, 6 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1241,11 +1307,11 @@ static void test_multiple_leaderboards()
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.value, 2);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.prior, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   assert_do_frame(&runtime, &memory);
   assert_do_frame(&runtime, &memory);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   assert_sta_hitcount(&runtime, 1, 0, 0, 3);
   assert_sub_hitcount(&runtime, 1, 0, 0, 2);
@@ -1265,6 +1331,7 @@ static void test_multiple_leaderboards_ignore_inactive()
 {
   uint8_t ram[] = { 2, 3, 6 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1296,12 +1363,12 @@ static void test_multiple_leaderboards_ignore_inactive()
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.value, 2);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.prior, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   find_lboard(&runtime, 1)->state = RC_LBOARD_STATE_ACTIVE;
   assert_do_frame(&runtime, &memory);
   assert_do_frame(&runtime, &memory);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   /* non-serialized leaderboard should be reset */
   assert_sta_hitcount(&runtime, 1, 0, 0, 0);
@@ -1324,6 +1391,7 @@ static void test_multiple_leaderboards_ignore_modified()
 {
   uint8_t ram[] = { 2, 3, 6 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1354,12 +1422,12 @@ static void test_multiple_leaderboards_ignore_modified()
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.value, 2);
   ASSERT_NUM_EQUALS(find_lboard(&runtime, 2)->value.value.prior, 0);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   assert_activate_leaderboard(&runtime, 1, "STA:0xH0001=4::SUB:0xH0001=5.4.::CAN:0xH0001=0.3.::VAL:0xH0002");
   assert_do_frame(&runtime, &memory);
   assert_do_frame(&runtime, &memory);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   /* modified leaderboard should be reset */
   assert_sta_hitcount(&runtime, 1, 0, 0, 0);
@@ -1381,13 +1449,14 @@ static void test_multiple_leaderboards_ignore_modified()
 static void test_rich_presence_none()
 {
   uint8_t buffer[2048];
+  size_t serialized_size;
   rc_runtime_t runtime;
   rc_runtime_init(&runtime);
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   rc_runtime_destroy(&runtime);
 }
@@ -1395,15 +1464,16 @@ static void test_rich_presence_none()
 static void test_rich_presence_static()
 {
   uint8_t buffer[2048];
+  size_t serialized_size;
   rc_runtime_t runtime;
   rc_runtime_init(&runtime);
 
   assert_activate_rich_presence(&runtime, "Display:\nTest");
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   rc_runtime_destroy(&runtime);
 }
@@ -1412,6 +1482,7 @@ static void test_rich_presence_simple_lookup()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1428,13 +1499,13 @@ static void test_rich_presence_simple_lookup()
   ram[2] = 8;
   assert_do_frame(&runtime, &memory); /* prev[2] = 4 */
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   ram[2] = 12;
   assert_do_frame(&runtime, &memory); /* prev[2] = 8 */
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   /* deserialized should remember prev[2] = 4 */
   assert_richpresence_output(&runtime, &memory, "4");
@@ -1446,6 +1517,7 @@ static void test_rich_presence_tracked_hits()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1458,12 +1530,12 @@ static void test_rich_presence_tracked_hits()
   assert_do_frame(&runtime, &memory); /* count = 2 */
   assert_do_frame(&runtime, &memory); /* count = 3 */
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   assert_do_frame(&runtime, &memory); /* count = 4 */
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   /* deserialized should remember count = 3 */
   assert_richpresence_output(&runtime, &memory, "3");
@@ -1475,6 +1547,7 @@ static void test_rich_presence_tracked_hits_md5_changed()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1487,13 +1560,13 @@ static void test_rich_presence_tracked_hits_md5_changed()
   assert_do_frame(&runtime, &memory); /* count = 2 */
   assert_do_frame(&runtime, &memory); /* count = 3 */
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   assert_do_frame(&runtime, &memory); /* count = 4 */
 
   assert_activate_rich_presence(&runtime, "Display:\n@Number(M:0xH02=2)!");
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   /* md5 changed, but variable is stored external to RP, 3 should be remembered */
   assert_richpresence_output(&runtime, &memory, "3!");
@@ -1505,6 +1578,7 @@ static void test_rich_presence_conditional_display()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1516,14 +1590,14 @@ static void test_rich_presence_conditional_display()
   assert_do_frame(&runtime, &memory); /* count = 1 */
   assert_do_frame(&runtime, &memory); /* count = 2 */
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   assert_do_frame(&runtime, &memory); /* count = 3 */
   assert_do_frame(&runtime, &memory); /* count = 4 */
   assert_richpresence_output(&runtime, &memory, "Three");
 
   reset_runtime(&runtime);
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   /* deserialized should remember count = 2 */
   assert_richpresence_output(&runtime, &memory, "Less");
@@ -1535,6 +1609,7 @@ static void test_rich_presence_conditional_display_md5_changed()
 {
   uint8_t ram[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   uint8_t buffer[2048];
+  size_t serialized_size;
   memory_t memory;
   rc_runtime_t runtime;
 
@@ -1546,7 +1621,7 @@ static void test_rich_presence_conditional_display_md5_changed()
   assert_do_frame(&runtime, &memory); /* count = 1 */
   assert_do_frame(&runtime, &memory); /* count = 2 */
 
-  assert_serialize(&runtime, buffer, sizeof(buffer));
+  assert_serialize(&runtime, buffer, sizeof(buffer), &serialized_size);
 
   assert_do_frame(&runtime, &memory); /* count = 3 */
   assert_do_frame(&runtime, &memory); /* count = 4 */
@@ -1554,7 +1629,7 @@ static void test_rich_presence_conditional_display_md5_changed()
 
   reset_runtime(&runtime);
   assert_activate_rich_presence(&runtime, "Display:\n?0xH02=2.3.?Three!\nLess");
-  assert_deserialize(&runtime, buffer);
+  assert_deserialize(&runtime, buffer, serialized_size);
 
   /* md5 changed, hit count should be discarded */
   assert_richpresence_output(&runtime, &memory, "Less");
@@ -1579,6 +1654,7 @@ void test_runtime_progress(void) {
   TEST(test_invalid_marker);
   TEST(test_invalid_memref_chunk_id);
   TEST(test_modified_data);
+  TEST(test_buffer_overflow);
   TEST(test_single_achievement_deactivated);
   TEST(test_single_achievement_md5_changed);
 

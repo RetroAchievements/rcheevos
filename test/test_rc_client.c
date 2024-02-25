@@ -8031,6 +8031,8 @@ static void test_deserialize_progress_updates_widgets(void)
   const rc_client_event_t* event;
   uint8_t* serialized1;
   uint8_t* serialized2;
+  size_t serialize_real_size1;
+  size_t serialize_real_size2;
   size_t serialize_size;
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -8045,7 +8047,8 @@ static void test_deserialize_progress_updates_widgets(void)
   serialize_size = rc_client_progress_size(g_client);
   serialized1 = (uint8_t*)malloc(serialize_size);
   serialized2 = (uint8_t*)malloc(serialize_size);
-  ASSERT_NUM_EQUALS(rc_client_serialize_progress(g_client, serialized1), RC_OK);
+  ASSERT_NUM_EQUALS(rc_client_serialize_progress(g_client, serialized1, serialize_size, &serialize_real_size1), RC_OK);
+  ASSERT_NUM_LESS_EQUALS(serialize_real_size1, serialize_size);
 
   /* activate some widgets */
   memory[0x01] = 1; /* challenge indicator for achievement 7 */
@@ -8077,10 +8080,11 @@ static void test_deserialize_progress_updates_widgets(void)
   ASSERT_NUM_EQUALS(((rc_client_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_STARTED);
 
   /* capture the state with the widgets visible */
-  ASSERT_NUM_EQUALS(rc_client_serialize_progress(g_client, serialized2), RC_OK);
+  ASSERT_NUM_EQUALS(rc_client_serialize_progress(g_client, serialized2, serialize_size, &serialize_real_size2), RC_OK);
+  ASSERT_NUM_LESS_EQUALS(serialize_real_size2, serialize_size);
 
   /* deserialize current state. expect progress tracker hide */
-  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, serialized2), RC_OK);
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, serialized2, serialize_real_size2), RC_OK);
   ASSERT_NUM_EQUALS(event_count, 1);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
   event_count = 0;
@@ -8097,7 +8101,7 @@ static void test_deserialize_progress_updates_widgets(void)
   ASSERT_NUM_EQUALS(((rc_client_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_STARTED);
 
   /* deserialize original state. expect challenge indicator hide, tracker hide */
-  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, serialized1), RC_OK);
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, serialized1, serialize_real_size1), RC_OK);
   ASSERT_NUM_EQUALS(event_count, 2);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
@@ -8115,7 +8119,7 @@ static void test_deserialize_progress_updates_widgets(void)
 
   /* deserialize second state. expect challenge indicator show, tracker show */
   event_count = 0;
-  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, serialized2), RC_OK);
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, serialized2, serialize_real_size2), RC_OK);
   ASSERT_NUM_EQUALS(event_count, 2);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
@@ -8142,7 +8146,7 @@ static void test_deserialize_progress_updates_widgets(void)
 
   /* deserialize second state. expect challenge tracker update to old value */
   event_count = 0;
-  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, serialized2), RC_OK);
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, serialized2, serialize_real_size2), RC_OK);
   ASSERT_NUM_EQUALS(event_count, 1);
   event = find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE, 1);
   ASSERT_PTR_NOT_NULL(event);
@@ -8198,7 +8202,7 @@ static void test_deserialize_progress_null(void)
   ASSERT_NUM_EQUALS(((rc_client_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_STARTED);
 
   /* deserialize null state. expect all widgets to be hidden and achievements reset to waiting */
-  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, NULL), RC_OK);
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, NULL, 0), RC_OK);
   ASSERT_NUM_EQUALS(event_count, 2);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
@@ -8268,7 +8272,7 @@ static void test_deserialize_progress_invalid(void)
   ASSERT_NUM_EQUALS(((rc_client_leaderboard_info_t*)leaderboard)->lboard->state, RC_LBOARD_STATE_STARTED);
 
   /* deserialize null state. expect all widgets to be hidden and achievements reset to waiting */
-  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, memory), RC_INVALID_STATE);
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress(g_client, memory, sizeof(memory)), RC_INVALID_STATE);
   ASSERT_NUM_EQUALS(event_count, 2);
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
   ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
