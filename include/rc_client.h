@@ -679,12 +679,14 @@ RC_EXPORT size_t RC_CCONV rc_client_progress_size(rc_client_t* client);
  * Returns RC_OK on success, or an error indicator.
  */
 RC_EXPORT int RC_CCONV rc_client_serialize_progress(rc_client_t* client, uint8_t* buffer);
+RC_EXPORT int RC_CCONV rc_client_serialize_progress_sized(rc_client_t* client, uint8_t* buffer, size_t buffer_size);
 
 /**
  * Deserializes the runtime state from a buffer.
  * Returns RC_OK on success, or an error indicator.
  */
 RC_EXPORT int RC_CCONV rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialized);
+RC_EXPORT int RC_CCONV rc_client_deserialize_progress_sized(rc_client_t* client, const uint8_t* serialized, size_t serialized_size);
 
 RC_END_C_DECLS
 
