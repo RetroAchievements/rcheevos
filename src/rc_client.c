@@ -4,7 +4,6 @@
 #include "rc_api_runtime.h"
 #include "rc_api_user.h"
 #include "rc_consoles.h"
-
 #include "rc_hash.h"
 #include "rc_version.h"
 

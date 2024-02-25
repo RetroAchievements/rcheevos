@@ -129,7 +129,7 @@ int main(void) {
 #endif
 
 #ifdef RC_CLIENT_SUPPORTS_HASH
-  /* no direct compile option for hash suport, so leverage RC_CLIENT_SUPPORTS_HASH */
+  /* no direct compile option for hash support, so leverage RC_CLIENT_SUPPORTS_HASH */
   test_rc_libretro(); /* libretro extensions require hash support */
   test_cdreader();
   test_hash();
