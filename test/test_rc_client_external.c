@@ -632,6 +632,35 @@ static void test_change_media(void)
 
 #endif
 
+static void assert_change_media_from_hash(rc_client_t* client, const char* hash)
+{
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
+}
+
+static rc_client_async_handle_t* rc_client_external_begin_change_media_from_hash(rc_client_t* client, const char* hash,
+    rc_client_callback_t callback, void* callback_userdata)
+{
+  assert_change_media_from_hash(client, hash);
+
+  g_external_event = "change_media_from_hash";
+
+  callback(RC_OK, NULL, client, callback_userdata);
+  return NULL;
+}
+
+static void test_change_media_from_hash(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_change_media_from_hash = rc_client_external_begin_change_media_from_hash;
+
+  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857", rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "change_media_from_hash");
+
+  rc_client_destroy(g_client);
+}
+
 typedef struct v1_rc_client_subset_t {
   uint32_t id;
   const char* title;
@@ -1229,6 +1258,7 @@ void test_client_external(void) {
 #ifdef RC_CLIENT_SUPPORTS_HASH
   TEST(test_change_media);
 #endif
+  TEST(test_change_media_from_hash);
   TEST(test_load_subset);
 
   TEST(test_unload_game);
