@@ -1,8 +1,9 @@
 # supported parameters
 #  ARCH          architecture - "x86" or "x64" [detected if not set]
-#  BUILD         use flags for specified upstream consumer - "c89" or "retroarch" [default to "c89]
+#  BUILD         use flags for specified upstream consumer - "c89" or "retroarch" [default to "c89"]
 #  DEBUG         if set to anything, builds with DEBUG symbols
 #  HAVE_LUA      if set to anything, includes the lua functionality
+#  HAVE_HASH     if set to 0, excludes the hash functionality
 
 RC_SRC=../src
 RC_CHEEVOS_SRC=$(RC_SRC)/rcheevos
@@ -39,7 +40,6 @@ endif
 # source files
 OBJ=$(RC_SRC)/rc_compat.o \
     $(RC_SRC)/rc_client.o \
-    $(RC_SRC)/rc_libretro.o \
     $(RC_SRC)/rc_util.o \
     $(RC_SRC)/rc_version.o \
     $(RC_CHEEVOS_SRC)/alloc.o \
@@ -56,9 +56,6 @@ OBJ=$(RC_SRC)/rc_compat.o \
     $(RC_CHEEVOS_SRC)/runtime_progress.o \
     $(RC_CHEEVOS_SRC)/trigger.o \
     $(RC_CHEEVOS_SRC)/value.o \
-    $(RC_HASH_SRC)/aes.o \
-    $(RC_HASH_SRC)/cdreader.o \
-    $(RC_HASH_SRC)/hash.o \
     $(RC_HASH_SRC)/md5.o \
     $(RC_URL_SRC)/url.o \
     $(RC_API_SRC)/rc_api_common.o \
@@ -80,17 +77,12 @@ OBJ=$(RC_SRC)/rc_compat.o \
     rcheevos/test_trigger.o \
     rcheevos/test_value.o \
     rurl/test_url.o \
-    rhash/data.o \
-    rhash/mock_filereader.o \
-    rhash/test_cdreader.o \
-    rhash/test_hash.o \
     rapi/test_rc_api_common.o \
     rapi/test_rc_api_editor.o \
     rapi/test_rc_api_info.o \
     rapi/test_rc_api_runtime.o \
     rapi/test_rc_api_user.o \
     test_rc_client.o \
-    test_rc_libretro.o \
     test.o
 
 # compile flags
@@ -135,6 +127,22 @@ else ifeq ($(BUILD), retroarch)
     OBJ += test_rc_client_external.o
 else
     $(error unknown BUILD "$(BUILD)")
+endif
+
+# support for building without hash subdirectory
+ifeq ($(HAVE_HASH), 0)
+    EXTRA += |NO_HASH
+else
+    CFLAGS += -DRC_CLIENT_SUPPORTS_HASH
+    OBJ += $(RC_HASH_SRC)/aes.o \
+           $(RC_HASH_SRC)/cdreader.o \
+           $(RC_HASH_SRC)/hash.o \
+           $(RC_SRC)/rc_libretro.o \
+           rhash/data.o \
+           rhash/mock_filereader.o \
+           rhash/test_cdreader.o \
+           rhash/test_hash.o \
+           test_rc_libretro.o
 endif
 
 # LUA support

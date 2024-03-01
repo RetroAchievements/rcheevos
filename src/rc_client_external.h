@@ -99,6 +99,7 @@ typedef struct rc_client_external_t
   rc_client_external_action_func_t unload_game;
   rc_client_external_get_user_game_summary_func_t get_user_game_summary;
   rc_client_external_begin_change_media_func_t begin_change_media;
+  rc_client_external_begin_load_game_func_t begin_change_media_from_hash;
 
   rc_client_external_create_achievement_list_func_t create_achievement_list;
   rc_client_external_get_int_func_t has_achievements;

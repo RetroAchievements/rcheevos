@@ -85,6 +85,25 @@ jobs:
       run: make ARCH=x64 BUILD=c89 HAVE_LUA=1 valgrind
       working-directory: test
 
+  linux-x64-nohash:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install valgrind gcc-multilib # bits/libc-header-start.h
+    - name: Build
+      run: make ARCH=x64 BUILD=c89 HAVE_HASH=0 test
+      working-directory: test
+    - name: Run tests
+      run: ./test
+      working-directory: test
+    - name: Valgrind
+      run: make ARCH=x64 BUILD=c89 HAVE_HASH=0 valgrind
+      working-directory: test
+
   windows-x64-msbuild:
     runs-on: windows-latest
     steps:

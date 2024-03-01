@@ -108,7 +108,6 @@ int main(void) {
   test_runtime_progress();
 
   test_consoleinfo();
-  test_rc_libretro();
   test_rc_validate();
 
   test_lua();
@@ -129,8 +128,12 @@ int main(void) {
   test_client_raintegration();
 #endif
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
+  /* no direct compile option for hash support, so leverage RC_CLIENT_SUPPORTS_HASH */
+  test_rc_libretro(); /* libretro extensions require hash support */
   test_cdreader();
   test_hash();
+#endif
 #endif
 
   TEST_FRAMEWORK_SHUTDOWN();
