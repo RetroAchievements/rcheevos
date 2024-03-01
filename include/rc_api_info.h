@@ -62,6 +62,7 @@ typedef struct rc_api_fetch_achievement_info_response_t {
 rc_api_fetch_achievement_info_response_t;
 
 RC_EXPORT int RC_CCONV rc_api_init_fetch_achievement_info_request(rc_api_request_t* request, const rc_api_fetch_achievement_info_request_t* api_params);
+/* [deprecated] use rc_api_process_fetch_achievement_info_server_response instead */
 RC_EXPORT int RC_CCONV rc_api_process_fetch_achievement_info_response(rc_api_fetch_achievement_info_response_t* response, const char* server_response);
 RC_EXPORT int RC_CCONV rc_api_process_fetch_achievement_info_server_response(rc_api_fetch_achievement_info_response_t* response, const rc_api_server_response_t* server_response);
 RC_EXPORT void RC_CCONV rc_api_destroy_fetch_achievement_info_response(rc_api_fetch_achievement_info_response_t* response);
@@ -134,6 +135,7 @@ typedef struct rc_api_fetch_leaderboard_info_response_t {
 rc_api_fetch_leaderboard_info_response_t;
 
 RC_EXPORT int RC_CCONV rc_api_init_fetch_leaderboard_info_request(rc_api_request_t* request, const rc_api_fetch_leaderboard_info_request_t* api_params);
+/* [deprecated] use rc_api_process_fetch_leaderboard_info_server_response instead */
 RC_EXPORT int RC_CCONV rc_api_process_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info_response_t* response, const char* server_response);
 RC_EXPORT int RC_CCONV rc_api_process_fetch_leaderboard_info_server_response(rc_api_fetch_leaderboard_info_response_t* response, const rc_api_server_response_t* server_response);
 RC_EXPORT void RC_CCONV rc_api_destroy_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_info_response_t* response);
@@ -173,6 +175,7 @@ typedef struct rc_api_fetch_games_list_response_t {
 rc_api_fetch_games_list_response_t;
 
 RC_EXPORT int RC_CCONV rc_api_init_fetch_games_list_request(rc_api_request_t* request, const rc_api_fetch_games_list_request_t* api_params);
+/* [deprecated] use rc_api_process_fetch_games_list_server_response instead */
 RC_EXPORT int RC_CCONV rc_api_process_fetch_games_list_response(rc_api_fetch_games_list_response_t* response, const char* server_response);
 RC_EXPORT int RC_CCONV rc_api_process_fetch_games_list_server_response(rc_api_fetch_games_list_response_t* response, const rc_api_server_response_t* server_response);
 RC_EXPORT void RC_CCONV rc_api_destroy_fetch_games_list_response(rc_api_fetch_games_list_response_t* response);
