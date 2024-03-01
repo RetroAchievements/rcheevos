@@ -627,6 +627,107 @@ static void setup_multiple_achievements(rc_runtime_t* runtime, memory_t* memory)
   assert_hitcount(runtime, 4, 0, 0, 1);
 }
 
+static void test_single_achievement_sized()
+{
+  uint8_t ram[] = { 2, 3, 6 };
+  uint8_t buffer[2048];
+  memory_t memory;
+  rc_runtime_t runtime;
+  uint32_t size;
+  int result;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=4_0xH0002=5");
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 4;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 5;
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+
+  assert_memref(&runtime, 1, 5, 5, 4);
+  assert_memref(&runtime, 2, 6, 6, 0);
+  assert_hitcount(&runtime, 1, 0, 0, 3);
+  assert_hitcount(&runtime, 1, 0, 1, 0);
+
+  size = rc_runtime_progress_size(&runtime, NULL);
+  ASSERT_NUM_LESS(size, sizeof(buffer));
+
+  result = rc_runtime_serialize_progress_sized(buffer, size - 1, &runtime, NULL);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
+
+  result = rc_runtime_serialize_progress_sized(buffer, size, &runtime, NULL);
+  ASSERT_NUM_EQUALS(result, RC_OK);
+
+  result = rc_runtime_deserialize_progress_sized(&runtime, buffer, size - 1, NULL);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
+
+  assert_memref(&runtime, 1, 5, 5, 4); /* memrefs don't get reset on failure */
+  assert_memref(&runtime, 2, 6, 6, 0);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 0);
+
+  result = rc_runtime_deserialize_progress_sized(&runtime, buffer, 16, NULL);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
+
+  result = rc_runtime_deserialize_progress_sized(&runtime, buffer, 0, NULL);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
+
+  assert_memref(&runtime, 1, 5, 5, 4); /* memrefs don't get reset on failure */
+  assert_memref(&runtime, 2, 6, 6, 0);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 0);
+
+  result = rc_runtime_deserialize_progress_sized(&runtime, buffer, size, NULL);
+  ASSERT_NUM_EQUALS(result, RC_OK);
+
+  assert_memref(&runtime, 1, 5, 5, 4);
+  assert_memref(&runtime, 2, 6, 6, 0);
+  assert_hitcount(&runtime, 1, 0, 0, 3);
+  assert_hitcount(&runtime, 1, 0, 1, 0);
+
+  rc_runtime_destroy(&runtime);
+}
+
+static void test_empty_sized()
+{
+  uint8_t buffer[2048];
+  rc_runtime_t runtime;
+  uint32_t size;
+  int result;
+
+  rc_runtime_init(&runtime);
+
+  size = rc_runtime_progress_size(&runtime, NULL);
+  ASSERT_NUM_LESS(size, sizeof(buffer));
+
+  result = rc_runtime_serialize_progress_sized(buffer, size - 1, &runtime, NULL);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
+
+  result = rc_runtime_serialize_progress_sized(buffer, size, &runtime, NULL);
+  ASSERT_NUM_EQUALS(result, RC_OK);
+
+  result = rc_runtime_deserialize_progress_sized(&runtime, buffer, size - 1, NULL);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
+
+  result = rc_runtime_deserialize_progress_sized(&runtime, buffer, 16, NULL);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
+
+  result = rc_runtime_deserialize_progress_sized(&runtime, buffer, 0, NULL);
+  ASSERT_NUM_EQUALS(result, RC_INSUFFICIENT_BUFFER);
+
+  result = rc_runtime_deserialize_progress_sized(&runtime, buffer, size, NULL);
+  ASSERT_NUM_EQUALS(result, RC_OK);
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_no_core_group()
 {
   uint8_t ram[] = { 2, 3, 6 };
@@ -1581,6 +1682,8 @@ void test_runtime_progress(void) {
   TEST(test_modified_data);
   TEST(test_single_achievement_deactivated);
   TEST(test_single_achievement_md5_changed);
+  TEST(test_single_achievement_sized);
+  TEST(test_empty_sized);
 
   TEST(test_no_core_group);
   TEST(test_memref_shared_address);

@@ -8579,6 +8579,69 @@ static void test_deserialize_progress_invalid(void)
   rc_client_destroy(g_client);
 }
 
+static void test_deserialize_progress_sized(void)
+{
+  uint8_t* serialized1;
+  uint8_t* serialized2;
+  size_t serialize_size;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
+  mock_memory(memory, sizeof(memory));
+
+  rc_client_do_frame(g_client);
+
+  /* create an initial checkpoint */
+  serialize_size = rc_client_progress_size(g_client);
+  serialized1 = (uint8_t*)malloc(serialize_size);
+  serialized2 = (uint8_t*)malloc(serialize_size);
+  ASSERT_NUM_EQUALS(rc_client_serialize_progress_sized(g_client, serialized1, serialize_size - 1), RC_INSUFFICIENT_BUFFER);
+  ASSERT_NUM_EQUALS(rc_client_serialize_progress_sized(g_client, serialized1, serialize_size), RC_OK);
+
+  /* activate some widgets */
+  memory[0x01] = 1; /* challenge indicator for achievement 7 */
+  memory[0x06] = 4; /* progress indicator for achievement 6*/
+  memory[0x0A] = 2; /* tracker for leaderboard 48 */
+  memory[0x0E] = 25; /* leaderboard 48 value */
+  event_count = 0;
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 4);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_STARTED, 48));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
+  event_count = 0;
+
+  /* capture the state with the widgets visible */
+  ASSERT_NUM_EQUALS(rc_client_serialize_progress_sized(g_client, serialized2, serialize_size), RC_OK);
+
+  /* deserialize current state. expect progress tracker hide */
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress_sized(g_client, serialized2, serialize_size), RC_OK);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
+  event_count = 0;
+
+  /* deserialize original state with incorrect size. expect challenge indicator hide, tracker hide */
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress_sized(g_client, serialized1, serialize_size - 1), RC_INSUFFICIENT_BUFFER);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
+
+  /* deserialize second state. expect challenge indicator show, tracker show */
+  event_count = 0;
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress_sized(g_client, serialized2, serialize_size), RC_OK);
+  ASSERT_NUM_EQUALS(event_count, 2);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW, 7));
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+  free(serialized2);
+  free(serialized1);
+  rc_client_destroy(g_client);
+}
+
 /* ----- processing required ----- */
 
 static void test_processing_required(void)
@@ -9217,6 +9280,7 @@ void test_client(void) {
   TEST(test_deserialize_progress_updates_widgets);
   TEST(test_deserialize_progress_null);
   TEST(test_deserialize_progress_invalid);
+  TEST(test_deserialize_progress_sized);
 
   /* processing required */
   TEST(test_processing_required);

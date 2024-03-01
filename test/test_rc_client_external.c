@@ -1176,7 +1176,7 @@ static void test_progress_size(void)
   rc_client_destroy(g_client);
 }
 
-static int rc_client_external_serialize_progress(uint8_t* buffer)
+static int rc_client_external_serialize_progress(uint8_t* buffer, size_t size)
 {
   memcpy(buffer, "SAVED", 6);
 
@@ -1202,7 +1202,7 @@ static void test_serialize_progress(void)
   rc_client_destroy(g_client);
 }
 
-static int rc_client_external_deserialize_progress(const uint8_t* buffer)
+static int rc_client_external_deserialize_progress(const uint8_t* buffer, size_t size)
 {
   if (memcmp(buffer, "SAVE", 5) == 0)
     g_external_event = "deserialize_progress";

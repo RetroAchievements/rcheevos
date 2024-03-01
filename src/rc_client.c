@@ -5372,6 +5372,11 @@ size_t rc_client_progress_size(rc_client_t* client)
 
 int rc_client_serialize_progress(rc_client_t* client, uint8_t* buffer)
 {
+  return rc_client_serialize_progress_sized(client, buffer, 0xFFFFFFFF);
+}
+
+int rc_client_serialize_progress_sized(rc_client_t* client, uint8_t* buffer, size_t buffer_size)
+{
   int result;
 
   if (!client)
@@ -5379,7 +5384,7 @@ int rc_client_serialize_progress(rc_client_t* client, uint8_t* buffer)
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->serialize_progress)
-    return client->state.external_client->serialize_progress(buffer);
+    return client->state.external_client->serialize_progress(buffer, buffer_size);
 #endif
 
   if (!client->game)
@@ -5389,7 +5394,7 @@ int rc_client_serialize_progress(rc_client_t* client, uint8_t* buffer)
     return RC_INVALID_STATE;
 
   rc_mutex_lock(&client->state.mutex);
-  result = rc_runtime_serialize_progress(buffer, &client->game->runtime, NULL);
+  result = rc_runtime_serialize_progress_sized(buffer, (uint32_t)buffer_size, &client->game->runtime, NULL);
   rc_mutex_unlock(&client->state.mutex);
 
   return result;
@@ -5490,6 +5495,11 @@ static void rc_client_subset_after_deserialize_progress(rc_client_game_info_t* g
 
 int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialized)
 {
+  return rc_client_deserialize_progress_sized(client, serialized, 0xFFFFFFFF);
+}
+
+int rc_client_deserialize_progress_sized(rc_client_t* client, const uint8_t* serialized, size_t serialized_size)
+{
   rc_client_subset_info_t* subset;
   int result;
 
@@ -5498,7 +5508,7 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->deserialize_progress)
-    return client->state.external_client->deserialize_progress(serialized);
+    return client->state.external_client->deserialize_progress(serialized, serialized_size);
 #endif
 
   if (!client->game)
@@ -5518,7 +5528,7 @@ int rc_client_deserialize_progress(rc_client_t* client, const uint8_t* serialize
     result = RC_OK;
   }
   else {
-    result = rc_runtime_deserialize_progress(&client->game->runtime, serialized, NULL);
+    result = rc_runtime_deserialize_progress_sized(&client->game->runtime, serialized, (uint32_t)serialized_size, NULL);
   }
 
   for (subset = client->game->subsets; subset; subset = subset->next)
