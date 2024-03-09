@@ -267,11 +267,11 @@ void test_float_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "fF1234=2", "");
   TEST_PARAMS2(test_validate_trigger, "0xX1234=2", "");
   TEST_PARAMS2(test_validate_trigger, "0xX1234=f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
-  TEST_PARAMS2(test_validate_trigger, "0xX1234!=f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
-  TEST_PARAMS2(test_validate_trigger, "0xX1234<f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
-  TEST_PARAMS2(test_validate_trigger, "0xX1234<=f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
-  TEST_PARAMS2(test_validate_trigger, "0xX1234>f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
-  TEST_PARAMS2(test_validate_trigger, "0xX1234>=f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234!=f2.3", "Condition 1: Comparison is always true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234<f2.3", ""); /* will be converted to < 3 */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234<=f2.3", ""); /* will be converted to <= 2 */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234>f2.3", ""); /* will be converted to > 2 */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234>=f2.3", ""); /* will be converted to >= 3 */
   TEST_PARAMS2(test_validate_trigger, "0xX1234=f2.0", ""); /* float can be converted to int without loss of data*/
   TEST_PARAMS2(test_validate_trigger, "0xH1234=f2.3", "Condition 1: Comparison is never true");
   TEST_PARAMS2(test_validate_trigger, "0xH1234=f300.0", "Condition 1: Comparison is never true"); /* value out of range */
@@ -285,6 +285,16 @@ void test_float_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "fM1234>f-2.3", "");
   TEST_PARAMS2(test_validate_trigger, "I:0xX2345_fM1234>f1.0", "");
   TEST_PARAMS2(test_validate_trigger, "I:0xX2345_fM1234>f-1.0", "");
+  TEST_PARAMS2(test_validate_trigger, "fF1234>=f0.0", ""); /* explicit float comparison can be negative */
+  TEST_PARAMS2(test_validate_trigger, "fM1234>=f0.0", "");
+  TEST_PARAMS2(test_validate_trigger, "fB1234>=f0.0", "");
+  TEST_PARAMS2(test_validate_trigger, "fF1234>=0", ""); /* implicit float comparison can be negative */
+  TEST_PARAMS2(test_validate_trigger, "fM1234>=0", "");
+  TEST_PARAMS2(test_validate_trigger, "fB1234>=0", "");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234>=f0.1", ""); /* 0 can be less than 0.1 */
+  TEST_PARAMS2(test_validate_trigger, "0xH1234>=f255.1", "Condition 1: Comparison is never true"); /* 255 cannot be >= 255.1 */
+  TEST_PARAMS2(test_validate_trigger, "f0.1<=0xH1234", ""); /* 0 can be less than 0.1 */
+  TEST_PARAMS2(test_validate_trigger, "f255.1<=0xH1234", "Condition 1: Comparison is never true"); /* 255 cannot be >= 255.1 */
 }
 
 void test_conflicting_conditions() {

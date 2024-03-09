@@ -2207,6 +2207,20 @@ static void test_addsource_float_first() {
   /* float(4) + float(4) + float(4) + 1 == 5.5 */
   assert_parse_condset(&condset, &memrefs, buffer, "A:fF0004_A:fF0004_A:fF0004_1=f5.5");
 
+  /* +1 (int) will convert the intermediate value to an integer
+   *    (1.5 + 1.5 + 1.5) => 4.5 => 4 + 1 = 5
+   * which will not equal 5.5, so logic will fail. */
+
+  /* sum is not correct */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* float(4) + float(4) + float(4) + 1.0 == 5.5 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:fF0004_A:fF0004_A:fF0004_f1.0=f5.5");
+
+  /* +1.0 (float) will not convert the intermediate value to an integer
+   *    (1.5 + 1.5 + 1.5) => 4.5 + 1.0 = 5.5
+   * which will equal 5.5, so logic will succeed. */
+
   /* sum is correct */
   assert_evaluate_condset(condset, memrefs, &memory, 1);
 }
