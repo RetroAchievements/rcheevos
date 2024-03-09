@@ -90,6 +90,30 @@ static void test_json_parse_response_non_json() {
   ASSERT_NUM_EQUALS(response.succeeded, 0);
 }
 
+static void test_json_parse_response_non_json_bounded() {
+  int result;
+  rc_api_server_response_t server_response;
+  rc_api_response_t response;
+  const char* error_message = "This is an error.\r\n<title>Should not be seen</title>";
+  rc_json_field_t fields[] = {
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Test")
+  };
+  rc_buffer_init(&response.buffer);
+
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = error_message;
+  server_response.body_length = 16; /* "This is an error" (no period, newline, etc) */
+
+  result = rc_json_parse_server_response(&response, &server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  ASSERT_NUM_EQUALS(result, RC_INVALID_JSON);
+
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "This is an error");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
 static void test_json_parse_response_error_from_server() {
   int result;
   rc_api_server_response_t server_response;
@@ -766,6 +790,7 @@ void test_rapi_common(void) {
   TEST_PARAMS2(test_json_parse_response_field, "{ \"Other\" : 1, \"Test\" : 2 }", "2"); /* preceding field */
   TEST_PARAMS2(test_json_parse_response_field, "{ \"Test\" : 1, \"Other\" : 2 }", "1"); /* trailing field */
   TEST(test_json_parse_response_non_json);
+  TEST(test_json_parse_response_non_json_bounded);
   TEST(test_json_parse_response_error_from_server);
   TEST(test_json_parse_response_incorrect_size);
 
