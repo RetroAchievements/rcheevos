@@ -346,6 +346,7 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
       const rc_operand_t* operand1 = &cond->operand1;
       const rc_operand_t* operand2 = &cond->operand2;
       uint8_t oper = cond->oper;
+      uint32_t min_val;
 
       if (!is_memref1 && !add_source_max) {
         /* pretend constant was on right side */
@@ -360,7 +361,6 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
         }
       }
 
-      uint32_t min_val;
       switch (operand2->type) {
         case RC_OPERAND_CONST:
           min_val = operand2->value.num;
