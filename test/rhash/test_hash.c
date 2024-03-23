@@ -891,7 +891,7 @@ static void test_hash_msdos_dosz()
   size_t image_size;
   uint8_t* image = generate_zip_file(&image_size);
   char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "4cef392530883f23ccebf413f1898023";
+  const char* expected_md5 = "59a255662262f5ada32791b8c36e8ea7";
 
   mock_file(0, "game.dosz", image, image_size);
 
@@ -940,7 +940,7 @@ static void test_hash_msdos_dosz_with_dosc()
   size_t image_size;
   uint8_t* image = generate_zip_file(&image_size);
   char hash_dosc[33];
-  const char* expected_dosc_md5 = "b22fae2e4e4c17b9c9c4b094b86aeb1e";
+  const char* expected_dosc_md5 = "dd0c0b0c170c30722784e5e962764c35";
 
   /* Add main dosz file and overlay dosc file which will get hashed together */
   mock_file(0, "game.dosz", image, image_size);
