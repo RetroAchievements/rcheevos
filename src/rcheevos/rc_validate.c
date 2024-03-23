@@ -337,48 +337,67 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
       return 0;
     }
 
-    /* if either side is a memref, or there's a running add source chain, check for impossible comparisons */
-    if (is_memref1 || is_memref2 || add_source_max) {
+    if (is_memref1 && rc_operand_is_float(&cond->operand1)) {
+      /* if left side is a float, right side will be converted to a float, so don't do range validation */
+    }
+    else if (is_memref1 || is_memref2 || add_source_max) {
+      /* if either side is a memref, or there's a running add source chain, check for impossible comparisons */
       const size_t prefix_length = snprintf(result, result_size, "Condition %d: ", index);
-
+      const rc_operand_t* operand1 = &cond->operand1;
+      const rc_operand_t* operand2 = &cond->operand2;
+      uint8_t oper = cond->oper;
       uint32_t min_val;
-      switch (cond->operand2.type) {
+
+      if (!is_memref1 && !add_source_max) {
+        /* pretend constant was on right side */
+        operand1 = &cond->operand2;
+        operand2 = &cond->operand1;
+        max = max_val;
+        switch (oper) {
+          case RC_OPERATOR_LT: oper = RC_OPERATOR_GT; break;
+          case RC_OPERATOR_LE: oper = RC_OPERATOR_GE; break;
+          case RC_OPERATOR_GT: oper = RC_OPERATOR_LT; break;
+          case RC_OPERATOR_GE: oper = RC_OPERATOR_LE; break;
+        }
+      }
+
+      switch (operand2->type) {
         case RC_OPERAND_CONST:
-          min_val = cond->operand2.value.num;
+          min_val = operand2->value.num;
           break;
 
         case RC_OPERAND_FP:
-          min_val = (int)cond->operand2.value.dbl;
+          min_val = (int)operand2->value.dbl;
 
           /* cannot compare an integer memory reference to a non-integral floating point value */
-          /* assert: is_memref1 (because operand2==FP means !is_memref2) */
-          if (!add_source_max && !rc_operand_is_float_memref(&cond->operand1) &&
-              (float)min_val != cond->operand2.value.dbl) {
-            snprintf(result + prefix_length, result_size - prefix_length, "Comparison is never true");
-            return 0;
+          if (!add_source_max && !rc_operand_is_float_memref(operand1) &&
+              (float)min_val != operand2->value.dbl) {
+            switch (oper) {
+              case RC_OPERATOR_EQ:
+                snprintf(result + prefix_length, result_size - prefix_length, "Comparison is never true");
+                return 0;
+              case RC_OPERATOR_NE:
+                snprintf(result + prefix_length, result_size - prefix_length, "Comparison is always true");
+                return 0;
+              case RC_OPERATOR_GT: /* value could be greater than floor(float) */
+              case RC_OPERATOR_LE: /* value could be less than or equal to floor(float) */
+                break;
+              case RC_OPERATOR_GE: /* value could be greater than or equal to ceil(float) */
+              case RC_OPERATOR_LT: /* value could be less than ceil(float) */
+                ++min_val;
+                break;
+            }
           }
 
           break;
 
-        default:
+        default: /* right side is memref or add source chain */
           min_val = 0;
-
-          /* cannot compare an integer memory reference to a non-integral floating point value */
-          /* assert: is_memref2 (because operand1==FP means !is_memref1) */
-          if (cond->operand1.type == RC_OPERAND_FP && !add_source_max && !rc_operand_is_float_memref(&cond->operand2) &&
-              (float)((int)cond->operand1.value.dbl) != cond->operand1.value.dbl) {
-            snprintf(result + prefix_length, result_size - prefix_length, "Comparison is never true");
-            return 0;
-          }
-
           break;
       }
 
-      if (rc_operand_is_float(&cond->operand2) && rc_operand_is_float(&cond->operand1)) {
-        /* both sides are floats, don't validate range*/
-      } else if (!rc_validate_range(min_val, max_val, cond->oper, max, result + prefix_length, result_size - prefix_length)) {
+      if (!rc_validate_range(min_val, max_val, oper, max, result + prefix_length, result_size - prefix_length))
         return 0;
-      }
     }
 
     add_source_max = 0;
@@ -801,8 +820,7 @@ static int rc_validate_trigger_internal(const rc_trigger_t* trigger, char result
   const rc_condset_t* alt;
   int index;
 
-  if (!trigger->alternative)
-  {
+  if (!trigger->alternative) {
     if (!rc_validate_condset_internal(trigger->requirement, result, result_size, console_id, max_address))
       return 0;
 
