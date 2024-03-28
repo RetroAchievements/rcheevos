@@ -4,7 +4,7 @@
 #include "mock_memory.h"
 
 #include <float.h>
-#include <math.h> /* pow, round */
+#include <math.h> /* pow */
 
 static void test_mask(char size, uint32_t expected)
 {
@@ -91,6 +91,11 @@ static void test_transform_float(uint32_t value, uint8_t size, double expected)
   ASSERT_FLOAT_EQUALS(typed_value.value.f32, expected);
 }
 
+static double rc_round(double n)
+{
+  return floor(n + 0.5); /* no round() in c89 */
+}
+
 static void test_transform_double32(uint32_t value, uint8_t size, double expected)
 {
   rc_typed_value_t typed_value;
@@ -102,8 +107,8 @@ static void test_transform_double32(uint32_t value, uint8_t size, double expecte
   if (fabs(expected) != 0.0) {
     const double digits = floor(log10(fabs(expected))) + 1;
     const double expected_pow = pow(10, 6 - digits);
-    expected = round(expected * expected_pow) / expected_pow;
-    typed_value.value.f32 = (float)(round(typed_value.value.f32 * expected_pow) / expected_pow);
+    expected = rc_round(expected * expected_pow) / expected_pow; /* floor(n + 0.5) = round(n) [not in c89] */
+    typed_value.value.f32 = (float)(rc_round(typed_value.value.f32 * expected_pow) / expected_pow);
   }
 
   ASSERT_FLOAT_EQUALS(typed_value.value.f32, expected);
