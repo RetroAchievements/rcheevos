@@ -200,7 +200,7 @@ static void test_transforms(void)
   TEST_PARAMS3(test_transform_double32, 0x3C9CD2B2, RC_MEMSIZE_DOUBLE32, 0.0000000000000001);
   TEST_PARAMS3(test_transform_double32, 0x3780AD01, RC_MEMSIZE_DOUBLE32, 2.39286e-41);
   TEST_PARAMS3(test_transform_double32, 0x3FF3C0CA, RC_MEMSIZE_DOUBLE32, 1.234568);
-  TEST_PARAMS2(test_transform_float_inf, 0x7F800000, RC_MEMSIZE_DOUBLE32);
+  TEST_PARAMS2(test_transform_float_inf, 0x7FF00000, RC_MEMSIZE_DOUBLE32);
   TEST_PARAMS2(test_transform_float_nan, 0x7FFFFFFF, RC_MEMSIZE_DOUBLE32);
 
   TEST_PARAMS3(test_transform_double32, 0x000000C0, RC_MEMSIZE_DOUBLE32_BE, -2.0);
