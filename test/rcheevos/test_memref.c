@@ -107,7 +107,7 @@ static void test_transform_double32(uint32_t value, uint8_t size, double expecte
   if (fabs(expected) != 0.0) {
     const double digits = floor(log10(fabs(expected))) + 1;
     const double expected_pow = pow(10, 6 - digits);
-    expected = rc_round(expected * expected_pow) / expected_pow; /* floor(n + 0.5) = round(n) [not in c89] */
+    expected = rc_round(expected * expected_pow) / expected_pow;
     typed_value.value.f32 = (float)(rc_round(typed_value.value.f32 * expected_pow) / expected_pow);
   }
 
