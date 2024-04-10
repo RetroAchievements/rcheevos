@@ -204,6 +204,7 @@ static void rc_client_init_raintegration(rc_client_t* client,
       /* attach the external client and call the callback */
       client->state.external_client = external_client;
 
+      client->state.raintegration->hMainWindow = version_validation_callback_data->main_window_handle;
       client->state.raintegration->bIsInited = 1;
 
       version_validation_callback_data->callback(RC_OK, NULL,
@@ -352,12 +353,14 @@ rc_client_async_handle_t* rc_client_begin_load_raintegration(rc_client_t* client
 
 void rc_client_raintegration_update_main_window_handle(rc_client_t* client, HWND main_window_handle)
 {
-   if (client && client->state.raintegration &&
-       client->state.raintegration->bIsInited &&
-       client->state.raintegration->update_main_window_handle)
-   {
+  if (client && client->state.raintegration) {
+    client->state.raintegration->hMainWindow = main_window_handle;
+
+    if (client->state.raintegration->bIsInited &&
+        client->state.raintegration->update_main_window_handle) {
       client->state.raintegration->update_main_window_handle(main_window_handle);
-   }
+    }
+  }
 }
 
 void rc_client_raintegration_set_write_memory_function(rc_client_t* client, rc_client_raintegration_write_memory_func_t handler)
@@ -383,8 +386,7 @@ const rc_client_raintegration_menu_t* rc_client_raintegration_get_menu(const rc_
 {
   if (!client || !client->state.raintegration ||
       !client->state.raintegration->bIsInited ||
-      !client->state.raintegration->get_menu)
-  {
+      !client->state.raintegration->get_menu) {
     return NULL;
   }
 
@@ -394,9 +396,8 @@ const rc_client_raintegration_menu_t* rc_client_raintegration_get_menu(const rc_
 int rc_client_raintegration_has_modifications(const rc_client_t* client)
 {
   if (!client || !client->state.raintegration ||
-    !client->state.raintegration->bIsInited ||
-    !client->state.raintegration->has_modifications)
-  {
+      !client->state.raintegration->bIsInited ||
+      !client->state.raintegration->has_modifications) {
     return 0;
   }
 
@@ -464,6 +465,9 @@ void rc_client_raintegration_rebuild_submenu(rc_client_t* client, HMENU hMenu)
          AppendMenuA(hMenu, flags, (UINT_PTR)hPopupMenu, menuText);
       else
          ModifyMenuA(hMenu, nIndex, flags | MF_BYPOSITION, (UINT_PTR)hPopupMenu, menuText);
+
+      if (client->state.raintegration->hMainWindow && GetMenu(client->state.raintegration->hMainWindow) == hMenu)
+        DrawMenuBar(client->state.raintegration->hMainWindow);
    }
 
    client->state.raintegration->hPopupMenu = hPopupMenu;

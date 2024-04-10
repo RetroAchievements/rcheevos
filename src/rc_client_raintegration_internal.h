@@ -27,6 +27,7 @@ typedef int (RC_CCONV* rc_client_raintegration_get_int_func_t)(void);
 typedef struct rc_client_raintegration_t
 {
   HINSTANCE hDLL;
+  HWND hMainWindow;
   HMENU hPopupMenu;
   uint8_t bIsInited;
 
