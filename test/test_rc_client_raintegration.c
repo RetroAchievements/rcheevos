@@ -355,6 +355,27 @@ static void test_activate_menu_item(void)
   ASSERT_NUM_EQUALS(g_uint32, 1704);
 }
 
+static void rc_client_integration_set_console_id(int console_id)
+{
+  g_uint32 = console_id;
+}
+
+static void test_set_console_id(void)
+{
+  g_client = mock_client_with_integration();
+  g_client->state.raintegration->set_console_id = rc_client_integration_set_console_id;
+
+  g_uint32 = 0;
+  rc_client_raintegration_set_console_id(g_client, RC_CONSOLE_NINTENDO);
+  ASSERT_NUM_EQUALS(g_uint32, RC_CONSOLE_NINTENDO);
+
+  rc_client_raintegration_set_console_id(g_client, RC_CONSOLE_PLAYSTATION);
+  ASSERT_NUM_EQUALS(g_uint32, RC_CONSOLE_PLAYSTATION);
+
+  rc_client_raintegration_set_console_id(g_client, RC_CONSOLE_MEGA_DRIVE);
+  ASSERT_NUM_EQUALS(g_uint32, RC_CONSOLE_MEGA_DRIVE);
+}
+
 static int rc_client_integration_has_modifications(void)
 {
   return (int)g_uint32;
@@ -407,6 +428,9 @@ void test_client_raintegration(void) {
   /* menu */
   TEST(test_get_menu);
   TEST(test_activate_menu_item);
+
+  /* set_console_id */
+  TEST(test_set_console_id);
 
   /* has_modifications */
   TEST(test_has_modifications);

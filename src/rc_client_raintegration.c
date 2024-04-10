@@ -69,6 +69,7 @@ static void rc_client_raintegration_load_dll(rc_client_t* client,
   raintegration->get_host_url = (rc_client_raintegration_get_string_func_t)GetProcAddress(hDLL, "_RA_HostUrl");
   raintegration->init_client = (rc_client_raintegration_init_client_func_t)GetProcAddress(hDLL, "_RA_InitClient");
   raintegration->init_client_offline = (rc_client_raintegration_init_client_func_t)GetProcAddress(hDLL, "_RA_InitOffline");
+  raintegration->set_console_id = (rc_client_raintegration_set_int_func_t)GetProcAddress(hDLL, "_RA_SetConsoleID");
   raintegration->shutdown = (rc_client_raintegration_action_func_t)GetProcAddress(hDLL, "_RA_Shutdown");
 
   raintegration->update_main_window_handle = (rc_client_raintegration_hwnd_action_func_t)GetProcAddress(hDLL, "_RA_UpdateHWnd");
@@ -392,6 +393,12 @@ const rc_client_raintegration_menu_t* rc_client_raintegration_get_menu(const rc_
   }
 
   return client->state.raintegration->get_menu();
+}
+
+void rc_client_raintegration_set_console_id(rc_client_t* client, uint32_t console_id)
+{
+  if (client && client->state.raintegration && client->state.raintegration->set_console_id)
+    client->state.raintegration->set_console_id(console_id);
 }
 
 int rc_client_raintegration_has_modifications(const rc_client_t* client)

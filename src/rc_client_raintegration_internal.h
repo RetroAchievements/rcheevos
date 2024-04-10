@@ -23,6 +23,7 @@ typedef int (RC_CCONV* rc_client_raintegration_activate_menuitem_func_t)(uint32_
 typedef void (RC_CCONV* rc_client_raintegration_set_write_memory_func_t)(rc_client_t* pClient, rc_client_raintegration_write_memory_func_t handler);
 typedef void (RC_CCONV* rc_client_raintegration_set_get_game_name_func_t)(rc_client_t* pClient, rc_client_raintegration_get_game_name_func_t handler);
 typedef void (RC_CCONV* rc_client_raintegration_set_event_handler_func_t)(rc_client_t* pClient, rc_client_raintegration_event_handler_t handler);
+typedef void (RC_CCONV* rc_client_raintegration_set_int_func_t)(int);
 typedef int (RC_CCONV* rc_client_raintegration_get_int_func_t)(void);
 
 typedef struct rc_client_raintegration_t
@@ -36,6 +37,7 @@ typedef struct rc_client_raintegration_t
   rc_client_raintegration_get_string_func_t get_host_url;
   rc_client_raintegration_init_client_func_t init_client;
   rc_client_raintegration_init_client_func_t init_client_offline;
+  rc_client_raintegration_set_int_func_t set_console_id;
   rc_client_raintegration_action_func_t shutdown;
 
   rc_client_raintegration_hwnd_action_func_t update_main_window_handle;
