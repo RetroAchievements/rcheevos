@@ -17,6 +17,7 @@ typedef const char* (RC_CCONV* rc_client_raintegration_get_string_func_t)(void);
 typedef int (RC_CCONV* rc_client_raintegration_init_client_func_t)(HWND hMainWnd, const char* sClientName, const char* sClientVersion);
 typedef int (RC_CCONV* rc_client_raintegration_get_external_client_func_t)(rc_client_external_t* pClient, int nVersion);
 typedef void (RC_CCONV* rc_client_raintegration_hwnd_action_func_t)(HWND hWnd);
+typedef int (RC_CCONV* rc_client_raintegration_get_achievement_state_func_t)(uint32_t nMenuItemId);
 typedef const rc_client_raintegration_menu_t* (RC_CCONV* rc_client_raintegration_get_menu_func_t)(void);
 typedef int (RC_CCONV* rc_client_raintegration_activate_menuitem_func_t)(uint32_t nMenuItemId);
 typedef void (RC_CCONV* rc_client_raintegration_set_write_memory_func_t)(rc_client_t* pClient, rc_client_raintegration_write_memory_func_t handler);
@@ -45,6 +46,7 @@ typedef struct rc_client_raintegration_t
   rc_client_raintegration_get_menu_func_t get_menu;
   rc_client_raintegration_activate_menuitem_func_t activate_menu_item;
   rc_client_raintegration_get_int_func_t has_modifications;
+  rc_client_raintegration_get_achievement_state_func_t get_achievement_state;
 
   rc_client_raintegration_get_external_client_func_t get_external_client;
 

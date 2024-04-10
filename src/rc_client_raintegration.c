@@ -80,6 +80,7 @@ static void rc_client_raintegration_load_dll(rc_client_t* client,
   raintegration->set_get_game_name_function = (rc_client_raintegration_set_get_game_name_func_t)GetProcAddress(hDLL, "_Rcheevos_SetRAIntegrationGetGameNameFunction");
   raintegration->set_event_handler = (rc_client_raintegration_set_event_handler_func_t)GetProcAddress(hDLL, "_Rcheevos_SetRAIntegrationEventHandler");
   raintegration->has_modifications = (rc_client_raintegration_get_int_func_t)GetProcAddress(hDLL, "_Rcheevos_HasModifications");
+  raintegration->get_achievement_state = (rc_client_raintegration_get_achievement_state_func_t)GetProcAddress(hDLL, "_Rcheevos_GetAchievementState");
 
   if (!raintegration->get_version ||
       !raintegration->init_client ||
@@ -402,6 +403,17 @@ int rc_client_raintegration_has_modifications(const rc_client_t* client)
   }
 
   return client->state.raintegration->has_modifications();
+}
+
+int rc_client_raintegration_get_achievement_state(const rc_client_t* client, uint32_t achievement_id)
+{
+  if (!client || !client->state.raintegration ||
+      !client->state.raintegration->bIsInited ||
+      !client->state.raintegration->get_achievement_state) {
+    return RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_NONE;
+  }
+
+  return client->state.raintegration->get_achievement_state(achievement_id);
 }
 
 void rc_client_raintegration_rebuild_submenu(rc_client_t* client, HMENU hMenu)

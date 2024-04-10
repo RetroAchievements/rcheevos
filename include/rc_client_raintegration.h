@@ -28,6 +28,14 @@ typedef struct rc_client_raintegration_menu_t {
 } rc_client_raintegration_menu_t;
 
 enum {
+  RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_NONE = 0,
+  RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_PUBLISHED = 1,
+  RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_LOCAL = 2,
+  RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_MODIFIED = 3,
+  RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_INSECURE = 4,
+};
+
+enum {
   RC_CLIENT_RAINTEGRATION_EVENT_TYPE_NONE = 0,
   RC_CLIENT_RAINTEGRATION_EVENT_MENUITEM_CHECKED_CHANGED = 1, /* [menu_item] checked changed */
   RC_CLIENT_RAINTEGRATION_EVENT_HARDCORE_CHANGED = 2, /* hardcore was enabled or disabled */
@@ -81,6 +89,8 @@ RC_EXPORT int RC_CCONV rc_client_raintegration_has_modifications(const rc_client
 
 RC_EXPORT void RC_CCONV rc_client_raintegration_set_event_handler(rc_client_t* client,
     rc_client_raintegration_event_handler_t handler);
+
+RC_EXPORT int RC_CCONV rc_client_raintegration_get_achievement_state(const rc_client_t* client, uint32_t achievement_id);
 
 #endif /* RC_CLIENT_SUPPORTS_RAINTEGRATION */
 
