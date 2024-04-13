@@ -442,7 +442,7 @@ static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
      * to be addressable at addresses not supported by the native system. 0x10000-0x16000 is reserved
      * for the extra banks of system memory that are exclusive to the GameBoy Color. */
     { 0x010000U, 0x015FFFU, 0x010000U, RC_MEMORY_TYPE_UNUSED, "Unused (GameBoy Color exclusive)" },
-    { 0x010000U, 0x02DFFFU, 0x016000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM (banks 1-15)" },
+    { 0x016000U, 0x033FFFU, 0x016000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM (banks 1-15)" },
 };
 static const rc_memory_regions_t rc_memory_regions_megaduck = { _rc_memory_regions_gameboy, 16 };
 static const rc_memory_regions_t rc_memory_regions_gameboy = { _rc_memory_regions_gameboy, 18 };
