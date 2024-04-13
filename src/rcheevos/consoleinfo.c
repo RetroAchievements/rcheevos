@@ -439,11 +439,13 @@ static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
 
     /* GameBoy's cartridge RAM may have a total of up to 16 banks that can be paged through $A000-$BFFF.
      * It is desirable to always have access to these extra banks. We do this by expecting the extra banks
-     * to be addressable at addresses not supported by the native system. */
-    { 0x010000U, 0x02DFFFU, 0x010000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Cartridge RAM (banks 1-15)" },
+     * to be addressable at addresses not supported by the native system. 0x10000-0x16000 is reserved
+     * for the extra banks of system memory that are exclusive to the GameBoy Color. */
+    { 0x010000U, 0x015FFFU, 0x010000U, RC_MEMORY_TYPE_UNUSED, "Unused (GameBoy Color exclusive)" },
+    { 0x010000U, 0x02DFFFU, 0x016000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM (banks 1-15)" },
 };
 static const rc_memory_regions_t rc_memory_regions_megaduck = { _rc_memory_regions_gameboy, 16 };
-static const rc_memory_regions_t rc_memory_regions_gameboy = { _rc_memory_regions_gameboy, 17 };
+static const rc_memory_regions_t rc_memory_regions_gameboy = { _rc_memory_regions_gameboy, 18 };
 
 /* ===== GameBoy Color ===== */
 static const rc_memory_region_t _rc_memory_regions_gameboy_color[] = {
