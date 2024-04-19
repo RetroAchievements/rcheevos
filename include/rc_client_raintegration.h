@@ -85,6 +85,7 @@ RC_EXPORT int RC_CCONV rc_client_raintegration_activate_menu_item(const rc_clien
 
 RC_EXPORT void RC_CCONV rc_client_raintegration_set_write_memory_function(rc_client_t* client, rc_client_raintegration_write_memory_func_t handler);
 RC_EXPORT void RC_CCONV rc_client_raintegration_set_get_game_name_function(rc_client_t* client, rc_client_raintegration_get_game_name_func_t handler);
+RC_EXPORT void RC_CCONV rc_client_raintegration_set_console_id(rc_client_t* client, uint32_t console_id);
 RC_EXPORT int RC_CCONV rc_client_raintegration_has_modifications(const rc_client_t* client);
 
 RC_EXPORT void RC_CCONV rc_client_raintegration_set_event_handler(rc_client_t* client,
