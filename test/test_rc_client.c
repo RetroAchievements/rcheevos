@@ -1243,6 +1243,36 @@ static void test_get_user_game_summary_no_achievements(void)
   rc_client_destroy(g_client);
 }
 
+static void rc_client_callback_expect_unknown_game(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_NO_GAME_LOADED);
+  ASSERT_STR_EQUALS(error_message, "Unknown game");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
+static void test_get_user_game_summary_unknown_game(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 0);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 0);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- load game ----- */
 
 static void rc_client_callback_expect_hash_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
@@ -1266,14 +1296,6 @@ static void test_load_game_required_fields(void)
   rc_client_destroy(g_client);
 }
 
-static void rc_client_callback_expect_unknown_game(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
-{
-  ASSERT_NUM_EQUALS(result, RC_NO_GAME_LOADED);
-  ASSERT_STR_EQUALS(error_message, "Unknown game");
-  ASSERT_PTR_EQUALS(client, g_client);
-  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
-}
-
 static void test_load_game_unknown_hash(void)
 {
   g_client = mock_client_logged_in();
@@ -1282,12 +1304,15 @@ static void test_load_game_unknown_hash(void)
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
 
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
+  ASSERT_NUM_EQUALS(rc_client_is_game_loaded(g_client), 0);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NOT_NULL(g_client->game);
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
+  ASSERT_NUM_EQUALS(rc_client_is_game_loaded(g_client), 0);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
     ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
@@ -1296,6 +1321,11 @@ static void test_load_game_unknown_hash(void)
     ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
     ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
     ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 0);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 0);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.id, 0);
+    ASSERT_STR_EQUALS(g_client->game->subsets->public_.title, "");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->active, 0);
   }
   rc_client_destroy(g_client);
 }
@@ -1375,12 +1405,15 @@ static void test_load_game(void)
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
+  ASSERT_NUM_EQUALS(rc_client_is_game_loaded(g_client), 0);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NOT_NULL(g_client->game);
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
+  ASSERT_NUM_EQUALS(rc_client_is_game_loaded(g_client), 1);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
     ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
@@ -9112,6 +9145,7 @@ void test_client(void) {
   TEST(test_get_user_game_summary_with_unsupported_unlocks);
   TEST(test_get_user_game_summary_with_unofficial_off);
   TEST(test_get_user_game_summary_no_achievements);
+  TEST(test_get_user_game_summary_unknown_game);
 
   /* load game */
   TEST(test_load_game_required_fields);
