@@ -11,6 +11,7 @@
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <share.h>
 #endif
 
 /* arbitrary limit to prevent allocating and hashing large files */
@@ -53,9 +54,9 @@ static void rc_hash_verbose(const char* message)
 static struct rc_hash_filereader filereader_funcs;
 static struct rc_hash_filereader* filereader = NULL;
 
+#if defined(WINVER) && WINVER >= 0x0500
 static void* filereader_open(const char* path)
 {
-#if defined(WINVER) && WINVER >= 0x0500
   /* Windows requires using wchar APIs for Unicode paths */
   /* Note that MultiByteToWideChar will only be defined for >= Windows 2000 */
   wchar_t* wpath;
@@ -76,21 +77,34 @@ static void* filereader_open(const char* path)
     free(wpath);
     return NULL;
   }
-#if defined(__STDC_WANT_SECURE_LIB__)
-  _wfopen_s(&fp, wpath, L"rb");
-#else
+
+ #if defined(__STDC_WANT_SECURE_LIB__)
+  /* have to use _SH_DENYNO because some cores lock the file while its loaded */
+  fp = _wfsopen(wpath, L"rb", _SH_DENYNO);
+ #else
   fp = _wfopen(wpath, L"rb");
-#endif
+ #endif
+
   free(wpath);
   return fp;
-#elif defined(__STDC_WANT_SECURE_LIB__)
-  FILE* fp;
-  fopen_s(&fp, path, "rb");
-  return fp;
-#else
-  return fopen(path, "rb");
-#endif
 }
+#else /* !WINVER >= 0x0500 */
+static void* filereader_open(const char* path)
+{
+ #if defined(__STDC_WANT_SECURE_LIB__)
+  #if defined(WINVER)
+   /* have to use _SH_DENYNO because some cores lock the file while its loaded */
+   return _fsopen(path, "rb", _SH_DENYNO);
+  #else /* !WINVER */
+   FILE *fp;
+   fopen_s(&fp, path, "rb");
+   return fp;
+  #endif
+ #else /* !__STDC_WANT_SECURE_LIB__ */
+  return fopen(path, "rb");
+ #endif
+}
+#endif /* WINVER >= 0x0500 */
 
 static void filereader_seek(void* file_handle, int64_t offset, int origin)
 {
