@@ -475,7 +475,7 @@ static const rc_memory_region_t _rc_memory_regions_game_gear[] = {
      */
     { 0x002000U, 0x009FFFU, 0x010000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
 };
-static const rc_memory_regions_t rc_memory_regions_game_gear = { _rc_memory_regions_game_gear, 1 };
+static const rc_memory_regions_t rc_memory_regions_game_gear = { _rc_memory_regions_game_gear, 2 };
 
 /* ===== Intellivision ===== */
 /* http://wiki.intellivision.us/index.php/Memory_Map */
@@ -551,7 +551,7 @@ static const rc_memory_region_t _rc_memory_regions_master_system[] = {
      */
     { 0x002000U, 0x009FFFU, 0x010000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
 };
-static const rc_memory_regions_t rc_memory_regions_master_system = { _rc_memory_regions_master_system, 1 };
+static const rc_memory_regions_t rc_memory_regions_master_system = { _rc_memory_regions_master_system, 2 };
 
 /* ===== MegaDrive (Genesis) ===== */
 /* https://www.smspower.org/Development/MemoryMap */
