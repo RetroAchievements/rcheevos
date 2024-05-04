@@ -1947,13 +1947,13 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
       if (!subset->public_.title) {
         const char* core_subset_title = rc_client_subset_extract_title(load_state->game, load_state->game->public_.title);
         if (core_subset_title) {
-           rc_client_subset_info_t* scan = load_state->game->subsets;
-           for (; scan; scan = scan->next) {
-              if (scan->public_.title == load_state->game->public_.title) {
-                 scan->public_.title = core_subset_title;
-                 break;
-              }
-           }
+          scan = load_state->game->subsets;
+          for (; scan; scan = scan->next) {
+            if (scan->public_.title == load_state->game->public_.title) {
+              scan->public_.title = core_subset_title;
+              break;
+            }
+          }
         }
 
         subset->public_.title = rc_buffer_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
