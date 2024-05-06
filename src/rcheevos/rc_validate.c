@@ -442,22 +442,6 @@ static int rc_validate_is_combining_condition(const rc_condition_t* condition)
   }
 }
 
-static const rc_condition_t* rc_validate_next_non_combining_condition(const rc_condition_t* condition)
-{
-  int is_combining = rc_validate_is_combining_condition(condition);
-  for (condition = condition->next; condition != NULL; condition = condition->next)
-  {
-    if (rc_validate_is_combining_condition(condition))
-      is_combining = 1;
-    else if (is_combining)
-      is_combining = 0;
-    else
-      return condition;
-  }
-
-  return NULL;
-}
-
 static int rc_validate_get_opposite_comparison(int oper)
 {
   switch (oper)
