@@ -656,6 +656,22 @@ static int rc_validate_comparison_overlap(int comparison1, uint32_t value1, int 
   return RC_OVERLAP_NONE;
 }
 
+static int rc_validate_are_operands_equal(const rc_operand_t* oper1, const rc_operand_t* oper2)
+{
+  if (oper1->type != oper2->type)
+    return 0;
+
+  switch (oper1->type)
+  {
+  case RC_OPERAND_CONST:
+    return (oper1->value.num == oper2->value.num);
+  case RC_OPERAND_FP:
+    return (oper1->value.dbl == oper2->value.dbl);
+  default:
+    return (oper1->value.memref->address == oper2->value.memref->address && oper1->size == oper2->size);
+  }
+}
+
 static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, const rc_condset_t* compare_conditions,
     const char* prefix, const char* compare_prefix, char result[], const size_t result_size)
 {
@@ -665,6 +681,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
   const rc_operand_t* operand2;
   const rc_condition_t* compare_condition;
   const rc_condition_t* condition;
+  const rc_condition_t* condition_chain_start;
   int overlap;
 
   /* empty group */
@@ -672,9 +689,14 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
     return 1;
 
   /* outer loop is the source conditions */
-  for (condition = conditions->conditions; condition != NULL;
-      condition = rc_validate_next_non_combining_condition(condition))
+  for (condition = conditions->conditions; condition != NULL; condition = condition->next)
   {
+    condition_chain_start = condition;
+    while (rc_condition_is_combining(condition))
+      condition = condition->next;
+    if (!condition)
+      break;
+
     /* hits can be captured at any time, so any potential conflict will not be conflicting at another time */
     if (condition->required_hits)
       continue;
@@ -699,11 +721,62 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
     }
 
     /* inner loop is the potentially conflicting conditions */
-    for (compare_condition = compare_conditions->conditions; compare_condition != NULL;
-        compare_condition = rc_validate_next_non_combining_condition(compare_condition))
+    for (compare_condition = compare_conditions->conditions; compare_condition != NULL; compare_condition = compare_condition->next)
     {
-      if (compare_condition == condition)
+      if (compare_condition == condition_chain_start)
+      {
+        /* skip condition we're already looking at */
+        while (compare_condition != condition)
+          compare_condition = compare_condition->next;
+
         continue;
+      }
+
+      /* if combining conditions exist, make sure the same combining conditions exist in the
+       * compare logic. conflicts can only occur if the combinining conditions match. */
+      if (condition_chain_start != condition)
+      {
+        int chain_matches = 1;
+        const rc_condition_t* condition_chain_iter = condition_chain_start;
+        while (condition_chain_iter != condition)
+        {
+          if (compare_condition->type != condition_chain_iter->type ||
+            compare_condition->oper != condition_chain_iter->oper ||
+            compare_condition->required_hits != condition_chain_iter->required_hits ||
+            !rc_validate_are_operands_equal(&compare_condition->operand1, &condition_chain_iter->operand1))
+          {
+            chain_matches = 0;
+            break;
+          }
+
+          if (compare_condition->oper != RC_OPERATOR_NONE &&
+            !rc_validate_are_operands_equal(&compare_condition->operand2, &condition_chain_iter->operand2))
+          {
+            if (compare_condition->operand2.type != condition_chain_iter->operand2.type)
+            {
+              chain_matches = 0;
+              break;
+            }
+          }
+
+          if (!compare_condition->next)
+          {
+            chain_matches = 0;
+            break;
+          }
+
+          compare_condition = compare_condition->next;
+          condition_chain_iter = condition_chain_iter->next;
+        }
+
+        /* combining field didn't match, or there's more unmatched combining fields. ignore this condition */
+        if (!chain_matches || rc_validate_is_combining_condition(compare_condition))
+        {
+          while (compare_condition->next && rc_validate_is_combining_condition(compare_condition))
+            compare_condition = compare_condition->next;
+          continue;
+        }
+      }
 
       if (compare_condition->required_hits)
         continue;
