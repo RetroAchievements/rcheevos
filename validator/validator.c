@@ -92,6 +92,7 @@ static const char* operator_string(char oper) {
     case RC_OPERATOR_XOR: return "^";
     case RC_OPERATOR_MULT: return "*";
     case RC_OPERATOR_DIV: return "/";
+    case RC_OPERATOR_MOD: return "%";
     case RC_OPERATOR_EQ: return "=";
     case RC_OPERATOR_NE: return "!=";
     case RC_OPERATOR_GE: return ">=";
