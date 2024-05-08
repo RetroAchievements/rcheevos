@@ -1832,6 +1832,37 @@ static void test_hash_psp_video()
   ASSERT_NUM_EQUALS(result_iterator, 0);
 }
 
+static void test_hash_psp_homebrew()
+{
+  const size_t image_size = 3532124;
+  uint8_t* image = generate_generic_file(image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "fcde8760893b09e508e5f4fe642eb132";
+
+  mock_file(0, "eboot.pbp", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PSP, "eboot.pbp");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "eboot.pbp", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
 static void test_hash_sega_cd()
 {
   /* the first 512 bytes of sector 0 are a volume header and ROM header. 
@@ -2339,6 +2370,7 @@ void test_hash(void) {
   /* Playstation Portable */
   TEST(test_hash_psp);
   TEST(test_hash_psp_video);
+  TEST(test_hash_psp_homebrew);
 
   /* Pokemon Mini */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_POKEMON_MINI, "test.min", 524288, "68f0f13b598e0b66461bc578375c3888");
