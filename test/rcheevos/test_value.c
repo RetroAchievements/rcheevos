@@ -586,7 +586,7 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "A:0xH0000%0xH0001_M:0", 0); /* 0%18 = 0 */
   TEST_PARAMS2(test_evaluate_value, "A:f5.5%f2.0_M:0", 1) /* 5.5 % 2.0 = 1.5 -> 1 */
   TEST_PARAMS2(test_evaluate_value, "A:f123.7%f5.65_M:0", 5) /* 123.7 % 5.65 = 5.05 -> 5 */
-  TEST_PARAMS2(test_evaluate_value, "A:0xH01%f7.5_A:0xH02%f5.5_M:0", 5); /* 18%7.3 = 3.4, 52%5.5=2.5, becomes 3+3=5*/
+  TEST_PARAMS2(test_evaluate_value, "A:0xH01%f7.5_A:0xH02%f5.5_M:0", 5); /* 18%7.3 = 3.4, 52%5.5=2.5, becomes 3+2=5*/
 
   /* rounding */
   TEST_PARAMS2(test_evaluate_value, "0xH03/2_0xH03/2", 0xAA); /* integer division results in rounding */
