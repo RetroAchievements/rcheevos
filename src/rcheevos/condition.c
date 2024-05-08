@@ -335,7 +335,7 @@ int rc_parse_condition_comment(rc_condition_t* self, const char** memaddr, rc_pa
     aux += 2;
 
     /* comment appears before hits */
-    if (strncmp(aux, "(", 1) == 0 || strncmp(aux, ".", 1)) {
+    if (strncmp(aux, "(", 1) == 0 || strncmp(aux, ".", 1) == 0) {
       parse->offset = RC_MALFORMED_COMMENT;
       return 0;
     }
