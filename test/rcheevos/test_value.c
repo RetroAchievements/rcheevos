@@ -665,6 +665,12 @@ void test_value(void) {
   /* overflow - 145406052 * 86 = 125049208332 -> 0x1D1D837E0C, leading 0x1D is truncated off */
   TEST_PARAMS2(test_evaluate_value, "0xX0001*0xH0004", 0x1D837E0C);
 
+  /* comments do not affect evaluation*/
+  TEST_PARAMS2(test_evaluate_value, "C:0xH0000=0{-comment-}_D:0xH0001=18_M:0xH0002=52", 1);
+  TEST_PARAMS2(test_evaluate_value, "C:0xH0000=0_D:0xH0001=18{-after second condition-}_M:0xH0002=52", 1);
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001%3_A:0xH0002%4{-after second condition-}_M:0", 0x12 % 3 + 0x34 % 4);
+  TEST_PARAMS2(test_evaluate_value, "C:0xH0000=0_D:0xH0001=18_M:0xH0002=52{-comment with\\r\\nnew lines-}", 1);
+
   test_typed_value_conversion();
   test_typed_value_addition();
   test_typed_value_multiplication();

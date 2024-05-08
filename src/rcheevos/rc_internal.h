@@ -160,6 +160,7 @@ enum {
   RC_PROCESSING_COMPARE_ALWAYS_FALSE
 };
 
+int rc_parse_condition_comment(rc_condition_t* self, const char** memaddr, rc_parse_state_t* parse);
 rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse, uint8_t is_indirect);
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state);
 void rc_evaluate_condition_value(rc_typed_value_t* value, rc_condition_t* self, rc_eval_state_t* eval_state);

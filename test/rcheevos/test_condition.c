@@ -564,5 +564,16 @@ void test_condition(void) {
   TEST(test_condition_delta_24bit);
   TEST(test_condition_prior_24bit);
 
+  /* Condition Comments */
+  TEST_PARAMS5(test_parse_condition, "0xH1234=8{-this is a comment-}", RC_CONDITION_STANDARD, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
+  TEST_PARAMS5(test_parse_condition, "A:0xH1234*8{-this is a comment-}", RC_CONDITION_ADD_SOURCE, RC_OPERAND_ADDRESS, RC_OPERATOR_MULT, 0);
+  TEST_PARAMS5(test_parse_condition, "0xH1234=8{-this is\\r\\na comment with multiple lines-}", RC_CONDITION_STANDARD, RC_OPERAND_ADDRESS, RC_OPERATOR_EQ, 0);
+  TEST_PARAMS2(test_parse_condition_error, "0x1234=1.2.{-this is a comment", RC_MALFORMED_COMMENT); /* missing comment closure */
+  TEST_PARAMS2(test_parse_condition_error, "0x1234=1{-this is a comment-}.2.", RC_MALFORMED_COMMENT); /* comment before hits */
+  TEST_PARAMS2(test_parse_condition_error, "{-this is a comment-}0x1234=1.2.", RC_INVALID_MEMORY_OPERAND); /* comment before operand */
+  TEST_PARAMS2(test_parse_condition_error, "{-this is a comment-}A:0xH1234*8", RC_INVALID_MEMORY_OPERAND); /* comment where flag or operator expected */
+  TEST_PARAMS2(test_parse_condition_error, "0x1234={-this is a comment-}1", RC_INVALID_MEMORY_OPERAND); /* comment before second operand */
+  TEST_PARAMS2(test_parse_condition_error, "A:0xH12{-this is a comment-}34*8", RC_INVALID_OPERATOR); /* comment where operator is expected */
+
   TEST_SUITE_END();
 }

@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 static int rc_test_condition_compare(uint32_t value1, uint32_t value2, uint8_t oper) {
   switch (oper) {
@@ -152,6 +153,7 @@ static int rc_parse_operator(const char** memaddr) {
       return RC_OPERATOR_NONE;
   }
 }
+
 
 rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse, uint8_t is_indirect) {
   rc_condition_t* self;
@@ -308,8 +310,39 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   if (parse->buffer != 0)
     self->optimized_comparator = rc_condition_determine_comparator(self);
 
+  result = rc_parse_condition_comment(self, &aux, parse);
+  if (result < 0) {
+    parse->offset = result;
+    return 0;
+  }
+
   *memaddr = aux;
   return self;
+}
+
+int rc_parse_condition_comment(rc_condition_t* self, const char** memaddr, rc_parse_state_t* parse) {
+  const char* aux = *memaddr;
+
+  if (strncmp(aux, "{-", 2) == 0) {
+    aux += 2;
+    size_t endComment = strcspn(aux, "-}");
+    self->comment = rc_alloc_str(parse, aux, endComment);
+    aux += endComment;
+    if (strncmp(aux, "-}", 2) != 0) { /* malformed comment */
+      parse->offset = RC_MALFORMED_COMMENT;
+      return 0;
+    }
+    aux += 2;
+
+    /* comment appears before hits */
+    if (strncmp(aux, "(", 1) == 0 || strncmp(aux, ".", 1)) {
+      parse->offset = RC_MALFORMED_COMMENT;
+      return 0;
+    }
+  }
+
+  *memaddr = aux;
+  return RC_OK;
 }
 
 int rc_condition_is_combining(const rc_condition_t* self) {

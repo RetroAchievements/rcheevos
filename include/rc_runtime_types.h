@@ -208,6 +208,9 @@ struct rc_condition_t {
 
   /* Unique identifier of optimized comparator to use. (RC_PROCESSING_COMPARE_*) */
   uint8_t optimized_comparator;
+
+  /* code comment for this condition */
+  const char* comment;
 };
 
 /*****************************************************************************\
