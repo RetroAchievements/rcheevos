@@ -445,6 +445,64 @@ static void test_typed_value_division() {
   TEST_PARAMS9(test_typed_value_divide, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_FLOAT, 0, -8.0, RC_VALUE_TYPE_FLOAT, 0, -0.39269875);
 }
 
+static void test_typed_value_mod(uint8_t type, uint32_t u32, double f32,
+  uint8_t amount_type, uint32_t amount_u32, double amount_f32,
+  uint8_t result_type, uint32_t result_u32, double result_f32) {
+  rc_typed_value_t value, amount;
+
+  init_typed_value(&value, type, u32, f32);
+  init_typed_value(&amount, amount_type, amount_u32, amount_f32);
+
+  rc_typed_value_modulus(&value, &amount);
+
+  assert_typed_value(&value, result_type, result_u32, result_f32);
+}
+
+static void test_typed_value_modulus() {
+  /* modulus with zero divisor */
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 6.0, RC_VALUE_TYPE_NONE, 0, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_NONE, 0, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0);
+
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_UNSIGNED, 0, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_SIGNED, 0, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 6.0, RC_VALUE_TYPE_FLOAT, 0, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0);
+
+  /* unsigned source */
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_UNSIGNED, 4, 0.0, RC_VALUE_TYPE_UNSIGNED, 2, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_FLOAT, 0, 4.0, RC_VALUE_TYPE_FLOAT, 0, 2.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_FLOAT, 0, 2.25, RC_VALUE_TYPE_FLOAT, 0, 1.5);
+
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_UNSIGNED, 0xFFFFFFFC, 0.0, RC_VALUE_TYPE_UNSIGNED, 6, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_SIGNED, (unsigned)-4, 0.0, RC_VALUE_TYPE_UNSIGNED, 6, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_FLOAT, 0, -4.0, RC_VALUE_TYPE_FLOAT, 0, 2.0);
+
+  /* signed source */
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_UNSIGNED, 4, 0.0, RC_VALUE_TYPE_SIGNED, (unsigned)-2, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_FLOAT, 0, 4.0, RC_VALUE_TYPE_FLOAT, 0, -2.0);
+
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_UNSIGNED, 0xFFFFFFFC, 0.0, RC_VALUE_TYPE_SIGNED, -2, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_SIGNED, (unsigned)-4, 0.0, RC_VALUE_TYPE_SIGNED, -2, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_FLOAT, 0, -4.0, RC_VALUE_TYPE_FLOAT, 0, -2.0);
+
+  /* float source (whole numbers) */
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 6.0, RC_VALUE_TYPE_UNSIGNED, 4, 0.0, RC_VALUE_TYPE_FLOAT, 0, 2.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 6.0, RC_VALUE_TYPE_FLOAT, 0, 4.0, RC_VALUE_TYPE_FLOAT, 0, 2.0);
+
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 6.0, RC_VALUE_TYPE_UNSIGNED, 0xFFFFFFFE, 0.0, RC_VALUE_TYPE_FLOAT, 0, 6.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 6.0, RC_VALUE_TYPE_SIGNED, (unsigned)-2, 0.0, RC_VALUE_TYPE_FLOAT, 0, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 6.0, RC_VALUE_TYPE_FLOAT, 0, -5.0, RC_VALUE_TYPE_FLOAT, 0, 1.0);
+
+  /* float source (non-whole numbers) */
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_UNSIGNED, 2, 0.0, RC_VALUE_TYPE_FLOAT, 0, 1.141590);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_SIGNED, (unsigned)-4, 0.0, RC_VALUE_TYPE_FLOAT, 0, 3.141590);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_FLOAT, 0, 2.0, RC_VALUE_TYPE_FLOAT, 0, 1.141590);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_FLOAT, 0, 1.570795, RC_VALUE_TYPE_FLOAT, 0, 0.0);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_FLOAT, 0, 6.023, RC_VALUE_TYPE_FLOAT, 0, 3.141590);
+  TEST_PARAMS9(test_typed_value_mod, RC_VALUE_TYPE_FLOAT, 0, 3.14159, RC_VALUE_TYPE_FLOAT, 0, -2.0, RC_VALUE_TYPE_FLOAT, 0, 1.141590);
+}
+
 static void test_typed_value_negate(char type, int i32, double f32, char expected_type, signed result_i32, double result_f32) {
   rc_typed_value_t value;
 
@@ -611,6 +669,7 @@ void test_value(void) {
   test_typed_value_addition();
   test_typed_value_multiplication();
   test_typed_value_division();
+  test_typed_value_modulus();
   test_typed_value_negation();
 
   TEST_SUITE_END();
