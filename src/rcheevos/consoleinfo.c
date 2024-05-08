@@ -418,7 +418,7 @@ static const rc_memory_region_t _rc_memory_regions_fairchild_channel_f[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_fairchild_channel_f = { _rc_memory_regions_fairchild_channel_f, 4 };
 
-/* ===== GameBoy / GameBoy Color ===== */
+/* ===== GameBoy / MegaDuck ===== */
 static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
     { 0x000000U, 0x0000FFU, 0x000000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Interrupt vector" },
     { 0x000100U, 0x00014FU, 0x000100U, RC_MEMORY_TYPE_READONLY, "Cartridge header" },
@@ -427,8 +427,37 @@ static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
     { 0x008000U, 0x0097FFU, 0x008000U, RC_MEMORY_TYPE_VIDEO_RAM, "Tile RAM" },
     { 0x009800U, 0x009BFFU, 0x009800U, RC_MEMORY_TYPE_VIDEO_RAM, "BG1 map data" },
     { 0x009C00U, 0x009FFFU, 0x009C00U, RC_MEMORY_TYPE_VIDEO_RAM, "BG2 map data" },
-    { 0x00A000U, 0x00BFFFU, 0x00A000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM"},
+    { 0x00A000U, 0x00BFFFU, 0x00A000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM (bank 0)"},
     { 0x00C000U, 0x00CFFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM (fixed)" },
+    { 0x00D000U, 0x00DFFFU, 0x00D000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM (fixed)" },
+    { 0x00E000U, 0x00FDFFU, 0x00C000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Echo RAM" },
+    { 0x00FE00U, 0x00FE9FU, 0x00FE00U, RC_MEMORY_TYPE_VIDEO_RAM, "Sprite RAM"},
+    { 0x00FEA0U, 0x00FEFFU, 0x00FEA0U, RC_MEMORY_TYPE_UNUSED, ""},
+    { 0x00FF00U, 0x00FF7FU, 0x00FF00U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Hardware I/O"},
+    { 0x00FF80U, 0x00FFFEU, 0x00FF80U, RC_MEMORY_TYPE_SYSTEM_RAM, "Quick RAM"},
+    { 0x00FFFFU, 0x00FFFFU, 0x00FFFFU, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Interrupt enable"},
+
+    /* GameBoy's cartridge RAM may have a total of up to 16 banks that can be paged through $A000-$BFFF.
+     * It is desirable to always have access to these extra banks. We do this by expecting the extra banks
+     * to be addressable at addresses not supported by the native system. 0x10000-0x16000 is reserved
+     * for the extra banks of system memory that are exclusive to the GameBoy Color. */
+    { 0x010000U, 0x015FFFU, 0x010000U, RC_MEMORY_TYPE_UNUSED, "Unused (GameBoy Color exclusive)" },
+    { 0x016000U, 0x033FFFU, 0x016000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM (banks 1-15)" },
+};
+static const rc_memory_regions_t rc_memory_regions_megaduck = { _rc_memory_regions_gameboy, 16 };
+static const rc_memory_regions_t rc_memory_regions_gameboy = { _rc_memory_regions_gameboy, 18 };
+
+/* ===== GameBoy Color ===== */
+static const rc_memory_region_t _rc_memory_regions_gameboy_color[] = {
+    { 0x000000U, 0x0000FFU, 0x000000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Interrupt vector" },
+    { 0x000100U, 0x00014FU, 0x000100U, RC_MEMORY_TYPE_READONLY, "Cartridge header" },
+    { 0x000150U, 0x003FFFU, 0x000150U, RC_MEMORY_TYPE_READONLY, "Cartridge ROM (fixed)" }, /* bank 0 */
+    { 0x004000U, 0x007FFFU, 0x004000U, RC_MEMORY_TYPE_READONLY, "Cartridge ROM (paged)" }, /* bank 1-XX (switchable) */
+    { 0x008000U, 0x0097FFU, 0x008000U, RC_MEMORY_TYPE_VIDEO_RAM, "Tile RAM" },
+    { 0x009800U, 0x009BFFU, 0x009800U, RC_MEMORY_TYPE_VIDEO_RAM, "BG1 map data" },
+    { 0x009C00U, 0x009FFFU, 0x009C00U, RC_MEMORY_TYPE_VIDEO_RAM, "BG2 map data" },
+    { 0x00A000U, 0x00BFFFU, 0x00A000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM (bank 0)"},
+    { 0x00C000U, 0x00CFFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM (bank 0)" },
     { 0x00D000U, 0x00DFFFU, 0x00D000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM (bank 1)" },
     { 0x00E000U, 0x00FDFFU, 0x00C000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Echo RAM" },
     { 0x00FE00U, 0x00FE9FU, 0x00FE00U, RC_MEMORY_TYPE_VIDEO_RAM, "Sprite RAM"},
@@ -437,14 +466,14 @@ static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
     { 0x00FF80U, 0x00FFFEU, 0x00FF80U, RC_MEMORY_TYPE_SYSTEM_RAM, "Quick RAM"},
     { 0x00FFFFU, 0x00FFFFU, 0x00FFFFU, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Interrupt enable"},
 
-    /* GameBoy Color provides six extra banks of memory that can be paged out through the $DXXX 
-     * memory space, but the timing of that does not correspond with blanks, which is when achievements 
-     * are processed. As such, it is desirable to always have access to these extra banks. We do this
-     * by expecting the extra banks to be addressable at addresses not supported by the native system. */
-    { 0x010000U, 0x015FFFU, 0x010000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM (banks 2-7, GBC only)" }
+    /* GameBoy Color provides 6 extra banks of system memory that can be paged out through the $D000-$DFFF,
+     * and the cartridge RAM may have a total of up to 16 banks page through $A000-$BFFF.
+     * It is desirable to always have access to these extra banks. We do this by expecting the extra banks
+     * to be addressable at addresses not supported by the native system. */
+    { 0x010000U, 0x015FFFU, 0x010000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM (banks 2-7)" },
+    { 0x016000U, 0x033FFFU, 0x016000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM (banks 1-15)" },
 };
-static const rc_memory_regions_t rc_memory_regions_gameboy = { _rc_memory_regions_gameboy, 16 };
-static const rc_memory_regions_t rc_memory_regions_gameboy_color = { _rc_memory_regions_gameboy, 17 };
+static const rc_memory_regions_t rc_memory_regions_gameboy_color = { _rc_memory_regions_gameboy_color, 18 };
 
 /* ===== GameBoy Advance ===== */
 /* http://problemkaputt.de/gbatek-gba-memory-map.htm */
@@ -973,8 +1002,7 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
 
     case RC_CONSOLE_FAIRCHILD_CHANNEL_F:
       return &rc_memory_regions_fairchild_channel_f;
-
-    case RC_CONSOLE_MEGADUCK:
+  
     case RC_CONSOLE_GAMEBOY:
       return &rc_memory_regions_gameboy;
 
@@ -1005,6 +1033,9 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
     case RC_CONSOLE_MEGA_DRIVE:
       return &rc_memory_regions_megadrive;
 
+    case RC_CONSOLE_MEGADUCK:
+      return &rc_memory_regions_megaduck;
+  
     case RC_CONSOLE_SEGA_32X:
       return &rc_memory_regions_megadrive_32x;
 
