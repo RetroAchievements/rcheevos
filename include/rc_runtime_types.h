@@ -176,7 +176,7 @@ enum {
   RC_OPERATOR_DIV,
   RC_OPERATOR_AND,
   RC_OPERATOR_XOR,
-  RC_OPERATOR_MOD,
+  RC_OPERATOR_MOD
 };
 
 typedef struct rc_condition_t rc_condition_t;
