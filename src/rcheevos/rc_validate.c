@@ -143,6 +143,12 @@ static uint32_t rc_scale_value(uint32_t value, uint8_t oper, const rc_operand_t*
     case RC_OPERATOR_XOR:
       return value | rc_max_value(operand);
 
+    case RC_OPERATOR_MOD:
+    {
+      const uint32_t divisor = (operand->type == RC_OPERAND_CONST) ? operand->value.num : 1;
+      return (divisor >= value) ? (divisor - 1) : value;
+    }
+
     default:
       return value;
   }
