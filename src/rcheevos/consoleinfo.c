@@ -463,11 +463,19 @@ static const rc_memory_region_t _rc_memory_regions_gamecube[] = {
 static const rc_memory_regions_t rc_memory_regions_gamecube = { _rc_memory_regions_gamecube, 1 };
 
 /* ===== Game Gear ===== */
-/* http://www.smspower.org/Development/MemoryMap */
+/* https://www.smspower.org/Development/MemoryMap */
+/* https://www.smspower.org/Development/Mappers */
 static const rc_memory_region_t _rc_memory_regions_game_gear[] = {
-    { 0x000000U, 0x001FFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+    { 0x000000U, 0x001FFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    /* GG/SMS have various possible mappings for cartridge memory depending on the mapper used.
+     * However, these ultimately do not map all of their memory at once, typically requiring banking.
+     * Thus, the "real address" used is just a virtual address mapping all cartridge memory in one contiguous block.
+     * Note that this may possibly refer to non-battery backed "extended RAM" so this isn't strictly RC_MEMORY_TYPE_SAVE_RAM.
+     * libretro cores expose "extended RAM" as RETRO_MEMORY_SAVE_RAM regardless however.
+     */
+    { 0x002000U, 0x009FFFU, 0x010000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
 };
-static const rc_memory_regions_t rc_memory_regions_game_gear = { _rc_memory_regions_game_gear, 1 };
+static const rc_memory_regions_t rc_memory_regions_game_gear = { _rc_memory_regions_game_gear, 2 };
 
 /* ===== Intellivision ===== */
 /* http://wiki.intellivision.us/index.php/Memory_Map */
@@ -531,14 +539,22 @@ static const rc_memory_region_t _rc_memory_regions_magnavox_odyssey_2[] = {
 static const rc_memory_regions_t rc_memory_regions_magnavox_odyssey_2 = { _rc_memory_regions_magnavox_odyssey_2, 2 };
 
 /* ===== Master System ===== */
-/* http://www.smspower.org/Development/MemoryMap */
+/* https://www.smspower.org/Development/MemoryMap */
+/* https://www.smspower.org/Development/Mappers */
 static const rc_memory_region_t _rc_memory_regions_master_system[] = {
-    { 0x000000U, 0x001FFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+    { 0x000000U, 0x001FFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    /* GG/SMS have various possible mappings for cartridge memory depending on the mapper used.
+     * However, these ultimately do not map all of their memory at once, typically requiring banking.
+     * Thus, the "real address" used is just a virtual address mapping all cartridge memory in one contiguous block.
+     * Note that this may possibly refer to non-battery backed "extended RAM" so this isn't strictly RC_MEMORY_TYPE_SAVE_RAM.
+     * libretro cores expose "extended RAM" as RETRO_MEMORY_SAVE_RAM regardless however.
+     */
+    { 0x002000U, 0x009FFFU, 0x010000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
 };
-static const rc_memory_regions_t rc_memory_regions_master_system = { _rc_memory_regions_master_system, 1 };
+static const rc_memory_regions_t rc_memory_regions_master_system = { _rc_memory_regions_master_system, 2 };
 
 /* ===== MegaDrive (Genesis) ===== */
-/* http://www.smspower.org/Development/MemoryMap */
+/* https://www.smspower.org/Development/MemoryMap */
 static const rc_memory_region_t _rc_memory_regions_megadrive[] = {
     { 0x000000U, 0x00FFFFU, 0xFF0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
     { 0x010000U, 0x01FFFFU, 0x000000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
@@ -772,7 +788,7 @@ static const rc_memory_region_t _rc_memory_regions_saturn[] = {
 static const rc_memory_regions_t rc_memory_regions_saturn = { _rc_memory_regions_saturn, 2 };
 
 /* ===== SG-1000 ===== */
-/* http://www.smspower.org/Development/MemoryMap */
+/* https://www.smspower.org/Development/MemoryMap */
 static const rc_memory_region_t _rc_memory_regions_sg1000[] = {
     { 0x000000U, 0x0003FFU, 0xC000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
     /* https://github.com/libretro/FBNeo/blob/697801c6262be6ca91615cf905444d3e039bc06f/src/burn/drv/sg1000/d_sg1000.cpp#L210-L237 */
