@@ -322,12 +322,13 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
 int rc_parse_condition_comment(rc_condition_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
+  size_t commendLen;
 
   if (strncmp(aux, "{-", 2) == 0) {
     aux += 2;
-    size_t endComment = strcspn(aux, "-}");
-    self->comment = rc_alloc_str(parse, aux, endComment);
-    aux += endComment;
+    commendLen = strcspn(aux, "-}");
+    self->comment = rc_alloc_str(parse, aux, commendLen);
+    aux += commendLen;
     if (strncmp(aux, "-}", 2) != 0) { /* malformed comment */
       parse->offset = RC_MALFORMED_COMMENT;
       return 0;
