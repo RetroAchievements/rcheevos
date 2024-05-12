@@ -140,6 +140,7 @@
     <ClCompile Include="..\src\rcheevos\condset.c" />
     <ClCompile Include="..\src\rcheevos\consoleinfo.c" />
     <ClCompile Include="..\src\rcheevos\format.c" />
+    <ClCompile Include="..\src\rcheevos\groupvar.c" />
     <ClCompile Include="..\src\rcheevos\lboard.c" />
     <ClCompile Include="..\src\rcheevos\memref.c" />
     <ClCompile Include="..\src\rcheevos\operand.c" />

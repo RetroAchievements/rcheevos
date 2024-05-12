@@ -164,6 +164,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   self->current_hits = 0;
   self->is_true = 0;
   self->pause = 0;
+  self->sets_gvar = 0;
   self->optimized_comparator = RC_PROCESSING_COMPARE_DEFAULT;
 
   if (*aux != 0 && aux[1] == ':') {
@@ -180,6 +181,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       case 'q': case 'Q': self->type = RC_CONDITION_MEASURED_IF; break;
       case 'i': case 'I': self->type = RC_CONDITION_ADD_ADDRESS; can_modify = 1; break;
       case 't': case 'T': self->type = RC_CONDITION_TRIGGER; break;
+      case 'v': case 'V': self->type = RC_CONDITION_SET_GROUP_VAR; break;
       case 'z': case 'Z': self->type = RC_CONDITION_RESET_NEXT_IF; break;
       case 'g': case 'G':
           parse->measured_as_percent = 1;
@@ -252,6 +254,13 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
             return 0;
         }
       }
+      /* Group variable Assignment must use EQ - Do we need to test this here? asset editors should enforce this. */
+      /* Alternately we'd want some sort of assignment operator. */
+      if (self->oper != RC_OPERATOR_EQ && self->type == RC_CONDITION_SET_GROUP_VAR) {
+        parse->offset = RC_INVALID_OPERATOR;
+        return 0;
+      }
+
       break;
   }
 
@@ -320,6 +329,7 @@ int rc_condition_is_combining(const rc_condition_t* self) {
     case RC_CONDITION_MEASURED_IF:
     case RC_CONDITION_TRIGGER:
     case RC_CONDITION_MEASURED:
+    case RC_CONDITION_SET_GROUP_VAR:
       return 0;
 
     default:

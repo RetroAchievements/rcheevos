@@ -24,14 +24,37 @@ static void rc_update_condition_pause(rc_condition_t* condition) {
   }
 }
 
+static void rc_update_condition_set_gvar(rc_condition_t* condition) {
+  rc_condition_t* subclause = condition;
+
+  while (condition) {
+    if (condition->type == RC_CONDITION_SET_GROUP_VAR) {
+      while (subclause != condition) {
+        subclause->sets_gvar = 1;
+        subclause = subclause->next;
+      }
+      condition->sets_gvar = 1;
+    }
+    else {
+      condition->sets_gvar = 0;
+    }
+
+    if (!rc_condition_is_combining(condition))
+      subclause = condition->next;
+
+    condition = condition->next;
+  }
+}
+
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, int is_value) {
   rc_condset_t* self;
   rc_condition_t** next;
   int in_add_address;
   uint32_t measured_target = 0;
 
+  parse->first_groupvar = 0; /* group vars are scoped to the condition set, so we do not want to end up re-using previous group's variables */
   self = RC_ALLOC(rc_condset_t, parse);
-  self->has_pause = self->is_paused = self->has_indirect_memrefs = 0;
+  self->has_pause = self->is_paused = self->has_group_vars = self->has_indirect_memrefs = 0;
   next = &self->conditions;
 
   if (**memaddr == 'S' || **memaddr == 's' || !**memaddr) {
@@ -69,6 +92,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
     }
 
     self->has_pause |= (*next)->type == RC_CONDITION_PAUSE_IF;
+    self->has_group_vars |= (*next)->type == RC_CONDITION_SET_GROUP_VAR;
     in_add_address = (*next)->type == RC_CONDITION_ADD_ADDRESS;
     self->has_indirect_memrefs |= in_add_address;
 
@@ -145,8 +169,10 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
 
   *next = 0;
 
-  if (parse->buffer != 0)
+  if (parse->buffer != 0) {
     rc_update_condition_pause(self->conditions);
+    rc_update_condition_set_gvar(self->conditions);
+  }
 
   return self;
 }
@@ -198,9 +224,9 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
   eval_state->add_hits = eval_state->add_address = 0;
 
   for (condition = self->conditions; condition != 0; condition = condition->next) {
-    if (condition->pause != processing_pause)
+    if ((condition->pause | condition->sets_gvar) != processing_pause)
       continue;
-
+    
     /* STEP 1: process modifier conditions */
     switch (condition->type) {
       case RC_CONDITION_ADD_SOURCE:
@@ -229,6 +255,21 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
           rc_typed_value_add(&measured_value, &eval_state->add_value);
         }
         break;
+
+      case RC_CONDITION_SET_GROUP_VAR:
+        if (eval_state->add_value.type != RC_VALUE_TYPE_NONE) {
+          /* if there's an accumulator, we can't use the optimized comparators */
+          rc_evaluate_operand(&measured_value, &condition->operand1, eval_state);
+          rc_typed_value_add(&measured_value, &eval_state->add_value);
+        }
+        else {
+          rc_evaluate_operand(&measured_value, &condition->operand1, eval_state);
+        }
+        rc_groupvar_update(condition->operand2.value.groupvar, &measured_value);
+        condition->is_true = 0; /* set false because it gets processed in the pause/group var pass and should not result in pause */
+        eval_state->add_value.type = RC_VALUE_TYPE_NONE;
+        eval_state->add_address = 0;
+        continue;
 
       default:
         break;
@@ -417,8 +458,8 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
     return 1;
   }
 
-  if (self->has_pause) {
-    /* one or more Pause conditions exists, if any of them are true, stop processing this group */
+  if (self->has_pause || self->has_group_vars) {
+    /* one or more Pause or group variable conditions exists, if any of the pauses are true, stop processing this group, but do process group variables until then */
     self->is_paused = (char)rc_test_condset_internal(self, 1, eval_state);
     if (self->is_paused) {
       eval_state->primed = 0;

@@ -39,6 +39,9 @@
     <ClCompile Include="..\src\rcheevos\format.c">
       <Filter>src\rcheevos</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rcheevos\groupvar.c">
+      <Filter>src\rcheevos</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\rcheevos\lboard.c">
       <Filter>src\rcheevos</Filter>
     </ClCompile>
@@ -308,6 +311,9 @@
     </ClCompile>
     <ClCompile Include="..\src\rc_version.c" />
     <ClCompile Include="..\src\rhash\aes.c" />
+    <ClCompile Include="groupvar.c">
+      <Filter>src\rcheevos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">

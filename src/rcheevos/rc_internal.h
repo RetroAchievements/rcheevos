@@ -18,6 +18,7 @@ RC_ALLOW_ALIGN(rc_condition_t)
 RC_ALLOW_ALIGN(rc_condset_t)
 RC_ALLOW_ALIGN(rc_lboard_t)
 RC_ALLOW_ALIGN(rc_memref_t)
+RC_ALLOW_ALIGN(rc_groupvar_t)
 RC_ALLOW_ALIGN(rc_operand_t)
 RC_ALLOW_ALIGN(rc_richpresence_t)
 RC_ALLOW_ALIGN(rc_richpresence_display_t)
@@ -47,6 +48,7 @@ typedef struct {
     rc_condset_t* __rc_condset_t;
     rc_lboard_t* __rc_lboard_t;
     rc_memref_t* __rc_memref_t;
+    rc_groupvar_t* __rc_groupvar_t;
     rc_operand_t* __rc_operand_t;
     rc_richpresence_t* __rc_richpresence_t;
     rc_richpresence_display_t* __rc_richpresence_display_t;
@@ -108,6 +110,7 @@ typedef struct {
   rc_scratch_t scratch;
 
   rc_memref_t** first_memref;
+  rc_groupvar_t** first_groupvar;
   rc_value_t** variables;
 
   uint32_t measured_target;
@@ -136,6 +139,12 @@ uint8_t rc_memref_shared_size(uint8_t size);
 uint32_t rc_memref_mask(uint8_t size);
 void rc_transform_memref_value(rc_typed_value_t* value, uint8_t size);
 uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud);
+
+rc_groupvar_t* rc_alloc_groupvar(rc_parse_state_t* parse, uint32_t index, uint8_t type);
+int rc_groupvar_add_memref(rc_groupvar_t* self, rc_memref_t* memref);
+void rc_groupvar_update(rc_groupvar_t* self, rc_typed_value_t* value);
+int rc_parse_groupvar_num(const char** memaddr, uint32_t* varIndex);
+int rc_parse_groupvar_offset(const char** memaddr, uint8_t* size, uint32_t* varIndex);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 int rc_trigger_state_active(int state);

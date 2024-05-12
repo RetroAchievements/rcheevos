@@ -16,6 +16,7 @@ typedef struct rc_trigger_t rc_trigger_t;
 typedef struct rc_lboard_t rc_lboard_t;
 typedef struct rc_richpresence_t rc_richpresence_t;
 typedef struct rc_memref_t rc_memref_t;
+typedef struct rc_groupvar_t rc_groupvar_t;
 typedef struct rc_value_t rc_value_t;
 
 #endif
@@ -99,20 +100,29 @@ struct rc_memref_t {
 
 /* types */
 enum {
-  RC_OPERAND_ADDRESS,        /* The value of a live address in RAM. */
-  RC_OPERAND_DELTA,          /* The value last known at this address. */
-  RC_OPERAND_CONST,          /* A 32-bit unsigned integer. */
-  RC_OPERAND_FP,             /* A floating point value. */
-  RC_OPERAND_LUA,            /* A Lua function that provides the value. */
-  RC_OPERAND_PRIOR,          /* The last differing value at this address. */
-  RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM. */
-  RC_OPERAND_INVERTED        /* The twos-complement value of a live address in RAM. */
+  RC_OPERAND_ADDRESS,               /* The value of a live address in RAM. */
+  RC_OPERAND_DELTA,                 /* The value last known at this address. */
+  RC_OPERAND_CONST,                 /* A 32-bit unsigned integer. */
+  RC_OPERAND_FP,                    /* A floating point value. */
+  RC_OPERAND_LUA,                   /* A Lua function that provides the value. */
+  RC_OPERAND_PRIOR,                 /* The last differing value at this address. */
+  RC_OPERAND_BCD,                   /* The BCD-decoded value of a live address in RAM. */
+  RC_OPERAND_INVERTED,              /* The twos-complement value of a live address in RAM. */
+  RC_OPERAND_GVAR,                  /* An integer variable local to the condition set */
+  RC_OPERAND_GVAR_F,                 /* A floating point variable local to the condition set */
+  RC_OPERAND_GVAR_OFFSET_MEM,       /* An integer variable local to the condition set being used as an indirect offset of the mem of a resolved address */
+  RC_OPERAND_GVAR_OFFSET_DELTA,     /* An integer variable local to the condition set being used as an indirect offset of the delta of a resolved address */
+  RC_OPERAND_GVAR_OFFSET_PRIOR,     /* An integer variable local to the condition set being used as an indirect offset of the prior of a resolved address */
+  RC_OPERAND_GVAR_OFFSET_BCD,       /* An integer variable local to the condition set being used as an indirect offset for a resolved address that is BCD */
+  RC_OPERAND_GVAR_OFFSET_INV        /* An integer variable local to the condition set being used as an indirect offset for a resolved address to be inverted */
 };
 
 typedef struct rc_operand_t {
   union {
     /* A value read from memory. */
     rc_memref_t* memref;
+
+    rc_groupvar_t* groupvar;
 
     /* An integer value. */
     uint32_t num;
@@ -149,6 +159,7 @@ enum {
   RC_CONDITION_MEASURED_IF,
   RC_CONDITION_TRIGGER,
   RC_CONDITION_MEASURED, /* measured also appears in the first switch, so place it at the border between them */
+  RC_CONDITION_SET_GROUP_VAR,
 
   /* modifiers (first switch) */
   RC_CONDITION_ADD_SOURCE, /* everything from this point on affects the condition after it */
@@ -203,11 +214,51 @@ struct rc_condition_t {
   /* Set if the condition needs to processed as part of the "check if paused" pass. (bool) */
   uint8_t pause;
 
+  /* Set if the condition is used to set the value of a group variable (will need to be run as part of the pause pass (bool) */
+  uint8_t sets_gvar;
+
   /* Whether or not the condition evaluated true on the last check. (bool) */
   uint8_t is_true;
 
   /* Unique identifier of optimized comparator to use. (RC_PROCESSING_COMPARE_*) */
   uint8_t optimized_comparator;
+};
+
+/*****************************************************************************\
+| Local variables                                                             |
+\*****************************************************************************/
+
+enum {
+  RC_GROUPVAR_TYPE_32_BITS,
+  RC_GROUPVAR_TYPE_FLOAT
+};
+
+typedef struct rc_groupvar_t rc_groupvar_t;
+
+struct rc_groupvar_t {
+  /* The type of the group variable. (RC_GROUPVAR_TYPE_*) */
+  uint8_t type;
+
+  /* the variable number of this type */
+  uint32_t index;
+
+  /* the integer value of the variable */
+  uint32_t u32;
+
+  /* the floating point value of the variable */
+  double f32;
+
+  /* The next group variable in the chain. */
+  rc_groupvar_t* next;
+
+  /* memrefs that take their address from the value of this group variable */
+  rc_memref_t** memrefs;
+
+  /* how many memrefs this group variable updates*/
+  uint32_t num_memrefs;
+
+  /* how many memrefs this group variable updates*/
+  uint32_t capacity_memrefs;
 };
 
 /*****************************************************************************\
@@ -228,6 +279,9 @@ struct rc_condset_t {
 
   /* True if the set is currently paused. */
   uint8_t is_paused;
+
+  /* True if any condition in the set is a pause condition. */
+  uint8_t has_group_vars;
 
   /* True if the set has indirect memory references. */
   uint8_t has_indirect_memrefs;

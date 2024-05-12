@@ -105,6 +105,7 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   rc_buffer_init(&parse->scratch.buffer);
   memset(&parse->scratch.objs, 0, sizeof(parse->scratch.objs));
   parse->first_memref = 0;
+  parse->first_groupvar = 0;
   parse->variables = 0;
   parse->measured_target = 0;
   parse->lines_read = 0;

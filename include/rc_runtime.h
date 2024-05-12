@@ -20,6 +20,7 @@ typedef struct rc_trigger_t rc_trigger_t;
 typedef struct rc_lboard_t rc_lboard_t;
 typedef struct rc_richpresence_t rc_richpresence_t;
 typedef struct rc_memref_t rc_memref_t;
+typedef struct rc_groupvar_t rc_groupvar_t;
 typedef struct rc_value_t rc_value_t;
 
 #endif
