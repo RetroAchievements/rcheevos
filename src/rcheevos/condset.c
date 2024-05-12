@@ -52,7 +52,8 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
   int in_add_address;
   uint32_t measured_target = 0;
 
-  parse->first_groupvar = 0; /* group vars are scoped to the condition set, so we do not want to end up re-using previous group's variables */
+  if (parse->first_groupvar)
+    parse->first_groupvar[0] = 0; /* group vars are scoped to the condition set, so we do not want to end up re-using previous group's variables if any were created */
   self = RC_ALLOC(rc_condset_t, parse);
   self->has_pause = self->is_paused = self->has_group_vars = self->has_indirect_memrefs = 0;
   next = &self->conditions;
@@ -266,10 +267,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
           rc_evaluate_operand(&measured_value, &condition->operand1, eval_state);
         }
         rc_groupvar_update(condition->operand2.value.groupvar, &measured_value);
-        condition->is_true = 0; /* set false because it gets processed in the pause/group var pass and should not result in pause */
-        eval_state->add_value.type = RC_VALUE_TYPE_NONE;
         eval_state->add_address = 0;
-        continue;
 
       default:
         break;

@@ -30,6 +30,9 @@ static char rc_condition_determine_comparator(const rc_condition_t* self) {
       return RC_PROCESSING_COMPARE_ALWAYS_TRUE;
   }
 
+  if (self->type == RC_CONDITION_SET_GROUP_VAR) /* processed in pause pass, should evaluate as not paused*/
+    return RC_PROCESSING_COMPARE_ALWAYS_FALSE;
+
   if ((self->operand1.type == RC_OPERAND_ADDRESS || self->operand1.type == RC_OPERAND_DELTA) &&
       !self->operand1.value.memref->value.is_indirect && !rc_operand_is_float(&self->operand1)) {
     /* left side is an integer memory reference */

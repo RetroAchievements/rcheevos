@@ -540,6 +540,8 @@ void test_value(void) {
 
   /* ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56}; */
 
+  TEST_PARAMS2(test_evaluate_value, "V:22136=i0x0_M:i0x0", 0x5678);
+
   /* classic format - supports multipliers, max, inversion */
   TEST_PARAMS2(test_evaluate_value, "V6", 6);
   TEST_PARAMS2(test_evaluate_value, "V6*2", 12);
