@@ -1008,11 +1008,12 @@ static int rc_hash_arcade(char hash[33], const char* path)
   /* arcade hash is just the hash of the filename (no extension) - the cores are pretty stringent about having the right ROM data */
   const char* filename = rc_path_get_filename(path);
   const char* ext = rc_path_get_extension(filename);
+  char buffer[128]; /* realistically, this should never need more than ~32 characters */
   size_t filename_length = ext - filename - 1;
 
   /* fbneo supports loading subsystems by using specific folder names.
    * if one is found, include it in the hash.
-   * https://github.com/libretro/FBNeo/blob/master/src/burner/libretro/README.md#emulating-consoles
+   * https://github.com/libretro/FBNeo/blob/master/src/burner/libretro/README.md#emulating-consoles-and-computers
    */
   if (filename > path + 1)
   {
@@ -1029,31 +1030,67 @@ static int rc_hash_arcade(char hash[33], const char* path)
     } while (folder > path);
 
     parent_folder_length = filename - folder - 1;
+    if (parent_folder_length < 16)
+    {
+      char* ptr = buffer;
+      while (folder < filename - 1)
+        *ptr++ = tolower(*folder++);
+      *ptr = '\0';
+
+      folder = buffer;
+    }
+
     switch (parent_folder_length)
     {
       case 3:
-        if (memcmp(folder, "nes", 3) == 0 ||
-            memcmp(folder, "fds", 3) == 0 ||
-            memcmp(folder, "sms", 3) == 0 ||
-            memcmp(folder, "msx", 3) == 0 ||
-            memcmp(folder, "ngp", 3) == 0 ||
-            memcmp(folder, "pce", 3) == 0 ||
-            memcmp(folder, "sgx", 3) == 0)
+        if (memcmp(folder, "nes", 3) == 0 || /* NES */
+            memcmp(folder, "fds", 3) == 0 || /* FDS */
+            memcmp(folder, "sms", 3) == 0 || /* Master System */
+            memcmp(folder, "msx", 3) == 0 || /* MSX */
+            memcmp(folder, "ngp", 3) == 0 || /* NeoGeo Pocket */
+            memcmp(folder, "pce", 3) == 0 || /* PCEngine */
+            memcmp(folder, "chf", 3) == 0 || /* ChannelF */
+            memcmp(folder, "sgx", 3) == 0)   /* SuperGrafX */
           include_folder = 1;
         break;
       case 4:
-        if (memcmp(folder, "tg16", 4) == 0)
+        if (memcmp(folder, "tg16", 4) == 0 || /* TurboGrafx-16 */
+            memcmp(folder, "msx1", 4) == 0)   /* MSX */
+          include_folder = 1;
+        break;
+      case 5:
+        if (memcmp(folder, "neocd", 5) == 0) /* NeoGeo CD */
           include_folder = 1;
         break;
       case 6:
-        if (memcmp(folder, "coleco", 6) == 0 ||
-            memcmp(folder, "sg1000", 6) == 0)
+        if (memcmp(folder, "coleco", 6) == 0 || /* Colecovision */
+            memcmp(folder, "sg1000", 6) == 0)   /* SG-1000 */
+          include_folder = 1;
+        break;
+      case 7:
+        if (memcmp(folder, "genesis", 7) == 0) /* Megadrive (Genesis) */
           include_folder = 1;
         break;
       case 8:
-        if (memcmp(folder, "gamegear", 8) == 0 ||
-            memcmp(folder, "megadriv", 8) == 0 ||
-            memcmp(folder, "spectrum", 8) == 0)
+        if (memcmp(folder, "gamegear", 8) == 0 || /* Game Gear */
+            memcmp(folder, "megadriv", 8) == 0 || /* Megadrive */
+            memcmp(folder, "pcengine", 8) == 0 || /* PCEngine */
+            memcmp(folder, "channelf", 8) == 0 || /* ChannelF */
+            memcmp(folder, "spectrum", 8) == 0)   /* ZX Spectrum */
+          include_folder = 1;
+        break;
+      case 9:
+        if (memcmp(folder, "megadrive", 9) == 0) /* Megadrive */
+          include_folder = 1;
+        break;
+      case 10:
+        if (memcmp(folder, "supergrafx", 10) == 0 || /* SuperGrafX */
+            memcmp(folder, "zxspectrum", 10) == 0)   /* ZX Spectrum */
+          include_folder = 1;
+        break;
+      case 12:
+        if (memcmp(folder, "mastersystem", 12) == 0 || /* Master System */
+            memcmp(folder, "colecovision", 12) == 0)   /* Colecovision */
           include_folder = 1;
         break;
       default:
@@ -1062,10 +1099,8 @@ static int rc_hash_arcade(char hash[33], const char* path)
 
     if (include_folder)
     {
-      char buffer[128]; /* realistically, this should never need more than ~20 characters */
       if (parent_folder_length + filename_length + 1 < sizeof(buffer))
       {
-        memcpy(&buffer[0], folder, parent_folder_length);
         buffer[parent_folder_length] = '_';
         memcpy(&buffer[parent_folder_length + 1], filename, filename_length);
         return rc_hash_buffer(hash, (uint8_t*)&buffer[0], parent_folder_length + filename_length + 1);
