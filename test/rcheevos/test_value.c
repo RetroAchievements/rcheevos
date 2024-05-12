@@ -540,7 +540,10 @@ void test_value(void) {
 
   /* ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56}; */
 
-  TEST_PARAMS2(test_evaluate_value, "V:22136=i0x0_M:i0x0", 0x5678);
+  TEST_PARAMS2(test_evaluate_value, "V:22136=i0x0_M:i0x0", 0x5678); /* put 0x5678 into group var 0, then measure group var 0 and ensure it matches. */
+  TEST_PARAMS2(test_evaluate_value, "V:1=i0x0_I:i0x0_M:0xH1", 0x34); /* Address 1 (in group var), offset 1 w/8-bit read: 0x34 */
+  TEST_PARAMS2(test_evaluate_value, "V:1=i0x0_I:i0x0_M:0x0", 0x3412); /* Address 1 (in group var), offset 0 w/16-bit read: 0x3412 */
+  TEST_PARAMS2(test_evaluate_value, "V:2=i0x0_I:1_M:im0x0", 0x56AB); /* Value 2 (in group var, Const Address 1 w/ group var offset (2), 16-bit read starting at byte 4 of RAM. */
 
   /* classic format - supports multipliers, max, inversion */
   TEST_PARAMS2(test_evaluate_value, "V6", 6);
