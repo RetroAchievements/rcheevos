@@ -260,13 +260,13 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_SET_GROUP_VAR:
         if (eval_state->add_value.type != RC_VALUE_TYPE_NONE) {
           /* if there's an accumulator, we can't use the optimized comparators */
-          rc_evaluate_operand(&measured_value, &condition->operand1, eval_state);
-          rc_typed_value_add(&measured_value, &eval_state->add_value);
+          rc_evaluate_operand(&value, &condition->operand1, eval_state);
+          rc_typed_value_add(&value, &eval_state->add_value);
         }
         else {
-          rc_evaluate_operand(&measured_value, &condition->operand1, eval_state);
+          rc_evaluate_operand(&value, &condition->operand1, eval_state);
         }
-        rc_groupvar_update(condition->operand2.value.groupvar, &measured_value);
+        rc_groupvar_update(condition->operand2.value.groupvar, &value);
         eval_state->add_address = 0;
 
       default:

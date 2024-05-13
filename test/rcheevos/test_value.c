@@ -155,6 +155,42 @@ static void test_evaluate_measured_value_with_reset() {
   ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
 }
 
+static void test_evaluate_measured_value_with_groupvar_and_pause() {
+  rc_value_t* self;
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  char buffer[2048];
+  const char* memaddr = "A:1_V:i0x00=i0x00_N:i0x00>2_P:i0x00<5_A:1_V:i0x01=i0x01_M:i0x01";
+  int ret;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  ret = rc_value_size(memaddr);
+  ASSERT_NUM_GREATER_EQUALS(ret, 0);
+
+  self = rc_parse_value(buffer, memaddr, NULL, 0);
+  ASSERT_PTR_NOT_NULL(self);
+
+  /* GV1=1, Not Paused, GV2=1, Value == GV2 == 1 */
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+
+  /* GV1=2, Not Paused, GV2=2, Value == GV2 == 2 */
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 2);
+
+  /* GV1=3, Paused (prevents GV2 update), GV2=2, Value == GV2 == 2 */
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 2);
+
+  /* GV1=4, Paused (prevents GV2 update), GV2=2, Value == GV2 == 2 */
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 2);
+
+  /* GV1=5, unpaused, GV2=3, Value == GV2 == 3 */
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 3);
+
+  /* GV1=6, not paused, GV2=4, Value == GV2 == 4 */
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 4);
+}
+
 static void init_typed_value(rc_typed_value_t* value, uint8_t type, uint32_t u32, double f32) {
   value->type = type;
 
@@ -544,6 +580,10 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "V:1=i0x0_I:i0x0_M:0xH1", 0x34); /* Address 1 (in group var), offset 1 w/8-bit read: 0x34 */
   TEST_PARAMS2(test_evaluate_value, "V:1=i0x0_I:i0x0_M:0x0", 0x3412); /* Address 1 (in group var), offset 0 w/16-bit read: 0x3412 */
   TEST_PARAMS2(test_evaluate_value, "V:2=i0x0_I:1_M:im0x0", 0x56AB); /* Value 2 (in group var, Const Address 1 w/ group var offset (2), 16-bit read starting at byte 4 of RAM. */
+  TEST_PARAMS2(test_evaluate_value, "V:1234=i0x0_M:i0x0%20", 14); /* put 0x5678 into group var 0, then measure group var 0 and ensure it matches. */
+  TEST_PARAMS2(test_evaluate_value, "A:b0xH01*100_A:b0xH02_V:0=i0x0a_M:i0x0a", 1234); /* (12*100 + 34) to group var 10, measure to match the addition) */
+  TEST_PARAMS2(test_evaluate_value, "A:b0xH01*100_A:b0xH02_V:0=i0x0a_A:i0x0a%20_M:0", 14); /* (12*100 + 34) to group var 10, measure gropu var 10 % 20 (1234 % 20 = 14) */
+  TEST(test_evaluate_measured_value_with_groupvar_and_pause);
 
   /* classic format - supports multipliers, max, inversion */
   TEST_PARAMS2(test_evaluate_value, "V6", 6);
