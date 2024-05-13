@@ -711,6 +711,8 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "V:2=i0x0_I:1_M:im0xX0", 0x0FDB56AB);/* Same, but a 32-Bit read at indirect address */
   TEST_PARAMS2(test_evaluate_value, "V:2=i0x0_I:1_M:im0xG0", 0xAB56DB0f); /* Same, but a 32-Bit BE read at indirect address */
   TEST_PARAMS2(test_evaluate_value, "V:4=i0x0_I:1_M:imfF0", 3); /* 4 in GV0, use to read PI from bytes 5-6 (truncates to 3) */
+  TEST_PARAMS2(test_evaluate_value, "V:4=i0x0_I:1_M:imfF0*f100.0", 314); /* same as before, but scale by 100 first. */
+  TEST_PARAMS2(test_evaluate_value, "V:4=i0x0_I:1_M:imfF0*f100000.0", 314159); /* same as before, but scale by 100000 first. */
   TEST_PARAMS2(test_evaluate_value, "V:1234=i0x0_M:i0x0%20", 14); /* put 0x5678 into group var 0, then measure group var 0 and ensure it matches. */
   TEST_PARAMS2(test_evaluate_value, "A:b0xH01*100_A:b0xH02_V:0=i0x0a_M:i0x0a", 1234); /* (12*100 + 34) to group var 10, measure to match the addition) */
   TEST_PARAMS2(test_evaluate_value, "A:b0xH01*100_A:b0xH02_V:0=i0x0a_A:i0x0a%20_M:0", 14); /* (12*100 + 34) to group var 10, measure gropu var 10 % 20 (1234 % 20 = 14) */
