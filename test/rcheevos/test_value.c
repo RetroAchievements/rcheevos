@@ -731,6 +731,7 @@ void test_value(void) {
 
   /* group variables */
   TEST_PARAMS2(test_evaluate_value, "V:22136=i0x0_M:i0x0", 0x5678); /* put 0x5678 into group var 0, then measure group var 0 and ensure it matches. */
+  TEST_PARAMS2(test_evaluate_value, "M:i0x0_V:22136=i0x0", 0x5678); /* test set group var happens in first pass */
   TEST_PARAMS2(test_evaluate_value, "V:1=i0x0_I:i0x0_M:0xH1", 0x34); /* Address 1 (in group var), offset 1 w/8-bit read: 0x34 */
   TEST_PARAMS2(test_evaluate_value, "V:1=i0x0_I:i0x0_M:0x 0", 0x3412); /* Address 1 (in group var), offset 0 w/16-bit read: 0x3412 */
   TEST_PARAMS2(test_evaluate_value, "V:2=i0x0_I:1_M:im0xH0", 0xAB); /* Value 2 (in group var, Const Address 1 w/ group var offset (2), 8-bit read starting at byte 3 of RAM. */
@@ -746,6 +747,12 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "A:b0xH01*100_A:b0xH02_V:0=i0x0a_A:i0x0a%20_M:0", 14); /* (12*100 + 34) to group var 10, measure gropu var 10 % 20 (1234 % 20 = 14) */
   TEST(test_evaluate_measured_value_with_groupvar_and_pause); /* group vars before active pauses process, group vars after active pauses are not.*/
   TEST(test_evaluate_measured_value_with_groupvar_after_measurement); /* group vars processed first, so measurement will take final value of group var */
+
+  /* group float variables */
+  TEST_PARAMS2(test_evaluate_value, "V:f3.1415926535=r0x0_M:r0x0=fF5", 1); /* Put PI in float group var. Compare to PI in RAM (operand 1). */
+  TEST_PARAMS2(test_evaluate_value, "V:f3.1415926535=r0x0_M:fF5=r0x0", 1); /* Put PI in float group var. Compare to PI in RAM (operand 2). */
+  TEST_PARAMS2(test_evaluate_value, "M:r0x0=fF5_V:f3.1415926535=r0x0", 1); /* test set group var happens in first pass with float groupvar */
+  TEST_PARAMS2(test_evaluate_value, "V:f3.1415926535=r0x0_V:4=i0x0_I:1_M:imfF0=r0x0", 1); /* use indirection to grab PI from RAM and compare to float group var*/
 
   test_typed_value_conversion();
   test_typed_value_addition();
