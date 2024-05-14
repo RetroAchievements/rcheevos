@@ -144,6 +144,7 @@ uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud)
 
 rc_groupvar_t* rc_alloc_groupvar(rc_parse_state_t* parse, uint32_t index, uint8_t type);
 int rc_groupvar_add_memref(rc_parse_state_t* parse, rc_groupvar_t* self, rc_memref_t* memref);
+void rc_groupvar_update_memrefs(rc_groupvar_t* self);
 void rc_groupvar_update(rc_groupvar_t* self, rc_typed_value_t* value);
 int rc_parse_groupvar_num(const char** memaddr, uint32_t* varIndex);
 int rc_parse_groupvar_offset(const char** memaddr, uint8_t* size, uint32_t* varIndex);

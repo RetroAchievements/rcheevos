@@ -59,10 +59,20 @@ int rc_groupvar_add_memref(rc_parse_state_t* parse, rc_groupvar_t* self, rc_memr
   return RC_OK;
 }
 
-void rc_groupvar_update(rc_groupvar_t* self, rc_typed_value_t* value) {
+void rc_groupvar_update_memrefs(rc_groupvar_t* self) {
   rc_groupvar_memref_t** next_local;
   rc_groupvar_memref_t* local;
 
+  /* update memrefs that use this as the offset address */
+  next_local = &self->memrefs;
+  while (*next_local) {
+    local = *next_local;
+    local->memref->address = self->u32;
+    next_local = &local->next;
+  }
+}
+
+void rc_groupvar_update(rc_groupvar_t* self, rc_typed_value_t* value) {
   switch (self->type) {
   case RC_GROUPVAR_TYPE_32_BITS:
     switch (value->type) {
@@ -76,13 +86,7 @@ void rc_groupvar_update(rc_groupvar_t* self, rc_typed_value_t* value) {
       break;
     }
 
-    /* update memrefs that use this as the offset address */
-    next_local = &self->memrefs;
-    while (*next_local) {
-      local = *next_local;
-      local->memref->address = self->u32;
-      next_local = &local->next;
-    }
+    rc_groupvar_update_memrefs(self);
 
     break;
 
