@@ -3,8 +3,9 @@
 
 #include "rc_runtime_types.h"
 
+#include "../rc_compat.h"
+
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
 /* --- Fetch Achievement Info --- */
