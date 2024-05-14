@@ -178,7 +178,7 @@ static int rc_parse_operand_groupvar(rc_operand_t* self, const char** memaddr, r
     if (parse->offset < 0)
       return parse->offset;
 
-    ret = rc_groupvar_add_memref(offsetVar, self->value.memref);
+    ret = rc_groupvar_add_memref(parse, offsetVar, self->value.memref);
     if (ret != RC_OK)
       return ret;
   }

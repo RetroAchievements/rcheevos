@@ -36,43 +36,32 @@ rc_groupvar_t* rc_alloc_groupvar(rc_parse_state_t* parse, uint32_t index, uint8_
   memset(local, 0, sizeof(*local));
   local->index = index;
   local->type = type;
-  local->num_memrefs = 0;
-  local->capacity_memrefs = 0;
+  local->memrefs = 0;
 
   return local;
 }
 
-int rc_groupvar_add_memref(rc_groupvar_t* self, rc_memref_t* memref) {
-  rc_memref_t** reallocated_memrefs;
+int rc_groupvar_add_memref(rc_parse_state_t* parse, rc_groupvar_t* self, rc_memref_t* memref) {
+  rc_groupvar_memref_t** next_local;
+  rc_groupvar_memref_t* local;
 
-  /* TODO: consider alternatives to just growing by 5 every allocation. 5 chosen arbitrarily expecting a group variable to be used as an indirection offset at most 5 times.*/
-  /* Perhaps we should make an rc_groupvar_memref_t that contains a pointer to the memref and a pointer to the next rc_groupvar_memref_t that gets allocated in the buffer */
-  /* and traversed as a linked list... */
-  if (self->capacity_memrefs == 0) {
-    self->capacity_memrefs += 5;
-    /* TODO: this array will need to be free'd. perhaps this should get allocated to the buffer while parsing so it can be deallocated with the rest of the buffer. */
-    self->memrefs = (rc_memref_t**)malloc(self->capacity_memrefs * sizeof(rc_memref_t*));
-    if (!self->memrefs) {
-      return RC_OUT_OF_MEMORY;
-    }
-  }
-  else if (self->num_memrefs == self->capacity_memrefs) {
-    self->capacity_memrefs += 5;
-    /* TODO: this array will need to be free'd. perhaps this should get allocated to the buffer while parsing so it can be deallocated with the rest of the buffer. */
-    reallocated_memrefs = realloc(self->memrefs, self->capacity_memrefs * sizeof(rc_memref_t*));
-    if (!reallocated_memrefs) {
-      return RC_OUT_OF_MEMORY;
-    }
-    self->memrefs = reallocated_memrefs;
+  next_local = &self->memrefs;
+  while (*next_local) {
+    local = *next_local;
+    next_local = &local->next;
   }
 
-  self->memrefs[self->num_memrefs++] = memref;
+  local = RC_ALLOC_SCRATCH(rc_groupvar_memref_t, parse);
+  local->memref = memref;
+  local->next = 0;
+  *next_local = local;
 
   return RC_OK;
 }
 
 void rc_groupvar_update(rc_groupvar_t* self, rc_typed_value_t* value) {
-  size_t i;
+  rc_groupvar_memref_t** next_local;
+  rc_groupvar_memref_t* local;
 
   switch (self->type) {
   case RC_GROUPVAR_TYPE_32_BITS:
@@ -88,8 +77,11 @@ void rc_groupvar_update(rc_groupvar_t* self, rc_typed_value_t* value) {
     }
 
     /* update memrefs that use this as the offset address */
-    for (i = 0; i < self->num_memrefs; i++) {
-      self->memrefs[i]->address = self->u32;
+    next_local = &self->memrefs;
+    while (*next_local) {
+      local = *next_local;
+      local->memref->address = self->u32;
+      next_local = &local->next;
     }
 
     break;

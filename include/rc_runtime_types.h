@@ -16,6 +16,7 @@ typedef struct rc_trigger_t rc_trigger_t;
 typedef struct rc_lboard_t rc_lboard_t;
 typedef struct rc_richpresence_t rc_richpresence_t;
 typedef struct rc_memref_t rc_memref_t;
+typedef struct rc_groupvar_memref_t rc_groupvar_memref_t;
 typedef struct rc_groupvar_t rc_groupvar_t;
 typedef struct rc_value_t rc_value_t;
 
@@ -233,6 +234,14 @@ enum {
   RC_GROUPVAR_TYPE_FLOAT
 };
 
+struct rc_groupvar_memref_t {
+  /* memref referenced by a groupvar */
+  rc_memref_t* memref;
+
+  /* The next groupvar groupvar reference in the chain. */
+  rc_groupvar_memref_t* next;
+};
+
 struct rc_groupvar_t {
   /* The type of the group variable. (RC_GROUPVAR_TYPE_*) */
   uint8_t type;
@@ -251,14 +260,8 @@ struct rc_groupvar_t {
   /* The next group variable in the chain. */
   rc_groupvar_t* next;
 
-  /* memrefs that take their address from the value of this group variable */
-  rc_memref_t** memrefs;
-
-  /* how many memrefs this group variable updates*/
-  uint32_t num_memrefs;
-
-  /* how many memrefs this group variable updates*/
-  uint32_t capacity_memrefs;
+  /* referenced memrefs whose address is set to the value of this groupvar */
+  rc_groupvar_memref_t* memrefs;
 };
 
 /*****************************************************************************\
