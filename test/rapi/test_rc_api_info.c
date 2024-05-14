@@ -321,6 +321,60 @@ static void test_process_fetch_games_list_response() {
   rc_api_destroy_fetch_games_list_response(&fetch_games_list_response);
 }
 
+static void test_init_fetch_game_titles_request() {
+  rc_api_fetch_game_titles_request_t fetch_game_titles_request;
+  rc_api_request_t request;
+  uint32_t game_ids[] = { 3, 4, 7, 10 };
+
+  memset(&fetch_game_titles_request, 0, sizeof(fetch_game_titles_request));
+  fetch_game_titles_request.game_ids = game_ids;
+  fetch_game_titles_request.num_game_ids = 3; /* purposefully only ask for 3/4 */
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_game_titles_request(&request, &fetch_game_titles_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=gameinfolist&g=3,4,7");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_process_fetch_game_titles_response() {
+  rc_api_fetch_game_titles_response_t fetch_game_titles_response;
+  rc_api_server_response_t fetch_game_titles_server_response;
+  rc_api_game_title_entry_t* entry;
+  const char* server_response = "{\"Success\":true,\"Response\":["
+    "{\"ID\": 3, \"Title\":\"Game Name 3\", \"ImageIcon\": \"/Images/010003.png\"},"
+    "{\"ID\": 4, \"Title\":\"Game Name 4\", \"ImageIcon\": \"/Images/010004.png\"},"
+    "{\"ID\": 7, \"Title\":\"Game Name 7\", \"ImageIcon\": \"/Images/010007.png\"}"
+    "]}";
+
+  memset(&fetch_game_titles_response, 0, sizeof(fetch_game_titles_response));
+  memset(&fetch_game_titles_server_response, 0, sizeof(fetch_game_titles_server_response));
+  fetch_game_titles_server_response.body = server_response;
+  fetch_game_titles_server_response.body_length = strlen(server_response);
+  fetch_game_titles_server_response.http_status_code = 200;
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_titles_server_response(&fetch_game_titles_response, &fetch_game_titles_server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_titles_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_titles_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_game_titles_response.num_entries, 3);
+
+  entry = &fetch_game_titles_response.entries[0];
+  ASSERT_NUM_EQUALS(entry->id, 3);
+  ASSERT_STR_EQUALS(entry->title, "Game Name 3");
+  ASSERT_STR_EQUALS(entry->image_name, "010003");
+  entry = &fetch_game_titles_response.entries[1];
+  ASSERT_NUM_EQUALS(entry->id, 4);
+  ASSERT_STR_EQUALS(entry->title, "Game Name 4");
+  ASSERT_STR_EQUALS(entry->image_name, "010004");
+  entry = &fetch_game_titles_response.entries[2];
+  ASSERT_NUM_EQUALS(entry->id, 7);
+  ASSERT_STR_EQUALS(entry->title, "Game Name 7");
+  ASSERT_STR_EQUALS(entry->image_name, "010007");
+
+  rc_api_destroy_fetch_game_titles_response(&fetch_game_titles_response);
+}
+
 void test_rapi_info(void) {
   TEST_SUITE_BEGIN();
 
@@ -345,6 +399,11 @@ void test_rapi_info(void) {
   TEST(test_init_fetch_games_list_request);
 
   TEST(test_process_fetch_games_list_response);
+
+  /* game titles */
+  TEST(test_init_fetch_game_titles_request);
+
+  TEST(test_process_fetch_game_titles_response);
 
   TEST_SUITE_END();
 }
