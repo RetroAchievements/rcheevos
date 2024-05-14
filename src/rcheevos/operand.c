@@ -205,6 +205,8 @@ static int rc_parse_operand_groupvar_float(rc_operand_t* self, const char** mema
   self->type = RC_OPERAND_GVAR_F;
   self->size = RC_MEMSIZE_FLOAT;
   ret = rc_parse_groupvar_num(&aux, &varIndex);
+  if (ret < 0)
+    return ret;
 
   self->value.groupvar = rc_alloc_groupvar(parse, varIndex, RC_GROUPVAR_TYPE_FLOAT);
   if (parse->offset < 0)
