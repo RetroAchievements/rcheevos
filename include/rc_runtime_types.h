@@ -233,14 +233,14 @@ enum {
   RC_GROUPVAR_TYPE_FLOAT
 };
 
-typedef struct rc_groupvar_t rc_groupvar_t;
-
 struct rc_groupvar_t {
   /* The type of the group variable. (RC_GROUPVAR_TYPE_*) */
   uint8_t type;
 
   /* the variable number of this type */
   uint32_t index;
+
+  /* TODO: u32 and f32 shoul be de/serialized with runtime progress */
 
   /* the integer value of the variable */
   uint32_t u32;

@@ -43,8 +43,12 @@ typedef struct rc_runtime_progress_t {
 #define RC_COND_FLAG_IS_TRUE                            0x00000001
 #define RC_COND_FLAG_OPERAND1_IS_INDIRECT_MEMREF        0x00010000
 #define RC_COND_FLAG_OPERAND1_MEMREF_CHANGED_THIS_FRAME 0x00020000
+#define RC_COND_FLAG_OPERAND1_IS_GROUPVAR               0x00040000
+#define RC_COND_FLAG_OPERAND1_IS_GROUPVAR_F             0x00080000
 #define RC_COND_FLAG_OPERAND2_IS_INDIRECT_MEMREF        0x00100000
 #define RC_COND_FLAG_OPERAND2_MEMREF_CHANGED_THIS_FRAME 0x00200000
+#define RC_COND_FLAG_OPERAND2_IS_GROUPVAR               0x00400000
+#define RC_COND_FLAG_OPERAND2_IS_GROUPVAR_F             0x00800000
 
 static void rc_runtime_progress_write_uint(rc_runtime_progress_t* progress, uint32_t value)
 {
@@ -58,6 +62,13 @@ static void rc_runtime_progress_write_uint(rc_runtime_progress_t* progress, uint
   progress->offset += 4;
 }
 
+static void rc_runtime_progress_write_float_as_uint(rc_runtime_progress_t* progress, float fvalue)
+{
+  uint32_t fbits = 0;
+  memcpy(&fbits, &fvalue, sizeof fbits);
+  rc_runtime_progress_write_uint(progress, fbits);
+}
+
 static uint32_t rc_runtime_progress_read_uint(rc_runtime_progress_t* progress)
 {
   uint32_t value = progress->buffer[progress->offset + 0] |
@@ -67,6 +78,19 @@ static uint32_t rc_runtime_progress_read_uint(rc_runtime_progress_t* progress)
 
   progress->offset += 4;
   return value;
+}
+
+static float rc_runtime_progress_read_uint_as_float(rc_runtime_progress_t* progress)
+{
+  float fvalue = 0.0;
+  uint32_t value = progress->buffer[progress->offset + 0] |
+    (progress->buffer[progress->offset + 1] << 8) |
+    (progress->buffer[progress->offset + 2] << 16) |
+    (progress->buffer[progress->offset + 3] << 24);
+
+  memcpy(&fvalue, &value, sizeof fvalue);
+  progress->offset += 4;
+  return fvalue;
 }
 
 static void rc_runtime_progress_write_md5(rc_runtime_progress_t* progress, uint8_t* md5)
@@ -211,6 +235,8 @@ static int rc_runtime_progress_is_indirect_memref(rc_operand_t* oper)
     case RC_OPERAND_CONST:
     case RC_OPERAND_FP:
     case RC_OPERAND_LUA:
+    case RC_OPERAND_GVAR:
+    case RC_OPERAND_GVAR_F:
       return 0;
 
     default:
@@ -239,11 +265,23 @@ static int rc_runtime_progress_write_condset(rc_runtime_progress_t* progress, rc
       if (cond->operand1.value.memref->value.changed)
         flags |= RC_COND_FLAG_OPERAND1_MEMREF_CHANGED_THIS_FRAME;
     }
+    else if (cond->operand1.type == RC_OPERAND_GVAR) {
+      flags |= RC_COND_FLAG_OPERAND1_IS_GROUPVAR;
+    }
+    else if (cond->operand1.type == RC_OPERAND_GVAR_F) {
+      flags |= RC_COND_FLAG_OPERAND1_IS_GROUPVAR_F;
+    }
 
     if (rc_runtime_progress_is_indirect_memref(&cond->operand2)) {
       flags |= RC_COND_FLAG_OPERAND2_IS_INDIRECT_MEMREF;
       if (cond->operand2.value.memref->value.changed)
         flags |= RC_COND_FLAG_OPERAND2_MEMREF_CHANGED_THIS_FRAME;
+    }
+    else if (cond->operand2.type == RC_OPERAND_GVAR) {
+      flags |= RC_COND_FLAG_OPERAND2_IS_GROUPVAR;
+    }
+    else if (cond->operand2.type == RC_OPERAND_GVAR_F) {
+      flags |= RC_COND_FLAG_OPERAND2_IS_GROUPVAR_F;
     }
 
     if (progress->offset + 8 > progress->buffer_size)
@@ -259,6 +297,16 @@ static int rc_runtime_progress_write_condset(rc_runtime_progress_t* progress, rc
       rc_runtime_progress_write_uint(progress, cond->operand1.value.memref->value.value);
       rc_runtime_progress_write_uint(progress, cond->operand1.value.memref->value.prior);
     }
+    else if (flags & RC_COND_FLAG_OPERAND1_IS_GROUPVAR) {
+      if (progress->offset + 4 > progress->buffer_size)
+        return RC_INSUFFICIENT_BUFFER;
+      rc_runtime_progress_write_uint(progress, cond->operand1.value.groupvar->u32);
+    }
+    else if (flags & RC_COND_FLAG_OPERAND1_IS_GROUPVAR_F) {
+      if (progress->offset + 4 > progress->buffer_size)
+        return RC_INSUFFICIENT_BUFFER;
+      rc_runtime_progress_write_float_as_uint(progress, (float)cond->operand1.value.groupvar->f32);
+    }
 
     if (flags & RC_COND_FLAG_OPERAND2_IS_INDIRECT_MEMREF) {
       if (progress->offset + 8 > progress->buffer_size)
@@ -266,6 +314,16 @@ static int rc_runtime_progress_write_condset(rc_runtime_progress_t* progress, rc
 
       rc_runtime_progress_write_uint(progress, cond->operand2.value.memref->value.value);
       rc_runtime_progress_write_uint(progress, cond->operand2.value.memref->value.prior);
+    }
+    else if (flags & RC_COND_FLAG_OPERAND2_IS_GROUPVAR) {
+      if (progress->offset + 4 > progress->buffer_size)
+        return RC_INSUFFICIENT_BUFFER;
+      rc_runtime_progress_write_uint(progress, cond->operand2.value.groupvar->u32);
+    }
+    else if (flags & RC_COND_FLAG_OPERAND2_IS_GROUPVAR_F) {
+      if (progress->offset + 4 > progress->buffer_size)
+        return RC_INSUFFICIENT_BUFFER;
+      rc_runtime_progress_write_float_as_uint(progress, (float)cond->operand2.value.groupvar->f32);
     }
 
     cond = cond->next;
@@ -296,6 +354,18 @@ static int rc_runtime_progress_read_condset(rc_runtime_progress_t* progress, rc_
       cond->operand1.value.memref->value.prior = rc_runtime_progress_read_uint(progress);
       cond->operand1.value.memref->value.changed = (flags & RC_COND_FLAG_OPERAND1_MEMREF_CHANGED_THIS_FRAME) ? 1 : 0;
     }
+    else if (flags & RC_COND_FLAG_OPERAND1_IS_GROUPVAR) {
+      if (cond->operand1.type != RC_OPERAND_GVAR)
+        return RC_INVALID_STATE;
+
+      cond->operand1.value.groupvar->u32 = rc_runtime_progress_read_uint(progress);
+    }
+    else if (flags & RC_COND_FLAG_OPERAND1_IS_GROUPVAR_F) {
+      if (cond->operand1.type != RC_OPERAND_GVAR_F)
+        return RC_INVALID_STATE;
+
+      cond->operand1.value.groupvar->f32 = rc_runtime_progress_read_uint_as_float(progress);
+    }
 
     if (flags & RC_COND_FLAG_OPERAND2_IS_INDIRECT_MEMREF) {
       if (!rc_operand_is_memref(&cond->operand2)) /* this should never happen, but better safe than sorry */
@@ -304,6 +374,18 @@ static int rc_runtime_progress_read_condset(rc_runtime_progress_t* progress, rc_
       cond->operand2.value.memref->value.value = rc_runtime_progress_read_uint(progress);
       cond->operand2.value.memref->value.prior = rc_runtime_progress_read_uint(progress);
       cond->operand2.value.memref->value.changed = (flags & RC_COND_FLAG_OPERAND2_MEMREF_CHANGED_THIS_FRAME) ? 1 : 0;
+    }
+    else if (flags & RC_COND_FLAG_OPERAND2_IS_GROUPVAR) {
+      if (cond->operand2.type != RC_OPERAND_GVAR)
+        return RC_INVALID_STATE;
+
+      cond->operand2.value.groupvar->u32 = rc_runtime_progress_read_uint(progress);
+    }
+    else if (flags & RC_COND_FLAG_OPERAND2_IS_GROUPVAR_F) {
+      if (cond->operand2.type != RC_OPERAND_GVAR_F)
+        return RC_INVALID_STATE;
+
+      cond->operand2.value.groupvar->f32 = rc_runtime_progress_read_uint_as_float(progress);
     }
 
     cond = cond->next;
@@ -316,8 +398,8 @@ static uint32_t rc_runtime_progress_should_serialize_variable_condset(const rc_c
 {
   const rc_condition_t* condition;
 
-  /* predetermined presence of pause flag or indirect memrefs - must serialize */
-  if (conditions->has_pause || conditions->has_indirect_memrefs)
+  /* predetermined presence of pause flag, indirect memrefs, or group variables - must serialize */
+  if (conditions->has_pause || conditions->has_indirect_memrefs || conditions->has_group_vars)
     return RC_VAR_FLAG_HAS_COND_DATA;
 
   /* if any conditions has required hits, must serialize */

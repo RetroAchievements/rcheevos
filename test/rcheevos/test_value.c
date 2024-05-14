@@ -748,6 +748,8 @@ void test_value(void) {
   TEST(test_evaluate_measured_value_with_groupvar_and_pause); /* group vars before active pauses process, group vars after active pauses are not.*/
   TEST(test_evaluate_measured_value_with_groupvar_after_measurement); /* group vars processed first, so measurement will take final value of group var */
 
+  /* TODO: add tests for other group var memref types (Delta, Prior, BCD, Invert) */
+
   /* group float variables */
   TEST_PARAMS2(test_evaluate_value, "V:f3.1415926535=r0x0_M:r0x0=fF5", 1); /* Put PI in float group var. Compare to PI in RAM (operand 1). */
   TEST_PARAMS2(test_evaluate_value, "V:f3.1415926535=r0x0_M:fF5=r0x0", 1); /* Put PI in float group var. Compare to PI in RAM (operand 2). */

@@ -12,7 +12,7 @@ rc_groupvar_t* rc_alloc_groupvar(rc_parse_state_t* parse, uint32_t index, uint8_
 
   /* there ought to be a better place to put this */
   if (!parse->first_groupvar) {
-    parse->first_groupvar = (rc_groupvar_t**)malloc(sizeof(rc_groupvar_t*)); /* free'd in rc_destroy_parse_state in*/
+    parse->first_groupvar = (rc_groupvar_t**)malloc(sizeof(rc_groupvar_t*)); /* TODO: free'd in rc_destroy_parse_state in, be we should re-visit to do this better.*/
     if (!parse->first_groupvar)
       return local;
     parse->first_groupvar[0] = 0;
@@ -45,16 +45,20 @@ rc_groupvar_t* rc_alloc_groupvar(rc_parse_state_t* parse, uint32_t index, uint8_
 int rc_groupvar_add_memref(rc_groupvar_t* self, rc_memref_t* memref) {
   rc_memref_t** reallocated_memrefs;
 
-  /* consider alternatives to just growing by 5 every allocation. 5 chosen arbitrarily expecting a group variable to be used as an indirection offset at most 5 times.*/
+  /* TODO: consider alternatives to just growing by 5 every allocation. 5 chosen arbitrarily expecting a group variable to be used as an indirection offset at most 5 times.*/
+  /* Perhaps we should make an rc_groupvar_memref_t that contains a pointer to the memref and a pointer to the next rc_groupvar_memref_t that gets allocated in the buffer */
+  /* and traversed as a linked list... */
   if (self->capacity_memrefs == 0) {
     self->capacity_memrefs += 5;
-    self->memrefs = (rc_memref_t**)malloc(self->capacity_memrefs * sizeof(rc_memref_t*)); /* TODO: this array will need to be free'd. when? */
+    /* TODO: this array will need to be free'd. perhaps this should get allocated to the buffer while parsing so it can be deallocated with the rest of the buffer. */
+    self->memrefs = (rc_memref_t**)malloc(self->capacity_memrefs * sizeof(rc_memref_t*));
     if (!self->memrefs) {
       return RC_OUT_OF_MEMORY;
     }
   }
   else if (self->num_memrefs == self->capacity_memrefs) {
     self->capacity_memrefs += 5;
+    /* TODO: this array will need to be free'd. perhaps this should get allocated to the buffer while parsing so it can be deallocated with the rest of the buffer. */
     reallocated_memrefs = realloc(self->memrefs, self->capacity_memrefs * sizeof(rc_memref_t*));
     if (!reallocated_memrefs) {
       return RC_OUT_OF_MEMORY;

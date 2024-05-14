@@ -115,6 +115,6 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
 
 void rc_destroy_parse_state(rc_parse_state_t* parse)
 {
-  free(parse->first_groupvar);
+  free(parse->first_groupvar); /* TODO: re-visit where/when this gets allocated so we may not need to do this here. */
   rc_buffer_destroy(&parse->scratch.buffer);
 }
