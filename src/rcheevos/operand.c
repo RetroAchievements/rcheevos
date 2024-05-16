@@ -119,7 +119,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
   return RC_OK;
 }
 
-static int rc_parse_operand_groupvar(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse, uint8_t is_indirect) {
+static int rc_parse_operand_groupvar(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   uint32_t varIndex;
   int ret;
@@ -272,7 +272,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
       break;
     case 'i':
       ++aux;
-      ret = rc_parse_operand_groupvar(self, &aux, parse, is_indirect);
+      ret = rc_parse_operand_groupvar(self, &aux, parse);
       if (ret < 0)
         return ret;
 
