@@ -380,7 +380,6 @@ static int rc_runtime_progress_read_condset(rc_runtime_progress_t* progress, rc_
         return RC_INVALID_STATE;
 
       cond->operand2.value.groupvar->u32 = rc_runtime_progress_read_uint(progress);
-      rc_groupvar_update_memrefs(cond->operand2.value.groupvar);
     }
     else if (flags & RC_COND_FLAG_OPERAND2_IS_GROUPVAR_F) {
       if (cond->operand2.type != RC_OPERAND_GVAR_F)

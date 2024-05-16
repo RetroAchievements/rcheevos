@@ -734,14 +734,9 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "M:i0x0_V:22136=i0x0", 0x5678); /* test set group var happens in first pass */
   TEST_PARAMS2(test_evaluate_value, "V:1=i0x0_I:i0x0_M:0xH1", 0x34); /* Address 1 (in group var), offset 1 w/8-bit read: 0x34 */
   TEST_PARAMS2(test_evaluate_value, "V:1=i0x0_I:i0x0_M:0x 0", 0x3412); /* Address 1 (in group var), offset 0 w/16-bit read: 0x3412 */
-  TEST_PARAMS2(test_evaluate_value, "V:2=i0x0_I:1_M:im0xH0", 0xAB); /* Value 2 (in group var, Const Address 1 w/ group var offset (2), 8-bit read starting at byte 3 of RAM. */
-  TEST_PARAMS2(test_evaluate_value, "V:2=i0x0_I:1_M:im0x 0", 0x56AB); /* Same, but a 16-Bit read at indirect address */
-  TEST_PARAMS2(test_evaluate_value, "V:2=i0x0_I:1_M:im0xW0", 0xDB56AB); /* Same, but a 24-Bit read at indirect address */
-  TEST_PARAMS2(test_evaluate_value, "V:2=i0x0_I:1_M:im0xX0", 0x0FDB56AB);/* Same, but a 32-Bit read at indirect address */
-  TEST_PARAMS2(test_evaluate_value, "V:2=i0x0_I:1_M:im0xG0", 0xAB56DB0f); /* Same, but a 32-Bit BE read at indirect address */
-  TEST_PARAMS2(test_evaluate_value, "V:4=i0x0_I:1_M:imfF0", 3); /* 4 in GV0, use to read PI from bytes 5-6 (truncates to 3) */
-  TEST_PARAMS2(test_evaluate_value, "V:4=i0x0_I:1_M:imfF0*f100.0", 314); /* same as before, but scale by 100 first. */
-  TEST_PARAMS2(test_evaluate_value, "V:4=i0x0_I:1_M:imfF0*f100000.0", 314159); /* same as before, but scale by 100000 first. */
+  TEST_PARAMS2(test_evaluate_value, "V:5=i0x0_I:i0x0_M:fF0", 3); /* 4 in GV0, use to read PI from bytes 5-6 (truncates to 3) */
+  TEST_PARAMS2(test_evaluate_value, "V:5=i0x0_I:i0x0_M:fF0*f100.0", 314); /* same as before, but scale by 100 first. */
+  TEST_PARAMS2(test_evaluate_value, "V:5=i0x0_I:i0x0_M:fF0*f100000.0", 314159); /* same as before, but scale by 100000 first. */
   TEST_PARAMS2(test_evaluate_value, "V:1234=i0x0_M:i0x0%20", 14); /* put 0x5678 into group var 0, then measure group var 0 and ensure it matches. */
   TEST_PARAMS2(test_evaluate_value, "A:b0xH01*100_A:b0xH02_V:0=i0x0a_M:i0x0a", 1234); /* (12*100 + 34) to group var 10, measure to match the addition) */
   TEST_PARAMS2(test_evaluate_value, "A:b0xH01*100_A:b0xH02_V:0=i0x0a_A:i0x0a%20_M:0", 14); /* (12*100 + 34) to group var 10, measure gropu var 10 % 20 (1234 % 20 = 14) */
@@ -754,7 +749,7 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "V:f3.1415926535=r0x0_M:r0x0=fF5", 1); /* Put PI in float group var. Compare to PI in RAM (operand 1). */
   TEST_PARAMS2(test_evaluate_value, "V:f3.1415926535=r0x0_M:fF5=r0x0", 1); /* Put PI in float group var. Compare to PI in RAM (operand 2). */
   TEST_PARAMS2(test_evaluate_value, "M:r0x0=fF5_V:f3.1415926535=r0x0", 1); /* test set group var happens in first pass with float groupvar */
-  TEST_PARAMS2(test_evaluate_value, "V:f3.1415926535=r0x0_V:4=i0x0_I:1_M:imfF0=r0x0", 1); /* use indirection to grab PI from RAM and compare to float group var*/
+  TEST_PARAMS2(test_evaluate_value, "V:f3.1415926535=r0x0_V:5=i0x0_I:i0x0_M:fF0=r0x0", 1); /* use indirection to grab PI from RAM and compare to float group var*/
 
   test_typed_value_conversion();
   test_typed_value_addition();

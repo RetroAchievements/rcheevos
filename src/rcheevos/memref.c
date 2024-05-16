@@ -509,16 +509,13 @@ static uint32_t rc_get_memref_value_value(const rc_memref_value_t* memref, int o
       return memref->value;
 
     case RC_OPERAND_DELTA:
-    case RC_OPERAND_GVAR_OFFSET_DELTA:
       if (!memref->changed) {
         /* fallthrough */
-    case RC_OPERAND_GVAR_OFFSET_MEM:
     default:
         return memref->value;
       }
       /* fallthrough */
     case RC_OPERAND_PRIOR:
-    case RC_OPERAND_GVAR_OFFSET_PRIOR:
       return memref->prior;
   }
 }
