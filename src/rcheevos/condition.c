@@ -30,9 +30,6 @@ static char rc_condition_determine_comparator(const rc_condition_t* self) {
       return RC_PROCESSING_COMPARE_ALWAYS_TRUE;
   }
 
-  if (self->type == RC_CONDITION_SET_GROUP_VAR) /* processed in pause pass, should evaluate as not paused*/
-    return RC_PROCESSING_COMPARE_ALWAYS_FALSE;
-
   if ((self->operand1.type == RC_OPERAND_ADDRESS || self->operand1.type == RC_OPERAND_DELTA) &&
       !self->operand1.value.memref->value.is_indirect && !rc_operand_is_float(&self->operand1)) {
     /* left side is an integer memory reference */
@@ -501,9 +498,6 @@ static int rc_test_condition_compare_delta_to_memref_transformed(rc_condition_t*
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
   rc_typed_value_t value1, value2;
 
-  if (self->type == RC_CONDITION_SET_GROUP_VAR)
-    return 0;
-
   if (eval_state->add_value.type != RC_VALUE_TYPE_NONE) {
     /* if there's an accumulator, we can't use the optimized comparators */
     rc_evaluate_operand(&value1, &self->operand1, eval_state);
@@ -542,6 +536,10 @@ int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
   }
 
   rc_evaluate_operand(&value2, &self->operand2, eval_state);
+
+  if (self->type == RC_CONDITION_SET_GROUP_VAR) {
+    rc_groupvar_update(self->operand2.value.groupvar, &value1);
+  }
 
   return rc_typed_value_compare(&value1, &value2, self->oper);
 }

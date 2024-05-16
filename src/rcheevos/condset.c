@@ -257,24 +257,16 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         }
         break;
 
-      case RC_CONDITION_SET_GROUP_VAR:
-        if (eval_state->add_value.type != RC_VALUE_TYPE_NONE) {
-          /* if there's an accumulator, we can't use the optimized comparators */
-          rc_evaluate_operand(&value, &condition->operand1, eval_state);
-          rc_typed_value_add(&value, &eval_state->add_value);
-        }
-        else {
-          rc_evaluate_operand(&value, &condition->operand1, eval_state);
-        }
-        rc_groupvar_update(condition->operand2.value.groupvar, &value);
-        eval_state->add_address = 0;
-
       default:
         break;
     }
 
     /* STEP 2: evaluate the current condition */
     condition->is_true = (char)rc_test_condition(condition, eval_state);
+    if (condition->type == RC_CONDITION_SET_GROUP_VAR) {
+      if (processing_pause)
+        condition->is_true = 0; /* setting a variable is not a pause, so it should not contribute to the pause state */
+    }
     eval_state->add_value.type = RC_VALUE_TYPE_NONE;
     eval_state->add_address = 0;
 
