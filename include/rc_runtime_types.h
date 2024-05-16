@@ -235,8 +235,6 @@ struct rc_groupvar_t {
   /* the variable number of this type */
   uint32_t index;
 
-  /* TODO: u32 and f32 shoul be de/serialized with runtime progress */
-
   /* the integer value of the variable */
   uint32_t u32;
 
