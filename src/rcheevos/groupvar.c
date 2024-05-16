@@ -10,16 +10,8 @@ rc_groupvar_t* rc_alloc_groupvar(rc_parse_state_t* parse, uint32_t index, uint8_
 
   local = 0;
 
-  /* there ought to be a better place to put this */
-  if (!parse->first_groupvar) {
-    parse->first_groupvar = (rc_groupvar_t**)malloc(sizeof(rc_groupvar_t*)); /* TODO: free'd in rc_destroy_parse_state in, be we should re-visit to do this better.*/
-    if (!parse->first_groupvar)
-      return local;
-    parse->first_groupvar[0] = 0;
-  }
-
   /* attempt to find an existing group var with this index */
-  next_local = parse->first_groupvar;
+  next_local = &parse->first_groupvar;
   while (*next_local) {
     local = *next_local;
     if (local->index == index && local->type == type)

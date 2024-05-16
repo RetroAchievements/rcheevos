@@ -53,7 +53,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
   uint32_t measured_target = 0;
 
   if (parse->first_groupvar)
-    parse->first_groupvar[0] = 0; /* group vars are scoped to the condition set, so we do not want to end up re-using previous group's variables if any were created */
+    parse->first_groupvar = 0; /* group vars are scoped to the condition set, so we do not want to end up re-using previous group's variables if any were created */
   self = RC_ALLOC(rc_condset_t, parse);
   self->has_pause = self->is_paused = self->has_group_vars = self->has_indirect_memrefs = 0;
   next = &self->conditions;

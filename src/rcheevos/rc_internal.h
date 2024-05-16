@@ -110,7 +110,7 @@ typedef struct {
   rc_scratch_t scratch;
 
   rc_memref_t** first_memref;
-  rc_groupvar_t** first_groupvar;
+  rc_groupvar_t* first_groupvar;
   rc_value_t** variables;
 
   uint32_t measured_target;
