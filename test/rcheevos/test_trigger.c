@@ -1940,6 +1940,89 @@ static void test_large_memref_not_shared() {
   ASSERT_PTR_NULL(trigger->memrefs->next->next);
 }
 
+static void test_remember_recall() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[256];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* measured(repeated(3, byte(2) == 52)) */
+  assert_parse_trigger(&trigger, buffer, "E:1_{accumulator}=1(3)");
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1U);
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 2U);
+
+  /* condition is true - hit count should be incremented to reach target */
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 1, 3U);
+
+  /* condition is true - target previously met */
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 1, 3U);
+}
+
+static void test_remember_recall_separate_accumulator_per_group() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* measured(repeated(3, byte(2) == 52)) */
+  assert_parse_trigger(&trigger, buffer, "E:1_{accumulator}=1.3.S{accumulator}=1.3.SE:1_E:{accumulator}*2_{accumulator}=2.5.");
+
+  /* core group condition is true - hit count should be incremented */
+  /* alt1 group condition is false since it's a different accumulator */
+  /* alt2 group condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1U);
+  assert_hit_count(trigger, 1, 0, 0U);
+  assert_hit_count(trigger, 2, 2, 1U);
+
+  /* core group condition is true - hit count should be incremented */
+  /* alt group condition is false since it's a different accumulator */
+  /* alt2 group condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 2U);
+  assert_hit_count(trigger, 1, 0, 0U);
+  assert_hit_count(trigger, 2, 2, 2U);
+
+  /* core group condition is true - hit count should be incremented to reach target */
+  /* alt group condition is false since it's a different accumulator */
+  /* alt2 group condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 3U);
+  assert_hit_count(trigger, 1, 0, 0U);
+  assert_hit_count(trigger, 2, 2, 3U);
+
+  /* core group condition is true - target previously met */
+  /* alt group condition is false since it's a different accumulator */
+  /* alt2 group condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 3U);
+  assert_hit_count(trigger, 1, 0, 0U);
+  assert_hit_count(trigger, 2, 2, 4U);
+
+  /* core group condition is true - target previously met */
+  /* alt group condition is false since it's a different accumulator */
+  /* alt2 group condition is true - hit count incremented to reach target */
+  /* core + alt2 now satisfied, trigger is true*/
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 1, 3U);
+  assert_hit_count(trigger, 1, 0, 0U);
+  assert_hit_count(trigger, 2, 2, 5U);
+}
+
 /* ======================================================== */
 
 void test_trigger(void) {
@@ -2003,6 +2086,10 @@ void test_trigger(void) {
   TEST(test_bit_lookups_share_memref);
   TEST(test_bitcount_shares_memref);
   TEST(test_large_memref_not_shared);
+
+  /* accumulator - remember and recall*/
+  TEST(test_remember_recall);
+  TEST(test_remember_recall_separate_accumulator_per_group);
 
   TEST_SUITE_END();
 }
