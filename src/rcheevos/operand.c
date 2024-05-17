@@ -94,8 +94,12 @@ static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr, r
     }
   }
 
+  if (i == 0)
+    return RC_INVALID_VARIABLE_NAME;
+
   if (*aux != '}')
     return RC_INVALID_VARIABLE_OPERAND;
+
   ++aux;
 
   if (strcmp(varName, "accumulator") == 0) {
@@ -366,6 +370,7 @@ int rc_operand_is_memref(const rc_operand_t* self) {
     case RC_OPERAND_CONST:
     case RC_OPERAND_FP:
     case RC_OPERAND_LUA:
+    case RC_OPERAND_RECALL:
       return 0;
 
     default:

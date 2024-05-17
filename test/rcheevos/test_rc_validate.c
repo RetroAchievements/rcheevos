@@ -385,11 +385,14 @@ void test_redundant_hitcounts() {
 }
 
 void test_variable_operand_errors() {
-  TEST_PARAMS2(test_validate_trigger, "E:4_M{thingy}", "Unknown variable name"); /* variable that does not exist */
-  TEST_PARAMS2(test_validate_trigger, "E:4_M{th$ingy}", "Invalid variable name"); /* bad character in variable name */
-  TEST_PARAMS2(test_validate_trigger, "E:4_M{2things}", "Invalid variable name"); /* variable name begins with number*/
-  TEST_PARAMS2(test_validate_trigger, "E:4_M{accumulator_P:0xH01=18", "Invalid variable name"); /* missing closing curly brace */
-  TEST_PARAMS2(test_validate_trigger, "E:4_M{accumulator}", ""); /* recognized as accumulator operand */
+  TEST_PARAMS2(test_validate_trigger, "E:4_M:{thingy}", "Unknown variable name"); /* variable that does not exist */
+  TEST_PARAMS2(test_validate_trigger, "E:4_M:{th$ingy}", "Invalid variable operand"); /* separator in name */
+  TEST_PARAMS2(test_validate_trigger, "E:4_M:{th*ingy}", "Invalid variable name"); /* invalid character in name */
+  TEST_PARAMS2(test_validate_trigger, "E:4_M:{2things}", "Invalid variable name"); /* variable name begins with number*/
+  TEST_PARAMS2(test_validate_trigger, "E:4_M:{accumulator_P:0xH01=18", "Invalid variable operand"); /* missing closing curly brace */
+  TEST_PARAMS2(test_validate_trigger, "E:4_M:{thisvariablenameistoolong}_P:0xH01=18", "Invalid variable operand"); /*too long */
+  TEST_PARAMS2(test_validate_trigger, "E:4_M:{}_P:0xH01=18", "Invalid variable name"); /* no name */
+  TEST_PARAMS2(test_validate_trigger, "E:4_M:{accumulator}=4", ""); /* recognized as accumulator operand */
 }
 
 void test_rc_validate(void) {
@@ -409,6 +412,7 @@ void test_rc_validate(void) {
   test_conflicting_conditions();
   test_redundant_conditions();
   test_redundant_hitcounts();
+  test_variable_operand_errors();
 
   TEST_SUITE_END();
 }
