@@ -5,6 +5,20 @@
 #include <float.h> /* FLT_EPSILON */
 #include <math.h> /* fmod */
 
+
+
+int rc_is_valid_variable_character(char ch, int is_first) {
+  if (is_first) {
+    if (!isalpha(ch))
+      return 0;
+  }
+  else {
+    if (!isalnum(ch))
+      return 0;
+  }
+  return 1;
+}
+
 static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condset_t** next_clause;
 
@@ -221,6 +235,8 @@ int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t
     eval_state.peek = peek;
     eval_state.peek_userdata = ud;
     eval_state.L = L;
+    eval_state.accumulator_value.type = RC_VALUE_TYPE_UNSIGNED;
+    eval_state.accumulator_value.value.i32 = 0;
 
     rc_test_condset(condset, &eval_state);
 

@@ -174,6 +174,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       case 'b': case 'B': self->type = RC_CONDITION_SUB_SOURCE; can_modify = 1; break;
       case 'c': case 'C': self->type = RC_CONDITION_ADD_HITS; break;
       case 'd': case 'D': self->type = RC_CONDITION_SUB_HITS; break;
+      case 'e': case 'E': self->type = RC_CONDITION_SET_ACCUMULATOR; can_modify = 1; break;
       case 'n': case 'N': self->type = RC_CONDITION_AND_NEXT; break;
       case 'o': case 'O': self->type = RC_CONDITION_OR_NEXT; break;
       case 'm': case 'M': self->type = RC_CONDITION_MEASURED; break;
@@ -185,7 +186,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
           parse->measured_as_percent = 1;
           self->type = RC_CONDITION_MEASURED;
           break;
-      /* e f h j k l s u v w x y */
+      /* f h j k l s u v w x y */
       default: parse->offset = RC_INVALID_CONDITION_TYPE; return 0;
     }
 
@@ -243,6 +244,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
           case RC_CONDITION_ADD_SOURCE:
           case RC_CONDITION_SUB_SOURCE:
           case RC_CONDITION_ADD_ADDRESS:
+          case RC_CONDITION_SET_ACCUMULATOR:
             /* prevent parse errors on legacy achievements where a condition was present before changing the type */
             self->oper = RC_OPERATOR_NONE;
             break;

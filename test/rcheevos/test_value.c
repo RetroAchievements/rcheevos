@@ -658,6 +658,17 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "Q:0xH0001=0_M:0xH0002", 0);
   TEST_PARAMS2(test_evaluate_value, "Q:0xH0001!=0_M:1", 1);
 
+  /* using accumulator */
+  TEST_PARAMS2(test_evaluate_value, "E:0xH01_M:{accumulator}", 0x12); /* 18-> accumulator, Measurement = 18 */
+  TEST_PARAMS2(test_evaluate_value, "E:0xH01_E:{accumulator}*2_M:{accumulator}", 0x24); /* 18-> accumulator, accumulator*2 -> accumulator, Measurement 18*2 = 36 */
+  TEST_PARAMS2(test_evaluate_value, "E:0xH01*0xH02_M:{accumulator}", 0x3A8); /* 18*52-> accumulator, Measurement = 936 */
+  TEST_PARAMS2(test_evaluate_value, "A:4_E:0xH01_E:{accumulator}*2_M:{accumulator}", 44); /* Chain Addsource into Remember (4 + 18) * 2 = 44 */
+  TEST_PARAMS2(test_evaluate_value, "A:4_E:2*8_M:{accumulator}", 20); /* Chain Addsource into Remember 4 + (2 * 8) = 20 */
+  TEST_PARAMS2(test_evaluate_value, "A:4_E:2*8_A:{accumulator}*2_M:4*{accumulator}", 120); /* Use remembered value multiple times */
+  TEST_PARAMS2(test_evaluate_value, "E:0xH01*2_Q:{accumulator}<40_P:{accumulator}=36_M:{accumulator}", 36); /* Pause happens before accumulator is set because remember not part of pause chain. */
+  TEST_PARAMS2(test_evaluate_value, "E:1_I:{accumulator}_M:0x02", 0x56AB); /* using accumulator as pointer */
+  TEST_PARAMS2(test_evaluate_value, "E:1_I:{accumulator}_E:0x02_M:{accumulator}", 0x56AB); /* Use accumulator as pointer, then store pointed-to data in accumulator and measure that */
+
   /* pause and reset affect hit count */
   TEST(test_evaluate_measured_value_with_pause);
   TEST(test_evaluate_measured_value_with_reset);

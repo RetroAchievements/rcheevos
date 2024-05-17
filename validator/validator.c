@@ -36,6 +36,7 @@ static const char* flag_string(char type) {
     case RC_CONDITION_MEASURED: return "Measured ";
     case RC_CONDITION_ADD_SOURCE: return "AddSource ";
     case RC_CONDITION_SUB_SOURCE: return "SubSource ";
+    case RC_CONDITION_SET_ACCUMULATOR: return "Remember ";
     case RC_CONDITION_ADD_ADDRESS: return "AddAddress ";
     case RC_CONDITION_ADD_HITS: return "AddHits ";
     case RC_CONDITION_SUB_HITS: return "SubHits ";
@@ -56,6 +57,7 @@ static const char* type_string(char type) {
     case RC_OPERAND_PRIOR: return "Prior";
     case RC_OPERAND_BCD: return "BCD";
     case RC_OPERAND_INVERTED: return "Inverted";
+    case RC_OPERAND_ACCUMULATOR: return "Recall";
     default: return "Unknown";
   }
 }

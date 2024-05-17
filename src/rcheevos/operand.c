@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <math.h>
+#include <string.h>
 
 #ifndef RC_DISABLE_LUA
 
@@ -60,6 +61,50 @@ static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, rc_par
 #endif /* RC_DISABLE_LUA */
 
   self->type = RC_OPERAND_LUA;
+  *memaddr = aux;
+  return RC_OK;
+}
+
+static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
+  const char* aux = *memaddr;
+  size_t i;
+  char varName[RC_VALUE_MAX_NAME_LENGTH + 1] = { 0 };
+
+  for (i = 0; i < RC_VALUE_MAX_NAME_LENGTH && *aux != '}'; i++) {
+    switch (*aux) {
+
+    default:
+      if (rc_is_valid_variable_character(*aux, i == 0)) {
+        varName[i] = *aux;
+        /* strncat_s(varName, RC_VALUE_MAX_NAME_LENGTH + 1, aux, 1); */
+        ++aux;
+      }
+      else {
+        ++aux;
+        return RC_INVALID_VARIABLE_NAME;
+      }
+      break;
+
+    case '\0':/* end of string */
+    case '_': /* next condition */
+    case 'S': /* next condset */
+    case ')': /* end of macro */
+    case '$': /* maximum of values */
+      return RC_INVALID_VARIABLE_OPERAND;
+    }
+  }
+
+  if (*aux != '}')
+    return RC_INVALID_VARIABLE_OPERAND;
+  ++aux;
+
+  if (strcmp(varName, "accumulator") == 0) {
+    self->type = RC_OPERAND_ACCUMULATOR;
+  }
+  else { /* process named variable when feature is available.*/
+    return RC_UNKNOWN_VARIABLE_NAME;
+  }
+
   *memaddr = aux;
   return RC_OK;
 }
@@ -126,6 +171,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
   unsigned long value;
   int negative;
   int allow_decimal = 0;
+  size_t varLen = 0;
 
   self->size = RC_MEMSIZE_32_BITS;
 
@@ -160,7 +206,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
       }
       allow_decimal = 1;
       /* fall through */
-    case 'v': case 'V': /* signed integer constant */
+    case 'v': case 'V': /* signed integer constant or variable */
       ++aux;
       /* fall through */
     case '+': case '-': /* signed integer constant */
@@ -230,6 +276,13 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
         else
           self->value.num = (unsigned)value;
       }
+      break;
+    case '{': /* variable or accumulator */
+      ++aux;
+      ret = rc_parse_operand_variable(self, &aux, parse);
+      if (ret < 0)
+        return ret;
+
       break;
 
     case '0':
@@ -461,6 +514,11 @@ void rc_evaluate_operand(rc_typed_value_t* result, rc_operand_t* self, rc_eval_s
 #endif /* RC_DISABLE_LUA */
 
       break;
+
+    case RC_OPERAND_ACCUMULATOR:
+      result->type = eval_state->accumulator_value.type;
+      result->value = eval_state->accumulator_value.value;
+      return;
 
     default:
       result->type = RC_VALUE_TYPE_UNSIGNED;

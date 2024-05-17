@@ -384,6 +384,14 @@ void test_redundant_hitcounts() {
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0.2.", "");
 }
 
+void test_variable_operand_errors() {
+  TEST_PARAMS2(test_validate_trigger, "E:4_M{thingy}", "Unknown variable name"); /* variable that does not exist */
+  TEST_PARAMS2(test_validate_trigger, "E:4_M{th$ingy}", "Invalid variable name"); /* bad character in variable name */
+  TEST_PARAMS2(test_validate_trigger, "E:4_M{2things}", "Invalid variable name"); /* variable name begins with number*/
+  TEST_PARAMS2(test_validate_trigger, "E:4_M{accumulator_P:0xH01=18", "Invalid variable name"); /* missing closing curly brace */
+  TEST_PARAMS2(test_validate_trigger, "E:4_M{accumulator}", ""); /* recognized as accumulator operand */
+}
+
 void test_rc_validate(void) {
   TEST_SUITE_BEGIN();
 

@@ -89,12 +89,13 @@ typedef struct {
   void* peek_userdata;
   lua_State* L;
 
-  rc_typed_value_t measured_value;  /* Measured */
-  uint8_t was_reset;                /* ResetIf triggered */
-  uint8_t has_hits;                 /* one of more hit counts is non-zero */
-  uint8_t primed;                   /* true if all non-Trigger conditions are true */
-  uint8_t measured_from_hits;       /* true if the measured_value came from a condition's hit count */
-  uint8_t was_cond_reset;           /* ResetNextIf triggered */
+  rc_typed_value_t measured_value;     /* Measured */
+  rc_typed_value_t accumulator_value;  /* Set Accumulator */
+  uint8_t was_reset;                   /* ResetIf triggered */
+  uint8_t has_hits;                    /* one of more hit counts is non-zero */
+  uint8_t primed;                      /* true if all non-Trigger conditions are true */
+  uint8_t measured_from_hits;          /* true if the measured_value came from a condition's hit count */
+  uint8_t was_cond_reset;              /* ResetNextIf triggered */
 }
 rc_eval_state_t;
 
@@ -170,6 +171,7 @@ void rc_evaluate_operand(rc_typed_value_t* value, rc_operand_t* self, rc_eval_st
 int rc_operand_is_float_memref(const rc_operand_t* self);
 int rc_operand_is_float(const rc_operand_t* self);
 
+int rc_is_valid_variable_character(char ch, int is_first);
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
 int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 void rc_reset_value(rc_value_t* self);
