@@ -99,7 +99,7 @@ static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr, r
   ++aux;
 
   if (strcmp(varName, "accumulator") == 0) {
-    self->type = RC_OPERAND_ACCUMULATOR;
+    self->type = RC_OPERAND_RECALL;
   }
   else { /* process named variable when feature is available.*/
     return RC_UNKNOWN_VARIABLE_NAME;
@@ -515,7 +515,7 @@ void rc_evaluate_operand(rc_typed_value_t* result, rc_operand_t* self, rc_eval_s
 
       break;
 
-    case RC_OPERAND_ACCUMULATOR:
+    case RC_OPERAND_RECALL:
       result->type = eval_state->accumulator_value.type;
       result->value = eval_state->accumulator_value.value;
       return;

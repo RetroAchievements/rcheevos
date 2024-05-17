@@ -295,7 +295,7 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
         is_combining = 1;
         continue;
 
-      case RC_CONDITION_SET_ACCUMULATOR:
+      case RC_CONDITION_REMEMBER:
         is_combining = 1;
         continue;
 
@@ -445,7 +445,7 @@ static int rc_validate_is_combining_condition(const rc_condition_t* condition)
     case RC_CONDITION_RESET_NEXT_IF:
     case RC_CONDITION_SUB_HITS:
     case RC_CONDITION_SUB_SOURCE:
-    case RC_CONDITION_SET_ACCUMULATOR:
+    case RC_CONDITION_REMEMBER:
       return 1;
 
     default:

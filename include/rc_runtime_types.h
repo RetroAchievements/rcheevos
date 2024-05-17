@@ -107,7 +107,7 @@ enum {
   RC_OPERAND_PRIOR,          /* The last differing value at this address. */
   RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM. */
   RC_OPERAND_INVERTED,       /* The twos-complement value of a live address in RAM. */
-  RC_OPERAND_ACCUMULATOR     /* The accumulator */
+  RC_OPERAND_RECALL     /* The accumulator */
 };
 
 typedef struct rc_operand_t {
@@ -155,7 +155,7 @@ enum {
   RC_CONDITION_ADD_SOURCE, /* everything from this point on affects the condition after it */
   RC_CONDITION_SUB_SOURCE,
   RC_CONDITION_ADD_ADDRESS,
-  RC_CONDITION_SET_ACCUMULATOR,
+  RC_CONDITION_REMEMBER,
 
   /* logic flags (second switch) */
   RC_CONDITION_ADD_HITS,

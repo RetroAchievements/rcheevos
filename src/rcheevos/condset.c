@@ -53,7 +53,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
         case RC_CONDITION_ADD_ADDRESS:
         case RC_CONDITION_ADD_SOURCE:
         case RC_CONDITION_SUB_SOURCE:
-        case RC_CONDITION_SET_ACCUMULATOR:
+        case RC_CONDITION_REMEMBER:
           /* these conditions don't require a right hand size (implied *1) */
           break;
 
@@ -223,7 +223,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         eval_state->add_address = value.value.u32;
         continue;
 
-      case RC_CONDITION_SET_ACCUMULATOR:
+      case RC_CONDITION_REMEMBER:
         rc_evaluate_condition_value(&value, condition, eval_state);
         rc_typed_value_add(&value, &eval_state->add_value);
         eval_state->accumulator_value.type = value.type;
