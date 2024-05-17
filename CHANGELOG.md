@@ -1,3 +1,16 @@
+# v11.3.0
+* add RC_OPERATOR_MOD
+* add cartridge RAM to Game Gear and Master System memory maps
+* add extended cartridge RAM to Gameboy and Gameboy Color memory maps
+* add rc_client_is_game_loaded helper function
+* add rc_client_raintegration_set_console_id to specify console in case game resolution fails
+* add rc_client_raintegration_get_achievement_state to detect local unlocks
+* report validation errors on multi-condition logic
+* hash whole file for PSP homebrew files (eboot.pbp)
+* call DrawMenuBar in rc_client_raintegration_rebuild_submenu if menu changes
+* fix file sharing issue using default filereader on Windows
+* fix exception calling rc_client_get_game_summary with an unidentified game loaded
+
 # v11.2.0
 * add alternate methods for state serialization/deserialization that accept a buffer_size parameter
 * add RC_CLIENT_SUPPORTS_HASH compile flag
