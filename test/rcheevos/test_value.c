@@ -669,6 +669,7 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "E:0xH01*2_P:{accumulator}=18_M:{accumulator}", 36); /* Measures the accumulated value, which was set in the pause pass. */
   TEST_PARAMS2(test_evaluate_value, "E:1_I:{accumulator}_M:0x02", 0x56AB); /* using accumulator as pointer */
   TEST_PARAMS2(test_evaluate_value, "E:1_I:{accumulator}_E:0x02_M:{accumulator}", 0x56AB); /* Use accumulator as pointer, then store pointed-to data in accumulator and measure that */
+  TEST_PARAMS2(test_evaluate_value, "E:5_C:{accumulator}>3_C:{accumulator}<7_C:{accumulator}>5_M:0=1", 2); /* with addhits, reusing the accumulator in each.  */
 
   /* pause and reset affect hit count */
   TEST(test_evaluate_measured_value_with_pause);
