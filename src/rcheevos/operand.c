@@ -65,7 +65,7 @@ static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, rc_par
   return RC_OK;
 }
 
-static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
+static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr/*, rc_parse_state_t* parse*/) {
   const char* aux = *memaddr;
   size_t i;
   char varName[RC_VALUE_MAX_NAME_LENGTH + 1] = { 0 };
@@ -175,7 +175,6 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
   unsigned long value;
   int negative;
   int allow_decimal = 0;
-  size_t varLen = 0;
 
   self->size = RC_MEMSIZE_32_BITS;
 
@@ -283,7 +282,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
       break;
     case '{': /* variable or accumulator */
       ++aux;
-      ret = rc_parse_operand_variable(self, &aux, parse);
+      ret = rc_parse_operand_variable(self, &aux/*, parse*/);
       if (ret < 0)
         return ret;
 
