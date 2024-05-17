@@ -9,11 +9,11 @@
 
 int rc_is_valid_variable_character(char ch, int is_first) {
   if (is_first) {
-    if (!isalpha(ch))
+    if (!isalpha((unsigned char)ch))
       return 0;
   }
   else {
-    if (!isalnum(ch))
+    if (!isalnum((unsigned char)ch))
       return 0;
   }
   return 1;
