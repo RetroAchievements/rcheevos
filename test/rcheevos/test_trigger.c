@@ -1949,7 +1949,6 @@ static void test_remember_recall() {
   memory.ram = ram;
   memory.size = sizeof(ram);
 
-  /* measured(repeated(3, byte(2) == 52)) */
   assert_parse_trigger(&trigger, buffer, "E:1_{accumulator}=1(3)");
 
   /* condition is true - hit count should be incremented */
@@ -1978,7 +1977,6 @@ static void test_remember_recall_separate_accumulator_per_group() {
   memory.ram = ram;
   memory.size = sizeof(ram);
 
-  /* measured(repeated(3, byte(2) == 52)) */
   assert_parse_trigger(&trigger, buffer, "E:1_{accumulator}=1.3.S{accumulator}=1.3.SE:1_E:{accumulator}*2_{accumulator}=2.5.");
 
   /* core group condition is true - hit count should be incremented */
@@ -2021,6 +2019,40 @@ static void test_remember_recall_separate_accumulator_per_group() {
   assert_hit_count(trigger, 0, 1, 3U);
   assert_hit_count(trigger, 1, 0, 0U);
   assert_hit_count(trigger, 2, 2, 5U);
+}
+
+static void test_remember_recall_use_same_value_multiple() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  ram[0] = 1;
+  assert_parse_trigger(&trigger, buffer, "E:5_A:0xH00_C:{accumulator}=6_B:0xH00_C:{accumulator}=4_M:0=1.4.");
+
+  /* because of accumulator can be re-used, both add hits are true and increment hits */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 2, 1U);
+  assert_hit_count(trigger, 0, 4, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 4U);
+
+  /* because of accumulator can be re-used, both add hits are true and increment hits to reach target*/
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 2, 2U);
+  assert_hit_count(trigger, 0, 4, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 4U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 4U);
+
+  /* condition is true - previously met */
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 2, 3U);
+  assert_hit_count(trigger, 0, 4, 3U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 6U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 4U);
 }
 
 /* ======================================================== */
@@ -2090,6 +2122,7 @@ void test_trigger(void) {
   /* accumulator - remember and recall*/
   TEST(test_remember_recall);
   TEST(test_remember_recall_separate_accumulator_per_group);
+  TEST(test_remember_recall_use_same_value_multiple);
 
   TEST_SUITE_END();
 }

@@ -670,6 +670,8 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "E:1_I:{accumulator}_M:0x02", 0x56AB); /* using accumulator as pointer */
   TEST_PARAMS2(test_evaluate_value, "E:1_I:{accumulator}_E:0x02_M:{accumulator}", 0x56AB); /* Use accumulator as pointer, then store pointed-to data in accumulator and measure that */
   TEST_PARAMS2(test_evaluate_value, "E:5_C:{accumulator}>3_C:{accumulator}<7_C:{accumulator}>5_M:0=1", 2); /* with addhits, reusing the accumulator in each.  */
+  TEST_PARAMS2(test_evaluate_value, "E:5_A:1_M:{accumulator}", 6); /* Add Source onto a read of the accumulator as the value */
+  TEST_PARAMS2(test_evaluate_value, "E:5_A:1_C:{accumulator}=6_B:1_C:{accumulator}=4_M:0=1", 2);
 
   /* pause and reset affect hit count */
   TEST(test_evaluate_measured_value_with_pause);
