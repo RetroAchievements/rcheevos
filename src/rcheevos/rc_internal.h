@@ -90,7 +90,7 @@ typedef struct {
   lua_State* L;
 
   rc_typed_value_t measured_value;     /* Measured */
-  rc_typed_value_t accumulator_value;  /* Set Accumulator */
+  rc_typed_value_t recall_value;       /* Set by RC_CONDITION_REMEMBER */
   uint8_t was_reset;                   /* ResetIf triggered */
   uint8_t has_hits;                    /* one of more hit counts is non-zero */
   uint8_t primed;                      /* true if all non-Trigger conditions are true */

@@ -160,8 +160,8 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   eval_state.L = L;
 
   if (self->requirement != NULL) {
-    eval_state.accumulator_value.type = RC_VALUE_TYPE_UNSIGNED;
-    eval_state.accumulator_value.value.i32 = 0;
+    eval_state.recall_value.type = RC_VALUE_TYPE_UNSIGNED;
+    eval_state.recall_value.value.i32 = 0;
     ret = rc_test_condset(self->requirement, &eval_state);
     is_paused = self->requirement->is_paused;
     is_primed = eval_state.primed;
@@ -179,8 +179,8 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
 
     do {
       /* Clear the accumulator before each condset; matches behavior of values */
-      eval_state.accumulator_value.type = RC_VALUE_TYPE_UNSIGNED;
-      eval_state.accumulator_value.value.i32 = 0;
+      eval_state.recall_value.type = RC_VALUE_TYPE_UNSIGNED;
+      eval_state.recall_value.value.i32 = 0;
       sub |= rc_test_condset(condset, &eval_state);
       sub_paused &= condset->is_paused;
       sub_primed |= eval_state.primed;

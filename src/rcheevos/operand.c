@@ -71,38 +71,21 @@ static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr/*,
   char varName[RC_VALUE_MAX_NAME_LENGTH + 1] = { 0 };
 
   for (i = 0; i < RC_VALUE_MAX_NAME_LENGTH && *aux != '}'; i++) {
-    switch (*aux) {
+    if (!rc_is_valid_variable_character(*aux, i == 0))
+      return RC_INVALID_VARIABLE_NAME;
 
-    default:
-      if (rc_is_valid_variable_character(*aux, i == 0)) {
-        varName[i] = *aux;
-        /* strncat_s(varName, RC_VALUE_MAX_NAME_LENGTH + 1, aux, 1); */
-        ++aux;
-      }
-      else {
-        ++aux;
-        return RC_INVALID_VARIABLE_NAME;
-      }
-      break;
-
-    case '\0':/* end of string */
-    case '_': /* next condition */
-    case 'S': /* next condset */
-    case ')': /* end of macro */
-    case '$': /* maximum of values */
-      return RC_INVALID_VARIABLE_OPERAND;
-    }
+    varName[i] = *aux++;
   }
 
   if (i == 0)
     return RC_INVALID_VARIABLE_NAME;
 
   if (*aux != '}')
-    return RC_INVALID_VARIABLE_OPERAND;
+    return RC_INVALID_VARIABLE_NAME;
 
   ++aux;
 
-  if (strcmp(varName, "accumulator") == 0) {
+  if (strcmp(varName, "recall") == 0) {
     self->type = RC_OPERAND_RECALL;
   }
   else { /* process named variable when feature is available.*/
@@ -209,7 +192,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
       }
       allow_decimal = 1;
       /* fall through */
-    case 'v': case 'V': /* signed integer constant or variable */
+    case 'v': case 'V': /* signed integer constant */
       ++aux;
       /* fall through */
     case '+': case '-': /* signed integer constant */
@@ -280,7 +263,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
           self->value.num = (unsigned)value;
       }
       break;
-    case '{': /* variable or accumulator */
+    case '{': /* variable */
       ++aux;
       ret = rc_parse_operand_variable(self, &aux/*, parse*/);
       if (ret < 0)
@@ -520,8 +503,8 @@ void rc_evaluate_operand(rc_typed_value_t* result, rc_operand_t* self, rc_eval_s
       break;
 
     case RC_OPERAND_RECALL:
-      result->type = eval_state->accumulator_value.type;
-      result->value = eval_state->accumulator_value.value;
+      result->type = eval_state->recall_value.type;
+      result->value = eval_state->recall_value.value;
       return;
 
     default:

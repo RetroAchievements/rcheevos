@@ -1949,7 +1949,7 @@ static void test_remember_recall() {
   memory.ram = ram;
   memory.size = sizeof(ram);
 
-  assert_parse_trigger(&trigger, buffer, "E:1_{accumulator}=1(3)");
+  assert_parse_trigger(&trigger, buffer, "E:1_{recall}=1(3)");
 
   /* condition is true - hit count should be incremented */
   assert_evaluate_trigger(trigger, &memory, 0);
@@ -1977,10 +1977,10 @@ static void test_remember_recall_separate_accumulator_per_group() {
   memory.ram = ram;
   memory.size = sizeof(ram);
 
-  assert_parse_trigger(&trigger, buffer, "E:1_{accumulator}=1.3.S{accumulator}=1.3.SE:1_E:{accumulator}*2_{accumulator}=2.5.");
+  assert_parse_trigger(&trigger, buffer, "E:1_{recall}=1.3.S{recall}=1.3.SE:1_E:{recall}*2_{recall}=2.5.");
 
   /* core group condition is true - hit count should be incremented */
-  /* alt1 group condition is false since it's a different accumulator */
+  /* alt1 group condition is false since it's a different recall accumulator */
   /* alt2 group condition is true - hit count should be incremented */
   assert_evaluate_trigger(trigger, &memory, 0);
   assert_hit_count(trigger, 0, 1, 1U);
@@ -1988,7 +1988,7 @@ static void test_remember_recall_separate_accumulator_per_group() {
   assert_hit_count(trigger, 2, 2, 1U);
 
   /* core group condition is true - hit count should be incremented */
-  /* alt group condition is false since it's a different accumulator */
+  /* alt group condition is false since it's a different recall accumulator */
   /* alt2 group condition is true - hit count should be incremented */
   assert_evaluate_trigger(trigger, &memory, 0);
   assert_hit_count(trigger, 0, 1, 2U);
@@ -1996,7 +1996,7 @@ static void test_remember_recall_separate_accumulator_per_group() {
   assert_hit_count(trigger, 2, 2, 2U);
 
   /* core group condition is true - hit count should be incremented to reach target */
-  /* alt group condition is false since it's a different accumulator */
+  /* alt group condition is false since it's a different recall accumulator */
   /* alt2 group condition is true - hit count should be incremented */
   assert_evaluate_trigger(trigger, &memory, 0);
   assert_hit_count(trigger, 0, 1, 3U);
@@ -2004,7 +2004,7 @@ static void test_remember_recall_separate_accumulator_per_group() {
   assert_hit_count(trigger, 2, 2, 3U);
 
   /* core group condition is true - target previously met */
-  /* alt group condition is false since it's a different accumulator */
+  /* alt group condition is false since it's a different recall accumulator */
   /* alt2 group condition is true - hit count should be incremented */
   assert_evaluate_trigger(trigger, &memory, 0);
   assert_hit_count(trigger, 0, 1, 3U);
@@ -2012,7 +2012,7 @@ static void test_remember_recall_separate_accumulator_per_group() {
   assert_hit_count(trigger, 2, 2, 4U);
 
   /* core group condition is true - target previously met */
-  /* alt group condition is false since it's a different accumulator */
+  /* alt group condition is false since it's a different recall accumulator */
   /* alt2 group condition is true - hit count incremented to reach target */
   /* core + alt2 now satisfied, trigger is true*/
   assert_evaluate_trigger(trigger, &memory, 1);
@@ -2031,16 +2031,16 @@ static void test_remember_recall_use_same_value_multiple() {
   memory.size = sizeof(ram);
 
   ram[0] = 1;
-  assert_parse_trigger(&trigger, buffer, "E:5_A:0xH00_C:{accumulator}=6_B:0xH00_C:{accumulator}=4_M:0=1.4.");
+  assert_parse_trigger(&trigger, buffer, "E:5_A:0xH00_C:{recall}=6_B:0xH00_C:{recall}=4_M:0=1.4.");
 
-  /* because of accumulator can be re-used, both add hits are true and increment hits */
+  /* because the recall accumulator can be re-used, both add hits are true and increment hits */
   assert_evaluate_trigger(trigger, &memory, 0);
   assert_hit_count(trigger, 0, 2, 1U);
   assert_hit_count(trigger, 0, 4, 1U);
   ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
   ASSERT_NUM_EQUALS(trigger->measured_target, 4U);
 
-  /* because of accumulator can be re-used, both add hits are true and increment hits to reach target*/
+  /* because the recall accumulator can be re-used, both add hits are true and increment hits to reach target*/
   assert_evaluate_trigger(trigger, &memory, 1);
   assert_hit_count(trigger, 0, 2, 2U);
   assert_hit_count(trigger, 0, 4, 2U);

@@ -226,8 +226,8 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_REMEMBER:
         rc_evaluate_condition_value(&value, condition, eval_state);
         rc_typed_value_add(&value, &eval_state->add_value);
-        eval_state->accumulator_value.type = value.type;
-        eval_state->accumulator_value.value = value.value;
+        eval_state->recall_value.type = value.type;
+        eval_state->recall_value.value = value.value;
         eval_state->add_value.type = RC_VALUE_TYPE_NONE;
         eval_state->add_address = 0;
         continue;
