@@ -938,6 +938,27 @@ int rc_json_get_required_bool(int* out, rc_api_response_t* response, const rc_js
   return rc_json_missing_field(response, field);
 }
 
+void rc_json_extract_filename(rc_json_field_t* field) {
+  if (field->value_end) {
+    const char* str = field->value_end;
+
+    /* remove the extension */
+    while (str > field->value_start && str[-1] != '/') {
+      --str;
+      if (*str == '.') {
+        field->value_end = str;
+        break;
+      }
+    }
+
+    /* find the path separator */
+    while (str > field->value_start && str[-1] != '/')
+      --str;
+
+    field->value_start = str;
+  }
+}
+
 /* --- rc_api_request --- */
 
 void rc_api_destroy_request(rc_api_request_t* request)
