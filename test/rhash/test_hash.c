@@ -2196,19 +2196,31 @@ void test_hash(void) {
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/nes_game.zip", "9b7aad36b365712fc93728088de4c209");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/nes/game.zip", "9b7aad36b365712fc93728088de4c209");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "C:\\roms\\nes\\game.zip", "9b7aad36b365712fc93728088de4c209");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "C:\\roms\\NES\\game.zip", "9b7aad36b365712fc93728088de4c209");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "nes\\game.zip", "9b7aad36b365712fc93728088de4c209");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/snes/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/nes2/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
 
+  /* we don't care that multiple aliases for the same system generate different hashes - the point is
+   * that they don't generate the same hash as an actual arcade ROM with the same filename. */
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/chf/game.zip", "6ef57f16562ea0c7f49d93853b313e32");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/channelf/game.zip", "7b6506637a0cc79bd1d24a43a34fa3b9");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/coleco/game.zip", "c546f63ae7de98add4b9f221a4749260");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/colecovision/game.zip", "47279207b94dbf2a45cb13efa56d685e");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/msx/game.zip", "59ab85f6b56324fd81b4e324b804c29f");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/msx1/game.zip", "33328d832dcb0854383cdd4a4565c459");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/pce/game.zip", "c414a783f3983bbe2e9e01d9d5320c7e");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/pcengine/game.zip", "49370c3cbe98bdcdce545c68379487db");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/sgx/game.zip", "db545ab29694bfda1010317d4bac83b8");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/supergrafx/game.zip", "5665c9ef4c2f6609d8e420c4d86ba692");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/tg16/game.zip", "8b6c5c2e54915be2cdba63973862e143");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/fds/game.zip", "c0c135a97e8c577cfdf9204823ff211f");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/gamegear/game.zip", "f6f471e952b8103032b723f57bdbe767");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/mastersystem/game.zip", "f4805afe0ff5647140a26bd0a1057373");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/sms/game.zip", "43f35f575dead94dd2f42f9caf69fe5a");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/megadriv/game.zip", "f99d0aaf12ba3eb6ced9878c76692c63");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/megadrive/game.zip", "73eb5d7034b382093b1d36414d9e84e4");
+  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/genesis/game.zip", "b62f810c63e1cba7f5b7569643bec236");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/sg1000/game.zip", "e8f6c711c4371f09537b4f2a7a304d6c");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/spectrum/game.zip", "a5f62157b2617bd728c4b1bc885c29e9");
   TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/ngp/game.zip", "d4133b74c4e57274ca514e27a370dcb6");
