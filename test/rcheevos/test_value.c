@@ -672,6 +672,8 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "K:5_C:{recall}>3_C:{recall}<7_C:{recall}>5_M:0=1", 2); /* with addhits, reusing the recall accumulator in each.  */
   TEST_PARAMS2(test_evaluate_value, "K:5_A:1_M:{recall}", 6); /* Add Source onto a read of the recall accumulator as the value */
   TEST_PARAMS2(test_evaluate_value, "K:5_A:1_C:{recall}=6_B:1_C:{recall}=4_M:0=1", 2);
+  TEST_PARAMS2(test_evaluate_value, "A:{recall}_M:1", 1); /* Using recall without remember. 0 + 1 = 1*/
+  TEST_PARAMS2(test_evaluate_value, "K:{recall}^255_M:{recall}", 255); /* Using recall in first remember. 0x00^0xFF = 0xFF  */
 
   /* pause and reset affect hit count */
   TEST(test_evaluate_measured_value_with_pause);

@@ -2055,6 +2055,57 @@ static void test_remember_recall_use_same_value_multiple() {
   ASSERT_NUM_EQUALS(trigger->measured_target, 4U);
 }
 
+static void test_remember_recall_in_pause_and_main() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_trigger(&trigger, buffer, "K:0xH00_{recall}<3.4._K:0xH00*2_{recall}>0xH01_K:0xH00*2_P:{recall}=2");
+
+/* pause checks 0*2=2, not paused. Condition 2 gets hit since recalled value < 3 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1U);
+
+  ram[0] = 1;
+  /* pause checks 1*2 = 2, pause active. condition 2 does not get new hit */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1U);
+
+  ram[0] = 2;
+  /* pause checks 2*2 = 2, pause inactive. condition 2 dgets hit because < 3 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 2U);
+
+  ram[0] = 3;
+  /* pause checks 2*2 = 2, pause inactive. condition 2 gets no because = 3 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 2U);
+
+  ram[0] = 0;
+  /* pause checks 0*2=2, not paused. Condition 2 gets hit since recalled value < 3 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 3U);
+
+  ram[0] = 1;
+  /* pause checks 1*2 = 2, pause active. condition 2 does not get new hit */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 3U);
+
+  ram[0] = 2;
+  /* pause checks 2*2 = 2, pause inactive. condition 2 dgets hit because < 3, not true because condition 4 untrue */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 4U);
+
+  ram[0] = 10;
+  /* condition is true - hits on condition 2 previously met, no active pause. */
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 1, 4U);
+}
+
 /* ======================================================== */
 
 void test_trigger(void) {
@@ -2123,6 +2174,7 @@ void test_trigger(void) {
   TEST(test_remember_recall);
   TEST(test_remember_recall_separate_accumulator_per_group);
   TEST(test_remember_recall_use_same_value_multiple);
+  TEST(test_remember_recall_in_pause_and_main);
 
   TEST_SUITE_END();
 }
