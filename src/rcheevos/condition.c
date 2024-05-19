@@ -174,19 +174,19 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       case 'b': case 'B': self->type = RC_CONDITION_SUB_SOURCE; can_modify = 1; break;
       case 'c': case 'C': self->type = RC_CONDITION_ADD_HITS; break;
       case 'd': case 'D': self->type = RC_CONDITION_SUB_HITS; break;
-      case 'e': case 'E': self->type = RC_CONDITION_REMEMBER; can_modify = 1; break;
       case 'n': case 'N': self->type = RC_CONDITION_AND_NEXT; break;
       case 'o': case 'O': self->type = RC_CONDITION_OR_NEXT; break;
       case 'm': case 'M': self->type = RC_CONDITION_MEASURED; break;
       case 'q': case 'Q': self->type = RC_CONDITION_MEASURED_IF; break;
       case 'i': case 'I': self->type = RC_CONDITION_ADD_ADDRESS; can_modify = 1; break;
       case 't': case 'T': self->type = RC_CONDITION_TRIGGER; break;
+      case 'k': case 'K': self->type = RC_CONDITION_REMEMBER; can_modify = 1; break;
       case 'z': case 'Z': self->type = RC_CONDITION_RESET_NEXT_IF; break;
       case 'g': case 'G':
           parse->measured_as_percent = 1;
           self->type = RC_CONDITION_MEASURED;
           break;
-      /* f h j k l s u v w x y */
+      /* e f h j l s u v w x y */
       default: parse->offset = RC_INVALID_CONDITION_TYPE; return 0;
     }
 

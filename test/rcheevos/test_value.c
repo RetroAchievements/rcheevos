@@ -659,19 +659,19 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "Q:0xH0001!=0_M:1", 1);
 
   /* using accumulator */
-  TEST_PARAMS2(test_evaluate_value, "E:0xH01_M:{recall}", 0x12); /* 18-> recall accumulator, Measurement = 18 */
-  TEST_PARAMS2(test_evaluate_value, "E:0xH01_E:{recall}*2_M:{recall}", 0x24); /* 18-> recall accumulator, recall accumulator*2 -> recall accumulator, Measurement 18*2 = 36 */
-  TEST_PARAMS2(test_evaluate_value, "E:0xH01*0xH02_M:{recall}", 0x3A8); /* 18*52-> recall accumulator, Measurement = 936 */
-  TEST_PARAMS2(test_evaluate_value, "A:4_E:0xH01_E:{recall}*2_M:{recall}", 44); /* Chain Addsource into Remember (4 + 18) * 2 = 44 */
-  TEST_PARAMS2(test_evaluate_value, "A:4_E:2*8_M:{recall}", 20); /* Chain Addsource into Remember 4 + (2 * 8) = 20 */
-  TEST_PARAMS2(test_evaluate_value, "A:4_E:2*8_A:{recall}*2_M:4*{recall}", 120); /* Use remembered value multiple times */
-  TEST_PARAMS2(test_evaluate_value, "E:0xH01*2_Q:{recall}<40_P:{recall}=36_M:{recall}", 36); /* Pause happens before recall accumulator is set because remember not part of pause chain. */
-  TEST_PARAMS2(test_evaluate_value, "E:0xH01*2_P:{recall}=18_M:{recall}", 36); /* Measures the accumulated value, which was set in the pause pass. */
-  TEST_PARAMS2(test_evaluate_value, "E:1_I:{recall}_M:0x02", 0x56AB); /* using recall accumulator as pointer */
-  TEST_PARAMS2(test_evaluate_value, "E:1_I:{recall}_E:0x02_M:{recall}", 0x56AB); /* Use recall accumulator as pointer, then store pointed-to data in recall accumulator and measure that */
-  TEST_PARAMS2(test_evaluate_value, "E:5_C:{recall}>3_C:{recall}<7_C:{recall}>5_M:0=1", 2); /* with addhits, reusing the recall accumulator in each.  */
-  TEST_PARAMS2(test_evaluate_value, "E:5_A:1_M:{recall}", 6); /* Add Source onto a read of the recall accumulator as the value */
-  TEST_PARAMS2(test_evaluate_value, "E:5_A:1_C:{recall}=6_B:1_C:{recall}=4_M:0=1", 2);
+  TEST_PARAMS2(test_evaluate_value, "K:0xH01_M:{recall}", 0x12); /* 18-> recall accumulator, Measurement = 18 */
+  TEST_PARAMS2(test_evaluate_value, "K:0xH01_K:{recall}*2_M:{recall}", 0x24); /* 18-> recall accumulator, recall accumulator*2 -> recall accumulator, Measurement 18*2 = 36 */
+  TEST_PARAMS2(test_evaluate_value, "K:0xH01*0xH02_M:{recall}", 0x3A8); /* 18*52-> recall accumulator, Measurement = 936 */
+  TEST_PARAMS2(test_evaluate_value, "A:4_K:0xH01_K:{recall}*2_M:{recall}", 44); /* Chain Addsource into Remember (4 + 18) * 2 = 44 */
+  TEST_PARAMS2(test_evaluate_value, "A:4_K:2*8_M:{recall}", 20); /* Chain Addsource into Remember 4 + (2 * 8) = 20 */
+  TEST_PARAMS2(test_evaluate_value, "A:4_K:2*8_A:{recall}*2_M:4*{recall}", 120); /* Use remembered value multiple times */
+  TEST_PARAMS2(test_evaluate_value, "K:0xH01*2_Q:{recall}<40_P:{recall}=36_M:{recall}", 36); /* Pause happens before recall accumulator is set because remember not part of pause chain. */
+  TEST_PARAMS2(test_evaluate_value, "K:0xH01*2_P:{recall}=18_M:{recall}", 36); /* Measures the accumulated value, which was set in the pause pass. */
+  TEST_PARAMS2(test_evaluate_value, "K:1_I:{recall}_M:0x02", 0x56AB); /* using recall accumulator as pointer */
+  TEST_PARAMS2(test_evaluate_value, "K:1_I:{recall}_K:0x02_M:{recall}", 0x56AB); /* Use recall accumulator as pointer, then store pointed-to data in recall accumulator and measure that */
+  TEST_PARAMS2(test_evaluate_value, "K:5_C:{recall}>3_C:{recall}<7_C:{recall}>5_M:0=1", 2); /* with addhits, reusing the recall accumulator in each.  */
+  TEST_PARAMS2(test_evaluate_value, "K:5_A:1_M:{recall}", 6); /* Add Source onto a read of the recall accumulator as the value */
+  TEST_PARAMS2(test_evaluate_value, "K:5_A:1_C:{recall}=6_B:1_C:{recall}=4_M:0=1", 2);
 
   /* pause and reset affect hit count */
   TEST(test_evaluate_measured_value_with_pause);

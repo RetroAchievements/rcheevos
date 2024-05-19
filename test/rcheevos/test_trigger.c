@@ -1949,7 +1949,7 @@ static void test_remember_recall() {
   memory.ram = ram;
   memory.size = sizeof(ram);
 
-  assert_parse_trigger(&trigger, buffer, "E:1_{recall}=1(3)");
+  assert_parse_trigger(&trigger, buffer, "K:1_{recall}=1(3)");
 
   /* condition is true - hit count should be incremented */
   assert_evaluate_trigger(trigger, &memory, 0);
@@ -1977,7 +1977,7 @@ static void test_remember_recall_separate_accumulator_per_group() {
   memory.ram = ram;
   memory.size = sizeof(ram);
 
-  assert_parse_trigger(&trigger, buffer, "E:1_{recall}=1.3.S{recall}=1.3.SE:1_E:{recall}*2_{recall}=2.5.");
+  assert_parse_trigger(&trigger, buffer, "K:1_{recall}=1.3.S{recall}=1.3.SK:1_K:{recall}*2_{recall}=2.5.");
 
   /* core group condition is true - hit count should be incremented */
   /* alt1 group condition is false since it's a different recall accumulator */
@@ -2031,7 +2031,7 @@ static void test_remember_recall_use_same_value_multiple() {
   memory.size = sizeof(ram);
 
   ram[0] = 1;
-  assert_parse_trigger(&trigger, buffer, "E:5_A:0xH00_C:{recall}=6_B:0xH00_C:{recall}=4_M:0=1.4.");
+  assert_parse_trigger(&trigger, buffer, "K:5_A:0xH00_C:{recall}=6_B:0xH00_C:{recall}=4_M:0=1.4.");
 
   /* because the recall accumulator can be re-used, both add hits are true and increment hits */
   assert_evaluate_trigger(trigger, &memory, 0);

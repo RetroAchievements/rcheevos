@@ -385,14 +385,14 @@ void test_redundant_hitcounts() {
 }
 
 void test_variable_operand_errors() {
-  TEST_PARAMS2(test_validate_trigger, "E:4_M:{thingy}", "Unknown variable name"); /* variable that does not exist */
-  TEST_PARAMS2(test_validate_trigger, "E:4_M:{th$ingy}", "Invalid variable name"); /* separator in name */
-  TEST_PARAMS2(test_validate_trigger, "E:4_M:{th*ingy}", "Invalid variable name"); /* invalid character in name */
-  TEST_PARAMS2(test_validate_trigger, "E:4_M:{2things}", "Invalid variable name"); /* variable name begins with number*/
-  TEST_PARAMS2(test_validate_trigger, "E:4_M:{recall_P:0xH01=18", "Invalid variable name"); /* missing closing curly brace */
-  TEST_PARAMS2(test_validate_trigger, "E:4_M:{thisvariablenameistoolong}_P:0xH01=18", "Invalid variable name"); /*too long */
-  TEST_PARAMS2(test_validate_trigger, "E:4_M:{}_P:0xH01=18", "Invalid variable name"); /* no name */
-  TEST_PARAMS2(test_validate_trigger, "E:4_M:{recall}=4", ""); /* recognized as recall operand */
+  TEST_PARAMS2(test_validate_trigger, "K:4_M:{thingy}", "Unknown variable name"); /* variable that does not exist */
+  TEST_PARAMS2(test_validate_trigger, "K:4_M:{th$ingy}", "Invalid variable name"); /* separator in name */
+  TEST_PARAMS2(test_validate_trigger, "K:4_M:{th*ingy}", "Invalid variable name"); /* invalid character in name */
+  TEST_PARAMS2(test_validate_trigger, "K:4_M:{2things}", "Invalid variable name"); /* variable name begins with number*/
+  TEST_PARAMS2(test_validate_trigger, "K:4_M:{recall_P:0xH01=18", "Invalid variable name"); /* missing closing curly brace */
+  TEST_PARAMS2(test_validate_trigger, "K:4_M:{thisvariablenameistoolong}_P:0xH01=18", "Invalid variable name"); /*too long */
+  TEST_PARAMS2(test_validate_trigger, "K:4_M:{}_P:0xH01=18", "Invalid variable name"); /* no name */
+  TEST_PARAMS2(test_validate_trigger, "K:4_M:{recall}=4", ""); /* recognized as recall operand */
 }
 
 void test_rc_validate(void) {
