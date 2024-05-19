@@ -427,6 +427,7 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
     return 1;
   }
 
+  /* initialize recall value so each condition set has a functionally new recall accumulator */
   eval_state->recall_value.type = RC_VALUE_TYPE_UNSIGNED;
   eval_state->recall_value.value.i32 = 0;
 
