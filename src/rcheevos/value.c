@@ -235,8 +235,6 @@ int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t
     eval_state.peek = peek;
     eval_state.peek_userdata = ud;
     eval_state.L = L;
-    eval_state.recall_value.type = RC_VALUE_TYPE_UNSIGNED;
-    eval_state.recall_value.value.i32 = 0;
 
     rc_test_condset(condset, &eval_state);
 
