@@ -721,6 +721,16 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-cheat-mvsc-P1_Char_1_Easy_Hyper_Combo", "enabled");
   TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-cheat-mvsc-P1_Char_1_Easy_Hyper_Combo", "0 - Disabled"); /* multi-not value match */
   TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-cheat-mvsc-P1_Char_1_Easy_Hyper_Combo", "1 - Enabled");
+  TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-cpu-speed-adjust", "25%");
+  TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-cpu-speed-adjust", "50%");
+  TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-cpu-speed-adjust", "75%");
+  TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-cpu-speed-adjust", "90%");
+  TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-cpu-speed-adjust", "95%");
+  TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-cpu-speed-adjust", "99%");
+  TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-cpu-speed-adjust", "100%");
+  TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-cpu-speed-adjust", "150%");
+  TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-cpu-speed-adjust", "200%");
+  TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-cpu-speed-adjust", "400%");
   TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-dipswitch-mslug-BIOS", "MVS Asia/Europe ver. 6 (1 slot)");
   TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-dipswitch-mslug-BIOS", "Universe BIOS ver. 2.3 (alt)");
   TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-neogeo-mode", "DIPSWITCH");
