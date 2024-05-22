@@ -119,6 +119,45 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
   return RC_OK;
 }
 
+static int rc_parse_operand_groupvar(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
+  const char* aux = *memaddr;
+  uint32_t varIndex;
+  int ret;
+
+  self->type = RC_OPERAND_GVAR;
+  self->size = RC_MEMSIZE_32_BITS;
+  ret = rc_parse_groupvar_num(&aux, &varIndex);
+  if (ret < 0)
+    return ret;
+
+  self->value.groupvar = rc_alloc_groupvar(parse, varIndex, RC_GROUPVAR_TYPE_32_BITS);
+  if (parse->offset < 0)
+    return parse->offset;
+
+  *memaddr = aux;
+  return RC_OK;
+}
+
+
+static int rc_parse_operand_groupvar_float(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
+  const char* aux = *memaddr;
+  uint32_t varIndex;
+  int ret;
+
+  self->type = RC_OPERAND_GVAR_F;
+  self->size = RC_MEMSIZE_FLOAT;
+  ret = rc_parse_groupvar_num(&aux, &varIndex);
+  if (ret < 0)
+    return ret;
+
+  self->value.groupvar = rc_alloc_groupvar(parse, varIndex, RC_GROUPVAR_TYPE_FLOAT);
+  if (parse->offset < 0)
+    return parse->offset;
+
+  *memaddr = aux;
+  return RC_OK;
+}
+
 int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indirect, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   char* end;
@@ -230,6 +269,20 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
         else
           self->value.num = (unsigned)value;
       }
+      break;
+    case 'i':
+      ++aux;
+      ret = rc_parse_operand_groupvar(self, &aux, parse);
+      if (ret < 0)
+        return ret;
+
+      break;
+    case 'r':
+      ++aux;
+      ret = rc_parse_operand_groupvar_float(self, &aux, parse);
+      if (ret < 0)
+        return ret;
+
       break;
 
     case '0':
@@ -462,7 +515,17 @@ void rc_evaluate_operand(rc_typed_value_t* result, rc_operand_t* self, rc_eval_s
 
       break;
 
-    default:
+    case RC_OPERAND_GVAR:
+      result->type = RC_VALUE_TYPE_UNSIGNED;
+      result->value.u32 = self->value.groupvar->u32;
+      break;
+
+    case RC_OPERAND_GVAR_F:
+      result->type = RC_VALUE_TYPE_FLOAT;
+      result->value.f32 = (float)self->value.groupvar->f32;
+      break;
+
+    default: /* This will include an integer group variable that is being used as an offset */
       result->type = RC_VALUE_TYPE_UNSIGNED;
       result->value.u32 = rc_get_memref_value(self->value.memref, self->type, eval_state);
       break;

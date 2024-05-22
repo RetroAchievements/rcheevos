@@ -47,6 +47,7 @@ OBJ=$(RC_SRC)/rc_compat.o \
     $(RC_CHEEVOS_SRC)/condset.o \
     $(RC_CHEEVOS_SRC)/consoleinfo.o \
     $(RC_CHEEVOS_SRC)/format.o \
+    $(RC_CHEEVOS_SRC)/groupvar.o \
     $(RC_CHEEVOS_SRC)/lboard.o \
     $(RC_CHEEVOS_SRC)/memref.o \
     $(RC_CHEEVOS_SRC)/operand.o \
