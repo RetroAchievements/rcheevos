@@ -2066,7 +2066,7 @@ static void test_remember_recall_in_pause_and_main() {
 
   assert_parse_trigger(&trigger, buffer, "K:0xH00_{recall}<3.4._K:0xH00*2_{recall}>0xH01_K:0xH00*2_P:{recall}=2");
 
-/* pause checks 0*2=2, not paused. Condition 2 gets hit since recalled value < 3 */
+  /* pause checks 0*2=2, not paused. Condition 2 gets hit since recalled value < 3 */
   assert_evaluate_trigger(trigger, &memory, 0);
   assert_hit_count(trigger, 0, 1, 1U);
 

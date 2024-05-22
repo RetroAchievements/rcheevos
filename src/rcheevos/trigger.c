@@ -176,7 +176,6 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
     char sub_primed = 0;
 
     do {
-      /* Clear the accumulator before each condset; matches behavior of values */
       sub |= rc_test_condset(condset, &eval_state);
       sub_paused &= condset->is_paused;
       sub_primed |= eval_state.primed;
