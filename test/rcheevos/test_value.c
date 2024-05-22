@@ -646,12 +646,30 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "A:f123.7%f5.65_M:0", 5) /* 123.7 % 5.65 = 5.05 -> 5 */
   TEST_PARAMS2(test_evaluate_value, "A:0xH01%f7.5_A:0xH02%f5.5_M:0", 5); /* 18%7.3 = 3.4, 52%5.5=2.5, becomes 3+2=5*/
 
+  /* addition */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001+3_M:0", 21);       /* 18+3 = 21 */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0002+0xH0001_M:0", 70); /* 52+18 = 70 */
+  TEST_PARAMS2(test_evaluate_value, "A:fF5+f2_M:0", 5)            /* PI + 2.0 = 5.141592 -> 5 */
+  TEST_PARAMS2(test_evaluate_value, "A:f5.5+f2.0_M:0", 7)         /* 5.5 + 2.0 = 7.5 -> 7 */
+  TEST_PARAMS2(test_evaluate_value, "A:f5.5+f2.7_M:0", 8)         /* 5.5 + 2.7 = 8.2 -> 8 */
+  TEST_PARAMS2(test_evaluate_value, "B:0xH0001+3_M:100", 79)      /* 100 - (18+3) = 79 */ 
+  TEST_PARAMS2(test_evaluate_value, "I:0xH0000+3_M:0x0", 0x56AB)  /* Add Address (0+3) -> Offset 0. 16-Bit Read @ Byte 3 = 0x56AB */
+
+  /* subtraction */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0001-3_M:0", 15);       /* 18-3 = 15 */
+  TEST_PARAMS2(test_evaluate_value, "A:0xH0002-0xH0001_M:0", 34); /* 52-18 = 34 */
+  TEST_PARAMS2(test_evaluate_value, "A:fF5-f2_M:0", 1)            /* PI - 2.0 = 1.141592 -> 1 */
+  TEST_PARAMS2(test_evaluate_value, "A:f5.5-f2.0_M:0", 3)         /* 5.5 - 2.0 = 2.5 -> 3 */
+  TEST_PARAMS2(test_evaluate_value, "A:f5.5-f2.7_M:0", 2)         /* 5.5 - 2.7 = 2.8 -> 2 */
+  TEST_PARAMS2(test_evaluate_value, "B:0xH0001-3_M:100",85)       /* 100 - (18-3) = 85 */
+
   /* rounding */
   TEST_PARAMS2(test_evaluate_value, "0xH03/2_0xH03/2", 0xAA); /* integer division results in rounding */
   TEST_PARAMS2(test_evaluate_value, "0xH03/f2.0_0xH03/f2.0", 0xAB); /* float division does not result in rounding */
   TEST_PARAMS2(test_evaluate_value, "0xH03*0.5_0xH03*0.5", 0xAB); /* float multiplication does not result in rounding */
   TEST_PARAMS2(test_evaluate_value, "A:0xH03/2_A:0xH03/2_M:0", 0xAA); /* integer division results in rounding */
   TEST_PARAMS2(test_evaluate_value, "A:0xH03/f2.0_A:0xH03/f2.0_M:0", 0xAB); /* float division does not result in rounding */
+  TEST_PARAMS2(test_evaluate_value, "I:0xH0001-17_M:0x0", 0x3412)  /* Add Address (18-17) -> Offset 0. 16-Bit Read @ Byte 1 = 0x3412 */
 
   /* using measured_if */
   TEST_PARAMS2(test_evaluate_value, "Q:0xH0001!=0_M:0xH0002", 0x34);

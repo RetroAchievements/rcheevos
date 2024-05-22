@@ -114,6 +114,8 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
       case RC_OPERATOR_AND:
       case RC_OPERATOR_XOR:
       case RC_OPERATOR_MOD:
+      case RC_OPERATOR_ADD:
+      case RC_OPERATOR_SUB:
       case RC_OPERATOR_NONE:
         break;
 

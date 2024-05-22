@@ -88,6 +88,8 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
           case RC_OPERATOR_DIV:
           case RC_OPERATOR_MULT:
           case RC_OPERATOR_MOD:
+          case RC_OPERATOR_ADD:
+          case RC_OPERATOR_SUB:
           case RC_OPERATOR_NONE:
             /* measuring value. leave required_hits at 0 */
             break;

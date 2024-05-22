@@ -149,6 +149,25 @@ static uint32_t rc_scale_value(uint32_t value, uint8_t oper, const rc_operand_t*
       return (divisor >= value) ? (divisor - 1) : value;
     }
 
+    case RC_OPERATOR_ADD:
+    {
+      unsigned long scaled = ((unsigned long)value) + rc_max_value(operand);
+      if (scaled > 0xFFFFFFFF)
+        return 0xFFFFFFFF;
+
+      return (uint32_t)scaled;
+    }
+
+    case RC_OPERATOR_SUB:
+    {
+      if (operand->type == RC_OPERAND_CONST)
+        return value - operand->value.num;
+      else if (value > rc_max_value(operand))
+        return value - rc_max_value(operand);
+
+      return 0xFFFFFFFF;
+    }
+
     default:
       return value;
   }
