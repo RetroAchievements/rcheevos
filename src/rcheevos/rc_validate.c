@@ -277,7 +277,7 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
     }
 
     if (!remember_used && uses_recall) {
-      if (!cond->pause) { // non-pause condition could be using something remembered in the pause pass
+      if (!cond->pause) { /* check if a later pause condition remembers a value as that means a value will have been remembered by this point. */
         for (cond_rem_pause_check = condset->conditions; cond_rem_pause_check; cond_rem_pause_check = cond_rem_pause_check->next) {
           if (cond_rem_pause_check->type == RC_CONDITION_REMEMBER && cond_rem_pause_check->pause) {
             remember_used = 1; /* do not set remember_used_in_pause here because we don't know at which poing in the pause processing this remember is occurring. */
