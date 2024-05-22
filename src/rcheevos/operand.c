@@ -360,6 +360,16 @@ int rc_operand_is_memref(const rc_operand_t* self) {
   }
 }
 
+int rc_operand_is_recall(const rc_operand_t* self) {
+  switch (self->type) {
+    case RC_OPERAND_RECALL:
+      return 1;
+
+    default:
+      return 0;
+  }
+}
+
 int rc_operand_is_float(const rc_operand_t* self) {
   if (self->type == RC_OPERAND_FP)
     return 1;

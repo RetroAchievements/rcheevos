@@ -170,6 +170,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
 void rc_evaluate_operand(rc_typed_value_t* value, rc_operand_t* self, rc_eval_state_t* eval_state);
 int rc_operand_is_float_memref(const rc_operand_t* self);
 int rc_operand_is_float(const rc_operand_t* self);
+int rc_operand_is_recall(const rc_operand_t* self);
 
 int rc_is_valid_variable_character(char ch, int is_first);
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);

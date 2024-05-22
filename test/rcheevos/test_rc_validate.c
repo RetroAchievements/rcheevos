@@ -395,6 +395,14 @@ void test_variable_operand_errors() {
   TEST_PARAMS2(test_validate_trigger, "K:4_M:{recall}=4", ""); /* recognized as recall operand */
 }
 
+void test_remember_recall_errors() {
+  TEST_PARAMS2(test_validate_trigger, "{recall}=5", "Condition 1: Recall used before Remember"); /* No value ever remembered */
+  TEST_PARAMS2(test_validate_trigger, "{recall}=5_K:0xH1234&1023_K:{recall}*8_{recall}=100", "Condition 1: Recall used before Remember"); /* First remember is after first recall. */
+  TEST_PARAMS2(test_validate_trigger, "K:0xH1234&1023_K:{recall}*8_{recall}=100", ""); /* Recall used after Remember */
+  TEST_PARAMS2(test_validate_trigger, "{recall}=5_K:0xH1234*2_P:{recall}>6", ""); /* Remember sets recall in pause - no warning */
+  TEST_PARAMS2(test_validate_trigger, "K:0xH1234*2_{recall}=5_P:{recall}>6", "Condition 3: Recall used in Pause processing before Remember was used in Pause processing"); /* Pause happens before remembered value. */
+}
+
 void test_rc_validate(void) {
   TEST_SUITE_BEGIN();
 
@@ -413,6 +421,7 @@ void test_rc_validate(void) {
   test_redundant_conditions();
   test_redundant_hitcounts();
   test_variable_operand_errors();
+  test_remember_recall_errors();
 
   TEST_SUITE_END();
 }

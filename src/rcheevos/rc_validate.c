@@ -240,6 +240,7 @@ static int rc_validate_range(uint32_t min_val, uint32_t max_val, char oper, uint
 int rc_validate_condset_internal(const rc_condset_t* condset, char result[], const size_t result_size, uint32_t console_id, uint32_t max_address)
 {
   const rc_condition_t* cond;
+  const rc_condition_t* cond_rem_pause_check;
   char buffer[128];
   uint32_t max_val;
   int index = 1;
@@ -247,6 +248,8 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
   int in_add_hits = 0;
   int in_add_address = 0;
   int is_combining = 0;
+  int remember_used = 0;
+  int remember_used_in_pause = 0;
 
   if (!condset) {
     *result = '\0';
@@ -257,6 +260,7 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
     uint32_t max = rc_max_value(&cond->operand1);
     const int is_memref1 = rc_operand_is_memref(&cond->operand1);
     const int is_memref2 = rc_operand_is_memref(&cond->operand2);
+    const int uses_recall = rc_operand_is_recall(&cond->operand1) || rc_operand_is_recall(&cond->operand2);
 
     if (!in_add_address) {
       if (is_memref1 && !rc_validate_memref(cond->operand1.value.memref, buffer, sizeof(buffer), console_id, max_address)) {
@@ -270,6 +274,25 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
     }
     else {
       in_add_address = 0;
+    }
+
+    if (!remember_used && uses_recall) {
+      if (!cond->pause) { // non-pause condition could be using something remembered in the pause pass
+        for (cond_rem_pause_check = condset->conditions; cond_rem_pause_check; cond_rem_pause_check = cond_rem_pause_check->next) {
+          if (cond_rem_pause_check->type == RC_CONDITION_REMEMBER && cond_rem_pause_check->pause) {
+            remember_used = 1; /* do not set remember_used_in_pause here because we don't know at which poing in the pause processing this remember is occurring. */
+            break;
+          }
+        }
+      }
+      if (!remember_used) {
+        snprintf(result, result_size, "Condition %d: Recall used before Remember", index);
+        return 0;
+      }
+    }
+    else if (cond->pause && uses_recall && !remember_used_in_pause) {
+      snprintf(result, result_size, "Condition %d: Recall used in Pause processing before Remember was used in Pause processing", index);
+      return 0;
     }
 
     switch (cond->type) {
@@ -297,6 +320,10 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
 
       case RC_CONDITION_REMEMBER:
         is_combining = 1;
+        remember_used = 1;
+        if (cond->pause) {
+          remember_used_in_pause = 1;
+        }
         continue;
 
       case RC_CONDITION_ADD_HITS:
