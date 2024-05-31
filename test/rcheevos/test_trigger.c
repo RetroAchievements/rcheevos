@@ -1940,6 +1940,172 @@ static void test_large_memref_not_shared() {
   ASSERT_PTR_NULL(trigger->memrefs->next->next);
 }
 
+static void test_remember_recall() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[256];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_trigger(&trigger, buffer, "K:1_{recall}=1(3)");
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1U);
+
+  /* condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 2U);
+
+  /* condition is true - hit count should be incremented to reach target */
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 1, 3U);
+
+  /* condition is true - target previously met */
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 1, 3U);
+}
+
+static void test_remember_recall_separate_accumulator_per_group() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_trigger(&trigger, buffer, "K:1_{recall}=1.3.S{recall}=1.3.SK:1_K:{recall}*2_{recall}=2.5.");
+
+  /* core group condition is true - hit count should be incremented */
+  /* alt1 group condition is false since it's a different recall accumulator */
+  /* alt2 group condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1U);
+  assert_hit_count(trigger, 1, 0, 0U);
+  assert_hit_count(trigger, 2, 2, 1U);
+
+  /* core group condition is true - hit count should be incremented */
+  /* alt group condition is false since it's a different recall accumulator */
+  /* alt2 group condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 2U);
+  assert_hit_count(trigger, 1, 0, 0U);
+  assert_hit_count(trigger, 2, 2, 2U);
+
+  /* core group condition is true - hit count should be incremented to reach target */
+  /* alt group condition is false since it's a different recall accumulator */
+  /* alt2 group condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 3U);
+  assert_hit_count(trigger, 1, 0, 0U);
+  assert_hit_count(trigger, 2, 2, 3U);
+
+  /* core group condition is true - target previously met */
+  /* alt group condition is false since it's a different recall accumulator */
+  /* alt2 group condition is true - hit count should be incremented */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 3U);
+  assert_hit_count(trigger, 1, 0, 0U);
+  assert_hit_count(trigger, 2, 2, 4U);
+
+  /* core group condition is true - target previously met */
+  /* alt group condition is false since it's a different recall accumulator */
+  /* alt2 group condition is true - hit count incremented to reach target */
+  /* core + alt2 now satisfied, trigger is true*/
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 1, 3U);
+  assert_hit_count(trigger, 1, 0, 0U);
+  assert_hit_count(trigger, 2, 2, 5U);
+}
+
+static void test_remember_recall_use_same_value_multiple() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  ram[0] = 1;
+  assert_parse_trigger(&trigger, buffer, "K:5_A:0xH00_C:{recall}=6_B:0xH00_C:{recall}=4_M:0=1.4.");
+
+  /* because the recall accumulator can be re-used, both add hits are true and increment hits */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 2, 1U);
+  assert_hit_count(trigger, 0, 4, 1U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 4U);
+
+  /* because the recall accumulator can be re-used, both add hits are true and increment hits to reach target*/
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 2, 2U);
+  assert_hit_count(trigger, 0, 4, 2U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 4U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 4U);
+
+  /* condition is true - previously met */
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 2, 3U);
+  assert_hit_count(trigger, 0, 4, 3U);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 6U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 4U);
+}
+
+static void test_remember_recall_in_pause_and_main() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_trigger(&trigger, buffer, "K:0xH00_{recall}<3.4._K:0xH00*2_{recall}>0xH01_K:0xH00*2_P:{recall}=2");
+
+  /* pause checks 0*2=2, not paused. Condition 2 gets hit since recalled value < 3 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1U);
+
+  ram[0] = 1;
+  /* pause checks 1*2 = 2, pause active. condition 2 does not get new hit */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1U);
+
+  ram[0] = 2;
+  /* pause checks 2*2 = 2, pause inactive. condition 2 dgets hit because < 3 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 2U);
+
+  ram[0] = 3;
+  /* pause checks 2*2 = 2, pause inactive. condition 2 gets no because = 3 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 2U);
+
+  ram[0] = 0;
+  /* pause checks 0*2=2, not paused. Condition 2 gets hit since recalled value < 3 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 3U);
+
+  ram[0] = 1;
+  /* pause checks 1*2 = 2, pause active. condition 2 does not get new hit */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 3U);
+
+  ram[0] = 2;
+  /* pause checks 2*2 = 2, pause inactive. condition 2 dgets hit because < 3, not true because condition 4 untrue */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 4U);
+
+  ram[0] = 10;
+  /* condition is true - hits on condition 2 previously met, no active pause. */
+  assert_evaluate_trigger(trigger, &memory, 1);
+  assert_hit_count(trigger, 0, 1, 4U);
+}
+
 /* ======================================================== */
 
 void test_trigger(void) {
@@ -2003,6 +2169,12 @@ void test_trigger(void) {
   TEST(test_bit_lookups_share_memref);
   TEST(test_bitcount_shares_memref);
   TEST(test_large_memref_not_shared);
+
+  /* accumulator - remember and recall*/
+  TEST(test_remember_recall);
+  TEST(test_remember_recall_separate_accumulator_per_group);
+  TEST(test_remember_recall_use_same_value_multiple);
+  TEST(test_remember_recall_in_pause_and_main);
 
   TEST_SUITE_END();
 }
