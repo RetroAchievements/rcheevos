@@ -259,7 +259,6 @@ static int rc_validate_range(uint32_t min_val, uint32_t max_val, char oper, uint
 int rc_validate_condset_internal(const rc_condset_t* condset, char result[], const size_t result_size, uint32_t console_id, uint32_t max_address)
 {
   const rc_condition_t* cond;
-  const rc_condition_t* cond_rem_pause_check;
   char buffer[128];
   uint32_t max_val;
   int index = 1;
@@ -296,8 +295,11 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
     }
 
     if (!remember_used && uses_recall) {
-      if (!cond->pause) { /* check if a later pause condition remembers a value as that means a value will have been remembered by this point. */
-        for (cond_rem_pause_check = condset->conditions; cond_rem_pause_check; cond_rem_pause_check = cond_rem_pause_check->next) {
+      if (!cond->pause && condset->has_pause) {
+        /* pause conditions will be processed before non-pause conditions.
+         * scan forward for any remembers in yet-to-be-processed pause conditions */
+        const rc_condition_t* cond_rem_pause_check = cond->next;
+        for (; cond_rem_pause_check; cond_rem_pause_check = cond_rem_pause_check->next) {
           if (cond_rem_pause_check->type == RC_CONDITION_REMEMBER && cond_rem_pause_check->pause) {
             remember_used = 1; /* do not set remember_used_in_pause here because we don't know at which poing in the pause processing this remember is occurring. */
             break;
@@ -340,9 +342,7 @@ int rc_validate_condset_internal(const rc_condset_t* condset, char result[], con
       case RC_CONDITION_REMEMBER:
         is_combining = 1;
         remember_used = 1;
-        if (cond->pause) {
-          remember_used_in_pause = 1;
-        }
+        remember_used_in_pause += cond->pause;
         continue;
 
       case RC_CONDITION_ADD_HITS:
