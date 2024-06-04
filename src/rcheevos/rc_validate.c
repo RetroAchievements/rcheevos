@@ -708,6 +708,8 @@ static int rc_validate_are_operands_equal(const rc_operand_t* oper1, const rc_op
     return (oper1->value.num == oper2->value.num);
   case RC_OPERAND_FP:
     return (oper1->value.dbl == oper2->value.dbl);
+  case RC_OPERAND_RECALL:
+    return (oper2->type == RC_OPERAND_RECALL);
   default:
     return (oper1->value.memref->address == oper2->value.memref->address && oper1->size == oper2->size);
   }
