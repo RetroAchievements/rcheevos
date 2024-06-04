@@ -237,9 +237,15 @@ int rc_api_process_fetch_game_data_server_response(rc_api_fetch_game_data_respon
         if (!rc_json_get_required_string(&achievement->author, &response->response, &achievement_fields[6], "Author"))
           return RC_MISSING_VALUE;
 
-        last_author = achievement->author;
-        last_author_field = achievement_fields[6].value_start;
-        last_author_len = len;
+        if (achievement->author == NULL) {
+          /* ensure we don't pass NULL out to client */
+          last_author = achievement->author = "";
+          last_author_len = 0;
+        } else {
+          last_author = achievement->author;
+          last_author_field = achievement_fields[6].value_start;
+          last_author_len = len;
+        }
       }
 
       if (!rc_json_get_required_unum(&timet, &response->response, &achievement_fields[8], "Created"))
