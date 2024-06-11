@@ -49,44 +49,53 @@ static void test_disallowed_system(const char* library_name, uint32_t console_id
 static void test_memory_init_without_regions() {
   rc_libretro_memory_regions_t regions;
   uint32_t avail;
-  uint8_t buffer1[16], buffer2[8], buffer3[4];
+  #define BUFFER1_SIZE 16
+  #define BUFFER2_SIZE 8
+  /* put explicit gap between buffer1 and buffer2 to prevent them from being merged when building regions */
+  uint8_t buffer[BUFFER1_SIZE + 4 + BUFFER2_SIZE];
+  uint8_t* buffer1 = &buffer[0];
+  uint8_t* buffer2 = &buffer[20];
+  uint8_t buffer3[4];
   uint32_t i;
 
-  for (i = 0; i < sizeof(buffer1); ++i)
+  for (i = 0; i < BUFFER1_SIZE; ++i)
       buffer1[i] = i;
-  for (i = 0; i < sizeof(buffer2); ++i)
+  for (i = 0; i < BUFFER2_SIZE; ++i)
       buffer2[i] = i;
   for (i = 0; i < sizeof(buffer3); ++i)
       buffer3[i] = i;
 
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
-  retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = sizeof(buffer1);
+  retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = BUFFER1_SIZE;
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = buffer2;
-  retro_memory_size[RETRO_MEMORY_SAVE_RAM] = sizeof(buffer2);
+  retro_memory_size[RETRO_MEMORY_SAVE_RAM] = BUFFER2_SIZE;
 
   ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_HUBS));
 
   ASSERT_NUM_EQUALS(regions.count, 2);
-  ASSERT_NUM_EQUALS(regions.total_size, sizeof(buffer1) + sizeof(buffer2));
+  ASSERT_NUM_EQUALS(regions.total_size, BUFFER1_SIZE + BUFFER2_SIZE);
   ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 2), &buffer1[2]);
-  ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, sizeof(buffer1) + 2), &buffer2[2]);
-  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, sizeof(buffer1) + sizeof(buffer2) + 2));
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, BUFFER1_SIZE + 2), &buffer2[2]);
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, BUFFER1_SIZE + BUFFER2_SIZE + 2));
 
   ASSERT_PTR_EQUALS(rc_libretro_memory_find_avail(&regions, 2, &avail), &buffer1[2]);
-  ASSERT_NUM_EQUALS(avail, sizeof(buffer1) - 2);
-  ASSERT_PTR_EQUALS(rc_libretro_memory_find_avail(&regions, sizeof(buffer1) - 1, &avail), &buffer1[sizeof(buffer1) - 1]);
+  ASSERT_NUM_EQUALS(avail, BUFFER1_SIZE - 2);
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find_avail(&regions, BUFFER1_SIZE - 1, &avail), &buffer1[BUFFER1_SIZE - 1]);
   ASSERT_NUM_EQUALS(avail, 1);
-  ASSERT_PTR_EQUALS(rc_libretro_memory_find_avail(&regions, sizeof(buffer1) + 2, &avail), &buffer2[2]);
-  ASSERT_NUM_EQUALS(avail, sizeof(buffer2) - 2);
-  ASSERT_PTR_NULL(rc_libretro_memory_find_avail(&regions, sizeof(buffer1) + sizeof(buffer2) + 2, &avail));
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find_avail(&regions, BUFFER1_SIZE + 2, &avail), &buffer2[2]);
+  ASSERT_NUM_EQUALS(avail, BUFFER2_SIZE - 2);
+  ASSERT_PTR_NULL(rc_libretro_memory_find_avail(&regions, BUFFER1_SIZE + BUFFER2_SIZE + 2, &avail));
   ASSERT_NUM_EQUALS(avail, 0);
 
   ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 2, buffer3, 1), 1);
   ASSERT_TRUE(memcmp(buffer3, &buffer1[2], 1) == 0);
   ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, 7, buffer3, 4), 4);
   ASSERT_TRUE(memcmp(buffer3, &buffer1[7], 4) == 0);
-  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, sizeof(buffer1) - 2, buffer3, 3), 3); /* read across boundary */
-  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, sizeof(buffer1) + sizeof(buffer2) + 2, buffer3, 1), 0);
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, BUFFER1_SIZE - 2, buffer3, 3), 3); /* read across boundary */
+  ASSERT_NUM_EQUALS(rc_libretro_memory_read(&regions, BUFFER1_SIZE + BUFFER2_SIZE + 2, buffer3, 1), 0);
+
+  #undef BUFFER2_SIZE
+  #undef BUFFER1_SIZE
 }
 
 static void test_memory_init_without_regions_system_ram_only() {
