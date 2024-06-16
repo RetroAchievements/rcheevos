@@ -8675,6 +8675,23 @@ static void test_deserialize_progress_sized(void)
   rc_client_destroy(g_client);
 }
 
+static void test_deserialize_progress_unknown_game(void)
+{
+  uint8_t buffer[128];
+
+  g_client = mock_client_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
+
+  ASSERT_NUM_EQUALS(rc_client_progress_size(g_client), 0);
+  ASSERT_NUM_EQUALS(rc_client_serialize_progress_sized(g_client, buffer, sizeof(buffer)), RC_NO_GAME_LOADED);
+  ASSERT_NUM_EQUALS(rc_client_deserialize_progress_sized(g_client, buffer, sizeof(buffer)), RC_NO_GAME_LOADED);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- processing required ----- */
 
 static void test_processing_required(void)
@@ -9315,6 +9332,7 @@ void test_client(void) {
   TEST(test_deserialize_progress_null);
   TEST(test_deserialize_progress_invalid);
   TEST(test_deserialize_progress_sized);
+  TEST(test_deserialize_progress_unknown_game);
 
   /* processing required */
   TEST(test_processing_required);

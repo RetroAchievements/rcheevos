@@ -884,7 +884,7 @@ void rc_client_get_user_game_summary(const rc_client_t* client, rc_client_user_g
   }
 #endif
 
-  if (!client->game)
+  if (!rc_client_is_game_loaded(client))
     return;
 
   rc_mutex_lock((rc_mutex_t*)&client->state.mutex); /* remove const cast for mutex access */
@@ -2861,7 +2861,7 @@ rc_client_async_handle_t* rc_client_begin_load_subset(rc_client_t* client, uint3
     return client->state.external_client->begin_load_subset(client, subset_id, callback, callback_userdata);
 #endif
 
-  if (!client->game) {
+  if (!rc_client_is_game_loaded(client)) {
     callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client, callback_userdata);
     return NULL;
   }
@@ -5384,7 +5384,7 @@ size_t rc_client_progress_size(rc_client_t* client)
     return client->state.external_client->progress_size();
 #endif
 
-  if (!client->game)
+  if (!rc_client_is_game_loaded(client))
     return 0;
 
   rc_mutex_lock(&client->state.mutex);
@@ -5411,7 +5411,7 @@ int rc_client_serialize_progress_sized(rc_client_t* client, uint8_t* buffer, siz
     return client->state.external_client->serialize_progress(buffer, buffer_size);
 #endif
 
-  if (!client->game)
+  if (!rc_client_is_game_loaded(client))
     return RC_NO_GAME_LOADED;
 
   if (!buffer)
@@ -5535,7 +5535,7 @@ int rc_client_deserialize_progress_sized(rc_client_t* client, const uint8_t* ser
     return client->state.external_client->deserialize_progress(serialized, serialized_size);
 #endif
 
-  if (!client->game)
+  if (!rc_client_is_game_loaded(client))
     return RC_NO_GAME_LOADED;
 
   rc_mutex_lock(&client->state.mutex);
