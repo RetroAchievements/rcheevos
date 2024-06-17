@@ -1,3 +1,13 @@
+# v11.4.0
+* add RC_CONDITION_REMEMBER and RC_OPERAND_RECALL
+* add RC_OPERATOR_ADD and RC_OPERATOR_SUB
+* add scratch pad memory to PSX memory map
+* add Super Game Module memory to Colecovision memory map
+* add rapi function fetch_game_titles
+* modify progress functions to return RC_NO_GAME_LOADED when "Unknown Game" is loaded
+* update subsystem list for arcade hash
+* fix exception if server sends null as achievement.author
+
 # v11.3.0
 * add RC_OPERATOR_MOD
 * add cartridge RAM to Game Gear and Master System memory maps
