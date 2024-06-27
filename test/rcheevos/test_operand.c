@@ -10,7 +10,7 @@ static void _assert_parse_operand(rc_operand_t* self, char* buffer, const char**
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  ret = rc_parse_operand(self, memaddr, 0, &parse);
+  ret = rc_parse_operand(self, memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   ASSERT_NUM_GREATER_EQUALS(ret, 0);
@@ -67,7 +67,7 @@ static void test_parse_error_operand(const char* memaddr, int valid_chars, int e
 
   rc_init_parse_state(&parse, 0, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  ret = rc_parse_operand(&self, &memaddr, 0, &parse);
+  ret = rc_parse_operand(&self, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   ASSERT_NUM_EQUALS(expected_error, ret);
@@ -97,7 +97,7 @@ static void test_evaluate_operand(const char* memaddr, memory_t* memory, uint32_
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  rc_parse_operand(&self, &memaddr, 0, &parse);
+  rc_parse_operand(&self, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   value = evaluate_operand(&self, memory, memrefs);
@@ -126,7 +126,7 @@ static void test_evaluate_operand_float(const char* memaddr, memory_t* memory, d
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  rc_parse_operand(&self, &memaddr, 0, &parse);
+  rc_parse_operand(&self, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   value = evaluate_operand_float(&self, memory, memrefs);
@@ -530,7 +530,7 @@ static void test_evaluate_delta_memory_reference() {
   memaddr = "d0xh1";
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  rc_parse_operand(&op, &memaddr, 0, &parse);
+  rc_parse_operand(&op, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   ASSERT_UNUM_EQUALS(evaluate_operand(&op, &memory, memrefs), 0x00); /* first call gets uninitialized value */
@@ -568,7 +568,7 @@ void test_evaluate_prior_memory_reference() {
   memaddr = "p0xh1";
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  rc_parse_operand(&op, &memaddr, 0, &parse);
+  rc_parse_operand(&op, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   /* RC_OPERAND_PRIOR only updates when the memory value changes */
@@ -641,7 +641,7 @@ static void test_evaluate_delta_memory_reference_float() {
   memaddr = "dff0";
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  rc_parse_operand(&op, &memaddr, 0, &parse);
+  rc_parse_operand(&op, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   ASSERT_NUM_EQUALS(evaluate_operand_float(&op, &memory, memrefs), 0.0); /* first call gets uninitialized value */

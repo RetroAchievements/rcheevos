@@ -1067,7 +1067,7 @@ static void rc_client_validate_addresses(rc_client_game_info_t* game, rc_client_
   rc_memref_t** last_memref = &game->runtime.memrefs;
   rc_memref_t* memref = game->runtime.memrefs;
   for (; memref; memref = memref->next) {
-    if (!memref->value.is_indirect) {
+    if (memref->value.type == RC_MEMREF_TYPE_MEMREF) {
       total_count++;
 
       if (memref->address > max_address ||
@@ -4676,7 +4676,7 @@ static void rc_client_update_memref_values(rc_client_t* client)
   int invalidated_memref = 0;
 
   for (; memref; memref = memref->next) {
-    if (memref->value.is_indirect)
+    if (memref->value.type == RC_MEMREF_TYPE_MODIFIED_MEMREF)
       continue;
 
     client->state.processing_memref = memref;

@@ -27,11 +27,11 @@ static void rc_update_condition_pause(rc_condition_t* condition) {
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, int is_value) {
   rc_condset_t* self;
   rc_condition_t** next;
-  int in_add_address;
+  rc_condition_t* condition;;
   uint32_t measured_target = 0;
 
   self = RC_ALLOC(rc_condset_t, parse);
-  self->has_pause = self->is_paused = self->has_indirect_memrefs = 0;
+  self->has_pause = self->is_paused = 0;
   next = &self->conditions;
 
   if (**memaddr == 'S' || **memaddr == 's' || !**memaddr) {
@@ -40,16 +40,16 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
     return self;
   }
 
-  in_add_address = 0;
   for (;;) {
-    *next = rc_parse_condition(memaddr, parse, in_add_address);
+    condition = rc_parse_condition(memaddr, parse);
+    *next = condition;
 
     if (parse->offset < 0) {
       return 0;
     }
 
-    if ((*next)->oper == RC_OPERATOR_NONE) {
-      switch ((*next)->type) {
+    if (condition->oper == RC_OPERATOR_NONE) {
+      switch (condition->type) {
         case RC_CONDITION_ADD_ADDRESS:
         case RC_CONDITION_ADD_SOURCE:
         case RC_CONDITION_SUB_SOURCE:
@@ -69,11 +69,9 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
       }
     }
 
-    self->has_pause |= (*next)->type == RC_CONDITION_PAUSE_IF;
-    in_add_address = (*next)->type == RC_CONDITION_ADD_ADDRESS;
-    self->has_indirect_memrefs |= in_add_address;
+    self->has_pause |= condition->type == RC_CONDITION_PAUSE_IF;
 
-    switch ((*next)->type) {
+    switch (condition->type) {
     case RC_CONDITION_MEASURED:
       if (measured_target != 0) {
         /* multiple Measured flags cannot exist in the same group */
@@ -82,7 +80,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
       }
       else if (is_value) {
         measured_target = (unsigned)-1;
-        switch ((*next)->oper)
+        switch (condition->oper)
         {
           case RC_OPERATOR_AND:
           case RC_OPERATOR_XOR:
@@ -97,18 +95,18 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
 
           default:
             /* comparison operator, measuring hits. set required_hits to MAX_INT */
-            (*next)->required_hits = measured_target;
+            condition->required_hits = measured_target;
             break;
         }
       }
-      else if ((*next)->required_hits != 0) {
-        measured_target = (*next)->required_hits;
+      else if (condition->required_hits != 0) {
+        measured_target = condition->required_hits;
       }
-      else if ((*next)->operand2.type == RC_OPERAND_CONST) {
-        measured_target = (*next)->operand2.value.num;
+      else if (condition->operand2.type == RC_OPERAND_CONST) {
+        measured_target = condition->operand2.value.num;
       }
-      else if ((*next)->operand2.type == RC_OPERAND_FP) {
-        measured_target = (unsigned)(*next)->operand2.value.dbl;
+      else if (condition->operand2.type == RC_OPERAND_FP) {
+        measured_target = (unsigned)condition->operand2.value.dbl;
       }
       else {
         parse->offset = RC_INVALID_MEASURED_TARGET;
@@ -137,7 +135,23 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
       break;
     }
 
-    next = &(*next)->next;
+    if (condition->type == RC_CONDITION_ADD_ADDRESS) {
+      if (condition->oper == RC_OPERATOR_NONE) {
+        parse->indirect_parent_memref = condition->operand1.value.memref;
+        parse->indirect_parent_type = condition->operand1.type;
+      }
+      else {
+        parse->indirect_parent_memref = (rc_memref_t*)rc_alloc_modified_memref(parse,
+          RC_MEMSIZE_32_BITS, condition->operand1.value.memref, condition->operand1.type,
+          condition->oper, &condition->operand2);
+        parse->indirect_parent_type = RC_OPERAND_CONST;
+      }
+    }
+    else {
+      parse->indirect_parent_memref = NULL;
+    }
+
+    next = &condition->next;
 
     if (**memaddr != '_') {
       break;
@@ -152,32 +166,6 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
     rc_update_condition_pause(self->conditions);
 
   return self;
-}
-
-static void rc_condset_update_indirect_memrefs(rc_condition_t* condition, int processing_pause, rc_eval_state_t* eval_state) {
-  for (; condition != 0; condition = condition->next) {
-    if (condition->pause != processing_pause)
-      continue;
-
-    if (condition->type == RC_CONDITION_ADD_ADDRESS) {
-      rc_typed_value_t value;
-      rc_evaluate_condition_value(&value, condition, eval_state);
-      rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
-      eval_state->add_address = value.value.u32;
-      continue;
-    }
-
-    /* call rc_get_memref_value to update the indirect memrefs. it won't do anything with non-indirect
-     * memrefs and avoids a second check of is_indirect. also, we ignore the response, so it doesn't
-     * matter what operand type we pass. assume RC_OPERAND_ADDRESS is the quickest. */
-    if (rc_operand_is_memref(&condition->operand1))
-      rc_get_memref_value(condition->operand1.value.memref, RC_OPERAND_ADDRESS, eval_state);
-
-    if (rc_operand_is_memref(&condition->operand2))
-      rc_get_memref_value(condition->operand2.value.memref, RC_OPERAND_ADDRESS, eval_state);
-
-    eval_state->add_address = 0;
-  }
 }
 
 static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc_eval_state_t* eval_state) {
@@ -198,7 +186,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
   or_next = 0;
   reset_next = 0;
   eval_state->add_value.type = RC_VALUE_TYPE_NONE;
-  eval_state->add_hits = eval_state->add_address = 0;
+  eval_state->add_hits = 0;
 
   for (condition = self->conditions; condition != 0; condition = condition->next) {
     if (condition->pause != processing_pause)
@@ -209,20 +197,16 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_ADD_SOURCE:
         rc_evaluate_condition_value(&value, condition, eval_state);
         rc_typed_value_add(&eval_state->add_value, &value);
-        eval_state->add_address = 0;
         continue;
 
       case RC_CONDITION_SUB_SOURCE:
         rc_evaluate_condition_value(&value, condition, eval_state);
         rc_typed_value_negate(&value);
         rc_typed_value_add(&eval_state->add_value, &value);
-        eval_state->add_address = 0;
         continue;
 
       case RC_CONDITION_ADD_ADDRESS:
-        rc_evaluate_condition_value(&value, condition, eval_state);
-        rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
-        eval_state->add_address = value.value.u32;
+        /* handled by rc_modified_memref_t */
         continue;
 
       case RC_CONDITION_REMEMBER:
@@ -231,7 +215,6 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         eval_state->recall_value.type = value.type;
         eval_state->recall_value.value = value.value;
         eval_state->add_value.type = RC_VALUE_TYPE_NONE;
-        eval_state->add_address = 0;
         continue;
 
       case RC_CONDITION_MEASURED:
@@ -249,7 +232,6 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     /* STEP 2: evaluate the current condition */
     condition->is_true = (char)rc_test_condition(condition, eval_state);
     eval_state->add_value.type = RC_VALUE_TYPE_NONE;
-    eval_state->add_address = 0;
 
     /* apply logic flags and reset them for the next condition */
     cond_valid = condition->is_true;
@@ -342,20 +324,8 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     switch (condition->type) {
       case RC_CONDITION_PAUSE_IF:
         /* as soon as we find a PauseIf that evaluates to true, stop processing the rest of the group */
-        if (cond_valid) {
-          /* indirect memrefs are not updated as part of the rc_update_memref_values call.
-           * an active pause aborts processing of the remaining part of the pause subset and the entire non-pause subset.
-           * if the set has any indirect memrefs, manually update them now so the deltas are correct */
-          if (self->has_indirect_memrefs) {
-            /* first, update any indirect memrefs in the remaining part of the pause subset  */
-            rc_condset_update_indirect_memrefs(condition->next, 1, eval_state);
-
-            /* then, update all indirect memrefs in the non-pause subset */
-            rc_condset_update_indirect_memrefs(self->conditions, 0, eval_state);
-          }
-
+        if (cond_valid)
           return 1;
-        }
 
         /* if we make it to the end of the function, make sure we indicate that nothing matched. if we do find
            a later PauseIf match, it'll automatically return true via the previous condition. */

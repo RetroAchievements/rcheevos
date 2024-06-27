@@ -13,9 +13,20 @@ typedef struct rc_scratch_string {
 }
 rc_scratch_string_t;
 
+typedef struct rc_modified_memref_t {
+  rc_memref_t memref;              /* for compatibility with rc_operand_t.value.memref */
+  const rc_memref_value_t* parent; /* The parent memref this memref is derived from */
+  rc_operand_t modifier;           /* The modifier to apply to the parent. */
+  uint8_t parent_type;             /* How to read the value from the parent. (RC_OPERAND_*) */
+  uint8_t modifier_type;           /* How to apply the modifier to the parent. (RC_OPERATOR_*) */
+}
+rc_modified_memref_t;
+
+
 #define RC_ALLOW_ALIGN(T) struct __align_ ## T { char ch; T t; };
 RC_ALLOW_ALIGN(rc_condition_t)
 RC_ALLOW_ALIGN(rc_condset_t)
+RC_ALLOW_ALIGN(rc_modified_memref_t)
 RC_ALLOW_ALIGN(rc_lboard_t)
 RC_ALLOW_ALIGN(rc_memref_t)
 RC_ALLOW_ALIGN(rc_operand_t)
@@ -45,6 +56,7 @@ typedef struct {
   struct objs {
     rc_condition_t* __rc_condition_t;
     rc_condset_t* __rc_condset_t;
+    rc_modified_memref_t* __rc_modified_memref_t;
     rc_lboard_t* __rc_lboard_t;
     rc_memref_t* __rc_memref_t;
     rc_operand_t* __rc_operand_t;
@@ -78,12 +90,17 @@ typedef struct {
 }
 rc_typed_value_t;
 
+enum {
+  RC_MEMREF_TYPE_MEMREF,          /* rc_memref_t */
+  RC_MEMREF_TYPE_MODIFIED_MEMREF, /* rc_indirect_memref_t */
+  RC_MEMREF_TYPE_VALUE            /* rc_value_t */
+};
+
 #define RC_MEASURED_UNKNOWN 0xFFFFFFFF
 
 typedef struct {
   rc_typed_value_t add_value;/* AddSource/SubSource */
-  int32_t add_hits;             /* AddHits */
-  uint32_t add_address;     /* AddAddress */
+  int32_t add_hits;          /* AddHits */
 
   rc_peek_t peek;
   void* peek_userdata;
@@ -114,6 +131,9 @@ typedef struct {
   uint32_t measured_target;
   int lines_read;
 
+  const rc_memref_t* indirect_parent_memref;
+  uint8_t indirect_parent_type;
+
   uint8_t has_required_hits;
   uint8_t measured_as_percent;
 }
@@ -128,7 +148,9 @@ void* rc_alloc(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment
 void* rc_alloc_scratch(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment, rc_scratch_t* scratch, uint32_t scratch_object_pointer_offset);
 char* rc_alloc_str(rc_parse_state_t* parse, const char* text, size_t length);
 
-rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t size, uint8_t is_indirect);
+rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t size);
+rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t size, const rc_memref_t* parent, uint8_t parent_type,
+                                               uint8_t modifier_type, const rc_operand_t* modifier);
 int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address);
 void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);
 void rc_update_memref_value(rc_memref_value_t* memref, uint32_t value);
@@ -161,16 +183,17 @@ enum {
   RC_PROCESSING_COMPARE_ALWAYS_FALSE
 };
 
-rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse, uint8_t is_indirect);
+rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse);
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state);
 void rc_evaluate_condition_value(rc_typed_value_t* value, rc_condition_t* self, rc_eval_state_t* eval_state);
 int rc_condition_is_combining(const rc_condition_t* self);
 
-int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indirect, rc_parse_state_t* parse);
-void rc_evaluate_operand(rc_typed_value_t* value, rc_operand_t* self, rc_eval_state_t* eval_state);
+int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse);
+void rc_evaluate_operand(rc_typed_value_t* value, const rc_operand_t* self, rc_eval_state_t* eval_state);
 int rc_operand_is_float_memref(const rc_operand_t* self);
 int rc_operand_is_float(const rc_operand_t* self);
 int rc_operand_is_recall(const rc_operand_t* self);
+int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right);
 
 int rc_is_valid_variable_character(char ch, int is_first);
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
@@ -187,6 +210,7 @@ void rc_typed_value_divide(rc_typed_value_t* value, const rc_typed_value_t* amou
 void rc_typed_value_modulus(rc_typed_value_t* value, const rc_typed_value_t* amount);
 void rc_typed_value_negate(rc_typed_value_t* value);
 int rc_typed_value_compare(const rc_typed_value_t* value1, const rc_typed_value_t* value2, char oper);
+void rc_typed_value_combine(rc_typed_value_t* value, rc_typed_value_t* amount, uint8_t oper);
 void rc_typed_value_from_memref_value(rc_typed_value_t* value, const rc_memref_value_t* memref);
 
 int rc_format_typed_value(char* buffer, size_t size, const rc_typed_value_t* value, int format);

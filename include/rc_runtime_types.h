@@ -70,15 +70,14 @@ typedef struct rc_memref_value_t {
   /* The last differing value of this memory reference. */
   uint32_t prior;
 
-  /* The size of the value. */
+  /* The size of the value. (RC_MEMSIZE_*) */
   uint8_t size;
   /* True if the value changed this frame. */
   uint8_t changed;
-  /* The value type of the value (for variables) */
+  /* The value type of the value. (RC_VALUE_TYPE_*) */
   uint8_t type;
-  /* True if the reference will be used in indirection.
-   * NOTE: This is actually a property of the rc_memref_t, but we put it here to save space */
-  uint8_t is_indirect;
+  /* The type of memref (RC_MEMREF_TYPE_*) */
+  uint8_t memref_type;
 }
 rc_memref_value_t;
 
@@ -92,6 +91,7 @@ struct rc_memref_t {
   /* The next memory reference in the chain. */
   rc_memref_t* next;
 };
+
 
 /*****************************************************************************\
 | Operands                                                                    |
@@ -125,7 +125,7 @@ typedef struct rc_operand_t {
     int luafunc;
   } value;
 
-  /* specifies which member of the value union is being used */
+  /* specifies which member of the value union is being used (RC_OPERAND_*) */
   uint8_t type;
 
   /* the actual RC_MEMSIZE of the operand - memref.size may differ */
@@ -180,7 +180,9 @@ enum {
   RC_OPERATOR_XOR,
   RC_OPERATOR_MOD,
   RC_OPERATOR_ADD,
-  RC_OPERATOR_SUB
+  RC_OPERATOR_SUB,
+
+  RC_OPERATOR_INDIRECT_READ, /* internal use */
 };
 
 typedef struct rc_condition_t rc_condition_t;
@@ -224,17 +226,33 @@ struct rc_condset_t {
   /* The next condition set in the chain. */
   rc_condset_t* next;
 
-  /* The list of conditions in this condition set. */
+  /* The first condition in this condition set. Then follow ->next chain. */
   rc_condition_t* conditions;
 
+  /* The number of pause conditions in this condition set. */
+  /* The first pause condition is at "this + RC_ALIGN(sizeof(this)). */
+  uint16_t num_pause_conditions;
+
+  /* The number of reset conditions in this condition set. */
+  uint16_t num_reset_conditions;
+
+  /* The number of hittarget conditions in this condition set. */
+  uint16_t num_hittarget_conditions;
+
+  /* The number of non-hittarget measured conditions in this condition set. */
+  uint16_t num_measured_conditions;
+
+  /* The number of other conditions in this condition set. */
+  uint16_t num_other_conditions;
+
+  /* The number of indirect conditions in this condition set. */
+  uint16_t num_indirect_conditions;
+
   /* True if any condition in the set is a pause condition. */
-  uint8_t has_pause;
+  uint8_t has_pause; /* DEPRECATED - just check num_pause_conditions != 0 */
 
   /* True if the set is currently paused. */
   uint8_t is_paused;
-
-  /* True if the set has indirect memory references. */
-  uint8_t has_indirect_memrefs;
 };
 
 /*****************************************************************************\

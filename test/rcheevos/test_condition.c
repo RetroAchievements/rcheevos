@@ -35,7 +35,7 @@ static void _assert_parse_condition(
 
     rc_init_parse_state(&parse, buffer, 0, 0);
     rc_init_parse_state_memrefs(&parse, &memrefs);
-    self = rc_parse_condition(&memaddr, &parse, 0);
+    self = rc_parse_condition(&memaddr, &parse);
     rc_destroy_parse_state(&parse);
 
     ASSERT_NUM_EQUALS(self->type, expected_type);
@@ -131,7 +131,7 @@ static void test_evaluate_condition(const char* memaddr, uint8_t expected_compar
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_condition(&memaddr, &parse, 0);
+  self = rc_parse_condition(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   ASSERT_NUM_GREATER(parse.offset, 0);
@@ -187,7 +187,7 @@ static void test_evaluate_condition_float(const char* memaddr, int expected_resu
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  self = rc_parse_condition(&memaddr, &parse, 0);
+  self = rc_parse_condition(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   ASSERT_NUM_GREATER(parse.offset, 0);
@@ -213,7 +213,7 @@ static void test_condition_compare_delta() {
   const char* cond_str = "0xH0001>d0xH0001";
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  cond = rc_parse_condition(&cond_str, &parse, 0);
+  cond = rc_parse_condition(&cond_str, &parse);
   rc_destroy_parse_state(&parse);
 
   ASSERT_NUM_GREATER(parse.offset, 0);
@@ -247,7 +247,7 @@ static void test_condition_delta_24bit() {
   const char* cond_str = "0xW0001>d0xW0001";
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  cond = rc_parse_condition(&cond_str, &parse, 0);
+  cond = rc_parse_condition(&cond_str, &parse);
   rc_destroy_parse_state(&parse);
 
   ASSERT_NUM_GREATER(parse.offset, 0);
@@ -293,7 +293,7 @@ static void test_condition_prior_24bit() {
   const char* cond_str = "0xW0001>p0xW0001";
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  cond = rc_parse_condition(&cond_str, &parse, 0);
+  cond = rc_parse_condition(&cond_str, &parse);
   rc_destroy_parse_state(&parse);
 
   ASSERT_NUM_GREATER(parse.offset, 0);

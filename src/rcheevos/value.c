@@ -112,7 +112,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
 
     /* process the clause */
     buffer_ptr = buffer;
-    cond = rc_parse_condition(&buffer_ptr, parse, 0);
+    cond = rc_parse_condition(&buffer_ptr, parse);
     if (parse->offset < 0)
       return;
 
@@ -150,7 +150,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
       /* cannot change SubSource to Measured. add a dummy condition */
       next = &cond->next;
       buffer_ptr = "A:0";
-      cond = rc_parse_condition(&buffer_ptr, parse, 0);
+      cond = rc_parse_condition(&buffer_ptr, parse);
       *next = cond;
     }
 
@@ -711,6 +711,44 @@ void rc_typed_value_modulus(rc_typed_value_t* value, const rc_typed_value_t* amo
   rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
   value->value.f32 = (float)fmod(value->value.f32, amount->value.f32);
 }
+
+void rc_typed_value_combine(rc_typed_value_t* value, rc_typed_value_t* amount, uint8_t oper) {
+  switch (oper) {
+    case RC_OPERATOR_MULT:
+      rc_typed_value_multiply(value, amount);
+      break;
+
+    case RC_OPERATOR_DIV:
+      rc_typed_value_divide(value, amount);
+      break;
+
+    case RC_OPERATOR_AND:
+      rc_typed_value_convert(value, RC_VALUE_TYPE_UNSIGNED);
+      rc_typed_value_convert(amount, RC_VALUE_TYPE_UNSIGNED);
+      value->value.u32 &= amount->value.u32;
+      break;
+
+    case RC_OPERATOR_XOR:
+      rc_typed_value_convert(value, RC_VALUE_TYPE_UNSIGNED);
+      rc_typed_value_convert(amount, RC_VALUE_TYPE_UNSIGNED);
+      value->value.u32 ^= amount->value.u32;
+      break;
+
+    case RC_OPERATOR_MOD:
+      rc_typed_value_modulus(value, amount);
+      break;
+
+    case RC_OPERATOR_ADD:
+      rc_typed_value_add(value, amount);
+      break;
+
+    case RC_OPERATOR_SUB:
+      rc_typed_value_negate(amount);
+      rc_typed_value_add(value, amount);
+      break;
+  }
+}
+
 
 static int rc_typed_value_compare_floats(float f1, float f2, char oper) {
   if (f1 == f2) {

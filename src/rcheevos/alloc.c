@@ -104,10 +104,12 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   parse->scratch.strings = NULL;
   rc_buffer_init(&parse->scratch.buffer);
   memset(&parse->scratch.objs, 0, sizeof(parse->scratch.objs));
-  parse->first_memref = 0;
-  parse->variables = 0;
+  parse->first_memref = NULL;
+  parse->variables = NULL;
   parse->measured_target = 0;
   parse->lines_read = 0;
+  parse->indirect_parent_memref = NULL;
+  parse->indirect_parent_type = 0;
   parse->has_required_hits = 0;
   parse->measured_as_percent = 0;
 }

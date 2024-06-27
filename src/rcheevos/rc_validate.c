@@ -697,24 +697,6 @@ static int rc_validate_comparison_overlap(int comparison1, uint32_t value1, int 
   return RC_OVERLAP_NONE;
 }
 
-static int rc_validate_are_operands_equal(const rc_operand_t* oper1, const rc_operand_t* oper2)
-{
-  if (oper1->type != oper2->type)
-    return 0;
-
-  switch (oper1->type)
-  {
-  case RC_OPERAND_CONST:
-    return (oper1->value.num == oper2->value.num);
-  case RC_OPERAND_FP:
-    return (oper1->value.dbl == oper2->value.dbl);
-  case RC_OPERAND_RECALL:
-    return (oper2->type == RC_OPERAND_RECALL);
-  default:
-    return (oper1->value.memref->address == oper2->value.memref->address && oper1->size == oper2->size);
-  }
-}
-
 static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, const rc_condset_t* compare_conditions,
     const char* prefix, const char* compare_prefix, char result[], const size_t result_size)
 {
@@ -786,14 +768,14 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
           if (compare_condition->type != condition_chain_iter->type ||
             compare_condition->oper != condition_chain_iter->oper ||
             compare_condition->required_hits != condition_chain_iter->required_hits ||
-            !rc_validate_are_operands_equal(&compare_condition->operand1, &condition_chain_iter->operand1))
+            !rc_operands_are_equal(&compare_condition->operand1, &condition_chain_iter->operand1))
           {
             chain_matches = 0;
             break;
           }
 
           if (compare_condition->oper != RC_OPERATOR_NONE &&
-            !rc_validate_are_operands_equal(&compare_condition->operand2, &condition_chain_iter->operand2))
+            !rc_operands_are_equal(&compare_condition->operand2, &condition_chain_iter->operand2))
           {
             if (compare_condition->operand2.type != condition_chain_iter->operand2.type)
             {

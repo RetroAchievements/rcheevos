@@ -31,7 +31,7 @@ static char rc_condition_determine_comparator(const rc_condition_t* self) {
   }
 
   if ((self->operand1.type == RC_OPERAND_ADDRESS || self->operand1.type == RC_OPERAND_DELTA) &&
-      !self->operand1.value.memref->value.is_indirect && !rc_operand_is_float(&self->operand1)) {
+      self->operand1.value.memref->value.type == RC_MEMREF_TYPE_MEMREF && !rc_operand_is_float(&self->operand1)) {
     /* left side is an integer memory reference */
     int needs_translate = (self->operand1.size != self->operand1.value.memref->value.size);
 
@@ -43,7 +43,7 @@ static char rc_condition_determine_comparator(const rc_condition_t* self) {
       return needs_translate ? RC_PROCESSING_COMPARE_DELTA_TO_CONST_TRANSFORMED : RC_PROCESSING_COMPARE_DELTA_TO_CONST;
     }
     else if ((self->operand2.type == RC_OPERAND_ADDRESS || self->operand2.type == RC_OPERAND_DELTA) &&
-             !self->operand2.value.memref->value.is_indirect && !rc_operand_is_float(&self->operand2)) {
+             self->operand2.value.memref->value.type == RC_MEMREF_TYPE_MEMREF && !rc_operand_is_float(&self->operand2)) {
       /* right side is an integer memory reference */
       const int is_same_memref = (self->operand1.value.memref == self->operand2.value.memref);
       needs_translate |= (self->operand2.size != self->operand2.value.memref->value.size);
@@ -161,7 +161,7 @@ static int rc_parse_operator(const char** memaddr) {
   }
 }
 
-rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse, uint8_t is_indirect) {
+rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse) {
   rc_condition_t* self;
   const char* aux;
   int result;
@@ -204,7 +204,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     self->type = RC_CONDITION_STANDARD;
   }
 
-  result = rc_parse_operand(&self->operand1, &aux, is_indirect, parse);
+  result = rc_parse_operand(&self->operand1, &aux, parse);
   if (result < 0) {
     parse->offset = result;
     return 0;
@@ -267,7 +267,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       break;
   }
 
-  result = rc_parse_operand(&self->operand2, &aux, is_indirect, parse);
+  result = rc_parse_operand(&self->operand2, &aux, parse);
   if (result < 0) {
     parse->offset = result;
     return 0;
@@ -548,38 +548,5 @@ void rc_evaluate_condition_value(rc_typed_value_t* value, rc_condition_t* self, 
   rc_evaluate_operand(value, &self->operand1, eval_state);
   rc_evaluate_operand(&amount, &self->operand2, eval_state);
 
-  switch (self->oper) {
-    case RC_OPERATOR_MULT:
-      rc_typed_value_multiply(value, &amount);
-      break;
-
-    case RC_OPERATOR_DIV:
-      rc_typed_value_divide(value, &amount);
-      break;
-
-    case RC_OPERATOR_AND:
-      rc_typed_value_convert(value, RC_VALUE_TYPE_UNSIGNED);
-      rc_typed_value_convert(&amount, RC_VALUE_TYPE_UNSIGNED);
-      value->value.u32 &= amount.value.u32;
-      break;
-
-    case RC_OPERATOR_XOR:
-      rc_typed_value_convert(value, RC_VALUE_TYPE_UNSIGNED);
-      rc_typed_value_convert(&amount, RC_VALUE_TYPE_UNSIGNED);
-      value->value.u32 ^= amount.value.u32;
-      break;
-
-    case RC_OPERATOR_MOD:
-      rc_typed_value_modulus(value, &amount);
-      break;
-
-    case RC_OPERATOR_ADD:
-      rc_typed_value_add(value, &amount);
-      break;
-
-    case RC_OPERATOR_SUB:
-      rc_typed_value_negate(&amount);
-      rc_typed_value_add(value, &amount);
-      break;
-  }
+  rc_typed_value_combine(value, &amount, self->oper);
 }

@@ -215,7 +215,10 @@ static int rc_runtime_progress_is_indirect_memref(rc_operand_t* oper)
       return 0;
 
     default:
-      return oper->value.memref->value.is_indirect;
+      if (oper->value.memref->value.type != RC_MEMREF_TYPE_MODIFIED_MEMREF)
+        return 0;
+
+      return ((const rc_modified_memref_t*)oper->value.memref)->modifier_type == RC_OPERATOR_INDIRECT_READ;
   }
 }
 
@@ -317,8 +320,8 @@ static uint32_t rc_runtime_progress_should_serialize_variable_condset(const rc_c
 {
   const rc_condition_t* condition;
 
-  /* predetermined presence of pause flag or indirect memrefs - must serialize */
-  if (conditions->has_pause || conditions->has_indirect_memrefs)
+  /* predetermined presence of pause flag - must serialize */
+  if (conditions->has_pause)
     return RC_VAR_FLAG_HAS_COND_DATA;
 
   /* if any conditions has required hits, must serialize */

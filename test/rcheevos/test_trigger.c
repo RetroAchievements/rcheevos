@@ -3,13 +3,14 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-static void _assert_parse_trigger(rc_trigger_t** trigger, void* buffer, const char* memaddr)
+static void _assert_parse_trigger(rc_trigger_t** trigger, void* buffer, size_t buffer_size, const char* memaddr)
 {
   int size;
   unsigned* overflow;
 
   size = rc_trigger_size(memaddr);
   ASSERT_NUM_GREATER(size, 0);
+  ASSERT_NUM_LESS_EQUALS(size, buffer_size);
 
   overflow = (unsigned*)(((char*)buffer) + size);
   *overflow = 0xCDCDCDCD;
@@ -21,7 +22,7 @@ static void _assert_parse_trigger(rc_trigger_t** trigger, void* buffer, const ch
     ASSERT_FAIL("write past end of buffer");
   }
 }
-#define assert_parse_trigger(trigger, buffer, memaddr) ASSERT_HELPER(_assert_parse_trigger(trigger, buffer, memaddr), "assert_parse_trigger")
+#define assert_parse_trigger(trigger, buffer, memaddr) ASSERT_HELPER(_assert_parse_trigger(trigger, buffer, sizeof(buffer), memaddr), "assert_parse_trigger")
 
 static void _assert_evaluate_trigger(rc_trigger_t* trigger, memory_t* memory, int expected_result) {
   int result = rc_test_trigger(trigger, peek, memory, NULL);
@@ -589,7 +590,7 @@ static void test_measured_indirect() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[256];
+  char buffer[384];
 
   memory.ram = ram;
   memory.size = sizeof(ram);

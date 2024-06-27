@@ -96,10 +96,9 @@ static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr) {
   return RC_OK;
 }
 
-static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse, uint8_t is_indirect) {
+static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   uint32_t address;
-  uint8_t size;
   int ret;
 
   switch (*aux) {
@@ -132,18 +131,31 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
   if (ret != RC_OK)
     return ret;
 
-  size = rc_memref_shared_size(self->size);
+  uint8_t size = rc_memref_shared_size(self->size);
   if (size != self->size && self->type == RC_OPERAND_PRIOR) {
     /* if the shared size differs from the requested size and it's a prior operation, we
      * have to check to make sure both sizes use the same mask, or the prior value may be
      * updated when bits outside the mask are modified, which would make it look like the
-     * current value once the mask is applied. if the mask differs, create a new 
+     * current value once the mask is applied. if the mask differs, create a new
      * non-shared record for tracking the prior data. */
     if (rc_memref_mask(size) != rc_memref_mask(self->size))
       size = self->size;
   }
 
-  self->value.memref = rc_alloc_memref(parse, address, size, is_indirect);
+  if (parse->indirect_parent_memref) {
+    rc_operand_t offset;
+    offset.type = RC_OPERAND_CONST;
+    offset.size = RC_MEMSIZE_32_BITS;
+    offset.value.num = address;
+
+    self->value.memref = (rc_memref_t*)rc_alloc_modified_memref(parse,
+      size, parse->indirect_parent_memref, parse->indirect_parent_type,
+      RC_OPERATOR_INDIRECT_READ, &offset);
+  }
+  else {
+    self->value.memref = rc_alloc_memref(parse, address, size);
+  }
+
   if (parse->offset < 0)
     return parse->offset;
 
@@ -151,7 +163,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
   return RC_OK;
 }
 
-int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indirect, rc_parse_state_t* parse) {
+int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   char* end;
   int ret;
@@ -183,7 +195,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
 
     case 'f': case 'F': /* floating point constant */
       if (isalpha((unsigned char)aux[1])) {
-        ret = rc_parse_operand_memory(self, &aux, parse, is_indirect);
+        ret = rc_parse_operand_memory(self, &aux, parse);
 
         if (ret < 0)
           return ret;
@@ -275,7 +287,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, uint8_t is_indire
       if (aux[1] == 'x' || aux[1] == 'X') { /* hex integer constant */
         /* fallthrough */ /* to default */
     default:
-        ret = rc_parse_operand_memory(self, &aux, parse, is_indirect);
+        ret = rc_parse_operand_memory(self, &aux, parse);
 
         if (ret < 0)
           return ret;
@@ -331,6 +343,22 @@ static int rc_luapeek(lua_State* L) {
 }
 
 #endif /* RC_DISABLE_LUA */
+
+int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right) {
+  if (left->type != right->type)
+    return 0;
+
+  switch (left->type) {
+    case RC_OPERAND_CONST:
+      return (left->value.num == right->value.num);
+    case RC_OPERAND_FP:
+      return (left->value.dbl == right->value.dbl);
+    case RC_OPERAND_RECALL:
+      return (right->type == RC_OPERAND_RECALL);
+    default:
+      return (left->value.memref->address == right->value.memref->address && right->size == right->size);
+  }
+}
 
 int rc_operand_is_float_memref(const rc_operand_t* self) {
   switch (self->size) {
@@ -465,7 +493,7 @@ uint32_t rc_transform_operand_value(uint32_t value, const rc_operand_t* self) {
   return value;
 }
 
-void rc_evaluate_operand(rc_typed_value_t* result, rc_operand_t* self, rc_eval_state_t* eval_state) {
+void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_eval_state_t* eval_state) {
 #ifndef RC_DISABLE_LUA
   rc_luapeek_t luapeek;
 #endif /* RC_DISABLE_LUA */

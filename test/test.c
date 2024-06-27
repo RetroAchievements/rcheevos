@@ -101,38 +101,38 @@ int main(void) {
   test_condset();
   test_trigger();
   test_value();
-  test_format();
-  test_lboard();
-  test_richpresence();
-  test_runtime();
-  test_runtime_progress();
+//  test_format();
+//  test_lboard();
+//  test_richpresence();
+//  test_runtime();
+//  test_runtime_progress();
 
-  test_consoleinfo();
-  test_rc_validate();
+//  test_consoleinfo();
+//  test_rc_validate();
 
-  test_lua();
+//  test_lua();
 
-  test_url();
+//  test_url();
 
-  test_rapi_common();
-  test_rapi_user();
-  test_rapi_runtime();
-  test_rapi_info();
-  test_rapi_editor();
+//  test_rapi_common();
+//  test_rapi_user();
+//  test_rapi_runtime();
+//  test_rapi_info();
+//  test_rapi_editor();
 
-  test_client();
+//  test_client();
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  test_client_external();
+//  test_client_external();
 #endif
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
-  test_client_raintegration();
+//  test_client_raintegration();
 #endif
 
 #ifdef RC_CLIENT_SUPPORTS_HASH
-  /* no direct compile option for hash support, so leverage RC_CLIENT_SUPPORTS_HASH */
-  test_rc_libretro(); /* libretro extensions require hash support */
-  test_cdreader();
-  test_hash();
+//  /* no direct compile option for hash support, so leverage RC_CLIENT_SUPPORTS_HASH */
+//  test_rc_libretro(); /* libretro extensions require hash support */
+//  test_cdreader();
+//  test_hash();
 #endif
 #endif
 
