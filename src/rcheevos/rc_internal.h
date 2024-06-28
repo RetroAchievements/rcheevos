@@ -91,16 +91,18 @@ typedef struct {
 rc_typed_value_t;
 
 enum {
-  RC_MEMREF_TYPE_MEMREF,          /* rc_memref_t */
-  RC_MEMREF_TYPE_MODIFIED_MEMREF, /* rc_indirect_memref_t */
-  RC_MEMREF_TYPE_VALUE            /* rc_value_t */
+  RC_MEMREF_TYPE_MEMREF,                 /* rc_memref_t */
+  RC_MEMREF_TYPE_MODIFIED_MEMREF,        /* rc_indirect_memref_t */
+  RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREF, /* rc_memref_t (dependent on recall value) */
+  RC_MEMREF_TYPE_VALUE                   /* rc_value_t */
 };
 
 #define RC_MEASURED_UNKNOWN 0xFFFFFFFF
 
 typedef struct {
-  rc_typed_value_t add_value;/* AddSource/SubSource */
-  int32_t add_hits;          /* AddHits */
+  rc_typed_value_t add_value; /* AddSource/SubSource */
+  int32_t add_hits;           /* AddHits */
+  uint32_t add_address;       /* AddAddress */
 
   rc_peek_t peek;
   void* peek_userdata;
@@ -133,6 +135,7 @@ typedef struct {
 
   const rc_memref_t* indirect_parent_memref;
   uint8_t indirect_parent_type;
+  uint8_t indirect_recall;
 
   uint8_t has_required_hits;
   uint8_t measured_as_percent;

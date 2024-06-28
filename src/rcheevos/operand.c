@@ -152,6 +152,14 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
       size, parse->indirect_parent_memref, parse->indirect_parent_type,
       RC_OPERATOR_INDIRECT_READ, &offset);
   }
+  else if (parse->indirect_recall) {
+    rc_memref_t* memref = RC_ALLOC(rc_memref_t, parse);
+    memset(memref, 0, sizeof(*memref));
+    memref->value.type = RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREF;
+    memref->value.size = size;
+    memref->address = address;
+    self->value.memref = memref;
+  }
   else {
     self->value.memref = rc_alloc_memref(parse, address, size);
   }
@@ -541,8 +549,15 @@ void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_
       break;
 
     case RC_OPERAND_RECALL:
-      result->type = eval_state->recall_value.type;
-      result->value = eval_state->recall_value.value;
+      if (eval_state->recall_value.type == RC_VALUE_TYPE_NONE) {
+        /* nothing REMEMBERed */
+        result->type = RC_VALUE_TYPE_UNSIGNED;
+        result->value.u32 = 0;
+      }
+      else {
+        result->type = eval_state->recall_value.type;
+        result->value = eval_state->recall_value.value;
+      }
       return;
 
     default:

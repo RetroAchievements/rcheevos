@@ -136,7 +136,13 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
     }
 
     if (condition->type == RC_CONDITION_ADD_ADDRESS) {
-      if (condition->oper == RC_OPERATOR_NONE) {
+      if (condition->operand1.type == RC_OPERAND_RECALL || parse->indirect_recall) {
+        /* cannot create an indirect memref using recall as the remembered value
+         * won't exist until the achievement is being processed. */
+        parse->indirect_parent_memref = NULL;
+        parse->indirect_recall = 1;
+      }
+      else if (condition->oper == RC_OPERATOR_NONE) {
         parse->indirect_parent_memref = condition->operand1.value.memref;
         parse->indirect_parent_type = condition->operand1.type;
       }
@@ -149,6 +155,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
     }
     else {
       parse->indirect_parent_memref = NULL;
+      parse->indirect_recall = 0;
     }
 
     next = &condition->next;
@@ -186,7 +193,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
   or_next = 0;
   reset_next = 0;
   eval_state->add_value.type = RC_VALUE_TYPE_NONE;
-  eval_state->add_hits = 0;
+  eval_state->add_hits = eval_state->add_address = 0;
 
   for (condition = self->conditions; condition != 0; condition = condition->next) {
     if (condition->pause != processing_pause)
@@ -197,16 +204,25 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_ADD_SOURCE:
         rc_evaluate_condition_value(&value, condition, eval_state);
         rc_typed_value_add(&eval_state->add_value, &value);
+        eval_state->add_address = 0;
         continue;
 
       case RC_CONDITION_SUB_SOURCE:
         rc_evaluate_condition_value(&value, condition, eval_state);
         rc_typed_value_negate(&value);
         rc_typed_value_add(&eval_state->add_value, &value);
+        eval_state->add_address = 0;
         continue;
 
       case RC_CONDITION_ADD_ADDRESS:
-        /* handled by rc_modified_memref_t */
+        /* normally handled by rc_modified_memref_t. if a recall value exists, there may be
+         * RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREFS, which need us to keep track
+         * of the add_address offset */
+        if (eval_state->recall_value.type != RC_VALUE_TYPE_NONE) {
+          rc_evaluate_condition_value(&value, condition, eval_state);
+          rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
+          eval_state->add_address = value.value.u32;
+        }
         continue;
 
       case RC_CONDITION_REMEMBER:
@@ -215,6 +231,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         eval_state->recall_value.type = value.type;
         eval_state->recall_value.value = value.value;
         eval_state->add_value.type = RC_VALUE_TYPE_NONE;
+        eval_state->add_address = 0;
         continue;
 
       case RC_CONDITION_MEASURED:
@@ -232,6 +249,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     /* STEP 2: evaluate the current condition */
     condition->is_true = (char)rc_test_condition(condition, eval_state);
     eval_state->add_value.type = RC_VALUE_TYPE_NONE;
+    eval_state->add_address = 0;
 
     /* apply logic flags and reset them for the next condition */
     cond_valid = condition->is_true;
@@ -400,7 +418,7 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
   }
 
   /* initialize recall value so each condition set has a functionally new recall accumulator */
-  eval_state->recall_value.type = RC_VALUE_TYPE_UNSIGNED;
+  eval_state->recall_value.type = RC_VALUE_TYPE_NONE;
   eval_state->recall_value.value.u32 = 0;
 
   if (self->has_pause) {
