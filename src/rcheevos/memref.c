@@ -548,7 +548,7 @@ uint32_t rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_stat
   return rc_get_memref_value_value(&memref->value, operand_type);
 }
 
-static uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_peek_t peek, void* ud) {
+uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_peek_t peek, void* ud) {
   rc_typed_value_t value, modifier;
 
   value.type = RC_VALUE_TYPE_UNSIGNED;

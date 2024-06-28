@@ -4676,19 +4676,28 @@ static void rc_client_update_memref_values(rc_client_t* client)
   int invalidated_memref = 0;
 
   for (; memref; memref = memref->next) {
-    if (memref->value.type == RC_MEMREF_TYPE_MODIFIED_MEMREF)
-      continue;
+    switch (memref->value.type) {
+      case RC_MEMREF_TYPE_MEMREF:
+        /* if processing_memref is set, and the memory read fails, all dependent achievements will be disabled */
+        client->state.processing_memref = memref;
 
-    client->state.processing_memref = memref;
+        value = rc_peek_value(memref->address, memref->value.size, client->state.legacy_peek, client);
 
-    value = rc_peek_value(memref->address, memref->value.size, client->state.legacy_peek, client);
+        if (client->state.processing_memref) {
+          rc_update_memref_value(&memref->value, value);
+        }
+        else {
+          /* if the peek function cleared the processing_memref, the memref was invalidated */
+          invalidated_memref = 1;
+        }
+        break;
 
-    if (client->state.processing_memref) {
-      rc_update_memref_value(&memref->value, value);
-    }
-    else {
-      /* if the peek function cleared the processing_memref, the memref was invalidated */
-      invalidated_memref = 1;
+      case RC_MEMREF_TYPE_MODIFIED_MEMREF:
+        /* clear processing_memref so an invalid read doesn't disable anything */
+        client->state.processing_memref = NULL;
+        rc_update_memref_value(&memref->value,
+          rc_get_modified_memref_value((rc_modified_memref_t*)memref, client->state.legacy_peek, client));
+        break;
     }
   }
 

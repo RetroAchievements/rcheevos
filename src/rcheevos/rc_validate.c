@@ -717,7 +717,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
   for (condition = conditions->conditions; condition != NULL; condition = condition->next)
   {
     condition_chain_start = condition;
-    while (rc_condition_is_combining(condition))
+    while (condition && rc_condition_is_combining(condition))
       condition = condition->next;
     if (!condition)
       break;

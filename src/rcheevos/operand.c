@@ -362,9 +362,9 @@ int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right) {
     case RC_OPERAND_FP:
       return (left->value.dbl == right->value.dbl);
     case RC_OPERAND_RECALL:
-      return (right->type == RC_OPERAND_RECALL);
+      return 1;
     default:
-      return (left->value.memref->address == right->value.memref->address && right->size == right->size);
+      return (left->value.memref->address == right->value.memref->address && left->size == right->size);
   }
 }
 

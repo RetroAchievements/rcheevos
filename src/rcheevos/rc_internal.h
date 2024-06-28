@@ -158,6 +158,7 @@ int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address);
 void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);
 void rc_update_memref_value(rc_memref_value_t* memref, uint32_t value);
 uint32_t rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state);
+uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_peek_t peek, void* ud);
 uint8_t rc_memref_shared_size(uint8_t size);
 uint32_t rc_memref_mask(uint8_t size);
 void rc_transform_memref_value(rc_typed_value_t* value, uint8_t size);
