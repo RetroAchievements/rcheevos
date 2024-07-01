@@ -3627,6 +3627,74 @@ static void test_addaddress_direct_pointer_prior() {
   assert_evaluate_condset(condset, memrefs, &memory, 1);
 }
 
+static void test_addaddress_direct_pointer_change() {
+  uint8_t ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(0x0000 + byte(0xh0000)) == 20 && delta(byte(0x0000 + byte(0xh0000))) == 22 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000=0_0xH0000=20_I:0xH0000=0_d0xH0000=22");
+
+  /* byte(0x0000 + 1); value=18, prev=0, prior=0 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 1); value=18, prev=18, prior=0 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 1); value=22, prev=18, prior=18 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  ram[1] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 1); value=22, prev=22, prior=18 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 1); value=20, prev=22, prior=22 */
+  ram[1] = 20;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* byte(0x0000 + 1); value=20, prev=20, prior=22 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* point to new value */
+  /* byte(0x0000 + 2); value=52, prev=20, prior=20 */
+  ram[0] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 2); value=52, prev=52, prior=20 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* new pointed-at value is correct */
+  /* byte(0x0000 + 2); value=22, prev=52, prior=52 */
+  ram[2] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 2); value=22, prev=22, prior=52 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* point to original value. looks correct! */
+  /* byte(0x0000 + 1); value=20, prev=22, prior=22 */
+  ram[0] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* point to secondary value, which is not correct */
+  /* byte(0x0000 + 2); value=22, prev=20, prior=20 */
+  ram[0] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 2); value=22, prev=22, prior=20 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 2); value=20, prev=22, prior=22 */
+  ram[2] = 20;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_addaddress_indirect_pointer() {
   uint8_t ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -4230,6 +4298,7 @@ void test_condset(void) {
   TEST(test_addaddress_direct_pointer);
   TEST(test_addaddress_direct_pointer_delta);
   TEST(test_addaddress_direct_pointer_prior);
+  TEST(test_addaddress_direct_pointer_change);
   TEST(test_addaddress_indirect_pointer);
   TEST(test_addaddress_indirect_pointer_negative);
   TEST(test_addaddress_indirect_pointer_out_of_range);
