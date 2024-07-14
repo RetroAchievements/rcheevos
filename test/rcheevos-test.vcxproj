@@ -253,6 +253,9 @@
     <ClInclude Include="rhash\mock_filereader.h" />
     <ClInclude Include="test_framework.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\src\rcheevos\rc_runtime_types.natvis" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

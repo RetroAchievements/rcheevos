@@ -100,6 +100,19 @@ enum {
 #define RC_MEASURED_UNKNOWN 0xFFFFFFFF
 #define RC_OPERAND_NONE 0xFF
 
+/* enum helpers for natvis expansion. Have to use a struct to define the mapping,
+ * and a single field to allow the conditional logic to switch on the value */
+typedef struct __rc_bool_enum_t { uint8_t value; } __rc_bool_enum_t;
+typedef struct __rc_memsize_enum_t { uint8_t value; } __rc_memsize_enum_t;
+typedef struct __rc_memsize_enum_func_t { uint8_t value; } __rc_memsize_enum_func_t;
+typedef struct __rc_operand_enum_t { uint8_t value; } __rc_operand_enum_t;
+typedef struct __rc_value_type_enum_t { uint8_t value; } __rc_value_type_enum_t;
+typedef struct __rc_memref_type_enum_t { uint8_t value; } __rc_memref_type_enum_t;
+typedef struct __rc_condition_enum_t { uint8_t value; } __rc_condition_enum_t;
+typedef struct __rc_condition_enum_str_t { uint8_t value; } __rc_condition_enum_str_t;
+typedef struct __rc_operator_enum_t { uint8_t value; } __rc_operator_enum_t;
+typedef struct __rc_operator_enum_str_t { uint8_t value; } __rc_operator_enum_str_t;
+
 typedef struct {
   rc_typed_value_t add_value; /* AddSource/SubSource */
   int32_t add_hits;           /* AddHits */
@@ -139,6 +152,21 @@ typedef struct {
 
   uint8_t has_required_hits;
   uint8_t measured_as_percent;
+
+  /* these fields aren't actually used by the code, but they force the
+   * virtual enum wrapper types to exist so natvis can use them */
+  union {
+    __rc_bool_enum_t boolean;
+    __rc_memsize_enum_t memsize;
+    __rc_memsize_enum_func_t memsize_func;
+    __rc_operand_enum_t operand;
+    __rc_value_type_enum_t value_type;
+    __rc_memref_type_enum_t memref_type;
+    __rc_condition_enum_t condition;
+    __rc_condition_enum_str_t condition_str;
+    __rc_operator_enum_t oper;
+    __rc_operator_enum_str_t oper_str;
+  } natvis_extension;
 }
 rc_parse_state_t;
 
