@@ -42,7 +42,7 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
   next_memref = parse->first_memref;
   while (*next_memref) {
     memref = *next_memref;
-    if (memref->value.type == RC_MEMREF_TYPE_MODIFIED_MEMREF && memref->value.size == size) {
+    if (memref->value.memref_type == RC_MEMREF_TYPE_MODIFIED_MEMREF && memref->value.size == size) {
       modified_memref = (rc_modified_memref_t*)memref;
       if (modified_memref->parent == (const rc_memref_value_t*)parent->value.memref && modified_memref->parent_type == parent->type &&
           modified_memref->modifier_type == modifier_type &&
@@ -59,7 +59,8 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
   *next_memref = (rc_memref_t*)modified_memref;
 
   memset(modified_memref, 0, sizeof(*modified_memref));
-  modified_memref->memref.value.type = RC_MEMREF_TYPE_MODIFIED_MEMREF;
+  modified_memref->memref.value.memref_type = RC_MEMREF_TYPE_MODIFIED_MEMREF;
+  modified_memref->memref.value.type = RC_VALUE_TYPE_UNSIGNED;
   modified_memref->memref.value.size = size;
   modified_memref->parent = (const rc_memref_value_t*)parent->value.memref;
   modified_memref->parent_type = parent->type;
