@@ -32,7 +32,7 @@ rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t 
   return memref;
 }
 
-rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t size, const rc_memref_t* parent, uint8_t parent_type,
+rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t size, const rc_operand_t* parent,
                                                uint8_t modifier_type, const rc_operand_t* modifier) {
   rc_memref_t** next_memref;
   rc_memref_t* memref;
@@ -44,7 +44,7 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
     memref = *next_memref;
     if (memref->value.type == RC_MEMREF_TYPE_MODIFIED_MEMREF && memref->value.size == size) {
       modified_memref = (rc_modified_memref_t*)memref;
-      if (modified_memref->parent == (const rc_memref_value_t*)parent && modified_memref->parent_type == parent_type &&
+      if (modified_memref->parent == (const rc_memref_value_t*)parent->value.memref && modified_memref->parent_type == parent->type &&
           modified_memref->modifier_type == modifier_type &&
           rc_operands_are_equal(&modified_memref->modifier, modifier)) {
         return modified_memref;
@@ -61,8 +61,8 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
   memset(modified_memref, 0, sizeof(*modified_memref));
   modified_memref->memref.value.type = RC_MEMREF_TYPE_MODIFIED_MEMREF;
   modified_memref->memref.value.size = size;
-  modified_memref->parent = (const rc_memref_value_t*)parent;
-  modified_memref->parent_type = parent_type;
+  modified_memref->parent = (const rc_memref_value_t*)parent->value.memref;
+  modified_memref->parent_type = parent->type;
   modified_memref->modifier_type = modifier_type;
   memcpy(&modified_memref->modifier, modifier, sizeof(modified_memref->modifier));
   modified_memref->memref.address = rc_operand_is_memref(modifier) ? modifier->value.memref->address : modifier->value.num;

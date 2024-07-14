@@ -98,6 +98,7 @@ enum {
 };
 
 #define RC_MEASURED_UNKNOWN 0xFFFFFFFF
+#define RC_OPERAND_NONE 0xFF
 
 typedef struct {
   rc_typed_value_t add_value; /* AddSource/SubSource */
@@ -133,8 +134,7 @@ typedef struct {
   uint32_t measured_target;
   int lines_read;
 
-  const rc_memref_t* indirect_parent_memref;
-  uint8_t indirect_parent_type;
+  rc_operand_t indirect_parent;
   uint8_t indirect_recall;
 
   uint8_t has_required_hits;
@@ -152,7 +152,7 @@ void* rc_alloc_scratch(void* pointer, int32_t* offset, uint32_t size, uint32_t a
 char* rc_alloc_str(rc_parse_state_t* parse, const char* text, size_t length);
 
 rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t size);
-rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t size, const rc_memref_t* parent, uint8_t parent_type,
+rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t size, const rc_operand_t* parent,
                                                uint8_t modifier_type, const rc_operand_t* modifier);
 int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address);
 void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);

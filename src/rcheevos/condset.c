@@ -139,22 +139,21 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
       if (condition->operand1.type == RC_OPERAND_RECALL || parse->indirect_recall) {
         /* cannot create an indirect memref using recall as the remembered value
          * won't exist until the achievement is being processed. */
-        parse->indirect_parent_memref = NULL;
+        parse->indirect_parent.type = RC_OPERAND_NONE;
         parse->indirect_recall = 1;
       }
       else if (condition->oper == RC_OPERATOR_NONE) {
-        parse->indirect_parent_memref = condition->operand1.value.memref;
-        parse->indirect_parent_type = condition->operand1.type;
+        memcpy(&parse->indirect_parent, &condition->operand1, sizeof(parse->indirect_parent));
       }
       else {
-        parse->indirect_parent_memref = (rc_memref_t*)rc_alloc_modified_memref(parse,
-          RC_MEMSIZE_32_BITS, condition->operand1.value.memref, condition->operand1.type,
-          condition->oper, &condition->operand2);
-        parse->indirect_parent_type = RC_OPERAND_CONST;
+        parse->indirect_parent.value.memref = (rc_memref_t*)rc_alloc_modified_memref(parse,
+          RC_MEMSIZE_32_BITS, &condition->operand1, condition->oper, &condition->operand2);
+        /* not actually an address, just a non-delta memref read */
+        parse->indirect_parent.type = RC_OPERAND_ADDRESS;
       }
     }
     else {
-      parse->indirect_parent_memref = NULL;
+      parse->indirect_parent.type = RC_OPERAND_NONE;
       parse->indirect_recall = 0;
     }
 
