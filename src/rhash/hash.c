@@ -960,9 +960,9 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle, const struct rc
       if (!parent_handle)
       {
         char message[1024];
+        snprintf(message, sizeof(message), "DOSZ parent file '%s' does not exist", parent_path);
         free(parent_path);
         free(alloc_buf);
-        snprintf(message, sizeof(message), "DOSZ parent file '%s' does not exist", parent_path);
         return rc_hash_error(message);
       }
 
