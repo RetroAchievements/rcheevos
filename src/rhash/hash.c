@@ -914,14 +914,14 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle, const struct rc
     }
 
     /* A DOSZ file can contain a special empty <base>.dosz.parent file in its root which means a parent dosz file is used */
-    if (dosz && filename_len > 7 && decomp_size == 0 && !strncasecmp(name + filename_len - 7, ".parent", 7) && !memchr(name, '/', filename_len) && !memchr(name, '\\', filename_len))
+    if (dosz && filename_len > 7 && decomp_size == 0 && !strncasecmp((const char*)name + filename_len - 7, ".parent", 7) && !memchr(name, '/', filename_len) && !memchr(name, '\\', filename_len))
     {
       const char *lastfslash = strrchr(dosz->path, '/');
       const char *lastbslash = strrchr(dosz->path, '\\');
       const char *lastslash = (lastbslash > lastfslash ? lastbslash : lastfslash);
       size_t dir_len = (lastslash ? (lastslash + 1 - dosz->path) : 0);
       char* parent_path = (char*)malloc(dir_len + (filename_len - 7) + 1);
-      struct rc_hash_ms_dos_dosz_state parent = { parent_path, dosz };
+      struct rc_hash_ms_dos_dosz_state parent;
       const struct rc_hash_ms_dos_dosz_state *check;
       void* parent_handle;
       int parent_res;
@@ -967,6 +967,8 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle, const struct rc
       }
 
       /* Fully hash the parent DOSZ ahead of the child */
+      parent.path = parent_path;
+      parent.child = dosz;
       parent_res = rc_hash_zip_file(md5, parent_handle, &parent);
       rc_file_close(parent_handle);
       free(parent_path);
@@ -1064,7 +1066,7 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle, const struct rc
 
 static int rc_hash_ms_dos(char hash[33], const char* path)
 {
-  struct rc_hash_ms_dos_dosz_state dosz = { path, NULL };
+  struct rc_hash_ms_dos_dosz_state dosz;
   md5_state_t md5;
   int res;
 
@@ -1074,6 +1076,8 @@ static int rc_hash_ms_dos(char hash[33], const char* path)
 
   /* hash the main content zip file first */
   md5_init(&md5);
+  dosz.path = path;
+  dosz.child = NULL;
   res = rc_hash_zip_file(&md5, file_handle, &dosz);
   rc_file_close(file_handle);
 
