@@ -185,7 +185,7 @@ static void test_process_fetch_leaderboard_info_response() {
   const char* server_response = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":1234,\"GameID\":2345,"
 	  "\"LowerIsBetter\":1,\"LBTitle\":\"Title\",\"LBDesc\":\"Description\",\"LBFormat\":\"TIME\","
 	  "\"LBMem\":\"STA:0xH0000=1::CAN:1=1::SUB:0xH0000=2::VAL:b0x 0004\",\"LBAuthor\":null,"
-	  "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
+	  "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\",\"TotalEntries\":12,"
 	  "\"Entries\":[{\"User\":\"Player1\",\"Score\":8765,\"Rank\":1,\"Index\":5,\"DateSubmitted\":1615654895},"
                    "{\"User\":\"Player2\",\"Score\":7654,\"Rank\":2,\"Index\":6,\"DateSubmitted\":1600604303}]"
 	  "}}";
@@ -203,6 +203,7 @@ static void test_process_fetch_leaderboard_info_response() {
   ASSERT_STR_EQUALS(fetch_leaderboard_info_response.definition, "STA:0xH0000=1::CAN:1=1::SUB:0xH0000=2::VAL:b0x 0004");
   ASSERT_PTR_NULL(fetch_leaderboard_info_response.author);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.num_entries, 2);
+  ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.total_entries, 12);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.created, 1382307141);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.updated, 1623658699);
 
@@ -228,7 +229,7 @@ static void test_process_fetch_leaderboard_info_response2() {
   const char* server_response = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":9999,\"GameID\":2222,"
 	  "\"LowerIsBetter\":0,\"LBTitle\":\"Title2\",\"LBDesc\":\"Description2\",\"LBFormat\":\"SCORE\","
 	  "\"LBMem\":\"STA:0xH0000=1::CAN:1=1::SUB:0xH0000=2::VAL:b0x 0004\",\"LBAuthor\":\"AuthorName\","
-	  "\"LBCreated\":\"2021-06-18 15:32:16\",\"LBUpdated\":\"2021-06-18 15:32:16\","
+	  "\"LBCreated\":\"2021-06-18 15:32:16\",\"LBUpdated\":\"2021-06-18 15:32:16\",\"TotalEntries\":12,"
 	  "\"Entries\":[{\"User\":\"Player1\",\"Score\":1013580,\"Rank\":1,\"Index\":5,\"DateSubmitted\":1624055310},"
                    "{\"User\":\"Player2\",\"Score\":133340,\"Rank\":1,\"Index\":6,\"DateSubmitted\":1624166772}]"
 	  "}}";
@@ -246,6 +247,7 @@ static void test_process_fetch_leaderboard_info_response2() {
   ASSERT_STR_EQUALS(fetch_leaderboard_info_response.definition, "STA:0xH0000=1::CAN:1=1::SUB:0xH0000=2::VAL:b0x 0004");
   ASSERT_STR_EQUALS(fetch_leaderboard_info_response.author, "AuthorName");
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.num_entries, 2);
+  ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.total_entries, 12);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.created, 1624030336);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.updated, 1624030336);
 
@@ -271,7 +273,7 @@ static void test_process_fetch_leaderboard_info_response_iso8601() {
   const char* server_response = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":1234,\"GameID\":2345,"
     "\"LowerIsBetter\":1,\"LBTitle\":\"Title\",\"LBDesc\":\"Description\",\"LBFormat\":\"TIME\","
     "\"LBMem\":\"STA:0xH0000=1::CAN:1=1::SUB:0xH0000=2::VAL:b0x 0004\",\"LBAuthor\":null,"
-    "\"LBCreated\":\"2013-10-20T22:12:21.000000Z\",\"LBUpdated\":\"2021-06-14T08:18:19.000000Z\","
+    "\"LBCreated\":\"2013-10-20T22:12:21.000000Z\",\"LBUpdated\":\"2021-06-14T08:18:19.000000Z\",\"TotalEntries\":12,"
     "\"Entries\":[{\"User\":\"Player1\",\"Score\":8765,\"Rank\":1,\"Index\":5,\"DateSubmitted\":1615654895},"
     "{\"User\":\"Player2\",\"Score\":7654,\"Rank\":2,\"Index\":6,\"DateSubmitted\":1600604303}]"
     "}}";
@@ -289,6 +291,7 @@ static void test_process_fetch_leaderboard_info_response_iso8601() {
   ASSERT_STR_EQUALS(fetch_leaderboard_info_response.definition, "STA:0xH0000=1::CAN:1=1::SUB:0xH0000=2::VAL:b0x 0004");
   ASSERT_PTR_NULL(fetch_leaderboard_info_response.author);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.num_entries, 2);
+  ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.total_entries, 12);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.created, 1382307141);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.updated, 1623658699);
 

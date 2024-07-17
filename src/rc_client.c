@@ -4311,6 +4311,7 @@ static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_res
       }
 
       list->num_entries = lbinfo_response.num_entries;
+      list->total_entries = lbinfo_response.total_entries;
 
       lbinfo_callback_data->callback(RC_OK, NULL, list, client, lbinfo_callback_data->callback_userdata);
     }
