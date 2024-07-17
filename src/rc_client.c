@@ -4797,6 +4797,8 @@ static void rc_client_progress_tracker_timer_elapsed(rc_client_scheduled_callbac
 
 static void rc_client_do_frame_update_progress_tracker(rc_client_t* client, rc_client_game_info_t* game)
 {
+  /* ASSERT: this should only be called if the mutex is held */
+
   if (!game->progress_tracker.hide_callback) {
     game->progress_tracker.hide_callback = (rc_client_scheduled_callback_data_t*)
       rc_buffer_alloc(&game->buffer, sizeof(rc_client_scheduled_callback_data_t));
@@ -5181,6 +5183,7 @@ void rc_client_idle(rc_client_t* client)
         else {
           /* remove the callback from the queue while we process it. callback can requeue if desired */
           client->state.scheduled_callbacks = scheduled_callback->next;
+          scheduled_callback->next = NULL;
         }
       }
       rc_mutex_unlock(&client->state.mutex);
@@ -5256,7 +5259,7 @@ static void rc_client_reschedule_callback(rc_client_t* client,
       continue;
     }
 
-    if (!next || when < next->when) {
+    if (!next || (when < next->when && when != 0)) {
       /* insert here */
       callback->next = next;
       *last = callback;

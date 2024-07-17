@@ -6339,6 +6339,58 @@ static void test_do_frame_achievement_measured_progress_event(void)
   rc_client_destroy(g_client);
 }
 
+static void test_do_frame_achievement_measured_progress_reshown(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  mock_memory(memory, sizeof(memory));
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  memory[0x06] = 3;                         /* 3/6 */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
+  event_count = 0;
+
+  /* should be two callbacks queued - hiding the progress indicator, and the rich presence update */
+  ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks, g_client->game->progress_tracker.hide_callback);
+  ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks->next);
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next->next);
+
+  /* advance time to hide the progress indicator */
+  g_now = g_client->game->progress_tracker.hide_callback->when;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
+  event_count = 0;
+
+  /* only the rich presence update should be scheduled */
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next);
+
+  /* advance time to just before the rich presence update */
+  g_now = g_client->state.scheduled_callbacks->when - 10;
+
+  /* reschedule the progress indicator */
+  memory[0x06] = 4;                         /* 4/6 */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
+  event_count = 0;
+
+  /* should be two callbacks queued - rich presence update, then hiding the progress indicator */
+  ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+  ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->next, g_client->game->progress_tracker.hide_callback);
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next->next);
+
+  rc_client_destroy(g_client);
+}
+
 static void test_do_frame_achievement_challenge_indicator(void)
 {
   rc_client_event_t* event;
@@ -8248,6 +8300,66 @@ static void test_reset_hides_widgets(void)
   rc_client_destroy(g_client);
 }
 
+static void test_reset_detaches_hide_progress_indicator_event(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
+  mock_memory(memory, sizeof(memory));
+
+  rc_client_do_frame(g_client);
+
+  memory[0x06] = 3; /* progress indicator for achievement 6 */
+  event_count = 0;
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
+  event_count = 0;
+
+  /* should be two callbacks queued - hiding the progress indicator, and the rich presence update */
+  ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks, g_client->game->progress_tracker.hide_callback);
+  ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks->next);
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next->next);
+
+  /* advance time to hide the progress indicator */
+  g_now = g_client->game->progress_tracker.hide_callback->when;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
+  event_count = 0;
+
+  /* only the rich presence update should be scheduled */
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next);
+
+  /* advance time to just before the rich presence update */
+  g_now = g_client->state.scheduled_callbacks->when - 10;
+
+  /* reschedule the progress indicator */
+  memory[0x06] = 4;                         /* 4/6 */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
+  event_count = 0;
+
+  /* should be two callbacks queued - rich presence update, then hiding the progress indicator */
+  ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+  ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->next, g_client->game->progress_tracker.hide_callback);
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next->next);
+
+  rc_client_reset(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
+
+  /* only the rich presence update should be scheduled */
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- pause ----- */
 
 static void test_can_pause(void)
@@ -9293,6 +9405,7 @@ void test_client(void) {
   TEST(test_do_frame_achievement_trigger_rarity);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_measured_progress_event);
+  TEST(test_do_frame_achievement_measured_progress_reshown);
   TEST(test_do_frame_achievement_challenge_indicator);
   TEST(test_do_frame_achievement_challenge_indicator_primed_while_reset);
   TEST(test_do_frame_achievement_challenge_indicator_primed_while_reset_next);
@@ -9323,6 +9436,7 @@ void test_client(void) {
 
   /* reset */
   TEST(test_reset_hides_widgets);
+  TEST(test_reset_detaches_hide_progress_indicator_event);
 
   /* pause */
   TEST(test_can_pause);
