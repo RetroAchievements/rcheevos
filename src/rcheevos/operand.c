@@ -99,6 +99,7 @@ static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr) {
 static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   uint32_t address;
+  uint8_t size;
   int ret;
 
   switch (*aux) {
@@ -131,7 +132,7 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
   if (ret != RC_OK)
     return ret;
 
-  uint8_t size = rc_memref_shared_size(self->size);
+  size = rc_memref_shared_size(self->size);
   if (size != self->size && self->type == RC_OPERAND_PRIOR) {
     /* if the shared size differs from the requested size and it's a prior operation, we
      * have to check to make sure both sizes use the same mask, or the prior value may be

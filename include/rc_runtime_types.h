@@ -182,7 +182,7 @@ enum {
   RC_OPERATOR_ADD,
   RC_OPERATOR_SUB,
 
-  RC_OPERATOR_INDIRECT_READ, /* internal use */
+  RC_OPERATOR_INDIRECT_READ /* internal use */
 };
 
 typedef struct rc_condition_t rc_condition_t;

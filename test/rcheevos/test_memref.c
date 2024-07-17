@@ -353,7 +353,7 @@ static void test_allocate_shared_indirect_address() {
   rc_memref_t* memrefs;
   rc_memref_t* parent_memref1, *parent_memref2;
   rc_operand_t parent1, parent2, delta1, intermediate2;
-  rc_modified_memref_t* child1, *child2, *child3, *child4, *child5;
+  rc_modified_memref_t* child1, *child2, *child3, *child4;
   rc_operand_t offset0, offset4;
   offset0.size = RC_MEMSIZE_32_BITS;
   offset0.type = RC_OPERAND_CONST;
@@ -389,7 +389,7 @@ static void test_allocate_shared_indirect_address() {
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 6);
 
   /* differing offset will not match */
-  child5 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &parent1, RC_OPERATOR_INDIRECT_READ, &offset4);
+  child4 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &parent1, RC_OPERATOR_INDIRECT_READ, &offset4);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 7);
 
   /* exact match to first */
@@ -401,16 +401,16 @@ static void test_allocate_shared_indirect_address() {
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 7);
 
   /* exact match to differing offset */
-  ASSERT_PTR_EQUALS(rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &parent1, RC_OPERATOR_INDIRECT_READ, &offset4), child5);
+  ASSERT_PTR_EQUALS(rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &parent1, RC_OPERATOR_INDIRECT_READ, &offset4), child4);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 7);
 
   /* intermediate parent */
   intermediate2.value.memref = &child2->memref;
   intermediate2.type = RC_OPERAND_ADDRESS;
-  child5 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &intermediate2, RC_OPERATOR_INDIRECT_READ, &offset0);
+  child4 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &intermediate2, RC_OPERATOR_INDIRECT_READ, &offset0);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 8);
 
-  ASSERT_PTR_EQUALS(rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &intermediate2, RC_OPERATOR_INDIRECT_READ, &offset0), child5);
+  ASSERT_PTR_EQUALS(rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &intermediate2, RC_OPERATOR_INDIRECT_READ, &offset0), child4);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 8);
 
   rc_destroy_parse_state(&parse);

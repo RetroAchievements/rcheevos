@@ -27,7 +27,7 @@ static void rc_update_condition_pause(rc_condition_t* condition) {
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, int is_value) {
   rc_condset_t* self;
   rc_condition_t** next;
-  rc_condition_t* condition;;
+  rc_condition_t* condition;
   uint32_t measured_target = 0;
 
   self = RC_ALLOC(rc_condset_t, parse);
