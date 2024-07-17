@@ -3570,8 +3570,10 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
   callback_data->client = client;
   callback_data->id = achievement->public_.id;
   callback_data->hardcore = client->state.hardcore;
-  callback_data->game_hash = client->game->public_.hash;
   callback_data->unlock_time = achievement->public_.unlock_time;
+
+  if (client->game) /* may be NULL if this gets called while unloading the game (from another thread - events are raised outside the lock) */
+    callback_data->game_hash = client->game->public_.hash;
 
   RC_CLIENT_LOG_INFO_FORMATTED(client, "Awarding achievement %u: %s", achievement->public_.id, achievement->public_.title);
   rc_client_award_achievement_server_call(callback_data);
