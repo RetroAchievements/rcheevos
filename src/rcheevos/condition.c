@@ -164,13 +164,7 @@ static int rc_parse_operator(const char** memaddr) {
 }
 
 void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand_t* operand, rc_parse_state_t* parse) {
-  if (condition->operand1.type == RC_OPERAND_RECALL || parse->indirect_recall) {
-    /* cannot create an indirect memref using recall as the remembered value
-     * won't exist until the achievement is being processed. */
-    operand->type = RC_OPERAND_NONE;
-    parse->indirect_recall = 1;
-  }
-  else if (condition->oper == RC_OPERATOR_NONE) {
+  if (condition->oper == RC_OPERATOR_NONE) {
     if (operand != &condition->operand1)
       memcpy(operand, &condition->operand1, sizeof(*operand));
   }
@@ -183,7 +177,7 @@ void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand
       new_size, &condition->operand1, condition->oper, &condition->operand2);
 
     /* not actually an address, just a non-delta memref read */
-    operand->type = RC_OPERAND_ADDRESS;
+    operand->type = operand->memref_access_type = RC_OPERAND_ADDRESS;
 
     operand->size = new_size;
   }
@@ -257,9 +251,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
       }
 
       /* provide dummy operand of '1' and no required hits */
-      self->operand2.type = RC_OPERAND_CONST;
-      self->operand2.size = RC_MEMSIZE_32_BITS;
-      self->operand2.value.num = 1;
+      rc_operand_set_const(&self->operand2, 1);
       self->required_hits = 0;
       *memaddr = aux;
       return self;
@@ -304,9 +296,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
   if (self->oper == RC_OPERATOR_NONE) {
     /* if operator is none, explicitly clear out the right side */
-    self->operand2.type = RC_OPERAND_CONST;
-    self->operand2.size = RC_MEMSIZE_32_BITS;
-    self->operand2.value.num = 0;
+    rc_operand_set_const(&self->operand2, 0);
   }
 
   if (*aux == '(') {
@@ -400,21 +390,25 @@ void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t
         /* type determined by parent */
         const uint8_t new_size = rc_operand_is_float(&parse->addsource_parent) ? RC_MEMSIZE_FLOAT : RC_MEMSIZE_32_BITS;
 
-        /* if the previous element was also a SubSource, we have to insert a 0 and start subtracting from there */
-        if (parse->addsource_oper == RC_OPERATOR_SUB_PARENT) {
+        if (parse->addsource_oper == RC_OPERATOR_ADD && !rc_operand_is_memref(&parse->addsource_parent)) {
+          /* if the previous element was a constant we have to turn it into a memref by adding zero */
+          rc_modified_memref_t* memref;
+          rc_operand_t zero;
+          rc_operand_set_const(&zero, 0);
+          memref = rc_alloc_modified_memref(parse,
+              parse->addsource_parent.size, &parse->addsource_parent, RC_OPERATOR_ADD, &zero);
+          parse->addsource_parent.value.memref = (rc_memref_t*)memref;
+          parse->addsource_parent.type = RC_OPERAND_ADDRESS;
+        }
+        else if (parse->addsource_oper == RC_OPERATOR_SUB_PARENT) {
+          /* if the previous element was also a SubSource, we have to insert a 0 and start subtracting from there */
           rc_modified_memref_t* negate;
           rc_operand_t zero;
 
-          if (rc_operand_is_float(&parse->addsource_parent)) {
-            zero.size = RC_MEMSIZE_FLOAT;
-            zero.type = RC_OPERAND_FP;
-            zero.value.dbl = 0.0;
-          }
-          else {
-            zero.size = RC_MEMSIZE_32_BITS;
-            zero.type = RC_OPERAND_CONST;
-            zero.value.num = 0;
-          }
+          if (rc_operand_is_float(&parse->addsource_parent))
+            rc_operand_set_float_const(&zero, 0.0);
+          else
+            rc_operand_set_const(&zero, 0);
 
           negate = rc_alloc_modified_memref(parse, new_size, &parse->addsource_parent, RC_OPERATOR_SUB_PARENT, &zero);
           parse->addsource_parent.value.memref = (rc_memref_t*)negate;
@@ -431,6 +425,21 @@ void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t
         parse->addsource_oper = RC_OPERATOR_ADD;
       }
 
+      parse->indirect_parent.type = RC_OPERAND_NONE;
+      break;
+
+    case RC_CONDITION_REMEMBER:
+      rc_condition_convert_to_operand(condition, &condition->operand1, parse);
+
+      if (parse->addsource_parent.type != RC_OPERAND_NONE) {
+        /* type determined by leaf */
+        const uint8_t new_size = rc_operand_is_float(&condition->operand1) ? RC_MEMSIZE_FLOAT : RC_MEMSIZE_32_BITS;
+        rc_operand_addsource(&condition->operand1, parse, condition->operand1.size);
+      }
+
+      memcpy(&parse->remember, &condition->operand1, sizeof(parse->remember));
+
+      parse->addsource_parent.type = RC_OPERAND_NONE;
       parse->indirect_parent.type = RC_OPERAND_NONE;
       break;
 
@@ -467,7 +476,6 @@ void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t
 
       parse->addsource_parent.type = RC_OPERAND_NONE;
       parse->indirect_parent.type = RC_OPERAND_NONE;
-      parse->indirect_recall = 0;
       break;
   }
 }

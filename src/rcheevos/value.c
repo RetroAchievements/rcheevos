@@ -486,7 +486,7 @@ void rc_typed_value_negate(rc_typed_value_t* value) {
 void rc_typed_value_add(rc_typed_value_t* value, const rc_typed_value_t* amount) {
   rc_typed_value_t converted;
 
-  if (amount->type != value->type) {
+  if (amount->type != value->type && value->type != RC_VALUE_TYPE_NONE) {
     if (amount->type == RC_VALUE_TYPE_FLOAT)
       rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
     else

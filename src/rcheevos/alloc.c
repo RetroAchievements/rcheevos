@@ -110,7 +110,7 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   parse->lines_read = 0;
   parse->addsource_parent.type = RC_OPERAND_NONE;
   parse->indirect_parent.type = RC_OPERAND_NONE;
-  parse->indirect_recall = 0;
+  parse->remember.type = RC_OPERAND_NONE;
   parse->is_value = 0;
   parse->has_required_hits = 0;
   parse->measured_as_percent = 0;

@@ -61,11 +61,12 @@ static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, rc_par
 #endif /* RC_DISABLE_LUA */
 
   self->type = RC_OPERAND_LUA;
+  self->memref_access_type = RC_OPERAND_ADDRESS;
   *memaddr = aux;
   return RC_OK;
 }
 
-static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr) {
+static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
   size_t i;
   char varName[RC_VALUE_MAX_NAME_LENGTH + 1] = { 0 };
@@ -86,6 +87,15 @@ static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr) {
   ++aux;
 
   if (strcmp(varName, "recall") == 0) {
+    if (parse->remember.type == RC_OPERAND_NONE) {
+      self->value.memref = NULL;
+      self->size = RC_MEMSIZE_32_BITS;
+      self->memref_access_type = RC_OPERAND_ADDRESS;
+    }
+    else {
+      memcpy(self, &parse->remember, sizeof(*self));
+      self->memref_access_type = self->type;
+    }
     self->type = RC_OPERAND_RECALL;
   }
   else { /* process named variable when feature is available.*/
@@ -128,6 +138,8 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
       break;
   }
 
+  self->memref_access_type = self->type;
+
   ret = rc_parse_memref(&aux, &self->size, &address);
   if (ret != RC_OK)
     return ret;
@@ -149,21 +161,11 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
     }
     else {
       rc_operand_t offset;
-      offset.type = RC_OPERAND_CONST;
-      offset.size = RC_MEMSIZE_32_BITS;
-      offset.value.num = address;
+      rc_operand_set_const(&offset, address);
 
       self->value.memref = (rc_memref_t*)rc_alloc_modified_memref(parse,
         size, &parse->indirect_parent, RC_OPERATOR_INDIRECT_READ, &offset);
     }
-  }
-  else if (parse->indirect_recall) {
-    rc_memref_t* memref = RC_ALLOC(rc_memref_t, parse);
-    memset(memref, 0, sizeof(*memref));
-    memref->value.type = RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREF;
-    memref->value.size = size;
-    memref->address = address;
-    self->value.memref = memref;
   }
   else {
     self->value.memref = rc_alloc_memref(parse, address, size);
@@ -184,8 +186,6 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t*
   int negative;
   int allow_decimal = 0;
 
-  self->size = RC_MEMSIZE_32_BITS;
-
   switch (*aux) {
     case 'h': case 'H': /* hex constant */
       if (aux[2] == 'x' || aux[2] == 'X') {
@@ -200,8 +200,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t*
       if (value > 0xffffffffU)
         value = 0xffffffffU;
 
-      self->type = RC_OPERAND_CONST;
-      self->value.num = (unsigned)value;
+      rc_operand_set_const(self, (unsigned)value);
 
       aux = end;
       break;
@@ -236,6 +235,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t*
         /* custom parser for decimal values to ignore locale */
         unsigned long shift = 1;
         unsigned long fraction = 0;
+        double dbl_val;
 
         aux = end + 1;
         if (*aux < '0' || *aux > '9')
@@ -256,20 +256,19 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t*
           /* non-zero fractional part, convert to double and merge in integer portion */
           const double dbl_fraction = ((double)fraction) / ((double)shift);
           if (negative)
-            self->value.dbl = ((double)(-((long)value))) - dbl_fraction;
+            dbl_val = ((double)(-((long)value))) - dbl_fraction;
           else
-            self->value.dbl = (double)value + dbl_fraction;
+            dbl_val = (double)value + dbl_fraction;
         }
         else {
           /* fractional part is 0, just convert the integer portion */
           if (negative)
-            self->value.dbl = (double)(-((long)value));
+            dbl_val = (double)(-((long)value));
           else
-            self->value.dbl = (double)value;
+            dbl_val = (double)value;
         }
 
-        self->type = RC_OPERAND_FP;
-        self->size = RC_MEMSIZE_FLOAT;
+        rc_operand_set_float_const(self, dbl_val);
       }
       else {
         /* not a floating point value, make sure something was read and advance the read pointer */
@@ -281,17 +280,15 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t*
         if (value > 0x7fffffffU)
           value = 0x7fffffffU;
 
-        self->type = RC_OPERAND_CONST;
-
         if (negative)
-          self->value.num = (unsigned)(-((long)value));
+          rc_operand_set_const(self, (unsigned)(-((long)value)));
         else
-          self->value.num = (unsigned)value;
+          rc_operand_set_const(self, (unsigned)value);
       }
       break;
     case '{': /* variable */
       ++aux;
-      ret = rc_parse_operand_variable(self, &aux);
+      ret = rc_parse_operand_variable(self, &aux, parse);
       if (ret < 0)
         return ret;
 
@@ -318,8 +315,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t*
       if (value > 0xffffffffU)
         value = 0xffffffffU;
 
-      self->type = RC_OPERAND_CONST;
-      self->value.num = (unsigned)value;
+      rc_operand_set_const(self, (unsigned)value);
 
       aux = end;
       break;
@@ -357,6 +353,20 @@ static int rc_luapeek(lua_State* L) {
 }
 
 #endif /* RC_DISABLE_LUA */
+
+void rc_operand_set_const(rc_operand_t* self, uint32_t value) {
+  self->size = RC_MEMSIZE_32_BITS;
+  self->type = RC_OPERAND_CONST;
+  self->memref_access_type = RC_OPERAND_NONE;
+  self->value.num = value;
+}
+
+void rc_operand_set_float_const(rc_operand_t* self, double value) {
+  self->size = RC_MEMSIZE_FLOAT;
+  self->type = RC_OPERAND_FP;
+  self->memref_access_type = RC_OPERAND_NONE;
+  self->value.dbl = value;
+}
 
 int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right) {
   if (left->type != right->type)
@@ -414,8 +424,8 @@ int rc_operand_is_float_memref(const rc_operand_t* self) {
   }
 }
 
-int rc_operand_is_memref(const rc_operand_t* self) {
-  switch (self->type) {
+int rc_operand_type_is_memref(uint8_t type) {
+  switch (type) {
     case RC_OPERAND_CONST:
     case RC_OPERAND_FP:
     case RC_OPERAND_LUA:
@@ -425,6 +435,10 @@ int rc_operand_is_memref(const rc_operand_t* self) {
     default:
       return 1;
   }
+}
+
+int rc_operand_is_memref(const rc_operand_t* self) {
+  return rc_operand_type_is_memref(self->type);
 }
 
 int rc_operand_is_recall(const rc_operand_t* self) {
@@ -555,14 +569,14 @@ void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t n
     /*  N + A => A + N */
     /* -N + A => A - N */
     modified_memref = rc_alloc_modified_memref(parse,
-      new_size, self, parse->addsource_oper, &parse->addsource_parent);
+      new_size, &parse->addsource_parent, parse->addsource_oper, self);
   }
 
   self->value.memref = (rc_memref_t*)modified_memref;
 
   /* if adding a constant, change the type to be address (current value) */
   if (!rc_operand_is_memref(self))
-    self->type = RC_OPERAND_ADDRESS;
+    self->type = self->memref_access_type = RC_OPERAND_ADDRESS;
 }
 
 void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_eval_state_t* eval_state) {
@@ -613,16 +627,22 @@ void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_
       break;
 
     case RC_OPERAND_RECALL:
-      if (eval_state == NULL || eval_state->recall_value.type == RC_VALUE_TYPE_NONE) {
-        /* nothing REMEMBERed */
+      if (!rc_operand_type_is_memref(self->memref_access_type)) {
+        rc_operand_t recall;
+        memcpy(&recall, self, sizeof(recall));
+        recall.type = self->memref_access_type;
+        rc_evaluate_operand(result, &recall, eval_state);
+        return;
+      }
+
+      if (!self->value.memref) {
         result->type = RC_VALUE_TYPE_UNSIGNED;
         result->value.u32 = 0;
+        return;
       }
-      else {
-        result->type = eval_state->recall_value.type;
-        result->value = eval_state->recall_value.value;
-      }
-      return;
+
+      rc_get_memref_value(result, self->value.memref, self->memref_access_type, eval_state);
+      break;
 
     default:
       rc_get_memref_value(result, self->value.memref, self->type, eval_state);

@@ -1973,7 +1973,7 @@ static void test_remember_recall_separate_accumulator_per_group() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[512];
+  char buffer[640];
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -2060,7 +2060,7 @@ static void test_remember_recall_in_pause_and_main() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[512];
+  char buffer[640];
 
   memory.ram = ram;
   memory.size = sizeof(ram);

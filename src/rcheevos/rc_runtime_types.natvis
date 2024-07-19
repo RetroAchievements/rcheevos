@@ -52,7 +52,6 @@
     <Type Name="__rc_memref_type_enum_t">
         <DisplayString Condition="value==RC_MEMREF_TYPE_MEMREF">{RC_MEMREF_TYPE_MEMREF}</DisplayString>
         <DisplayString Condition="value==RC_MEMREF_TYPE_MODIFIED_MEMREF">{RC_MEMREF_TYPE_MODIFIED_MEMREF}</DisplayString>
-        <DisplayString Condition="value==RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREF">{RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREF}</DisplayString>
         <!--<DisplayString Condition="value==RC_MEMREF_TYPE_VALUE">RC_MEMREF_TYPE_VALUE</DisplayString>-->
         <DisplayString>unknown ({value})</DisplayString>
     </Type>
@@ -128,7 +127,8 @@
         <DisplayString Condition="value==RC_OPERAND_BCD">{RC_OPERAND_BCD}</DisplayString>
         <DisplayString Condition="value==RC_OPERAND_INVERTED">{RC_OPERAND_INVERTED}</DisplayString>
         <DisplayString Condition="value==RC_OPERAND_RECALL">{RC_OPERAND_RECALL}</DisplayString>
-        <DisplayString>unknown ({value})</DisplayString>
+		<DisplayString Condition="value==0xFF">RC_OPERAND_NONE (255)</DisplayString>
+		<DisplayString>unknown ({value})</DisplayString>
     </Type>
     <Type Name="rc_operand_t">
         <DisplayString Condition="type==RC_OPERAND_ADDRESS">{{{*(__rc_operand_memref_t*)&amp;value.memref}}}</DisplayString>
@@ -142,15 +142,19 @@
         <DisplayString Condition="type==RC_OPERAND_FP">{{value {value.dbl}}}</DisplayString>
         <DisplayString Condition="type==RC_OPERAND_RECALL">{{recall}}</DisplayString>
         <DisplayString Condition="type==0xFF">{{none}}</DisplayString>
-        <DisplayString>{{unknown}}</DisplayString>
+		<DisplayString>{{unknown}}</DisplayString>
         <Expand>
 			<Item Name="value" Condition="type==RC_OPERAND_CONST">value.num</Item>
 			<Item Name="value" Condition="type==RC_OPERAND_FP">value.dbl</Item>
-            <Item Name="value" Condition="type!=RC_OPERAND_CONST &amp;&amp; type!=RC_OPERAND_FP &amp;&amp; ((rc_memref_t*)value.memref)->value.memref_type!=RC_MEMREF_TYPE_MODIFIED_MEMREF">value.memref</Item>
-            <Item Name="value" Condition="type!=RC_OPERAND_CONST &amp;&amp; type!=RC_OPERAND_FP &amp;&amp; ((rc_memref_t*)value.memref)->value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">(rc_modified_memref_t*)value.memref</Item>
-            <Item Name="type">*((__rc_operand_enum_t*)&amp;type)</Item>
+			<Item Name="value" Condition="type==RC_OPERAND_RECALL &amp;&amp; memref_access_type==RC_OPERAND_CONST">value.num</Item>
+			<Item Name="value" Condition="type==RC_OPERAND_RECALL &amp;&amp; memref_access_type==RC_OPERAND_FP">value.dbl</Item>
+			<Item Name="value" Condition="type!=RC_OPERAND_CONST &amp;&amp; type!=RC_OPERAND_FP &amp;&amp; value.memref==0">value.memref</Item>
+			<Item Name="value" Condition="type!=RC_OPERAND_CONST &amp;&amp; type!=RC_OPERAND_FP &amp;&amp; ((rc_memref_t*)value.memref)->value.memref_type!=RC_MEMREF_TYPE_MODIFIED_MEMREF">value.memref</Item>
+			<Item Name="value" Condition="type!=RC_OPERAND_CONST &amp;&amp; type!=RC_OPERAND_FP &amp;&amp; ((rc_memref_t*)value.memref)->value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">(rc_modified_memref_t*)value.memref</Item>
+			<Item Name="type">*((__rc_operand_enum_t*)&amp;type)</Item>
             <Item Name="size">*((__rc_memsize_enum_t*)&amp;size)</Item>
-        </Expand>
+			<Item Name="memref_access_type">*((__rc_operand_enum_t*)&amp;memref_access_type)</Item>
+		</Expand>
     </Type>
     <Type Name="__rc_condition_enum_t">
         <DisplayString Condition="value==RC_CONDITION_STANDARD">{RC_CONDITION_STANDARD}</DisplayString>
@@ -301,9 +305,9 @@
             <Item Name="variables">((__rc_value_list_t*)&amp;variables)</Item>
             <Item Name="addsource_parent">addsource_parent</Item>
             <Item Name="addsource_oper">*((__rc_operator_enum_t*)&amp;addsource_oper)</Item>
-            <Item Name="indirect_parent">indirect_parent</Item>
-            <Item Name="indirect_recall">*((__rc_bool_enum_t*)&amp;indirect_recall)</Item>
-            <Item Name="is_value">*((__rc_bool_enum_t*)&amp;is_value)</Item>
+			<Item Name="indirect_parent">indirect_parent</Item>
+			<Item Name="remember">remember</Item>
+			<Item Name="is_value">*((__rc_bool_enum_t*)&amp;is_value)</Item>
             <Item Name="has_required_hits">*((__rc_bool_enum_t*)&amp;has_required_hits)</Item>
             <Item Name="measured_as_percent">*((__rc_bool_enum_t*)&amp;measured_as_percent)</Item>
         </Expand>

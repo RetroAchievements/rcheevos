@@ -24,6 +24,60 @@ static void rc_update_condition_pause(rc_condition_t* condition) {
   }
 }
 
+static void rc_update_condition_pause_remember(rc_condition_t* conditions) {
+  rc_operand_t* pause_remember = NULL;
+  rc_condition_t* condition;
+
+  for (condition = conditions; condition; condition = condition->next) {
+    if (!condition->pause)
+      continue;
+
+    if (condition->type == RC_CONDITION_REMEMBER) {
+      pause_remember = &condition->operand1;
+    }
+    else if (pause_remember == NULL) {
+      /* if we picked up a non-pause remember, discard it */
+      if (condition->operand1.type == RC_OPERAND_RECALL &&
+          rc_operand_type_is_memref(condition->operand1.memref_access_type)) {
+        condition->operand1.value.memref = NULL;
+      }
+
+      if (condition->operand2.type == RC_OPERAND_RECALL &&
+          rc_operand_type_is_memref(condition->operand2.memref_access_type)) {
+        condition->operand2.value.memref = NULL;
+      }
+    }
+  }
+
+  if (pause_remember) {
+    for (condition = conditions; condition; condition = condition->next) {
+      if (!condition->pause) {
+        /* if we didn't find a remember for a non-pause condition, use the last pause remember */
+        if (condition->operand1.type == RC_OPERAND_RECALL &&
+            rc_operand_type_is_memref(condition->operand1.memref_access_type) &&
+            condition->operand1.value.memref == NULL) {
+          memcpy(&condition->operand1, pause_remember, sizeof(*pause_remember));
+          condition->operand1.memref_access_type = condition->operand1.type;
+          condition->operand1.type = RC_OPERAND_RECALL;
+        }
+
+        if (condition->operand2.type == RC_OPERAND_RECALL &&
+            rc_operand_type_is_memref(condition->operand2.memref_access_type) &&
+            condition->operand2.value.memref == NULL)
+        {
+          memcpy(&condition->operand2, pause_remember, sizeof(*pause_remember));
+          condition->operand2.memref_access_type = condition->operand2.type;
+          condition->operand2.type = RC_OPERAND_RECALL;
+        }
+      }
+
+      /* Anything after this point will have already been handled */
+      if (condition->type == RC_CONDITION_REMEMBER)
+        break;
+    }
+  }
+}
+
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
   rc_condset_t* self;
   rc_condition_t** next;
@@ -39,6 +93,9 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
     *next = 0;
     return self;
   }
+
+  /* each condition set has a functionally new recall accumulator */
+  parse->remember.type = RC_OPERAND_NONE;
 
   for (;;) {
     condition = rc_parse_condition(memaddr, parse);
@@ -142,15 +199,18 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
 
   *next = 0;
 
-  if (parse->buffer)
+  if (parse->buffer && self->has_pause) {
     rc_update_condition_pause(self->conditions);
+
+    if (parse->remember.type != RC_OPERATOR_NONE)
+      rc_update_condition_pause_remember(self->conditions);
+  }
 
   return self;
 }
 
 static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc_eval_state_t* eval_state) {
   rc_condition_t* condition;
-  rc_typed_value_t value;
   int set_valid, cond_valid, and_next, or_next, reset_next, measured_from_hits, can_measure;
   rc_typed_value_t measured_value;
   uint32_t total_hits;
@@ -175,58 +235,15 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     /* STEP 1: process modifier conditions */
     switch (condition->type) {
       case RC_CONDITION_ADD_SOURCE:
-        /* normally handled by rc_modified_memref_t. if a recall value exists, there may be
-         * RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREFS, which need us to keep track
-         * of the add_address offset */
-        if (eval_state->recall_value.type != RC_VALUE_TYPE_NONE) {
-          rc_evaluate_condition_value(&value, condition, eval_state);
-          rc_typed_value_add(&eval_state->add_value, &value);
-          eval_state->add_address = 0;
-        }
-        continue;
-
       case RC_CONDITION_SUB_SOURCE:
-        /* normally handled by rc_modified_memref_t. if a recall value exists, there may be
-         * RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREFS, which need us to keep track
-         * of the add_address offset */
-        if (eval_state->recall_value.type != RC_VALUE_TYPE_NONE) {
-          rc_evaluate_condition_value(&value, condition, eval_state);
-          rc_typed_value_negate(&value);
-          rc_typed_value_add(&eval_state->add_value, &value);
-          eval_state->add_address = 0;
-        }
-        continue;
-
       case RC_CONDITION_ADD_ADDRESS:
-        /* normally handled by rc_modified_memref_t. if a recall value exists, there may be
-         * RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREFS, which need us to keep track
-         * of the add_address offset */
-        if (eval_state->recall_value.type != RC_VALUE_TYPE_NONE) {
-          rc_evaluate_condition_value(&value, condition, eval_state);
-          rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
-          eval_state->add_address = value.value.u32;
-        }
-        continue;
-
       case RC_CONDITION_REMEMBER:
-        rc_evaluate_condition_value(&value, condition, eval_state);
-        rc_typed_value_add(&value, &eval_state->add_value);
-        eval_state->recall_value.type = value.type;
-        eval_state->recall_value.value = value.value;
-        eval_state->add_value.type = RC_VALUE_TYPE_NONE;
-        eval_state->add_address = 0;
         continue;
 
       case RC_CONDITION_MEASURED:
         if (condition->required_hits == 0 && can_measure) {
           /* Measured condition without a hit target measures the value of the left operand */
-          if (eval_state->recall_value.type != RC_VALUE_TYPE_NONE) {
-            rc_evaluate_condition_value(&measured_value, condition, eval_state);
-            rc_typed_value_add(&measured_value, &eval_state->add_value);
-          }
-          else {
-            rc_evaluate_operand(&measured_value, &condition->operand1, eval_state);
-          }
+          rc_evaluate_operand(&measured_value, &condition->operand1, eval_state);
         }
         break;
 
@@ -235,7 +252,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     }
 
     /* STEP 2: evaluate the current condition */
-    condition->is_true = (char)rc_test_condition(condition, eval_state);
+    condition->is_true = (uint8_t)rc_test_condition(condition, eval_state);
     eval_state->add_value.type = RC_VALUE_TYPE_NONE;
     eval_state->add_address = 0;
 
@@ -392,7 +409,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     if (eval_state->measured_value.type == RC_VALUE_TYPE_NONE ||
         rc_typed_value_compare(&measured_value, &eval_state->measured_value, RC_OPERATOR_GT)) {
       memcpy(&eval_state->measured_value, &measured_value, sizeof(measured_value));
-      eval_state->measured_from_hits = (char)measured_from_hits;
+      eval_state->measured_from_hits = (uint8_t)measured_from_hits;
     }
   }
 
@@ -404,10 +421,6 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
     /* important: empty group must evaluate true */
     return 1;
   }
-
-  /* initialize recall value so each condition set has a functionally new recall accumulator */
-  eval_state->recall_value.type = RC_VALUE_TYPE_NONE;
-  eval_state->recall_value.value.u32 = 0;
 
   if (self->has_pause) {
     /* one or more Pause conditions exists, if any of them are true, stop processing this group */

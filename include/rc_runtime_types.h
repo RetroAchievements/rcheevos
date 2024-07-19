@@ -130,6 +130,9 @@ typedef struct rc_operand_t {
 
   /* the RC_MEMSIZE of the operand specified in the condition definition - memref.size may differ */
   uint8_t size;
+
+  /* specifies how to read the memref for some types (RC_OPERAND_*) */
+  uint8_t memref_access_type;
 }
 rc_operand_t;
 

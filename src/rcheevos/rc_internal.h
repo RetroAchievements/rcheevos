@@ -125,7 +125,6 @@ rc_typed_value_t;
 enum {
   RC_MEMREF_TYPE_MEMREF,                 /* rc_memref_t */
   RC_MEMREF_TYPE_MODIFIED_MEMREF,        /* rc_indirect_memref_t */
-  RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREF, /* rc_memref_t (dependent on recall value) */
   RC_MEMREF_TYPE_VALUE                   /* rc_value_t */
 };
 
@@ -142,7 +141,6 @@ typedef struct {
   lua_State* L;
 
   rc_typed_value_t measured_value;     /* Measured */
-  rc_typed_value_t recall_value;       /* Set by RC_CONDITION_REMEMBER */
   uint8_t was_reset;                   /* ResetIf triggered */
   uint8_t has_hits;                    /* one of more hit counts is non-zero */
   uint8_t primed;                      /* true if all non-Trigger conditions are true */
@@ -168,7 +166,7 @@ typedef struct {
 
   rc_operand_t addsource_parent;
   rc_operand_t indirect_parent;
-  uint8_t indirect_recall;
+  rc_operand_t remember;
   uint8_t addsource_oper;
 
   uint8_t is_value;
@@ -234,8 +232,11 @@ void rc_evaluate_operand(rc_typed_value_t* value, const rc_operand_t* self, rc_e
 int rc_operand_is_float_memref(const rc_operand_t* self);
 int rc_operand_is_float(const rc_operand_t* self);
 int rc_operand_is_recall(const rc_operand_t* self);
+int rc_operand_type_is_memref(uint8_t type);
 int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right);
 void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t new_size);
+void rc_operand_set_const(rc_operand_t* self, uint32_t value);
+void rc_operand_set_float_const(rc_operand_t* self, double value);
 
 int rc_is_valid_variable_character(char ch, int is_first);
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);

@@ -541,11 +541,6 @@ static uint32_t rc_get_memref_value_value(const rc_memref_value_t* memref, int o
 }
 
 void rc_get_memref_value(rc_typed_value_t* value, rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state) {
-  if (memref->value.memref_type == RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREF) {
-    const uint32_t new_address = memref->address + eval_state->add_address;
-    rc_update_memref_value(&memref->value, rc_peek_value(new_address, memref->value.size, eval_state->peek, eval_state->peek_userdata));
-  }
-
   value->type = memref->value.type;
   value->value.u32 = rc_get_memref_value_value(&memref->value, operand_type);
 }

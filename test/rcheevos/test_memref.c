@@ -356,12 +356,8 @@ static void test_allocate_shared_indirect_address() {
   rc_operand_t parent1, parent2, delta1, intermediate2;
   rc_modified_memref_t* child1, *child2, *child3, *child4;
   rc_operand_t offset0, offset4;
-  offset0.size = RC_MEMSIZE_32_BITS;
-  offset0.type = RC_OPERAND_CONST;
-  offset0.value.num = 0;
-  offset4.size = RC_MEMSIZE_32_BITS;
-  offset4.type = RC_OPERAND_CONST;
-  offset4.value.num = 4;
+  rc_operand_set_const(&offset0, 0);
+  rc_operand_set_const(&offset4, 4);
 
   rc_init_parse_state(&parse, NULL, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
