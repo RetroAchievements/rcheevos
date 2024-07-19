@@ -288,7 +288,7 @@ void test_float_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "f2.0=0xX1234", "");
   TEST_PARAMS2(test_validate_trigger, "A:Ff2345_fF1234=f2.3", "");
   TEST_PARAMS2(test_validate_trigger, "A:0xX2345_fF1234=f2.3", "");
-  TEST_PARAMS2(test_validate_trigger, "A:Ff2345_0x1234=f2.3", "");
+  TEST_PARAMS2(test_validate_trigger, "A:Ff2345_0x1234=f2.3", "Condition 2: Comparison is never true"); /* non integral comparison */
   TEST_PARAMS2(test_validate_trigger, "fM1234>f2.3", "");
   TEST_PARAMS2(test_validate_trigger, "fM1234>f-2.3", "");
   TEST_PARAMS2(test_validate_trigger, "I:0xX2345_fM1234>f1.0", "");
@@ -400,7 +400,7 @@ void test_remember_recall_errors() {
   TEST_PARAMS2(test_validate_trigger, "{recall}=5_K:0xH1234&1023_K:{recall}*8_{recall}=100", "Condition 1: Recall used before Remember"); /* First remember is after first recall. */
   TEST_PARAMS2(test_validate_trigger, "K:0xH1234&1023_K:{recall}*8_{recall}=100", ""); /* Recall used after Remember */
   TEST_PARAMS2(test_validate_trigger, "{recall}=5_K:0xH1234*2_P:{recall}>6", ""); /* Remember sets recall in pause - no warning */
-  TEST_PARAMS2(test_validate_trigger, "K:0xH1234*2_{recall}=5_P:{recall}>6", "Condition 3: Recall used in Pause processing before Remember was used in Pause processing"); /* Pause happens before remembered value. */
+  TEST_PARAMS2(test_validate_trigger, "K:0xH1234*2_{recall}=5_P:{recall}>6", "Condition 3: Recall used before Remember"); /* Pause happens before remembered value. */
 }
 
 void test_rc_validate(void) {

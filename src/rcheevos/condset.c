@@ -225,8 +225,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
   and_next = 1;
   or_next = 0;
   reset_next = 0;
-  eval_state->add_value.type = RC_VALUE_TYPE_NONE;
-  eval_state->add_hits = eval_state->add_address = 0;
+  eval_state->add_hits = 0;
 
   for (condition = self->conditions; condition != 0; condition = condition->next) {
     if (condition->pause != processing_pause)
@@ -238,6 +237,7 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_SUB_SOURCE:
       case RC_CONDITION_ADD_ADDRESS:
       case RC_CONDITION_REMEMBER:
+        /* these are all managed by rc_modified_memref_t now */
         continue;
 
       case RC_CONDITION_MEASURED:
@@ -253,8 +253,6 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
 
     /* STEP 2: evaluate the current condition */
     condition->is_true = (uint8_t)rc_test_condition(condition, eval_state);
-    eval_state->add_value.type = RC_VALUE_TYPE_NONE;
-    eval_state->add_address = 0;
 
     /* apply logic flags and reset them for the next condition */
     cond_valid = condition->is_true;

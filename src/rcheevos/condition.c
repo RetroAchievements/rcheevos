@@ -656,41 +656,35 @@ static int rc_test_condition_compare_delta_to_memref_transformed(rc_condition_t*
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state) {
   rc_typed_value_t value1, value2;
 
-  if (eval_state->add_value.type != RC_VALUE_TYPE_NONE) {
-    /* if there's an accumulator, we can't use the optimized comparators */
-    rc_evaluate_operand(&value1, &self->operand1, eval_state);
-    rc_typed_value_add(&value1, &eval_state->add_value);
-  } else {
-    /* use an optimized comparator whenever possible */
-    switch (self->optimized_comparator) {
-      case RC_PROCESSING_COMPARE_MEMREF_TO_CONST:
-        return rc_test_condition_compare_memref_to_const(self);
-      case RC_PROCESSING_COMPARE_MEMREF_TO_DELTA:
-        return rc_test_condition_compare_memref_to_delta(self);
-      case RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF:
-        return rc_test_condition_compare_memref_to_memref(self);
-      case RC_PROCESSING_COMPARE_DELTA_TO_CONST:
-        return rc_test_condition_compare_delta_to_const(self);
-      case RC_PROCESSING_COMPARE_DELTA_TO_MEMREF:
-        return rc_test_condition_compare_delta_to_memref(self);
-      case RC_PROCESSING_COMPARE_MEMREF_TO_CONST_TRANSFORMED:
-        return rc_test_condition_compare_memref_to_const_transformed(self);
-      case RC_PROCESSING_COMPARE_MEMREF_TO_DELTA_TRANSFORMED:
-        return rc_test_condition_compare_memref_to_delta_transformed(self);
-      case RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF_TRANSFORMED:
-        return rc_test_condition_compare_memref_to_memref_transformed(self);
-      case RC_PROCESSING_COMPARE_DELTA_TO_CONST_TRANSFORMED:
-        return rc_test_condition_compare_delta_to_const_transformed(self);
-      case RC_PROCESSING_COMPARE_DELTA_TO_MEMREF_TRANSFORMED:
-        return rc_test_condition_compare_delta_to_memref_transformed(self);
-      case RC_PROCESSING_COMPARE_ALWAYS_TRUE:
-        return 1;
-      case RC_PROCESSING_COMPARE_ALWAYS_FALSE:
-        return 0;
-      default:
-        rc_evaluate_operand(&value1, &self->operand1, eval_state);
-        break;
-    }
+  /* use an optimized comparator whenever possible */
+  switch (self->optimized_comparator) {
+    case RC_PROCESSING_COMPARE_MEMREF_TO_CONST:
+      return rc_test_condition_compare_memref_to_const(self);
+    case RC_PROCESSING_COMPARE_MEMREF_TO_DELTA:
+      return rc_test_condition_compare_memref_to_delta(self);
+    case RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF:
+      return rc_test_condition_compare_memref_to_memref(self);
+    case RC_PROCESSING_COMPARE_DELTA_TO_CONST:
+      return rc_test_condition_compare_delta_to_const(self);
+    case RC_PROCESSING_COMPARE_DELTA_TO_MEMREF:
+      return rc_test_condition_compare_delta_to_memref(self);
+    case RC_PROCESSING_COMPARE_MEMREF_TO_CONST_TRANSFORMED:
+      return rc_test_condition_compare_memref_to_const_transformed(self);
+    case RC_PROCESSING_COMPARE_MEMREF_TO_DELTA_TRANSFORMED:
+      return rc_test_condition_compare_memref_to_delta_transformed(self);
+    case RC_PROCESSING_COMPARE_MEMREF_TO_MEMREF_TRANSFORMED:
+      return rc_test_condition_compare_memref_to_memref_transformed(self);
+    case RC_PROCESSING_COMPARE_DELTA_TO_CONST_TRANSFORMED:
+      return rc_test_condition_compare_delta_to_const_transformed(self);
+    case RC_PROCESSING_COMPARE_DELTA_TO_MEMREF_TRANSFORMED:
+      return rc_test_condition_compare_delta_to_memref_transformed(self);
+    case RC_PROCESSING_COMPARE_ALWAYS_TRUE:
+      return 1;
+    case RC_PROCESSING_COMPARE_ALWAYS_FALSE:
+      return 0;
+    default:
+      rc_evaluate_operand(&value1, &self->operand1, eval_state);
+      break;
   }
 
   rc_evaluate_operand(&value2, &self->operand2, eval_state);

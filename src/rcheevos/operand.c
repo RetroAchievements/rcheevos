@@ -61,6 +61,7 @@ static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, rc_par
 #endif /* RC_DISABLE_LUA */
 
   self->type = RC_OPERAND_LUA;
+  self->size = RC_MEMSIZE_32_BITS;
   self->memref_access_type = RC_OPERAND_ADDRESS;
   *memaddr = aux;
   return RC_OK;
@@ -403,14 +404,8 @@ int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right) {
   }
 }
 
-int rc_operand_is_float_memref(const rc_operand_t* self) {
-  if (!rc_operand_is_memref(self))
-    return 0;
-
-  if (self->value.memref->value.memref_type == RC_MEMREF_TYPE_MODIFIED_MEMREF)
-    return (self->value.memref->value.size == RC_MEMSIZE_FLOAT);
-
-  switch (self->size) {
+static int rc_memsize_is_float(uint8_t size) {
+  switch (size) {
     case RC_MEMSIZE_FLOAT:
     case RC_MEMSIZE_FLOAT_BE:
     case RC_MEMSIZE_DOUBLE32:
@@ -422,6 +417,22 @@ int rc_operand_is_float_memref(const rc_operand_t* self) {
     default:
       return 0;
   }
+}
+
+int rc_operand_is_float_memref(const rc_operand_t* self) {
+  if (!rc_operand_is_memref(self))
+    return 0;
+
+  if (self->type == RC_OPERAND_RECALL)
+    return rc_memsize_is_float(self->memref_access_type);
+
+  if (self->value.memref->value.memref_type == RC_MEMREF_TYPE_MODIFIED_MEMREF) {
+    const rc_modified_memref_t* memref = (const rc_modified_memref_t*)self->value.memref;
+    if (memref->modifier_type != RC_OPERATOR_INDIRECT_READ)
+      return rc_memsize_is_float(self->value.memref->value.size);
+  }
+
+  return rc_memsize_is_float(self->size);
 }
 
 int rc_operand_type_is_memref(uint8_t type) {
@@ -624,7 +635,7 @@ void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_
 
 #endif /* RC_DISABLE_LUA */
 
-      break;
+      return;
 
     case RC_OPERAND_RECALL:
       if (!rc_operand_type_is_memref(self->memref_access_type)) {

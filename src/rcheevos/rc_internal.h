@@ -132,9 +132,7 @@ enum {
 #define RC_OPERAND_NONE 0xFF
 
 typedef struct {
-  rc_typed_value_t add_value; /* AddSource/SubSource */
   int32_t add_hits;           /* AddHits */
-  uint32_t add_address;       /* AddAddress */
 
   rc_peek_t peek;
   void* peek_userdata;
