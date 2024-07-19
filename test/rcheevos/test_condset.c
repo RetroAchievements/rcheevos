@@ -2558,6 +2558,55 @@ static void test_subsource_float() {
   assert_evaluate_condset(condset, memrefs, &memory, 0);
 }
 
+static void test_addsource_bits_change() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* bit0(0x01) + bit1(0x01) + bit2(0x01) == 3 && delta(bit0(0x01)) + delta(bit1(0x01)) + delta(bit2(0x01)) == 2 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:0xM0001_A:0xN0001_0xO0001=3_A:d0xM0001_A:d0xN0001_d0xO0001=2");
+
+  /* bit sum = 1 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 5, 0);
+
+  /* bit sum = 3 (delta = 1) */
+  ram[1] = 0x17;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 5, 0);
+
+  /* bit sum = 2 (delta = 3) */
+  ram[1] = 0x16;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 5, 0);
+
+  /* bit sum = 1 (delta = 2) */
+  ram[1] = 0x14;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 5, 1);
+
+  /* bit sum = 2 (delta = 1) */
+  ram[1] = 0x16;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 5, 1);
+
+  /* bit sum = 3 (delta = 2) */
+  ram[1] = 0x17;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 2, 2);
+  assert_hit_count(condset, 5, 2);
+}
+
 static void test_addhits() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -4299,6 +4348,7 @@ void test_condset(void) {
   TEST(test_subsource_overflow_comparison_lesser);
   TEST(test_subsource_overflow_comparison_lesser_or_equal);
   TEST(test_subsource_float);
+  TEST(test_addsource_bits_change);
 
   /* addhits/subhits */
   TEST(test_addhits);

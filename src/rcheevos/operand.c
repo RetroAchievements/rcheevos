@@ -563,18 +563,19 @@ void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t n
   if (rc_operand_is_memref(&parse->addsource_parent)) {
     rc_operand_t modifier;
 
-    if (self->type == RC_OPERAND_DELTA || self->type == RC_OPERAND_PRIOR) {
-      if (self->type == parse->addsource_parent.type) {
-        /* if adding prev(x) and prev(y), just add x and y and take the prev of that */
-        memcpy(&modifier, self, sizeof(modifier));
-        modifier.type = parse->addsource_parent.type = RC_OPERAND_ADDRESS;
-        self->size = RC_MEMSIZE_32_BITS;
-        self = &modifier;
-      }
-    }
+    if ((self->type == RC_OPERAND_DELTA || self->type == RC_OPERAND_PRIOR) &&
+         self->type == parse->addsource_parent.type) {
+      /* if adding prev(x) and prev(y), just add x and y and take the prev of that */
+      memcpy(&modifier, self, sizeof(modifier));
+      modifier.type = parse->addsource_parent.type = RC_OPERAND_ADDRESS;
 
-    modified_memref = rc_alloc_modified_memref(parse,
-        new_size, &parse->addsource_parent, parse->addsource_oper, self);
+      modified_memref = rc_alloc_modified_memref(parse,
+        new_size, &parse->addsource_parent, parse->addsource_oper, &modifier);
+    }
+    else {
+      modified_memref = rc_alloc_modified_memref(parse,
+          new_size, &parse->addsource_parent, parse->addsource_oper, self);
+    }
   }
   else {
     /*  N + A => A + N */
