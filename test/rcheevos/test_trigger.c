@@ -2026,7 +2026,7 @@ static void test_remember_recall_use_same_value_multiple() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[512];
+  char buffer[640];
 
   memory.ram = ram;
   memory.size = sizeof(ram);

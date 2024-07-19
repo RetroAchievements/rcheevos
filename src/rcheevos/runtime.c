@@ -819,7 +819,7 @@ void rc_runtime_invalidate_address(rc_runtime_t* self, uint32_t address) {
   rc_memref_t* memref = self->memrefs;
 
   while (memref) {
-    if (memref->address == address && memref->value.type == RC_MEMREF_TYPE_MEMREF) {
+    if (memref->address == address && memref->value.memref_type == RC_MEMREF_TYPE_MEMREF) {
       /* remove the invalid memref from the chain so we don't try to evaluate it in the future.
        * it's still there, so anything referencing it will continue to fetch 0.
        */
@@ -841,7 +841,7 @@ void rc_runtime_validate_addresses(rc_runtime_t* self, rc_runtime_event_handler_
   int num_invalid = 0;
 
   while (memref) {
-    if (memref->value.type == RC_MEMREF_TYPE_MEMREF && !validate_handler(memref->address)) {
+    if (memref->value.memref_type == RC_MEMREF_TYPE_MEMREF && !validate_handler(memref->address)) {
       /* remove the invalid memref from the chain so we don't try to evaluate it in the future.
        * it's still there, so anything referencing it will continue to fetch 0.
        */

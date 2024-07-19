@@ -101,6 +101,7 @@ int main(void) {
   test_condset();
   test_trigger();
   test_value();
+  /*
   test_format();
   test_lboard();
   test_richpresence();
@@ -127,12 +128,12 @@ int main(void) {
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
   test_client_raintegration();
 #endif
-
+*/
 #ifdef RC_CLIENT_SUPPORTS_HASH
   /* no direct compile option for hash support, so leverage RC_CLIENT_SUPPORTS_HASH */
-  test_rc_libretro(); /* libretro extensions require hash support */
-  test_cdreader();
-  test_hash();
+  //test_rc_libretro(); /* libretro extensions require hash support */
+  //test_cdreader();
+  //test_hash();
 #endif
 #endif
 

@@ -128,7 +128,7 @@ typedef struct rc_operand_t {
   /* specifies which member of the value union is being used (RC_OPERAND_*) */
   uint8_t type;
 
-  /* the actual RC_MEMSIZE of the operand - memref.size may differ */
+  /* the RC_MEMSIZE of the operand specified in the condition definition - memref.size may differ */
   uint8_t size;
 }
 rc_operand_t;
@@ -182,6 +182,7 @@ enum {
   RC_OPERATOR_ADD,
   RC_OPERATOR_SUB,
 
+  RC_OPERATOR_SUB_PARENT, /* internal use */
   RC_OPERATOR_INDIRECT_READ /* internal use */
 };
 
@@ -229,27 +230,8 @@ struct rc_condset_t {
   /* The first condition in this condition set. Then follow ->next chain. */
   rc_condition_t* conditions;
 
-  /* The number of pause conditions in this condition set. */
-  /* The first pause condition is at "this + RC_ALIGN(sizeof(this)). */
-  uint16_t num_pause_conditions;
-
-  /* The number of reset conditions in this condition set. */
-  uint16_t num_reset_conditions;
-
-  /* The number of hittarget conditions in this condition set. */
-  uint16_t num_hittarget_conditions;
-
-  /* The number of non-hittarget measured conditions in this condition set. */
-  uint16_t num_measured_conditions;
-
-  /* The number of other conditions in this condition set. */
-  uint16_t num_other_conditions;
-
-  /* The number of indirect conditions in this condition set. */
-  uint16_t num_indirect_conditions;
-
   /* True if any condition in the set is a pause condition. */
-  uint8_t has_pause; /* DEPRECATED - just check num_pause_conditions != 0 */
+  uint8_t has_pause;
 
   /* True if the set is currently paused. */
   uint8_t is_paused;

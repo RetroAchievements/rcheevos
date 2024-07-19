@@ -27,7 +27,7 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
   do
   {
     parse->measured_target = 0; /* passing is_value=1 should prevent any conflicts, but clear it out anyway */
-    *next_clause = rc_parse_condset(memaddr, parse, 1);
+    *next_clause = rc_parse_condset(memaddr, parse);
     if (parse->offset < 0) {
       return;
     }
@@ -142,12 +142,14 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
 
     if (**memaddr == '_') {
       /* add next */
+      rc_condition_update_parse_state(cond, parse);
       next = &cond->next;
       continue;
     }
 
     if (cond->type == RC_CONDITION_SUB_SOURCE) {
       /* cannot change SubSource to Measured. add a dummy condition */
+      rc_condition_update_parse_state(cond, parse);
       next = &cond->next;
       buffer_ptr = "A:0";
       cond = rc_parse_condition(&buffer_ptr, parse);
@@ -157,6 +159,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
     /* convert final AddSource condition to Measured */
     cond->type = RC_CONDITION_MEASURED;
     cond->next = 0;
+    rc_condition_update_parse_state(cond, parse);
 
     if (**memaddr != '$') {
       /* end of valid string */
@@ -176,13 +179,13 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
 }
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
+  parse->is_value = 1;
+
   /* if it starts with a condition flag (M: A: B: C:), parse the conditions */
-  if ((*memaddr)[1] == ':') {
+  if ((*memaddr)[1] == ':')
     rc_parse_cond_value(self, memaddr, parse);
-  }
-  else {
+  else
     rc_parse_legacy_value(self, memaddr, parse);
-  }
 
   self->name = "(unnamed)";
   self->value.value = self->value.prior = 0;
@@ -483,8 +486,12 @@ void rc_typed_value_negate(rc_typed_value_t* value) {
 void rc_typed_value_add(rc_typed_value_t* value, const rc_typed_value_t* amount) {
   rc_typed_value_t converted;
 
-  if (amount->type != value->type && value->type != RC_VALUE_TYPE_NONE)
-    amount = rc_typed_value_convert_into(&converted, amount, value->type);
+  if (amount->type != value->type) {
+    if (amount->type == RC_VALUE_TYPE_FLOAT)
+      rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
+    else
+      amount = rc_typed_value_convert_into(&converted, amount, value->type);
+  }
 
   switch (value->type)
   {

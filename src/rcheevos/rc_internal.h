@@ -15,13 +15,27 @@ rc_scratch_string_t;
 
 typedef struct rc_modified_memref_t {
   rc_memref_t memref;              /* for compatibility with rc_operand_t.value.memref */
-  const rc_memref_value_t* parent; /* The parent memref this memref is derived from */
+  rc_operand_t parent;             /* The parent memref this memref is derived from (type will always be a memref type) */
   rc_operand_t modifier;           /* The modifier to apply to the parent. */
-  uint8_t parent_type;             /* How to read the value from the parent. (RC_OPERAND_*) */
   uint8_t modifier_type;           /* How to apply the modifier to the parent. (RC_OPERATOR_*) */
 }
 rc_modified_memref_t;
 
+/* enum helpers for natvis expansion. Have to use a struct to define the mapping,
+ * and a single field to allow the conditional logic to switch on the value */
+typedef struct __rc_bool_enum_t { uint8_t value; } __rc_bool_enum_t;
+typedef struct __rc_memsize_enum_t { uint8_t value; } __rc_memsize_enum_t;
+typedef struct __rc_memsize_enum_func_t { uint8_t value; } __rc_memsize_enum_func_t;
+typedef struct __rc_operand_enum_t { uint8_t value; } __rc_operand_enum_t;
+typedef struct __rc_value_type_enum_t { uint8_t value; } __rc_value_type_enum_t;
+typedef struct __rc_memref_type_enum_t { uint8_t value; } __rc_memref_type_enum_t;
+typedef struct __rc_condition_enum_t { uint8_t value; } __rc_condition_enum_t;
+typedef struct __rc_condition_enum_str_t { uint8_t value; } __rc_condition_enum_str_t;
+typedef struct __rc_operator_enum_t { uint8_t value; } __rc_operator_enum_t;
+typedef struct __rc_operator_enum_str_t { uint8_t value; } __rc_operator_enum_str_t;
+typedef struct __rc_operand_memref_t { rc_operand_t operand; } __rc_operand_memref_t; /* requires &rc_operand_t to be the same as &rc_operand_t.value.memref */
+typedef struct __rc_memref_list_t { rc_memref_t* first_memref; } __rc_memref_list_t;
+typedef struct __rc_value_list_t { rc_value_t* first_value; } __rc_value_list_t;
 
 #define RC_ALLOW_ALIGN(T) struct __align_ ## T { char ch; T t; };
 RC_ALLOW_ALIGN(rc_condition_t)
@@ -68,6 +82,24 @@ typedef struct {
     rc_scratch_string_t __rc_scratch_string_t;
     rc_trigger_t* __rc_trigger_t;
     rc_value_t* __rc_value_t;
+
+    /* these fields aren't actually used by the code, but they force the
+     * virtual enum wrapper types to exist so natvis can use them */
+    union {
+      __rc_bool_enum_t boolean;
+      __rc_memsize_enum_t memsize;
+      __rc_memsize_enum_func_t memsize_func;
+      __rc_operand_enum_t operand;
+      __rc_value_type_enum_t value_type;
+      __rc_memref_type_enum_t memref_type;
+      __rc_condition_enum_t condition;
+      __rc_condition_enum_str_t condition_str;
+      __rc_operator_enum_t oper;
+      __rc_operator_enum_str_t oper_str;
+      __rc_operand_memref_t operand_memref;
+      __rc_memref_list_t memref_list;
+      __rc_value_list_t value_list;
+    } natvis_extension;
   } objs;
 }
 rc_scratch_t;
@@ -99,19 +131,6 @@ enum {
 
 #define RC_MEASURED_UNKNOWN 0xFFFFFFFF
 #define RC_OPERAND_NONE 0xFF
-
-/* enum helpers for natvis expansion. Have to use a struct to define the mapping,
- * and a single field to allow the conditional logic to switch on the value */
-typedef struct __rc_bool_enum_t { uint8_t value; } __rc_bool_enum_t;
-typedef struct __rc_memsize_enum_t { uint8_t value; } __rc_memsize_enum_t;
-typedef struct __rc_memsize_enum_func_t { uint8_t value; } __rc_memsize_enum_func_t;
-typedef struct __rc_operand_enum_t { uint8_t value; } __rc_operand_enum_t;
-typedef struct __rc_value_type_enum_t { uint8_t value; } __rc_value_type_enum_t;
-typedef struct __rc_memref_type_enum_t { uint8_t value; } __rc_memref_type_enum_t;
-typedef struct __rc_condition_enum_t { uint8_t value; } __rc_condition_enum_t;
-typedef struct __rc_condition_enum_str_t { uint8_t value; } __rc_condition_enum_str_t;
-typedef struct __rc_operator_enum_t { uint8_t value; } __rc_operator_enum_t;
-typedef struct __rc_operator_enum_str_t { uint8_t value; } __rc_operator_enum_str_t;
 
 typedef struct {
   rc_typed_value_t add_value; /* AddSource/SubSource */
@@ -147,26 +166,14 @@ typedef struct {
   uint32_t measured_target;
   int lines_read;
 
+  rc_operand_t addsource_parent;
   rc_operand_t indirect_parent;
   uint8_t indirect_recall;
+  uint8_t addsource_oper;
 
+  uint8_t is_value;
   uint8_t has_required_hits;
   uint8_t measured_as_percent;
-
-  /* these fields aren't actually used by the code, but they force the
-   * virtual enum wrapper types to exist so natvis can use them */
-  union {
-    __rc_bool_enum_t boolean;
-    __rc_memsize_enum_t memsize;
-    __rc_memsize_enum_func_t memsize_func;
-    __rc_operand_enum_t operand;
-    __rc_value_type_enum_t value_type;
-    __rc_memref_type_enum_t memref_type;
-    __rc_condition_enum_t condition;
-    __rc_condition_enum_str_t condition_str;
-    __rc_operator_enum_t oper;
-    __rc_operator_enum_str_t oper_str;
-  } natvis_extension;
 }
 rc_parse_state_t;
 
@@ -185,7 +192,7 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
 int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address);
 void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);
 void rc_update_memref_value(rc_memref_value_t* memref, uint32_t value);
-uint32_t rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state);
+void rc_get_memref_value(rc_typed_value_t* value, rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state);
 uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_peek_t peek, void* ud);
 uint8_t rc_memref_shared_size(uint8_t size);
 uint32_t rc_memref_mask(uint8_t size);
@@ -195,7 +202,7 @@ uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud)
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 int rc_trigger_state_active(int state);
 
-rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, int is_value);
+rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse);
 int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state);
 void rc_reset_condset(rc_condset_t* self);
 
@@ -216,9 +223,11 @@ enum {
 };
 
 rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse);
+void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t* parse);
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state);
 void rc_evaluate_condition_value(rc_typed_value_t* value, rc_condition_t* self, rc_eval_state_t* eval_state);
 int rc_condition_is_combining(const rc_condition_t* self);
+void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand_t* operand, rc_parse_state_t* parse);
 
 int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse);
 void rc_evaluate_operand(rc_typed_value_t* value, const rc_operand_t* self, rc_eval_state_t* eval_state);
@@ -226,6 +235,7 @@ int rc_operand_is_float_memref(const rc_operand_t* self);
 int rc_operand_is_float(const rc_operand_t* self);
 int rc_operand_is_recall(const rc_operand_t* self);
 int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right);
+void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t new_size);
 
 int rc_is_valid_variable_character(char ch, int is_first);
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);

@@ -1,6 +1,7 @@
 #include "rc_internal.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 
 static int rc_test_condition_compare(uint32_t value1, uint32_t value2, uint8_t oper) {
@@ -15,7 +16,7 @@ static int rc_test_condition_compare(uint32_t value1, uint32_t value2, uint8_t o
   }
 }
 
-static char rc_condition_determine_comparator(const rc_condition_t* self) {
+static uint8_t rc_condition_determine_comparator(const rc_condition_t* self) {
   switch (self->oper) {
     case RC_OPERATOR_EQ:
     case RC_OPERATOR_NE:
@@ -31,7 +32,8 @@ static char rc_condition_determine_comparator(const rc_condition_t* self) {
   }
 
   if ((self->operand1.type == RC_OPERAND_ADDRESS || self->operand1.type == RC_OPERAND_DELTA) &&
-      self->operand1.value.memref->value.type == RC_MEMREF_TYPE_MEMREF && !rc_operand_is_float(&self->operand1)) {
+    // TODO: allow modified memref comparisons
+      self->operand1.value.memref->value.memref_type == RC_MEMREF_TYPE_MEMREF && !rc_operand_is_float(&self->operand1)) {
     /* left side is an integer memory reference */
     int needs_translate = (self->operand1.size != self->operand1.value.memref->value.size);
 
@@ -43,7 +45,7 @@ static char rc_condition_determine_comparator(const rc_condition_t* self) {
       return needs_translate ? RC_PROCESSING_COMPARE_DELTA_TO_CONST_TRANSFORMED : RC_PROCESSING_COMPARE_DELTA_TO_CONST;
     }
     else if ((self->operand2.type == RC_OPERAND_ADDRESS || self->operand2.type == RC_OPERAND_DELTA) &&
-             self->operand2.value.memref->value.type == RC_MEMREF_TYPE_MEMREF && !rc_operand_is_float(&self->operand2)) {
+             self->operand2.value.memref->value.memref_type == RC_MEMREF_TYPE_MEMREF && !rc_operand_is_float(&self->operand2)) {
       /* right side is an integer memory reference */
       const int is_same_memref = (self->operand1.value.memref == self->operand2.value.memref);
       needs_translate |= (self->operand2.size != self->operand2.value.memref->value.size);
@@ -161,6 +163,32 @@ static int rc_parse_operator(const char** memaddr) {
   }
 }
 
+void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand_t* operand, rc_parse_state_t* parse) {
+  if (condition->operand1.type == RC_OPERAND_RECALL || parse->indirect_recall) {
+    /* cannot create an indirect memref using recall as the remembered value
+     * won't exist until the achievement is being processed. */
+    operand->type = RC_OPERAND_NONE;
+    parse->indirect_recall = 1;
+  }
+  else if (condition->oper == RC_OPERATOR_NONE) {
+    if (operand != &condition->operand1)
+      memcpy(operand, &condition->operand1, sizeof(*operand));
+  }
+  else {
+    uint8_t new_size = RC_MEMSIZE_32_BITS;
+    if (rc_operand_is_float(&condition->operand1) || rc_operand_is_float(&condition->operand2))
+      new_size = RC_MEMSIZE_FLOAT;
+
+    operand->value.memref = (rc_memref_t*)rc_alloc_modified_memref(parse,
+      new_size, &condition->operand1, condition->oper, &condition->operand2);
+
+    /* not actually an address, just a non-delta memref read */
+    operand->type = RC_OPERAND_ADDRESS;
+
+    operand->size = new_size;
+  }
+}
+
 rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse) {
   rc_condition_t* self;
   const char* aux;
@@ -230,6 +258,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
       /* provide dummy operand of '1' and no required hits */
       self->operand2.type = RC_OPERAND_CONST;
+      self->operand2.size = RC_MEMSIZE_32_BITS;
       self->operand2.value.num = 1;
       self->required_hits = 0;
       *memaddr = aux;
@@ -276,6 +305,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   if (self->oper == RC_OPERATOR_NONE) {
     /* if operator is none, explicitly clear out the right side */
     self->operand2.type = RC_OPERAND_CONST;
+    self->operand2.size = RC_MEMSIZE_32_BITS;
     self->operand2.value.num = 0;
   }
 
@@ -322,6 +352,124 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
   *memaddr = aux;
   return self;
+}
+
+void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t* parse) {
+  /* type of values in the chain are determined by the parent.
+   * the last element of a chain is determined by the operand
+   *
+   * 1   + 1.5 + 1.75 + 1.0 =>   (int)1   +   (int)1   +   (int)1    + (float)1   = (float)4.0
+   * 1.0 + 1.5 + 1.75 + 1.0 => (float)1.0 + (float)1.5 + (float)1.75 + (float)1.0 = (float)5.25
+   * 1.0 + 1.5 + 1.75 + 1   => (float)1.0 + (float)1.5 + (float)1.75 +   (int)1   =   (int)5
+   */
+
+  switch (condition->type) {
+    case RC_CONDITION_ADD_ADDRESS:
+      if (condition->oper != RC_OPERAND_NONE)
+        rc_condition_convert_to_operand(condition, &parse->indirect_parent, parse);
+      else
+        memcpy(&parse->indirect_parent, &condition->operand1, sizeof(parse->indirect_parent));
+
+      break;
+
+    case RC_CONDITION_ADD_SOURCE:
+      if (parse->addsource_parent.type == RC_OPERAND_NONE) {
+        rc_condition_convert_to_operand(condition, &parse->addsource_parent, parse);
+      }
+      else {
+        rc_operand_t cond_operand;
+        /* type determined by parent */
+        const uint8_t new_size = rc_operand_is_float(&parse->addsource_parent) ? RC_MEMSIZE_FLOAT : RC_MEMSIZE_32_BITS;
+
+        rc_condition_convert_to_operand(condition, &cond_operand, parse);
+        rc_operand_addsource(&cond_operand, parse, new_size);
+        memcpy(&parse->addsource_parent, &cond_operand, sizeof(cond_operand));
+      }
+
+      parse->addsource_oper = RC_OPERATOR_ADD;
+      parse->indirect_parent.type = RC_OPERAND_NONE;
+      break;
+
+    case RC_CONDITION_SUB_SOURCE:
+      if (parse->addsource_parent.type == RC_OPERAND_NONE) {
+        rc_condition_convert_to_operand(condition, &parse->addsource_parent, parse);
+        parse->addsource_oper = RC_OPERATOR_SUB_PARENT;
+      }
+      else {
+        rc_operand_t cond_operand;
+        /* type determined by parent */
+        const uint8_t new_size = rc_operand_is_float(&parse->addsource_parent) ? RC_MEMSIZE_FLOAT : RC_MEMSIZE_32_BITS;
+
+        /* if the previous element was also a SubSource, we have to insert a 0 and start subtracting from there */
+        if (parse->addsource_oper == RC_OPERATOR_SUB_PARENT) {
+          rc_modified_memref_t* negate;
+          rc_operand_t zero;
+
+          if (rc_operand_is_float(&parse->addsource_parent)) {
+            zero.size = RC_MEMSIZE_FLOAT;
+            zero.type = RC_OPERAND_FP;
+            zero.value.dbl = 0.0;
+          }
+          else {
+            zero.size = RC_MEMSIZE_32_BITS;
+            zero.type = RC_OPERAND_CONST;
+            zero.value.num = 0;
+          }
+
+          negate = rc_alloc_modified_memref(parse, new_size, &parse->addsource_parent, RC_OPERATOR_SUB_PARENT, &zero);
+          parse->addsource_parent.value.memref = (rc_memref_t*)negate;
+          parse->addsource_parent.size = zero.size;
+        }
+
+        /* subtract the condition from the chain */
+        parse->addsource_oper = rc_operand_is_memref(&parse->addsource_parent) ? RC_OPERATOR_SUB : RC_OPERATOR_SUB_PARENT;
+        rc_condition_convert_to_operand(condition, &cond_operand, parse);
+        rc_operand_addsource(&cond_operand, parse, new_size);
+        memcpy(&parse->addsource_parent, &cond_operand, sizeof(cond_operand));
+
+        /* indicate the next value can be added to the chain */
+        parse->addsource_oper = RC_OPERATOR_ADD;
+      }
+
+      parse->indirect_parent.type = RC_OPERAND_NONE;
+      break;
+
+    case RC_CONDITION_MEASURED:
+      /* Measured condition can have modifiers in values */
+      if (parse->is_value) {
+        switch (condition->oper) {
+          case RC_OPERATOR_AND:
+          case RC_OPERATOR_XOR:
+          case RC_OPERATOR_DIV:
+          case RC_OPERATOR_MULT:
+          case RC_OPERATOR_MOD:
+          case RC_OPERATOR_ADD:
+          case RC_OPERATOR_SUB:
+            rc_condition_convert_to_operand(condition, &condition->operand1, parse);
+            break;
+
+          default:
+            break;
+        }
+      }
+
+      /* fallthrough */ /* to default */
+
+    default:
+      if (parse->addsource_parent.type != RC_OPERAND_NONE) {
+        /* type determined by leaf */
+        const uint8_t new_size = rc_operand_is_float(&condition->operand1) ? RC_MEMSIZE_FLOAT : RC_MEMSIZE_32_BITS;
+        rc_operand_addsource(&condition->operand1, parse, condition->operand1.size);
+
+        if (parse->buffer)
+          condition->optimized_comparator = rc_condition_determine_comparator(condition);
+      }
+
+      parse->addsource_parent.type = RC_OPERAND_NONE;
+      parse->indirect_parent.type = RC_OPERAND_NONE;
+      parse->indirect_recall = 0;
+      break;
+  }
 }
 
 int rc_condition_is_combining(const rc_condition_t* self) {

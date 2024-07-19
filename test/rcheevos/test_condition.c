@@ -159,7 +159,7 @@ static void test_default_comparator(const char* memaddr) {
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-  condset = rc_parse_condset(&memaddr, &parse, 0);
+  condset = rc_parse_condset(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
   ASSERT_NUM_GREATER(parse.offset, 0);

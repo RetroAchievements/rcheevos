@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<!-- https://learn.microsoft.com/en-us/visualstudio/debugger/create-custom-views-of-native-objects?view=vs-2022 -->
+	<!-- https://learn.microsoft.com/en-us/visualstudio/debugger/format-specifiers-in-cpp?view=vs-2022 -->
+	<Type Name="rc_typed_value_t">
+        <DisplayString Condition="type==RC_VALUE_TYPE_UNSIGNED">{value.u32} (RC_VALUE_TYPE_UNSIGNED)</DisplayString>
+        <DisplayString Condition="type==RC_VALUE_TYPE_FLOAT">{value.f32} (RC_VALUE_TYPE_FLOAT)</DisplayString>
+        <DisplayString Condition="type==RC_VALUE_TYPE_SIGNED">{value.i32} (RC_VALUE_TYPE_SIGNED)</DisplayString>
+        <DisplayString Condition="type==RC_VALUE_TYPE_NONE">none (RC_VALUE_TYPE_NONE)</DisplayString>
+        <DisplayString>{value.i32} (unknown)</DisplayString>
+    </Type>
     <Type Name="__rc_bool_enum_t">
         <DisplayString Condition="value==0">false</DisplayString>
         <DisplayString Condition="value==1">true</DisplayString>
@@ -47,17 +56,6 @@
         <!--<DisplayString Condition="value==RC_MEMREF_TYPE_VALUE">RC_MEMREF_TYPE_VALUE</DisplayString>-->
         <DisplayString>unknown ({value})</DisplayString>
     </Type>
-    <Type Name="rc_memref_value_t">
-        <DisplayString>{{value={value,x} prior={prior,x}}}</DisplayString>
-        <Expand>
-            <Item Name="value">value</Item>
-            <Item Name="prior">prior</Item>
-            <Item Name="size">*((__rc_memsize_enum_t*)&amp;size)</Item>
-            <Item Name="changed">*((__rc_bool_enum_t*)&amp;changed)</Item>
-            <Item Name="type">*((__rc_value_type_enum_t*)&amp;type)</Item>
-            <Item Name="memref_type">*((__rc_memref_type_enum_t*)&amp;memref_type)</Item>
-        </Expand>
-    </Type>
     <Type Name="__rc_memsize_enum_func_t">
         <DisplayString Condition="value==RC_MEMSIZE_8_BITS">byte</DisplayString>
         <DisplayString Condition="value==RC_MEMSIZE_16_BITS">word</DisplayString>
@@ -86,10 +84,39 @@
         <DisplayString Condition="value==RC_MEMSIZE_VARIABLE">var</DisplayString>
         <DisplayString>unknown</DisplayString>
     </Type>
+    <Type Name="rc_memref_value_t">
+        <DisplayString Condition="type==RC_VALUE_TYPE_FLOAT">{{value={(float)*((float*)&amp;value)} prior={(float)*((float*)&amp;prior)}}}</DisplayString>
+        <DisplayString Condition="type==RC_VALUE_TYPE_SIGNED">{{value={(int)value} prior={(int)prior}}}</DisplayString>
+        <DisplayString>{{value={value,x} prior={prior,x}}}</DisplayString>
+        <Expand>
+            <Item Name="value">value</Item>
+            <Item Name="prior">prior</Item>
+            <Item Name="size">*((__rc_memsize_enum_t*)&amp;size)</Item>
+            <Item Name="changed">*((__rc_bool_enum_t*)&amp;changed)</Item>
+            <Item Name="type">*((__rc_value_type_enum_t*)&amp;type)</Item>
+            <Item Name="memref_type">*((__rc_memref_type_enum_t*)&amp;memref_type)</Item>
+        </Expand>
+    </Type>
     <Type Name="rc_memref_t">
         <DisplayString Condition="value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">{*(rc_modified_memref_t*)&amp;value}</DisplayString>
         <DisplayString Condition="value.size==RC_MEMSIZE_VARIABLE">var</DisplayString>
         <DisplayString>{*((__rc_memsize_enum_func_t*)&amp;value.size)}({address,x})</DisplayString>
+        <Expand>
+            <Item Name="[rc_modified_memref_t]" Condition="value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">(rc_modified_memref_t*)&amp;value</Item>
+            <Item Name="value">value</Item>
+            <Item Name="address">address</Item>
+            <Item Name="next">next</Item>
+        </Expand>
+    </Type>
+    <Type Name="__rc_operand_memref_t">
+        <DisplayString Condition="operand.value.memref->value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">... {*((__rc_memsize_enum_func_t*)&amp;operand.size)} {operand.value.memref->address,x}</DisplayString>
+        <DisplayString>{*((__rc_memsize_enum_func_t*)&amp;operand.size)} {operand.value.memref->address,x}</DisplayString>
+        <Expand>
+            <Item Name="[rc_modified_memref_t]" Condition="operand.value.memref->value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">(rc_modified_memref_t*)&amp;operand.value</Item>
+            <Item Name="value">operand.value.memref->value</Item>
+            <Item Name="address">operand.value.memref->address</Item>
+            <Item Name="next">operand.value.memref->next</Item>
+        </Expand>
     </Type>
     <Type Name="__rc_operand_enum_t">
         <DisplayString Condition="value==RC_OPERAND_ADDRESS">{RC_OPERAND_ADDRESS}</DisplayString>
@@ -104,20 +131,23 @@
         <DisplayString>unknown ({value})</DisplayString>
     </Type>
     <Type Name="rc_operand_t">
-        <DisplayString Condition="type==RC_OPERAND_ADDRESS">{{mem {*value.memref}}}</DisplayString>
-        <DisplayString Condition="type==RC_OPERAND_DELTA">{{delta {*value.memref}}}</DisplayString>
-        <DisplayString Condition="type==RC_OPERAND_PRIOR">{{prior {*value.memref}}}</DisplayString>
-        <DisplayString Condition="type==RC_OPERAND_CONST">{{const {value.num}}}</DisplayString>
-        <DisplayString Condition="type==RC_OPERAND_FP">{{const {value.dbl}}}</DisplayString>
-        <DisplayString Condition="type==RC_OPERAND_BCD">{{bcd {*value.memref}}}</DisplayString>
-        <DisplayString Condition="type==RC_OPERAND_INVERTED">{{inverted {*value.memref}}}</DisplayString>
+        <DisplayString Condition="type==RC_OPERAND_ADDRESS">{{{*(__rc_operand_memref_t*)&amp;value.memref}}}</DisplayString>
+        <DisplayString Condition="type==RC_OPERAND_DELTA">{{delta {*(__rc_operand_memref_t*)&amp;value.memref}}}</DisplayString>
+        <DisplayString Condition="type==RC_OPERAND_PRIOR">{{prior {*(__rc_operand_memref_t*)&amp;value.memref}}}</DisplayString>
+        <DisplayString Condition="type==RC_OPERAND_BCD">{{bcd {*(__rc_operand_memref_t*)&amp;value.memref}}}</DisplayString>
+        <DisplayString Condition="type==RC_OPERAND_INVERTED">{{inverted {*(__rc_operand_memref_t*)&amp;value.memref}}}</DisplayString>
+		<DisplayString Condition="type==RC_OPERAND_CONST &amp;&amp; value.num &gt; 0xFFFF0000">{{value {(int)value.num}}}</DisplayString>
+		<DisplayString Condition="type==RC_OPERAND_CONST &amp;&amp; value.num &gt; 0x01000000">{{value {value.num,x}}}</DisplayString>
+		<DisplayString Condition="type==RC_OPERAND_CONST">{{value {value.num}}}</DisplayString>
+        <DisplayString Condition="type==RC_OPERAND_FP">{{value {value.dbl}}}</DisplayString>
         <DisplayString Condition="type==RC_OPERAND_RECALL">{{recall}}</DisplayString>
         <DisplayString Condition="type==0xFF">{{none}}</DisplayString>
         <DisplayString>{{unknown}}</DisplayString>
         <Expand>
-            <Item Name="value" Condition="type==RC_OPERAND_CONST">value.num</Item>
-            <Item Name="value" Condition="type==RC_OPERAND_FP">value.dbl</Item>
-            <Item Name="value" Condition="type!=RC_OPERAND_CONST &amp;&amp; type!=RC_OPERAND_FP">value.memref</Item>
+			<Item Name="value" Condition="type==RC_OPERAND_CONST">value.num</Item>
+			<Item Name="value" Condition="type==RC_OPERAND_FP">value.dbl</Item>
+            <Item Name="value" Condition="type!=RC_OPERAND_CONST &amp;&amp; type!=RC_OPERAND_FP &amp;&amp; ((rc_memref_t*)value.memref)->value.memref_type!=RC_MEMREF_TYPE_MODIFIED_MEMREF">value.memref</Item>
+            <Item Name="value" Condition="type!=RC_OPERAND_CONST &amp;&amp; type!=RC_OPERAND_FP &amp;&amp; ((rc_memref_t*)value.memref)->value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">(rc_modified_memref_t*)value.memref</Item>
             <Item Name="type">*((__rc_operand_enum_t*)&amp;type)</Item>
             <Item Name="size">*((__rc_memsize_enum_t*)&amp;size)</Item>
         </Expand>
@@ -173,6 +203,7 @@
         <DisplayString Condition="value==RC_OPERATOR_MOD">{RC_OPERATOR_MOD}</DisplayString>
         <DisplayString Condition="value==RC_OPERATOR_ADD">{RC_OPERATOR_ADD}</DisplayString>
         <DisplayString Condition="value==RC_OPERATOR_SUB">{RC_OPERATOR_SUB}</DisplayString>
+        <DisplayString Condition="value==RC_OPERATOR_SUB_PARENT">{RC_OPERATOR_SUB_PARENT}</DisplayString>
         <DisplayString Condition="value==RC_OPERATOR_INDIRECT_READ">{RC_OPERATOR_INDIRECT_READ}</DisplayString>
         <DisplayString>unknown ({value})</DisplayString>
     </Type>
@@ -191,10 +222,13 @@
         <DisplayString Condition="value==RC_OPERATOR_MOD">%</DisplayString>
         <DisplayString Condition="value==RC_OPERATOR_ADD">+</DisplayString>
         <DisplayString Condition="value==RC_OPERATOR_SUB">-</DisplayString>
+        <DisplayString Condition="value==RC_OPERATOR_SUB_PARENT">subtracted from</DisplayString>
         <DisplayString Condition="value==RC_OPERATOR_INDIRECT_READ">$</DisplayString>
         <DisplayString>unknown ({value})</DisplayString>
     </Type>
     <Type Name="rc_condition_t">
+        <DisplayString Condition="oper==RC_OPERATOR_NONE &amp;&amp; required_hits==0">{*((__rc_condition_enum_str_t*)&amp;type)} {operand1}</DisplayString>
+        <DisplayString Condition="oper==RC_OPERATOR_NONE">{*((__rc_condition_enum_str_t*)&amp;type)} {operand1} ({required_hits})</DisplayString>
         <DisplayString Condition="required_hits==0">{*((__rc_condition_enum_str_t*)&amp;type)} {operand1} {*((__rc_operator_enum_str_t*)&amp;oper)} {operand2}</DisplayString>
         <DisplayString>{*((__rc_condition_enum_str_t*)&amp;type)} {operand1} {*((__rc_operator_enum_str_t*)&amp;oper)} {operand2} ({required_hits})</DisplayString>
         <Expand>
@@ -207,15 +241,71 @@
             <Item Name="next">next</Item>
         </Expand>
     </Type>
+    <Type Name="rc_condset_t">
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>conditions</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
     <Type Name="rc_modified_memref_t">
-        <DisplayString Condition="modifier_type==RC_OPERATOR_INDIRECT_READ">$({*((__rc_memsize_enum_func_t*)&amp;parent->size)}({*(const rc_modified_memref_t*)parent}) + {modifier})</DisplayString>
-        <DisplayString>({*((__rc_memsize_enum_func_t*)&amp;parent->size)}({((const rc_memref_t*)parent)->address,x}) {*((__rc_operator_enum_str_t*)&amp;modifier_type)} {modifier})</DisplayString>
+        <DisplayString Condition="modifier_type==RC_OPERATOR_INDIRECT_READ">$({parent} + {modifier})</DisplayString>
+        <DisplayString Condition="modifier_type==RC_OPERATOR_SUB_PARENT">({modifier} - {parent})</DisplayString>
+        <DisplayString>({parent} {*((__rc_operator_enum_str_t*)&amp;modifier_type)} {modifier})</DisplayString>
         <Expand>
             <Item Name="value">memref.value</Item>
-            <Item Name="parent_type">*((__rc_operand_enum_t*)&amp;parent_type)</Item>
-            <Item Name="parent">*parent</Item>
+            <Item Name="parent">parent</Item>
             <Item Name="modifier_type">*((__rc_operator_enum_t*)&amp;modifier_type)</Item>
             <Item Name="modifier">modifier</Item>
+        </Expand>
+    </Type>
+    <Type Name="rc_value_t">
+        <DisplayString>{value} {name,s}</DisplayString>
+		<Expand>
+			<Item Name="value">value</Item>
+			<Item Name="conditions">conditions</Item>
+			<Item Name="name">name</Item>
+			<Item Name="memrefs">*((__rc_memref_list_t*)&amp;memrefs)</Item>
+			<Item Name="next">next</Item>
+		</Expand>
+    </Type>
+    <Type Name="__rc_memref_list_t">
+		<DisplayString Condition="first_memref==0">{{NULL}}</DisplayString>
+        <DisplayString>{(void**)&amp;first_memref,na}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>first_memref</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
+    <Type Name="__rc_value_list_t">
+		<DisplayString Condition="first_value==0">{{NULL}}</DisplayString>
+		<DisplayString>{(void*)&amp;first_value,na}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>first_value</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
+    <Type Name="rc_parse_state_t">
+        <DisplayString>{{offset={offset} addsource_parent={addsource_parent} indirect_parent={indirect_parent}}}</DisplayString>
+        <Expand>
+            <Item Name="offset">offset</Item>
+            <Item Name="memrefs">((__rc_memref_list_t*)first_memref)</Item>
+            <Item Name="variables">((__rc_value_list_t*)&amp;variables)</Item>
+            <Item Name="addsource_parent">addsource_parent</Item>
+            <Item Name="addsource_oper">*((__rc_operator_enum_t*)&amp;addsource_oper)</Item>
+            <Item Name="indirect_parent">indirect_parent</Item>
+            <Item Name="indirect_recall">*((__rc_bool_enum_t*)&amp;indirect_recall)</Item>
+            <Item Name="is_value">*((__rc_bool_enum_t*)&amp;is_value)</Item>
+            <Item Name="has_required_hits">*((__rc_bool_enum_t*)&amp;has_required_hits)</Item>
+            <Item Name="measured_as_percent">*((__rc_bool_enum_t*)&amp;measured_as_percent)</Item>
         </Expand>
     </Type>
 </AutoVisualizer>

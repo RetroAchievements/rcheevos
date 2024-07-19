@@ -269,6 +269,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t*
         }
 
         self->type = RC_OPERAND_FP;
+        self->size = RC_MEMSIZE_FLOAT;
       }
       else {
         /* not a floating point value, make sure something was read and advance the read pointer */
@@ -369,11 +370,36 @@ int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right) {
     case RC_OPERAND_RECALL:
       return 1;
     default:
-      return (left->value.memref->address == right->value.memref->address && left->size == right->size);
+      break;
+  }
+
+  /* comparing two memrefs - look for exact matches on type and size */
+  if (left->size != right->size || left->value.memref->value.memref_type != right->value.memref->value.memref_type)
+    return 0;
+
+  switch (left->value.memref->value.memref_type) {
+    case RC_MEMREF_TYPE_MODIFIED_MEMREF:
+    {
+      const rc_modified_memref_t* left_memref = (const rc_modified_memref_t*)left->value.memref;
+      const rc_modified_memref_t* right_memref = (const rc_modified_memref_t*)right->value.memref;
+      return (left_memref->modifier_type == right_memref->modifier_type &&
+              rc_operands_are_equal(&left_memref->parent, &right_memref->parent) &&
+              rc_operands_are_equal(&left_memref->modifier, &right_memref->modifier));
+    }
+
+    default:
+      return (left->value.memref->address == right->value.memref->address &&
+              left->value.memref->value.size == right->value.memref->value.size);
   }
 }
 
 int rc_operand_is_float_memref(const rc_operand_t* self) {
+  if (!rc_operand_is_memref(self))
+    return 0;
+
+  if (self->value.memref->value.memref_type == RC_MEMREF_TYPE_MODIFIED_MEMREF)
+    return (self->value.memref->value.size == RC_MEMSIZE_FLOAT);
+
   switch (self->size) {
     case RC_MEMSIZE_FLOAT:
     case RC_MEMSIZE_FLOAT_BE:
@@ -506,6 +532,39 @@ uint32_t rc_transform_operand_value(uint32_t value, const rc_operand_t* self) {
   return value;
 }
 
+void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t new_size) {
+  rc_modified_memref_t* modified_memref;
+
+  if (rc_operand_is_memref(&parse->addsource_parent)) {
+    rc_operand_t modifier;
+
+    if (self->type == RC_OPERAND_DELTA || self->type == RC_OPERAND_PRIOR) {
+      if (self->type == parse->addsource_parent.type) {
+        /* if adding prev(x) and prev(y), just add x and y and take the prev of that */
+        memcpy(&modifier, self, sizeof(modifier));
+        modifier.type = parse->addsource_parent.type = RC_OPERAND_ADDRESS;
+        self->size = RC_MEMSIZE_32_BITS;
+        self = &modifier;
+      }
+    }
+
+    modified_memref = rc_alloc_modified_memref(parse,
+        new_size, &parse->addsource_parent, parse->addsource_oper, self);
+  }
+  else {
+    /*  N + A => A + N */
+    /* -N + A => A - N */
+    modified_memref = rc_alloc_modified_memref(parse,
+      new_size, self, parse->addsource_oper, &parse->addsource_parent);
+  }
+
+  self->value.memref = (rc_memref_t*)modified_memref;
+
+  /* if adding a constant, change the type to be address (current value) */
+  if (!rc_operand_is_memref(self))
+    self->type = RC_OPERAND_ADDRESS;
+}
+
 void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_eval_state_t* eval_state) {
 #ifndef RC_DISABLE_LUA
   rc_luapeek_t luapeek;
@@ -554,7 +613,7 @@ void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_
       break;
 
     case RC_OPERAND_RECALL:
-      if (eval_state->recall_value.type == RC_VALUE_TYPE_NONE) {
+      if (eval_state == NULL || eval_state->recall_value.type == RC_VALUE_TYPE_NONE) {
         /* nothing REMEMBERed */
         result->type = RC_VALUE_TYPE_UNSIGNED;
         result->value.u32 = 0;
@@ -566,13 +625,13 @@ void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_
       return;
 
     default:
-      result->type = RC_VALUE_TYPE_UNSIGNED;
-      result->value.u32 = rc_get_memref_value(self->value.memref, self->type, eval_state);
+      rc_get_memref_value(result, self->value.memref, self->type, eval_state);
       break;
   }
 
   /* step 2: convert read memory to desired format */
-  rc_transform_memref_value(result, self->size);
+  if (self->value.memref->value.memref_type == RC_MEMREF_TYPE_MEMREF)
+    rc_transform_memref_value(result, self->size);
 
   /* step 3: apply logic (BCD/invert) */
   if (result->type == RC_VALUE_TYPE_UNSIGNED)

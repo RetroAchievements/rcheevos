@@ -319,7 +319,8 @@ static void test_allocate_shared_address2() {
   memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
   ASSERT_NUM_EQUALS(memref1->address, 1);
   ASSERT_NUM_EQUALS(memref1->value.size, RC_MEMSIZE_8_BITS);
-  ASSERT_NUM_EQUALS(memref1->value.type, RC_MEMREF_TYPE_MEMREF);
+  ASSERT_NUM_EQUALS(memref1->value.memref_type, RC_MEMREF_TYPE_MEMREF);
+  ASSERT_NUM_EQUALS(memref1->value.type, RC_VALUE_TYPE_UNSIGNED);
   ASSERT_NUM_EQUALS(memref1->value.value, 0);
   ASSERT_NUM_EQUALS(memref1->value.changed, 0);
   ASSERT_NUM_EQUALS(memref1->value.prior, 0);
@@ -367,8 +368,10 @@ static void test_allocate_shared_indirect_address() {
 
   parent1.value.memref = parent_memref1 = rc_alloc_memref(&parse, 88, RC_MEMSIZE_16_BITS);
   parent1.type = RC_OPERAND_ADDRESS;
+  parent1.size = RC_MEMSIZE_16_BITS;
   parent2.value.memref = parent_memref2 = rc_alloc_memref(&parse, 99, RC_MEMSIZE_16_BITS);
   parent2.type = RC_OPERAND_ADDRESS;
+  parent2.size = RC_MEMSIZE_16_BITS;
   delta1.value.memref = parent_memref1;
   delta1.type = RC_OPERAND_DELTA;
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 2);

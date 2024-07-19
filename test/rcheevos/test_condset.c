@@ -18,7 +18,7 @@ static void _assert_parse_condset(rc_condset_t** condset, rc_condset_memrefs_t* 
   rc_init_parse_state_memrefs(&parse, &memrefs->memrefs);
   rc_init_parse_state_variables(&parse, &memrefs->variables);
 
-  *condset = rc_parse_condset(&memaddr, &parse, 0);
+  *condset = rc_parse_condset(&memaddr, &parse);
   size = parse.offset;
   rc_destroy_parse_state(&parse);
 

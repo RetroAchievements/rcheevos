@@ -24,7 +24,7 @@ static void rc_update_condition_pause(rc_condition_t* condition) {
   }
 }
 
-rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, int is_value) {
+rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
   rc_condset_t* self;
   rc_condition_t** next;
   rc_condition_t* condition;
@@ -44,9 +44,8 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
     condition = rc_parse_condition(memaddr, parse);
     *next = condition;
 
-    if (parse->offset < 0) {
+    if (parse->offset < 0)
       return 0;
-    }
 
     if (condition->oper == RC_OPERATOR_NONE) {
       switch (condition->type) {
@@ -59,7 +58,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
 
         case RC_CONDITION_MEASURED:
           /* right hand side is not required when Measured is used in a value */
-          if (is_value)
+          if (parse->is_value)
             break;
           /* fallthrough */ /* to default */
 
@@ -69,106 +68,81 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse, in
       }
     }
 
-    self->has_pause |= condition->type == RC_CONDITION_PAUSE_IF;
-
     switch (condition->type) {
-    case RC_CONDITION_MEASURED:
-      if (measured_target != 0) {
-        /* multiple Measured flags cannot exist in the same group */
-        parse->offset = RC_MULTIPLE_MEASURED;
-        return 0;
-      }
-      else if (is_value) {
-        measured_target = (unsigned)-1;
-        switch (condition->oper)
-        {
-          case RC_OPERATOR_AND:
-          case RC_OPERATOR_XOR:
-          case RC_OPERATOR_DIV:
-          case RC_OPERATOR_MULT:
-          case RC_OPERATOR_MOD:
-          case RC_OPERATOR_ADD:
-          case RC_OPERATOR_SUB:
-          case RC_OPERATOR_NONE:
-            /* measuring value. leave required_hits at 0 */
-            break;
-
-          default:
-            /* comparison operator, measuring hits. set required_hits to MAX_INT */
-            condition->required_hits = measured_target;
-            break;
+      case RC_CONDITION_MEASURED:
+        if (measured_target != 0) {
+          /* multiple Measured flags cannot exist in the same group */
+          parse->offset = RC_MULTIPLE_MEASURED;
+          return 0;
         }
-      }
-      else if (condition->required_hits != 0) {
-        measured_target = condition->required_hits;
-      }
-      else if (condition->operand2.type == RC_OPERAND_CONST) {
-        measured_target = condition->operand2.value.num;
-      }
-      else if (condition->operand2.type == RC_OPERAND_FP) {
-        measured_target = (unsigned)condition->operand2.value.dbl;
-      }
-      else {
-        parse->offset = RC_INVALID_MEASURED_TARGET;
-        return 0;
-      }
+        else if (parse->is_value) {
+          measured_target = (unsigned)-1;
+          switch (condition->oper) {
+            case RC_OPERATOR_AND:
+            case RC_OPERATOR_XOR:
+            case RC_OPERATOR_DIV:
+            case RC_OPERATOR_MULT:
+            case RC_OPERATOR_MOD:
+            case RC_OPERATOR_ADD:
+            case RC_OPERATOR_SUB:
+            case RC_OPERATOR_NONE:
+              /* measuring value. leave required_hits at 0 */
+              break;
 
-      if (parse->measured_target && measured_target != parse->measured_target) {
-        /* multiple Measured flags in separate groups must have the same target */
-        parse->offset = RC_MULTIPLE_MEASURED;
-        return 0;
-      }
+            default:
+              /* comparison operator, measuring hits. set required_hits to MAX_INT */
+              condition->required_hits = measured_target;
+              break;
+          }
+        }
+        else if (condition->required_hits != 0) {
+          measured_target = condition->required_hits;
+        }
+        else if (condition->operand2.type == RC_OPERAND_CONST) {
+          measured_target = condition->operand2.value.num;
+        }
+        else if (condition->operand2.type == RC_OPERAND_FP) {
+          measured_target = (unsigned)condition->operand2.value.dbl;
+        }
+        else {
+          parse->offset = RC_INVALID_MEASURED_TARGET;
+          return 0;
+        }
 
-      parse->measured_target = measured_target;
-      break;
+        if (parse->measured_target && measured_target != parse->measured_target) {
+          /* multiple Measured flags in separate groups must have the same target */
+          parse->offset = RC_MULTIPLE_MEASURED;
+          return 0;
+        }
 
-    case RC_CONDITION_STANDARD:
-    case RC_CONDITION_TRIGGER:
-      /* these flags are not allowed in value expressions */
-      if (is_value) {
-        parse->offset = RC_INVALID_VALUE_FLAG;
-        return 0;
-      }
-      break;
+        parse->measured_target = measured_target;
+        break;
 
-    default:
-      break;
+      case RC_CONDITION_STANDARD:
+      case RC_CONDITION_TRIGGER:
+        /* these flags are not allowed in value expressions */
+        if (parse->is_value) {
+          parse->offset = RC_INVALID_VALUE_FLAG;
+          return 0;
+        }
+        break;
     }
 
-    if (condition->type == RC_CONDITION_ADD_ADDRESS) {
-      if (condition->operand1.type == RC_OPERAND_RECALL || parse->indirect_recall) {
-        /* cannot create an indirect memref using recall as the remembered value
-         * won't exist until the achievement is being processed. */
-        parse->indirect_parent.type = RC_OPERAND_NONE;
-        parse->indirect_recall = 1;
-      }
-      else if (condition->oper == RC_OPERATOR_NONE) {
-        memcpy(&parse->indirect_parent, &condition->operand1, sizeof(parse->indirect_parent));
-      }
-      else {
-        parse->indirect_parent.value.memref = (rc_memref_t*)rc_alloc_modified_memref(parse,
-          RC_MEMSIZE_32_BITS, &condition->operand1, condition->oper, &condition->operand2);
-        /* not actually an address, just a non-delta memref read */
-        parse->indirect_parent.type = RC_OPERAND_ADDRESS;
-      }
-    }
-    else {
-      parse->indirect_parent.type = RC_OPERAND_NONE;
-      parse->indirect_recall = 0;
-    }
+    rc_condition_update_parse_state(condition, parse);
+
+    self->has_pause |= condition->type == RC_CONDITION_PAUSE_IF;
 
     next = &condition->next;
 
-    if (**memaddr != '_') {
+    if (**memaddr != '_')
       break;
-    }
 
     (*memaddr)++;
   }
 
   *next = 0;
 
-  if (parse->buffer != 0)
+  if (parse->buffer)
     rc_update_condition_pause(self->conditions);
 
   return self;
@@ -201,16 +175,26 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     /* STEP 1: process modifier conditions */
     switch (condition->type) {
       case RC_CONDITION_ADD_SOURCE:
-        rc_evaluate_condition_value(&value, condition, eval_state);
-        rc_typed_value_add(&eval_state->add_value, &value);
-        eval_state->add_address = 0;
+        /* normally handled by rc_modified_memref_t. if a recall value exists, there may be
+         * RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREFS, which need us to keep track
+         * of the add_address offset */
+        if (eval_state->recall_value.type != RC_VALUE_TYPE_NONE) {
+          rc_evaluate_condition_value(&value, condition, eval_state);
+          rc_typed_value_add(&eval_state->add_value, &value);
+          eval_state->add_address = 0;
+        }
         continue;
 
       case RC_CONDITION_SUB_SOURCE:
-        rc_evaluate_condition_value(&value, condition, eval_state);
-        rc_typed_value_negate(&value);
-        rc_typed_value_add(&eval_state->add_value, &value);
-        eval_state->add_address = 0;
+        /* normally handled by rc_modified_memref_t. if a recall value exists, there may be
+         * RC_MEMREF_TYPE_INDIRECT_RECALL_MEMREFS, which need us to keep track
+         * of the add_address offset */
+        if (eval_state->recall_value.type != RC_VALUE_TYPE_NONE) {
+          rc_evaluate_condition_value(&value, condition, eval_state);
+          rc_typed_value_negate(&value);
+          rc_typed_value_add(&eval_state->add_value, &value);
+          eval_state->add_address = 0;
+        }
         continue;
 
       case RC_CONDITION_ADD_ADDRESS:
@@ -236,8 +220,13 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_MEASURED:
         if (condition->required_hits == 0 && can_measure) {
           /* Measured condition without a hit target measures the value of the left operand */
-          rc_evaluate_condition_value(&measured_value, condition, eval_state);
-          rc_typed_value_add(&measured_value, &eval_state->add_value);
+          if (eval_state->recall_value.type != RC_VALUE_TYPE_NONE) {
+            rc_evaluate_condition_value(&measured_value, condition, eval_state);
+            rc_typed_value_add(&measured_value, &eval_state->add_value);
+          }
+          else {
+            rc_evaluate_operand(&measured_value, &condition->operand1, eval_state);
+          }
         }
         break;
 
