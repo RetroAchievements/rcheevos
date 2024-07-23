@@ -24,7 +24,23 @@ static void rc_update_condition_pause(rc_condition_t* condition) {
   }
 }
 
-static void rc_update_condition_pause_remember(rc_condition_t* conditions) {
+static void rc_condition_update_recall_operand(rc_operand_t* operand, const rc_operand_t* remember)
+{
+  if (operand->type == RC_OPERAND_RECALL) {
+    if (rc_operand_type_is_memref(operand->memref_access_type) && operand->value.memref == NULL) {
+      memcpy(operand, remember, sizeof(*remember));
+      operand->memref_access_type = operand->type;
+      operand->type = RC_OPERAND_RECALL;
+    }
+  }
+  else if (rc_operand_is_memref(operand) && operand->value.memref->value.memref_type == RC_MEMREF_TYPE_MODIFIED_MEMREF) {
+    rc_modified_memref_t* modified_memref = (rc_modified_memref_t*)operand->value.memref;
+    rc_condition_update_recall_operand(&modified_memref->parent, remember);
+    rc_condition_update_recall_operand(&modified_memref->modifier, remember);
+  }
+}
+
+static void rc_update_condition_pause_remember(rc_condition_t* conditions, rc_memref_t* memrefs) {
   rc_operand_t* pause_remember = NULL;
   rc_condition_t* condition;
 
@@ -53,22 +69,8 @@ static void rc_update_condition_pause_remember(rc_condition_t* conditions) {
     for (condition = conditions; condition; condition = condition->next) {
       if (!condition->pause) {
         /* if we didn't find a remember for a non-pause condition, use the last pause remember */
-        if (condition->operand1.type == RC_OPERAND_RECALL &&
-            rc_operand_type_is_memref(condition->operand1.memref_access_type) &&
-            condition->operand1.value.memref == NULL) {
-          memcpy(&condition->operand1, pause_remember, sizeof(*pause_remember));
-          condition->operand1.memref_access_type = condition->operand1.type;
-          condition->operand1.type = RC_OPERAND_RECALL;
-        }
-
-        if (condition->operand2.type == RC_OPERAND_RECALL &&
-            rc_operand_type_is_memref(condition->operand2.memref_access_type) &&
-            condition->operand2.value.memref == NULL)
-        {
-          memcpy(&condition->operand2, pause_remember, sizeof(*pause_remember));
-          condition->operand2.memref_access_type = condition->operand2.type;
-          condition->operand2.type = RC_OPERAND_RECALL;
-        }
+        rc_condition_update_recall_operand(&condition->operand1, pause_remember);
+        rc_condition_update_recall_operand(&condition->operand2, pause_remember);
       }
 
       /* Anything after this point will have already been handled */
@@ -203,7 +205,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
     rc_update_condition_pause(self->conditions);
 
     if (parse->remember.type != RC_OPERATOR_NONE)
-      rc_update_condition_pause_remember(self->conditions);
+      rc_update_condition_pause_remember(self->conditions, *parse->first_memref);
   }
 
   return self;

@@ -3955,6 +3955,57 @@ static void test_addaddress_indirect_pointer_multiple() {
   assert_hit_count(condset, 5, 1);
 }
 
+static void test_addaddress_indirect_pointer_with_delta()
+{
+  uint8_t ram[] = { 0x01, 0x02, 0x03, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(byte(0)*2+2) == 22 && prev(byte(byte(0)*2+2) == 20 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000*2_0xH0002=22_I:0xH0000*2_d0xH0002=20");
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 0xAB, delta = 0 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 0);
+  assert_hit_count(condset, 3, 0);
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 22, delta = 0xAB */
+  ram[4] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 3, 0);
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 20, delta = 22 */
+  ram[4] = 20;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 3, 0);
+
+  /* byte(0) = 0, byte(0*2+2 [2]) = 2, delta = 20 */
+  ram[0] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 3, 1);
+
+  /* byte(0) = 0, byte(0*2+2 [2]) = 20, delta = 2 */
+  ram[2] = 20;
+  ram[4] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 3, 1);
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 22, delta = 20 */
+  ram[0] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 1, 2);
+  assert_hit_count(condset, 3, 2);
+}
+
 static void test_addaddress_indirect_constant() {
   uint8_t ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -4441,6 +4492,7 @@ void test_condset(void) {
   TEST(test_addaddress_indirect_pointer_negative);
   TEST(test_addaddress_indirect_pointer_out_of_range);
   TEST(test_addaddress_indirect_pointer_multiple);
+  TEST(test_addaddress_indirect_pointer_with_delta);
   TEST(test_addaddress_indirect_constant);
   TEST(test_addaddress_pointer_data_size_differs_from_pointer_size);
   TEST(test_addaddress_double_indirection);

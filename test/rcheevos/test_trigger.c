@@ -2107,6 +2107,41 @@ static void test_remember_recall_in_pause_and_main() {
   assert_hit_count(trigger, 0, 1, 4U);
 }
 
+static void test_remember_recall_in_pause_with_chain()
+{
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  rc_condition_t* condition;
+  char buffer[640];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_trigger(&trigger, buffer, "I:{recall}_I:0xH02_0xH03=10_K:0xH00_P:0=1");
+
+  /* ensure recall memrefs point at the remember for the pause chain */
+  condition = trigger->requirement->conditions;
+  ASSERT_NUM_EQUALS(condition->operand1.type, RC_OPERAND_RECALL);
+  ASSERT_PTR_NOT_NULL(condition->operand1.value.memref);
+
+  condition = condition->next;
+  ASSERT_NUM_EQUALS(condition->operand1.value.memref->value.memref_type, RC_MEMREF_TYPE_MODIFIED_MEMREF);
+  ASSERT_NUM_EQUALS(((rc_modified_memref_t*)condition->operand1.value.memref)->parent.type, RC_OPERAND_RECALL);
+  ASSERT_PTR_NOT_NULL(((rc_modified_memref_t*)condition->operand1.value.memref)->parent.value.memref);
+
+  /* byte(0)=0, remember. byte(0+2)=0x34, byte(0x34+3)=n/a */
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  ram[2] = 1;
+  /* byte(0)=0, remember. byte(0+2)=1, byte(1+3)=0x56 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  ram[4] = 10;
+  /* byte(0)=0, remember. byte(0+2)=1, byte(1+3)=10 */
+  assert_evaluate_trigger(trigger, &memory, 1);
+}
+
 /* ======================================================== */
 
 void test_trigger(void) {
@@ -2176,6 +2211,7 @@ void test_trigger(void) {
   TEST(test_remember_recall_separate_accumulator_per_group);
   TEST(test_remember_recall_use_same_value_multiple);
   TEST(test_remember_recall_in_pause_and_main);
+  TEST(test_remember_recall_in_pause_with_chain);
 
   TEST_SUITE_END();
 }
