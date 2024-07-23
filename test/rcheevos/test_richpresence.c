@@ -225,6 +225,26 @@ static void test_conditional_display_invalid_condition_logic() {
   ASSERT_NUM_EQUALS(lines, 2);
 }
 
+static void test_conditional_display_shared_lookup() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Format:Points\nFormatType=VALUE\n\nDisplay:\n?0xH0001=1?One @Points(0xL0002)\n?0xH0001=0?Zero @Points(0xL0002)\nDefault @Points(0xL0002)");
+  assert_richpresence_output(richpresence, &memory, "Default 4");
+
+  ram[1] = 1;
+  ram[2] = 24;
+  assert_richpresence_output(richpresence, &memory, "One 8");
+
+  ram[1] = 0;
+  assert_richpresence_output(richpresence, &memory, "Zero 8");
+}
+
 static void test_conditional_display_whitespace_text() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -1267,6 +1287,7 @@ void test_richpresence(void) {
   TEST(test_conditional_display_common_condition);
   TEST(test_conditional_display_duplicated_condition);
   TEST(test_conditional_display_invalid_condition_logic);
+  TEST(test_conditional_display_shared_lookup);
   TEST(test_conditional_display_whitespace_text);
   TEST(test_conditional_display_indirect);
   TEST(test_conditional_display_unnecessary_measured);

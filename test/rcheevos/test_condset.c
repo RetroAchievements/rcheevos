@@ -292,6 +292,64 @@ static void test_pauseif_hitcount_with_reset() {
   assert_hit_count(condset, 2, 0);
 }
 
+static void test_pauseif_resetnextif()
+{
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_condset(&condset, &memrefs, buffer, "0xH0002=0_0xH0001=18_Z:0xH0003=1_N:0xH0000=0_P:0xH0002=25.1.");
+
+  /* accumulate hit counts */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 3, 1);
+  assert_hit_count(condset, 4, 0);
+
+  /* pauseif triggered, non-pauseif conditions ignored */
+  ram[2] = 25;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 3, 2);
+  assert_hit_count(condset, 4, 1);
+
+  /* pause condition is no longer true, but its hitcount prevents the non-pauseif conditions from being processed */
+  ram[2] = 10;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 3, 3);
+  assert_hit_count(condset, 4, 1);
+
+  /* reset next if clears hit on pause, but not on non-pauseif conditions */
+  ram[3] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 2);
+  assert_hit_count(condset, 2, 1); /* resetnextif keeps its own hitcount */
+  assert_hit_count(condset, 3, 0);
+  assert_hit_count(condset, 4, 0);
+
+  /* trigger is true */
+  ram[2] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 3);
+  assert_hit_count(condset, 2, 2); /* resetnextif keeps its own hitcount */
+  assert_hit_count(condset, 3, 0);
+  assert_hit_count(condset, 4, 0);
+}
+
 static void test_pauseif_does_not_increment_hits() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -4290,6 +4348,7 @@ void test_condset(void) {
   TEST(test_pauseif_hitcount_one);
   TEST(test_pauseif_hitcount_two);
   TEST(test_pauseif_hitcount_with_reset);
+  TEST(test_pauseif_resetnextif);
   TEST(test_pauseif_does_not_increment_hits);
   TEST(test_pauseif_delta_updated);
   TEST(test_pauseif_indirect_delta_updated);

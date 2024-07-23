@@ -179,6 +179,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
 }
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
+  const uint8_t was_value = parse->is_value;
   parse->is_value = 1;
 
   /* if it starts with a condition flag (M: A: B: C:), parse the conditions */
@@ -191,6 +192,8 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
   self->value.value = self->value.prior = 0;
   self->value.changed = 0;
   self->next = 0;
+
+  parse->is_value = was_value;
 }
 
 int rc_value_size(const char* memaddr) {
