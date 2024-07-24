@@ -144,32 +144,39 @@ void rc_hash_reset_filereader(void)
   filereader = NULL;
 }
 
+void rc_hash_fill_filereader_defaults(struct rc_hash_filereader* reader)
+{
+  if (!reader->open)
+    reader->open = filereader_open;
+
+  if (!reader->seek)
+    reader->seek = filereader_seek;
+
+  if (!reader->tell)
+    reader->tell = filereader_tell;
+
+  if (!reader->read)
+    reader->read = filereader_read;
+
+  if (!reader->close)
+    reader->close = filereader_close;
+}
+
+void rc_hash_swap_filereader(struct rc_hash_filereader** reader)
+{
+  struct rc_hash_filereader* oldreader = filereader;
+  filereader = *reader;
+  *reader = oldreader;
+}
+
 void rc_hash_init_custom_filereader(struct rc_hash_filereader* reader)
 {
-  /* initialize with defaults first */
-  filereader_funcs.open = filereader_open;
-  filereader_funcs.seek = filereader_seek;
-  filereader_funcs.tell = filereader_tell;
-  filereader_funcs.read = filereader_read;
-  filereader_funcs.close = filereader_close;
+  if (reader)
+    memcpy(&filereader_funcs, reader, sizeof(filereader_funcs));
+  else
+    memset(&filereader_funcs, 0, sizeof(filereader_funcs));
 
-  /* hook up any provided custom handlers */
-  if (reader) {
-    if (reader->open)
-      filereader_funcs.open = reader->open;
-
-    if (reader->seek)
-      filereader_funcs.seek = reader->seek;
-
-    if (reader->tell)
-      filereader_funcs.tell = reader->tell;
-
-    if (reader->read)
-      filereader_funcs.read = reader->read;
-
-    if (reader->close)
-      filereader_funcs.close = reader->close;
-  }
+  rc_hash_fill_filereader_defaults(&filereader_funcs);
 
   filereader = &filereader_funcs;
 }
@@ -234,6 +241,13 @@ void rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader)
   {
     cdreader = NULL;
   }
+}
+
+void rc_hash_swap_cdreader(struct rc_hash_cdreader** reader)
+{
+  struct rc_hash_cdreader* oldreader = cdreader;
+  cdreader = *reader;
+  *reader = oldreader;
 }
 
 static void* rc_cd_open_track(const char* path, uint32_t track)

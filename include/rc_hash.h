@@ -123,6 +123,15 @@ RC_BEGIN_C_DECLS
   RC_EXPORT void RC_CCONV rc_hash_init_default_cdreader(void);
   RC_EXPORT void RC_CCONV rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader);
 
+  /* ===================================================== */
+
+  struct rc_hash_readers {
+    struct rc_hash_filereader filereader;
+    struct rc_hash_cdreader cdreader;
+  };
+
+  /* ===================================================== */
+
   /* specifies a function called to obtain a 3DS CIA decryption normal key.
    * this key would be derived from slot0x3DKeyX and the common key specified by the passed index.
    * the normal key should be written in big endian format

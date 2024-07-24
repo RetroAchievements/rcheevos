@@ -863,6 +863,21 @@ static uint32_t cdreader_first_track_sector(void* track_handle)
   return 0;
 }
 
+void rc_hash_fill_cdreader_defaults(struct rc_hash_cdreader* reader)
+{
+  if (!reader->open_track)
+    reader->open_track = cdreader_open_track;
+
+  if (!reader->read_sector)
+    reader->read_sector = cdreader_read_sector;
+
+  if (!reader->close_track)
+    reader->close_track = cdreader_close_track;
+  
+  if (!reader->first_track_sector)
+    reader->first_track_sector = cdreader_first_track_sector;
+}
+
 void rc_hash_get_default_cdreader(struct rc_hash_cdreader* cdreader)
 {
   cdreader->open_track = cdreader_open_track;
@@ -876,4 +891,17 @@ void rc_hash_init_default_cdreader(void)
   struct rc_hash_cdreader cdreader;
   rc_hash_get_default_cdreader(&cdreader);
   rc_hash_init_custom_cdreader(&cdreader);
+}
+
+typedef struct rc_client_t rc_client_t;
+void rc_client_get_default_cdreader(rc_client_t* client, struct rc_hash_cdreader* cdreader)
+{
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_default_cdreader) {
+    client->state.external_client->get_default_cdreader(cdreader);
+    return;
+  }
+#endif
+
+  rc_hash_get_default_cdreader(cdreader);
 }

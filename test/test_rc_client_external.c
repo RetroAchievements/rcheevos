@@ -3,6 +3,7 @@
 #include "../src/rc_client_internal.h"
 #include "../src/rc_version.h"
 #include "rc_consoles.h"
+#include "rc_hash.h"
 #include "rhash/data.h"
 
 #include "test_framework.h"
@@ -294,6 +295,34 @@ static void test_get_user_agent_clause(void)
 
   rc_client_destroy(g_client);
 }
+
+#ifdef RC_CLIENT_SUPPORTS_HASH
+
+static struct rc_hash_filereader g_filereader;
+static struct rc_hash_cdreader g_cdreader;
+
+static void rc_client_external_set_filereader(const struct rc_hash_filereader* filereader, const struct rc_hash_cdreader* cdreader)
+{
+  ASSERT_PTR_EQUALS(filereader, &g_filereader);
+  ASSERT_PTR_EQUALS(cdreader, &g_cdreader);
+  g_external_int = 1;
+}
+
+static void test_set_filereader(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->set_filereader = rc_client_external_set_filereader;
+
+  g_external_int = 0;
+  memset(&g_filereader, 0, sizeof(g_filereader));
+  memset(&g_cdreader, 0, sizeof(g_cdreader));
+  rc_client_set_filereader(g_client, &g_filereader, &g_cdreader);
+  ASSERT_NUM_EQUALS(g_external_int, 1);
+
+  rc_client_destroy(g_client);
+}
+
+#endif
 
 /* ----- login ----- */
 
@@ -1242,6 +1271,9 @@ void test_client_external(void) {
   TEST(test_get_time_millisecs);
   TEST(test_set_host);
   TEST(test_get_user_agent_clause);
+#ifdef RC_CLIENT_SUPPORTS_HASH
+  TEST(test_set_filereader)
+#endif
 
   /* login */
   TEST(test_login_with_password);

@@ -94,18 +94,23 @@ static void reset_mock_files()
   mock_cd_tracks = 0;
 }
 
+void get_mock_filereader(struct rc_hash_filereader* reader)
+{
+  reader->open = _mock_file_open;
+  reader->seek = _mock_file_seek;
+  reader->tell = _mock_file_tell;
+  reader->read = _mock_file_read;
+  reader->close = _mock_file_close;
+
+  reset_mock_files();
+}
+
 void init_mock_filereader()
 {
   struct rc_hash_filereader reader;
-  reader.open = _mock_file_open;
-  reader.seek = _mock_file_seek;
-  reader.tell = _mock_file_tell;
-  reader.read = _mock_file_read;
-  reader.close = _mock_file_close;
+  get_mock_filereader(&reader);
 
   rc_hash_init_custom_filereader(&reader);
-
-  reset_mock_files();
 }
 
 void mock_file(int index, const char* filename, const uint8_t* buffer, size_t buffer_size)

@@ -229,6 +229,20 @@ RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_identify_and_load_g
     uint32_t console_id, const char* file_path,
     const uint8_t* data, size_t data_size,
     rc_client_callback_t callback, void* callback_userdata);
+
+struct rc_hash_filereader;
+struct rc_hash_cdreader;
+
+/**
+ * Registers a set of functions for performing custom file I/O.
+ */
+RC_EXPORT void RC_CCONV rc_client_set_filereader(rc_client_t* client,
+    const struct rc_hash_filereader* filereader, const struct rc_hash_cdreader* cdreader);
+
+/**
+ * Gets the default set of functions for performing generic CD access for bin/cue or iso files.
+ */
+RC_EXPORT void RC_CCONV rc_client_get_default_cdreader(rc_client_t* client, struct rc_hash_cdreader* cdreader);
 #endif
 
 /**

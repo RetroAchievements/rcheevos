@@ -2,6 +2,10 @@
 
 #include "rc_client_internal.h"
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
+#include "rc_hash.h"
+#endif
+
 #include "rapi/rc_api_common.h"
 
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
@@ -202,6 +206,10 @@ static void rc_client_init_raintegration(rc_client_t* client,
         external_client->set_encore_mode_enabled(rc_client_get_encore_mode_enabled(client));
       if (external_client->set_spectator_mode_enabled)
         external_client->set_spectator_mode_enabled(rc_client_get_spectator_mode_enabled(client));
+#ifdef RC_CLIENT_SUPPORTS_HASH
+      if (external_client->set_filereader && client->state.hash_readers)
+        external_client->set_filereader(&client->state.hash_readers->filereader, &client->state.hash_readers->cdreader);
+#endif
 
       /* attach the external client and call the callback */
       client->state.external_client = external_client;

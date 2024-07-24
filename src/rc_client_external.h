@@ -20,6 +20,14 @@ typedef void (RC_CCONV *rc_client_external_set_string_func_t)(const char* value)
 typedef size_t (RC_CCONV *rc_client_external_copy_string_func_t)(char buffer[], size_t buffer_size);
 typedef void (RC_CCONV *rc_client_external_action_func_t)(void);
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
+typedef void (RC_CCONV* rc_client_external_set_filereader_func_t)(const struct rc_hash_filereader* filereader, const struct rc_hash_cdreader* cdreader);
+typedef void (RC_CCONV* rc_client_external_get_cdreader_func_t)(struct rc_hash_cdreader* cdreader);
+#else
+typedef void (RC_CCONV* rc_client_external_set_filereader_func_t)(void* filereader, void* cdreader);
+typedef void (RC_CCONV* rc_client_external_get_cdreader_func_t)(void* cdreader);
+#endif
+
 typedef void (RC_CCONV *rc_client_external_async_handle_func_t)(rc_client_async_handle_t* handle);
 
 typedef rc_client_async_handle_t* (RC_CCONV *rc_client_external_begin_login_func_t)(rc_client_t* client,
@@ -124,9 +132,13 @@ typedef struct rc_client_external_t
   rc_client_external_serialize_progress_func_t serialize_progress;
   rc_client_external_deserialize_progress_func_t deserialize_progress;
 
+  // VERSION 2
+  rc_client_external_set_filereader_func_t set_filereader;
+  rc_client_external_get_cdreader_func_t get_default_cdreader;
+
 } rc_client_external_t;
 
-#define RC_CLIENT_EXTERNAL_VERSION 1
+#define RC_CLIENT_EXTERNAL_VERSION 2
 
 RC_END_C_DECLS
 

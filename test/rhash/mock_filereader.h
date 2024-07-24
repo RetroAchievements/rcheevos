@@ -11,6 +11,9 @@ RC_BEGIN_C_DECLS
 void init_mock_filereader();
 void init_mock_cdreader();
 
+struct rc_hash_filereader;
+void get_mock_filereader(struct rc_hash_filereader* reader);
+
 void rc_hash_reset_filereader();
 
 void mock_file(int index, const char* filename, const uint8_t* buffer, size_t buffer_size);

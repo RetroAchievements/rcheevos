@@ -12,6 +12,7 @@
 #ifdef RC_CLIENT_SUPPORTS_HASH
 #include "rc_hash.h"
 #include "rhash/data.h"
+#include "rhash/mock_filereader.h"
 #endif
 
 #if defined(_WIN32)
@@ -2550,6 +2551,80 @@ static void test_identify_and_load_game_multihash_differ(void)
     ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
     ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
   }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_load_game_from_file_console_specified(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  struct rc_hash_filereader filereader;
+
+  get_mock_filereader(&filereader);
+  mock_file(0, "foo.nes", image, image_size);
+
+  g_client = mock_client_logged_in();
+  rc_client_set_filereader(g_client, &filereader, NULL);
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.nes",
+      NULL, 0, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_load_game_from_file_console_not_specified(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  struct rc_hash_filereader filereader;
+
+  get_mock_filereader(&filereader);
+  mock_file(0, "foo.nes", image, image_size);
+
+  g_client = mock_client_logged_in();
+  rc_client_set_filereader(g_client, &filereader, NULL);
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.nes",
+      NULL, 0, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
 
   rc_client_destroy(g_client);
   free(image);
@@ -9208,6 +9283,8 @@ void test_client(void) {
   TEST(test_identify_and_load_game_multihash);
   TEST(test_identify_and_load_game_multihash_unknown_game);
   TEST(test_identify_and_load_game_multihash_differ);
+  TEST(test_identify_and_load_game_from_file_console_specified);
+  TEST(test_identify_and_load_game_from_file_console_not_specified);
 
   /* change media */
   TEST(test_change_media_required_fields);

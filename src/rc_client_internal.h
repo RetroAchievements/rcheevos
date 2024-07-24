@@ -294,6 +294,7 @@ enum {
 };
 
 struct rc_client_load_state_t;
+struct rc_hash_readers;
 
 typedef struct rc_client_state_t {
   rc_mutex_t mutex;
@@ -306,6 +307,9 @@ typedef struct rc_client_state_t {
 #endif
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
   rc_client_raintegration_t* raintegration;
+#endif
+#ifdef RC_CLIENT_SUPPORTS_HASH
+  struct rc_hash_readers* hash_readers;
 #endif
 
   uint16_t unpaused_frame_decay;
@@ -371,6 +375,12 @@ int rc_value_contains_memref(const rc_value_t* value, const rc_memref_t* memref)
 #ifdef RC_CLIENT_SUPPORTS_HASH
 struct rc_hash_iterator;
 struct rc_hash_iterator* rc_client_get_load_state_hash_iterator(rc_client_t* client);
+
+void rc_hash_fill_filereader_defaults(struct rc_hash_filereader* reader);
+void rc_hash_fill_cdreader_defaults(struct rc_hash_cdreader* reader);
+void rc_hash_swap_filereader(struct rc_hash_filereader** reader);
+void rc_hash_swap_cdreader(struct rc_hash_cdreader** reader);
+
 #endif
 /* end helper functions for unit tests */
 

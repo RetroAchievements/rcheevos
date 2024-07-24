@@ -4,8 +4,11 @@
 #include "rc_api_runtime.h"
 #include "rc_api_user.h"
 #include "rc_consoles.h"
-#include "rc_hash.h"
 #include "rc_version.h"
+
+#ifdef RC_CLIENT_SUPPORTS_HASH
+#include "rc_hash.h"
+#endif
 
 #include "rapi/rc_api_common.h"
 
@@ -149,6 +152,13 @@ void rc_client_destroy(rc_client_t* client)
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->destroy)
     client->state.external_client->destroy();
+#endif
+
+#ifdef RC_CLIENT_SUPPORTS_HASH
+  if (client->state.hash_readers) {
+    free(client->state.hash_readers);
+    client->state.hash_readers = NULL;
+  }
 #endif
 
   rc_buffer_destroy(&client->state.buffer);
@@ -1994,8 +2004,22 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   if (load_state->hash->game_id == 0) {
 #ifdef RC_CLIENT_SUPPORTS_HASH
     char hash[33];
+    if (client->state.hash_readers) {
+      struct rc_hash_filereader* old_filereader = &client->state.hash_readers->filereader;
+      struct rc_hash_cdreader* old_cdreader = &client->state.hash_readers->cdreader;
+      rc_hash_swap_filereader(&old_filereader);
+      rc_hash_swap_cdreader(&old_cdreader);
 
-    if (rc_hash_iterate(hash, &load_state->hash_iterator)) {
+      result = rc_hash_iterate(hash, &load_state->hash_iterator);
+
+      rc_hash_swap_cdreader(&old_cdreader);
+      rc_hash_swap_filereader(&old_filereader);
+    }
+    else {
+      result = rc_hash_iterate(hash, &load_state->hash_iterator);
+    }
+
+    if (result) {
       /* found another hash to try */
       load_state->hash_console_id = load_state->hash_iterator.consoles[load_state->hash_iterator.index - 1];
       rc_client_load_game(load_state, hash, NULL);
@@ -2305,6 +2329,43 @@ rc_client_async_handle_t* rc_client_begin_load_game(rc_client_t* client, const c
 
 #ifdef RC_CLIENT_SUPPORTS_HASH
 
+void rc_client_set_filereader(rc_client_t* client,
+    const struct rc_hash_filereader* filereader, const struct rc_hash_cdreader* cdreader)
+{
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->set_filereader) {
+    client->state.external_client->set_filereader(filereader, cdreader);
+    return;
+  }
+#endif
+
+  rc_mutex_lock(&client->state.mutex);
+
+  /* always allocate a filereader or the default filereader will overwrite the globally registered
+   * filereader. also allows for the registered functions to be updated from one of the functions */
+  if (!client->state.hash_readers) {
+    client->state.hash_readers = (struct rc_hash_readers*)malloc(sizeof(*client->state.hash_readers));
+    if (!client->state.hash_readers) {
+      rc_mutex_unlock(&client->state.mutex);
+      return;
+    }
+  }
+
+  if (filereader)
+    memcpy(&client->state.hash_readers->filereader, filereader, sizeof(*filereader));
+  else
+    memset(&client->state.hash_readers->filereader, 0, sizeof(*filereader));
+
+  rc_hash_fill_filereader_defaults(&client->state.hash_readers->filereader);
+
+  if (cdreader)
+    memcpy(&client->state.hash_readers->cdreader, cdreader, sizeof(*cdreader));
+  else
+    memset(&client->state.hash_readers->cdreader, 0, sizeof(*cdreader));
+
+  rc_mutex_unlock(&client->state.mutex);
+}
+
 rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client)
 {
   if (client && client->state.load)
@@ -2318,8 +2379,11 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
     const uint8_t* data, size_t data_size,
     rc_client_callback_t callback, void* callback_userdata)
 {
+  struct rc_hash_filereader* old_filereader;
+  struct rc_hash_cdreader* old_cdreader;
   rc_client_load_state_t* load_state;
   char hash[33];
+  int result;
 
   if (!client) {
     callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
@@ -2365,32 +2429,39 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
   load_state->callback = callback;
   load_state->callback_userdata = callback_userdata;
 
+  if (client->state.hash_readers) {
+    old_filereader = &client->state.hash_readers->filereader;
+    old_cdreader = &client->state.hash_readers->cdreader;
+    rc_hash_swap_filereader(&old_filereader);
+    rc_hash_swap_cdreader(&old_cdreader);
+  }
+
   if (console_id == RC_CONSOLE_UNKNOWN) {
     rc_hash_initialize_iterator(&load_state->hash_iterator, file_path, data, data_size);
 
-    if (!rc_hash_iterate(hash, &load_state->hash_iterator)) {
-      rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
-      return NULL;
-    }
+    result = rc_hash_iterate(hash, &load_state->hash_iterator);
 
-    load_state->hash_console_id = load_state->hash_iterator.consoles[load_state->hash_iterator.index - 1];
+    if (result)
+      load_state->hash_console_id = load_state->hash_iterator.consoles[load_state->hash_iterator.index - 1];
   }
   else {
     /* ASSERT: hash_iterator->index and hash_iterator->consoles[0] will be 0 from calloc */
     load_state->hash_console_id = console_id;
 
-    if (data != NULL) {
-      if (!rc_hash_generate_from_buffer(hash, console_id, data, data_size)) {
-        rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
-        return NULL;
-      }
-    }
-    else {
-      if (!rc_hash_generate_from_file(hash, console_id, file_path)) {
-        rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
-        return NULL;
-      }
-    }
+    if (data != NULL)
+      result = rc_hash_generate_from_buffer(hash, console_id, data, data_size);
+    else
+      result = rc_hash_generate_from_file(hash, console_id, file_path);
+  }
+
+  if (client->state.hash_readers) {
+    rc_hash_swap_cdreader(&old_cdreader);
+    rc_hash_swap_filereader(&old_filereader);
+  }
+
+  if (!result) {
+    rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
+    return NULL;
   }
 
   return rc_client_load_game(load_state, hash, file_path);
