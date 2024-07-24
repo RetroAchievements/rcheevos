@@ -4299,6 +4299,37 @@ static void test_addaddress_scaled_negative() {
   assert_evaluate_condset(condset, memrefs, &memory, 0);
 }
 
+static void test_addaddress_shared_size()
+{
+  uint8_t ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* bit2(byte(0) * 2) == 1 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000*2_0xO0000=1");
+
+  /* bit2( [0x34] ) = 1 */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* bit2( [0x01] ) = 0 */
+  ram[2] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* adjust pointer. bit2( [0x56] ) = 1 */
+  ram[0] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* new value is correct */
+  ram[4] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+}
+
+
 static void test_prior_sequence() {
   uint8_t ram[] = {0x00};
   memory_t memory;
@@ -4502,6 +4533,7 @@ void test_condset(void) {
   TEST(test_addaddress_adjust_both_sides_different_bases);
   TEST(test_addaddress_scaled);
   TEST(test_addaddress_scaled_negative);
+  TEST(test_addaddress_shared_size);
 
   /* prior */
   TEST(test_prior_sequence);

@@ -589,6 +589,9 @@ void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t n
   /* if adding a constant, change the type to be address (current value) */
   if (!rc_operand_is_memref(self))
     self->type = self->memref_access_type = RC_OPERAND_ADDRESS;
+
+  /* result of an AddSource operation is always a 32-bit integer (even if parent or modifier is a float) */
+  self->size = RC_MEMSIZE_32_BITS;
 }
 
 void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_eval_state_t* eval_state) {
@@ -662,8 +665,7 @@ void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_
   }
 
   /* step 2: convert read memory to desired format */
-  if (self->value.memref->value.memref_type == RC_MEMREF_TYPE_MEMREF)
-    rc_transform_memref_value(result, self->size);
+  rc_transform_memref_value(result, self->size);
 
   /* step 3: apply logic (BCD/invert) */
   if (result->type == RC_VALUE_TYPE_UNSIGNED)
