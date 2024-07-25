@@ -2789,8 +2789,6 @@ static rc_client_async_handle_t* rc_client_begin_change_media_internal(rc_client
   return rc_client_async_handle_valid(client, async_handle) ? async_handle : NULL;
 }
 
-#ifdef RC_CLIENT_SUPPORTS_HASH
-
 static rc_client_game_info_t* rc_client_check_pending_media(rc_client_t* client, const rc_client_pending_media_t* media)
 {
   rc_client_game_info_t* game;
@@ -2816,6 +2814,7 @@ static rc_client_game_info_t* rc_client_check_pending_media(rc_client_t* client,
       if (media->hash)
         pending_media->hash = strdup(media->hash);
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
       if (media->file_path)
         pending_media->file_path = strdup(media->file_path);
 
@@ -2830,6 +2829,7 @@ static rc_client_game_info_t* rc_client_check_pending_media(rc_client_t* client,
       } else {
         pending_media->data = NULL;
       }
+#endif
 
       client->state.load->pending_media = pending_media;
     }
@@ -2850,6 +2850,8 @@ static rc_client_game_info_t* rc_client_check_pending_media(rc_client_t* client,
 
   return game;
 }
+
+#ifdef RC_CLIENT_SUPPORTS_HASH
 
 rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, const char* file_path,
     const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata)
