@@ -894,7 +894,7 @@ void rc_hash_init_default_cdreader(void)
 }
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-#include "rc_client.h"
+#include "../src/rc_client_internal.h"
 #else
 typedef struct rc_client_t rc_client_t;
 #endif
