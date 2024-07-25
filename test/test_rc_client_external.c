@@ -51,14 +51,6 @@ static void rc_client_callback_expect_success(int result, const char* error_mess
   ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
-static void rc_client_callback_expect_login_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
-{
-  ASSERT_NUM_EQUALS(result, RC_LOGIN_REQUIRED);
-  ASSERT_STR_EQUALS(error_message, "Login required");
-  ASSERT_PTR_EQUALS(client, g_client);
-  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
-}
-
 /* ----- settings ----- */
 
 static int rc_client_external_get_int(void)
