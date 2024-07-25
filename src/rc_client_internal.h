@@ -294,7 +294,9 @@ enum {
 };
 
 struct rc_client_load_state_t;
+#ifdef RC_CLIENT_SUPPORTS_HASH
 struct rc_hash_readers;
+#endif
 
 typedef struct rc_client_state_t {
   rc_mutex_t mutex;
