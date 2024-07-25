@@ -906,7 +906,7 @@ void rc_client_get_default_cdreader(rc_client_t* client, struct rc_hash_cdreader
     return;
   }
 #else
-  (void*)client;
+  (void)client;
 #endif
 
   rc_hash_get_default_cdreader(cdreader);
