@@ -51,6 +51,14 @@ static void rc_client_callback_expect_success(int result, const char* error_mess
   ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
+static void rc_client_callback_expect_login_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_LOGIN_REQUIRED);
+  ASSERT_STR_EQUALS(error_message, "Login required");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
+
 /* ----- settings ----- */
 
 static int rc_client_external_get_int(void)
@@ -511,8 +519,98 @@ static void test_identify_and_load_game(void)
   ASSERT_STR_EQUALS(game->title, "Game Title");
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
-  /* ensure non-external client user was not initialized */
+  /* ensure non-external client game was not initialized */
   ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void rc_client_external_load_game_handoff_success(uint32_t game_id, const char* hash,
+    rc_client_async_handle_t* async_handle, rc_client_callback_t callback, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(game_id, 1234);
+  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_PTR_NOT_NULL(async_handle);
+  g_external_event = "load_game_handoff";
+
+  callback(RC_OK, NULL, g_client, callback_userdata);
+}
+
+static void test_identify_and_load_game_handoff(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const rc_client_game_t* game;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->load_game_handoff = rc_client_external_load_game_handoff_success;
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
+
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  g_external_int = 0;
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game_handoff");
+
+  /* user data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  /* ensure non-external client game was not initialized */
+  ASSERT_PTR_NULL(g_client->game);
+  ASSERT_PTR_NULL(g_client->state.load);
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void rc_client_external_load_game_handoff_error(uint32_t game_id, const char* hash,
+  rc_client_async_handle_t* async_handle, rc_client_callback_t callback, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(game_id, 1234);
+  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_PTR_NOT_NULL(async_handle);
+  g_external_event = "load_game_handoff";
+
+  callback(RC_LOGIN_REQUIRED, rc_error_str(RC_LOGIN_REQUIRED), g_client, callback_userdata);
+}
+
+static void test_identify_and_load_game_handoff_error(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const rc_client_game_t* game;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->load_game_handoff = rc_client_external_load_game_handoff_error;
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
+
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  g_external_int = 0;
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_login_required, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game_handoff");
+
+  /* user data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  /* ensure non-external client game was not initialized */
+  ASSERT_PTR_NULL(g_client->game);
+  ASSERT_PTR_NULL(g_client->state.load);
 
   rc_client_destroy(g_client);
   free(image);
@@ -1252,6 +1350,8 @@ void test_client_external(void) {
   /* load game */
 #ifdef RC_CLIENT_SUPPORTS_HASH
   TEST(test_identify_and_load_game);
+  TEST(test_identify_and_load_game_handoff);
+  TEST(test_identify_and_load_game_handoff_error);
 #endif
   TEST(test_load_game);
   TEST(test_get_user_game_summary);

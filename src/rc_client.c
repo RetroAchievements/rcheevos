@@ -78,6 +78,7 @@ typedef struct rc_client_load_state_t
 #endif
 } rc_client_load_state_t;
 
+static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state);
 static void rc_client_begin_fetch_game_data(rc_client_load_state_t* callback_data);
 static void rc_client_hide_progress_tracker(rc_client_t* client, rc_client_game_info_t* game);
 static void rc_client_load_error(rc_client_load_state_t* load_state, int result, const char* error_message);
@@ -1984,12 +1985,98 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
   rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
 }
 
-static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
+static int rc_client_attach_load_state(rc_client_t* client, rc_client_load_state_t* load_state)
 {
-  rc_api_fetch_game_data_request_t fetch_game_data_request;
+  if (client->state.load == NULL) {
+    rc_client_unload_game(client);
+    client->state.load = load_state;
+
+    if (load_state->game == NULL) {
+      load_state->game = (rc_client_game_info_t*)calloc(1, sizeof(*load_state->game));
+      if (!load_state->game) {
+        if (load_state->callback)
+          load_state->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, load_state->callback_userdata);
+
+        return 0;
+      }
+
+      rc_buffer_init(&load_state->game->buffer);
+      rc_runtime_init(&load_state->game->runtime);
+    }
+  }
+  else if (client->state.load != load_state) {
+    /* previous load was aborted */
+    if (load_state->callback)
+      load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
+
+    return 0;
+  }
+
+  return 1;
+}
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+
+void rc_client_resume_load_game_handoff(rc_client_t* client, uint32_t game_id, const char* hash,
+  rc_client_async_handle_t* async_handle, rc_client_callback_t callback, void* callback_userdata)
+{
+  rc_client_load_state_t* load_state;
+
+  load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
+  if (!load_state) {
+    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
+    return;
+  }
+  load_state->client = client;
+  load_state->callback = callback;
+  load_state->callback_userdata = callback_userdata;
+
+  if (!rc_client_attach_load_state(client, load_state)) {
+    rc_client_free_load_state(load_state);
+    return;
+  }
+
+  load_state->hash = rc_client_find_game_hash(client, hash);
+  load_state->hash->game_id = game_id;
+
+  rc_client_process_resolved_hash(load_state);
+}
+
+static void rc_client_external_load_state_callback(int result, const char* error_message, rc_client_t* client, void* userdata)
+{
+  rc_client_load_state_t* load_state = (rc_client_load_state_t*)userdata;
+
+  if (result != RC_OK) {
+    rc_client_load_error(load_state, result, error_message);
+    return;
+  }
+
+  client = load_state->client;
+
+  rc_mutex_lock(&client->state.mutex);
+  load_state->progress = (client->state.load == load_state) ?
+    RC_CLIENT_LOAD_GAME_STATE_DONE : RC_CLIENT_LOAD_GAME_STATE_ABORTED;
+  client->state.load = NULL;
+  rc_mutex_unlock(&client->state.mutex);
+
+  if (load_state->progress != RC_CLIENT_LOAD_GAME_STATE_DONE) {
+    /* previous load state was aborted */
+    if (load_state->callback)
+      load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
+  }
+  else {
+    if (load_state->callback)
+      load_state->callback(RC_OK, NULL, client, load_state->callback_userdata);
+  }
+
+  rc_client_free_load_state(load_state);
+}
+
+#endif
+
+static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
+{
   rc_client_t* client = load_state->client;
-  rc_api_request_t request;
-  int result;
 
   if (load_state->hash->game_id == 0) {
 #ifdef RC_CLIENT_SUPPORTS_HASH
@@ -2083,6 +2170,23 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   /* done with the hashing code, release the global pointer */
   g_hash_client = NULL;
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->load_game_handoff) {
+    client->state.external_client->load_game_handoff(load_state->hash->game_id, load_state->hash->hash, &load_state->async_handle, rc_client_external_load_state_callback, load_state);
+    return;
+  }
+#endif
+
+  rc_client_begin_fetch_game_data(load_state);
+}
+
+static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
+{
+  rc_api_fetch_game_data_request_t fetch_game_data_request;
+  rc_client_t* client = load_state->client;
+  rc_api_request_t request;
+  int result;
+
   rc_mutex_lock(&client->state.mutex);
   result = client->state.user;
   if (result == RC_CLIENT_USER_STATE_LOGIN_REQUESTED)
@@ -2160,7 +2264,7 @@ static void rc_client_identify_game_callback(const rc_api_server_response_t* ser
       /* previous load state was aborted, load_state was free'd */
     }
     else {
-      rc_client_begin_fetch_game_data(load_state);
+      rc_client_process_resolved_hash(load_state);
     }
   }
 
@@ -2199,29 +2303,7 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
   rc_client_t* client = load_state->client;
   rc_client_game_hash_t* old_hash;
 
-  if (client->state.load == NULL) {
-    rc_client_unload_game(client);
-    client->state.load = load_state;
-
-    if (load_state->game == NULL) {
-      load_state->game = (rc_client_game_info_t*)calloc(1, sizeof(*load_state->game));
-      if (!load_state->game) {
-        if (load_state->callback)
-          load_state->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, load_state->callback_userdata);
-
-        rc_client_free_load_state(load_state);
-        return NULL;
-      }
-
-      rc_buffer_init(&load_state->game->buffer);
-      rc_runtime_init(&load_state->game->runtime);
-    }
-  }
-  else if (client->state.load != load_state) {
-    /* previous load was aborted */
-    if (load_state->callback)
-      load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
-
+  if (!rc_client_attach_load_state(client, load_state)) {
     rc_client_free_load_state(load_state);
     return NULL;
   }
@@ -2265,7 +2347,7 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
   else {
     RC_CLIENT_LOG_INFO_FORMATTED(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
 
-    rc_client_begin_fetch_game_data(load_state);
+    rc_client_process_resolved_hash(load_state);
   }
 
   return (client->state.load == load_state) ? &load_state->async_handle : NULL;
@@ -2327,8 +2409,12 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
   }
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->begin_identify_and_load_game)
-    return client->state.external_client->begin_identify_and_load_game(client, console_id, file_path, data, data_size, callback, callback_userdata);
+  /* if a load_game_handoff handler exists, do the identification locally, then pass the
+   * resulting game_id/hash to the external client */
+  if (client->state.external_client && !client->state.external_client->load_game_handoff) {
+    if (client->state.external_client->begin_identify_and_load_game)
+      return client->state.external_client->begin_identify_and_load_game(client, console_id, file_path, data, data_size, callback, callback_userdata);
+  }
 #endif
 
   if (data) {
@@ -2631,13 +2717,73 @@ static rc_client_async_handle_t* rc_client_begin_change_media_internal(rc_client
 
 #ifdef RC_CLIENT_SUPPORTS_HASH
 
+static rc_client_game_info_t* rc_client_check_pending_media(rc_client_t* client, const rc_client_pending_media_t* media)
+{
+  rc_client_game_info_t* game;
+  rc_client_pending_media_t* pending_media = NULL;
+
+  rc_mutex_lock(&client->state.mutex);
+  if (client->state.load) {
+    game = client->state.load->game;
+    if (!game || game->public_.console_id == 0) {
+      /* still waiting for game data */
+      pending_media = client->state.load->pending_media;
+      if (pending_media)
+        rc_client_free_pending_media(pending_media);
+
+      pending_media = (rc_client_pending_media_t*)malloc(sizeof(*pending_media));
+      if (!pending_media) {
+        rc_mutex_unlock(&client->state.mutex);
+        media->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, media->callback_userdata);
+        return NULL;
+      }
+
+      memcpy(pending_media, media, sizeof(*pending_media));
+      if (media->hash)
+        pending_media->hash = strdup(media->hash);
+
+      if (media->file_path)
+        pending_media->file_path = strdup(media->file_path);
+
+      if (media->data && media->data_size) {
+        pending_media->data = (uint8_t*)malloc(media->data_size);
+        if (!pending_media->data) {
+          rc_mutex_unlock(&client->state.mutex);
+          media->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, media->callback_userdata);
+          return NULL;
+        }
+        memcpy(pending_media->data, media->data, media->data_size);
+      } else {
+        pending_media->data = NULL;
+      }
+
+      client->state.load->pending_media = pending_media;
+    }
+  }
+  else {
+    game = client->game;
+  }
+  rc_mutex_unlock(&client->state.mutex);
+
+  if (!game) {
+    media->callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client, media->callback_userdata);
+    return NULL;
+  }
+
+  /* still waiting for game data - don't call callback - it's queued */
+  if (pending_media) 
+    return NULL;
+
+  return game;
+}
+
 rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, const char* file_path,
     const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata)
 {
+  rc_client_pending_media_t media;
   rc_client_game_hash_t* game_hash = NULL;
-  rc_client_media_hash_t* media_hash;
   rc_client_game_info_t* game;
-  rc_client_pending_media_t* pending_media = NULL;
+  rc_client_media_hash_t* media_hash;
   uint32_t path_djb2;
 
   if (!client) {
@@ -2651,55 +2797,21 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
   }
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->begin_change_media)
-    return client->state.external_client->begin_change_media(client, file_path, data, data_size, callback, callback_userdata);
+  if (client->state.external_client && !client->state.external_client->begin_change_media_from_hash) {
+    if (client->state.external_client->begin_change_media)
+      return client->state.external_client->begin_change_media(client, file_path, data, data_size, callback, callback_userdata);
+  }
 #endif
 
-  rc_mutex_lock(&client->state.mutex);
-  if (client->state.load) {
-    game = client->state.load->game;
-    if (game->public_.console_id == 0) {
-      /* still waiting for game data */
-      pending_media = client->state.load->pending_media;
-      if (pending_media)
-        rc_client_free_pending_media(pending_media);
+  memset(&media, 0, sizeof(media));
+  media.file_path = file_path;
+  media.data = (uint8_t*)data;
+  media.data_size = data_size;
+  media.callback = callback;
+  media.callback_userdata = callback_userdata;
 
-      pending_media = (rc_client_pending_media_t*)calloc(1, sizeof(*pending_media));
-      if (!pending_media) {
-        rc_mutex_unlock(&client->state.mutex);
-        callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
-        return NULL;
-      }
-
-      pending_media->file_path = strdup(file_path);
-      pending_media->callback = callback;
-      pending_media->callback_userdata = callback_userdata;
-      if (data && data_size) {
-        pending_media->data_size = data_size;
-        pending_media->data = (uint8_t*)malloc(data_size);
-        if (!pending_media->data) {
-          rc_mutex_unlock(&client->state.mutex);
-          callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
-          return NULL;
-        }
-        memcpy(pending_media->data, data, data_size);
-      }
-
-      client->state.load->pending_media = pending_media;
-    }
-  }
-  else {
-    game = client->game;
-  }
-  rc_mutex_unlock(&client->state.mutex);
-
-  if (!game) {
-    callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client, callback_userdata);
-    return NULL;
-  }
-
-  /* still waiting for game data */
-  if (pending_media) 
+  game = rc_client_check_pending_media(client, &media);
+  if (game == NULL)
     return NULL;
 
   /* check to see if we've already hashed this file */
@@ -2749,10 +2861,20 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
     rc_mutex_unlock(&client->state.mutex);
 
     if (!result) {
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+      if (client->state.external_client && client->state.external_client->begin_change_media_from_hash)
+        return client->state.external_client->begin_change_media_from_hash(client, game_hash->hash, callback, callback_userdata);
+#endif
+
       rc_client_change_media_internal(client, game_hash, callback, callback_userdata);
       return NULL;
     }
   }
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->begin_change_media_from_hash)
+    return client->state.external_client->begin_change_media_from_hash(client, game_hash->hash, callback, callback_userdata);
+#endif
 
   return rc_client_begin_change_media_internal(client, game, game_hash, callback, callback_userdata);
 }
@@ -2762,9 +2884,9 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
 rc_client_async_handle_t* rc_client_begin_change_media_from_hash(rc_client_t* client, const char* hash,
     rc_client_callback_t callback, void* callback_userdata)
 {
+  rc_client_pending_media_t media;
   rc_client_game_hash_t* game_hash;
   rc_client_game_info_t* game;
-  rc_client_pending_media_t* pending_media = NULL;
 
   if (!client) {
     callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
@@ -2782,40 +2904,13 @@ rc_client_async_handle_t* rc_client_begin_change_media_from_hash(rc_client_t* cl
   }
 #endif
 
-  rc_mutex_lock(&client->state.mutex);
-  if (client->state.load) {
-    game = client->state.load->game;
-    if (game->public_.console_id == 0) {
-      /* still waiting for game data */
-      pending_media = client->state.load->pending_media;
-      if (pending_media)
-        rc_client_free_pending_media(pending_media);
+  memset(&media, 0, sizeof(media));
+  media.hash = hash;
+  media.callback = callback;
+  media.callback_userdata = callback_userdata;
 
-      pending_media = (rc_client_pending_media_t*)calloc(1, sizeof(*pending_media));
-      if (!pending_media) {
-        rc_mutex_unlock(&client->state.mutex);
-        callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
-        return NULL;
-      }
-
-      pending_media->hash = strdup(hash);
-      pending_media->callback = callback;
-      pending_media->callback_userdata = callback_userdata;
-
-      client->state.load->pending_media = pending_media;
-    }
-  } else {
-    game = client->game;
-  }
-  rc_mutex_unlock(&client->state.mutex);
-
-  if (!game) {
-    callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client, callback_userdata);
-    return NULL;
-  }
-
-  /* still waiting for game data */
-  if (pending_media)
+  game = rc_client_check_pending_media(client, &media);
+  if (game == NULL)
     return NULL;
 
   /* check to see if we've already hashed this file. */
@@ -2882,7 +2977,7 @@ rc_client_async_handle_t* rc_client_begin_load_subset(rc_client_t* client, uint3
   load_state->hash->game_id = subset_id;
   client->state.load = load_state;
 
-  rc_client_begin_fetch_game_data(load_state);
+  rc_client_process_resolved_hash(load_state);
 
   return (client->state.load == load_state) ? &load_state->async_handle : NULL;
 }
