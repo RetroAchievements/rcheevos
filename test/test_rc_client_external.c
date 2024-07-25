@@ -527,11 +527,10 @@ static void test_identify_and_load_game(void)
 }
 
 static void rc_client_external_load_game_handoff_success(uint32_t game_id, const char* hash,
-    rc_client_async_handle_t* async_handle, rc_client_callback_t callback, void* callback_userdata)
+    rc_client_callback_t callback, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(game_id, 1234);
   ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
-  ASSERT_PTR_NOT_NULL(async_handle);
   g_external_event = "load_game_handoff";
 
   callback(RC_OK, NULL, g_client, callback_userdata);
@@ -572,11 +571,11 @@ static void test_identify_and_load_game_handoff(void)
 }
 
 static void rc_client_external_load_game_handoff_error(uint32_t game_id, const char* hash,
-  rc_client_async_handle_t* async_handle, rc_client_callback_t callback, void* callback_userdata)
+    rc_client_callback_t callback, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(game_id, 1234);
   ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
-  ASSERT_PTR_NOT_NULL(async_handle);
+
   g_external_event = "load_game_handoff";
 
   callback(RC_LOGIN_REQUIRED, rc_error_str(RC_LOGIN_REQUIRED), g_client, callback_userdata);

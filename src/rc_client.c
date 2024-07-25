@@ -2016,7 +2016,7 @@ static int rc_client_attach_load_state(rc_client_t* client, rc_client_load_state
 }
 
 void rc_client_resume_load_game_handoff(rc_client_t* client, uint32_t game_id, const char* hash,
-  rc_client_async_handle_t* async_handle, rc_client_callback_t callback, void* callback_userdata)
+  rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_load_state_t* load_state;
 
@@ -2045,13 +2045,24 @@ void rc_client_resume_load_game_handoff(rc_client_t* client, uint32_t game_id, c
 static void rc_client_external_load_state_callback(int result, const char* error_message, rc_client_t* client, void* userdata)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)userdata;
+  int async_aborted;
+
+  client = load_state->client;
+  async_aborted = rc_client_end_async(client, &load_state->async_handle);
+  if (async_aborted) {
+    if (async_aborted != RC_CLIENT_ASYNC_DESTROYED) {
+      RC_CLIENT_LOG_VERBOSE(client, "Load aborted during external loading");
+    }
+
+    rc_client_unload_game(client); /* unload the game from the external client */
+    rc_client_free_load_state(load_state);
+    return;
+  }
 
   if (result != RC_OK) {
     rc_client_load_error(load_state, result, error_message);
     return;
   }
-
-  client = load_state->client;
 
   rc_mutex_lock(&client->state.mutex);
   load_state->progress = (client->state.load == load_state) ?
@@ -2180,7 +2191,8 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->load_game_handoff) {
-    client->state.external_client->load_game_handoff(load_state->hash->game_id, load_state->hash->hash, &load_state->async_handle, rc_client_external_load_state_callback, load_state);
+    rc_client_begin_async(client, &load_state->async_handle);
+    client->state.external_client->load_game_handoff(load_state->hash->game_id, load_state->hash->hash, rc_client_external_load_state_callback, load_state);
     return;
   }
 #endif
