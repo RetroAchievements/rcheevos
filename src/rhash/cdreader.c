@@ -893,6 +893,10 @@ void rc_hash_init_default_cdreader(void)
   rc_hash_init_custom_cdreader(&cdreader);
 }
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+#include "rc_client.h"
+#endif
+
 typedef struct rc_client_t rc_client_t;
 void rc_client_get_default_cdreader(rc_client_t* client, struct rc_hash_cdreader* cdreader)
 {
@@ -901,6 +905,8 @@ void rc_client_get_default_cdreader(rc_client_t* client, struct rc_hash_cdreader
     client->state.external_client->get_default_cdreader(cdreader);
     return;
   }
+#else
+  (void*)client;
 #endif
 
   rc_hash_get_default_cdreader(cdreader);
