@@ -927,7 +927,7 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle, const struct rc
       }
 
       /* If there is an error with the parent DOSZ, abort now */
-      if (!rc_hash_ms_dos_parent(md5, dosz, name, (filename_len - 7)))
+      if (!rc_hash_ms_dos_parent(md5, dosz, (const char*)name, (filename_len - 7)))
       {
         free(alloc_buf);
         return 0;
