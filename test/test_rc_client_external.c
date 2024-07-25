@@ -303,6 +303,30 @@ static void test_get_user_agent_clause(void)
   rc_client_destroy(g_client);
 }
 
+static void rc_client_external_add_game_hash(const char* hash, uint32_t game_id)
+{
+  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_NUM_EQUALS(game_id, 1234);
+
+  g_external_event = "add_game_hash";
+  g_external_int = game_id;
+}
+
+static void test_add_game_hash(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->add_game_hash = rc_client_external_add_game_hash;
+
+  rc_client_add_game_hash(g_client, "6a2305a2b6675a97ff792709be1ca857", 1234);
+
+  /* hash should be loaded in both local client and external client */
+  ASSERT_PTR_NOT_NULL(g_client->hashes);
+  ASSERT_STR_EQUALS(g_client->hashes->hash, "6a2305a2b6675a97ff792709be1ca857");
+  ASSERT_NUM_EQUALS(g_client->hashes->game_id, 1234);
+
+  ASSERT_STR_EQUALS(g_external_event, "add_game_hash");
+}
+
 /* ----- login ----- */
 
 typedef struct v1_rc_client_user_t {
@@ -526,102 +550,13 @@ static void test_identify_and_load_game(void)
   free(image);
 }
 
-static void rc_client_external_load_game_handoff_success(uint32_t game_id, const char* hash,
-    rc_client_callback_t callback, void* callback_userdata)
-{
-  ASSERT_NUM_EQUALS(game_id, 1234);
-  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
-  g_external_event = "load_game_handoff";
-
-  callback(RC_OK, NULL, g_client, callback_userdata);
-}
-
-static void test_identify_and_load_game_handoff(void)
-{
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
-  const rc_client_game_t* game;
-
-  g_client = mock_client_with_external();
-  g_client->state.external_client->load_game_handoff = rc_client_external_load_game_handoff_success;
-  g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
-
-  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
-  g_external_int = 0;
-
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
-    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
-
-  ASSERT_STR_EQUALS(g_external_event, "load_game_handoff");
-  ASSERT_PTR_NULL(g_client->state.load);
-
-  /* user data should come from external client. validate structure */
-  game = rc_client_get_game_info(g_client);
-  ASSERT_PTR_NOT_NULL(game);
-  ASSERT_NUM_EQUALS(game->id, 1234);
-  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
-  ASSERT_STR_EQUALS(game->title, "Game Title");
-  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
-  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
-  /* ensure internal client game was initialized to hold media hashes */
-  ASSERT_PTR_NOT_NULL(g_client->game);
-
-  rc_client_destroy(g_client);
-  free(image);
-}
-
-static void rc_client_external_load_game_handoff_error(uint32_t game_id, const char* hash,
-    rc_client_callback_t callback, void* callback_userdata)
-{
-  ASSERT_NUM_EQUALS(game_id, 1234);
-  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
-
-  g_external_event = "load_game_handoff";
-
-  callback(RC_LOGIN_REQUIRED, rc_error_str(RC_LOGIN_REQUIRED), g_client, callback_userdata);
-}
-
-static void test_identify_and_load_game_handoff_error(void)
-{
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
-  const rc_client_game_t* game;
-
-  g_client = mock_client_with_external();
-  g_client->state.external_client->load_game_handoff = rc_client_external_load_game_handoff_error;
-  g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
-
-  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
-  g_external_int = 0;
-
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
-    image, image_size, rc_client_callback_expect_login_required, g_callback_userdata);
-
-  ASSERT_STR_EQUALS(g_external_event, "load_game_handoff");
-
-  /* user data should come from external client. validate structure */
-  game = rc_client_get_game_info(g_client);
-  ASSERT_PTR_NOT_NULL(game);
-  ASSERT_NUM_EQUALS(game->id, 1234);
-  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
-  ASSERT_STR_EQUALS(game->title, "Game Title");
-  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
-  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
-  /* ensure non-external client game was not initialized */
-  ASSERT_PTR_NULL(g_client->game);
-  ASSERT_PTR_NULL(g_client->state.load);
-
-  rc_client_destroy(g_client);
-  free(image);
-}
-
 #endif /* RC_CLIENT_SUPPORTS_HASH */
 
 static void assert_load_game(rc_client_t* client, const char* hash)
 {
   ASSERT_PTR_EQUALS(client, g_client);
 
-  ASSERT_STR_EQUALS(hash, "ABCDEF0123456789");
+  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
 }
 
 static rc_client_async_handle_t* rc_client_external_load_game(rc_client_t* client,
@@ -643,7 +578,7 @@ static void test_load_game(void)
   g_client->state.external_client->begin_load_game = rc_client_external_load_game;
   g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
 
-  rc_client_begin_load_game(g_client, "ABCDEF0123456789", rc_client_callback_expect_success, g_callback_userdata);
+  rc_client_begin_load_game(g_client, "6a2305a2b6675a97ff792709be1ca857", rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_external_event, "load_game");
 
@@ -691,6 +626,42 @@ static void test_get_user_game_summary(void)
 }
 
 #ifdef RC_CLIENT_SUPPORTS_HASH
+
+static void test_identify_and_load_game_external_hash(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const rc_client_game_t* game;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->add_game_hash = rc_client_external_add_game_hash;
+  g_client->state.external_client->begin_load_game = rc_client_external_load_game;
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
+
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  g_external_int = 0;
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game"); /* begin_load_game called */
+  ASSERT_NUM_EQUALS(g_external_int, 1234); /* add_game_hash called */
+  ASSERT_PTR_NULL(g_client->state.load);
+
+  /* user data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  /* ensure internal client game was initialized to hold media hashes */
+  ASSERT_PTR_NOT_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+  free(image);
+}
 
 static void assert_change_media(rc_client_t* client, const char* file_path, const uint8_t* data, size_t data_size)
 {
@@ -1349,15 +1320,15 @@ void test_client_external(void) {
   /* load game */
 #ifdef RC_CLIENT_SUPPORTS_HASH
   TEST(test_identify_and_load_game);
-  TEST(test_identify_and_load_game_handoff);
-  TEST(test_identify_and_load_game_handoff_error);
 #endif
   TEST(test_load_game);
   TEST(test_get_user_game_summary);
 #ifdef RC_CLIENT_SUPPORTS_HASH
+  TEST(test_identify_and_load_game_external_hash);
   TEST(test_change_media);
 #endif
   TEST(test_change_media_from_hash);
+  TEST(test_add_game_hash);
   TEST(test_load_subset);
 
   TEST(test_unload_game);

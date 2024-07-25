@@ -1985,6 +1985,18 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
   rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
 }
 
+static rc_client_game_info_t* rc_client_allocate_game(void)
+{
+  rc_client_game_info_t* game = (rc_client_game_info_t*)calloc(1, sizeof(*game));
+  if (!game)
+    return NULL;
+
+  rc_buffer_init(&game->buffer);
+  rc_runtime_init(&game->runtime);
+
+  return game;
+}
+
 static int rc_client_attach_load_state(rc_client_t* client, rc_client_load_state_t* load_state)
 {
   if (client->state.load == NULL) {
@@ -1992,16 +2004,13 @@ static int rc_client_attach_load_state(rc_client_t* client, rc_client_load_state
     client->state.load = load_state;
 
     if (load_state->game == NULL) {
-      load_state->game = (rc_client_game_info_t*)calloc(1, sizeof(*load_state->game));
+      load_state->game = rc_client_allocate_game();
       if (!load_state->game) {
         if (load_state->callback)
           load_state->callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, load_state->callback_userdata);
 
         return 0;
       }
-
-      rc_buffer_init(&load_state->game->buffer);
-      rc_runtime_init(&load_state->game->runtime);
     }
   }
   else if (client->state.load != load_state) {
@@ -2013,31 +2022,6 @@ static int rc_client_attach_load_state(rc_client_t* client, rc_client_load_state
   }
 
   return 1;
-}
-
-void rc_client_resume_load_game_handoff(rc_client_t* client, uint32_t game_id, const char* hash,
-  rc_client_callback_t callback, void* callback_userdata)
-{
-  rc_client_load_state_t* load_state;
-
-  load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
-  if (!load_state) {
-    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
-    return;
-  }
-  load_state->client = client;
-  load_state->callback = callback;
-  load_state->callback_userdata = callback_userdata;
-
-  if (!rc_client_attach_load_state(client, load_state)) {
-    rc_client_free_load_state(load_state);
-    return;
-  }
-
-  load_state->hash = rc_client_find_game_hash(client, hash);
-  load_state->hash->game_id = game_id;
-
-  rc_client_process_resolved_hash(load_state);
 }
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
@@ -2164,20 +2148,35 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
 #endif /* RC_CLIENT_SUPPORTS_HASH */
 
     if (load_state->hash->game_id == 0) {
-      rc_client_subset_info_t* subset;
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+      if (client->state.external_client) {
+        if (client->state.external_client->load_unknown_game) {
+          client->state.external_client->load_unknown_game(load_state->game->public_.hash);
+          rc_client_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
+          return;
+        }
+        /* no external method specifically for unknown game, just pass the hash through to begin_load_game below */
+      }
+      else {
+#endif
+        /* mimics rc_client_load_unknown_game without allocating a new game object */
+        rc_client_subset_info_t* subset;
 
-      subset = (rc_client_subset_info_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
-      memset(subset, 0, sizeof(*subset));
-      subset->public_.title = "";
+        subset = (rc_client_subset_info_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
+        memset(subset, 0, sizeof(*subset));
+        subset->public_.title = "";
 
-      load_state->game->public_.title = "Unknown Game";
-      load_state->game->public_.badge_name = "";
-      load_state->game->subsets = subset;
-      client->game = load_state->game;
-      load_state->game = NULL;
+        load_state->game->public_.title = "Unknown Game";
+        load_state->game->public_.badge_name = "";
+        load_state->game->subsets = subset;
+        client->game = load_state->game;
+        load_state->game = NULL;
 
-      rc_client_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
-      return;
+        rc_client_load_error(load_state, RC_NO_GAME_LOADED, "Unknown game");
+        return;
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+      }
+#endif
     }
   }
 
@@ -2190,14 +2189,50 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
   g_hash_client = NULL;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->load_game_handoff) {
-    rc_client_begin_async(client, &load_state->async_handle);
-    client->state.external_client->load_game_handoff(load_state->hash->game_id, load_state->hash->hash, rc_client_external_load_state_callback, load_state);
+  if (client->state.external_client) {
+    if (client->state.external_client->add_game_hash)
+      client->state.external_client->add_game_hash(load_state->hash->hash, load_state->hash->game_id);
+
+    if (client->state.external_client->begin_load_game) {
+      rc_client_begin_async(client, &load_state->async_handle);
+      client->state.external_client->begin_load_game(client, load_state->hash->hash, rc_client_external_load_state_callback, load_state);
+    }
     return;
   }
 #endif
 
   rc_client_begin_fetch_game_data(load_state);
+}
+
+void rc_client_load_unknown_game(rc_client_t* client, const char* tried_hashes)
+{
+  rc_client_subset_info_t* subset;
+  rc_client_game_info_t* game;
+
+  game = rc_client_allocate_game();
+  if (!game)
+    return;
+
+  subset = (rc_client_subset_info_t*)rc_buffer_alloc(&game->buffer, sizeof(rc_client_subset_info_t));
+  memset(subset, 0, sizeof(*subset));
+  subset->public_.title = "";
+  game->subsets = subset;
+
+  game->public_.title = "Unknown Game";
+  game->public_.badge_name = "";
+  game->public_.console_id = RC_CONSOLE_UNKNOWN;
+
+  if (strlen(tried_hashes) == 32) { /* only one hash tried, add it to the list */
+    rc_client_game_hash_t* game_hash = rc_client_find_game_hash(client, tried_hashes);
+    game_hash->game_id = 0;
+    game->public_.hash = game_hash->hash;
+  }
+  else {
+    game->public_.hash = rc_buffer_strcpy(&game->buffer, tried_hashes);
+  }
+
+  rc_client_unload_game(client);
+  client->game = game;
 }
 
 static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
@@ -2317,6 +2352,18 @@ rc_client_game_hash_t* rc_client_find_game_hash(rc_client_t* client, const char*
   return game_hash;
 }
 
+void rc_client_add_game_hash(rc_client_t* client, const char* hash, uint32_t game_id)
+{
+  /* store locally, even if passing to external client */
+  rc_client_game_hash_t* game_hash = rc_client_find_game_hash(client, hash);
+  game_hash->game_id = game_id;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->add_game_hash)
+    client->state.external_client->add_game_hash(hash, game_id);
+#endif
+}
+
 static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* load_state,
   const char* hash, const char* file_path)
 {
@@ -2429,9 +2476,9 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
   }
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  /* if a load_game_handoff handler exists, do the identification locally, then pass the
+  /* if a add_game_hash handler exists, do the identification locally, then pass the
    * resulting game_id/hash to the external client */
-  if (client->state.external_client && !client->state.external_client->load_game_handoff) {
+  if (client->state.external_client && !client->state.external_client->add_game_hash) {
     if (client->state.external_client->begin_identify_and_load_game)
       return client->state.external_client->begin_identify_and_load_game(client, console_id, file_path, data, data_size, callback, callback_userdata);
   }
@@ -2899,8 +2946,12 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
   }
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->begin_change_media_from_hash)
-    return client->state.external_client->begin_change_media_from_hash(client, game_hash->hash, callback, callback_userdata);
+  if (client->state.external_client) {
+    if (client->state.external_client->add_game_hash)
+      client->state.external_client->add_game_hash(game_hash->hash, game_hash->game_id);
+    if (client->state.external_client->begin_change_media_from_hash)
+      return client->state.external_client->begin_change_media_from_hash(client, game_hash->hash, callback, callback_userdata);
+  }
 #endif
 
   return rc_client_begin_change_media_internal(client, game, game_hash, callback, callback_userdata);

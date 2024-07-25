@@ -38,8 +38,7 @@ typedef const rc_client_subset_t* (RC_CCONV *rc_client_external_get_subset_info_
 typedef void (RC_CCONV *rc_client_external_get_user_game_summary_func_t)(rc_client_user_game_summary_t* summary);
 typedef rc_client_async_handle_t* (RC_CCONV *rc_client_external_begin_change_media_func_t)(rc_client_t* client, const char* file_path,
   const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata);
-typedef void (RC_CCONV* rc_client_external_load_game_handoff_func_t)(uint32_t game_id,
-  const char* hash, rc_client_callback_t callback, void* callback_userdata);
+typedef void (RC_CCONV* rc_client_external_add_game_hash_func_t)(const char* hash, uint32_t game_id);
 
 /* NOTE: rc_client_external_create_achievement_list_func_t returns an internal wrapper structure which contains the public list
  * and a destructor function. */
@@ -126,14 +125,16 @@ typedef struct rc_client_external_t
   rc_client_external_serialize_progress_func_t serialize_progress;
   rc_client_external_deserialize_progress_func_t deserialize_progress;
 
-  rc_client_external_load_game_handoff_func_t load_game_handoff;
+  /* VERSION 2 */
+  rc_client_external_add_game_hash_func_t add_game_hash;
+  rc_client_external_set_string_func_t load_unknown_game;
 
 } rc_client_external_t;
 
 #define RC_CLIENT_EXTERNAL_VERSION 2
 
-void rc_client_resume_load_game_handoff(rc_client_t* client, uint32_t game_id, const char* hash,
-  rc_client_callback_t callback, void* callback_userdata);
+void rc_client_add_game_hash(rc_client_t* client, const char* hash, uint32_t game_id);
+void rc_client_load_unknown_game(rc_client_t* client, const char* hash);
 
 RC_END_C_DECLS
 
