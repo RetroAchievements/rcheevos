@@ -317,6 +317,8 @@ static void test_add_game_hash(void)
   ASSERT_NUM_EQUALS(g_client->hashes->game_id, 1234);
 
   ASSERT_STR_EQUALS(g_external_event, "add_game_hash");
+
+  rc_client_destroy(g_client);
 }
 
 /* ----- login ----- */
