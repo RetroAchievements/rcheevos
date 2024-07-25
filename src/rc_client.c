@@ -2015,8 +2015,6 @@ static int rc_client_attach_load_state(rc_client_t* client, rc_client_load_state
   return 1;
 }
 
-#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-
 void rc_client_resume_load_game_handoff(rc_client_t* client, uint32_t game_id, const char* hash,
   rc_client_async_handle_t* async_handle, rc_client_callback_t callback, void* callback_userdata)
 {
@@ -2042,6 +2040,8 @@ void rc_client_resume_load_game_handoff(rc_client_t* client, uint32_t game_id, c
   rc_client_process_resolved_hash(load_state);
 }
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+
 static void rc_client_external_load_state_callback(int result, const char* error_message, rc_client_t* client, void* userdata)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)userdata;
@@ -2065,6 +2065,14 @@ static void rc_client_external_load_state_callback(int result, const char* error
       load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
   }
   else {
+    /* keep partial game object for media_hash management */
+    if (client->state.external_client && client->state.external_client->get_game_info) {
+      const rc_client_game_t* info = client->state.external_client->get_game_info();
+      load_state->game->public_.console_id = info->console_id;
+      client->game = load_state->game;
+      load_state->game = NULL;
+    }
+
     if (load_state->callback)
       load_state->callback(RC_OK, NULL, client, load_state->callback_userdata);
   }
@@ -2557,6 +2565,13 @@ void rc_client_unload_game(rc_client_t* client)
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->unload_game) {
     client->state.external_client->unload_game();
+
+    /* a game object may have been allocated to manage hashes */
+    game = client->game;
+    client->game = NULL;
+    if (game != NULL)
+      rc_client_free_game(game);
+
     return;
   }
 #endif

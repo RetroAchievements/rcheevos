@@ -554,6 +554,7 @@ static void test_identify_and_load_game_handoff(void)
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_external_event, "load_game_handoff");
+  ASSERT_PTR_NULL(g_client->state.load);
 
   /* user data should come from external client. validate structure */
   game = rc_client_get_game_info(g_client);
@@ -563,9 +564,8 @@ static void test_identify_and_load_game_handoff(void)
   ASSERT_STR_EQUALS(game->title, "Game Title");
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
-  /* ensure non-external client game was not initialized */
-  ASSERT_PTR_NULL(g_client->game);
-  ASSERT_PTR_NULL(g_client->state.load);
+  /* ensure internal client game was initialized to hold media hashes */
+  ASSERT_PTR_NOT_NULL(g_client->game);
 
   rc_client_destroy(g_client);
   free(image);
