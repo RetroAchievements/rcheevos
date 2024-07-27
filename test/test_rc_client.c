@@ -5068,7 +5068,7 @@ static void test_leaderboard_list_hidden(void)
 static const char* lbinfo_4401_top_10 = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":4401,\"GameID\":1234,"
     "\"LowerIsBetter\":1,\"LBTitle\":\"Leaderboard1\",\"LBDesc\":\"Desc1\",\"LBFormat\":\"SCORE\","
     "\"LBMem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"LBAuthor\":null,"
-    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
+    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\",\"TotalEntries\":78,"
     "\"Entries\":["
       "{\"User\":\"PlayerG\",\"Score\":3524,\"Rank\":1,\"Index\":1,\"DateSubmitted\":1615654895},"
       "{\"User\":\"PlayerB\",\"Score\":3645,\"Rank\":2,\"Index\":2,\"DateSubmitted\":1615634566},"
@@ -5086,7 +5086,7 @@ static const char* lbinfo_4401_top_10 = "{\"Success\":true,\"LeaderboardData\":{
 static const char* lbinfo_4401_top_10_no_user = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":4401,\"GameID\":1234,"
     "\"LowerIsBetter\":1,\"LBTitle\":\"Leaderboard1\",\"LBDesc\":\"Desc1\",\"LBFormat\":\"SCORE\","
     "\"LBMem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"LBAuthor\":null,"
-    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
+    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\",\"TotalEntries\":78,"
     "\"Entries\":["
       "{\"User\":\"PlayerG\",\"Score\":3524,\"Rank\":1,\"Index\":1,\"DateSubmitted\":1615654895},"
       "{\"User\":\"PlayerB\",\"Score\":3645,\"Rank\":2,\"Index\":2,\"DateSubmitted\":1615634566},"
@@ -5104,7 +5104,7 @@ static const char* lbinfo_4401_top_10_no_user = "{\"Success\":true,\"Leaderboard
 static const char* lbinfo_4401_near_user = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":4401,\"GameID\":1234,"
     "\"LowerIsBetter\":1,\"LBTitle\":\"Leaderboard1\",\"LBDesc\":\"Desc1\",\"LBFormat\":\"SCORE\","
     "\"LBMem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"LBAuthor\":null,"
-    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
+    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\",\"TotalEntries\":78,"
     "\"Entries\":["
       "{\"User\":\"PlayerG\",\"Score\":3524,\"Rank\":17,\"Index\":17,\"DateSubmitted\":1615654895},"
       "{\"User\":\"PlayerB\",\"Score\":3645,\"Rank\":18,\"Index\":18,\"DateSubmitted\":1615634566},"
@@ -5146,6 +5146,7 @@ static void test_fetch_leaderboard_entries(void)
   ASSERT_PTR_NOT_NULL(g_leaderboard_entries);
 
   ASSERT_NUM_EQUALS(g_leaderboard_entries->num_entries, 10);
+  ASSERT_NUM_EQUALS(g_leaderboard_entries->total_entries, 78);
 
   entry = g_leaderboard_entries->entries;
   ASSERT_STR_EQUALS(entry->user, "PlayerG");
@@ -5288,6 +5289,7 @@ static void test_fetch_leaderboard_entries_around_user(void)
   ASSERT_PTR_NOT_NULL(g_leaderboard_entries);
 
   ASSERT_NUM_EQUALS(g_leaderboard_entries->num_entries, 10);
+  ASSERT_NUM_EQUALS(g_leaderboard_entries->total_entries, 78);
 
   entry = g_leaderboard_entries->entries;
   ASSERT_STR_EQUALS(entry->user, "PlayerG");
