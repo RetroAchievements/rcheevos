@@ -5,6 +5,7 @@
 #include "rc_api_runtime.h"
 
 #include "../src/rc_client_internal.h"
+#include "../src/rc_client_external.h"
 #include "../src/rc_version.h"
 
 #include "test_framework.h"
@@ -1927,6 +1928,60 @@ static void test_load_game_destroy_while_fetching_game_data(void)
   rc_client_destroy(g_client);
 
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+}
+
+static void test_load_unknown_game(void)
+{
+  const char* hash = "0123456789ABCDEFFEDCBA9876543210";
+  g_client = mock_client_logged_in();
+
+  rc_client_load_unknown_game(g_client, hash);
+
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
+  ASSERT_NUM_EQUALS(rc_client_is_game_loaded(g_client), 0);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, hash);
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 0);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 0);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.id, 0);
+  ASSERT_STR_EQUALS(g_client->game->subsets->public_.title, "");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->active, 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_unknown_game_multihash(void)
+{
+  const char* hash = "0123456789ABCDEFFEDCBA9876543210,FEDCBA98765432100123456789ABCDEF";
+  g_client = mock_client_logged_in();
+
+  rc_client_load_unknown_game(g_client, hash);
+
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
+  ASSERT_NUM_EQUALS(rc_client_is_game_loaded(g_client), 0);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, hash);
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 0);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 0);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.id, 0);
+  ASSERT_STR_EQUALS(g_client->game->subsets->public_.title, "");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->active, 0);
+
+  rc_client_destroy(g_client);
 }
 
 /* ----- unload game ----- */
@@ -9299,6 +9354,8 @@ void test_client(void) {
   TEST(test_load_game_while_spectating);
   TEST(test_load_game_process_game_data);
   TEST(test_load_game_destroy_while_fetching_game_data);
+  TEST(test_load_unknown_game);
+  TEST(test_load_unknown_game_multihash);
 
   /* unload game */
   TEST(test_unload_game);
