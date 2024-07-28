@@ -2409,6 +2409,225 @@ static int rc_hash_gamecube(char hash[33], const char* path)
   return rc_hash_finalize(&md5, hash);
 }
 
+static int rc_hash_wii(char hash[33], const char* path)
+{
+  md5_state_t md5;
+  void* file_handle;
+
+  const uint32_t MAIN_HEADER_SIZE = 0x80;
+  const uint32_t CLUSTER_SIZE = 0x7C00;
+  const uint32_t MAX_CLUSTER_COUNT = 1024 / 32;
+  const uint32_t BASE_HEADER_SIZE = 0x2440;
+  const uint32_t MAX_HEADER_SIZE = 1024 * 1024;
+
+  uint32_t partition_info_table[8];
+  uint8_t total_partition_count = 0;
+  uint32_t* partition_table;
+  uint32_t part_offset;
+  uint32_t part_size;
+
+  uint32_t apploader_header_size, apploader_body_size, apploader_trailer_size, header_size;
+
+  uint8_t quad_buffer[4];
+  uint8_t addr_buffer[0xD8];
+  uint8_t* buffer;
+
+  uint32_t dol_offset;
+  uint32_t dol_offsets[18];
+  uint32_t dol_sizes[18];
+  uint32_t dol_buf_size = 0;
+
+  uint32_t ix, jx, kx;
+  uint8_t encrypted;
+
+  file_handle = rc_file_open(path);
+  if (!file_handle)
+    return rc_hash_error("Could not open file");
+
+  /* Verify Wii */
+  rc_file_seek(file_handle, 0x18, SEEK_SET);
+  rc_file_read(file_handle, quad_buffer, 4);
+  if (quad_buffer[0] != 0x5D || quad_buffer[1] != 0x1C || quad_buffer[2] != 0x9E || quad_buffer[3] != 0xA3)
+  {
+    rc_file_close(file_handle);
+    return rc_hash_error("Not a Wii disc");
+  }
+
+  /* Check encryption byte - if 0x61 is 0, disc is encrypted */
+  rc_file_seek(file_handle, 0x61, SEEK_SET);
+  rc_file_read(file_handle, quad_buffer, 1);
+  encrypted = (quad_buffer[0] == 0);
+
+  /* Hash main headers */
+  buffer = (uint8_t*)malloc(MAIN_HEADER_SIZE);
+  if (!buffer)
+  {
+    rc_file_close(file_handle);
+    return rc_hash_error("Could not allocate temporary buffer");
+  }
+  rc_file_seek(file_handle, 0, SEEK_SET);
+  rc_file_read(file_handle, buffer, MAIN_HEADER_SIZE);
+  md5_init(&md5);
+  if (verbose_message_callback)
+  {
+    char message[128];
+    snprintf(message, sizeof(message), "Hashing %u byte main header", MAIN_HEADER_SIZE);
+    verbose_message_callback(message);
+  }
+  md5_append(&md5, buffer, MAIN_HEADER_SIZE);
+  free(buffer);
+
+  /* Scan partition table */
+  rc_file_seek(file_handle, 0x40000, SEEK_SET);
+  for (ix = 0; ix < 8; ix++)
+  {
+    rc_file_read(file_handle, quad_buffer, 4);
+    partition_info_table[ix] =
+      (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+    if (ix % 2 == 0)
+      total_partition_count += partition_info_table[ix];
+  }
+  partition_table = (uint32_t*)malloc(total_partition_count * 4 * 2);
+  kx = 0;
+  for (jx = 0; jx < 8; jx += 2)
+  {
+    for (ix = 0; ix < partition_info_table[jx]; ix++)
+    {
+      rc_file_seek(file_handle, partition_info_table[jx + 1] << 2, SEEK_SET);
+      rc_file_read(file_handle, quad_buffer, 4);
+      partition_info_table[kx++] =
+        (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+      rc_file_read(file_handle, quad_buffer, 4);
+      partition_info_table[kx++] =
+        (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+    }
+  }
+
+  /* If the data is encrypted, all my reads to buffer will be the same size. */
+  /* Might as well allocate now instead of every iteration. */
+  if (encrypted)
+    buffer = (uint8_t*)malloc(CLUSTER_SIZE);
+
+  /* Read each partition */
+  for (jx = 0; jx < (uint32_t)total_partition_count * 2; jx += 2)
+  {
+    /* Don't hash Update and Demo partitions*/
+    if (partition_table[jx + 1] != 0 && partition_table[jx + 1] != 2)
+      continue;
+
+    rc_file_seek(file_handle, (partition_table[jx] << 2) + 0x2B8, SEEK_SET);
+    rc_file_read(file_handle, quad_buffer, 4);
+    part_offset =
+      (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+    rc_file_read(file_handle, quad_buffer, 4);
+    part_size =
+      (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+
+    if (encrypted)
+    {
+      for (ix = 0; ix < part_size / 8 && ix < MAX_CLUSTER_COUNT; ix++)
+      {
+        rc_file_seek(file_handle, (part_offset << 2) + (ix * 0x8000) + 0x400, SEEK_SET);
+        rc_file_read(file_handle, buffer, CLUSTER_SIZE);
+        if (verbose_message_callback)
+        {
+          char message[128];
+          snprintf(message, sizeof(message), "Hashing %u byte main header", MAIN_HEADER_SIZE);
+          verbose_message_callback(message);
+        }
+        md5_append(&md5, buffer, MAIN_HEADER_SIZE);
+      }
+    }
+    else /* Decrypted */
+    {
+      /* GetApploaderSize */
+      rc_file_seek(file_handle, (part_offset << 2) + BASE_HEADER_SIZE + 0x14, SEEK_SET);
+      apploader_header_size = 0x20;
+      rc_file_read(file_handle, quad_buffer, 4);
+      apploader_body_size =
+        (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+      rc_file_read(file_handle, quad_buffer, 4);
+      apploader_trailer_size =
+        (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+      header_size = BASE_HEADER_SIZE + apploader_header_size + apploader_body_size + apploader_trailer_size;
+      if (header_size > MAX_HEADER_SIZE) header_size = MAX_HEADER_SIZE;
+
+      /* Hash headers */
+      buffer = (uint8_t*)malloc(header_size);
+      if (!buffer)
+      {
+        rc_file_close(file_handle);
+        return rc_hash_error("Could not allocate temporary buffer");
+      }
+      rc_file_seek(file_handle, part_offset << 2, SEEK_SET);
+      rc_file_read(file_handle, buffer, header_size);
+      md5_init(&md5);
+      if (verbose_message_callback)
+      {
+        char message[128];
+        snprintf(message, sizeof(message), "Hashing %u byte header", header_size);
+        verbose_message_callback(message);
+      }
+      md5_append(&md5, buffer, header_size);
+
+      /* GetBootDOLOffset
+       * Base header size is guaranteed larger than 0x423 therefore buffer contains dol_offset right now
+       */
+      dol_offset = (buffer[0x420] << 24) | (buffer[0x421] << 16) | (buffer[0x422] << 8) | buffer[0x423];
+      free(buffer);
+
+      /* Find offsets and sizes for the 7 main.dol code segments and 11 main.dol data segments */
+      rc_file_seek(file_handle, (part_offset << 2) + dol_offset, SEEK_SET);
+      rc_file_read(file_handle, addr_buffer, 0xD8);
+      for (ix = 0; ix < 18; ix++)
+      {
+        dol_offsets[ix] =
+          (addr_buffer[0x0 + ix * 4] << 24) |
+          (addr_buffer[0x1 + ix * 4] << 16) |
+          (addr_buffer[0x2 + ix * 4] << 8) |
+          addr_buffer[0x3 + ix * 4];
+        dol_sizes[ix] =
+          (addr_buffer[0x90 + ix * 4] << 24) |
+          (addr_buffer[0x91 + ix * 4] << 16) |
+          (addr_buffer[0x92 + ix * 4] << 8) |
+          addr_buffer[0x93 + ix * 4];
+        dol_buf_size = (dol_sizes[ix] > dol_buf_size) ? dol_sizes[ix] : dol_buf_size;
+      }
+
+      /* Iterate through the 18 main.dol segments and hash each */
+      buffer = (uint8_t*)malloc(dol_buf_size);
+      if (!buffer)
+      {
+        rc_file_close(file_handle);
+        return rc_hash_error("Could not allocate temporary buffer");
+      }
+      for (ix = 0; ix < 18; ix++)
+      {
+        if (dol_sizes[ix] == 0)
+          continue;
+        rc_file_seek(file_handle, (part_offset << 2) + dol_offsets[ix], SEEK_SET);
+        rc_file_read(file_handle, buffer, dol_sizes[ix]);
+        if (verbose_message_callback)
+        {
+          char message[128];
+          if (ix < 7)
+            snprintf(message, sizeof(message), "Hashing %u byte main.dol code segment %u", dol_sizes[ix], ix);
+          else
+            snprintf(message, sizeof(message), "Hashing %u byte main.dol data segment %u", dol_sizes[ix], ix - 7);
+          verbose_message_callback(message);
+        }
+        md5_append(&md5, buffer, dol_sizes[ix]);
+      }
+    }
+  }
+
+  /* Finalize */
+  rc_file_close(file_handle);
+  free(buffer);
+
+  return rc_hash_finalize(&md5, hash);
+}
+
 static int rc_hash_pce(char hash[33], const uint8_t* buffer, size_t buffer_size)
 {
   /* if the file contains a header, ignore it (expect ROM data to be multiple of 128KB) */
@@ -3525,6 +3744,9 @@ int rc_hash_generate_from_file(char hash[33], uint32_t console_id, const char* p
         return rc_hash_generate_from_playlist(hash, console_id, path);
 
       return rc_hash_sega_cd(hash, path);
+
+    case RC_CONSOLE_WII:
+      return rc_hash_wii(hash, path);
   }
 }
 
