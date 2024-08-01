@@ -32,7 +32,7 @@ static uint8_t rc_condition_determine_comparator(const rc_condition_t* self) {
   }
 
   if ((self->operand1.type == RC_OPERAND_ADDRESS || self->operand1.type == RC_OPERAND_DELTA) &&
-    // TODO: allow modified memref comparisons
+    /* TODO: allow modified memref comparisons */
       self->operand1.value.memref->value.memref_type == RC_MEMREF_TYPE_MEMREF && !rc_operand_is_float(&self->operand1)) {
     /* left side is an integer memory reference */
     int needs_translate = (self->operand1.size != self->operand1.value.memref->value.size);
@@ -433,7 +433,6 @@ void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t
 
       if (parse->addsource_parent.type != RC_OPERAND_NONE) {
         /* type determined by leaf */
-        const uint8_t new_size = rc_operand_is_float(&condition->operand1) ? RC_MEMSIZE_FLOAT : RC_MEMSIZE_32_BITS;
         rc_operand_addsource(&condition->operand1, parse, condition->operand1.size);
       }
 
@@ -467,7 +466,6 @@ void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t
     default:
       if (parse->addsource_parent.type != RC_OPERAND_NONE) {
         /* type determined by leaf */
-        const uint8_t new_size = rc_operand_is_float(&condition->operand1) ? RC_MEMSIZE_FLOAT : RC_MEMSIZE_32_BITS;
         rc_operand_addsource(&condition->operand1, parse, condition->operand1.size);
 
         if (parse->buffer)
