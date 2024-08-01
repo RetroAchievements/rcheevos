@@ -406,6 +406,8 @@ static void test_allocate_shared_indirect_address() {
   /* intermediate parent */
   intermediate2.value.memref = &child2->memref;
   intermediate2.type = RC_OPERAND_ADDRESS;
+  intermediate2.size = RC_MEMSIZE_32_BITS;
+  intermediate2.memref_access_type = RC_OPERAND_ADDRESS;
   child4 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &intermediate2, RC_OPERATOR_INDIRECT_READ, &offset0);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 8);
 

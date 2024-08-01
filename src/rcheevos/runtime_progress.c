@@ -290,7 +290,7 @@ static int rc_runtime_progress_is_indirect_memref(rc_operand_t* oper)
       return 0;
 
     default:
-      if (oper->value.memref->value.type != RC_MEMREF_TYPE_MODIFIED_MEMREF)
+      if (oper->value.memref->value.memref_type != RC_MEMREF_TYPE_MODIFIED_MEMREF)
         return 0;
 
       return ((const rc_modified_memref_t*)oper->value.memref)->modifier_type == RC_OPERATOR_INDIRECT_READ;
