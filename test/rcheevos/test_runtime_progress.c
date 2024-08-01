@@ -814,6 +814,59 @@ static void test_memref_shared_address()
   rc_runtime_destroy(&runtime);
 }
 
+static void test_memref_addsource() {
+  uint8_t ram[] = { 1, 2, 3, 4, 5 };
+  uint8_t buffer1[512];
+  uint8_t buffer2[512];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  /* byte(2) + byte(1) == 5 - third condition just prevents the achievement from triggering*/
+  assert_activate_achievement(&runtime, 1, "A:0xH0002_0xH0001=3_0xH0004=99");
+  assert_do_frame(&runtime, &memory); /* $2 = 3, $1 = 2, 3 + 2 = 5 */
+  ram[1] = 3;
+  ram[2] = 0;
+  assert_do_frame(&runtime, &memory); /* $2 = 0, $1 = 3, 0 + 3 = 3 */
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+  assert_do_frame(&runtime, &memory);
+
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 4);
+  assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
+
+  assert_serialize(&runtime, buffer1, sizeof(buffer1));
+
+  assert_do_frame(&runtime, &memory);
+  ram[1] = 6;
+  ram[2] = 1;
+  assert_do_frame(&runtime, &memory); /* $2 = 1, $1 = 6, 1 + 6 = 7 */
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 5);
+  assert_cond_memref(&runtime, 1, 0, 1, 7, 3, 1);
+
+  assert_serialize(&runtime, buffer2, sizeof(buffer2));
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer1);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 4);
+  assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer2);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 5);
+  assert_cond_memref(&runtime, 1, 0, 1, 7, 3, 1);
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_memref_indirect()
 {
   uint8_t ram[] = { 1, 2, 3, 4, 5 };
@@ -1687,6 +1740,7 @@ void test_runtime_progress(void) {
 
   TEST(test_no_core_group);
   TEST(test_memref_shared_address);
+  TEST(test_memref_addsource);
   TEST(test_memref_indirect);
   TEST(test_memref_double_indirect);
 

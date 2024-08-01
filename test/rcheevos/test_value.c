@@ -284,7 +284,10 @@ static void test_typed_value_add(uint8_t type, uint32_t u32, double f32,
 
   rc_typed_value_add(&value, &amount);
 
-  if (type == RC_VALUE_TYPE_NONE) {
+  if (result_f32 != 0.0) {
+    assert_typed_value(&value, RC_VALUE_TYPE_FLOAT, result_u32, result_f32);
+  }
+  else if (type == RC_VALUE_TYPE_NONE) {
     assert_typed_value(&value, amount_type, result_u32, result_f32);
   }
   else {
@@ -304,20 +307,20 @@ static void test_typed_value_addition() {
 
   /* unsigned source */
   TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_UNSIGNED, 8, 0.0, 14, 0.0);
-  TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_FLOAT, 0, 8.0, 14, 0.0);
+  TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_FLOAT, 0, 8.0, 0, 14.0);
 
   TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_UNSIGNED, 0xFFFFFFFE, 0.0, 4, 0.0);
   TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_SIGNED, (unsigned)-2, 0.0, 4, 0.0);
-  TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_FLOAT, 0, -2.0, 4, 0.0);
+  TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_FLOAT, 0, -2.0, 0, 4.0);
   TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_UNSIGNED, 6, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0, 6, 0.0);
 
   /* signed source */
   TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_UNSIGNED, 2, 0.0, (unsigned)-4, 0.0);
-  TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_FLOAT, 0, 2.0, (unsigned)-4, 0.0);
+  TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_FLOAT, 0, 2.0, 0, -4.0);
 
   TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_UNSIGNED, 8, 0.0, 2, 0.0);
   TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_SIGNED, (unsigned)-2, 0.0, (unsigned)-8, 0.0);
-  TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_FLOAT, 0, 2.0, (unsigned)-4, 0.0);
+  TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_FLOAT, 0, 2.0, 0, -4.0);
   TEST_PARAMS8(test_typed_value_add, RC_VALUE_TYPE_SIGNED, (unsigned)-6, 0.0, RC_VALUE_TYPE_NONE, 0, 0.0, (unsigned)-6, 0.0);
 
   /* float source (whole numbers) */

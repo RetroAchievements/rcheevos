@@ -70,15 +70,14 @@ typedef struct rc_memref_value_t {
   /* The last differing value of this memory reference. */
   uint32_t prior;
 
-  /* The size of the value. */
+  /* The size of the value. (RC_MEMSIZE_*) */
   uint8_t size;
   /* True if the value changed this frame. */
   uint8_t changed;
-  /* The value type of the value (for variables) */
+  /* The value type of the value. (RC_VALUE_TYPE_*) */
   uint8_t type;
-  /* True if the reference will be used in indirection.
-   * NOTE: This is actually a property of the rc_memref_t, but we put it here to save space */
-  uint8_t is_indirect;
+  /* The type of memref (RC_MEMREF_TYPE_*) */
+  uint8_t memref_type;
 }
 rc_memref_value_t;
 
@@ -92,6 +91,7 @@ struct rc_memref_t {
   /* The next memory reference in the chain. */
   rc_memref_t* next;
 };
+
 
 /*****************************************************************************\
 | Operands                                                                    |
@@ -125,11 +125,14 @@ typedef struct rc_operand_t {
     int luafunc;
   } value;
 
-  /* specifies which member of the value union is being used */
+  /* specifies which member of the value union is being used (RC_OPERAND_*) */
   uint8_t type;
 
-  /* the actual RC_MEMSIZE of the operand - memref.size may differ */
+  /* the RC_MEMSIZE of the operand specified in the condition definition - memref.size may differ */
   uint8_t size;
+
+  /* specifies how to read the memref for some types (RC_OPERAND_*) */
+  uint8_t memref_access_type;
 }
 rc_operand_t;
 
@@ -180,7 +183,10 @@ enum {
   RC_OPERATOR_XOR,
   RC_OPERATOR_MOD,
   RC_OPERATOR_ADD,
-  RC_OPERATOR_SUB
+  RC_OPERATOR_SUB,
+
+  RC_OPERATOR_SUB_PARENT, /* internal use */
+  RC_OPERATOR_INDIRECT_READ /* internal use */
 };
 
 typedef struct rc_condition_t rc_condition_t;
@@ -224,7 +230,7 @@ struct rc_condset_t {
   /* The next condition set in the chain. */
   rc_condset_t* next;
 
-  /* The list of conditions in this condition set. */
+  /* The first condition in this condition set. Then follow ->next chain. */
   rc_condition_t* conditions;
 
   /* True if any condition in the set is a pause condition. */
@@ -232,9 +238,6 @@ struct rc_condset_t {
 
   /* True if the set is currently paused. */
   uint8_t is_paused;
-
-  /* True if the set has indirect memory references. */
-  uint8_t has_indirect_memrefs;
 };
 
 /*****************************************************************************\
