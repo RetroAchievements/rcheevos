@@ -540,7 +540,7 @@ static uint32_t rc_get_memref_value_value(const rc_memref_value_t* memref, int o
   }
 }
 
-void rc_get_memref_value(rc_typed_value_t* value, rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state) {
+void rc_get_memref_value(rc_typed_value_t* value, rc_memref_t* memref, int operand_type) {
   value->type = memref->value.type;
   value->value.u32 = rc_get_memref_value_value(&memref->value, operand_type);
 }

@@ -656,11 +656,11 @@ void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_
         return;
       }
 
-      rc_get_memref_value(result, self->value.memref, self->memref_access_type, eval_state);
+      rc_get_memref_value(result, self->value.memref, self->memref_access_type);
       break;
 
     default:
-      rc_get_memref_value(result, self->value.memref, self->type, eval_state);
+      rc_get_memref_value(result, self->value.memref, self->type);
       break;
   }
 
