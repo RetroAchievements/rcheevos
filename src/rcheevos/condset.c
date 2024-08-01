@@ -40,7 +40,7 @@ static void rc_condition_update_recall_operand(rc_operand_t* operand, const rc_o
   }
 }
 
-static void rc_update_condition_pause_remember(rc_condition_t* conditions, rc_memref_t* memrefs) {
+static void rc_update_condition_pause_remember(rc_condition_t* conditions) {
   rc_operand_t* pause_remember = NULL;
   rc_condition_t* condition;
 
@@ -205,7 +205,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
     rc_update_condition_pause(self->conditions);
 
     if (parse->remember.type != RC_OPERATOR_NONE)
-      rc_update_condition_pause_remember(self->conditions, *parse->first_memref);
+      rc_update_condition_pause_remember(self->conditions);
   }
 
   return self;
