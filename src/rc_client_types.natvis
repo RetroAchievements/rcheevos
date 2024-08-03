@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <!-- https://learn.microsoft.com/en-us/visualstudio/debugger/create-custom-views-of-native-objects?view=vs-2022 -->
+    <!-- https://learn.microsoft.com/en-us/visualstudio/debugger/format-specifiers-in-cpp?view=vs-2022 -->
+    <Type Name="rc_client_user_t">
+        <DisplayString>{{display_name={display_name,s} score={score}}}</DisplayString>
+    </Type>
+    <Type Name="rc_client_game_t">
+        <DisplayString>{{title={title,s} id={id}</DisplayString>
+    </Type>
+	<Type Name="rc_client_subset_t">
+		<DisplayString>{{title={title,s} id={id}</DisplayString>
+	</Type>
+    <Type Name="__rc_client_achievement_state_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE">{RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE">{RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED">{RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_STATE_DISABLED">{RC_CLIENT_ACHIEVEMENT_STATE_DISABLED}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+	<Type Name="__rc_client_achievement_category_enum_t">
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_NONE">{RC_CLIENT_ACHIEVEMENT_CATEGORY_NONE}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE">{RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL">{RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL">{RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL}</DisplayString>
+		<DisplayString>unknown ({value})</DisplayString>
+	</Type>
+	<Type Name="__rc_client_achievement_type_enum_t">
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_TYPE_STANDARD">{RC_CLIENT_ACHIEVEMENT_TYPE_STANDARD}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE">{RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_TYPE_PROGRESSION">{RC_CLIENT_ACHIEVEMENT_TYPE_PROGRESSION}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_TYPE_WIN">{RC_CLIENT_ACHIEVEMENT_TYPE_WIN}</DisplayString>
+		<DisplayString>unknown ({value})</DisplayString>
+	</Type>
+	<Type Name="__rc_client_achievement_bucket_enum_t">
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNKNOWN">{RC_CLIENT_ACHIEVEMENT_BUCKET_UNKNOWN}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED">{RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED">{RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED">{RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL">{RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED">{RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE">{RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED">{RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNSYNCED">{RC_CLIENT_ACHIEVEMENT_BUCKET_UNSYNCED}</DisplayString>
+		<DisplayString>unknown ({value})</DisplayString>
+	</Type>
+	<Type Name="__rc_client_achievement_unlocked_enum_t">
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE">{RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE">{RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE">{RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE}</DisplayString>
+		<DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH">{RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH}</DisplayString>
+		<DisplayString>unknown ({value})</DisplayString>
+	</Type>
+	<Type Name="rc_client_achievement_t">
+		<DisplayString>{{title={title,s} id={id}}}</DisplayString>
+		<Expand>
+			<Item Name="title">title</Item>
+			<Item Name="description">description</Item>
+			<Item Name="points">points</Item>
+			<Item Name="id">id</Item>
+			<Item Name="state">*((__rc_client_achievement_state_enum_t*)&amp;state)</Item>
+			<Item Name="type">*((__rc_client_achievement_type_enum_t*)&amp;state)</Item>
+			<Item Name="category">*((__rc_client_achievement_category_enum_t*)&amp;category)</Item>
+			<Item Name="bucket">*((__rc_client_achievement_state_enum_t*)&amp;bucket)</Item>
+			<Item Name="unlocked">*((__rc_client_achievement_unlocked_enum_t*)&amp;unlocked)</Item>
+		</Expand>
+	</Type>
+	<Type Name="rc_client_achievement_bucket_t">
+		<DisplayString>{{label={label,s} count={num_achievements}}}</DisplayString>
+		<Expand>
+			<IndexListItems>
+				<Size>num_achievements</Size>
+				<ValueNode>achievements[$i]</ValueNode>
+			</IndexListItems>
+		</Expand>
+	</Type>
+	<Type Name="rc_client_achievement_list_t">
+		<DisplayString>{{count={num_buckets}}}</DisplayString>
+		<Expand>
+			<IndexListItems>
+				<Size>num_buckets</Size>
+				<ValueNode>buckets[$i]</ValueNode>
+			</IndexListItems>
+		</Expand>
+	</Type>
+    <Type Name="__rc_client_leaderboard_state_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_LEADERBOARD_STATE_INACTIVE">{RC_CLIENT_LEADERBOARD_STATE_INACTIVE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LEADERBOARD_STATE_ACTIVE">{RC_CLIENT_LEADERBOARD_STATE_ACTIVE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LEADERBOARD_STATE_TRACKING">{RC_CLIENT_LEADERBOARD_STATE_TRACKING}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LEADERBOARD_STATE_DISABLED">{RC_CLIENT_LEADERBOARD_STATE_DISABLED}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+    <Type Name="__rc_client_leaderboard_format_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_LEADERBOARD_FORMAT_TIME">{RC_CLIENT_LEADERBOARD_FORMAT_TIME}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LEADERBOARD_FORMAT_SCORE">{RC_CLIENT_LEADERBOARD_FORMAT_SCORE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LEADERBOARD_FORMAT_VALUE">{RC_CLIENT_LEADERBOARD_FORMAT_VALUE}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+	<Type Name="rc_client_leaderboard_t">
+		<DisplayString>{{title={title,s} id={id}}}</DisplayString>
+		<Expand>
+			<Item Name="title">title</Item>
+			<Item Name="description">description</Item>
+			<Item Name="tracker_value">tracker_value</Item>
+			<Item Name="id">id</Item>
+			<Item Name="state">*((__rc_client_leaderboard_state_enum_t*)&amp;state)</Item>
+			<Item Name="format">*((__rc_client_leaderboard_format_enum_t*)&amp;format)</Item>
+			<Item Name="lower_is_better">*((__rc_bool_enum_t*)&amp;lower_is_better)</Item>
+		</Expand>
+	</Type>
+	<Type Name="rc_client_leaderboard_bucket_t">
+		<DisplayString>{{label={label,s} count={num_leaderboards}}}</DisplayString>
+		<Expand>
+			<IndexListItems>
+				<Size>num_leaderboards</Size>
+				<ValueNode>leaderboards[$i]</ValueNode>
+			</IndexListItems>
+		</Expand>
+	</Type>
+	<Type Name="rc_client_leaderboard_list_t">
+		<DisplayString>{{count={num_buckets}}}</DisplayString>
+		<Expand>
+			<IndexListItems>
+				<Size>num_buckets</Size>
+				<ValueNode>buckets[$i]</ValueNode>
+			</IndexListItems>
+		</Expand>
+	</Type>
+	<Type Name="rc_client_leaderboard_scoreboard_entry_t">
+		<DisplayString>{{rank={rank} score={score,s} username={username}}}</DisplayString>
+	</Type>
+	<Type Name="rc_client_leaderboard_scoreboard_t">
+		<DisplayString>{{leaderboard_id={leaderboard_id} num_entries={num_entries}}}</DisplayString>
+		<Expand>
+			<Item Name="leaderboard_id">leaderboard_id</Item>
+			<Item Name="submitted_score">submitted_score</Item>
+			<Item Name="best_score">best_score</Item>
+			<Item Name="new_rank">new_rank</Item>
+			<Item Name="num_entries">num_entries</Item>
+			<IndexListItems>
+				<Size>num_top_entries</Size>
+				<ValueNode>top_entries[$i]</ValueNode>
+			</IndexListItems>
+		</Expand>	
+	</Type>
+    <Type Name="__rc_client_event_type_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_EVENT_TYPE_NONE">{RC_CLIENT_EVENT_TYPE_NONE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED">{RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_LEADERBOARD_STARTED">{RC_CLIENT_EVENT_LEADERBOARD_STARTED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_LEADERBOARD_FAILED">{RC_CLIENT_EVENT_LEADERBOARD_FAILED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED">{RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW">{RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE">{RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW">{RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE">{RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE">{RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW">{RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE">{RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE">{RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD">{RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_RESET">{RC_CLIENT_EVENT_RESET}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_GAME_COMPLETED">{RC_CLIENT_EVENT_GAME_COMPLETED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_SERVER_ERROR">{RC_CLIENT_EVENT_SERVER_ERROR}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_DISCONNECTED">{RC_CLIENT_EVENT_DISCONNECTED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_EVENT_RECONNECTED">{RC_CLIENT_EVENT_RECONNECTED}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+	<Type Name="rc_client_event_t">
+		<DisplayString>{{type={*((__rc_client_event_type_enum_t*)&amp;type)}}}</DisplayString>
+		<Expand>
+			<Item Name="type">*((__rc_client_event_type_enum_t*)&amp;type)</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED" Name="achievement">*achievement</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_LEADERBOARD_STARTED" Name="leaderboard">*leaderboard</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_LEADERBOARD_FAILED" Name="leaderboard">*leaderboard</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_LEADERBOARD_SUBMITTED" Name="leaderboard">*leaderboard</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW" Name="achievement">*achievement</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE" Name="achievement">*achievement</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW" Name="achievement">*achievement</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE" Name="achievement">*achievement</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_UPDATE" Name="achievement">*achievement</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW" Name="leaderboard_tracker">*leaderboard_tracker</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE" Name="leaderboard_tracker">*leaderboard_tracker</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_LEADERBOARD_TRACKER_UPDATE" Name="leaderboard_tracker">*leaderboard_tracker</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD" Name="leaderboard_scoreboard">*leaderboard_scoreboard</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD" Name="leaderboard">*leaderboard</Item>
+			<Item Condition="type==RC_CLIENT_EVENT_SERVER_ERROR" Name="server_error">*server_error</Item>
+		</Expand>	
+	</Type>
+</AutoVisualizer>
