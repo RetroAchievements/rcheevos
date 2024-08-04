@@ -29,7 +29,7 @@ typedef struct rc_value_t rc_value_t;
  * num_bytes is greater than 1, the value is read in little-endian from
  * memory.
  */
-typedef uint32_t(RC_CCONV *rc_peek_t)(uint32_t address, uint32_t num_bytes, void* ud);
+typedef uint32_t(RC_CCONV* rc_peek_t)(uint32_t address, uint32_t num_bytes, void* ud);
 
 /*****************************************************************************\
 | Memory References                                                           |
@@ -210,9 +210,6 @@ struct rc_condition_t {
   /* The comparison operator to use. (RC_OPERATOR_*) */
   uint8_t oper; /* operator is a reserved word in C++. */
 
-  /* Set if the condition needs to processed as part of the "check if paused" pass. (bool) */
-  uint8_t pause;
-
   /* Whether or not the condition evaluated true on the last check. (bool) */
   uint8_t is_true;
 
@@ -233,9 +230,27 @@ struct rc_condset_t {
   /* The first condition in this condition set. Then follow ->next chain. */
   rc_condition_t* conditions;
 
-  /* True if any condition in the set is a pause condition. */
-  uint8_t has_pause;
+  /* The number of pause conditions in this condition set. */
+  /* The first pause condition is at "this + RC_ALIGN(sizeof(this)). */
+  uint16_t num_pause_conditions;
 
+  /* The number of reset conditions in this condition set. */
+  uint16_t num_reset_conditions;
+
+  /* The number of hittarget conditions in this condition set. */
+  uint16_t num_hittarget_conditions;
+
+  /* The number of non-hittarget measured conditions in this condition set. */
+  uint16_t num_measured_conditions;
+
+  /* The number of other conditions in this condition set. */
+  uint16_t num_other_conditions;
+
+  /* The number of indirect conditions in this condition set. */
+  uint16_t num_indirect_conditions;
+
+  /* True if any condition in the set is a pause condition. */
+  uint8_t has_pause; /* DEPRECATED - just check num_pause_conditions != 0 */
   /* True if the set is currently paused. */
   uint8_t is_paused;
 };
@@ -300,7 +315,7 @@ struct rc_value_t {
   /* The current value of the variable. */
   rc_memref_value_t value;
 
-  /* The list of conditions to evaluate. */
+  /* The list of possible values (traverse next chain, pick max). */
   rc_condset_t* conditions;
 
   /* The memory references required by the variable. */
@@ -409,7 +424,7 @@ struct rc_richpresence_display_part_t {
   rc_richpresence_display_part_t* next;
   const char* text;
   rc_richpresence_lookup_t* lookup;
-  rc_memref_value_t *value;
+  rc_memref_value_t* value;
   uint8_t display_type;
 };
 

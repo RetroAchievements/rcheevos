@@ -5,8 +5,6 @@
 #include <float.h> /* FLT_EPSILON */
 #include <math.h> /* fmod */
 
-
-
 int rc_is_valid_variable_character(char ch, int is_first) {
   if (is_first) {
     if (!isalpha((unsigned char)ch))
@@ -52,134 +50,157 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
   (*next_clause)->next = 0;
 }
 
-void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
+static void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condition_t** next;
   rc_condset_t** next_clause;
+  rc_condset_t* condset;
+  rc_condition_t local_cond;
   rc_condition_t* cond;
   char buffer[64] = "A:";
   const char* buffer_ptr;
   char* ptr;
+  char c;
 
   /* convert legacy format into condset */
-  self->conditions = RC_ALLOC(rc_condset_t, parse);
-  memset(self->conditions, 0, sizeof(rc_condset_t));
+  next_clause = &self->conditions;
+  do {
+    condset = RC_ALLOC(rc_condset_t, parse);
+    memset(condset, 0, sizeof(rc_condset_t));
 
-  next = &self->conditions->conditions;
-  next_clause = &self->conditions->next;
-
-  for (;; ++(*memaddr)) {
-    buffer[0] = 'A'; /* reset to AddSource */
-    ptr = &buffer[2];
-
-    /* extract the next clause */
-    for (;; ++(*memaddr)) {
-      switch (**memaddr) {
-        case '_': /* add next */
-        case '$': /* maximum of */
-        case '\0': /* end of string */
-        case ':': /* end of leaderboard clause */
-        case ')': /* end of rich presence macro */
-          *ptr = '\0';
-          break;
-
-        case '*':
-          *ptr++ = '*';
-
-          buffer_ptr = *memaddr + 1;
-          if (*buffer_ptr == '-') {
-            buffer[0] = 'B'; /* change to SubSource */
-            ++(*memaddr); /* don't copy sign */
-            ++buffer_ptr; /* ignore sign when doing floating point check */
-          }
-          else if (*buffer_ptr == '+') {
-            ++buffer_ptr; /* ignore sign when doing floating point check  */
-          }
-
-          /* if it looks like a floating point number, add the 'f' prefix */
-          while (isdigit((unsigned char)*buffer_ptr))
-            ++buffer_ptr;
-          if (*buffer_ptr == '.')
-            *ptr++ = 'f';
-          continue;
-
-        default:
-          *ptr++ = **memaddr;
-          continue;
+    /* count the number of joiners and add one to determine the number of clauses.  */
+    condset->num_measured_conditions = 1;
+    buffer_ptr = *memaddr;
+    while ((c = *buffer_ptr++) && c != '$') {
+      if (c == '_') {
+        ++condset->num_measured_conditions;
+        buffer[0] = 'A'; /* reset to AddSource */
       }
-
-      break;
+      else if (c == '*' && *buffer_ptr == '-') {
+        /* multiplication by a negative number will convert to SubSource */
+        ++buffer_ptr;
+        buffer[0] = 'B';
+      }
     }
 
-    /* process the clause */
-    buffer_ptr = buffer;
-    cond = rc_parse_condition(&buffer_ptr, parse);
+    /* if last condition is SubSource, we'll need to add a dummy condition for the Measured */
+    if (buffer[0] == 'B')
+      ++condset->num_measured_conditions;
+
+    cond = rc_alloc(parse->buffer, &parse->offset, condset->num_measured_conditions * sizeof(rc_condition_t), RC_ALIGNOF(rc_condition_t), NULL, 0);
     if (parse->offset < 0)
       return;
 
-    if (*buffer_ptr) {
-      /* whatever we copied as a single condition was not fully consumed */
-      parse->offset = RC_INVALID_COMPARISON;
-      return;
-    }
+    next = &condset->conditions;
 
-    switch (cond->oper) {
-      case RC_OPERATOR_MULT:
-      case RC_OPERATOR_DIV:
-      case RC_OPERATOR_AND:
-      case RC_OPERATOR_XOR:
-      case RC_OPERATOR_MOD:
-      case RC_OPERATOR_ADD:
-      case RC_OPERATOR_SUB:
-      case RC_OPERATOR_NONE:
+    for (;; ++(*memaddr)) {
+      buffer[0] = 'A'; /* reset to AddSource */
+      ptr = &buffer[2];
+
+      /* extract the next clause */
+      for (;; ++(*memaddr)) {
+        switch (**memaddr) {
+          case '_': /* add next */
+          case '$': /* maximum of */
+          case '\0': /* end of string */
+          case ':': /* end of leaderboard clause */
+          case ')': /* end of rich presence macro */
+            *ptr = '\0';
+            break;
+
+          case '*':
+            *ptr++ = '*';
+
+            buffer_ptr = *memaddr + 1;
+            if (*buffer_ptr == '-') {
+              buffer[0] = 'B'; /* change to SubSource */
+              ++(*memaddr); /* don't copy sign */
+              ++buffer_ptr; /* ignore sign when doing floating point check */
+            }
+            else if (*buffer_ptr == '+') {
+              ++buffer_ptr; /* ignore sign when doing floating point check  */
+            }
+
+            /* if it looks like a floating point number, add the 'f' prefix */
+            while (isdigit((unsigned char)*buffer_ptr))
+              ++buffer_ptr;
+            if (*buffer_ptr == '.')
+              *ptr++ = 'f';
+            continue;
+
+          default:
+            *ptr++ = **memaddr;
+            continue;
+        }
+
         break;
+      }
 
-      default:
+      /* process the clause */
+      if (!parse->buffer)
+        cond = &local_cond;
+
+      buffer_ptr = buffer;
+      rc_parse_condition_internal(cond, &buffer_ptr, parse);
+      if (parse->offset < 0)
+        return;
+
+      if (*buffer_ptr) {
+        /* whatever we copied as a single condition was not fully consumed */
+        parse->offset = RC_INVALID_COMPARISON;
+        return;
+      }
+
+      if (!rc_operator_is_modifying(cond->oper)) {
         parse->offset = RC_INVALID_OPERATOR;
         return;
-    }
+      }
 
-    *next = cond;
-
-    if (**memaddr == '_') {
-      /* add next */
-      rc_condition_update_parse_state(cond, parse);
+      *next = cond;
       next = &cond->next;
-      continue;
+
+      if (**memaddr != '_') /* add next */
+        break;
+
+      rc_condition_update_parse_state(cond, parse);
+      ++cond;
     }
 
+    /* end of clause */
     if (cond->type == RC_CONDITION_SUB_SOURCE) {
       /* cannot change SubSource to Measured. add a dummy condition */
       rc_condition_update_parse_state(cond, parse);
-      next = &cond->next;
+      if (parse->buffer)
+        ++cond;
+
       buffer_ptr = "A:0";
-      cond = rc_parse_condition(&buffer_ptr, parse);
+      rc_parse_condition_internal(cond, &buffer_ptr, parse);
       *next = cond;
+      next = &cond->next;
     }
 
     /* convert final AddSource condition to Measured */
     cond->type = RC_CONDITION_MEASURED;
-    cond->next = 0;
+    cond->next = NULL;
     rc_condition_update_parse_state(cond, parse);
+
+    /* finalize clause */
+    *next_clause = condset;
+    next_clause = &condset->next;
 
     if (**memaddr != '$') {
       /* end of valid string */
-      *next_clause = 0;
+      *next_clause = NULL;
       break;
     }
 
     /* max of ($), start a new clause */
-    *next_clause = RC_ALLOC(rc_condset_t, parse);
-
-    if (parse->buffer) /* don't clear in sizing mode or pointer will break */
-      memset(*next_clause, 0, sizeof(rc_condset_t));
-
-    next = &(*next_clause)->conditions;
-    next_clause = &(*next_clause)->next;
-  }
+    ++(*memaddr);
+  } while (1);
 }
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const uint8_t was_value = parse->is_value;
+  const rc_condition_t* condition;
   parse->is_value = 1;
 
   /* if it starts with a condition flag (M: A: B: C:), parse the conditions */
@@ -188,10 +209,27 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
   else
     rc_parse_legacy_value(self, memaddr, parse);
 
-  self->name = "(unnamed)";
-  self->value.value = self->value.prior = 0;
-  self->value.changed = 0;
-  self->next = 0;
+  if (parse->offset >= 0) {
+    self->name = "(unnamed)";
+    self->value.value = self->value.prior = 0;
+    self->value.memref_type = RC_MEMREF_TYPE_VALUE;
+    self->value.changed = 0;
+    self->next = NULL;
+
+    for (condition = self->conditions->conditions; condition; condition = condition->next) {
+      if (condition->type == RC_CONDITION_MEASURED) {
+        if (rc_operand_is_float(&condition->operand1)) {
+          self->value.size = RC_MEMSIZE_FLOAT;
+          self->value.type = RC_VALUE_TYPE_FLOAT;
+        }
+        else {
+          self->value.size = RC_MEMSIZE_32_BITS;
+          self->value.type = RC_VALUE_TYPE_UNSIGNED;
+        }
+        break;
+      }
+    }
+  }
 
   parse->is_value = was_value;
 }
@@ -391,16 +429,9 @@ void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_Sta
 }
 
 void rc_typed_value_from_memref_value(rc_typed_value_t* value, const rc_memref_value_t* memref) {
+  /* raw value is always u32, type can mark it as something else */
   value->value.u32 = memref->value;
-
-  if (memref->size == RC_MEMSIZE_VARIABLE) {
-    /* a variable can be any of the supported types, but the raw data was copied into u32 */
-    value->type = memref->type;
-  }
-  else {
-    /* not a variable, only u32 is supported */
-    value->type = RC_VALUE_TYPE_UNSIGNED;
-  }
+  value->type = memref->type;
 }
 
 void rc_typed_value_convert(rc_typed_value_t* value, char new_type) {
@@ -661,56 +692,56 @@ void rc_typed_value_modulus(rc_typed_value_t* value, const rc_typed_value_t* amo
 
   switch (amount->type)
   {
-  case RC_VALUE_TYPE_UNSIGNED:
-    if (amount->value.u32 == 0) { /* divide by zero */
-      value->type = RC_VALUE_TYPE_NONE;
-      return;
-    }
+    case RC_VALUE_TYPE_UNSIGNED:
+      if (amount->value.u32 == 0) { /* divide by zero */
+        value->type = RC_VALUE_TYPE_NONE;
+        return;
+      }
 
-    switch (value->type) {
-    case RC_VALUE_TYPE_UNSIGNED: /* integer math */
-      value->value.u32 %= amount->value.u32;
-      return;
-    case RC_VALUE_TYPE_SIGNED: /* integer math */
-      value->value.i32 %= (int)amount->value.u32;
-      return;
-    case RC_VALUE_TYPE_FLOAT:
-      amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
+      switch (value->type) {
+        case RC_VALUE_TYPE_UNSIGNED: /* integer math */
+          value->value.u32 %= amount->value.u32;
+          return;
+        case RC_VALUE_TYPE_SIGNED: /* integer math */
+          value->value.i32 %= (int)amount->value.u32;
+          return;
+        case RC_VALUE_TYPE_FLOAT:
+          amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
+          break;
+        default:
+          value->type = RC_VALUE_TYPE_NONE;
+          return;
+      }
       break;
+
+    case RC_VALUE_TYPE_SIGNED:
+      if (amount->value.i32 == 0) { /* divide by zero */
+        value->type = RC_VALUE_TYPE_NONE;
+        return;
+      }
+
+      switch (value->type) {
+        case RC_VALUE_TYPE_SIGNED: /* integer math */
+          value->value.i32 %= amount->value.i32;
+          return;
+        case RC_VALUE_TYPE_UNSIGNED: /* integer math */
+          value->value.u32 %= (unsigned)amount->value.i32;
+          return;
+        case RC_VALUE_TYPE_FLOAT:
+          amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
+          break;
+        default:
+          value->type = RC_VALUE_TYPE_NONE;
+          return;
+      }
+      break;
+
+    case RC_VALUE_TYPE_FLOAT:
+      break;
+
     default:
       value->type = RC_VALUE_TYPE_NONE;
       return;
-    }
-    break;
-
-  case RC_VALUE_TYPE_SIGNED:
-    if (amount->value.i32 == 0) { /* divide by zero */
-      value->type = RC_VALUE_TYPE_NONE;
-      return;
-    }
-
-    switch (value->type) {
-    case RC_VALUE_TYPE_SIGNED: /* integer math */
-      value->value.i32 %= amount->value.i32;
-      return;
-    case RC_VALUE_TYPE_UNSIGNED: /* integer math */
-      value->value.u32 %= (unsigned)amount->value.i32;
-      return;
-    case RC_VALUE_TYPE_FLOAT:
-      amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
-      break;
-    default:
-      value->type = RC_VALUE_TYPE_NONE;
-      return;
-    }
-    break;
-
-  case RC_VALUE_TYPE_FLOAT:
-    break;
-
-  default:
-    value->type = RC_VALUE_TYPE_NONE;
-    return;
   }
 
   if (amount->value.f32 == 0.0) { /* divide by zero */

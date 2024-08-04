@@ -21,9 +21,8 @@ void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_pars
   else {
     self->requirement = rc_parse_condset(&aux, parse);
 
-    if (parse->offset < 0) {
+    if (parse->offset < 0)
       return;
-    }
 
     self->requirement->next = 0;
   }

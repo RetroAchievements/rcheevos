@@ -144,6 +144,7 @@ typedef struct {
   uint8_t primed;                      /* true if all non-Trigger conditions are true */
   uint8_t measured_from_hits;          /* true if the measured_value came from a condition's hit count */
   uint8_t was_cond_reset;              /* ResetNextIf triggered */
+  uint8_t can_short_curcuit;           /* allows logic processing to stop as soon as a false condition is encountered */
 }
 rc_eval_state_t;
 
@@ -219,6 +220,7 @@ enum {
 };
 
 rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse);
+void rc_parse_condition_internal(rc_condition_t* self, const char** memaddr, rc_parse_state_t* parse);
 void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t* parse);
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state);
 void rc_evaluate_condition_value(rc_typed_value_t* value, rc_condition_t* self, rc_eval_state_t* eval_state);
@@ -227,6 +229,7 @@ void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand
 
 int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse);
 void rc_evaluate_operand(rc_typed_value_t* value, const rc_operand_t* self, rc_eval_state_t* eval_state);
+int rc_operator_is_modifying(int oper);
 int rc_operand_is_float_memref(const rc_operand_t* self);
 int rc_operand_is_float(const rc_operand_t* self);
 int rc_operand_is_recall(const rc_operand_t* self);

@@ -184,16 +184,19 @@ void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand
 }
 
 rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse) {
-  rc_condition_t* self;
+  rc_condition_t * self = RC_ALLOC(rc_condition_t, parse);
+  rc_parse_condition_internal(self, memaddr, parse);
+  return (parse->offset < 0) ? NULL : self;
+}
+
+void rc_parse_condition_internal(rc_condition_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux;
   int result;
   int can_modify = 0;
 
   aux = *memaddr;
-  self = RC_ALLOC(rc_condition_t, parse);
   self->current_hits = 0;
   self->is_true = 0;
-  self->pause = 0;
   self->optimized_comparator = RC_PROCESSING_COMPARE_DEFAULT;
 
   if (*aux != 0 && aux[1] == ':') {
@@ -216,8 +219,11 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
           parse->measured_as_percent = 1;
           self->type = RC_CONDITION_MEASURED;
           break;
+
       /* e f h j l s u v w x y */
-      default: parse->offset = RC_INVALID_CONDITION_TYPE; return 0;
+      default:
+        parse->offset = RC_INVALID_CONDITION_TYPE;
+        return;
     }
 
     aux += 2;
@@ -229,69 +235,55 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
   result = rc_parse_operand(&self->operand1, &aux, parse);
   if (result < 0) {
     parse->offset = result;
-    return 0;
+    return;
   }
 
   result = rc_parse_operator(&aux);
   if (result < 0) {
     parse->offset = result;
-    return 0;
+    return;
   }
 
-  self->oper = (char)result;
-  switch (self->oper) {
-    case RC_OPERATOR_NONE:
-      /* non-modifying statements must have a second operand */
-      if (!can_modify) {
-        /* measured does not require a second operand when used in a value */
-        if (self->type != RC_CONDITION_MEASURED) {
-          parse->offset = RC_INVALID_OPERATOR;
-          return 0;
-        }
+  self->oper = (uint8_t)result;
+
+  if (self->oper == RC_OPERATOR_NONE) {
+    /* non-modifying statements must have a second operand */
+    if (!can_modify) {
+      /* measured does not require a second operand when used in a value */
+      if (self->type != RC_CONDITION_MEASURED) {
+        parse->offset = RC_INVALID_OPERATOR;
+        return;
       }
+    }
 
-      /* provide dummy operand of '1' and no required hits */
-      rc_operand_set_const(&self->operand2, 1);
-      self->required_hits = 0;
-      *memaddr = aux;
-      return self;
+    /* provide dummy operand of '1' and no required hits */
+    rc_operand_set_const(&self->operand2, 1);
+    self->required_hits = 0;
+    *memaddr = aux;
+    return;
+  }
 
-    case RC_OPERATOR_MULT:
-    case RC_OPERATOR_DIV:
-    case RC_OPERATOR_AND:
-    case RC_OPERATOR_XOR:
-    case RC_OPERATOR_MOD:
-    case RC_OPERATOR_ADD:
-    case RC_OPERATOR_SUB:
-      /* modifying operators are only valid on modifying statements */
-      if (can_modify)
+  if (can_modify && !rc_operator_is_modifying(self->oper)) {
+    /* comparison operators are not valid on modifying statements */
+    switch (self->type) {
+      case RC_CONDITION_ADD_SOURCE:
+      case RC_CONDITION_SUB_SOURCE:
+      case RC_CONDITION_ADD_ADDRESS:
+      case RC_CONDITION_REMEMBER:
+        /* prevent parse errors on legacy achievements where a condition was present before changing the type */
+        self->oper = RC_OPERATOR_NONE;
         break;
-      /* fallthrough */
 
-    default:
-      /* comparison operators are not valid on modifying statements */
-      if (can_modify) {
-        switch (self->type) {
-          case RC_CONDITION_ADD_SOURCE:
-          case RC_CONDITION_SUB_SOURCE:
-          case RC_CONDITION_ADD_ADDRESS:
-          case RC_CONDITION_REMEMBER:
-            /* prevent parse errors on legacy achievements where a condition was present before changing the type */
-            self->oper = RC_OPERATOR_NONE;
-            break;
-
-          default:
-            parse->offset = RC_INVALID_OPERATOR;
-            return 0;
-        }
-      }
-      break;
+      default:
+        parse->offset = RC_INVALID_OPERATOR;
+        return;
+    }
   }
 
   result = rc_parse_operand(&self->operand2, &aux, parse);
   if (result < 0) {
     parse->offset = result;
-    return 0;
+    return;
   }
 
   if (self->oper == RC_OPERATOR_NONE) {
@@ -305,7 +297,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
     if (end == aux || *end != ')') {
       parse->offset = RC_INVALID_REQUIRED_HITS;
-      return 0;
+      return;
     }
 
     /* if operator is none, explicitly clear out the required hits */
@@ -322,7 +314,7 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
 
     if (end == aux || *end != '.') {
       parse->offset = RC_INVALID_REQUIRED_HITS;
-      return 0;
+      return;
     }
 
     /* if operator is none, explicitly clear out the required hits */
@@ -341,7 +333,6 @@ rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse
     self->optimized_comparator = rc_condition_determine_comparator(self);
 
   *memaddr = aux;
-  return self;
 }
 
 void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t* parse) {

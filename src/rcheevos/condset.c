@@ -2,26 +2,131 @@
 
 #include <string.h> /* memcpy */
 
-static void rc_update_condition_pause(rc_condition_t* condition) {
-  rc_condition_t* subclause = condition;
+enum {
+  RC_CONDITION_CLASSIFICATION_COMBINING,
+  RC_CONDITION_CLASSIFICATION_PAUSE,
+  RC_CONDITION_CLASSIFICATION_RESET,
+  RC_CONDITION_CLASSIFICATION_HITTARGET,
+  RC_CONDITION_CLASSIFICATION_MEASURED,
+  RC_CONDITION_CLASSIFICATION_OTHER,
+  RC_CONDITION_CLASSIFICATION_INDIRECT
+};
 
-  while (condition) {
-    if (condition->type == RC_CONDITION_PAUSE_IF) {
-      while (subclause != condition) {
-        subclause->pause = 1;
-        subclause = subclause->next;
-      }
-      condition->pause = 1;
-    }
-    else {
-      condition->pause = 0;
-    }
+static int rc_classify_condition(const rc_condition_t* cond) {
+  switch (cond->type) {
+    case RC_CONDITION_PAUSE_IF:
+      return RC_CONDITION_CLASSIFICATION_PAUSE;
 
-    if (!rc_condition_is_combining(condition))
-      subclause = condition->next;
+    case RC_CONDITION_RESET_IF:
+      return RC_CONDITION_CLASSIFICATION_RESET;
 
-    condition = condition->next;
+    case RC_CONDITION_ADD_ADDRESS:
+      return RC_CONDITION_CLASSIFICATION_INDIRECT;
+
+    case RC_CONDITION_ADD_HITS:
+    case RC_CONDITION_ADD_SOURCE:
+    case RC_CONDITION_AND_NEXT:
+    case RC_CONDITION_OR_NEXT:
+    case RC_CONDITION_REMEMBER:
+    case RC_CONDITION_RESET_NEXT_IF:
+    case RC_CONDITION_SUB_HITS:
+    case RC_CONDITION_SUB_SOURCE:
+      return RC_CONDITION_CLASSIFICATION_COMBINING;
+
+    case RC_CONDITION_MEASURED:
+    case RC_CONDITION_MEASURED_IF:
+      /* even if not measuring a hit target, we still want to evaluate it every frame */
+      return RC_CONDITION_CLASSIFICATION_MEASURED;
+
+    default:
+      if (cond->required_hits != 0)
+        return RC_CONDITION_CLASSIFICATION_HITTARGET;
+
+      return RC_CONDITION_CLASSIFICATION_OTHER;
   }
+}
+
+static int32_t rc_classify_conditions(rc_condset_t* self, const char* memaddr) {
+  rc_parse_state_t parse;
+  rc_memref_t* memrefs;
+  rc_condition_t condition;
+  int classification;
+  uint32_t index = 0;
+  uint32_t chain_length = 1;
+  uint32_t add_address_count = 0;
+
+  rc_init_parse_state(&parse, NULL, NULL, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+
+  do {
+    rc_parse_condition_internal(&condition, &memaddr, &parse);
+
+    if (parse.offset < 0)
+      return parse.offset;
+
+    ++index;
+
+    classification = rc_classify_condition(&condition);
+    switch (classification) {
+      case RC_CONDITION_CLASSIFICATION_COMBINING:
+        ++chain_length;
+        continue;
+
+      case RC_CONDITION_CLASSIFICATION_INDIRECT:
+        ++self->num_indirect_conditions;
+        continue;
+
+      case RC_CONDITION_CLASSIFICATION_PAUSE:
+        self->num_pause_conditions += chain_length;
+        break;
+
+      case RC_CONDITION_CLASSIFICATION_RESET:
+        self->num_reset_conditions += chain_length;
+        break;
+
+      case RC_CONDITION_CLASSIFICATION_HITTARGET:
+        self->num_hittarget_conditions += chain_length;
+        break;
+
+      case RC_CONDITION_CLASSIFICATION_MEASURED:
+        self->num_measured_conditions += chain_length;
+        break;
+
+      default:
+        self->num_other_conditions += chain_length;
+        break;
+    }
+
+    chain_length = 1;
+  } while (*memaddr++ == '_');
+
+  return index;
+}
+
+static int rc_find_next_classification(const char* memaddr) {
+  rc_parse_state_t parse;
+  rc_memref_t* memrefs;
+  rc_condition_t condition;
+  int classification;
+
+  rc_init_parse_state(&parse, NULL, NULL, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+
+  do {
+    rc_parse_condition_internal(&condition, &memaddr, &parse);
+
+    classification = rc_classify_condition(&condition);
+    switch (classification) {
+      case RC_CONDITION_CLASSIFICATION_COMBINING:
+      case RC_CONDITION_CLASSIFICATION_INDIRECT:
+        break;
+
+      default:
+        return classification;
+    }
+  } while (*memaddr++ == '_');
+
+  return RC_CONDITION_CLASSIFICATION_OTHER;
 }
 
 static void rc_condition_update_recall_operand(rc_operand_t* operand, const rc_operand_t* remember)
@@ -40,14 +145,17 @@ static void rc_condition_update_recall_operand(rc_operand_t* operand, const rc_o
   }
 }
 
-static void rc_update_condition_pause_remember(rc_condition_t* conditions) {
+static void rc_update_condition_pause_remember(rc_condset_t* self) {
   rc_operand_t* pause_remember = NULL;
   rc_condition_t* condition;
+  rc_condition_t* pause_conditions;
+  const rc_condition_t* end_pause_condition;
 
-  for (condition = conditions; condition; condition = condition->next) {
-    if (!condition->pause)
-      continue;
+  /* ASSERT: pause conditions are first conditions */
+  pause_conditions = (rc_condition_t*)((uint8_t*)self + RC_ALIGN(sizeof(*self)));
+  end_pause_condition = pause_conditions + self->num_pause_conditions;
 
+  for (condition = pause_conditions; condition < end_pause_condition; ++condition) {
     if (condition->type == RC_CONDITION_REMEMBER) {
       pause_remember = &condition->operand1;
     }
@@ -66,8 +174,8 @@ static void rc_update_condition_pause_remember(rc_condition_t* conditions) {
   }
 
   if (pause_remember) {
-    for (condition = conditions; condition; condition = condition->next) {
-      if (!condition->pause) {
+    for (condition = self->conditions; condition; condition = condition->next) {
+      if (condition >= end_pause_condition) {
         /* if we didn't find a remember for a non-pause condition, use the last pause remember */
         rc_condition_update_recall_operand(&condition->operand1, pause_remember);
         rc_condition_update_recall_operand(&condition->operand2, pause_remember);
@@ -82,32 +190,70 @@ static void rc_update_condition_pause_remember(rc_condition_t* conditions) {
 
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
   rc_condset_t* self;
+  rc_condition_t condition;
+  rc_condition_t* conditions;
   rc_condition_t** next;
-  rc_condition_t* condition;
+  rc_condition_t* pause_conditions = NULL;
+  rc_condition_t* reset_conditions = NULL;
+  rc_condition_t* hittarget_conditions = NULL;
+  rc_condition_t* measured_conditions = NULL;
+  rc_condition_t* other_conditions = NULL;
+  rc_condition_t* indirect_conditions = NULL;
+  int classification, combining_classification = RC_CONDITION_CLASSIFICATION_COMBINING;
   uint32_t measured_target = 0;
+  int32_t result;
 
   self = RC_ALLOC(rc_condset_t, parse);
-  self->has_pause = self->is_paused = 0;
-  next = &self->conditions;
+  memset(self, 0, sizeof(*self));
 
   if (**memaddr == 'S' || **memaddr == 's' || !**memaddr) {
     /* empty group - editor allows it, so we have to support it */
-    *next = 0;
     return self;
   }
+
+  result = rc_classify_conditions(self, *memaddr);
+  if (result < 0) {
+    parse->offset = result;
+    return NULL;
+  }
+
+  conditions = rc_alloc(parse->buffer, &parse->offset, result * sizeof(rc_condition_t), RC_ALIGNOF(rc_condition_t), NULL, 0);
+  if (parse->offset < 0)
+    return NULL;
+
+  if (parse->buffer) {
+    pause_conditions = conditions;
+    conditions += self->num_pause_conditions;
+
+    reset_conditions = conditions;
+    conditions += self->num_reset_conditions;
+
+    hittarget_conditions = conditions;
+    conditions += self->num_hittarget_conditions;
+
+    measured_conditions = conditions;
+    conditions += self->num_measured_conditions;
+
+    other_conditions = conditions;
+    conditions += self->num_other_conditions;
+
+    indirect_conditions = conditions;
+  }
+
+  next = &self->conditions;
+
 
   /* each condition set has a functionally new recall accumulator */
   parse->remember.type = RC_OPERAND_NONE;
 
   for (;;) {
-    condition = rc_parse_condition(memaddr, parse);
-    *next = condition;
+    rc_parse_condition_internal(&condition, memaddr, parse);
 
     if (parse->offset < 0)
-      return 0;
+      return NULL;
 
-    if (condition->oper == RC_OPERATOR_NONE) {
-      switch (condition->type) {
+    if (condition.oper == RC_OPERATOR_NONE) {
+      switch (condition.type) {
         case RC_CONDITION_ADD_ADDRESS:
         case RC_CONDITION_ADD_SOURCE:
         case RC_CONDITION_SUB_SOURCE:
@@ -123,11 +269,11 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
 
         default:
           parse->offset = RC_INVALID_OPERATOR;
-          return 0;
+          return NULL;
       }
     }
 
-    switch (condition->type) {
+    switch (condition.type) {
       case RC_CONDITION_MEASURED:
         if (measured_target != 0) {
           /* multiple Measured flags cannot exist in the same group */
@@ -135,43 +281,30 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
           return 0;
         }
         else if (parse->is_value) {
-          measured_target = (unsigned)-1;
-          switch (condition->oper) {
-            case RC_OPERATOR_AND:
-            case RC_OPERATOR_XOR:
-            case RC_OPERATOR_DIV:
-            case RC_OPERATOR_MULT:
-            case RC_OPERATOR_MOD:
-            case RC_OPERATOR_ADD:
-            case RC_OPERATOR_SUB:
-            case RC_OPERATOR_NONE:
-              /* measuring value. leave required_hits at 0 */
-              break;
-
-            default:
-              /* comparison operator, measuring hits. set required_hits to MAX_INT */
-              condition->required_hits = measured_target;
-              break;
+          measured_target = (uint32_t)-1;
+          if (!rc_operator_is_modifying(condition.oper)) {
+            /* measuring comparison in a value results in a tally (hit count). set target to MAX_INT */
+            condition.required_hits = measured_target;
           }
         }
-        else if (condition->required_hits != 0) {
-          measured_target = condition->required_hits;
+        else if (condition.required_hits != 0) {
+          measured_target = condition.required_hits;
         }
-        else if (condition->operand2.type == RC_OPERAND_CONST) {
-          measured_target = condition->operand2.value.num;
+        else if (condition.operand2.type == RC_OPERAND_CONST) {
+          measured_target = condition.operand2.value.num;
         }
-        else if (condition->operand2.type == RC_OPERAND_FP) {
-          measured_target = (unsigned)condition->operand2.value.dbl;
+        else if (condition.operand2.type == RC_OPERAND_FP) {
+          measured_target = (unsigned)condition.operand2.value.dbl;
         }
         else {
           parse->offset = RC_INVALID_MEASURED_TARGET;
-          return 0;
+          return NULL;
         }
 
         if (parse->measured_target && measured_target != parse->measured_target) {
           /* multiple Measured flags in separate groups must have the same target */
           parse->offset = RC_MULTIPLE_MEASURED;
-          return 0;
+          return NULL;
         }
 
         parse->measured_target = measured_target;
@@ -182,16 +315,59 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
         /* these flags are not allowed in value expressions */
         if (parse->is_value) {
           parse->offset = RC_INVALID_VALUE_FLAG;
-          return 0;
+          return NULL;
         }
         break;
     }
 
-    rc_condition_update_parse_state(condition, parse);
+    rc_condition_update_parse_state(&condition, parse);
 
-    self->has_pause |= condition->type == RC_CONDITION_PAUSE_IF;
+    if (parse->buffer) {
+      classification = rc_classify_condition(&condition);
+      if (classification == RC_CONDITION_CLASSIFICATION_COMBINING) {
+        if (combining_classification == RC_CONDITION_CLASSIFICATION_COMBINING)
+          combining_classification = rc_find_next_classification(&(*memaddr)[1]); /* skip over '_' */
 
-    next = &condition->next;
+        classification = combining_classification;
+      }
+      else {
+        combining_classification = RC_CONDITION_CLASSIFICATION_COMBINING;
+      }
+
+      switch (classification) {
+        case RC_CONDITION_CLASSIFICATION_PAUSE:
+          memcpy(pause_conditions, &condition, sizeof(condition));
+          *next = pause_conditions++;
+          break;
+
+        case RC_CONDITION_CLASSIFICATION_RESET:
+          memcpy(reset_conditions, &condition, sizeof(condition));
+          *next = reset_conditions++;
+          break;
+
+        case RC_CONDITION_CLASSIFICATION_HITTARGET:
+          memcpy(hittarget_conditions, &condition, sizeof(condition));
+          *next = hittarget_conditions++;
+          break;
+
+        case RC_CONDITION_CLASSIFICATION_MEASURED:
+          memcpy(measured_conditions, &condition, sizeof(condition));
+          *next = measured_conditions++;
+          break;
+
+        case RC_CONDITION_CLASSIFICATION_INDIRECT:
+          memcpy(indirect_conditions, &condition, sizeof(condition));
+          *next = indirect_conditions++;
+          break;
+
+        default:
+          memcpy(other_conditions, &condition, sizeof(condition));
+          *next = other_conditions++;
+          break;
+      }
+
+      next = &(*next)->next;
+    }
 
     if (**memaddr != '_')
       break;
@@ -199,20 +375,18 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
     (*memaddr)++;
   }
 
-  *next = 0;
+  *next = NULL;
 
-  if (parse->buffer && self->has_pause) {
-    rc_update_condition_pause(self->conditions);
-
-    if (parse->remember.type != RC_OPERATOR_NONE)
-      rc_update_condition_pause_remember(self->conditions);
-  }
+  self->has_pause = self->num_pause_conditions > 0;
+  if (self->has_pause && parse->buffer && parse->remember.type != RC_OPERAND_NONE)
+    rc_update_condition_pause_remember(self);
 
   return self;
 }
 
-static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc_eval_state_t* eval_state) {
-  rc_condition_t* condition;
+static int rc_test_condset_internal(rc_condition_t* condition, uint32_t num_conditions,
+                                    rc_eval_state_t* eval_state, int can_short_circuit) {
+  const rc_condition_t* condition_end = condition + num_conditions;
   int set_valid, cond_valid, and_next, or_next, reset_next, measured_from_hits, can_measure;
   rc_typed_value_t measured_value;
   uint32_t total_hits;
@@ -222,17 +396,12 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
   can_measure = 1;
   total_hits = 0;
 
-  eval_state->primed = 1;
   set_valid = 1;
   and_next = 1;
   or_next = 0;
   reset_next = 0;
-  eval_state->add_hits = 0;
 
-  for (condition = self->conditions; condition != 0; condition = condition->next) {
-    if (condition->pause != processing_pause)
-      continue;
-
+  for (; condition < condition_end; ++condition) {
     /* STEP 1: process modifier conditions */
     switch (condition->type) {
       case RC_CONDITION_ADD_SOURCE:
@@ -367,6 +536,10 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
       case RC_CONDITION_RESET_IF:
         if (cond_valid) {
           eval_state->was_reset = 1; /* let caller know to reset all hit counts */
+
+          if (can_short_circuit)
+            return 0;
+
           set_valid = 0; /* cannot be valid if we've hit a reset condition */
         }
         continue;
@@ -391,6 +564,9 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
         break;
 
       case RC_CONDITION_TRIGGER:
+        if (!cond_valid && can_short_circuit)
+          return 0;
+
         /* update truthiness of set, but do not update truthiness of primed state */
         set_valid &= cond_valid;
         continue;
@@ -402,6 +578,9 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
     /* STEP 5: update overall truthiness of set and primed state */
     eval_state->primed &= cond_valid;
     set_valid &= cond_valid;
+
+    if (!cond_valid && can_short_circuit)
+      return 0;
   }
 
   if (measured_value.type != RC_VALUE_TYPE_NONE) {
@@ -417,21 +596,58 @@ static int rc_test_condset_internal(rc_condset_t* self, int processing_pause, rc
 }
 
 int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
-  if (self->conditions == 0) {
-    /* important: empty group must evaluate true */
-    return 1;
-  }
+  rc_condition_t* conditions;
+  int result = 1; /* true until proven otherwise */
 
-  if (self->has_pause) {
-    /* one or more Pause conditions exists, if any of them are true, stop processing this group */
-    self->is_paused = (char)rc_test_condset_internal(self, 1, eval_state);
+  eval_state->primed = 1;
+  eval_state->add_hits = 0;
+
+  conditions = (rc_condition_t*)((uint8_t*)self + RC_ALIGN(sizeof(*self)));
+
+  if (self->num_pause_conditions) {
+    /* one or more Pause conditions exists. if any of them are true, stop processing this group */
+    self->is_paused = (char)rc_test_condset_internal(conditions, self->num_pause_conditions, eval_state, 0);
+
     if (self->is_paused) {
+      /* condset is paused. stop processing immediately. */
       eval_state->primed = 0;
       return 0;
     }
+
+    conditions += self->num_pause_conditions;
   }
 
-  return rc_test_condset_internal(self, 0, eval_state);
+  if (self->num_reset_conditions) {
+    /* one or more Reset conditions exists. if any of them are true, rc_test_condset_internal
+     * will return false. clear hits and stop processing this group */
+    result &= rc_test_condset_internal(conditions, self->num_reset_conditions, eval_state, eval_state->can_short_curcuit);
+    conditions += self->num_reset_conditions;
+  }
+
+  if (self->num_hittarget_conditions) {
+    /* one or more hit target conditions exists. these must be processed every frame, unless their hit count is going to be reset */
+    if (!eval_state->was_reset)
+      result &= rc_test_condset_internal(conditions, self->num_hittarget_conditions, eval_state, 0);
+
+    conditions += self->num_hittarget_conditions;
+  }
+
+  if (self->num_measured_conditions) {
+    /* measured value must be calculated every frame, even if hit counts will be reset */
+    result &= rc_test_condset_internal(conditions, self->num_measured_conditions, eval_state, 0);
+    conditions += self->num_measured_conditions;
+  }
+
+  if (self->num_other_conditions) {
+    /* remaining conditions only need to be evaluated if the rest of the condset is true */
+    if (result)
+      result &= rc_test_condset_internal(conditions, self->num_other_conditions, eval_state, eval_state->can_short_curcuit);
+    /* something else is false. if we can't short circuit, and there wasn't a reset, we still need to evaluate these */
+    else if (!eval_state->can_short_curcuit && !eval_state->was_reset)
+      result &= rc_test_condset_internal(conditions, self->num_other_conditions, eval_state, eval_state->can_short_curcuit);
+  }
+
+  return result;
 }
 
 void rc_reset_condset(rc_condset_t* self) {

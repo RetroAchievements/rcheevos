@@ -419,6 +419,23 @@ static int rc_memsize_is_float(uint8_t size) {
   }
 }
 
+int rc_operator_is_modifying(int oper) {
+  switch (oper) {
+    case RC_OPERATOR_AND:
+    case RC_OPERATOR_XOR:
+    case RC_OPERATOR_DIV:
+    case RC_OPERATOR_MULT:
+    case RC_OPERATOR_MOD:
+    case RC_OPERATOR_ADD:
+    case RC_OPERATOR_SUB:
+    case RC_OPERATOR_NONE: /* NONE operator implies "* 1" */
+      return 1;
+
+    default:
+      return 0;
+  }
+}
+
 int rc_operand_is_float_memref(const rc_operand_t* self) {
   if (!rc_operand_is_memref(self))
     return 0;
@@ -570,7 +587,7 @@ void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t n
       modifier.type = parse->addsource_parent.type = RC_OPERAND_ADDRESS;
 
       modified_memref = rc_alloc_modified_memref(parse,
-        new_size, &parse->addsource_parent, parse->addsource_oper, &modifier);
+          new_size, &parse->addsource_parent, parse->addsource_oper, &modifier);
     }
     else {
       modified_memref = rc_alloc_modified_memref(parse,
