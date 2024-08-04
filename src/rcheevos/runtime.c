@@ -9,8 +9,28 @@
 
 #define RC_RICHPRESENCE_DISPLAY_BUFFER_SIZE 256
 
+/* ===== natvis extensions ===== */
+
+typedef struct __rc_runtime_trigger_list_t { rc_runtime_t runtime; } __rc_runtime_trigger_list_t;
+typedef struct __rc_runtime_lboard_list_t { rc_runtime_t runtime; } __rc_runtime_lboard_list_t;
+
+static void rc_runtime_natvis_helper(void)
+{
+  struct natvis_extensions {
+    __rc_runtime_trigger_list_t trigger_list;
+    __rc_runtime_lboard_list_t lboard_list;
+  } natvis;
+
+  natvis.lboard_list.runtime.lboard_count = 0;
+}
+
+/* ============================= */
+
 rc_runtime_t* rc_runtime_alloc(void) {
-  rc_runtime_t* self = malloc(sizeof(rc_runtime_t));
+  /* create a reference to rc_runtime_natvis_helper so the extensions get compiled in. */
+  rc_runtime_t* self = (rc_runtime_t*)&rc_runtime_natvis_helper;
+  /* immediately replace the reference with an actual object. */
+  self = malloc(sizeof(rc_runtime_t));
 
   if (self) {
     rc_runtime_init(self);

@@ -6,10 +6,10 @@
         <DisplayString>{{display_name={display_name,s} score={score}}}</DisplayString>
     </Type>
     <Type Name="rc_client_game_t">
-        <DisplayString>{{title={title,s} id={id}</DisplayString>
+        <DisplayString>{{title={title,s} id={id}}}</DisplayString>
     </Type>
 	<Type Name="rc_client_subset_t">
-		<DisplayString>{{title={title,s} id={id}</DisplayString>
+		<DisplayString>{{title={title,s} id={id}}}</DisplayString>
 	</Type>
     <Type Name="__rc_client_achievement_state_enum_t">
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE">{RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE}</DisplayString>
@@ -184,6 +184,187 @@
 			<Item Condition="type==RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD" Name="leaderboard_scoreboard">*leaderboard_scoreboard</Item>
 			<Item Condition="type==RC_CLIENT_EVENT_LEADERBOARD_SCOREBOARD" Name="leaderboard">*leaderboard</Item>
 			<Item Condition="type==RC_CLIENT_EVENT_SERVER_ERROR" Name="server_error">*server_error</Item>
+		</Expand>
+	</Type>
+	<Type Name="__rc_client_subset_info_achievements_list_t">
+		<DisplayString>{{count={info.public_.num_achievements}}}</DisplayString>
+		<Expand>	
+			<IndexListItems>
+				<Size>info.public_.num_achievements</Size>
+				<ValueNode>info.achievements[$i]</ValueNode>
+			</IndexListItems>
 		</Expand>	
+	</Type>
+	<Type Name="__rc_client_subset_info_leaderboards_list_t">
+		<DisplayString>{{count={info.public_.num_leaderboards}}}</DisplayString>
+		<Expand>	
+			<IndexListItems>
+				<Size>info.public_.num_leaderboards</Size>
+				<ValueNode>info.leaderboards[$i]</ValueNode>
+			</IndexListItems>
+		</Expand>	
+	</Type>
+    <Type Name="__rc_client_mastery_state_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_MASTERY_STATE_NONE">{RC_CLIENT_MASTERY_STATE_NONE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_MASTERY_STATE_PENDING">{RC_CLIENT_MASTERY_STATE_PENDING}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_MASTERY_STATE_SHOWN">{RC_CLIENT_MASTERY_STATE_SHOWN}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+	<Type Name="rc_client_subset_info_t">
+		<DisplayString>{{title={public_.title,s} id={public_.id}}}</DisplayString>
+		<Expand>
+			<Item Name="public_">public_</Item>
+			<Item Name="active">*((__rc_bool_enum_t*)&amp;active)</Item>
+			<Item Name="mastery">*((__rc_client_mastery_state_enum_t*)&amp;mastery)</Item>
+			<Item Name="achievements">*((__rc_client_subset_info_achievements_list_t*)this)</Item>
+			<Item Name="leaderboards">*((__rc_client_subset_info_leaderboards_list_t*)this)</Item>
+		</Expand>
+	</Type>
+    <Type Name="__rc_client_leaderboard_tracker_list_t">
+        <DisplayString Condition="first==0">{{NULL}}</DisplayString>
+        <DisplayString>{(void**)&amp;first,na}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>first</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
+    <Type Name="__rc_client_subset_info_list_t">
+        <DisplayString Condition="first==0">{{NULL}}</DisplayString>
+        <DisplayString>{(void**)&amp;first,na}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>first</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
+    <Type Name="__rc_client_media_hash_list_t">
+        <DisplayString Condition="first==0">{{NULL}}</DisplayString>
+        <DisplayString>{(void**)&amp;first,na}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>first</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
+	<Type Name="rc_client_achievement_info_t">
+		<DisplayString>{{title={public_.title,s} id={public_.id}}}</DisplayString>
+	</Type>
+	<Type Name="rc_client_leaderboard_info_t">
+		<DisplayString>{{title={public_.title,s} id={public_.id}}}</DisplayString>
+	</Type>
+	<Type Name="rc_client_game_info_t">
+        <DisplayString>{{title={public_.title,s} id={public_.id}}}</DisplayString>
+		<Expand>
+			<Item Name="public_">public_</Item>
+			<Item Name="subsets">*((__rc_client_subset_info_list_t*)&amp;subsets)</Item>
+			<Item Name="media_hash">*((__rc_client_media_hash_list_t*)&amp;media_hash)</Item>
+			<Item Name="leaderboard_trackers">*((__rc_client_leaderboard_tracker_list_t*)&amp;leaderboard_trackers)</Item>
+			<Item Name="progress_tracker">progress_tracker</Item>
+		    <Item Name="runtime">runtime</Item>
+		</Expand>
+	</Type>
+	<Type Name="rc_client_game_hash_t">
+		<DisplayString>{{hash={hash,s} game_id={game_id}}}</DisplayString>
+	</Type>
+    <Type Name="__rc_client_game_hash_list_t">
+        <DisplayString>{client.hashes}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>client.hashes</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>*this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
+    <Type Name="__rc_client_load_game_state_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_LOAD_GAME_STATE_NONE">{RC_CLIENT_LOAD_GAME_STATE_NONE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME">{RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN">{RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA">{RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION">{RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LOAD_GAME_STATE_DONE">{RC_CLIENT_LOAD_GAME_STATE_DONE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LOAD_GAME_STATE_ABORTED">{RC_CLIENT_LOAD_GAME_STATE_ABORTED}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+	<Type Name="rc_client_load_state_t">
+		<Expand>
+			<Item Name="progress">*((__rc_client_load_game_state_enum_t*)&amp;progress)</Item>
+			<Item Name="game">*game</Item>
+			<Item Name="subset">subset</Item>
+			<Item Name="hash">*hash</Item>
+			<Item Name="pending_media">pending_media</Item>
+			<Item Name="start_session_response">start_session_response</Item>
+			<Item Name="outstanding_requests">(int)outstanding_requests</Item>
+		</Expand>
+	</Type>
+    <Type Name="rc_client_scheduled_callback_data_t">
+        <DisplayString>{{when={when} callback={callback,na}}}</DisplayString>
+    </Type>
+    <Type Name="__rc_client_scheduled_callback_list_t">
+        <DisplayString>{state.scheduled_callbacks}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>state.scheduled_callbacks</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>*this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
+    <Type Name="__rc_client_log_level_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_LOG_LEVEL_NONE">{RC_CLIENT_LOG_LEVEL_NONE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LOG_LEVEL_ERROR">{RC_CLIENT_LOG_LEVEL_ERROR}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LOG_LEVEL_WARN">{RC_CLIENT_LOG_LEVEL_WARN}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LOG_LEVEL_INFO">{RC_CLIENT_LOG_LEVEL_INFO}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_LOG_LEVEL_VERBOSE">{RC_CLIENT_LOG_LEVEL_VERBOSE}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+    <Type Name="__rc_client_user_state_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_USER_STATE_NONE">{RC_CLIENT_USER_STATE_NONE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_USER_STATE_LOGIN_REQUESTED">{RC_CLIENT_USER_STATE_LOGIN_REQUESTED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_USER_STATE_LOGGED_IN">{RC_CLIENT_USER_STATE_LOGGED_IN}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+    <Type Name="__rc_client_spectator_mode_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_SPECTATOR_MODE_OFF">{RC_CLIENT_SPECTATOR_MODE_OFF}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_SPECTATOR_MODE_ON">{RC_CLIENT_SPECTATOR_MODE_ON}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_SPECTATOR_MODE_LOCKED">{RC_CLIENT_SPECTATOR_MODE_LOCKED}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+    <Type Name="__rc_client_disconnect_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_DISCONNECT_HIDDEN">{RC_CLIENT_DISCONNECT_HIDDEN}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_DISCONNECT_VISIBLE">{RC_CLIENT_DISCONNECT_VISIBLE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_DISCONNECT_SHOW_PENDING">{RC_CLIENT_DISCONNECT_SHOW_PENDING}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_DISCONNECT_HIDE_PENDING">{RC_CLIENT_DISCONNECT_HIDE_PENDING}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_DISCONNECT_VISIBLE|RC_CLIENT_DISCONNECT_HIDE_PENDING">{RC_CLIENT_DISCONNECT_VISIBLE|RC_CLIENT_DISCONNECT_HIDE_PENDING}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+    <Type Name="rc_client_state_t">
+        <Expand>
+			<Item Name="hardcore">*((__rc_bool_enum_t*)&amp;hardcore)</Item>
+			<Item Name="unofficial_enabled">*((__rc_bool_enum_t*)&amp;unofficial_enabled)</Item>
+			<Item Name="encore_mode">*((__rc_bool_enum_t*)&amp;encore_mode)</Item>
+			<Item Name="spectator_mode">*((__rc_client_spectator_mode_enum_t*)&amp;spectator_mode)</Item>
+			<Item Name="disconnect">*((__rc_client_disconnect_enum_t*)&amp;disconnect)</Item>
+			<Item Name="log_level">*((__rc_client_log_level_enum_t*)&amp;log_level)</Item>
+			<Item Name="user">*((__rc_client_user_state_enum_t*)&amp;user)</Item>
+			<Item Name="scheduled_callbacks">*((__rc_client_scheduled_callback_list_t*)this)</Item>
+			<Item Name="load">load</Item>
+        </Expand>
+    </Type>
+	<Type Name="rc_client_t">
+		<Expand>
+			<Item Name="game">game</Item>
+			<Item Name="hashes">*((__rc_client_game_hash_list_t*)&amp;hashes)</Item>
+			<Item Name="user">user</Item>
+			<Item Name="callbacks">callbacks</Item>
+			<Item Name="state">state</Item>
+		</Expand>
 	</Type>
 </AutoVisualizer>

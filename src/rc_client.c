@@ -100,12 +100,24 @@ typedef struct __rc_client_achievement_bucket_enum_t { uint8_t value; } __rc_cli
 typedef struct __rc_client_achievement_unlocked_enum_t { uint8_t value; } __rc_client_achievement_unlocked_enum_t;
 typedef struct __rc_client_leaderboard_state_enum_t { uint8_t value; } __rc_client_leaderboard_state_enum_t;
 typedef struct __rc_client_leaderboard_format_enum_t { uint8_t value; } __rc_client_leaderboard_format_enum_t;
+typedef struct __rc_client_log_level_enum_t { uint8_t value; } __rc_client_log_level_enum_t;
 typedef struct __rc_client_event_type_enum_t { uint8_t value; } __rc_client_event_type_enum_t;
+typedef struct __rc_client_load_game_state_enum_t { uint8_t value; } __rc_client_load_game_state_enum_t;
+typedef struct __rc_client_user_state_enum_t { uint8_t value; } __rc_client_user_state_enum_t;
+typedef struct __rc_client_mastery_state_enum_t { uint8_t value; } __rc_client_mastery_state_enum_t;
+typedef struct __rc_client_spectator_mode_enum_t { uint8_t value; } __rc_client_spectator_mode_enum_t;
+typedef struct __rc_client_disconnect_enum_t { uint8_t value; } __rc_client_disconnect_enum_t;
+typedef struct __rc_client_leaderboard_tracker_list_t { rc_client_leaderboard_tracker_info_t* first; } __rc_client_leaderboard_tracker_list_t;
+typedef struct __rc_client_subset_info_list_t { rc_client_subset_info_t* first; } __rc_client_subset_info_list_t;
+typedef struct __rc_client_media_hash_list_t { rc_client_media_hash_t* first; } __rc_client_media_hash_list_t;
+typedef struct __rc_client_subset_info_achievements_list_t { rc_client_subset_info_t info; } __rc_client_subset_info_achievements_list_t;
+typedef struct __rc_client_subset_info_leaderboards_list_t { rc_client_subset_info_t info; } __rc_client_subset_info_leaderboards_list_t;
+typedef struct __rc_client_scheduled_callback_list_t { rc_client_state_t state; } __rc_client_scheduled_callback_list_t;
+typedef struct __rc_client_game_hash_list_t { rc_client_t client; } __rc_client_game_hash_list_t;
 
 static void rc_client_natvis_helper(const rc_client_event_t* event, rc_client_t* client)
 {
-  struct natvis_extensions
-  {
+  struct natvis_extensions {
     __rc_client_achievement_state_enum_t achievement_state;
     __rc_client_achievement_category_enum_t achievement_category;
     __rc_client_achievement_type_enum_t achievement_type;
@@ -113,8 +125,22 @@ static void rc_client_natvis_helper(const rc_client_event_t* event, rc_client_t*
     __rc_client_achievement_unlocked_enum_t achievement_unlocked;
     __rc_client_leaderboard_state_enum_t leaderboard_state;
     __rc_client_leaderboard_format_enum_t leaderboard_format;
+    __rc_client_log_level_enum_t log_level;
     __rc_client_event_type_enum_t event_type;
+    __rc_client_load_game_state_enum_t load_game_state;
+    __rc_client_user_state_enum_t user_state;
+    __rc_client_mastery_state_enum_t mastery_state;
+    __rc_client_spectator_mode_enum_t spectator_mode;
+    __rc_client_disconnect_enum_t disconnect;
+    __rc_client_leaderboard_tracker_list_t leaderboard_tracker_list;
+    __rc_client_subset_info_list_t subset_info_list;
+    __rc_client_media_hash_list_t media_hash_list;
+    __rc_client_subset_info_achievements_list_t subset_info_achievements_list;
+    __rc_client_subset_info_leaderboards_list_t subset_info_leaderboards_list;
+    __rc_client_scheduled_callback_list_t scheduled_callback_list;
+    __rc_client_game_hash_list_t client_game_hash_list;
   } natvis;
+
   /* this code should never be executed. it just ensures these constants get defined for
    * the natvis VisualStudio extension as they're not used directly in the code. */
   natvis.achievement_type.value = RC_CLIENT_ACHIEVEMENT_TYPE_STANDARD;
