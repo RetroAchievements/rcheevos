@@ -367,4 +367,28 @@
 			<Item Name="state">state</Item>
 		</Expand>
 	</Type>
+	<Type Name="rc_client_raintegration_menu_t">
+		<DisplayString>{{count={num_items}}}</DisplayString>
+		<Expand>	
+			<IndexListItems>
+				<Size>num_items</Size>
+				<ValueNode>items[$i]</ValueNode>
+			</IndexListItems>
+		</Expand>	
+	</Type>
+    <Type Name="__rc_client_raintegration_event_enum_t">
+        <DisplayString Condition="value==RC_CLIENT_RAINTEGRATION_EVENT_TYPE_NONE">{RC_CLIENT_RAINTEGRATION_EVENT_TYPE_NONE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_RAINTEGRATION_EVENT_MENUITEM_CHECKED_CHANGED">{RC_CLIENT_RAINTEGRATION_EVENT_MENUITEM_CHECKED_CHANGED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_RAINTEGRATION_EVENT_HARDCORE_CHANGED">{RC_CLIENT_RAINTEGRATION_EVENT_HARDCORE_CHANGED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_RAINTEGRATION_EVENT_PAUSE">{RC_CLIENT_RAINTEGRATION_EVENT_PAUSE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_RAINTEGRATION_EVENT_MENU_CHANGED">{RC_CLIENT_RAINTEGRATION_EVENT_MENU_CHANGED}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+	<Type Name="rc_client_raintegration_event_t">
+		<DisplayString>{{type={*((__rc_client_raintegration_event_enum_t*)&amp;type)}}}</DisplayString>
+		<Expand>
+			<Item Name="type">*((__rc_client_raintegration_event_enum_t*)&amp;type)</Item>
+			<Item Condition="type==RC_CLIENT_RAINTEGRATION_EVENT_MENUITEM_CHECKED_CHANGED" Name="menu_item">menu_item</Item>
+		</Expand>
+	</Type>
 </AutoVisualizer>
