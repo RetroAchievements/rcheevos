@@ -132,18 +132,30 @@ enum {
 #define RC_OPERAND_NONE 0xFF
 
 typedef struct {
-  int32_t add_hits;           /* AddHits */
-
+  /* memory accessors */
   rc_peek_t peek;
   void* peek_userdata;
   lua_State* L;
 
-  rc_typed_value_t measured_value;     /* Measured */
-  uint8_t was_reset;                   /* ResetIf triggered */
-  uint8_t has_hits;                    /* one of more hit counts is non-zero */
-  uint8_t primed;                      /* true if all non-Trigger conditions are true */
+  /* processing state */
+  rc_typed_value_t measured_value;     /* captured Measured value */
+  int32_t add_hits;                    /* AddHits/SubHits accumulator */
+  uint8_t is_true;                     /* true if all conditions are true */
+  uint8_t is_primed;                   /* true if all non-Trigger conditions are true */
+  uint8_t is_paused;                   /* true if one or more PauseIf conditions is true */
+  uint8_t can_measure;                 /* false if the measured value should be ignored */
   uint8_t measured_from_hits;          /* true if the measured_value came from a condition's hit count */
-  uint8_t was_cond_reset;              /* ResetNextIf triggered */
+  uint8_t and_next;                    /* true if the previous condition was AndNext true */
+  uint8_t or_next;                     /* true if the previous condition was OrNext true */
+  uint8_t reset_next;                  /* true if the previous condition was ResetNextIf true */
+  uint8_t stop_processing;             /* true to abort the processing loop */
+
+  /* result state */
+  uint8_t has_hits;                    /* true if one of more hit counts is non-zero */
+  uint8_t was_reset;                   /* true if one or more ResetIf conditions is true */
+  uint8_t was_cond_reset;              /* ture if one or more ResetNextIf conditions is true */
+
+  /* control settings */
   uint8_t can_short_curcuit;           /* allows logic processing to stop as soon as a false condition is encountered */
 }
 rc_eval_state_t;
