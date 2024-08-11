@@ -3353,7 +3353,7 @@ typedef struct rc_client_award_achievement_callback_data_t
   uint32_t retry_count;
   uint8_t hardcore;
   const char* game_hash;
-  time_t unlock_time;
+  rc_clock_t unlock_time;
   rc_client_t* client;
   rc_client_scheduled_callback_data_t* scheduled_callback_data;
 } rc_client_award_achievement_callback_data_t;
@@ -3504,6 +3504,11 @@ static void rc_client_award_achievement_server_call(rc_client_award_achievement_
   api_params.hardcore = ach_data->hardcore;
   api_params.game_hash = ach_data->game_hash;
 
+  if (ach_data->retry_count) {
+    const rc_clock_t now = ach_data->client->callbacks.get_time_millisecs(ach_data->client);
+    api_params.seconds_since_unlock = (uint32_t)((now - ach_data->unlock_time) / 1000);
+  }
+
   result = rc_api_init_award_achievement_request(&request, &api_params);
   if (result != RC_OK) {
     RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Error constructing unlock request for achievement %u: %s", ach_data->id, rc_error_str(result));
@@ -3571,7 +3576,7 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
   callback_data->id = achievement->public_.id;
   callback_data->hardcore = client->state.hardcore;
   callback_data->game_hash = client->game->public_.hash;
-  callback_data->unlock_time = achievement->public_.unlock_time;
+  callback_data->unlock_time = client->callbacks.get_time_millisecs(client);
 
   RC_CLIENT_LOG_INFO_FORMATTED(client, "Awarding achievement %u: %s", achievement->public_.id, achievement->public_.title);
   rc_client_award_achievement_server_call(callback_data);

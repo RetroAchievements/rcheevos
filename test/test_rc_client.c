@@ -4063,6 +4063,7 @@ static void test_achievement_list_buckets_with_unsynced(void)
   rc_client_achievement_list_t* list;
   rc_client_achievement_t* achievement;
   const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5&h=1&m=0123456789ABCDEF&v=732f8e30e9c1eb08948dda098c305d8b";
+  const char* unlock_request_params2 = "r=awardachievement&u=Username&t=ApiToken&a=5&h=1&m=0123456789ABCDEF&o=2&v=aaed16bbcb26fd9deec45ef0085dbb6b";
 
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -4166,8 +4167,8 @@ static void test_achievement_list_buckets_with_unsynced(void)
   /* allow unlock request to succeed */
   g_now += 2 * 1000;
   rc_client_idle(g_client);
-  assert_api_pending(unlock_request_params);
-  async_api_response(unlock_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+  assert_api_pending(unlock_request_params2);
+  async_api_response(unlock_request_params2, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
   ASSERT_PTR_NOT_NULL(list);
@@ -5844,6 +5845,8 @@ static void test_do_frame_achievement_trigger_blocked(void)
 static void test_do_frame_achievement_trigger_automatic_retry(const char* response, int status_code)
 {
   const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
+  const char* unlock_request_params1 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=1&v=64226c1a3f9a3257d205e5813b718249";
+  const char* unlock_request_params3 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=3&v=64dd7591836f0aa0ce26db0700f725bd";
   rc_client_event_t* event;
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -5903,11 +5906,11 @@ static void test_do_frame_achievement_trigger_automatic_retry(const char* respon
     ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 1 * 1000);
     g_now += 1 * 1000;
     rc_client_idle(g_client);
-    assert_api_pending(unlock_request_params);
+    assert_api_pending(unlock_request_params1);
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
     /* third failure will requeue it */
-    async_api_error(unlock_request_params, response, status_code);
+    async_api_error(unlock_request_params1, response, status_code);
     assert_api_call_count(unlock_request_params, 0);
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
 
@@ -5915,11 +5918,11 @@ static void test_do_frame_achievement_trigger_automatic_retry(const char* respon
     g_now += 2 * 1000;
 
     rc_client_idle(g_client);
-    assert_api_pending(unlock_request_params);
+    assert_api_pending(unlock_request_params3);
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
     /* success should not requeue it and update player score */
-    async_api_response(unlock_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+    async_api_response(unlock_request_params3, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
@@ -7806,7 +7809,10 @@ static void test_do_frame_leaderboard_submit_automatic_retry(void)
 static void test_do_frame_multiple_automatic_retry(void)
 {
   const char* unlock_5501_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
+  const char* unlock_5501_request_params1 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=1&v=64226c1a3f9a3257d205e5813b718249";
+  const char* unlock_5501_request_params4 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=4&v=a67c29938c190136000a8f72ab0e100d";
   const char* unlock_5502_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5502&h=1&m=0123456789ABCDEF&v=8d7405f5aacc9b4b334619a0dae62a56";
+  const char* unlock_5502_request_params1 = "r=awardachievement&u=Username&t=ApiToken&a=5502&h=1&m=0123456789ABCDEF&o=1&v=725daa7b3e57da9b20e42345b688d3d1";
   const char* submit_entry_params = "r=submitlbentry&u=Username&t=ApiToken&i=4401&s=17&m=0123456789ABCDEF&v=13b4cdfe295a97783e78bb48c8910867";
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -7897,16 +7903,16 @@ static void test_do_frame_multiple_automatic_retry(void)
   rc_client_do_frame(g_client);
   ASSERT_NUM_EQUALS(event_count, 0);
 
-  assert_api_pending(unlock_5501_request_params);
-  async_api_response(unlock_5501_request_params, "");
-  assert_api_not_pending(unlock_5501_request_params);
+  assert_api_pending(unlock_5501_request_params1);
+  async_api_response(unlock_5501_request_params1, "");
+  assert_api_not_pending(unlock_5501_request_params1);
 
   /* advance time. second callback will succeed */
   g_now += 500; /* 101600 */
   rc_client_do_frame(g_client);
-  assert_api_pending(unlock_5502_request_params);
-  async_api_response(unlock_5502_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
-  assert_api_not_pending(unlock_5502_request_params);
+  assert_api_pending(unlock_5502_request_params1);
+  async_api_response(unlock_5502_request_params1, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+  assert_api_not_pending(unlock_5502_request_params1);
 
   /* reconnected event should not be raised until all pending requests are handled */
   rc_client_do_frame(g_client);
@@ -7929,9 +7935,9 @@ static void test_do_frame_multiple_automatic_retry(void)
   /* advance time. first callback will finally succeed */
   g_now += 2000; /* 104100 */
   rc_client_do_frame(g_client);
-  assert_api_pending(unlock_5501_request_params);
-  async_api_response(unlock_5501_request_params, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
-  assert_api_not_pending(unlock_5501_request_params);
+  assert_api_pending(unlock_5501_request_params4);
+  async_api_response(unlock_5501_request_params4, "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
+  assert_api_not_pending(unlock_5501_request_params4);
 
   /* reconnected event should be pending, watch for it */
   ASSERT_NUM_EQUALS(event_count, 0);
