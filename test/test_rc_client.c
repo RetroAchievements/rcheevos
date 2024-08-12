@@ -7700,6 +7700,8 @@ static void test_do_frame_leaderboard_tracker_sharing_hits(void)
 static void test_do_frame_leaderboard_submit_automatic_retry(void)
 {
   const char* submit_entry_params = "r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&v=a27fa205f7f30c8d13d74806ea5425b6";
+  const char* submit_entry_params1 = "r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&o=1&v=659685352e6d8e14923ea32da6f8c3e4";
+  const char* submit_entry_params3 = "r=submitlbentry&u=Username&t=ApiToken&i=44&s=17&m=0123456789ABCDEF&o=3&v=91debb749e90c2beff4f21430716dac9";
   rc_client_event_t* event;
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -7774,23 +7776,23 @@ static void test_do_frame_leaderboard_submit_automatic_retry(void)
     g_now += 1 * 1000;
 
     rc_client_idle(g_client);
-    assert_api_pending(submit_entry_params);
+    assert_api_pending(submit_entry_params1);
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
     /* third failure will requeue it for two seconds later */
-    async_api_response(submit_entry_params, "");
-    assert_api_not_pending(submit_entry_params);
+    async_api_response(submit_entry_params1, "");
+    assert_api_not_pending(submit_entry_params1);
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
 
     ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 2 * 1000);
     g_now += 2 * 1000;
 
     rc_client_idle(g_client);
-    assert_api_pending(submit_entry_params);
+    assert_api_pending(submit_entry_params3);
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
     /* success should not requeue it and update player score */
-    async_api_response(submit_entry_params,
+    async_api_response(submit_entry_params3,
         "{\"Success\":true,\"Response\":{\"Score\":17,\"BestScore\":23,"
         "\"TopEntries\":[{\"User\":\"Player1\",\"Score\":44,\"Rank\":1},{\"User\":\"Username\",\"Score\":23,\"Rank\":2}],"
         "\"RankInfo\":{\"Rank\":2,\"NumEntries\":\"2\"}}}");
@@ -7814,6 +7816,7 @@ static void test_do_frame_multiple_automatic_retry(void)
   const char* unlock_5502_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5502&h=1&m=0123456789ABCDEF&v=8d7405f5aacc9b4b334619a0dae62a56";
   const char* unlock_5502_request_params1 = "r=awardachievement&u=Username&t=ApiToken&a=5502&h=1&m=0123456789ABCDEF&o=1&v=725daa7b3e57da9b20e42345b688d3d1";
   const char* submit_entry_params = "r=submitlbentry&u=Username&t=ApiToken&i=4401&s=17&m=0123456789ABCDEF&v=13b4cdfe295a97783e78bb48c8910867";
+  const char* submit_entry_params1 = "r=submitlbentry&u=Username&t=ApiToken&i=4401&s=17&m=0123456789ABCDEF&o=1&v=16fe62616f0e39d0a2620b50cc004928";
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
@@ -7921,8 +7924,8 @@ static void test_do_frame_multiple_automatic_retry(void)
   /* advance time. third callback will succeed */
   g_now += 500; /* 102100 */
   rc_client_do_frame(g_client);
-  assert_api_pending(submit_entry_params);
-  async_api_response(submit_entry_params,
+  assert_api_pending(submit_entry_params1);
+  async_api_response(submit_entry_params1,
     "{\"Success\":true,\"Response\":{\"Score\":17,\"BestScore\":23,"
     "\"TopEntries\":[{\"User\":\"Player1\",\"Score\":44,\"Rank\":1},{\"User\":\"Username\",\"Score\":23,\"Rank\":2}],"
     "\"RankInfo\":{\"Rank\":2,\"NumEntries\":\"2\"}}}");

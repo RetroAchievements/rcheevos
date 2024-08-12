@@ -4007,7 +4007,7 @@ typedef struct rc_client_submit_leaderboard_entry_callback_data_t
   int32_t score;
   uint32_t retry_count;
   const char* game_hash;
-  time_t submit_time;
+  rc_clock_t submit_time;
   rc_client_t* client;
   rc_client_scheduled_callback_data_t* scheduled_callback_data;
 } rc_client_submit_leaderboard_entry_callback_data_t;
@@ -4162,6 +4162,11 @@ static void rc_client_submit_leaderboard_entry_server_call(rc_client_submit_lead
   api_params.score = lboard_data->score;
   api_params.game_hash = lboard_data->game_hash;
 
+  if (lboard_data->retry_count) {
+    const rc_clock_t now = lboard_data->client->callbacks.get_time_millisecs(lboard_data->client);
+    api_params.seconds_since_completion = (uint32_t)((now - lboard_data->submit_time) / 1000);
+  }
+
   result = rc_api_init_submit_lboard_entry_request(&request, &api_params);
   if (result != RC_OK) {
     RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Error constructing submit leaderboard entry for leaderboard %u: %s", lboard_data->id, rc_error_str(result));
@@ -4205,7 +4210,7 @@ static void rc_client_submit_leaderboard_entry(rc_client_t* client, rc_client_le
   callback_data->id = leaderboard->public_.id;
   callback_data->score = leaderboard->value;
   callback_data->game_hash = client->game->public_.hash;
-  callback_data->submit_time = time(NULL);
+  callback_data->submit_time = client->callbacks.get_time_millisecs(client);
 
   RC_CLIENT_LOG_INFO_FORMATTED(client, "Submitting %s (%d) for leaderboard %u: %s",
       leaderboard->public_.tracker_value, leaderboard->value, leaderboard->public_.id, leaderboard->public_.title);
