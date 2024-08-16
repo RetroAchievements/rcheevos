@@ -342,6 +342,15 @@ void test_conflicting_conditions() {
   TEST_PARAMS2(test_validate_trigger, "P:0xH0000=1_R:0xH0000!=6", "");
   /* PauseIf in alternate group does not affect the ResetIf*/
   TEST_PARAMS2(test_validate_trigger, "P:0xH0000=1SR:0xH0000!=1", "");
+
+  /* cannot determine OrNext conflicts */
+  TEST_PARAMS2(test_validate_trigger, "O:0xH0000=1_0xH0001=1_O:0xH0000=2_0xH0001=2", "");
+  TEST_PARAMS2(test_validate_trigger, "O:0xH0000=1_0xH0001=1_O:0xH0000=1_0xH0001=2", "");
+
+  /* AndNext conflicts are limited to matching the last condition after exactly matching the others */
+  TEST_PARAMS2(test_validate_trigger, "N:0xH0000=1_0xH0001=1_N:0xH0000=2_0xH0001=2", "");
+  TEST_PARAMS2(test_validate_trigger, "N:0xH0000=1_0xH0001=1_N:0xH0000=2_0xH0001=1", ""); /* technically conflicting, but hard to detect */
+  TEST_PARAMS2(test_validate_trigger, "N:0xH0000=1_0xH0001=1_N:0xH0000=1_0xH0001=2", "Condition 4: Conflicts with Condition 2");
 }
 
 void test_redundant_conditions() {
