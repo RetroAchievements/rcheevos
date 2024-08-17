@@ -423,6 +423,10 @@ int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_ap
     snprintf(buffer, sizeof(buffer), "%d", api_params->hardcore ? 1 : 0);
     md5_append(&md5, (md5_byte_t*)buffer, (int)strlen(buffer));
     if (api_params->seconds_since_unlock) {
+      /* second achievement id is needed by delegated unlock. including it here allows overloading
+       * the hash generating code on the server */
+      snprintf(buffer, sizeof(buffer), "%u", api_params->achievement_id);
+      md5_append(&md5, (md5_byte_t*)buffer, (int)strlen(buffer));
       snprintf(buffer, sizeof(buffer), "%u", api_params->seconds_since_unlock);
       md5_append(&md5, (md5_byte_t*)buffer, (int)strlen(buffer));
     }

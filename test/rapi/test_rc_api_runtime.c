@@ -819,7 +819,7 @@ static void test_init_award_achievement_request_delayed() {
 
   ASSERT_NUM_EQUALS(rc_api_init_award_achievement_request(&request, &award_achievement_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=awardachievement&u=Username&t=API_TOKEN&a=1234&h=1&m=ABCDEF0123456789&o=17&v=30e8f52b68766d061aeada7d939dafb6");
+  ASSERT_STR_EQUALS(request.post_data, "r=awardachievement&u=Username&t=API_TOKEN&a=1234&h=1&m=ABCDEF0123456789&o=17&v=b2326b09d61e9264eb5d3607d947317d");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);

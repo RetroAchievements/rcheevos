@@ -4063,7 +4063,7 @@ static void test_achievement_list_buckets_with_unsynced(void)
   rc_client_achievement_list_t* list;
   rc_client_achievement_t* achievement;
   const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5&h=1&m=0123456789ABCDEF&v=732f8e30e9c1eb08948dda098c305d8b";
-  const char* unlock_request_params2 = "r=awardachievement&u=Username&t=ApiToken&a=5&h=1&m=0123456789ABCDEF&o=2&v=aaed16bbcb26fd9deec45ef0085dbb6b";
+  const char* unlock_request_params2 = "r=awardachievement&u=Username&t=ApiToken&a=5&h=1&m=0123456789ABCDEF&o=2&v=3cca3f9a9cfd6c0d5b6a17b9bb539070";
 
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -5845,8 +5845,8 @@ static void test_do_frame_achievement_trigger_blocked(void)
 static void test_do_frame_achievement_trigger_automatic_retry(const char* response, int status_code)
 {
   const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
-  const char* unlock_request_params1 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=1&v=64226c1a3f9a3257d205e5813b718249";
-  const char* unlock_request_params3 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=3&v=64dd7591836f0aa0ce26db0700f725bd";
+  const char* unlock_request_params1 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=1&v=4b4af09722aeb0e8a16c152f9a646281";
+  const char* unlock_request_params3 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=3&v=d5bc287a030084aa77a911b6c2c5fc96";
   rc_client_event_t* event;
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -7811,10 +7811,10 @@ static void test_do_frame_leaderboard_submit_automatic_retry(void)
 static void test_do_frame_multiple_automatic_retry(void)
 {
   const char* unlock_5501_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
-  const char* unlock_5501_request_params1 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=1&v=64226c1a3f9a3257d205e5813b718249";
-  const char* unlock_5501_request_params4 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=4&v=a67c29938c190136000a8f72ab0e100d";
+  const char* unlock_5501_request_params1 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=1&v=4b4af09722aeb0e8a16c152f9a646281";
+  const char* unlock_5501_request_params4 = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&o=4&v=63646fa1b30797144cc87881f7d95932";
   const char* unlock_5502_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5502&h=1&m=0123456789ABCDEF&v=8d7405f5aacc9b4b334619a0dae62a56";
-  const char* unlock_5502_request_params1 = "r=awardachievement&u=Username&t=ApiToken&a=5502&h=1&m=0123456789ABCDEF&o=1&v=725daa7b3e57da9b20e42345b688d3d1";
+  const char* unlock_5502_request_params1 = "r=awardachievement&u=Username&t=ApiToken&a=5502&h=1&m=0123456789ABCDEF&o=1&v=46d77e89548126a88c0cdda1980c4dd4";
   const char* submit_entry_params = "r=submitlbentry&u=Username&t=ApiToken&i=4401&s=17&m=0123456789ABCDEF&v=13b4cdfe295a97783e78bb48c8910867";
   const char* submit_entry_params1 = "r=submitlbentry&u=Username&t=ApiToken&i=4401&s=17&m=0123456789ABCDEF&o=1&v=16fe62616f0e39d0a2620b50cc004928";
   uint8_t memory[64];
