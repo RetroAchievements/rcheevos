@@ -21,16 +21,17 @@ static int rc_classify_condition(const rc_condition_t* cond) {
       return RC_CONDITION_CLASSIFICATION_RESET;
 
     case RC_CONDITION_ADD_ADDRESS:
+    case RC_CONDITION_ADD_SOURCE:
+    case RC_CONDITION_SUB_SOURCE:
+      /* these are handled by rc_modified_memref_t */
       return RC_CONDITION_CLASSIFICATION_INDIRECT;
 
     case RC_CONDITION_ADD_HITS:
-    case RC_CONDITION_ADD_SOURCE:
     case RC_CONDITION_AND_NEXT:
     case RC_CONDITION_OR_NEXT:
     case RC_CONDITION_REMEMBER:
     case RC_CONDITION_RESET_NEXT_IF:
     case RC_CONDITION_SUB_HITS:
-    case RC_CONDITION_SUB_SOURCE:
       return RC_CONDITION_CLASSIFICATION_COMBINING;
 
     case RC_CONDITION_MEASURED:
