@@ -5,6 +5,7 @@
 #include "rc_api_runtime.h"
 
 #include "../src/rc_client_internal.h"
+#include "../src/rc_client_external.h"
 #include "../src/rc_version.h"
 
 #include "test_framework.h"
@@ -1927,6 +1928,60 @@ static void test_load_game_destroy_while_fetching_game_data(void)
   rc_client_destroy(g_client);
 
   async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+}
+
+static void test_load_unknown_game(void)
+{
+  const char* hash = "0123456789ABCDEFFEDCBA9876543210";
+  g_client = mock_client_logged_in();
+
+  rc_client_load_unknown_game(g_client, hash);
+
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
+  ASSERT_NUM_EQUALS(rc_client_is_game_loaded(g_client), 0);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, hash);
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 0);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 0);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.id, 0);
+  ASSERT_STR_EQUALS(g_client->game->subsets->public_.title, "");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->active, 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_unknown_game_multihash(void)
+{
+  const char* hash = "0123456789ABCDEFFEDCBA9876543210,FEDCBA98765432100123456789ABCDEF";
+  g_client = mock_client_logged_in();
+
+  rc_client_load_unknown_game(g_client, hash);
+
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
+  ASSERT_NUM_EQUALS(rc_client_is_game_loaded(g_client), 0);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, hash);
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 0);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 0);
+  ASSERT_NUM_EQUALS(g_client->game->subsets->public_.id, 0);
+  ASSERT_STR_EQUALS(g_client->game->subsets->public_.title, "");
+  ASSERT_NUM_EQUALS(g_client->game->subsets->active, 0);
+
+  rc_client_destroy(g_client);
 }
 
 /* ----- unload game ----- */
@@ -5069,7 +5124,7 @@ static void test_leaderboard_list_hidden(void)
 static const char* lbinfo_4401_top_10 = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":4401,\"GameID\":1234,"
     "\"LowerIsBetter\":1,\"LBTitle\":\"Leaderboard1\",\"LBDesc\":\"Desc1\",\"LBFormat\":\"SCORE\","
     "\"LBMem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"LBAuthor\":null,"
-    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
+    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\",\"TotalEntries\":78,"
     "\"Entries\":["
       "{\"User\":\"PlayerG\",\"Score\":3524,\"Rank\":1,\"Index\":1,\"DateSubmitted\":1615654895},"
       "{\"User\":\"PlayerB\",\"Score\":3645,\"Rank\":2,\"Index\":2,\"DateSubmitted\":1615634566},"
@@ -5087,7 +5142,7 @@ static const char* lbinfo_4401_top_10 = "{\"Success\":true,\"LeaderboardData\":{
 static const char* lbinfo_4401_top_10_no_user = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":4401,\"GameID\":1234,"
     "\"LowerIsBetter\":1,\"LBTitle\":\"Leaderboard1\",\"LBDesc\":\"Desc1\",\"LBFormat\":\"SCORE\","
     "\"LBMem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"LBAuthor\":null,"
-    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
+    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\",\"TotalEntries\":78,"
     "\"Entries\":["
       "{\"User\":\"PlayerG\",\"Score\":3524,\"Rank\":1,\"Index\":1,\"DateSubmitted\":1615654895},"
       "{\"User\":\"PlayerB\",\"Score\":3645,\"Rank\":2,\"Index\":2,\"DateSubmitted\":1615634566},"
@@ -5105,7 +5160,7 @@ static const char* lbinfo_4401_top_10_no_user = "{\"Success\":true,\"Leaderboard
 static const char* lbinfo_4401_near_user = "{\"Success\":true,\"LeaderboardData\":{\"LBID\":4401,\"GameID\":1234,"
     "\"LowerIsBetter\":1,\"LBTitle\":\"Leaderboard1\",\"LBDesc\":\"Desc1\",\"LBFormat\":\"SCORE\","
     "\"LBMem\":\"STA:0xH000C=1::CAN:0xH000D=1::SUB:0xH000D=2::VAL:0x 000E\",\"LBAuthor\":null,"
-    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\","
+    "\"LBCreated\":\"2013-10-20 22:12:21\",\"LBUpdated\":\"2021-06-14 08:18:19\",\"TotalEntries\":78,"
     "\"Entries\":["
       "{\"User\":\"PlayerG\",\"Score\":3524,\"Rank\":17,\"Index\":17,\"DateSubmitted\":1615654895},"
       "{\"User\":\"PlayerB\",\"Score\":3645,\"Rank\":18,\"Index\":18,\"DateSubmitted\":1615634566},"
@@ -5147,6 +5202,7 @@ static void test_fetch_leaderboard_entries(void)
   ASSERT_PTR_NOT_NULL(g_leaderboard_entries);
 
   ASSERT_NUM_EQUALS(g_leaderboard_entries->num_entries, 10);
+  ASSERT_NUM_EQUALS(g_leaderboard_entries->total_entries, 78);
 
   entry = g_leaderboard_entries->entries;
   ASSERT_STR_EQUALS(entry->user, "PlayerG");
@@ -5289,6 +5345,7 @@ static void test_fetch_leaderboard_entries_around_user(void)
   ASSERT_PTR_NOT_NULL(g_leaderboard_entries);
 
   ASSERT_NUM_EQUALS(g_leaderboard_entries->num_entries, 10);
+  ASSERT_NUM_EQUALS(g_leaderboard_entries->total_entries, 78);
 
   entry = g_leaderboard_entries->entries;
   ASSERT_STR_EQUALS(entry->user, "PlayerG");
@@ -6338,6 +6395,58 @@ static void test_do_frame_achievement_measured_progress_event(void)
     ASSERT_NUM_EQUALS(event_count, 1);
     ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
   }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_do_frame_achievement_measured_progress_reshown(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  mock_memory(memory, sizeof(memory));
+
+  event_count = 0;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 0);
+
+  memory[0x06] = 3;                         /* 3/6 */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
+  event_count = 0;
+
+  /* should be two callbacks queued - hiding the progress indicator, and the rich presence update */
+  ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks, g_client->game->progress_tracker.hide_callback);
+  ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks->next);
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next->next);
+
+  /* advance time to hide the progress indicator */
+  g_now = g_client->game->progress_tracker.hide_callback->when;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
+  event_count = 0;
+
+  /* only the rich presence update should be scheduled */
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next);
+
+  /* advance time to just before the rich presence update */
+  g_now = g_client->state.scheduled_callbacks->when - 10;
+
+  /* reschedule the progress indicator */
+  memory[0x06] = 4;                         /* 4/6 */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
+  event_count = 0;
+
+  /* should be two callbacks queued - rich presence update, then hiding the progress indicator */
+  ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+  ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->next, g_client->game->progress_tracker.hide_callback);
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next->next);
 
   rc_client_destroy(g_client);
 }
@@ -8257,6 +8366,66 @@ static void test_reset_hides_widgets(void)
   rc_client_destroy(g_client);
 }
 
+static void test_reset_detaches_hide_progress_indicator_event(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
+  mock_memory(memory, sizeof(memory));
+
+  rc_client_do_frame(g_client);
+
+  memory[0x06] = 3; /* progress indicator for achievement 6 */
+  event_count = 0;
+  rc_client_do_frame(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
+  event_count = 0;
+
+  /* should be two callbacks queued - hiding the progress indicator, and the rich presence update */
+  ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks, g_client->game->progress_tracker.hide_callback);
+  ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks->next);
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next->next);
+
+  /* advance time to hide the progress indicator */
+  g_now = g_client->game->progress_tracker.hide_callback->when;
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
+  event_count = 0;
+
+  /* only the rich presence update should be scheduled */
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next);
+
+  /* advance time to just before the rich presence update */
+  g_now = g_client->state.scheduled_callbacks->when - 10;
+
+  /* reschedule the progress indicator */
+  memory[0x06] = 4;                         /* 4/6 */
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_SHOW, 6));
+  event_count = 0;
+
+  /* should be two callbacks queued - rich presence update, then hiding the progress indicator */
+  ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+  ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->next, g_client->game->progress_tracker.hide_callback);
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next->next);
+
+  rc_client_reset(g_client);
+
+  ASSERT_NUM_EQUALS(event_count, 1);
+  ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_PROGRESS_INDICATOR_HIDE, 0));
+
+  /* only the rich presence update should be scheduled */
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks->next);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- pause ----- */
 
 static void test_can_pause(void)
@@ -9194,6 +9363,8 @@ void test_client(void) {
   TEST(test_load_game_while_spectating);
   TEST(test_load_game_process_game_data);
   TEST(test_load_game_destroy_while_fetching_game_data);
+  TEST(test_load_unknown_game);
+  TEST(test_load_unknown_game_multihash);
 
   /* unload game */
   TEST(test_unload_game);
@@ -9302,6 +9473,7 @@ void test_client(void) {
   TEST(test_do_frame_achievement_trigger_rarity);
   TEST(test_do_frame_achievement_measured);
   TEST(test_do_frame_achievement_measured_progress_event);
+  TEST(test_do_frame_achievement_measured_progress_reshown);
   TEST(test_do_frame_achievement_challenge_indicator);
   TEST(test_do_frame_achievement_challenge_indicator_primed_while_reset);
   TEST(test_do_frame_achievement_challenge_indicator_primed_while_reset_next);
@@ -9332,6 +9504,7 @@ void test_client(void) {
 
   /* reset */
   TEST(test_reset_hides_widgets);
+  TEST(test_reset_detaches_hide_progress_indicator_event);
 
   /* pause */
   TEST(test_can_pause);
