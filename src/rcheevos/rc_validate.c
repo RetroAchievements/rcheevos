@@ -795,15 +795,22 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
           if (compare_condition->oper != RC_OPERATOR_NONE &&
             !rc_validate_are_operands_equal(&compare_condition->operand2, &condition_chain_iter->operand2))
           {
-            if (compare_condition->operand2.type != condition_chain_iter->operand2.type)
-            {
-              chain_matches = 0;
-              break;
-            }
+            chain_matches = 0;
+            break;
           }
 
           if (!compare_condition->next)
           {
+            chain_matches = 0;
+            break;
+          }
+
+          if (compare_condition->type != RC_CONDITION_ADD_ADDRESS &&
+              compare_condition->type != RC_CONDITION_ADD_SOURCE &&
+              compare_condition->type != RC_CONDITION_SUB_SOURCE &&
+              compare_condition->type != RC_CONDITION_AND_NEXT)
+          {
+            /* things like AddHits and OrNext are hard to definitively detect conflicts. ignore them. */
             chain_matches = 0;
             break;
           }
