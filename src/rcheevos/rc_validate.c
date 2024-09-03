@@ -726,6 +726,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
   const rc_condition_t* condition;
   const rc_condition_t* condition_chain_start;
   int overlap;
+  int chain_matches;
 
   /* empty group */
   if (conditions == NULL || compare_conditions == NULL)
@@ -777,7 +778,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
 
       /* if combining conditions exist, make sure the same combining conditions exist in the
        * compare logic. conflicts can only occur if the combinining conditions match. */
-      int chain_matches = 1;
+      chain_matches = 1;
       if (condition_chain_start != condition)
       {
         const rc_condition_t* condition_chain_iter = condition_chain_start;
