@@ -979,7 +979,7 @@ static const rc_memory_region_t _rc_memory_regions_zx_spectrum[] = {
     { 0x18000U, 0x1BFFFU, 0x1C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* RAM bank 6 on 128K units */
     { 0x1C000U, 0x1FFFFU, 0x20000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Screen RAM" } /* RAM bank 7 on 128K units */
 };
-static const rc_memory_regions_t rc_memory_regions_zx_spectrum = { _rc_memory_regions_zx_spectrum, 2 };
+static const rc_memory_regions_t rc_memory_regions_zx_spectrum = { _rc_memory_regions_zx_spectrum, 8 };
 
 /* ===== default ===== */
 static const rc_memory_regions_t rc_memory_regions_none = { 0, 0 };
