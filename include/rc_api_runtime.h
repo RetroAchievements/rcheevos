@@ -267,7 +267,6 @@ typedef struct rc_api_submit_lboard_entry_request_t {
   const char* game_hash;
   /* The number of seconds since the leaderboard attempt was completed */
   uint32_t seconds_since_completion;
-
 }
 rc_api_submit_lboard_entry_request_t;
 
