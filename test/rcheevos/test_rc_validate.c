@@ -347,6 +347,9 @@ void test_conflicting_conditions() {
   TEST_PARAMS2(test_validate_trigger, "O:0xH0000=1_0xH0001=1_O:0xH0000=2_0xH0001=2", "");
   TEST_PARAMS2(test_validate_trigger, "O:0xH0000=1_0xH0001=1_O:0xH0000=1_0xH0001=2", "");
 
+  /* cannot determine AddSource conflicts */
+  TEST_PARAMS2(test_validate_trigger, "d0xH1234>0_A:0xH2345_0>d0xH1234", "");
+
   /* AndNext conflicts are limited to matching the last condition after exactly matching the others */
   TEST_PARAMS2(test_validate_trigger, "N:0xH0000=1_0xH0001=1_N:0xH0000=2_0xH0001=2", "");
   TEST_PARAMS2(test_validate_trigger, "N:0xH0000=1_0xH0001=1_N:0xH0000=2_0xH0001=1", ""); /* technically conflicting, but hard to detect */
