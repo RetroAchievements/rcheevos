@@ -1455,13 +1455,16 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
           start_session_response->num_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
     }
 
+    /* make the loaded game active if another game is not aleady being loaded. */
     rc_mutex_lock(&client->state.mutex);
     if (client->state.load == NULL)
       client->game = load_state->game;
+    /* Warning: client->game may be free'd by calling rc_client_unload_game after this point. if that happens,
+     *          load_state->game will still be pointing at the free'd memory. TODO: add reference count? */
     rc_mutex_unlock(&client->state.mutex);
 
     if (client->game != load_state->game) {
-      /* previous load state was aborted */
+      /* another game is being loaded */
       if (load_state->callback)
         load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
     }
@@ -1475,6 +1478,9 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
       rc_mutex_unlock(&load_state->client->state.mutex);
 
       if (pending_media) {
+        /* rc_client_check_pending_media will fail if it can't find the game in client->game or
+         * client->state.load->game. since we've detached the load_state, this has to occur after
+         * we've made the game active. */
         if (pending_media->hash) {
           rc_client_begin_change_media_from_hash(client, pending_media->hash,
             pending_media->callback, pending_media->callback_userdata);
@@ -1488,33 +1494,50 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
         rc_client_free_pending_media(pending_media);
       }
 
-      /* client->game must be set before calling this function so it can query the console_id */
-      rc_client_validate_addresses(load_state->game, client);
+      /* if the game is still being loaded, make sure all the required memory addresses are accessible
+       * so we can mark achievements as unsupported before loading them into the runtime. */
+      if (client->game == load_state->game) {
+        /* TODO: it is desirable to not do memory reads from a background thread. Some emulators (like Dolphin) don't
+         *       allow it. Dolphin's solution is to use a dummy read function that says all addresses are valid and
+         *       switches to the actual read function after the callback is called. latter invalid reads will
+         *       mark achievements as unsupported. */
 
-      rc_client_activate_achievements(load_state->game, client);
-      rc_client_activate_leaderboards(load_state->game, client);
+        /* client->game must be set before calling this function so the read_memory callback can query the console_id */
+        rc_client_validate_addresses(load_state->game, client);
+      }
 
-      if (load_state->hash->hash[0] != '[') {
-        if (load_state->client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_LOCKED) {
-          /* schedule the periodic ping */
-          rc_client_scheduled_callback_data_t* callback_data = rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_scheduled_callback_data_t));
-          memset(callback_data, 0, sizeof(*callback_data));
-          callback_data->callback = rc_client_ping;
-          callback_data->related_id = load_state->game->public_.id;
-          callback_data->when = client->callbacks.get_time_millisecs(client) + 30 * 1000;
-          rc_client_schedule_callback(client, callback_data);
-        }
-
-        RC_CLIENT_LOG_INFO_FORMATTED(client, "Game %u loaded, hardcore %s%s", load_state->game->public_.id,
-            client->state.hardcore ? "enabled" : "disabled",
-            (client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) ? ", spectating" : "");
+      /* one last sanity check to make sure the game is still being loaded. */
+      if (client->game != load_state->game) {
+        /* game has been unloaded, or another game is being loaded over the top of this game */
+        if (load_state->callback)
+          load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
       }
       else {
-        RC_CLIENT_LOG_INFO_FORMATTED(client, "Subset %u loaded", load_state->subset->public_.id);
-      }
+        rc_client_activate_achievements(load_state->game, client);
+        rc_client_activate_leaderboards(load_state->game, client);
 
-      if (load_state->callback)
-        load_state->callback(RC_OK, NULL, client, load_state->callback_userdata);
+        if (load_state->hash->hash[0] != '[') {
+          if (load_state->client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_LOCKED) {
+            /* schedule the periodic ping */
+            rc_client_scheduled_callback_data_t* callback_data = rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_scheduled_callback_data_t));
+            memset(callback_data, 0, sizeof(*callback_data));
+            callback_data->callback = rc_client_ping;
+            callback_data->related_id = load_state->game->public_.id;
+            callback_data->when = client->callbacks.get_time_millisecs(client) + 30 * 1000;
+            rc_client_schedule_callback(client, callback_data);
+          }
+
+          RC_CLIENT_LOG_INFO_FORMATTED(client, "Game %u loaded, hardcore %s%s", load_state->game->public_.id,
+              client->state.hardcore ? "enabled" : "disabled",
+              (client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_OFF) ? ", spectating" : "");
+        }
+        else {
+          RC_CLIENT_LOG_INFO_FORMATTED(client, "Subset %u loaded", load_state->subset->public_.id);
+        }
+
+        if (load_state->callback)
+          load_state->callback(RC_OK, NULL, client, load_state->callback_userdata);
+      }
 
       /* detach the game object so it doesn't get freed by free_load_state */
       load_state->game = NULL;
