@@ -1522,7 +1522,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
         client->state.load = NULL;
       else
         load_state->progress = RC_CLIENT_LOAD_GAME_STATE_ABORTED;
-      rc_mutex_lock(&client->state.mutex);
+      rc_mutex_unlock(&client->state.mutex);
     }
 
     /* one last sanity check to make sure the game is still being loaded. */
