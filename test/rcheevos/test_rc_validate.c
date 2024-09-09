@@ -388,6 +388,7 @@ void test_redundant_conditions() {
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1S0xH0000!=0S0xH0001=2", "Alt1 Condition 1: Redundant with Core Condition 1");
   TEST_PARAMS2(test_validate_trigger, "0xH0000!=0S0xH0000=1S0xH0001=2", ""); /* more restrictive alt 1 is not redundant with core */
   TEST_PARAMS2(test_validate_trigger, "0xH0000!=0S0xH0000!=0S0xH0001=2", "Alt1 Condition 1: Redundant with Core Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000<10_N:0xH0001=2_R:0xH0000<20", ""); /* AndNext should prevent condition 3 being compared directly to condition 1 */
 }
 
 void test_redundant_hitcounts() {
