@@ -190,6 +190,8 @@ static void rc_update_condition_pause_remember(rc_condset_t* self) {
 }
 
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
+  rc_condset_with_trailing_conditions_t* condset_with_conditions;
+  rc_condset_t local_condset;
   rc_condset_t* self;
   rc_condition_t condition;
   rc_condition_t* conditions;
@@ -204,23 +206,28 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
   uint32_t measured_target = 0;
   int32_t result;
 
-  self = RC_ALLOC(rc_condset_t, parse);
-  memset(self, 0, sizeof(*self));
-
   if (**memaddr == 'S' || **memaddr == 's' || !**memaddr) {
     /* empty group - editor allows it, so we have to support it */
+    self = RC_ALLOC(rc_condset_t, parse);
+    memset(self, 0, sizeof(*self));
     return self;
   }
 
-  result = rc_classify_conditions(self, *memaddr);
+  memset(&local_condset, 0, sizeof(local_condset));
+  result = rc_classify_conditions(&local_condset, *memaddr);
   if (result < 0) {
     parse->offset = result;
     return NULL;
   }
 
-  conditions = rc_alloc(parse->buffer, &parse->offset, result * sizeof(rc_condition_t), RC_ALIGNOF(rc_condition_t), NULL, 0);
+  condset_with_conditions = RC_ALLOC_WITH_TRAILING(rc_condset_with_trailing_conditions_t,
+                                                   rc_condition_t, conditions, result, parse);
   if (parse->offset < 0)
     return NULL;
+
+  self = (rc_condset_t*)condset_with_conditions;
+  memcpy(self, &local_condset, sizeof(local_condset));
+  conditions = &condset_with_conditions->conditions[0];
 
   if (parse->buffer) {
     pause_conditions = conditions;
@@ -242,7 +249,6 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
   }
 
   next = &self->conditions;
-
 
   /* each condition set has a functionally new recall accumulator */
   parse->remember.type = RC_OPERAND_NONE;
@@ -636,16 +642,8 @@ static void rc_test_condset_internal(rc_condition_t* condition, uint32_t num_con
 }
 
 rc_condition_t* rc_condset_get_conditions(rc_condset_t* self) {
-  if (self->conditions) {
-    /* raw_pointer will point at the data immediately following the condset, but when the conditions are
-     * allocated by rc_alloc, it may adjust that pointer to be aligned by the RC_ALIGNOF(rc_condition_t).
-     * this logic attempts to find the first element of the array by finding an element in the array
-     * and finding the closest aligned element to the raw_pointer. */
-    const uint8_t* raw_pointer = (uint8_t*)self + RC_ALIGN(sizeof(*self));
-    const size_t first_condition_index = ((uint8_t*)self->conditions - raw_pointer) / sizeof(rc_condition_t);
-    rc_condition_t* aligned_pointer = self->conditions - first_condition_index;
-    return aligned_pointer;
-  }
+  if (self->conditions)
+    return RC_GET_TRAILING(self, rc_condset_with_trailing_conditions_t, rc_condition_t, conditions);
 
   return NULL;
 }

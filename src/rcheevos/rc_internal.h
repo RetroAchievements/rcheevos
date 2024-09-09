@@ -60,6 +60,12 @@ RC_ALLOW_ALIGN(char)
 #define RC_ALLOC(t, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
 #define RC_ALLOC_SCRATCH(t, p) ((t*)rc_alloc_scratch((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
 
+#define RC_ALLOC_WITH_TRAILING(container_type, trailing_type, trailing_field, trailing_count, parse) ((container_type*)rc_alloc(\
+          (parse)->buffer, &(parse)->offset, \
+          RC_OFFSETOF((*(container_type*)NULL),trailing_field) + trailing_count * sizeof(trailing_type), \
+          RC_ALIGNOF(container_type), &(parse)->scratch, 0))
+#define RC_GET_TRAILING(container_pointer, container_type, trailing_type, trailing_field) (trailing_type*)(&((container_type*)(container_pointer))->trailing_field)
+
 /* force alignment to 4 bytes on 32-bit systems, or 8 bytes on 64-bit systems */
 #define RC_ALIGN(n) (((n) + (sizeof(void*)-1)) & ~(sizeof(void*)-1))
 
@@ -210,6 +216,12 @@ uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud)
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 int rc_trigger_state_active(int state);
+
+typedef struct rc_condset_with_trailing_conditions_t {
+  rc_condset_t condset;
+  rc_condition_t conditions[2];
+} rc_condset_with_trailing_conditions_t;
+RC_ALLOW_ALIGN(rc_condset_with_trailing_conditions_t);
 
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse);
 int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state);
