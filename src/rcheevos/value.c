@@ -51,11 +51,13 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
 }
 
 static void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
+  rc_condset_with_trailing_conditions_t* condset_with_conditions;
   rc_condition_t** next;
   rc_condset_t** next_clause;
   rc_condset_t* condset;
   rc_condition_t local_cond;
   rc_condition_t* cond;
+  uint32_t num_measured_conditions;
   char buffer[64] = "A:";
   const char* buffer_ptr;
   char* ptr;
@@ -64,15 +66,14 @@ static void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_par
   /* convert legacy format into condset */
   next_clause = &self->conditions;
   do {
-    condset = RC_ALLOC(rc_condset_t, parse);
-    memset(condset, 0, sizeof(rc_condset_t));
+    num_measured_conditions = 0;
 
     /* count the number of joiners and add one to determine the number of clauses.  */
-    condset->num_measured_conditions = 1;
+    num_measured_conditions = 1;
     buffer_ptr = *memaddr;
     while ((c = *buffer_ptr++) && c != '$') {
       if (c == '_') {
-        ++condset->num_measured_conditions;
+        ++num_measured_conditions;
         buffer[0] = 'A'; /* reset to AddSource */
       }
       else if (c == '*' && *buffer_ptr == '-') {
@@ -84,11 +85,17 @@ static void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_par
 
     /* if last condition is SubSource, we'll need to add a dummy condition for the Measured */
     if (buffer[0] == 'B')
-      ++condset->num_measured_conditions;
+      ++num_measured_conditions;
 
-    cond = rc_alloc(parse->buffer, &parse->offset, condset->num_measured_conditions * sizeof(rc_condition_t), RC_ALIGNOF(rc_condition_t), NULL, 0);
+    condset_with_conditions = RC_ALLOC_WITH_TRAILING(rc_condset_with_trailing_conditions_t,
+                                                     rc_condition_t, conditions, num_measured_conditions, parse);
     if (parse->offset < 0)
       return;
+
+    condset = (rc_condset_t*)condset_with_conditions;
+    memset(condset, 0, sizeof(*condset));
+    condset->num_measured_conditions = num_measured_conditions;
+    cond = &condset_with_conditions->conditions[0];
 
     next = &condset->conditions;
 
