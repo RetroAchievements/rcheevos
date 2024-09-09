@@ -37,7 +37,7 @@ typedef struct __rc_operand_memref_t { rc_operand_t operand; } __rc_operand_memr
 typedef struct __rc_memref_list_t { rc_memref_t* first_memref; } __rc_memref_list_t;
 typedef struct __rc_value_list_t { rc_value_t* first_value; } __rc_value_list_t;
 
-#define RC_ALLOW_ALIGN(T) struct __align_ ## T { char ch; T t; };
+#define RC_ALLOW_ALIGN(T) struct __align_ ## T { uint8_t ch; T t; };
 RC_ALLOW_ALIGN(rc_condition_t)
 RC_ALLOW_ALIGN(rc_condset_t)
 RC_ALLOW_ALIGN(rc_modified_memref_t)
@@ -55,7 +55,7 @@ RC_ALLOW_ALIGN(rc_value_t)
 RC_ALLOW_ALIGN(char)
 
 #define RC_ALIGNOF(T) (sizeof(struct __align_ ## T) - sizeof(T))
-#define RC_OFFSETOF(o, t) (int)((char*)&(o.t) - (char*)&(o))
+#define RC_OFFSETOF(o, t) (int)((uint8_t*)&(o.t) - (uint8_t*)&(o))
 
 #define RC_ALLOC(t, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
 #define RC_ALLOC_SCRATCH(t, p) ((t*)rc_alloc_scratch((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
@@ -202,6 +202,7 @@ int rc_trigger_state_active(int state);
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse);
 int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state);
 void rc_reset_condset(rc_condset_t* self);
+rc_condition_t* rc_condset_get_conditions(rc_condset_t* self);
 
 enum {
   RC_PROCESSING_COMPARE_DEFAULT = 0,
