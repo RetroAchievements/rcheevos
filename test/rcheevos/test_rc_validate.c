@@ -347,6 +347,9 @@ void test_conflicting_conditions() {
   TEST_PARAMS2(test_validate_trigger, "O:0xH0000=1_0xH0001=1_O:0xH0000=2_0xH0001=2", "");
   TEST_PARAMS2(test_validate_trigger, "O:0xH0000=1_0xH0001=1_O:0xH0000=1_0xH0001=2", "");
 
+  /* cannot determine AddSource conflicts */
+  TEST_PARAMS2(test_validate_trigger, "d0xH1234>0_A:0xH2345_0>d0xH1234", "");
+
   /* AndNext conflicts are limited to matching the last condition after exactly matching the others */
   TEST_PARAMS2(test_validate_trigger, "N:0xH0000=1_0xH0001=1_N:0xH0000=2_0xH0001=2", "");
   TEST_PARAMS2(test_validate_trigger, "N:0xH0000=1_0xH0001=1_N:0xH0000=2_0xH0001=1", ""); /* technically conflicting, but hard to detect */
@@ -385,6 +388,7 @@ void test_redundant_conditions() {
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1S0xH0000!=0S0xH0001=2", "Alt1 Condition 1: Redundant with Core Condition 1");
   TEST_PARAMS2(test_validate_trigger, "0xH0000!=0S0xH0000=1S0xH0001=2", ""); /* more restrictive alt 1 is not redundant with core */
   TEST_PARAMS2(test_validate_trigger, "0xH0000!=0S0xH0000!=0S0xH0001=2", "Alt1 Condition 1: Redundant with Core Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000<10_N:0xH0001=2_R:0xH0000<20", ""); /* AndNext should prevent condition 3 being compared directly to condition 1 */
 }
 
 void test_redundant_hitcounts() {

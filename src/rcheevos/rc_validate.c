@@ -726,6 +726,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
   const rc_condition_t* condition;
   const rc_condition_t* condition_chain_start;
   int overlap;
+  int chain_matches;
 
   /* empty group */
   if (conditions == NULL || compare_conditions == NULL)
@@ -777,9 +778,9 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
 
       /* if combining conditions exist, make sure the same combining conditions exist in the
        * compare logic. conflicts can only occur if the combinining conditions match. */
+      chain_matches = 1;
       if (condition_chain_start != condition)
       {
-        int chain_matches = 1;
         const rc_condition_t* condition_chain_iter = condition_chain_start;
         while (condition_chain_iter != condition)
         {
@@ -818,14 +819,14 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
           compare_condition = compare_condition->next;
           condition_chain_iter = condition_chain_iter->next;
         }
+      }
 
-        /* combining field didn't match, or there's more unmatched combining fields. ignore this condition */
-        if (!chain_matches || rc_validate_is_combining_condition(compare_condition))
-        {
-          while (compare_condition->next && rc_validate_is_combining_condition(compare_condition))
-            compare_condition = compare_condition->next;
-          continue;
-        }
+      /* combining field didn't match, or there's more unmatched combining fields. ignore this condition */
+      if (!chain_matches || rc_validate_is_combining_condition(compare_condition))
+      {
+        while (compare_condition->next && rc_validate_is_combining_condition(compare_condition))
+          compare_condition = compare_condition->next;
+        continue;
       }
 
       if (compare_condition->required_hits)
