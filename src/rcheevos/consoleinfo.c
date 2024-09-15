@@ -856,7 +856,9 @@ static const rc_memory_regions_t rc_memory_regions_scv = { _rc_memory_regions_sc
 /* https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_memory_map#LoROM */
 static const rc_memory_region_t _rc_memory_regions_snes[] = {
     { 0x000000U, 0x01FFFFU, 0x7E0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
-    { 0x020000U, 0x03FFFFU, 0xFE0000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
+    { 0x020000U, 0x03FFFFU, 0xFE0000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" },
+    { 0x040000U, 0x05FFFFU, 0x400000U, RC_MEMORY_TYPE_SYSTEM_RAM, "BW-RAM (SA-1)" },
+    { 0x060000U, 0x0607FFU, 0x003000U, RC_MEMORY_TYPE_SYSTEM_RAM, "I-RAM (SA-1)" }
 };
 static const rc_memory_regions_t rc_memory_regions_snes = { _rc_memory_regions_snes, 2 };
 
