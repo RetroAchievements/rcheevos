@@ -2493,6 +2493,10 @@ void test_hash(void) {
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.ws", 524288, "68f0f13b598e0b66461bc578375c3888");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.wsc", 4194304, "a247ec8a8c42e18fcb80702dfadac14b");
 
+  /* ZX Spectrum */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ZX_SPECTRUM, "test.tap", 1596, "714a9f455e616813dd5421c5b347e5e5");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ZX_SPECTRUM, "test.tzx", 14971, "93723e6d1100f9d1d448a27cf6618c47");
+
   /* m3u support */
   TEST(test_hash_m3u_buffered);
   TEST(test_hash_m3u_with_comments);
