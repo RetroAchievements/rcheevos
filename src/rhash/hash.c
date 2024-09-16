@@ -3978,6 +3978,10 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* disk */
         }
+        else if (rc_path_compare_extension(ext, "scl"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_ZX_SPECTRUM;
+        }
         break;
 
       case 't':
@@ -3994,7 +3998,8 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         {
           iterator->consoles[0] = RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER;
         }
-        else if (rc_path_compare_extension(ext, "tzx"))
+        else if (rc_path_compare_extension(ext, "trd") ||
+                 rc_path_compare_extension(ext, "tzx"))
         {
           iterator->consoles[0] = RC_CONSOLE_ZX_SPECTRUM;
         }
@@ -4030,10 +4035,6 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         else if (rc_path_compare_extension(ext, "woz"))
         {
           iterator->consoles[0] = RC_CONSOLE_APPLE_II;
-        }
-        else if (rc_path_compare_extension(ext, "wav"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ZX_SPECTRUM;
         }
         break;
 
