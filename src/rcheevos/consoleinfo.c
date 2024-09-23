@@ -721,16 +721,29 @@ static const rc_memory_regions_t rc_memory_regions_n64 = { _rc_memory_regions_n6
 /* ===== Nintendo DS ===== */
 /* https://www.akkit.org/info/gbatek.htm#dsmemorymaps */
 static const rc_memory_region_t _rc_memory_regions_nintendo_ds[] = {
-    { 0x000000U, 0x3FFFFFU, 0x02000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+    { 0x0000000U, 0x03FFFFFU, 0x02000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    /* To keep DS/DSi memory maps aligned, padding is set here for the DSi's extra RAM */
+    { 0x0400000U, 0x0FFFFFFU, 0x02400000U, RC_MEMORY_TYPE_UNUSED, "Unused (DSi exclusive)" },
+    /* The DS/DSi have "tightly coupled memory": very fast memory directly connected to the CPU.
+     * This memory has an instruction variant (ITCM) and a data variant (DTCM).
+     * For achievement purposes it is useful to be able to access the data variant.
+     * This memory does not have a fixed address on console, being able to be moved to any $0xxxx000 region.
+     * While normally this kind of memory is addressed outside of the possible native addressing space, this is simply not possible,
+     * as the DS/DSi's address space covers all possible uint32_t values.
+     * $0E000000 is used here as a "pseudo-end," as this is nearly the end of all the memory actually mapped to addresses
+     * This means that (with the exception of $FFFF0000 onwards, which has the ARM9 BIOS mapped) $0E000000 onwards has nothing mapped to it
+     */
+    { 0x1000000U, 0x1003FFFU, 0x0E000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Data TCM" }
 };
-static const rc_memory_regions_t rc_memory_regions_nintendo_ds = { _rc_memory_regions_nintendo_ds, 1 };
+static const rc_memory_regions_t rc_memory_regions_nintendo_ds = { _rc_memory_regions_nintendo_ds, 3 };
 
 /* ===== Nintendo DSi ===== */
 /* https://problemkaputt.de/gbatek.htm#dsiiomap */
 static const rc_memory_region_t _rc_memory_regions_nintendo_dsi[] = {
-    { 0x000000U, 0xFFFFFFU, 0x02000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+    { 0x0000000U, 0x0FFFFFFU, 0x02000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x1000000U, 0x1003FFFU, 0x0E000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Data TCM" }
 };
-static const rc_memory_regions_t rc_memory_regions_nintendo_dsi = { _rc_memory_regions_nintendo_dsi, 1 };
+static const rc_memory_regions_t rc_memory_regions_nintendo_dsi = { _rc_memory_regions_nintendo_dsi, 2 };
 
 /* ===== Oric ===== */
 static const rc_memory_region_t _rc_memory_regions_oric[] = {
