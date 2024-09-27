@@ -3,13 +3,14 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-static void _assert_parse_trigger(rc_trigger_t** trigger, void* buffer, const char* memaddr)
+static void _assert_parse_trigger(rc_trigger_t** trigger, void* buffer, size_t buffer_size, const char* memaddr)
 {
   int size;
   unsigned* overflow;
 
   size = rc_trigger_size(memaddr);
   ASSERT_NUM_GREATER(size, 0);
+  ASSERT_NUM_LESS_EQUALS(size, buffer_size);
 
   overflow = (unsigned*)(((char*)buffer) + size);
   *overflow = 0xCDCDCDCD;
@@ -21,7 +22,7 @@ static void _assert_parse_trigger(rc_trigger_t** trigger, void* buffer, const ch
     ASSERT_FAIL("write past end of buffer");
   }
 }
-#define assert_parse_trigger(trigger, buffer, memaddr) ASSERT_HELPER(_assert_parse_trigger(trigger, buffer, memaddr), "assert_parse_trigger")
+#define assert_parse_trigger(trigger, buffer, memaddr) ASSERT_HELPER(_assert_parse_trigger(trigger, buffer, sizeof(buffer), memaddr), "assert_parse_trigger")
 
 static void _assert_evaluate_trigger(rc_trigger_t* trigger, memory_t* memory, int expected_result) {
   int result = rc_test_trigger(trigger, peek, memory, NULL);
@@ -589,7 +590,7 @@ static void test_measured_indirect() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[256];
+  char buffer[384];
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -1972,7 +1973,7 @@ static void test_remember_recall_separate_accumulator_per_group() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[512];
+  char buffer[640];
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -2025,7 +2026,7 @@ static void test_remember_recall_use_same_value_multiple() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[512];
+  char buffer[640];
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -2059,7 +2060,7 @@ static void test_remember_recall_in_pause_and_main() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[512];
+  char buffer[640];
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -2104,6 +2105,41 @@ static void test_remember_recall_in_pause_and_main() {
   /* condition is true - hits on condition 2 previously met, no active pause. */
   assert_evaluate_trigger(trigger, &memory, 1);
   assert_hit_count(trigger, 0, 1, 4U);
+}
+
+static void test_remember_recall_in_pause_with_chain()
+{
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  rc_condition_t* condition;
+  char buffer[640];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_trigger(&trigger, buffer, "I:{recall}_I:0xH02_0xH03=10_K:0xH00_P:0=1");
+
+  /* ensure recall memrefs point at the remember for the pause chain */
+  condition = trigger->requirement->conditions;
+  ASSERT_NUM_EQUALS(condition->operand1.type, RC_OPERAND_RECALL);
+  ASSERT_PTR_NOT_NULL(condition->operand1.value.memref);
+
+  condition = condition->next;
+  ASSERT_NUM_EQUALS(condition->operand1.value.memref->value.memref_type, RC_MEMREF_TYPE_MODIFIED_MEMREF);
+  ASSERT_NUM_EQUALS(((rc_modified_memref_t*)condition->operand1.value.memref)->parent.type, RC_OPERAND_RECALL);
+  ASSERT_PTR_NOT_NULL(((rc_modified_memref_t*)condition->operand1.value.memref)->parent.value.memref);
+
+  /* byte(0)=0, remember. byte(0+2)=0x34, byte(0x34+3)=n/a */
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  ram[2] = 1;
+  /* byte(0)=0, remember. byte(0+2)=1, byte(1+3)=0x56 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  ram[4] = 10;
+  /* byte(0)=0, remember. byte(0+2)=1, byte(1+3)=10 */
+  assert_evaluate_trigger(trigger, &memory, 1);
 }
 
 /* ======================================================== */
@@ -2175,6 +2211,7 @@ void test_trigger(void) {
   TEST(test_remember_recall_separate_accumulator_per_group);
   TEST(test_remember_recall_use_same_value_multiple);
   TEST(test_remember_recall_in_pause_and_main);
+  TEST(test_remember_recall_in_pause_with_chain);
 
   TEST_SUITE_END();
 }

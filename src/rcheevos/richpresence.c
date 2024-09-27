@@ -26,7 +26,7 @@ static rc_memref_value_t* rc_alloc_helper_variable_memref_value(const char* mema
     if (end == &memaddr[memaddr_len]) {
       /* if it's not a derived size, we can reference the memref directly */
       if (rc_memref_shared_size(size) == size)
-        return &rc_alloc_memref(parse, address, size, 0)->value;
+        return &rc_alloc_memref(parse, address, size)->value;
     }
   }
 
