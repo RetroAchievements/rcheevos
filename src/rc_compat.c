@@ -106,6 +106,7 @@ void rc_mutex_init(rc_mutex_t* mutex)
 void rc_mutex_destroy(rc_mutex_t* mutex)
 {
   /* Nothing to do here */
+  (void)mutex;
 }
 
 void rc_mutex_lock(rc_mutex_t* mutex)
