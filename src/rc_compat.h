@@ -1,6 +1,11 @@
 #ifndef RC_COMPAT_H
 #define RC_COMPAT_H
 
+#ifdef _WIN32
+ #define WIN32_LEAN_AND_MEAN
+ #include <windows.h>
+#endif
+
 #include "rc_export.h"
 
 #include <stdio.h>
@@ -77,21 +82,19 @@ RC_BEGIN_C_DECLS
  #define rc_mutex_lock(mutex)
  #define rc_mutex_unlock(mutex)
 #else
- #if defined(_WIN32)
-  #define WIN32_LEAN_AND_MEAN
-  #include <windows.h>
-  typedef struct rc_mutex_t {
-  #if defined(WINVER) && WINVER >= 0x0600
-    /* Windows Vista and later can use a slim reader/writer (SRW) lock */
-    SRWLOCK srw_lock;
-    /* Current thread owner needs to be tracked (for recursive mutex usage) */
-    DWORD owner;
-    DWORD count;
-  #else
+  #if defined(_WIN32)
+   typedef struct rc_mutex_t {
+   #if defined(WINVER) && WINVER >= 0x0600
+     /* Windows Vista and later can use a slim reader/writer (SRW) lock */
+     SRWLOCK srw_lock;
+     /* Current thread owner needs to be tracked (for recursive mutex usage) */
+     DWORD owner;
+     DWORD count;
+   #else
      /* Pre-Vista must use a critical section */
-    CRITICAL_SECTION critical_section;
-  #endif
-  } rc_mutex_t;
+     CRITICAL_SECTION critical_section;
+   #endif
+   } rc_mutex_t;
  #elif defined(GEKKO)
   #include <ogcsys.h>
   typedef mutex_t rc_mutex_t;
