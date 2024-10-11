@@ -58,7 +58,7 @@ RC_BEGIN_C_DECLS
 
 #endif /* __STDC_VERSION__ < 199901L */
 
-#ifndef __STDC_WANT_SECURE_LIB__
+#ifndef __STDC_SECURE_LIB__
  /* _CRT_SECURE_NO_WARNINGS redefinitions */
  #define strcpy_s(dest, sz, src) strcpy(dest, src)
  #define sscanf_s sscanf

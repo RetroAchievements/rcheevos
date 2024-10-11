@@ -59,7 +59,7 @@ int rc_snprintf(char* buffer, size_t size, const char* format, ...)
 
   va_start(args, format);
 
-#ifdef __STDC_WANT_SECURE_LIB__
+#ifdef __STDC_SECURE_LIB__
   result = vsprintf_s(buffer, size, format, args);
 #else
   /* assume buffer is large enough and ignore size */
@@ -74,7 +74,7 @@ int rc_snprintf(char* buffer, size_t size, const char* format, ...)
 
 #endif
 
-#ifndef __STDC_WANT_SECURE_LIB__
+#ifndef __STDC_SECURE_LIB__
 
 struct tm* rc_gmtime_s(struct tm* buf, const time_t* timer)
 {
