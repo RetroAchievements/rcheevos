@@ -77,10 +77,24 @@ RC_BEGIN_C_DECLS
  #define rc_mutex_lock(mutex)
  #define rc_mutex_unlock(mutex)
 #else
- #ifdef _WIN32
+ #if defined(_WIN32)
+  #define WIN32_LEAN_AND_MEAN
+  #include <windows.h>
   typedef struct rc_mutex_t {
-    void* handle; /* HANDLE is defined as "void*" */
+  #if defined(WINVER) && WINVER >= 0x0600
+    /* Windows Vista and later can use a slim reader/writer (SRW) lock */
+    SRWLOCK srw_lock;
+    /* Current thread owner needs to be tracked (for recursive mutex usage) */
+    DWORD owner;
+    DWORD count;
+  #else
+     /* Pre-Vista must use a critical section */
+    CRITICAL_SECTION critical_section;
+  #endif
   } rc_mutex_t;
+ #elif defined(GEKKO)
+  #include <ogcsys.h>
+  typedef mutex_t rc_mutex_t;
  #else
   #include <pthread.h>
   typedef pthread_mutex_t rc_mutex_t;

@@ -1,5 +1,6 @@
 #include "rc_compat.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
 
@@ -88,31 +89,76 @@ struct tm* rc_gmtime_s(struct tm* buf, const time_t* timer)
 
 #if defined(_WIN32)
 
-/* https://gist.github.com/roxlu/1c1af99f92bafff9d8d9 */
+/* https://learn.microsoft.com/en-us/archive/msdn-magazine/2012/november/windows-with-c-the-evolution-of-synchronization-in-windows-and-c */
+/* implementation largely taken from https://github.com/libsdl-org/SDL/blob/0fc3574/src/thread/windows/SDL_sysmutex.c */
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
- 
+#if defined(WINVER) && WINVER >= 0x0600
+
 void rc_mutex_init(rc_mutex_t* mutex)
 {
-  /* default security, not owned by calling thread, unnamed */
-  mutex->handle = CreateMutex(NULL, FALSE, NULL);
+  InitializeSRWLock(&mutex->srw_lock);
+  /* https://learn.microsoft.com/en-us/windows/win32/procthread/thread-handles-and-identifiers */
+  /* thread ids are never 0 */
+  mutex->owner = 0;
+  mutex->count = 0;
 }
 
 void rc_mutex_destroy(rc_mutex_t* mutex)
 {
-  CloseHandle(mutex->handle);
+  /* Nothing to do here */
 }
 
 void rc_mutex_lock(rc_mutex_t* mutex)
 {
-  WaitForSingleObject(mutex->handle, 0xFFFFFFFF);
+  DWORD current_thread = GetCurrentThreadId();
+  if (mutex->owner == current_thread) {
+    ++mutex->count;
+    assert(mutex->count > 0);
+  }
+  else {
+    AcquireSRWLockExclusive(&mutex->srw_lock);
+    assert(mutex->owner == 0 && mutex->count == 0);
+    mutex->owner = current_thread;
+    mutex->count = 1;
+  }
 }
 
 void rc_mutex_unlock(rc_mutex_t* mutex)
 {
-  ReleaseMutex(mutex->handle);
+  if (mutex->owner == GetCurrentThreadId()) {
+    if (--mutex->count == 0) {
+      mutex->owner = 0;
+      ReleaseSRWLockExclusive(&mutex->srw_lock);
+    }
+  }
+  else {
+    assert(!"Tried to unlock unowned mutex");
+  }
 }
+
+#else
+
+void rc_mutex_init(rc_mutex_t* mutex)
+{
+  InitializeCriticalSection(&mutex->critical_section);
+}
+
+void rc_mutex_destroy(rc_mutex_t* mutex)
+{
+  DeleteCriticalSection(&mutex->critical_section);
+}
+
+void rc_mutex_lock(rc_mutex_t* mutex)
+{
+  EnterCriticalSection(&mutex->critical_section);
+}
+
+void rc_mutex_unlock(rc_mutex_t* mutex)
+{
+  LeaveCriticalSection(&mutex->critical_section);
+}
+
+#endif
 
 #elif defined(GEKKO)
 
