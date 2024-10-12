@@ -127,6 +127,7 @@ void rc_mutex_lock(rc_mutex_t* mutex)
 void rc_mutex_unlock(rc_mutex_t* mutex)
 {
   if (mutex->owner == GetCurrentThreadId()) {
+    assert(mutex->count > 0);
     if (--mutex->count == 0) {
       mutex->owner = 0;
       ReleaseSRWLockExclusive(&mutex->srw_lock);
