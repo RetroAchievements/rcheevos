@@ -97,9 +97,6 @@ RC_BEGIN_C_DECLS
      CRITICAL_SECTION critical_section;
    #endif
    } rc_mutex_t;
- #elif defined(GEKKO)
-  #include <ogcsys.h>
-  typedef mutex_t rc_mutex_t;
  #else
   #include <pthread.h>
   typedef pthread_mutex_t rc_mutex_t;
