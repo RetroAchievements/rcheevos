@@ -78,7 +78,7 @@ static void* filereader_open(const char* path)
     return NULL;
   }
 
- #if defined(__STDC_WANT_SECURE_LIB__)
+ #if defined(__STDC_SECURE_LIB__)
   /* have to use _SH_DENYNO because some cores lock the file while its loaded */
   fp = _wfsopen(wpath, L"rb", _SH_DENYNO);
  #else
@@ -91,7 +91,7 @@ static void* filereader_open(const char* path)
 #else /* !WINVER >= 0x0500 */
 static void* filereader_open(const char* path)
 {
- #if defined(__STDC_WANT_SECURE_LIB__)
+ #if defined(__STDC_SECURE_LIB__)
   #if defined(WINVER)
    /* have to use _SH_DENYNO because some cores lock the file while its loaded */
    return _fsopen(path, "rb", _SH_DENYNO);
@@ -100,7 +100,7 @@ static void* filereader_open(const char* path)
    fopen_s(&fp, path, "rb");
    return fp;
   #endif
- #else /* !__STDC_WANT_SECURE_LIB__ */
+ #else /* !__STDC_SECURE_LIB__ */
   return fopen(path, "rb");
  #endif
 }

@@ -180,7 +180,7 @@ static void rc_client_log_message_va(const rc_client_t* client, const char* form
   if (client->callbacks.log_call) {
     char buffer[2048];
 
-#ifdef __STDC_WANT_SECURE_LIB__
+#ifdef __STDC_SECURE_LIB__
     vsprintf_s(buffer, sizeof(buffer), format, args);
 #elif __STDC_VERSION__ >= 199901L /* vsnprintf requires c99 */
     vsnprintf(buffer, sizeof(buffer), format, args);
