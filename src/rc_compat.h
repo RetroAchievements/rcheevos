@@ -84,7 +84,7 @@ RC_BEGIN_C_DECLS
  #define rc_mutex_lock(mutex)
  #define rc_mutex_unlock(mutex)
 #else
-  #if defined(_WIN32)
+ #if defined(_WIN32)
    typedef struct rc_mutex_t {
    #if defined(WINVER) && WINVER >= 0x0600
      /* Windows Vista and later can use a slim reader/writer (SRW) lock */
@@ -97,6 +97,14 @@ RC_BEGIN_C_DECLS
      CRITICAL_SECTION critical_section;
    #endif
    } rc_mutex_t;
+ #elif defined(GEKKO)
+  #include <ogcsys.h>
+  typedef struct rc_mutex_t {
+    mutex_t handle;
+  } rc_mutex_t;
+ #elif defined(_3DS)
+  #include <3ds/synchronization.h>
+  typedef RecursiveLock rc_mutex_t;
  #else
   #include <pthread.h>
   typedef pthread_mutex_t rc_mutex_t;
