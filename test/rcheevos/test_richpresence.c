@@ -941,6 +941,36 @@ static void test_macro_lookup_mapping_range() {
   ASSERT_PTR_NULL(richpresence->first_lookup->root->right->right);
 }
 
+static void test_macro_lookup_mapping_range_overlap() {
+  int result;
+  int lines;
+
+  /* 2 appears in the first range (2) and the second (2) */
+  result = rc_richpresence_size_lines("Lookup:Place\n2=First\n2=Second\n\nDisplay:\nFirst:@Place(0xH0000), Second:@Place(0xH0001)", &lines);
+  ASSERT_NUM_EQUALS(result, RC_DUPLICATED_VALUE);
+  ASSERT_NUM_EQUALS(lines, 3);
+
+  /* 2 appears in the first range (0-2) and the second (2-5) */
+  result = rc_richpresence_size_lines("Lookup:Place\n0-2=First\n2-5=Second\n\nDisplay:\nFirst:@Place(0xH0000), Second:@Place(0xH0001)", &lines);
+  ASSERT_NUM_EQUALS(result, RC_DUPLICATED_VALUE);
+  ASSERT_NUM_EQUALS(lines, 3);
+
+  /* 2 appears in the first range (0-2) and the second (2,4-5) */
+  result = rc_richpresence_size_lines("Lookup:Place\n0-2=First\n2,4-5=Second\n\nDisplay:\nFirst:@Place(0xH0000), Second:@Place(0xH0001)", &lines);
+  ASSERT_NUM_EQUALS(result, RC_DUPLICATED_VALUE);
+  ASSERT_NUM_EQUALS(lines, 3);
+
+  /* 1 and 2 appear in the first range (0-2) and the second (1,2,4-5) */
+  result = rc_richpresence_size_lines("Lookup:Place\n0-2=First\n1,2,4-5=Second\n\nDisplay:\nFirst:@Place(0xH0000), Second:@Place(0xH0001)", &lines);
+  ASSERT_NUM_EQUALS(result, RC_DUPLICATED_VALUE);
+  ASSERT_NUM_EQUALS(lines, 3);
+
+  /* 2 appears in the first range (2) and the second (1-5) */
+  result = rc_richpresence_size_lines("Lookup:Place\n2=First\n1-5=Second\n\nDisplay:\nFirst:@Place(0xH0000), Second:@Place(0xH0001)", &lines);
+  ASSERT_NUM_EQUALS(result, RC_DUPLICATED_VALUE);
+  ASSERT_NUM_EQUALS(lines, 3);
+}
+
 static void test_macro_lookup_invalid() {
   int result;
   int lines;
@@ -1343,6 +1373,7 @@ void test_richpresence(void) {
   TEST(test_macro_lookup_mapping_repeated_csv);
   TEST(test_macro_lookup_mapping_merged);
   TEST(test_macro_lookup_mapping_range);
+  TEST(test_macro_lookup_mapping_range_overlap);
   TEST(test_macro_lookup_invalid);
 
   /* escaped macro */

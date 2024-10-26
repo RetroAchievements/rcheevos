@@ -35,9 +35,9 @@ typedef struct __rc_operator_enum_t { uint8_t value; } __rc_operator_enum_t;
 typedef struct __rc_operator_enum_str_t { uint8_t value; } __rc_operator_enum_str_t;
 typedef struct __rc_operand_memref_t { rc_operand_t operand; } __rc_operand_memref_t; /* requires &rc_operand_t to be the same as &rc_operand_t.value.memref */
 typedef struct __rc_memref_list_t { rc_memref_t* first_memref; } __rc_memref_list_t;
+typedef struct __rc_value_list_t { rc_value_t* first_value; } __rc_value_list_t;
 typedef struct __rc_trigger_state_enum_t { uint8_t value; } __rc_trigger_state_enum_t;
 typedef struct __rc_lboard_state_enum_t { uint8_t value; } __rc_lboard_state_enum_t;
-typedef struct __rc_value_list_t { rc_value_t* first_value; } __rc_value_list_t;
 
 #define RC_ALLOW_ALIGN(T) struct __align_ ## T { char ch; T t; };
 RC_ALLOW_ALIGN(rc_condition_t)

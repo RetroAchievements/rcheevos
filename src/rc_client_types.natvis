@@ -141,7 +141,7 @@
 				<Size>num_top_entries</Size>
 				<ValueNode>top_entries[$i]</ValueNode>
 			</IndexListItems>
-		</Expand>	
+		</Expand>
 	</Type>
     <Type Name="__rc_client_event_type_enum_t">
         <DisplayString Condition="value==RC_CLIENT_EVENT_TYPE_NONE">{RC_CLIENT_EVENT_TYPE_NONE}</DisplayString>
@@ -188,21 +188,21 @@
 	</Type>
 	<Type Name="__rc_client_subset_info_achievements_list_t">
 		<DisplayString>{{count={info.public_.num_achievements}}}</DisplayString>
-		<Expand>	
+		<Expand>
 			<IndexListItems>
 				<Size>info.public_.num_achievements</Size>
 				<ValueNode>info.achievements[$i]</ValueNode>
 			</IndexListItems>
-		</Expand>	
+		</Expand>
 	</Type>
 	<Type Name="__rc_client_subset_info_leaderboards_list_t">
 		<DisplayString>{{count={info.public_.num_leaderboards}}}</DisplayString>
-		<Expand>	
+		<Expand>
 			<IndexListItems>
 				<Size>info.public_.num_leaderboards</Size>
 				<ValueNode>info.leaderboards[$i]</ValueNode>
 			</IndexListItems>
-		</Expand>	
+		</Expand>
 	</Type>
     <Type Name="__rc_client_mastery_state_enum_t">
         <DisplayString Condition="value==RC_CLIENT_MASTERY_STATE_NONE">{RC_CLIENT_MASTERY_STATE_NONE}</DisplayString>
@@ -369,7 +369,7 @@
 	</Type>
 	<Type Name="rc_client_raintegration_menu_t">
 		<DisplayString>{{count={num_items}}}</DisplayString>
-		<Expand>	
+		<Expand>
 			<IndexListItems>
 				<Size>num_items</Size>
 				<ValueNode>items[$i]</ValueNode>

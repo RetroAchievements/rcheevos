@@ -146,6 +146,43 @@ static void test_start_and_submit_same_frame() {
   ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
 }
 
+static void test_start_and_submit_same_frame_hitcount() {
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_lboard_t* lboard;
+  char buffer[1024];
+  int value;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_lboard(&lboard, buffer, "STA:0xH00=0::CAN:0=1::SUB:1=1::VAL:M:0xH02=52");
+  lboard->state = RC_LBOARD_STATE_ACTIVE;
+
+  /* start and submit are both true - should trigger. value logic is true, submit one hit */
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_TRIGGERED);
+  ASSERT_NUM_EQUALS(value, 1);
+
+  /* disable start - leaderboard can activate */
+  ram[0] = 1;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_ACTIVE);
+
+  /* reactivate leaderboard - it should immediately submit again. value logic is still true, submit one hit */
+  ram[0] = 0;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_TRIGGERED);
+  ASSERT_NUM_EQUALS(value, 1);
+
+  /* disable start - leaderboard can activate */
+  ram[0] = 1;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_ACTIVE);
+
+  /* reactivate leaderboard - it should immediately submit again. value logic is not true, submit zero hits */
+  ram[2] = 55;
+  ram[0] = 0;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_TRIGGERED);
+  ASSERT_NUM_EQUALS(value, 0);
+}
+
 static void test_start_and_conditions() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -629,6 +666,7 @@ void test_lboard(void) {
   TEST(test_simple_leaderboard);
   TEST(test_start_and_cancel_same_frame);
   TEST(test_start_and_submit_same_frame);
+  TEST(test_start_and_submit_same_frame_hitcount);
 
   TEST(test_start_and_conditions);
   TEST(test_start_or_conditions);
