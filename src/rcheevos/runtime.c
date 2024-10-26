@@ -21,6 +21,8 @@ static void rc_runtime_natvis_helper(void)
     __rc_runtime_lboard_list_t lboard_list;
   } natvis;
 
+  memset(&natvis, 0, sizeof(natvis));
+
   natvis.lboard_list.runtime.lboard_count = 0;
 }
 

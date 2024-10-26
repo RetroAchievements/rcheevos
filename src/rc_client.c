@@ -141,6 +141,8 @@ static void rc_client_natvis_helper(const rc_client_event_t* event, rc_client_t*
     __rc_client_game_hash_list_t client_game_hash_list;
   } natvis;
 
+  memset(&natvis, 0, sizeof(natvis));
+
   /* this code should never be executed. it just ensures these constants get defined for
    * the natvis VisualStudio extension as they're not used directly in the code. */
   natvis.achievement_type.value = RC_CLIENT_ACHIEVEMENT_TYPE_STANDARD;
