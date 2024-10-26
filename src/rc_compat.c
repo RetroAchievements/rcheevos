@@ -1,3 +1,12 @@
+#if !defined(RC_NO_THREADS) && !defined(_WIN32) && !defined(GEKKO) && (!defined(_XOPEN_SOURCE) || (_XOPEN_SOURCE - 0) < 500)
+/* We'll want to use pthread_mutexattr_settype/PTHREAD_MUTEX_RECURSIVE, but glibc only conditionally exposes pthread_mutexattr_settype and PTHREAD_MUTEX_RECURSIVE depending on feature flags
+ * Defining _XOPEN_SOURCE must be done at the top of the source file, before including any headers
+ * pthread_mutexattr_settype/PTHREAD_MUTEX_RECURSIVE are specified the Single UNIX Specification (Version 2, 1997), along with POSIX later on (IEEE Standard 1003.1-2008), so should cover practically any pthread implementation
+ */
+#undef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
+
 #include "rc_compat.h"
 
 #include <assert.h>
@@ -190,7 +199,12 @@ void rc_mutex_unlock(rc_mutex_t* mutex)
 
 void rc_mutex_init(rc_mutex_t* mutex)
 {
-  pthread_mutex_init(mutex, NULL);
+  /* Define the mutex as recursive, for consistent semantics against other rc_mutex_t implementations */
+  pthread_mutexattr_t attr;
+  pthread_mutexattr_init(&attr);
+  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(mutex, &attr);
+  pthread_mutexattr_destroy(&attr);
 }
 
 void rc_mutex_destroy(rc_mutex_t* mutex)
