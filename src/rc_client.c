@@ -142,6 +142,8 @@ static void rc_client_natvis_helper(const rc_client_event_t* event, rc_client_t*
   } natvis;
 
   memset(&natvis, 0, sizeof(natvis));
+  (void)event;
+  (void)client;
 
   /* this code should never be executed. it just ensures these constants get defined for
    * the natvis VisualStudio extension as they're not used directly in the code. */
