@@ -91,6 +91,70 @@ static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_
 static int rc_client_is_award_achievement_pending(const rc_client_t* client, uint32_t achievement_id);
 static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
 
+/* ===== natvis extensions ===== */
+
+typedef struct __rc_client_achievement_state_enum_t { uint8_t value; } __rc_client_achievement_state_enum_t;
+typedef struct __rc_client_achievement_category_enum_t { uint8_t value; } __rc_client_achievement_category_enum_t;
+typedef struct __rc_client_achievement_type_enum_t { uint8_t value; } __rc_client_achievement_type_enum_t;
+typedef struct __rc_client_achievement_bucket_enum_t { uint8_t value; } __rc_client_achievement_bucket_enum_t;
+typedef struct __rc_client_achievement_unlocked_enum_t { uint8_t value; } __rc_client_achievement_unlocked_enum_t;
+typedef struct __rc_client_leaderboard_state_enum_t { uint8_t value; } __rc_client_leaderboard_state_enum_t;
+typedef struct __rc_client_leaderboard_format_enum_t { uint8_t value; } __rc_client_leaderboard_format_enum_t;
+typedef struct __rc_client_log_level_enum_t { uint8_t value; } __rc_client_log_level_enum_t;
+typedef struct __rc_client_event_type_enum_t { uint8_t value; } __rc_client_event_type_enum_t;
+typedef struct __rc_client_load_game_state_enum_t { uint8_t value; } __rc_client_load_game_state_enum_t;
+typedef struct __rc_client_user_state_enum_t { uint8_t value; } __rc_client_user_state_enum_t;
+typedef struct __rc_client_mastery_state_enum_t { uint8_t value; } __rc_client_mastery_state_enum_t;
+typedef struct __rc_client_spectator_mode_enum_t { uint8_t value; } __rc_client_spectator_mode_enum_t;
+typedef struct __rc_client_disconnect_enum_t { uint8_t value; } __rc_client_disconnect_enum_t;
+typedef struct __rc_client_leaderboard_tracker_list_t { rc_client_leaderboard_tracker_info_t* first; } __rc_client_leaderboard_tracker_list_t;
+typedef struct __rc_client_subset_info_list_t { rc_client_subset_info_t* first; } __rc_client_subset_info_list_t;
+typedef struct __rc_client_media_hash_list_t { rc_client_media_hash_t* first; } __rc_client_media_hash_list_t;
+typedef struct __rc_client_subset_info_achievements_list_t { rc_client_subset_info_t info; } __rc_client_subset_info_achievements_list_t;
+typedef struct __rc_client_subset_info_leaderboards_list_t { rc_client_subset_info_t info; } __rc_client_subset_info_leaderboards_list_t;
+typedef struct __rc_client_scheduled_callback_list_t { rc_client_state_t state; } __rc_client_scheduled_callback_list_t;
+typedef struct __rc_client_game_hash_list_t { rc_client_t client; } __rc_client_game_hash_list_t;
+
+static void rc_client_natvis_helper(const rc_client_event_t* event, rc_client_t* client)
+{
+  struct natvis_extensions {
+    __rc_client_achievement_state_enum_t achievement_state;
+    __rc_client_achievement_category_enum_t achievement_category;
+    __rc_client_achievement_type_enum_t achievement_type;
+    __rc_client_achievement_bucket_enum_t achievement_bucket;
+    __rc_client_achievement_unlocked_enum_t achievement_unlocked;
+    __rc_client_leaderboard_state_enum_t leaderboard_state;
+    __rc_client_leaderboard_format_enum_t leaderboard_format;
+    __rc_client_log_level_enum_t log_level;
+    __rc_client_event_type_enum_t event_type;
+    __rc_client_load_game_state_enum_t load_game_state;
+    __rc_client_user_state_enum_t user_state;
+    __rc_client_mastery_state_enum_t mastery_state;
+    __rc_client_spectator_mode_enum_t spectator_mode;
+    __rc_client_disconnect_enum_t disconnect;
+    __rc_client_leaderboard_tracker_list_t leaderboard_tracker_list;
+    __rc_client_subset_info_list_t subset_info_list;
+    __rc_client_media_hash_list_t media_hash_list;
+    __rc_client_subset_info_achievements_list_t subset_info_achievements_list;
+    __rc_client_subset_info_leaderboards_list_t subset_info_leaderboards_list;
+    __rc_client_scheduled_callback_list_t scheduled_callback_list;
+    __rc_client_game_hash_list_t client_game_hash_list;
+  } natvis;
+
+  memset(&natvis, 0, sizeof(natvis));
+  (void)event;
+  (void)client;
+
+  /* this code should never be executed. it just ensures these constants get defined for
+   * the natvis VisualStudio extension as they're not used directly in the code. */
+  natvis.achievement_type.value = RC_CLIENT_ACHIEVEMENT_TYPE_STANDARD;
+  natvis.achievement_type.value = RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE;
+  natvis.achievement_type.value = RC_CLIENT_ACHIEVEMENT_TYPE_PROGRESSION;
+  natvis.achievement_type.value = RC_CLIENT_ACHIEVEMENT_TYPE_WIN;
+  natvis.achievement_category.value = RC_CLIENT_ACHIEVEMENT_CATEGORY_NONE;
+  natvis.event_type.value = RC_CLIENT_EVENT_TYPE_NONE;
+}
+
 /* ===== Construction/Destruction ===== */
 
 static void rc_client_dummy_event_handler(const rc_client_event_t* event, rc_client_t* client)
@@ -110,6 +174,7 @@ rc_client_t* rc_client_create(rc_client_read_memory_func_t read_memory_function,
 
   client->callbacks.read_memory = read_memory_function;
   client->callbacks.server_call = server_call_function;
+  client->callbacks.event_handler = rc_client_natvis_helper;
   client->callbacks.event_handler = rc_client_dummy_event_handler;
   rc_client_set_legacy_peek(client, RC_CLIENT_LEGACY_PEEK_AUTO);
   rc_client_set_get_time_millisecs_function(client, NULL);
