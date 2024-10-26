@@ -18,7 +18,7 @@ static void _assert_parse_condset(rc_condset_t** condset, rc_condset_memrefs_t* 
   rc_init_parse_state_memrefs(&parse, &memrefs->memrefs);
   rc_init_parse_state_variables(&parse, &memrefs->variables);
 
-  *condset = rc_parse_condset(&memaddr, &parse, 0);
+  *condset = rc_parse_condset(&memaddr, &parse);
   size = parse.offset;
   rc_destroy_parse_state(&parse);
 
@@ -290,6 +290,64 @@ static void test_pauseif_hitcount_with_reset() {
   assert_hit_count(condset, 0, 0);
   assert_hit_count(condset, 1, 1);
   assert_hit_count(condset, 2, 0);
+}
+
+static void test_pauseif_resetnextif()
+{
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_condset(&condset, &memrefs, buffer, "0xH0002=0_0xH0001=18_Z:0xH0003=1_N:0xH0000=0_P:0xH0002=25.1.");
+
+  /* accumulate hit counts */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 3, 1);
+  assert_hit_count(condset, 4, 0);
+
+  /* pauseif triggered, non-pauseif conditions ignored */
+  ram[2] = 25;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 3, 2);
+  assert_hit_count(condset, 4, 1);
+
+  /* pause condition is no longer true, but its hitcount prevents the non-pauseif conditions from being processed */
+  ram[2] = 10;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 3, 3);
+  assert_hit_count(condset, 4, 1);
+
+  /* reset next if clears hit on pause, but not on non-pauseif conditions */
+  ram[3] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 0, 0);
+  assert_hit_count(condset, 1, 2);
+  assert_hit_count(condset, 2, 1); /* resetnextif keeps its own hitcount */
+  assert_hit_count(condset, 3, 0);
+  assert_hit_count(condset, 4, 0);
+
+  /* trigger is true */
+  ram[2] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 0, 1);
+  assert_hit_count(condset, 1, 3);
+  assert_hit_count(condset, 2, 2); /* resetnextif keeps its own hitcount */
+  assert_hit_count(condset, 3, 0);
+  assert_hit_count(condset, 4, 0);
 }
 
 static void test_pauseif_does_not_increment_hits() {
@@ -2558,6 +2616,55 @@ static void test_subsource_float() {
   assert_evaluate_condset(condset, memrefs, &memory, 0);
 }
 
+static void test_addsource_bits_change() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* bit0(0x01) + bit1(0x01) + bit2(0x01) == 3 && delta(bit0(0x01)) + delta(bit1(0x01)) + delta(bit2(0x01)) == 2 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:0xM0001_A:0xN0001_0xO0001=3_A:d0xM0001_A:d0xN0001_d0xO0001=2");
+
+  /* bit sum = 1 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 2, 0);
+  assert_hit_count(condset, 5, 0);
+
+  /* bit sum = 3 (delta = 1) */
+  ram[1] = 0x17;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 5, 0);
+
+  /* bit sum = 2 (delta = 3) */
+  ram[1] = 0x16;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 5, 0);
+
+  /* bit sum = 1 (delta = 2) */
+  ram[1] = 0x14;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 5, 1);
+
+  /* bit sum = 2 (delta = 1) */
+  ram[1] = 0x16;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 2, 1);
+  assert_hit_count(condset, 5, 1);
+
+  /* bit sum = 3 (delta = 2) */
+  ram[1] = 0x17;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 2, 2);
+  assert_hit_count(condset, 5, 2);
+}
+
 static void test_addhits() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3627,6 +3734,74 @@ static void test_addaddress_direct_pointer_prior() {
   assert_evaluate_condset(condset, memrefs, &memory, 1);
 }
 
+static void test_addaddress_direct_pointer_change() {
+  uint8_t ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(0x0000 + byte(0xh0000)) == 20 && delta(byte(0x0000 + byte(0xh0000))) == 22 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000=0_0xH0000=20_I:0xH0000=0_d0xH0000=22");
+
+  /* byte(0x0000 + 1); value=18, prev=0, prior=0 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 1); value=18, prev=18, prior=0 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 1); value=22, prev=18, prior=18 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  ram[1] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 1); value=22, prev=22, prior=18 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 1); value=20, prev=22, prior=22 */
+  ram[1] = 20;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* byte(0x0000 + 1); value=20, prev=20, prior=22 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* point to new value */
+  /* byte(0x0000 + 2); value=52, prev=20, prior=20 */
+  ram[0] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 2); value=52, prev=52, prior=20 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* new pointed-at value is correct */
+  /* byte(0x0000 + 2); value=22, prev=52, prior=52 */
+  ram[2] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 2); value=22, prev=22, prior=52 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* point to original value. looks correct! */
+  /* byte(0x0000 + 1); value=20, prev=22, prior=22 */
+  ram[0] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* point to secondary value, which is not correct */
+  /* byte(0x0000 + 2); value=22, prev=20, prior=20 */
+  ram[0] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 2); value=22, prev=22, prior=20 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0x0000 + 2); value=20, prev=22, prior=22 */
+  ram[2] = 20;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_addaddress_indirect_pointer() {
   uint8_t ram[] = {0x01, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3778,6 +3953,86 @@ static void test_addaddress_indirect_pointer_multiple() {
   assert_hit_count(condset, 1, 3);
   assert_hit_count(condset, 3, 2);
   assert_hit_count(condset, 5, 1);
+}
+
+static void test_addaddress_indirect_pointer_with_delta()
+{
+  uint8_t ram[] = { 0x01, 0x02, 0x03, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(byte(0)*2+2) == 22 && prev(byte(byte(0)*2+2) == 20 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000*2_0xH0002=22_I:0xH0000*2_d0xH0002=20");
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 0xAB, delta = 0 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 0);
+  assert_hit_count(condset, 3, 0);
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 22, delta = 0xAB */
+  ram[4] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 3, 0);
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 20, delta = 22 */
+  ram[4] = 20;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 3, 0);
+
+  /* byte(0) = 0, byte(0*2+2 [2]) = 2, delta = 20 */
+  ram[0] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 3, 1);
+
+  /* byte(0) = 0, byte(0*2+2 [2]) = 20, delta = 2 */
+  ram[2] = 20;
+  ram[4] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+  assert_hit_count(condset, 1, 1);
+  assert_hit_count(condset, 3, 1);
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 22, delta = 20 */
+  ram[0] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+  assert_hit_count(condset, 1, 2);
+  assert_hit_count(condset, 3, 2);
+}
+
+static void test_addaddress_indirect_constant() {
+  uint8_t ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(0x0002 + 1) == 22 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:1_0xH0002=22");
+
+  /* initially, byte(0x0003) == 22, false */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* memory at constant is correct */
+  ram[1] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* memory at address is correct */
+  ram[2] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* memory at offset address is correct */
+  ram[3] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
 }
 
 static void test_addaddress_pointer_data_size_differs_from_pointer_size() {
@@ -4044,6 +4299,37 @@ static void test_addaddress_scaled_negative() {
   assert_evaluate_condset(condset, memrefs, &memory, 0);
 }
 
+static void test_addaddress_shared_size()
+{
+  uint8_t ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* bit2(byte(0) * 2) == 1 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000*2_0xO0000=1");
+
+  /* bit2( [0x34] ) = 1 */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* bit2( [0x01] ) = 0 */
+  ram[2] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* adjust pointer. bit2( [0x56] ) = 1 */
+  ram[0] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* new value is correct */
+  ram[4] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+}
+
+
 static void test_prior_sequence() {
   uint8_t ram[] = {0x00};
   memory_t memory;
@@ -4144,6 +4430,7 @@ void test_condset(void) {
   TEST(test_pauseif_hitcount_one);
   TEST(test_pauseif_hitcount_two);
   TEST(test_pauseif_hitcount_with_reset);
+  TEST(test_pauseif_resetnextif);
   TEST(test_pauseif_does_not_increment_hits);
   TEST(test_pauseif_delta_updated);
   TEST(test_pauseif_indirect_delta_updated);
@@ -4202,6 +4489,7 @@ void test_condset(void) {
   TEST(test_subsource_overflow_comparison_lesser);
   TEST(test_subsource_overflow_comparison_lesser_or_equal);
   TEST(test_subsource_float);
+  TEST(test_addsource_bits_change);
 
   /* addhits/subhits */
   TEST(test_addhits);
@@ -4230,10 +4518,13 @@ void test_condset(void) {
   TEST(test_addaddress_direct_pointer);
   TEST(test_addaddress_direct_pointer_delta);
   TEST(test_addaddress_direct_pointer_prior);
+  TEST(test_addaddress_direct_pointer_change);
   TEST(test_addaddress_indirect_pointer);
   TEST(test_addaddress_indirect_pointer_negative);
   TEST(test_addaddress_indirect_pointer_out_of_range);
   TEST(test_addaddress_indirect_pointer_multiple);
+  TEST(test_addaddress_indirect_pointer_with_delta);
+  TEST(test_addaddress_indirect_constant);
   TEST(test_addaddress_pointer_data_size_differs_from_pointer_size);
   TEST(test_addaddress_double_indirection);
   TEST(test_addaddress_double_indirection_with_delta);
@@ -4242,6 +4533,7 @@ void test_condset(void) {
   TEST(test_addaddress_adjust_both_sides_different_bases);
   TEST(test_addaddress_scaled);
   TEST(test_addaddress_scaled_negative);
+  TEST(test_addaddress_shared_size);
 
   /* prior */
   TEST(test_prior_sequence);

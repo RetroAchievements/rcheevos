@@ -27,7 +27,7 @@ static void rc_parse_cond_value(rc_value_t* self, const char** memaddr, rc_parse
   do
   {
     parse->measured_target = 0; /* passing is_value=1 should prevent any conflicts, but clear it out anyway */
-    *next_clause = rc_parse_condset(memaddr, parse, 1);
+    *next_clause = rc_parse_condset(memaddr, parse);
     if (parse->offset < 0) {
       return;
     }
@@ -112,7 +112,7 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
 
     /* process the clause */
     buffer_ptr = buffer;
-    cond = rc_parse_condition(&buffer_ptr, parse, 0);
+    cond = rc_parse_condition(&buffer_ptr, parse);
     if (parse->offset < 0)
       return;
 
@@ -142,21 +142,24 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
 
     if (**memaddr == '_') {
       /* add next */
+      rc_condition_update_parse_state(cond, parse);
       next = &cond->next;
       continue;
     }
 
     if (cond->type == RC_CONDITION_SUB_SOURCE) {
       /* cannot change SubSource to Measured. add a dummy condition */
+      rc_condition_update_parse_state(cond, parse);
       next = &cond->next;
       buffer_ptr = "A:0";
-      cond = rc_parse_condition(&buffer_ptr, parse, 0);
+      cond = rc_parse_condition(&buffer_ptr, parse);
       *next = cond;
     }
 
     /* convert final AddSource condition to Measured */
     cond->type = RC_CONDITION_MEASURED;
     cond->next = 0;
+    rc_condition_update_parse_state(cond, parse);
 
     if (**memaddr != '$') {
       /* end of valid string */
@@ -176,18 +179,21 @@ void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_parse_stat
 }
 
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse) {
+  const uint8_t was_value = parse->is_value;
+  parse->is_value = 1;
+
   /* if it starts with a condition flag (M: A: B: C:), parse the conditions */
-  if ((*memaddr)[1] == ':') {
+  if ((*memaddr)[1] == ':')
     rc_parse_cond_value(self, memaddr, parse);
-  }
-  else {
+  else
     rc_parse_legacy_value(self, memaddr, parse);
-  }
 
   self->name = "(unnamed)";
   self->value.value = self->value.prior = 0;
   self->value.changed = 0;
   self->next = 0;
+
+  parse->is_value = was_value;
 }
 
 int rc_value_size(const char* memaddr) {
@@ -483,8 +489,12 @@ void rc_typed_value_negate(rc_typed_value_t* value) {
 void rc_typed_value_add(rc_typed_value_t* value, const rc_typed_value_t* amount) {
   rc_typed_value_t converted;
 
-  if (amount->type != value->type && value->type != RC_VALUE_TYPE_NONE)
-    amount = rc_typed_value_convert_into(&converted, amount, value->type);
+  if (amount->type != value->type && value->type != RC_VALUE_TYPE_NONE) {
+    if (amount->type == RC_VALUE_TYPE_FLOAT)
+      rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
+    else
+      amount = rc_typed_value_convert_into(&converted, amount, value->type);
+  }
 
   switch (value->type)
   {
@@ -711,6 +721,44 @@ void rc_typed_value_modulus(rc_typed_value_t* value, const rc_typed_value_t* amo
   rc_typed_value_convert(value, RC_VALUE_TYPE_FLOAT);
   value->value.f32 = (float)fmod(value->value.f32, amount->value.f32);
 }
+
+void rc_typed_value_combine(rc_typed_value_t* value, rc_typed_value_t* amount, uint8_t oper) {
+  switch (oper) {
+    case RC_OPERATOR_MULT:
+      rc_typed_value_multiply(value, amount);
+      break;
+
+    case RC_OPERATOR_DIV:
+      rc_typed_value_divide(value, amount);
+      break;
+
+    case RC_OPERATOR_AND:
+      rc_typed_value_convert(value, RC_VALUE_TYPE_UNSIGNED);
+      rc_typed_value_convert(amount, RC_VALUE_TYPE_UNSIGNED);
+      value->value.u32 &= amount->value.u32;
+      break;
+
+    case RC_OPERATOR_XOR:
+      rc_typed_value_convert(value, RC_VALUE_TYPE_UNSIGNED);
+      rc_typed_value_convert(amount, RC_VALUE_TYPE_UNSIGNED);
+      value->value.u32 ^= amount->value.u32;
+      break;
+
+    case RC_OPERATOR_MOD:
+      rc_typed_value_modulus(value, amount);
+      break;
+
+    case RC_OPERATOR_ADD:
+      rc_typed_value_add(value, amount);
+      break;
+
+    case RC_OPERATOR_SUB:
+      rc_typed_value_negate(amount);
+      rc_typed_value_add(value, amount);
+      break;
+  }
+}
+
 
 static int rc_typed_value_compare_floats(float f1, float f2, char oper) {
   if (f1 == f2) {

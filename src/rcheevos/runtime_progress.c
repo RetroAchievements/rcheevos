@@ -130,8 +130,10 @@ static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
   rc_memref_t* memref;
   uint32_t count = 0;
 
-  for (memref = progress->runtime->memrefs; memref; memref = memref->next)
-    ++count;
+  for (memref = progress->runtime->memrefs; memref; memref = memref->next) {
+    if (memref->value.memref_type == RC_MEMREF_TYPE_MEMREF)
+      ++count;
+  }
   if (count == 0)
     return RC_OK;
 
@@ -146,6 +148,9 @@ static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
   else {
     uint32_t flags = 0;
     for (memref = progress->runtime->memrefs; memref; memref = memref->next) {
+      if (memref->value.memref_type != RC_MEMREF_TYPE_MEMREF)
+        continue;
+
       flags = memref->value.size;
       if (memref->value.changed)
         flags |= RC_MEMREF_FLAG_CHANGED_THIS_FRAME;
@@ -162,6 +167,67 @@ static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
   return RC_OK;
 }
 
+static void rc_runtime_progress_update_modified_memrefs(rc_runtime_progress_t* progress)
+{
+  rc_typed_value_t value, prior_value, modifier, prior_modifier;
+  rc_modified_memref_t* modified_memref;
+  rc_operand_t prior_parent_operand, prior_modifier_operand;
+  rc_memref_t prior_parent_memref, prior_modifier_memref;
+  rc_memref_t* memref;
+
+  for (memref = progress->runtime->memrefs; memref; memref = memref->next) {
+    if (memref->value.memref_type == RC_MEMREF_TYPE_MEMREF)
+      continue;
+
+    memref->value.changed = 0;
+    modified_memref = (rc_modified_memref_t*)memref;
+
+    /* indirect memref values are stored in conditions */
+    if (modified_memref->modifier_type == RC_OPERATOR_INDIRECT_READ)
+      continue;
+
+    /* non-indirect memref values can be reconstructed from the parents */
+    memcpy(&prior_parent_operand, &modified_memref->parent, sizeof(prior_parent_operand));
+    if (rc_operand_is_memref(&prior_parent_operand)) {
+      memcpy(&prior_parent_memref, modified_memref->parent.value.memref, sizeof(prior_parent_memref));
+      prior_parent_memref.value.value = prior_parent_memref.value.prior;
+      memref->value.changed |= prior_parent_memref.value.changed;
+      prior_parent_operand.value.memref = &prior_parent_memref;
+    }
+
+    memcpy(&prior_modifier_operand, &modified_memref->modifier, sizeof(prior_modifier_operand));
+    if (rc_operand_is_memref(&prior_modifier_operand)) {
+      memcpy(&prior_modifier_memref, modified_memref->modifier.value.memref, sizeof(prior_modifier_memref));
+      prior_modifier_memref.value.value = prior_modifier_memref.value.prior;
+      memref->value.changed |= prior_modifier_memref.value.changed;
+      prior_modifier_operand.value.memref = &prior_modifier_memref;
+    }
+
+    rc_evaluate_operand(&value, &modified_memref->parent, NULL);
+    rc_evaluate_operand(&modifier, &modified_memref->modifier, NULL);
+    rc_evaluate_operand(&prior_value, &prior_parent_operand, NULL);
+    rc_evaluate_operand(&prior_modifier, &prior_modifier_operand, NULL);
+
+    if (modified_memref->modifier_type == RC_OPERATOR_SUB_PARENT) {
+      rc_typed_value_negate(&value);
+      rc_typed_value_add(&value, &modifier);
+
+      rc_typed_value_negate(&prior_value);
+      rc_typed_value_add(&prior_value, &prior_modifier);
+    }
+    else {
+      rc_typed_value_combine(&value, &modifier, modified_memref->modifier_type);
+      rc_typed_value_combine(&prior_value, &prior_modifier, modified_memref->modifier_type);
+    }
+
+    rc_typed_value_convert(&value, modified_memref->memref.value.type);
+    memref->value.value = value.value.u32;
+
+    rc_typed_value_convert(&prior_value, modified_memref->memref.value.type);
+    memref->value.prior = prior_value.value.u32;
+  }
+}
+
 static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
 {
   uint32_t entries;
@@ -169,6 +235,9 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
   uint8_t size;
   rc_memref_t* memref;
   rc_memref_t* first_unmatched_memref = progress->runtime->memrefs;
+
+  while (first_unmatched_memref && first_unmatched_memref->value.memref_type != RC_MEMREF_TYPE_MEMREF)
+    first_unmatched_memref = first_unmatched_memref->next;
 
   /* re-read the chunk size to determine how many memrefs are present */
   progress->offset -= 4;
@@ -184,13 +253,17 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
 
     memref = first_unmatched_memref;
     while (memref) {
-      if (memref->address == address && memref->value.size == size) {
+      if (memref->address == address && memref->value.size == size && memref->value.memref_type == RC_MEMREF_TYPE_MEMREF) {
         memref->value.value = value;
         memref->value.changed = (flags & RC_MEMREF_FLAG_CHANGED_THIS_FRAME) ? 1 : 0;
         memref->value.prior = prior;
 
-        if (memref == first_unmatched_memref)
+        if (memref == first_unmatched_memref) {
           first_unmatched_memref = memref->next;
+
+          while (first_unmatched_memref && first_unmatched_memref->value.memref_type != RC_MEMREF_TYPE_MEMREF)
+            first_unmatched_memref = first_unmatched_memref->next;
+        }
 
         break;
       }
@@ -200,6 +273,8 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
 
     --entries;
   }
+
+  rc_runtime_progress_update_modified_memrefs(progress);
 
   return RC_OK;
 }
@@ -215,7 +290,10 @@ static int rc_runtime_progress_is_indirect_memref(rc_operand_t* oper)
       return 0;
 
     default:
-      return oper->value.memref->value.is_indirect;
+      if (oper->value.memref->value.memref_type != RC_MEMREF_TYPE_MODIFIED_MEMREF)
+        return 0;
+
+      return ((const rc_modified_memref_t*)oper->value.memref)->modifier_type == RC_OPERATOR_INDIRECT_READ;
   }
 }
 
@@ -317,8 +395,8 @@ static uint32_t rc_runtime_progress_should_serialize_variable_condset(const rc_c
 {
   const rc_condition_t* condition;
 
-  /* predetermined presence of pause flag or indirect memrefs - must serialize */
-  if (conditions->has_pause || conditions->has_indirect_memrefs)
+  /* predetermined presence of pause flag - must serialize */
+  if (conditions->has_pause)
     return RC_VAR_FLAG_HAS_COND_DATA;
 
   /* if any conditions has required hits, must serialize */

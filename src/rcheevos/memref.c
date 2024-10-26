@@ -6,39 +6,69 @@
 
 #define MEMREF_PLACEHOLDER_ADDRESS 0xFFFFFFFF
 
-rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t size, uint8_t is_indirect) {
+rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t size) {
   rc_memref_t** next_memref;
   rc_memref_t* memref;
 
-  if (!is_indirect) {
-    /* attempt to find an existing memref that can be shared */
-    next_memref = parse->first_memref;
-    while (*next_memref) {
-      memref = *next_memref;
-      if (!memref->value.is_indirect && memref->address == address && memref->value.size == size)
-        return memref;
+  /* attempt to find an existing memref that can be shared */
+  next_memref = parse->first_memref;
+  while (*next_memref) {
+    memref = *next_memref;
+    if (memref->address == address && memref->value.memref_type == RC_MEMREF_TYPE_MEMREF && memref->value.size == size)
+      return memref;
 
-      next_memref = &memref->next;
-    }
+    next_memref = &memref->next;
+  }
 
-    /* no match found, create a new entry */
-    memref = RC_ALLOC_SCRATCH(rc_memref_t, parse);
-    *next_memref = memref;
-  }
-  else {
-    /* indirect references always create a new entry because we can't guarantee that the 
-     * indirection amount will be the same between references. because they aren't shared,
-     * don't bother putting them in the chain.
-     */
-    memref = RC_ALLOC(rc_memref_t, parse);
-  }
+  /* no match found, create a new entry */
+  memref = RC_ALLOC_SCRATCH(rc_memref_t, parse);
+  *next_memref = memref;
 
   memset(memref, 0, sizeof(*memref));
-  memref->address = address;
+  memref->value.memref_type = RC_MEMREF_TYPE_MEMREF;
+  memref->value.type = RC_VALUE_TYPE_UNSIGNED;
   memref->value.size = size;
-  memref->value.is_indirect = is_indirect;
+  memref->address = address;
 
   return memref;
+}
+
+rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t size, const rc_operand_t* parent,
+                                               uint8_t modifier_type, const rc_operand_t* modifier) {
+  rc_memref_t** next_memref;
+  rc_memref_t* memref;
+  rc_modified_memref_t* modified_memref;
+
+  /* attempt to find an existing memref that can be shared */
+  next_memref = parse->first_memref;
+  while (*next_memref) {
+    memref = *next_memref;
+    if (memref->value.memref_type == RC_MEMREF_TYPE_MODIFIED_MEMREF && memref->value.size == size) {
+      modified_memref = (rc_modified_memref_t*)memref;
+      if (modified_memref->modifier_type == modifier_type &&
+          rc_operands_are_equal(&modified_memref->parent, parent) &&
+          rc_operands_are_equal(&modified_memref->modifier, modifier)) {
+        return modified_memref;
+      }
+    }
+
+    next_memref = &memref->next;
+  }
+
+  /* no match found, create a new entry */
+  modified_memref = RC_ALLOC_SCRATCH(rc_modified_memref_t, parse);
+  *next_memref = (rc_memref_t*)modified_memref;
+
+  memset(modified_memref, 0, sizeof(*modified_memref));
+  modified_memref->memref.value.memref_type = RC_MEMREF_TYPE_MODIFIED_MEMREF;
+  modified_memref->memref.value.size = size;
+  modified_memref->memref.value.type = (size == RC_MEMSIZE_FLOAT) ? RC_VALUE_TYPE_FLOAT : RC_VALUE_TYPE_UNSIGNED;
+  memcpy(&modified_memref->parent, parent, sizeof(modified_memref->parent));
+  memcpy(&modified_memref->modifier, modifier, sizeof(modified_memref->modifier));
+  modified_memref->modifier_type = modifier_type;
+  modified_memref->memref.address = rc_operand_is_memref(modifier) ? modifier->value.memref->address : modifier->value.num;
+
+  return modified_memref;
 }
 
 int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address) {
@@ -485,16 +515,6 @@ void rc_update_memref_value(rc_memref_value_t* memref, uint32_t new_value) {
   }
 }
 
-void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud) {
-  while (memref) {
-    /* indirect memory references are not shared and will be updated in rc_get_memref_value */
-    if (!memref->value.is_indirect)
-      rc_update_memref_value(&memref->value, rc_peek_value(memref->address, memref->value.size, peek, ud));
-
-    memref = memref->next;
-  }
-}
-
 void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_t** memrefs) {
   parse->first_memref = memrefs;
   *memrefs = 0;
@@ -520,12 +540,53 @@ static uint32_t rc_get_memref_value_value(const rc_memref_value_t* memref, int o
   }
 }
 
-uint32_t rc_get_memref_value(rc_memref_t* memref, int operand_type, rc_eval_state_t* eval_state) {
-  /* if this is an indirect reference, handle the indirection. */
-  if (memref->value.is_indirect) {
-    const uint32_t new_address = memref->address + eval_state->add_address;
-    rc_update_memref_value(&memref->value, rc_peek_value(new_address, memref->value.size, eval_state->peek, eval_state->peek_userdata));
+void rc_get_memref_value(rc_typed_value_t* value, rc_memref_t* memref, int operand_type) {
+  value->type = memref->value.type;
+  value->value.u32 = rc_get_memref_value_value(&memref->value, operand_type);
+}
+
+uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_peek_t peek, void* ud) {
+  rc_typed_value_t value, modifier;
+
+  rc_evaluate_operand(&value, &memref->parent, NULL);
+  rc_evaluate_operand(&modifier, &memref->modifier, NULL);
+
+  switch (memref->modifier_type) {
+    case RC_OPERATOR_INDIRECT_READ:
+      rc_typed_value_add(&value, &modifier);
+      rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
+      value.value.u32 = rc_peek_value(value.value.u32, memref->memref.value.size, peek, ud);
+      value.type = memref->memref.value.type;
+      break;
+
+    case RC_OPERATOR_SUB_PARENT:
+      rc_typed_value_negate(&value);
+      rc_typed_value_add(&value, &modifier);
+      rc_typed_value_convert(&value, memref->memref.value.type);
+      break;
+
+    default:
+      rc_typed_value_combine(&value, &modifier, memref->modifier_type);
+      rc_typed_value_convert(&value, memref->memref.value.type);
+      break;
   }
 
-  return rc_get_memref_value_value(&memref->value, operand_type);
+  return value.value.u32;
+}
+
+void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud) {
+  while (memref) {
+    /* indirect memory references are not shared and will be updated in rc_get_memref_value */
+    switch (memref->value.memref_type) {
+    case RC_MEMREF_TYPE_MEMREF:
+      rc_update_memref_value(&memref->value, rc_peek_value(memref->address, memref->value.size, peek, ud));
+      break;
+
+    case RC_MEMREF_TYPE_MODIFIED_MEMREF:
+      rc_update_memref_value(&memref->value, rc_get_modified_memref_value((rc_modified_memref_t*)memref, peek, ud));
+      break;
+    }
+
+    memref = memref->next;
+  }
 }

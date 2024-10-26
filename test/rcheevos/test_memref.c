@@ -274,31 +274,31 @@ static void test_allocate_shared_address() {
   rc_init_parse_state(&parse, NULL, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
-  rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+  rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 1);
 
-  rc_alloc_memref(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
+  rc_alloc_memref(&parse, 1, RC_MEMSIZE_16_BITS); /* differing size will not match */
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 2);
 
-  rc_alloc_memref(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
+  rc_alloc_memref(&parse, 1, RC_MEMSIZE_LOW); /* differing size will not match */
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 3);
 
-  rc_alloc_memref(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
+  rc_alloc_memref(&parse, 1, RC_MEMSIZE_BIT_2); /* differing size will not match */
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 4);
 
-  rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
+  rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS); /* differing address will not match */
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 5);
 
-  rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
+  rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS); /* match */
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 5);
 
-  rc_alloc_memref(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
+  rc_alloc_memref(&parse, 1, RC_MEMSIZE_16_BITS); /* match */
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 5);
 
-  rc_alloc_memref(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
+  rc_alloc_memref(&parse, 1, RC_MEMSIZE_BIT_2); /* match */
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 5);
 
-  rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
+  rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS); /* match */
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 5);
 
   rc_destroy_parse_state(&parse);
@@ -316,34 +316,103 @@ static void test_allocate_shared_address2() {
   rc_init_parse_state(&parse, NULL, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
-  memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+  memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
   ASSERT_NUM_EQUALS(memref1->address, 1);
   ASSERT_NUM_EQUALS(memref1->value.size, RC_MEMSIZE_8_BITS);
-  ASSERT_NUM_EQUALS(memref1->value.is_indirect, 0);
+  ASSERT_NUM_EQUALS(memref1->value.memref_type, RC_MEMREF_TYPE_MEMREF);
+  ASSERT_NUM_EQUALS(memref1->value.type, RC_VALUE_TYPE_UNSIGNED);
   ASSERT_NUM_EQUALS(memref1->value.value, 0);
   ASSERT_NUM_EQUALS(memref1->value.changed, 0);
   ASSERT_NUM_EQUALS(memref1->value.prior, 0);
   ASSERT_PTR_EQUALS(memref1->next, 0);
 
-  memref2 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* differing size will not match */
-  memref3 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_LOW, 0); /* differing size will not match */
-  memref4 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* differing size will not match */
-  memref5 = rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* differing address will not match */
+  memref2 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_16_BITS); /* differing size will not match */
+  memref3 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_LOW); /* differing size will not match */
+  memref4 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_BIT_2); /* differing size will not match */
+  memref5 = rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS); /* differing address will not match */
 
-  memrefX = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS, 0); /* match */
+  memrefX = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS); /* match */
   ASSERT_PTR_EQUALS(memrefX, memref1);
 
-  memrefX = rc_alloc_memref(&parse, 1, RC_MEMSIZE_16_BITS, 0); /* match */
+  memrefX = rc_alloc_memref(&parse, 1, RC_MEMSIZE_16_BITS); /* match */
   ASSERT_PTR_EQUALS(memrefX, memref2);
 
-  memrefX = rc_alloc_memref(&parse, 1, RC_MEMSIZE_LOW, 0); /* match */
+  memrefX = rc_alloc_memref(&parse, 1, RC_MEMSIZE_LOW); /* match */
   ASSERT_PTR_EQUALS(memrefX, memref3);
 
-  memrefX = rc_alloc_memref(&parse, 1, RC_MEMSIZE_BIT_2, 0); /* match */
+  memrefX = rc_alloc_memref(&parse, 1, RC_MEMSIZE_BIT_2); /* match */
   ASSERT_PTR_EQUALS(memrefX, memref4);
 
-  memrefX = rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS, 0); /* match */
+  memrefX = rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS); /* match */
   ASSERT_PTR_EQUALS(memrefX, memref5);
+
+  rc_destroy_parse_state(&parse);
+}
+
+static void test_allocate_shared_indirect_address() {
+  rc_parse_state_t parse;
+  rc_memref_t* memrefs;
+  rc_memref_t* parent_memref1, *parent_memref2;
+  rc_operand_t parent1, parent2, delta1, intermediate2;
+  rc_modified_memref_t* child1, *child2, *child3, *child4;
+  rc_operand_t offset0, offset4;
+  rc_operand_set_const(&offset0, 0);
+  rc_operand_set_const(&offset4, 4);
+
+  rc_init_parse_state(&parse, NULL, 0, 0);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+
+  parent1.value.memref = parent_memref1 = rc_alloc_memref(&parse, 88, RC_MEMSIZE_16_BITS);
+  parent1.type = RC_OPERAND_ADDRESS;
+  parent1.size = RC_MEMSIZE_16_BITS;
+  parent2.value.memref = parent_memref2 = rc_alloc_memref(&parse, 99, RC_MEMSIZE_16_BITS);
+  parent2.type = RC_OPERAND_ADDRESS;
+  parent2.size = RC_MEMSIZE_16_BITS;
+  delta1.value.memref = parent_memref1;
+  delta1.type = RC_OPERAND_DELTA;
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 2);
+
+  child1 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &parent1, RC_OPERATOR_INDIRECT_READ, &offset0);
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 3);
+
+  /* differing size will not match */
+  child2 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_16_BITS, &parent1, RC_OPERATOR_INDIRECT_READ, &offset0);
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 4);
+
+  /* differing parent will not match */
+  child3 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &parent2, RC_OPERATOR_INDIRECT_READ, &offset0);
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 5);
+
+  /* differing parent type will not match */
+  child4 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &delta1, RC_OPERATOR_INDIRECT_READ, &offset0);
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 6);
+
+  /* differing offset will not match */
+  child4 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &parent1, RC_OPERATOR_INDIRECT_READ, &offset4);
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 7);
+
+  /* exact match to first */
+  ASSERT_PTR_EQUALS(rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &parent1, RC_OPERATOR_INDIRECT_READ, &offset0), child1);
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 7);
+
+  /* exact match to differing parent */
+  ASSERT_PTR_EQUALS(rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &parent2, RC_OPERATOR_INDIRECT_READ, &offset0), child3);
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 7);
+
+  /* exact match to differing offset */
+  ASSERT_PTR_EQUALS(rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &parent1, RC_OPERATOR_INDIRECT_READ, &offset4), child4);
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 7);
+
+  /* intermediate parent */
+  intermediate2.value.memref = &child2->memref;
+  intermediate2.type = RC_OPERAND_ADDRESS;
+  intermediate2.size = RC_MEMSIZE_32_BITS;
+  intermediate2.memref_access_type = RC_OPERAND_ADDRESS;
+  child4 = rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &intermediate2, RC_OPERATOR_INDIRECT_READ, &offset0);
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 8);
+
+  ASSERT_PTR_EQUALS(rc_alloc_modified_memref(&parse, RC_MEMSIZE_8_BITS, &intermediate2, RC_OPERATOR_INDIRECT_READ, &offset0), child4);
+  ASSERT_NUM_EQUALS(get_memref_count(&parse), 8);
 
   rc_destroy_parse_state(&parse);
 }
@@ -357,24 +426,24 @@ static void test_sizing_mode_grow_buffer() {
 
   /* memrefs are allocated 16 at a time */
   for (i = 0; i < 100; i++) {
-      rc_alloc_memref(&parse, i, RC_MEMSIZE_8_BITS, 0);
+      rc_alloc_memref(&parse, i, RC_MEMSIZE_8_BITS);
   }
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 100);
 
   /* 100 have been allocated, make sure we can still access items at various addresses without allocating more */
-  rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS, 0);
+  rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 100);
 
-  rc_alloc_memref(&parse, 25, RC_MEMSIZE_8_BITS, 0);
+  rc_alloc_memref(&parse, 25, RC_MEMSIZE_8_BITS);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 100);
 
-  rc_alloc_memref(&parse, 50, RC_MEMSIZE_8_BITS, 0);
+  rc_alloc_memref(&parse, 50, RC_MEMSIZE_8_BITS);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 100);
 
-  rc_alloc_memref(&parse, 75, RC_MEMSIZE_8_BITS, 0);
+  rc_alloc_memref(&parse, 75, RC_MEMSIZE_8_BITS);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 100);
 
-  rc_alloc_memref(&parse, 99, RC_MEMSIZE_8_BITS, 0);
+  rc_alloc_memref(&parse, 99, RC_MEMSIZE_8_BITS);
   ASSERT_NUM_EQUALS(get_memref_count(&parse), 100);
 
   rc_destroy_parse_state(&parse);
@@ -394,8 +463,8 @@ static void test_update_memref_values() {
   rc_init_parse_state(&parse, NULL, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
-  memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS, 0);
-  memref2 = rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS, 0);
+  memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
+  memref2 = rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS);
 
   rc_update_memref_values(memrefs, peek, &memory);
 
@@ -448,6 +517,7 @@ void test_memref(void) {
 
   TEST(test_allocate_shared_address);
   TEST(test_allocate_shared_address2);
+  TEST(test_allocate_shared_indirect_address);
 
   TEST(test_sizing_mode_grow_buffer);
   TEST(test_update_memref_values);
