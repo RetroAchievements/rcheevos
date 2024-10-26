@@ -406,5 +406,8 @@
     <Natvis Include="test_types.natvis">
       <Filter>tests\rcheevos</Filter>
     </Natvis>
+    <Natvis Include="..\src\rc_client_types.natvis">
+      <Filter>src</Filter>
+    </Natvis>
   </ItemGroup>
 </Project>

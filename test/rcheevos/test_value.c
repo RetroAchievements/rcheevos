@@ -695,6 +695,7 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "K:5_A:1_C:{recall}=6_B:1_C:{recall}=4_M:0=1", 2);
   TEST_PARAMS2(test_evaluate_value, "A:{recall}_M:1", 1); /* Using recall without remember. 0 + 1 = 1*/
   TEST_PARAMS2(test_evaluate_value, "K:{recall}^255_M:{recall}", 255); /* Using recall in first remember. 0x00^0xFF = 0xFF  */
+  TEST_PARAMS2(test_evaluate_value, "A:1_K:2_M:{recall}", 3); /* Remembered value includes AddSource chain  */
 
   /* pause and reset affect hit count */
   TEST(test_evaluate_measured_value_with_pause);
