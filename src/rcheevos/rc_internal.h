@@ -214,7 +214,7 @@ typedef struct rc_condset_with_trailing_conditions_t {
   rc_condset_t condset;
   rc_condition_t conditions[2];
 } rc_condset_with_trailing_conditions_t;
-RC_ALLOW_ALIGN(rc_condset_with_trailing_conditions_t);
+RC_ALLOW_ALIGN(rc_condset_with_trailing_conditions_t)
 
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse);
 int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state);
