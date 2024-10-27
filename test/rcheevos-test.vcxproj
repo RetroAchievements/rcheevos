@@ -255,6 +255,7 @@
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\src\rcheevos\rc_runtime_types.natvis" />
+    <Natvis Include="..\src\rc_client_types.natvis" />
     <Natvis Include="test_types.natvis" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

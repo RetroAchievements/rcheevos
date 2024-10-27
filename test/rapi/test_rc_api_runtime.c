@@ -805,6 +805,26 @@ static void test_init_award_achievement_request_no_achievement_id() {
   rc_api_destroy_request(&request);
 }
 
+static void test_init_award_achievement_request_delayed() {
+  rc_api_award_achievement_request_t award_achievement_request;
+  rc_api_request_t request;
+
+  memset(&award_achievement_request, 0, sizeof(award_achievement_request));
+  award_achievement_request.username = "Username";
+  award_achievement_request.api_token = "API_TOKEN";
+  award_achievement_request.achievement_id = 1234;
+  award_achievement_request.hardcore = 1;
+  award_achievement_request.game_hash = "ABCDEF0123456789";
+  award_achievement_request.seconds_since_unlock = 17;
+
+  ASSERT_NUM_EQUALS(rc_api_init_award_achievement_request(&request, &award_achievement_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=awardachievement&u=Username&t=API_TOKEN&a=1234&h=1&m=ABCDEF0123456789&o=17&v=b2326b09d61e9264eb5d3607d947317d");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_process_award_achievement_response_success() {
   rc_api_award_achievement_response_t award_achievement_response;
   const char* server_response = "{\"Success\":true,\"Score\":119102,\"SoftcoreScore\":777,\"AchievementID\":56481,\"AchievementsRemaining\":11}";
@@ -1129,6 +1149,26 @@ static void test_init_submit_lboard_entry_request_no_leaderboard_id() {
   rc_api_destroy_request(&request);
 }
 
+static void test_init_submit_lboard_entry_request_delayed() {
+  rc_api_submit_lboard_entry_request_t submit_lboard_entry_request;
+  rc_api_request_t request;
+
+  memset(&submit_lboard_entry_request, 0, sizeof(submit_lboard_entry_request));
+  submit_lboard_entry_request.username = "Username";
+  submit_lboard_entry_request.api_token = "API_TOKEN";
+  submit_lboard_entry_request.leaderboard_id = 1234;
+  submit_lboard_entry_request.score = 10999;
+  submit_lboard_entry_request.game_hash = "ABCDEF0123456789";
+  submit_lboard_entry_request.seconds_since_completion = 33;
+
+  ASSERT_NUM_EQUALS(rc_api_init_submit_lboard_entry_request(&request, &submit_lboard_entry_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=submitlbentry&u=Username&t=API_TOKEN&i=1234&s=10999&m=ABCDEF0123456789&o=33&v=7971fc37cf38026f99dd4bae84360ac1");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_process_submit_lb_entry_response_success() {
   rc_api_submit_lboard_entry_response_t submit_lb_entry_response;
   rc_api_lboard_entry_t* entry;
@@ -1259,6 +1299,7 @@ void test_rapi_runtime(void) {
   TEST(test_init_award_achievement_request_non_hardcore);
   TEST(test_init_award_achievement_request_no_hash);
   TEST(test_init_award_achievement_request_no_achievement_id);
+  TEST(test_init_award_achievement_request_delayed);
 
   TEST(test_process_award_achievement_response_success);
   TEST(test_process_award_achievement_response_hardcore_already_unlocked);
@@ -1278,6 +1319,7 @@ void test_rapi_runtime(void) {
   TEST(test_init_submit_lboard_entry_request_zero_value);
   TEST(test_init_submit_lboard_entry_request_negative_value);
   TEST(test_init_submit_lboard_entry_request_no_leaderboard_id);
+  TEST(test_init_submit_lboard_entry_request_delayed);
 
   TEST(test_process_submit_lb_entry_response_success);
   TEST(test_process_submit_lb_entry_response_no_entries);

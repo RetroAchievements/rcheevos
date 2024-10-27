@@ -404,21 +404,6 @@ int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right) {
   }
 }
 
-static int rc_memsize_is_float(uint8_t size) {
-  switch (size) {
-    case RC_MEMSIZE_FLOAT:
-    case RC_MEMSIZE_FLOAT_BE:
-    case RC_MEMSIZE_DOUBLE32:
-    case RC_MEMSIZE_DOUBLE32_BE:
-    case RC_MEMSIZE_MBF32:
-    case RC_MEMSIZE_MBF32_LE:
-      return 1;
-
-    default:
-      return 0;
-  }
-}
-
 int rc_operator_is_modifying(int oper) {
   switch (oper) {
     case RC_OPERATOR_AND:
@@ -429,6 +414,21 @@ int rc_operator_is_modifying(int oper) {
     case RC_OPERATOR_ADD:
     case RC_OPERATOR_SUB:
     case RC_OPERATOR_NONE: /* NONE operator implies "* 1" */
+      return 1;
+
+    default:
+      return 0;
+  }
+}
+
+static int rc_memsize_is_float(uint8_t size) {
+  switch (size) {
+    case RC_MEMSIZE_FLOAT:
+    case RC_MEMSIZE_FLOAT_BE:
+    case RC_MEMSIZE_DOUBLE32:
+    case RC_MEMSIZE_DOUBLE32_BE:
+    case RC_MEMSIZE_MBF32:
+    case RC_MEMSIZE_MBF32_LE:
       return 1;
 
     default:

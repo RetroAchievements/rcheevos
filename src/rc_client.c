@@ -91,6 +91,70 @@ static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_
 static int rc_client_is_award_achievement_pending(const rc_client_t* client, uint32_t achievement_id);
 static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
 
+/* ===== natvis extensions ===== */
+
+typedef struct __rc_client_achievement_state_enum_t { uint8_t value; } __rc_client_achievement_state_enum_t;
+typedef struct __rc_client_achievement_category_enum_t { uint8_t value; } __rc_client_achievement_category_enum_t;
+typedef struct __rc_client_achievement_type_enum_t { uint8_t value; } __rc_client_achievement_type_enum_t;
+typedef struct __rc_client_achievement_bucket_enum_t { uint8_t value; } __rc_client_achievement_bucket_enum_t;
+typedef struct __rc_client_achievement_unlocked_enum_t { uint8_t value; } __rc_client_achievement_unlocked_enum_t;
+typedef struct __rc_client_leaderboard_state_enum_t { uint8_t value; } __rc_client_leaderboard_state_enum_t;
+typedef struct __rc_client_leaderboard_format_enum_t { uint8_t value; } __rc_client_leaderboard_format_enum_t;
+typedef struct __rc_client_log_level_enum_t { uint8_t value; } __rc_client_log_level_enum_t;
+typedef struct __rc_client_event_type_enum_t { uint8_t value; } __rc_client_event_type_enum_t;
+typedef struct __rc_client_load_game_state_enum_t { uint8_t value; } __rc_client_load_game_state_enum_t;
+typedef struct __rc_client_user_state_enum_t { uint8_t value; } __rc_client_user_state_enum_t;
+typedef struct __rc_client_mastery_state_enum_t { uint8_t value; } __rc_client_mastery_state_enum_t;
+typedef struct __rc_client_spectator_mode_enum_t { uint8_t value; } __rc_client_spectator_mode_enum_t;
+typedef struct __rc_client_disconnect_enum_t { uint8_t value; } __rc_client_disconnect_enum_t;
+typedef struct __rc_client_leaderboard_tracker_list_t { rc_client_leaderboard_tracker_info_t* first; } __rc_client_leaderboard_tracker_list_t;
+typedef struct __rc_client_subset_info_list_t { rc_client_subset_info_t* first; } __rc_client_subset_info_list_t;
+typedef struct __rc_client_media_hash_list_t { rc_client_media_hash_t* first; } __rc_client_media_hash_list_t;
+typedef struct __rc_client_subset_info_achievements_list_t { rc_client_subset_info_t info; } __rc_client_subset_info_achievements_list_t;
+typedef struct __rc_client_subset_info_leaderboards_list_t { rc_client_subset_info_t info; } __rc_client_subset_info_leaderboards_list_t;
+typedef struct __rc_client_scheduled_callback_list_t { rc_client_state_t state; } __rc_client_scheduled_callback_list_t;
+typedef struct __rc_client_game_hash_list_t { rc_client_t client; } __rc_client_game_hash_list_t;
+
+static void rc_client_natvis_helper(const rc_client_event_t* event, rc_client_t* client)
+{
+  struct natvis_extensions {
+    __rc_client_achievement_state_enum_t achievement_state;
+    __rc_client_achievement_category_enum_t achievement_category;
+    __rc_client_achievement_type_enum_t achievement_type;
+    __rc_client_achievement_bucket_enum_t achievement_bucket;
+    __rc_client_achievement_unlocked_enum_t achievement_unlocked;
+    __rc_client_leaderboard_state_enum_t leaderboard_state;
+    __rc_client_leaderboard_format_enum_t leaderboard_format;
+    __rc_client_log_level_enum_t log_level;
+    __rc_client_event_type_enum_t event_type;
+    __rc_client_load_game_state_enum_t load_game_state;
+    __rc_client_user_state_enum_t user_state;
+    __rc_client_mastery_state_enum_t mastery_state;
+    __rc_client_spectator_mode_enum_t spectator_mode;
+    __rc_client_disconnect_enum_t disconnect;
+    __rc_client_leaderboard_tracker_list_t leaderboard_tracker_list;
+    __rc_client_subset_info_list_t subset_info_list;
+    __rc_client_media_hash_list_t media_hash_list;
+    __rc_client_subset_info_achievements_list_t subset_info_achievements_list;
+    __rc_client_subset_info_leaderboards_list_t subset_info_leaderboards_list;
+    __rc_client_scheduled_callback_list_t scheduled_callback_list;
+    __rc_client_game_hash_list_t client_game_hash_list;
+  } natvis;
+
+  memset(&natvis, 0, sizeof(natvis));
+  (void)event;
+  (void)client;
+
+  /* this code should never be executed. it just ensures these constants get defined for
+   * the natvis VisualStudio extension as they're not used directly in the code. */
+  natvis.achievement_type.value = RC_CLIENT_ACHIEVEMENT_TYPE_STANDARD;
+  natvis.achievement_type.value = RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE;
+  natvis.achievement_type.value = RC_CLIENT_ACHIEVEMENT_TYPE_PROGRESSION;
+  natvis.achievement_type.value = RC_CLIENT_ACHIEVEMENT_TYPE_WIN;
+  natvis.achievement_category.value = RC_CLIENT_ACHIEVEMENT_CATEGORY_NONE;
+  natvis.event_type.value = RC_CLIENT_EVENT_TYPE_NONE;
+}
+
 /* ===== Construction/Destruction ===== */
 
 static void rc_client_dummy_event_handler(const rc_client_event_t* event, rc_client_t* client)
@@ -110,6 +174,7 @@ rc_client_t* rc_client_create(rc_client_read_memory_func_t read_memory_function,
 
   client->callbacks.read_memory = read_memory_function;
   client->callbacks.server_call = server_call_function;
+  client->callbacks.event_handler = rc_client_natvis_helper;
   client->callbacks.event_handler = rc_client_dummy_event_handler;
   rc_client_set_legacy_peek(client, RC_CLIENT_LEGACY_PEEK_AUTO);
   rc_client_set_get_time_millisecs_function(client, NULL);
@@ -180,7 +245,7 @@ static void rc_client_log_message_va(const rc_client_t* client, const char* form
   if (client->callbacks.log_call) {
     char buffer[2048];
 
-#ifdef __STDC_WANT_SECURE_LIB__
+#ifdef __STDC_SECURE_LIB__
     vsprintf_s(buffer, sizeof(buffer), format, args);
 #elif __STDC_VERSION__ >= 199901L /* vsnprintf requires c99 */
     vsnprintf(buffer, sizeof(buffer), format, args);
@@ -1434,7 +1499,6 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
   rc_mutex_lock(&client->state.mutex);
   load_state->progress = (client->state.load == load_state) ?
       RC_CLIENT_LOAD_GAME_STATE_DONE : RC_CLIENT_LOAD_GAME_STATE_ABORTED;
-  client->state.load = NULL;
   rc_mutex_unlock(&client->state.mutex);
 
   if (load_state->progress != RC_CLIENT_LOAD_GAME_STATE_DONE) {
@@ -1455,17 +1519,15 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
           start_session_response->num_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
     }
 
+    /* make the loaded game active if another game is not aleady being loaded. */
     rc_mutex_lock(&client->state.mutex);
-    if (client->state.load == NULL)
+    if (client->state.load == load_state)
       client->game = load_state->game;
+    else
+      load_state->progress = RC_CLIENT_LOAD_GAME_STATE_ABORTED;
     rc_mutex_unlock(&client->state.mutex);
 
-    if (client->game != load_state->game) {
-      /* previous load state was aborted */
-      if (load_state->callback)
-        load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
-    }
-    else {
+    if (load_state->progress != RC_CLIENT_LOAD_GAME_STATE_ABORTED) {
       /* if a change media request is pending, kick it off */
       rc_client_pending_media_t* pending_media;
 
@@ -1475,6 +1537,9 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
       rc_mutex_unlock(&load_state->client->state.mutex);
 
       if (pending_media) {
+        /* rc_client_check_pending_media will fail if it can't find the game in client->game or
+         * client->state.load->game. since we've detached the load_state, this has to occur after
+         * we've made the game active. */
         if (pending_media->hash) {
           rc_client_begin_change_media_from_hash(client, pending_media->hash,
             pending_media->callback, pending_media->callback_userdata);
@@ -1488,12 +1553,50 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
         rc_client_free_pending_media(pending_media);
       }
 
-      /* client->game must be set before calling this function so it can query the console_id */
+      rc_mutex_lock(&client->state.mutex);
+      if (client->state.load != load_state)
+        load_state->progress = RC_CLIENT_LOAD_GAME_STATE_ABORTED;
+      rc_mutex_unlock(&client->state.mutex);
+    }
+
+    /* if the game is still being loaded, make sure all the required memory addresses are accessible
+     * so we can mark achievements as unsupported before loading them into the runtime. */
+    if (load_state->progress != RC_CLIENT_LOAD_GAME_STATE_ABORTED) {
+      /* TODO: it is desirable to not do memory reads from a background thread. Some emulators (like Dolphin) don't
+       *       allow it. Dolphin's solution is to use a dummy read function that says all addresses are valid and
+       *       switches to the actual read function after the callback is called. latter invalid reads will
+       *       mark achievements as unsupported. */
+
+      /* ASSERT: client->game must be set before calling this function so the read_memory callback can query the console_id */
       rc_client_validate_addresses(load_state->game, client);
 
+      rc_mutex_lock(&client->state.mutex);
+      if (client->state.load != load_state)
+        load_state->progress = RC_CLIENT_LOAD_GAME_STATE_ABORTED;
+      rc_mutex_unlock(&client->state.mutex);
+    }
+
+    /* if the game is still being loaded, load any active acheivements/leaderboards into the runtime */
+    if (load_state->progress != RC_CLIENT_LOAD_GAME_STATE_ABORTED) {
       rc_client_activate_achievements(load_state->game, client);
       rc_client_activate_leaderboards(load_state->game, client);
 
+      /* detach the load state to indicate that loading is fully complete */
+      rc_mutex_lock(&client->state.mutex);
+      if (client->state.load == load_state)
+        client->state.load = NULL;
+      else
+        load_state->progress = RC_CLIENT_LOAD_GAME_STATE_ABORTED;
+      rc_mutex_unlock(&client->state.mutex);
+    }
+
+    /* one last sanity check to make sure the game is still being loaded. */
+    if (load_state->progress == RC_CLIENT_LOAD_GAME_STATE_ABORTED) {
+      /* game has been unloaded, or another game is being loaded over the top of this game */
+      if (load_state->callback)
+        load_state->callback(RC_ABORTED, "The requested game is no longer active", client, load_state->callback_userdata);
+    }
+    else {
       if (load_state->hash->hash[0] != '[') {
         if (load_state->client->state.spectator_mode != RC_CLIENT_SPECTATOR_MODE_LOCKED) {
           /* schedule the periodic ping */
@@ -2001,7 +2104,6 @@ static int rc_client_attach_load_state(rc_client_t* client, rc_client_load_state
 {
   if (client->state.load == NULL) {
     rc_client_unload_game(client);
-    client->state.load = load_state;
 
     if (load_state->game == NULL) {
       load_state->game = rc_client_allocate_game();
@@ -2012,6 +2114,10 @@ static int rc_client_attach_load_state(rc_client_t* client, rc_client_load_state
         return 0;
       }
     }
+
+    rc_mutex_lock(&client->state.mutex);
+    client->state.load = load_state;
+    rc_mutex_unlock(&client->state.mutex);
   }
   else if (client->state.load != load_state) {
     /* previous load was aborted */
@@ -2615,8 +2721,6 @@ static void rc_client_game_mark_ui_to_be_hidden(rc_client_t* client, rc_client_g
 void rc_client_unload_game(rc_client_t* client)
 {
   rc_client_game_info_t* game;
-  rc_client_scheduled_callback_data_t** last;
-  rc_client_scheduled_callback_data_t* next;
 
   if (!client)
     return;
@@ -2643,29 +2747,38 @@ void rc_client_unload_game(rc_client_t* client)
   if (client->state.load) {
     /* this mimics rc_client_abort_async without nesting the lock */
     client->state.load->async_handle.aborted = RC_CLIENT_ASYNC_ABORTED;
+
+    /* if the game is still being loaded, let the load process clean it up */
+    if (client->state.load->game == game)
+      game = NULL;
+
     client->state.load = NULL;
   }
 
   if (client->state.spectator_mode == RC_CLIENT_SPECTATOR_MODE_LOCKED)
     client->state.spectator_mode = RC_CLIENT_SPECTATOR_MODE_ON;
 
-  if (game != NULL)
+  if (game != NULL) {
+    rc_client_scheduled_callback_data_t** last;
+    rc_client_scheduled_callback_data_t* next;
+
     rc_client_game_mark_ui_to_be_hidden(client, game);
 
-  last = &client->state.scheduled_callbacks;
-  do {
-    next = *last;
-    if (!next)
-      break;
+    last = &client->state.scheduled_callbacks;
+    do {
+      next = *last;
+      if (!next)
+        break;
 
-    /* remove rich presence ping scheduled event for game */
-    if (next->callback == rc_client_ping && game && next->related_id == game->public_.id) {
-      *last = next->next;
-      continue;
-    }
+      /* remove rich presence ping scheduled event for game */
+      if (next->callback == rc_client_ping && next->related_id == game->public_.id) {
+        *last = next->next;
+        continue;
+      }
 
-    last = &next->next;
-  } while (1);
+      last = &next->next;
+    } while (1);
+  }
 
   rc_mutex_unlock(&client->state.mutex);
 
@@ -3528,7 +3641,7 @@ typedef struct rc_client_award_achievement_callback_data_t
   uint32_t retry_count;
   uint8_t hardcore;
   const char* game_hash;
-  time_t unlock_time;
+  rc_clock_t unlock_time;
   rc_client_t* client;
   rc_client_scheduled_callback_data_t* scheduled_callback_data;
 } rc_client_award_achievement_callback_data_t;
@@ -3679,6 +3792,11 @@ static void rc_client_award_achievement_server_call(rc_client_award_achievement_
   api_params.hardcore = ach_data->hardcore;
   api_params.game_hash = ach_data->game_hash;
 
+  if (ach_data->retry_count) {
+    const rc_clock_t now = ach_data->client->callbacks.get_time_millisecs(ach_data->client);
+    api_params.seconds_since_unlock = (uint32_t)((now - ach_data->unlock_time) / 1000);
+  }
+
   result = rc_api_init_award_achievement_request(&request, &api_params);
   if (result != RC_OK) {
     RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Error constructing unlock request for achievement %u: %s", ach_data->id, rc_error_str(result));
@@ -3745,7 +3863,8 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
   callback_data->client = client;
   callback_data->id = achievement->public_.id;
   callback_data->hardcore = client->state.hardcore;
-  callback_data->unlock_time = achievement->public_.unlock_time;
+  callback_data->game_hash = client->game->public_.hash;
+  callback_data->unlock_time = client->callbacks.get_time_millisecs(client);
 
   if (client->game) /* may be NULL if this gets called while unloading the game (from another thread - events are raised outside the lock) */
     callback_data->game_hash = client->game->public_.hash;
@@ -4179,7 +4298,7 @@ typedef struct rc_client_submit_leaderboard_entry_callback_data_t
   int32_t score;
   uint32_t retry_count;
   const char* game_hash;
-  time_t submit_time;
+  rc_clock_t submit_time;
   rc_client_t* client;
   rc_client_scheduled_callback_data_t* scheduled_callback_data;
 } rc_client_submit_leaderboard_entry_callback_data_t;
@@ -4334,6 +4453,11 @@ static void rc_client_submit_leaderboard_entry_server_call(rc_client_submit_lead
   api_params.score = lboard_data->score;
   api_params.game_hash = lboard_data->game_hash;
 
+  if (lboard_data->retry_count) {
+    const rc_clock_t now = lboard_data->client->callbacks.get_time_millisecs(lboard_data->client);
+    api_params.seconds_since_completion = (uint32_t)((now - lboard_data->submit_time) / 1000);
+  }
+
   result = rc_api_init_submit_lboard_entry_request(&request, &api_params);
   if (result != RC_OK) {
     RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Error constructing submit leaderboard entry for leaderboard %u: %s", lboard_data->id, rc_error_str(result));
@@ -4377,7 +4501,7 @@ static void rc_client_submit_leaderboard_entry(rc_client_t* client, rc_client_le
   callback_data->id = leaderboard->public_.id;
   callback_data->score = leaderboard->value;
   callback_data->game_hash = client->game->public_.hash;
-  callback_data->submit_time = time(NULL);
+  callback_data->submit_time = client->callbacks.get_time_millisecs(client);
 
   RC_CLIENT_LOG_INFO_FORMATTED(client, "Submitting %s (%d) for leaderboard %u: %s",
       leaderboard->public_.tracker_value, leaderboard->value, leaderboard->public_.id, leaderboard->public_.title);

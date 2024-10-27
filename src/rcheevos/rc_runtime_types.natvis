@@ -90,8 +90,8 @@
         <Expand>
             <Item Name="value">value</Item>
             <Item Name="prior">prior</Item>
-            <Item Name="changed">*((__rc_bool_enum_t*)&amp;changed)</Item>
             <Item Name="size">*((__rc_memsize_enum_t*)&amp;size)</Item>
+            <Item Name="changed">*((__rc_bool_enum_t*)&amp;changed)</Item>
             <Item Name="type">*((__rc_value_type_enum_t*)&amp;type)</Item>
             <Item Name="memref_type">*((__rc_memref_type_enum_t*)&amp;memref_type)</Item>
         </Expand>
@@ -267,6 +267,31 @@
             <Item Name="modifier">modifier</Item>
         </Expand>
     </Type>
+    <Type Name="__rc_trigger_state_enum_t">
+        <DisplayString Condition="value==RC_TRIGGER_STATE_INACTIVE">{RC_TRIGGER_STATE_INACTIVE}</DisplayString>
+        <DisplayString Condition="value==RC_TRIGGER_STATE_WAITING">{RC_TRIGGER_STATE_WAITING}</DisplayString>
+        <DisplayString Condition="value==RC_TRIGGER_STATE_ACTIVE">{RC_TRIGGER_STATE_ACTIVE}</DisplayString>
+        <DisplayString Condition="value==RC_TRIGGER_STATE_PAUSED">{RC_TRIGGER_STATE_PAUSED}</DisplayString>
+        <DisplayString Condition="value==RC_TRIGGER_STATE_RESET">{RC_TRIGGER_STATE_RESET}</DisplayString>
+        <DisplayString Condition="value==RC_TRIGGER_STATE_TRIGGERED">{RC_TRIGGER_STATE_TRIGGERED}</DisplayString>
+        <DisplayString Condition="value==RC_TRIGGER_STATE_PRIMED">{RC_TRIGGER_STATE_PRIMED}</DisplayString>
+        <DisplayString Condition="value==RC_TRIGGER_STATE_DISABLED">{RC_TRIGGER_STATE_DISABLED}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+    <Type Name="rc_trigger_t">
+        <Expand>
+            <Item Name="state">*((__rc_trigger_state_enum_t*)&amp;state)</Item>
+            <Item Name="has_hits">*((__rc_bool_enum_t*)&amp;has_hits)</Item>
+            <Item Name="has_required_hits">*((__rc_bool_enum_t*)&amp;has_required_hits)</Item>
+            <Item Name="measured_as_percent">*((__rc_bool_enum_t*)&amp;measured_as_percent)</Item>
+            <Item Name="requirement">*requirement</Item>
+            <LinkedListItems>
+                <HeadPointer>alternative</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
     <Type Name="rc_value_t">
         <DisplayString>{value} {name,s}</DisplayString>
         <Expand>
@@ -275,6 +300,25 @@
             <Item Name="name">name</Item>
             <Item Name="memrefs">*((__rc_memref_list_t*)&amp;memrefs)</Item>
             <Item Name="next">next</Item>
+        </Expand>
+    </Type>
+    <Type Name="__rc_lboard_state_enum_t">
+        <DisplayString Condition="value==RC_LBOARD_STATE_INACTIVE">{RC_LBOARD_STATE_INACTIVE}</DisplayString>
+        <DisplayString Condition="value==RC_LBOARD_STATE_WAITING">{RC_LBOARD_STATE_WAITING}</DisplayString>
+        <DisplayString Condition="value==RC_LBOARD_STATE_ACTIVE">{RC_LBOARD_STATE_ACTIVE}</DisplayString>
+        <DisplayString Condition="value==RC_LBOARD_STATE_STARTED">{RC_LBOARD_STATE_STARTED}</DisplayString>
+        <DisplayString Condition="value==RC_LBOARD_STATE_CANCELED">{RC_LBOARD_STATE_CANCELED}</DisplayString>
+        <DisplayString Condition="value==RC_LBOARD_STATE_TRIGGERED">{RC_LBOARD_STATE_TRIGGERED}</DisplayString>
+        <DisplayString Condition="value==RC_LBOARD_STATE_DISABLED">{RC_LBOARD_STATE_DISABLED}</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+    <Type Name="rc_lboard_t">
+        <Expand>
+            <Item Name="state">*((__rc_lboard_state_enum_t*)&amp;state)</Item>
+            <Item Name="start">start</Item>
+            <Item Name="submit">submit</Item>
+            <Item Name="cancel">cancel</Item>
+            <Item Name="value">value</Item>
         </Expand>
     </Type>
     <Type Name="__rc_memref_list_t">
@@ -312,6 +356,34 @@
             <Item Name="is_value">*((__rc_bool_enum_t*)&amp;is_value)</Item>
             <Item Name="has_required_hits">*((__rc_bool_enum_t*)&amp;has_required_hits)</Item>
             <Item Name="measured_as_percent">*((__rc_bool_enum_t*)&amp;measured_as_percent)</Item>
+        </Expand>
+    </Type>
+    <Type Name="__rc_runtime_trigger_list_t">
+        <DisplayString>{{count={runtime.trigger_count}}}</DisplayString>
+        <Expand>
+            <IndexListItems>
+                <Size>runtime.trigger_count</Size>
+                <ValueNode>runtime.triggers[$i]</ValueNode>
+            </IndexListItems>
+        </Expand>
+    </Type>
+    <Type Name="__rc_runtime_lboard_list_t">
+        <DisplayString>{{count={runtime.lboard_count}}}</DisplayString>
+        <Expand>
+            <IndexListItems>
+                <Size>runtime.lboard_count</Size>
+                <ValueNode>runtime.lboards[$i]</ValueNode>
+            </IndexListItems>
+        </Expand>
+    </Type>
+    <Type Name="rc_runtime_t">
+        <DisplayString>{{trigger_count={trigger_count} lboard_count={lboard_count}}}</DisplayString>
+        <Expand>
+            <Item Name="triggers">*((__rc_runtime_trigger_list_t*)this)</Item>
+            <Item Name="lboards">*((__rc_runtime_lboard_list_t*)this)</Item>
+            <Item Name="richpresence">richpresence</Item>
+            <Item Name="memrefs">((__rc_memref_list_t*)&amp;memrefs)</Item>
+            <Item Name="variables">((__rc_value_list_t*)&amp;variables)</Item>
         </Expand>
     </Type>
 </AutoVisualizer>

@@ -54,7 +54,6 @@ static int32_t rc_classify_conditions(rc_condset_t* self, const char* memaddr) {
   int classification;
   uint32_t index = 0;
   uint32_t chain_length = 1;
-  uint32_t add_address_count = 0;
 
   rc_init_parse_state(&parse, NULL, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
@@ -285,7 +284,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
         if (measured_target != 0) {
           /* multiple Measured flags cannot exist in the same group */
           parse->offset = RC_MULTIPLE_MEASURED;
-          return 0;
+          return NULL;
         }
         else if (parse->is_value) {
           measured_target = (uint32_t)-1;

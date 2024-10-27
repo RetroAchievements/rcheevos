@@ -874,13 +874,32 @@ static void test_hash_gamecube()
 {
   size_t image_size;
   uint8_t* image = generate_gamecube_iso(32, &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "c7803b704fa43d22d8f6e55f4789cb45";
+
   mock_file(0, "test.iso", image, image_size);
-  char hash[33];
-  int result = rc_hash_generate_from_file(hash, RC_CONSOLE_GAMECUBE, "test.iso");
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_GAMECUBE, "test.iso");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "test.iso", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
   free(image);
 
-  ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "c7803b704fa43d22d8f6e55f4789cb45");
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+
   ASSERT_NUM_EQUALS(image_size, 32 * 1024 * 1024);
 }
 
@@ -2473,6 +2492,10 @@ void test_hash(void) {
   /* WonderSwan */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.ws", 524288, "68f0f13b598e0b66461bc578375c3888");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.wsc", 4194304, "a247ec8a8c42e18fcb80702dfadac14b");
+
+  /* ZX Spectrum */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ZX_SPECTRUM, "test.tap", 1596, "714a9f455e616813dd5421c5b347e5e5");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ZX_SPECTRUM, "test.tzx", 14971, "93723e6d1100f9d1d448a27cf6618c47");
 
   /* m3u support */
   TEST(test_hash_m3u_buffered);
