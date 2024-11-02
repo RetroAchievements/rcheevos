@@ -233,7 +233,7 @@ struct rc_condset_t {
   /* The number of hittarget conditions in this condition set. */
   uint16_t num_hittarget_conditions;
 
-  /* The number of measured conditions in this condition set. */
+  /* The number of non-hittarget measured conditions in this condition set. */
   uint16_t num_measured_conditions;
 
   /* The number of other conditions in this condition set. */

@@ -1,4 +1,4 @@
-#if !defined(RC_NO_THREADS) && !defined(_WIN32) && !defined(GEKKO) && (!defined(_XOPEN_SOURCE) || (_XOPEN_SOURCE - 0) < 500)
+#if !defined(RC_NO_THREADS) && !defined(_WIN32) && !defined(GEKKO) && !defined(_3DS) && (!defined(_XOPEN_SOURCE) || (_XOPEN_SOURCE - 0) < 500)
 /* We'll want to use pthread_mutexattr_settype/PTHREAD_MUTEX_RECURSIVE, but glibc only conditionally exposes pthread_mutexattr_settype and PTHREAD_MUTEX_RECURSIVE depending on feature flags
  * Defining _XOPEN_SOURCE must be done at the top of the source file, before including any headers
  * pthread_mutexattr_settype/PTHREAD_MUTEX_RECURSIVE are specified the Single UNIX Specification (Version 2, 1997), along with POSIX later on (IEEE Standard 1003.1-2008), so should cover practically any pthread implementation
@@ -177,22 +177,47 @@ void rc_mutex_unlock(rc_mutex_t* mutex)
 
 void rc_mutex_init(rc_mutex_t* mutex)
 {
-  LWP_MutexInit(mutex, NULL);
+  /* LWP_MutexInit has the handle passed by reference */
+  /* Other LWP_Mutex* calls have the handle passed by value */
+  LWP_MutexInit(&mutex->handle, 1);
 }
 
 void rc_mutex_destroy(rc_mutex_t* mutex)
 {
-  LWP_MutexDestroy(mutex);
+  LWP_MutexDestroy(mutex->handle);
 }
 
 void rc_mutex_lock(rc_mutex_t* mutex)
 {
-  LWP_MutexLock(mutex);
+  LWP_MutexLock(mutex->handle);
 }
 
 void rc_mutex_unlock(rc_mutex_t* mutex)
 {
-  LWP_MutexUnlock(mutex);
+  LWP_MutexUnlock(mutex->handle);
+}
+
+#elif defined(_3DS)
+
+void rc_mutex_init(rc_mutex_t* mutex)
+{
+  RecursiveLock_Init(mutex);
+}
+
+void rc_mutex_destroy(rc_mutex_t* mutex)
+{
+  /* Nothing to do here */
+  (void)mutex;
+}
+
+void rc_mutex_lock(rc_mutex_t* mutex)
+{
+  RecursiveLock_Lock(mutex);
+}
+
+void rc_mutex_unlock(rc_mutex_t* mutex)
+{
+  RecursiveLock_Unlock(mutex);
 }
 
 #else

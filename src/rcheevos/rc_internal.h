@@ -164,7 +164,7 @@ typedef struct {
   /* result state */
   uint8_t has_hits;                    /* true if one of more hit counts is non-zero */
   uint8_t was_reset;                   /* true if one or more ResetIf conditions is true */
-  uint8_t was_cond_reset;              /* ture if one or more ResetNextIf conditions is true */
+  uint8_t was_cond_reset;              /* true if one or more ResetNextIf conditions is true */
 
   /* control settings */
   uint8_t can_short_curcuit;           /* allows logic processing to stop as soon as a false condition is encountered */

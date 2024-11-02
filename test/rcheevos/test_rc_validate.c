@@ -354,6 +354,7 @@ void test_conflicting_conditions() {
   TEST_PARAMS2(test_validate_trigger, "N:0xH0000=1_0xH0001=1_N:0xH0000=2_0xH0001=2", "");
   TEST_PARAMS2(test_validate_trigger, "N:0xH0000=1_0xH0001=1_N:0xH0000=2_0xH0001=1", ""); /* technically conflicting, but hard to detect */
   TEST_PARAMS2(test_validate_trigger, "N:0xH0000=1_0xH0001=1_N:0xH0000=1_0xH0001=2", "Condition 4: Conflicts with Condition 2");
+  TEST_PARAMS2(test_validate_trigger, "0xH0000=0_N:0xH0000!=0_0xH0000=2", "");
 }
 
 void test_redundant_conditions() {

@@ -403,7 +403,7 @@ static uint8_t rc_condset_evaluate_condition_no_add_hits(rc_condition_t* conditi
     cond_valid = 0;
   }
   else {
-    /* apply logic flags */
+    /* apply chained logic flags */
     cond_valid &= eval_state->and_next;
     cond_valid |= eval_state->or_next;
 
@@ -431,7 +431,7 @@ static uint8_t rc_condset_evaluate_condition_no_add_hits(rc_condition_t* conditi
     }
   }
 
-  /* reset logic flags for the next condition */
+  /* reset chained logic flags for the next condition */
   eval_state->and_next = 1;
   eval_state->or_next = 0;
 
@@ -710,6 +710,8 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
         eval_state->measured_value.value.u32 = 0;
       }
     }
+
+    conditions += self->num_pause_conditions;
   }
 
   if (self->num_other_conditions) {
