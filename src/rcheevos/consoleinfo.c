@@ -380,14 +380,18 @@ static const rc_memory_regions_t rc_memory_regions_colecovision = { _rc_memory_r
 /* ===== Commodore 64 ===== */
 /* https://www.c64-wiki.com/wiki/Memory_Map */
 /* https://sta.c64.org/cbm64mem.html */
+/* NOTE: Several blocks of C64 memory can be bank-switched for ROM data (see https://www.c64-wiki.com/wiki/Bank_Switching).
+ *       Achievement triggers rely on values changing, so we don't really need to look at the ROM data.
+ *       The achievement logic assumes the RAM data is always present in the bankable blocks. As such,
+ *       clients providing memory to achievements should always return the RAM values at the queried address. */
 static const rc_memory_region_t _rc_memory_regions_c64[] = {
     { 0x000000U, 0x0003FFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Kernel RAM" },
     { 0x000400U, 0x0007FFU, 0x000400U, RC_MEMORY_TYPE_VIDEO_RAM, "Screen RAM" },
-    { 0x000800U, 0x009FFFU, 0x000800U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* BASIC Program Storage Area */
-    { 0x00A000U, 0x00BFFFU, 0x00A000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* Machine Language Storage Area / BASIC ROM Area */
-    { 0x00C000U, 0x00CFFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* Machine Language Storage Area */
-    { 0x00D000U, 0x00DFFFU, 0x00D000U, RC_MEMORY_TYPE_SYSTEM_RAM, "I/O Area" },   /* also Character ROM */
-    { 0x00E000U, 0x00FFFFU, 0x00E000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* Machine Language Storage Area / Kernal ROM */
+    { 0x000800U, 0x009FFFU, 0x000800U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* BASIC area. $8000-$9FFF can bank to cartridge ROM */
+    { 0x00A000U, 0x00BFFFU, 0x00A000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* can bank to BASIC ROM or cartridge ROM */
+    { 0x00C000U, 0x00CFFFU, 0x00C000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x00D000U, 0x00DFFFU, 0x00D000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* can bank to I/O Area or character ROM */
+    { 0x00E000U, 0x00FFFFU, 0x00E000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }, /* can bank to kernel ROM */
 };
 static const rc_memory_regions_t rc_memory_regions_c64 = { _rc_memory_regions_c64, 7 };
 
