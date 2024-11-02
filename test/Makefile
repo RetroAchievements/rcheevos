@@ -74,6 +74,7 @@ OBJ=$(RC_SRC)/rc_compat.o \
     rcheevos/test_richpresence.o \
     rcheevos/test_runtime.o \
     rcheevos/test_runtime_progress.o \
+    rcheevos/test_timing.o \
     rcheevos/test_trigger.o \
     rcheevos/test_value.o \
     rurl/test_url.o \

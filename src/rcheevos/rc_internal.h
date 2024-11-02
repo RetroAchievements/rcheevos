@@ -39,7 +39,8 @@ typedef struct __rc_value_list_t { rc_value_t* first_value; } __rc_value_list_t;
 typedef struct __rc_trigger_state_enum_t { uint8_t value; } __rc_trigger_state_enum_t;
 typedef struct __rc_lboard_state_enum_t { uint8_t value; } __rc_lboard_state_enum_t;
 
-#define RC_ALLOW_ALIGN(T) struct __align_ ## T { char ch; T t; };
+#define RC_ALLOW_ALIGN(T) struct __align_ ## T { uint8_t ch; T t; };
+
 RC_ALLOW_ALIGN(rc_condition_t)
 RC_ALLOW_ALIGN(rc_condset_t)
 RC_ALLOW_ALIGN(rc_modified_memref_t)
@@ -57,10 +58,16 @@ RC_ALLOW_ALIGN(rc_value_t)
 RC_ALLOW_ALIGN(char)
 
 #define RC_ALIGNOF(T) (sizeof(struct __align_ ## T) - sizeof(T))
-#define RC_OFFSETOF(o, t) (int)((char*)&(o.t) - (char*)&(o))
+#define RC_OFFSETOF(o, t) (int)((uint8_t*)&(o.t) - (uint8_t*)&(o))
 
 #define RC_ALLOC(t, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
 #define RC_ALLOC_SCRATCH(t, p) ((t*)rc_alloc_scratch((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
+
+#define RC_ALLOC_WITH_TRAILING(container_type, trailing_type, trailing_field, trailing_count, parse) ((container_type*)rc_alloc(\
+          (parse)->buffer, &(parse)->offset, \
+          RC_OFFSETOF((*(container_type*)NULL),trailing_field) + trailing_count * sizeof(trailing_type), \
+          RC_ALIGNOF(container_type), &(parse)->scratch, 0))
+#define RC_GET_TRAILING(container_pointer, container_type, trailing_type, trailing_field) (trailing_type*)(&((container_type*)(container_pointer))->trailing_field)
 
 /* force alignment to 4 bytes on 32-bit systems, or 8 bytes on 64-bit systems */
 #define RC_ALIGN(n) (((n) + (sizeof(void*)-1)) & ~(sizeof(void*)-1))
@@ -148,6 +155,7 @@ typedef struct {
   uint8_t primed;                      /* true if all non-Trigger conditions are true */
   uint8_t measured_from_hits;          /* true if the measured_value came from a condition's hit count */
   uint8_t was_cond_reset;              /* ResetNextIf triggered */
+  uint8_t can_short_curcuit;           /* allows logic processing to stop as soon as a false condition is encountered */
 }
 rc_eval_state_t;
 
@@ -202,9 +210,16 @@ uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud)
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 int rc_trigger_state_active(int state);
 
+typedef struct rc_condset_with_trailing_conditions_t {
+  rc_condset_t condset;
+  rc_condition_t conditions[2];
+} rc_condset_with_trailing_conditions_t;
+RC_ALLOW_ALIGN(rc_condset_with_trailing_conditions_t)
+
 rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse);
 int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state);
 void rc_reset_condset(rc_condset_t* self);
+rc_condition_t* rc_condset_get_conditions(rc_condset_t* self);
 
 enum {
   RC_PROCESSING_COMPARE_DEFAULT = 0,
@@ -223,6 +238,7 @@ enum {
 };
 
 rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse);
+void rc_parse_condition_internal(rc_condition_t* self, const char** memaddr, rc_parse_state_t* parse);
 void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t* parse);
 int rc_test_condition(rc_condition_t* self, rc_eval_state_t* eval_state);
 void rc_evaluate_condition_value(rc_typed_value_t* value, rc_condition_t* self, rc_eval_state_t* eval_state);
@@ -231,6 +247,7 @@ void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand
 
 int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse);
 void rc_evaluate_operand(rc_typed_value_t* value, const rc_operand_t* self, rc_eval_state_t* eval_state);
+int rc_operator_is_modifying(int oper);
 int rc_operand_is_float_memref(const rc_operand_t* self);
 int rc_operand_is_float(const rc_operand_t* self);
 int rc_operand_is_recall(const rc_operand_t* self);

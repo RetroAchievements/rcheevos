@@ -35,11 +35,11 @@ void* rc_alloc(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment
 
   if (pointer != 0) {
     /* valid buffer, grab the next chunk */
-    ptr = (void*)((char*)pointer + *offset);
+    ptr = (void*)((uint8_t*)pointer + *offset);
   }
   else if (scratch != 0 && scratch_object_pointer_offset < sizeof(scratch->objs)) {
     /* only allocate one instance of each object type (indentified by scratch_object_pointer_offset) */
-    void** scratch_object_pointer = (void**)((char*)&scratch->objs + scratch_object_pointer_offset);
+    void** scratch_object_pointer = (void**)((uint8_t*)&scratch->objs + scratch_object_pointer_offset);
     ptr = *scratch_object_pointer;
     if (!ptr) {
       int32_t used;

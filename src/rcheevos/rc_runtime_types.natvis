@@ -52,7 +52,7 @@
     <Type Name="__rc_memref_type_enum_t">
         <DisplayString Condition="value==RC_MEMREF_TYPE_MEMREF">{RC_MEMREF_TYPE_MEMREF}</DisplayString>
         <DisplayString Condition="value==RC_MEMREF_TYPE_MODIFIED_MEMREF">{RC_MEMREF_TYPE_MODIFIED_MEMREF}</DisplayString>
-        <!--<DisplayString Condition="value==RC_MEMREF_TYPE_VALUE">RC_MEMREF_TYPE_VALUE</DisplayString>-->
+        <DisplayString Condition="value==RC_MEMREF_TYPE_VALUE">RC_MEMREF_TYPE_VALUE</DisplayString>
         <DisplayString>unknown ({value})</DisplayString>
     </Type>
     <Type Name="__rc_memsize_enum_func_t">
@@ -247,6 +247,7 @@
         </Expand>
     </Type>
     <Type Name="rc_condset_t">
+        <DisplayString>{{count={num_pause_conditions+num_reset_conditions+num_hittarget_conditions+num_measured_conditions+num_other_conditions+num_indirect_conditions}}}</DisplayString>
         <Expand>
             <LinkedListItems>
                 <HeadPointer>conditions</HeadPointer>

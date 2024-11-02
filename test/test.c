@@ -17,6 +17,7 @@
 
 #define TIMING_TEST 0
 
+#if !defined(TIMING_TEST) || TIMING_TEST == 0
 static void test_lua(void) {
   {
     /*------------------------------------------------------------------------
@@ -49,6 +50,7 @@ static void test_lua(void) {
 #endif /* RC_DISABLE_LUA */
   }
 }
+#endif
 
 extern void test_timing();
 

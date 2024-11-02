@@ -554,8 +554,9 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "0xH0001*100_0xH0002*0.5_0xL0003", 0x12 * 100 + 0x34 / 2 + 0x0B);
   TEST_PARAMS2(test_evaluate_value, "0xH0001$0xH0002", 0x34);
   TEST_PARAMS2(test_evaluate_value, "0xH0001_0xH0004*3$0xH0002*0xL0003", 0x34 * 0x0B);
-  TEST_PARAMS2(test_evaluate_value, "0xH001_V-20", 0x12 - 20);
+  TEST_PARAMS2(test_evaluate_value, "0xH0001_V-20", 0x12 - 20);
   TEST_PARAMS2(test_evaluate_value, "0xH0001_H10", 0x12 + 0x10);
+  TEST_PARAMS2(test_evaluate_value, "100-0xH0002", 100 - 0x34);
   TEST_PARAMS2(test_evaluate_value, "0xh0000*-1_99_0xh0001*-100_5900", 4199);
   TEST_PARAMS2(test_evaluate_value, "v5900_0xh0000*-1.0_0xh0001*-100.0", 4100);
   TEST_PARAMS2(test_evaluate_value, "v5900_0xh0000*v-1_0xh0001*v-100", 4100);
