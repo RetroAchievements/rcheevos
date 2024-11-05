@@ -1216,6 +1216,8 @@ static void test_user_get_image_url(void)
   ASSERT_NUM_EQUALS(rc_client_user_get_image_url(rc_client_get_user_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "http://server/UserPic/Username.png");
 
+  ASSERT_NUM_EQUALS(rc_client_user_get_image_url(rc_client_get_user_info(g_client), buffer, 10), RC_INSUFFICIENT_BUFFER);
+
   rc_client_destroy(g_client);
 }
 
@@ -3846,6 +3848,8 @@ static void test_game_get_image_url(void)
   ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "http://server/Images/112233.png");
 
+  ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, 10), RC_INSUFFICIENT_BUFFER);
+
   rc_client_destroy(g_client);
 }
 
@@ -5244,6 +5248,11 @@ static void test_achievement_get_image_url(void)
   ASSERT_NUM_EQUALS(rc_client_achievement_get_image_url(rc_client_get_achievement_info(g_client, 5501),
       RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE, buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/Badge/00234_lock.png");
+
+  ASSERT_NUM_EQUALS(rc_client_achievement_get_image_url(rc_client_get_achievement_info(g_client, 5501),
+    RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED, buffer, 10), RC_INSUFFICIENT_BUFFER);
+  ASSERT_NUM_EQUALS(rc_client_achievement_get_image_url(rc_client_get_achievement_info(g_client, 5501),
+    RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE, buffer, 10), RC_INSUFFICIENT_BUFFER);
 
   rc_client_destroy(g_client);
 }

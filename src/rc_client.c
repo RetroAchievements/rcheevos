@@ -637,7 +637,13 @@ static int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_
   image_request.image_name = image_name;
   result = rc_api_init_fetch_image_request_hosted(&request, &image_request, NULL);
   if (result == RC_OK)
-    snprintf(buffer, buffer_size, "%s", request.url);
+  {
+    const size_t len = strlen(request.url);
+    if (len >= buffer_size)
+      result = RC_INSUFFICIENT_BUFFER;
+    else
+      memcpy(buffer, request.url, len + 1);
+  }
 
   rc_api_destroy_request(&request);
   return result;
@@ -898,7 +904,11 @@ int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], si
     return RC_INVALID_STATE;
 
   if (user->avatar_url) {
-    snprintf(buffer, buffer_size, "%s", user->avatar_url);
+    const size_t len = strlen(user->avatar_url);
+    if (len >= buffer_size)
+      return RC_INSUFFICIENT_BUFFER;
+
+    memcpy(buffer, user->avatar_url, len + 1);
     return RC_OK;
   }
 
@@ -3514,7 +3524,11 @@ int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], si
     return RC_INVALID_STATE;
 
   if (game->badge_url) {
-    snprintf(buffer, buffer_size, "%s", game->badge_url);
+    const size_t len = strlen(game->badge_url);
+    if (len >= buffer_size)
+      return RC_INSUFFICIENT_BUFFER;
+
+    memcpy(buffer, game->badge_url, len + 1);
     return RC_OK;
   }
 
@@ -4316,12 +4330,20 @@ int rc_client_achievement_get_image_url(const rc_client_achievement_t* achieveme
     return rc_client_get_image_url(buffer, buffer_size, image_type, "00000");
 
   if (image_type == RC_IMAGE_TYPE_ACHIEVEMENT && achievement->badge_url) {
-    snprintf(buffer, buffer_size, "%s", achievement->badge_url);
+    const size_t len = strlen(achievement->badge_url);
+    if (len >= buffer_size)
+      return RC_INSUFFICIENT_BUFFER;
+
+    memcpy(buffer, achievement->badge_url, len + 1);
     return RC_OK;
   }
 
   if (image_type == RC_IMAGE_TYPE_ACHIEVEMENT_LOCKED && achievement->badge_locked_url) {
-    snprintf(buffer, buffer_size, "%s", achievement->badge_locked_url);
+    const size_t len = strlen(achievement->badge_locked_url);
+    if (len >= buffer_size)
+      return RC_INSUFFICIENT_BUFFER;
+
+    memcpy(buffer, achievement->badge_locked_url, len + 1);
     return RC_OK;
   }
 
