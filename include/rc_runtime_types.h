@@ -144,23 +144,16 @@ RC_EXPORT int RC_CCONV rc_operand_is_memref(const rc_operand_t* operand);
 
 /* types */
 enum {
-  /* NOTE: this enum is ordered to optimize the switch statements in rc_test_condset_internal. the values may change between releases */
-
-  /* non-combining conditions (third switch) */
   RC_CONDITION_STANDARD, /* this should always be 0 */
   RC_CONDITION_PAUSE_IF,
   RC_CONDITION_RESET_IF,
   RC_CONDITION_MEASURED_IF,
   RC_CONDITION_TRIGGER,
-  RC_CONDITION_MEASURED, /* measured also appears in the first switch, so place it at the border between them */
-
-  /* modifiers (first switch) */
-  RC_CONDITION_ADD_SOURCE, /* everything from this point on affects the condition after it */
+  RC_CONDITION_MEASURED,
+  RC_CONDITION_ADD_SOURCE,
   RC_CONDITION_SUB_SOURCE,
   RC_CONDITION_ADD_ADDRESS,
   RC_CONDITION_REMEMBER,
-
-  /* logic flags (second switch) */
   RC_CONDITION_ADD_HITS,
   RC_CONDITION_SUB_HITS,
   RC_CONDITION_RESET_NEXT_IF,

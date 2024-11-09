@@ -299,25 +299,21 @@ int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t
        * NOTE: ResetIf only affects the current condset when used in values!
        */
       rc_reset_condset(condset);
-
-      /* if the measured value came from a hit count, reset it too */
-      if (eval_state.measured_from_hits) {
-        eval_state.measured_value.value.u32 = 0;
-        eval_state.measured_value.type = RC_VALUE_TYPE_UNSIGNED;
-      }
     }
 
-    if (!valid) {
-      /* capture the first valid measurement */
-      memcpy(value, &eval_state.measured_value, sizeof(*value));
-      valid = 1;
-    }
-    else {
-      /* multiple condsets are currently only used for the MAX_OF operation.
-       * only keep the condset's value if it's higher than the current highest value.
-       */
-      if (rc_typed_value_compare(&eval_state.measured_value, value, RC_OPERATOR_GT))
+    if (eval_state.measured_value.type != RC_VALUE_TYPE_NONE) {
+      if (!valid) {
+        /* capture the first valid measurement, which may be negative */
         memcpy(value, &eval_state.measured_value, sizeof(*value));
+        valid = 1;
+      }
+      else {
+        /* multiple condsets are currently only used for the MAX_OF operation.
+         * only keep the condset's value if it's higher than the current highest value.
+         */
+        if (rc_typed_value_compare(&eval_state.measured_value, value, RC_OPERATOR_GT))
+          memcpy(value, &eval_state.measured_value, sizeof(*value));
+      }
     }
   }
 

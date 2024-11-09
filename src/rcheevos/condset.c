@@ -264,7 +264,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
         case RC_CONDITION_ADD_SOURCE:
         case RC_CONDITION_SUB_SOURCE:
         case RC_CONDITION_REMEMBER:
-          /* these conditions don't require a right hand size (implied *1) */
+          /* these conditions don't require a right hand side (implied *1) */
           break;
 
         case RC_CONDITION_MEASURED:
@@ -390,64 +390,25 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
   return self;
 }
 
-static int rc_test_condset_internal(rc_condition_t* condition, uint32_t num_conditions,
-                                    rc_eval_state_t* eval_state, int can_short_circuit) {
-  const rc_condition_t* condition_end = condition + num_conditions;
-  int set_valid, cond_valid, and_next, or_next, reset_next, measured_from_hits, can_measure;
-  rc_typed_value_t measured_value;
-  uint32_t total_hits;
+static uint8_t rc_condset_evaluate_condition_no_add_hits(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  /* evaluate the current condition */
+  uint8_t cond_valid = (uint8_t)rc_test_condition(condition, eval_state);
+  condition->is_true = cond_valid;
 
-  measured_value.type = RC_VALUE_TYPE_NONE;
-  measured_from_hits = 0;
-  can_measure = 1;
-  total_hits = 0;
+  if (eval_state->reset_next) {
+    /* previous ResetNextIf resets the hit count on this condition and prevents it from being true */
+    eval_state->was_cond_reset |= (condition->current_hits != 0);
 
-  set_valid = 1;
-  and_next = 1;
-  or_next = 0;
-  reset_next = 0;
+    condition->current_hits = 0;
+    cond_valid = 0;
+  }
+  else {
+    /* apply chained logic flags */
+    cond_valid &= eval_state->and_next;
+    cond_valid |= eval_state->or_next;
 
-  for (; condition < condition_end; ++condition) {
-    /* STEP 1: process modifier conditions */
-    switch (condition->type) {
-      case RC_CONDITION_ADD_SOURCE:
-      case RC_CONDITION_SUB_SOURCE:
-      case RC_CONDITION_ADD_ADDRESS:
-      case RC_CONDITION_REMEMBER:
-        /* these are all managed by rc_modified_memref_t now */
-        continue;
-
-      case RC_CONDITION_MEASURED:
-        if (condition->required_hits == 0 && can_measure) {
-          /* Measured condition without a hit target measures the value of the left operand */
-          rc_evaluate_operand(&measured_value, &condition->operand1, eval_state);
-        }
-        break;
-
-      default:
-        break;
-    }
-
-    /* STEP 2: evaluate the current condition */
-    condition->is_true = (uint8_t)rc_test_condition(condition, eval_state);
-
-    /* apply logic flags and reset them for the next condition */
-    cond_valid = condition->is_true;
-    cond_valid &= and_next;
-    cond_valid |= or_next;
-    and_next = 1;
-    or_next = 0;
-
-    if (reset_next) {
-      /* previous ResetNextIf resets the hit count on this condition and prevents it from being true */
-      if (condition->current_hits)
-        eval_state->was_cond_reset = 1;
-
-      condition->current_hits = 0;
-      cond_valid = 0;
-    }
-    else if (cond_valid) {
-      /* true conditions should update hit count */
+    if (cond_valid) {
+      /* true conditions should update their hit count */
       eval_state->has_hits = 1;
 
       if (condition->required_hits == 0) {
@@ -468,137 +429,215 @@ static int rc_test_condset_internal(rc_condition_t* condition, uint32_t num_cond
       eval_state->has_hits = 1;
       cond_valid = (condition->current_hits == condition->required_hits);
     }
+  }
 
-    /* STEP 3: handle logic flags */
+  /* reset chained logic flags for the next condition */
+  eval_state->and_next = 1;
+  eval_state->or_next = 0;
+
+  return cond_valid;
+}
+
+static uint32_t rc_condset_evaluate_total_hits(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  uint32_t total_hits = condition->current_hits;
+
+  if (condition->required_hits != 0) {
+    /* if the condition has a target hit count, we have to recalculate cond_valid including the AddHits counter */
+    const int32_t signed_hits = (int32_t)condition->current_hits + eval_state->add_hits;
+    total_hits = (signed_hits >= 0) ? (uint32_t)signed_hits : 0;
+  }
+  else {
+    /* no target hit count. we can't tell if the add_hits value is from this frame or not, so ignore it.
+       complex condition will only be true if the current condition is true */
+  }
+
+  eval_state->add_hits = 0;
+
+  return total_hits;
+}
+
+static uint8_t rc_condset_evaluate_condition(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  uint8_t cond_valid = rc_condset_evaluate_condition_no_add_hits(condition, eval_state);
+
+  if (eval_state->add_hits != 0 && condition->required_hits != 0) {
+    uint32_t total_hits = rc_condset_evaluate_total_hits(condition, eval_state);
+    cond_valid = (total_hits >= condition->required_hits);
+  }
+
+  /* reset logic flags for the next condition */
+  eval_state->reset_next = 0;
+
+  return cond_valid;
+}
+
+static void rc_condset_evaluate_standard(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  const uint8_t cond_valid = rc_condset_evaluate_condition(condition, eval_state);
+
+  eval_state->is_true &= cond_valid;
+  eval_state->is_primed &= cond_valid;
+
+  if (!cond_valid && eval_state->can_short_curcuit)
+    eval_state->stop_processing = 1;
+}
+
+static void rc_condset_evaluate_pause_if(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  const uint8_t cond_valid = rc_condset_evaluate_condition(condition, eval_state);
+
+  if (cond_valid) {
+    eval_state->is_paused = 1;
+
+    /* set cannot be valid if it's paused */
+    eval_state->is_true = eval_state->is_primed = 0;
+
+    /* as soon as we find a PauseIf that evaluates to true, stop processing the rest of the group */
+    eval_state->stop_processing = 1;
+  }
+  else if (condition->required_hits == 0) {
+    /* PauseIf didn't evaluate true, and doesn't have a HitCount, reset the HitCount to indicate the condition didn't match */
+    condition->current_hits = 0;
+  }
+  else {
+    /* PauseIf has a HitCount that hasn't been met, ignore it for now. */
+  }
+}
+
+static void rc_condset_evaluate_reset_if(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  const uint8_t cond_valid = rc_condset_evaluate_condition(condition, eval_state);
+
+  if (cond_valid) {
+    /* set cannot be valid if we've hit a reset condition */
+    eval_state->is_true = eval_state->is_primed = 0;
+
+    /* let caller know to reset all hit counts */
+    eval_state->was_reset = 1;
+
+    /* can stop processing once an active ResetIf is encountered */
+    eval_state->stop_processing = 1;
+  }
+}
+
+static void rc_condset_evaluate_trigger(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  const uint8_t cond_valid = rc_condset_evaluate_condition(condition, eval_state);
+
+  eval_state->is_true &= cond_valid;
+}
+
+static void rc_condset_evaluate_measured(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  if (condition->required_hits == 0) {
+    rc_condset_evaluate_standard(condition, eval_state);
+
+    /* Measured condition without a hit target measures the value of the left operand */
+    rc_evaluate_operand(&eval_state->measured_value, &condition->operand1, eval_state);
+    eval_state->measured_from_hits = 0;
+  }
+  else {
+    /* this largely mimicks rc_condset_evaluate_condition, but captures the total_hits */
+    uint8_t cond_valid = rc_condset_evaluate_condition_no_add_hits(condition, eval_state);
+    const uint32_t total_hits = rc_condset_evaluate_total_hits(condition, eval_state);
+
+    cond_valid = (total_hits >= condition->required_hits);
+    eval_state->is_true &= cond_valid;
+    eval_state->is_primed &= cond_valid;
+
+    /* if there is a hit target, capture the current hits */
+    eval_state->measured_value.value.u32 = total_hits;
+    eval_state->measured_value.type = RC_VALUE_TYPE_UNSIGNED;
+    eval_state->measured_from_hits = 1;
+
+    /* reset logic flags for the next condition */
+    eval_state->reset_next = 0;
+  }
+}
+
+static void rc_condset_evaluate_measured_if(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  rc_condset_evaluate_standard(condition, eval_state);
+
+  eval_state->can_measure &= condition->is_true;
+}
+
+static void rc_condset_evaluate_add_hits(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  rc_condset_evaluate_condition_no_add_hits(condition, eval_state);
+
+  eval_state->add_hits += (int32_t)condition->current_hits;
+
+  /* ResetNextIf was applied to this AddHits condition; don't apply it to future conditions */
+  eval_state->reset_next = 0;
+}
+
+static void rc_condset_evaluate_sub_hits(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  rc_condset_evaluate_condition_no_add_hits(condition, eval_state);
+
+  eval_state->add_hits -= (int32_t)condition->current_hits;
+
+  /* ResetNextIf was applied to this AddHits condition; don't apply it to future conditions */
+  eval_state->reset_next = 0;
+}
+
+static void rc_condset_evaluate_reset_next_if(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  eval_state->reset_next = rc_condset_evaluate_condition_no_add_hits(condition, eval_state);
+}
+
+static void rc_condset_evaluate_and_next(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  eval_state->and_next = rc_condset_evaluate_condition_no_add_hits(condition, eval_state);
+}
+
+static void rc_condset_evaluate_or_next(rc_condition_t* condition, rc_eval_state_t* eval_state) {
+  eval_state->or_next = rc_condset_evaluate_condition_no_add_hits(condition, eval_state);
+}
+
+static void rc_test_condset_internal(rc_condition_t* condition, uint32_t num_conditions,
+                                     rc_eval_state_t* eval_state, int can_short_circuit) {
+  const rc_condition_t* condition_end = condition + num_conditions;
+  for (; condition < condition_end; ++condition) {
     switch (condition->type) {
-      case RC_CONDITION_ADD_HITS:
-        eval_state->add_hits += condition->current_hits;
-        reset_next = 0; /* ResetNextIf was applied to this AddHits condition; don't apply it to future conditions */
-        continue;
-
-      case RC_CONDITION_SUB_HITS:
-        eval_state->add_hits -= condition->current_hits;
-        reset_next = 0; /* ResetNextIf was applied to this AddHits condition; don't apply it to future conditions */
-        continue;
-
-      case RC_CONDITION_RESET_NEXT_IF:
-        reset_next = cond_valid;
-        continue;
-
-      case RC_CONDITION_AND_NEXT:
-        and_next = cond_valid;
-        continue;
-
-      case RC_CONDITION_OR_NEXT:
-        or_next = cond_valid;
-        continue;
-
-      default:
+      case RC_CONDITION_STANDARD:
+        rc_condset_evaluate_standard(condition, eval_state);
         break;
-    }
-
-    /* reset logic flags for next condition */
-    reset_next = 0;
-
-    /* STEP 4: calculate total hits */
-    total_hits = condition->current_hits;
-
-    if (eval_state->add_hits) {
-      if (condition->required_hits != 0) {
-        /* if the condition has a target hit count, we have to recalculate cond_valid including the AddHits counter */
-        const int signed_hits = (int)condition->current_hits + eval_state->add_hits;
-        total_hits = (signed_hits >= 0) ? (unsigned)signed_hits : 0;
-        cond_valid = (total_hits >= condition->required_hits);
-      }
-      else {
-        /* no target hit count. we can't tell if the add_hits value is from this frame or not, so ignore it.
-           complex condition will only be true if the current condition is true */
-      }
-
-      eval_state->add_hits = 0;
-    }
-
-    /* STEP 5: handle special flags */
-    switch (condition->type) {
       case RC_CONDITION_PAUSE_IF:
-        /* as soon as we find a PauseIf that evaluates to true, stop processing the rest of the group */
-        if (cond_valid)
-          return 1;
-
-        /* if we make it to the end of the function, make sure we indicate that nothing matched. if we do find
-           a later PauseIf match, it'll automatically return true via the previous condition. */
-        set_valid = 0;
-
-        if (condition->required_hits == 0) {
-          /* PauseIf didn't evaluate true, and doesn't have a HitCount, reset the HitCount to indicate the condition didn't match */
-          condition->current_hits = 0;
-        }
-        else {
-          /* PauseIf has a HitCount that hasn't been met, ignore it for now. */
-        }
-
-        continue;
-
+        rc_condset_evaluate_pause_if(condition, eval_state);
+        break;
       case RC_CONDITION_RESET_IF:
-        if (cond_valid) {
-          eval_state->was_reset = 1; /* let caller know to reset all hit counts */
-
-          if (can_short_circuit)
-            return 0;
-
-          set_valid = 0; /* cannot be valid if we've hit a reset condition */
-        }
-        continue;
-
-      case RC_CONDITION_MEASURED:
-        if (condition->required_hits != 0) {
-          /* if there's a hit target, capture the current hits for recording Measured value later */
-          measured_from_hits = 1;
-          if (can_measure) {
-            measured_value.value.u32 = total_hits;
-            measured_value.type = RC_VALUE_TYPE_UNSIGNED;
-          }
-        }
+        rc_condset_evaluate_reset_if(condition, eval_state);
         break;
-
-      case RC_CONDITION_MEASURED_IF:
-        if (!cond_valid) {
-          measured_value.value.u32 = 0;
-          measured_value.type = RC_VALUE_TYPE_UNSIGNED;
-          can_measure = 0;
-        }
-        break;
-
       case RC_CONDITION_TRIGGER:
-        if (!cond_valid && can_short_circuit)
-          return 0;
-
-        /* update truthiness of set, but do not update truthiness of primed state */
-        set_valid &= cond_valid;
-        continue;
-
+        rc_condset_evaluate_trigger(condition, eval_state);
+        break;
+      case RC_CONDITION_MEASURED:
+        rc_condset_evaluate_measured(condition, eval_state);
+        break;
+      case RC_CONDITION_MEASURED_IF:
+        rc_condset_evaluate_measured_if(condition, eval_state);
+        break;
+      case RC_CONDITION_ADD_SOURCE:
+      case RC_CONDITION_SUB_SOURCE:
+      case RC_CONDITION_ADD_ADDRESS:
+      case RC_CONDITION_REMEMBER:
+        /* these are handled by rc_modified_memref_t */
+        break;
+      case RC_CONDITION_ADD_HITS:
+        rc_condset_evaluate_add_hits(condition, eval_state);
+        break;
+      case RC_CONDITION_SUB_HITS:
+        rc_condset_evaluate_sub_hits(condition, eval_state);
+        break;
+      case RC_CONDITION_RESET_NEXT_IF:
+        rc_condset_evaluate_reset_next_if(condition, eval_state);
+        break;
+      case RC_CONDITION_AND_NEXT:
+        rc_condset_evaluate_and_next(condition, eval_state);
+        break;
+      case RC_CONDITION_OR_NEXT:
+        rc_condset_evaluate_or_next(condition, eval_state);
+        break;
       default:
+        eval_state->stop_processing = 1;
+        eval_state->is_true = eval_state->is_primed = 0;
         break;
     }
 
-    /* STEP 5: update overall truthiness of set and primed state */
-    eval_state->primed &= cond_valid;
-    set_valid &= cond_valid;
-
-    if (!cond_valid && can_short_circuit)
-      return 0;
+    if (eval_state->stop_processing && can_short_circuit)
+      break;
   }
-
-  if (measured_value.type != RC_VALUE_TYPE_NONE) {
-    /* if no previous Measured value was captured, or the new one is greater, keep the new one */
-    if (eval_state->measured_value.type == RC_VALUE_TYPE_NONE ||
-        rc_typed_value_compare(&measured_value, &eval_state->measured_value, RC_OPERATOR_GT)) {
-      memcpy(&eval_state->measured_value, &measured_value, sizeof(measured_value));
-      eval_state->measured_from_hits = (uint8_t)measured_from_hits;
-    }
-  }
-
-  return set_valid;
 }
 
 rc_condition_t* rc_condset_get_conditions(rc_condset_t* self) {
@@ -610,20 +649,31 @@ rc_condition_t* rc_condset_get_conditions(rc_condset_t* self) {
 
 int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
   rc_condition_t* conditions;
-  int result = 1; /* true until proven otherwise */
 
-  eval_state->primed = 1;
+  /* reset the processing state before processing each condset. do not reset the result state. */
+  eval_state->measured_value.type = RC_VALUE_TYPE_NONE;
   eval_state->add_hits = 0;
+  eval_state->is_true = 1;
+  eval_state->is_primed = 1;
+  eval_state->is_paused = 0;
+  eval_state->can_measure = 1;
+  eval_state->measured_from_hits = 0;
+  eval_state->and_next = 1;
+  eval_state->or_next = 0;
+  eval_state->reset_next = 0;
+  eval_state->stop_processing = 0;
 
+  /* the conditions array is allocated immediately after the rc_condset_t, without a separate pointer */
   conditions = rc_condset_get_conditions(self);
 
   if (self->num_pause_conditions) {
-    /* one or more Pause conditions exists. if any of them are true, stop processing this group */
-    self->is_paused = (char)rc_test_condset_internal(conditions, self->num_pause_conditions, eval_state, 0);
+    /* one or more Pause conditions exist. if any of them are true (eval_state->is_paused),
+     * stop processing this group */
+    rc_test_condset_internal(conditions, self->num_pause_conditions, eval_state, 1);
 
+    self->is_paused = eval_state->is_paused;
     if (self->is_paused) {
       /* condset is paused. stop processing immediately. */
-      eval_state->primed = 0;
       return 0;
     }
 
@@ -631,36 +681,49 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
   }
 
   if (self->num_reset_conditions) {
-    /* one or more Reset conditions exists. if any of them are true, rc_test_condset_internal
-     * will return false. clear hits and stop processing this group */
-    result &= rc_test_condset_internal(conditions, self->num_reset_conditions, eval_state, eval_state->can_short_curcuit);
+    /* one or more Reset conditions exists. if any of them are true (eval_state->was_reset),
+     * we'll skip some of the later steps */
+    rc_test_condset_internal(conditions, self->num_reset_conditions, eval_state, eval_state->can_short_curcuit);
     conditions += self->num_reset_conditions;
   }
 
   if (self->num_hittarget_conditions) {
-    /* one or more hit target conditions exists. these must be processed every frame, unless their hit count is going to be reset */
+    /* one or more hit target conditions exists. these must be processed every frame,
+     * unless their hit count is going to be reset */
     if (!eval_state->was_reset)
-      result &= rc_test_condset_internal(conditions, self->num_hittarget_conditions, eval_state, 0);
+      rc_test_condset_internal(conditions, self->num_hittarget_conditions, eval_state, 0);
 
     conditions += self->num_hittarget_conditions;
   }
 
   if (self->num_measured_conditions) {
-    /* measured value must be calculated every frame, even if hit counts will be reset */
-    result &= rc_test_condset_internal(conditions, self->num_measured_conditions, eval_state, 0);
+    /* the measured value must be calculated every frame, even if hit counts will be reset */
+    rc_test_condset_internal(conditions, self->num_measured_conditions, eval_state, 0);
     conditions += self->num_measured_conditions;
+
+    if (eval_state->measured_value.type != RC_VALUE_TYPE_NONE) {
+      /* if a MeasuredIf was false (!eval_state->can_measure), or the measured
+       * value is a hitcount and a ResetIf is true, zero out the measured value */
+      if (!eval_state->can_measure ||
+          (eval_state->measured_from_hits && eval_state->was_reset)) {
+        eval_state->measured_value.type = RC_VALUE_TYPE_UNSIGNED;
+        eval_state->measured_value.value.u32 = 0;
+      }
+    }
+
+    conditions += self->num_pause_conditions;
   }
 
   if (self->num_other_conditions) {
-    /* remaining conditions only need to be evaluated if the rest of the condset is true */
-    if (result)
-      result &= rc_test_condset_internal(conditions, self->num_other_conditions, eval_state, eval_state->can_short_curcuit);
+    /* the remaining conditions only need to be evaluated if the rest of the condset is true */
+    if (eval_state->is_true)
+      rc_test_condset_internal(conditions, self->num_other_conditions, eval_state, eval_state->can_short_curcuit);
     /* something else is false. if we can't short circuit, and there wasn't a reset, we still need to evaluate these */
     else if (!eval_state->can_short_curcuit && !eval_state->was_reset)
-      result &= rc_test_condset_internal(conditions, self->num_other_conditions, eval_state, eval_state->can_short_curcuit);
+      rc_test_condset_internal(conditions, self->num_other_conditions, eval_state, eval_state->can_short_curcuit);
   }
 
-  return result;
+  return eval_state->is_true;
 }
 
 void rc_reset_condset(rc_condset_t* self) {

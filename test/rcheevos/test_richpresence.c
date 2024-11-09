@@ -506,6 +506,26 @@ static void test_macro_value_divide_by_self() {
   assert_richpresence_output(richpresence, &memory, "Result is 0");
 }
 
+static void test_macro_value_remember_recall() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* sneaky trick to turn any non-zero value into 1 */
+  assert_parse_richpresence(&richpresence, buffer, "Format:Value\nFormatType=VALUE\n\nDisplay:\nResult is @Value(A:0xH02*2_K:1_M:{recall}*3)");
+  assert_richpresence_output(richpresence, &memory, "Result is 315");
+
+  ram[2] = 1;
+  assert_richpresence_output(richpresence, &memory, "Result is 9");
+
+  ram[2] = 0;
+  assert_richpresence_output(richpresence, &memory, "Result is 3");
+}
+
 static void test_macro_hundreds() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -1334,6 +1354,7 @@ void test_richpresence(void) {
   TEST(test_macro_value_from_indirect);
   TEST(test_macro_value_divide_by_zero);
   TEST(test_macro_value_divide_by_self);
+  TEST(test_macro_value_remember_recall);
 
   /* hundreds macro */
   TEST(test_macro_hundreds);

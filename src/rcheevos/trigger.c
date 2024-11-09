@@ -126,6 +126,8 @@ static void rc_reset_trigger_hitcounts(rc_trigger_t* self) {
 int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State* L) {
   rc_eval_state_t eval_state;
   rc_condset_t* condset;
+  rc_typed_value_t measured_value;
+  int measured_from_hits = 0;
   int ret;
   char is_paused;
   char is_primed;
@@ -158,10 +160,17 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   eval_state.peek_userdata = ud;
   eval_state.L = L;
 
+  measured_value.type = RC_VALUE_TYPE_NONE;
+
   if (self->requirement != NULL) {
     ret = rc_test_condset(self->requirement, &eval_state);
-    is_paused = self->requirement->is_paused;
-    is_primed = eval_state.primed;
+    is_paused = eval_state.is_paused;
+    is_primed = eval_state.is_primed;
+
+    if (eval_state.measured_value.type != RC_VALUE_TYPE_NONE) {
+      memcpy(&measured_value, &eval_state.measured_value, sizeof(measured_value));
+      measured_from_hits = eval_state.measured_from_hits;
+    }
   } else {
     ret = 1;
     is_paused = 0;
@@ -176,8 +185,17 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
 
     do {
       sub |= rc_test_condset(condset, &eval_state);
-      sub_paused &= condset->is_paused;
-      sub_primed |= eval_state.primed;
+      sub_paused &= eval_state.is_paused;
+      sub_primed |= eval_state.is_primed;
+
+      if (eval_state.measured_value.type != RC_VALUE_TYPE_NONE) {
+        /* if no previous Measured value was captured, or the new one is greater, keep the new one */
+        if (measured_value.type == RC_VALUE_TYPE_NONE ||
+            rc_typed_value_compare(&eval_state.measured_value, &measured_value, RC_OPERATOR_GT)) {
+          memcpy(&measured_value, &eval_state.measured_value, sizeof(measured_value));
+          measured_from_hits = eval_state.measured_from_hits;
+        }
+      }
 
       condset = condset->next;
     } while (condset);
@@ -192,15 +210,15 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
 
   /* if paused, the measured value may not be captured, keep the old value */
   if (!is_paused) {
-    rc_typed_value_convert(&eval_state.measured_value, RC_VALUE_TYPE_UNSIGNED);
-    self->measured_value = eval_state.measured_value.value.u32;
+    rc_typed_value_convert(&measured_value, RC_VALUE_TYPE_UNSIGNED);
+    self->measured_value = measured_value.value.u32;
   }
 
   /* if any ResetIf condition was true, reset the hit counts */
   if (eval_state.was_reset) {
     /* if the measured value came from a hit count, reset it. do this before calling
      * rc_reset_trigger_hitcounts in case we need to call rc_condset_is_measured_from_hitcount */
-    if (eval_state.measured_from_hits) {
+    if (measured_from_hits) {
       self->measured_value = 0;
     }
     else if (is_paused && self->measured_value) {

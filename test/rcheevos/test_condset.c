@@ -4006,6 +4006,43 @@ static void test_addaddress_indirect_pointer_with_delta()
   assert_hit_count(condset, 3, 2);
 }
 
+static void test_addaddress_indirect_pointer_from_memory() {
+  uint8_t ram[] = { 0x01, 0x01, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_condset_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(byte(0x0000) + byte(0x0001)) == 22 --- byte(0x0000) = pointer, byte(0x0001) = index */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000+0xH0001_0xH0000=22");
+
+  /* initially, byte(1 + 1) == 22, false */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* pointed-at value is correct */
+  ram[2] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* point to new value */
+  ram[0] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* new pointed-at value is correct */
+  ram[3] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* point to new value */
+  ram[1] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* new pointed-at value is correct */
+  ram[4] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_addaddress_indirect_constant() {
   uint8_t ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -4524,6 +4561,7 @@ void test_condset(void) {
   TEST(test_addaddress_indirect_pointer_out_of_range);
   TEST(test_addaddress_indirect_pointer_multiple);
   TEST(test_addaddress_indirect_pointer_with_delta);
+  TEST(test_addaddress_indirect_pointer_from_memory);
   TEST(test_addaddress_indirect_constant);
   TEST(test_addaddress_pointer_data_size_differs_from_pointer_size);
   TEST(test_addaddress_double_indirection);
