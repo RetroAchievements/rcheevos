@@ -872,10 +872,18 @@ static const rc_memory_regions_t rc_memory_regions_scv = { _rc_memory_regions_sc
 /* ===== Super Nintendo ===== */
 /* https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_memory_map#LoROM */
 static const rc_memory_region_t _rc_memory_regions_snes[] = {
-    { 0x000000U, 0x01FFFFU, 0x7E0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
-    { 0x020000U, 0x03FFFFU, 0xFE0000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
+    { 0x000000U, 0x01FFFFU, 0x07E0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    /* Cartridge RAM here could be in a variety of places in SNES memory, depending on the ROM type.
+     * Due to this, we place Cartridge RAM outside of the possible native addressing space.
+     * Note that this also covers SA-1 BW-RAM (which is exposed as RETRO_MEMORY_SAVE_RAM for libretro).
+     */
+    { 0x020000U, 0x09FFFFU, 0x1000000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" },
+    /* I-RAM on the SA-1 is normally at 0x003000. However, this address typically just has a mirror of System RAM for other ROM types.
+     * To avoid conflicts, don't use 0x003000, instead map it outside of the possible native addressing space.
+     */
+    { 0x0A0000U, 0x0A07FFU, 0x1080000U, RC_MEMORY_TYPE_SYSTEM_RAM, "I-RAM (SA-1)" }
 };
-static const rc_memory_regions_t rc_memory_regions_snes = { _rc_memory_regions_snes, 2 };
+static const rc_memory_regions_t rc_memory_regions_snes = { _rc_memory_regions_snes, 3 };
 
 /* ===== Thomson TO8 ===== */
 /* https://github.com/mamedev/mame/blob/master/src/mame/drivers/thomson.cpp#L1617 */
