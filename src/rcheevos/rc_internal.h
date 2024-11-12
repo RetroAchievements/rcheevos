@@ -146,7 +146,9 @@ typedef struct {
   /* memory accessors */
   rc_peek_t peek;
   void* peek_userdata;
+#ifndef RC_DISABLE_LUA
   lua_State* L;
+#endif
 
   /* processing state */
   rc_typed_value_t measured_value;     /* captured Measured value */
@@ -174,8 +176,10 @@ rc_eval_state_t;
 typedef struct {
   int32_t offset;
 
+#ifndef RC_DISABLE_LUA
   lua_State* L;
   int funcs_ndx;
+#endif
 
   void* buffer;
   rc_scratch_t scratch;

@@ -287,7 +287,11 @@ int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t
     memset(&eval_state, 0, sizeof(eval_state));
     eval_state.peek = peek;
     eval_state.peek_userdata = ud;
+#ifndef RC_DISABLE_LUA
     eval_state.L = L;
+#else
+    (void)L;
+#endif
 
     rc_test_condset(condset, &eval_state);
 

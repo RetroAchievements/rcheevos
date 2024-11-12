@@ -158,7 +158,11 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   memset(&eval_state, 0, sizeof(eval_state));
   eval_state.peek = peek;
   eval_state.peek_userdata = ud;
+#ifndef RC_DISABLE_LUA
   eval_state.L = L;
+#else
+  (void)L;
+#endif
 
   measured_value.type = RC_VALUE_TYPE_NONE;
 

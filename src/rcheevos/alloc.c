@@ -98,8 +98,13 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
 {
   /* could use memset here, but rc_parse_state_t contains a 512 byte buffer that doesn't need to be initialized */
   parse->offset = 0;
+#ifndef RC_DISABLE_LUA
   parse->L = L;
   parse->funcs_ndx = funcs_ndx;
+#else
+  (void)L;
+  (void)funcs_ndx;
+#endif
   parse->buffer = buffer;
   parse->scratch.strings = NULL;
   rc_buffer_init(&parse->scratch.buffer);
