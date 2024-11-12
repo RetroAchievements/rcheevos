@@ -7,22 +7,50 @@
 #define MEMREF_PLACEHOLDER_ADDRESS 0xFFFFFFFF
 
 rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t size) {
-  rc_memref_t** next_memref;
+  rc_memref_list_t* memref_list;
   rc_memref_t* memref;
 
-  /* attempt to find an existing memref that can be shared */
-  next_memref = parse->first_memref;
-  while (*next_memref) {
-    memref = *next_memref;
-    if (memref->address == address && memref->value.memref_type == RC_MEMREF_TYPE_MEMREF && memref->value.size == size)
-      return memref;
+  memref_list = &parse->memrefs->memrefs;
+  do
+  {
+    const rc_memref_t* memref_stop;
 
-    next_memref = &memref->next;
-  }
+    memref = memref_list->items;
+    memref_stop = memref + memref_list->count;
+
+    for (; memref < memref_stop; ++memref) {
+      if (memref->address == address && memref->value.size == size)
+        return memref;
+    }
+
+    if (!memref_list->next)
+      break;
+
+    memref_list = memref_list->next;
+  } while (1);
 
   /* no match found, create a new entry */
-  memref = RC_ALLOC_SCRATCH(rc_memref_t, parse);
-  *next_memref = memref;
+  if (memref_list->count < memref_list->capacity) {
+    ++memref_list->count;
+  } else {
+    const int32_t old_offset = parse->offset;
+
+    if (memref_list->capacity != 0) {
+      memref_list = memref_list->next = RC_ALLOC_SCRATCH(rc_memref_list_t, parse);
+      memref_list->next = NULL;
+    }
+
+    memref_list->items = RC_ALLOC_ARRAY_SCRATCH(rc_memref_t, 8, parse);
+    memref_list->count = 1;
+    memref_list->capacity = 8;
+
+    memref = memref_list->items;
+
+    /* in preparse mode, don't count this memory, we'll do a single allocation once we have
+     * the final total */
+    if (!parse->buffer)
+      parse->offset = old_offset;
+  }
 
   memset(memref, 0, sizeof(*memref));
   memref->value.memref_type = RC_MEMREF_TYPE_MEMREF;
@@ -35,29 +63,54 @@ rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t 
 
 rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t size, const rc_operand_t* parent,
                                                uint8_t modifier_type, const rc_operand_t* modifier) {
-  rc_memref_t** next_memref;
-  rc_memref_t* memref;
+  rc_modified_memref_list_t* modified_memref_list;
   rc_modified_memref_t* modified_memref;
 
-  /* attempt to find an existing memref that can be shared */
-  next_memref = parse->first_memref;
-  while (*next_memref) {
-    memref = *next_memref;
-    if (memref->value.memref_type == RC_MEMREF_TYPE_MODIFIED_MEMREF && memref->value.size == size) {
-      modified_memref = (rc_modified_memref_t*)memref;
-      if (modified_memref->modifier_type == modifier_type &&
+  modified_memref_list = &parse->memrefs->modified_memrefs;
+  do
+  {
+    const rc_modified_memref_t* memref_stop;
+
+    modified_memref = modified_memref_list->items;
+    memref_stop = modified_memref + modified_memref_list->count;
+
+    for (; modified_memref < memref_stop; ++modified_memref) {
+      if (modified_memref->memref.value.size == size &&
+          modified_memref->modifier_type == modifier_type &&
           rc_operands_are_equal(&modified_memref->parent, parent) &&
           rc_operands_are_equal(&modified_memref->modifier, modifier)) {
         return modified_memref;
       }
     }
 
-    next_memref = &memref->next;
-  }
+    if (!modified_memref_list->next)
+      break;
+
+    modified_memref_list = modified_memref_list->next;
+  } while (1);
 
   /* no match found, create a new entry */
-  modified_memref = RC_ALLOC_SCRATCH(rc_modified_memref_t, parse);
-  *next_memref = (rc_memref_t*)modified_memref;
+  if (modified_memref_list->count < modified_memref_list->capacity) {
+    ++modified_memref_list->count;
+  } else {
+    const int32_t old_offset = parse->offset;
+
+    if (modified_memref_list->capacity != 0) {
+      modified_memref_list = modified_memref_list->next = RC_ALLOC_SCRATCH(rc_modified_memref_list_t, parse);
+      modified_memref_list->next = NULL;
+    }
+
+    modified_memref_list->items = RC_ALLOC_ARRAY_SCRATCH(rc_modified_memref_t, 8, parse);
+    modified_memref_list->count = 1;
+    modified_memref_list->capacity = 8;
+
+    modified_memref = modified_memref_list->items;
+
+    /* in preparse mode, don't count this memory, we'll do a single allocation once we have
+     * the final total */
+    if (!parse->buffer)
+      parse->offset = old_offset;
+  }
 
   memset(modified_memref, 0, sizeof(*modified_memref));
   modified_memref->memref.value.memref_type = RC_MEMREF_TYPE_MODIFIED_MEMREF;
@@ -69,6 +122,51 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
   modified_memref->memref.address = rc_operand_is_memref(modifier) ? modifier->value.memref->address : modifier->value.num;
 
   return modified_memref;
+}
+
+uint32_t rc_memrefs_count_memrefs(const rc_memrefs_t* memrefs)
+{
+  uint32_t count = 0;
+  const rc_memref_list_t* memref_list = &memrefs->memrefs;
+  while (memref_list) {
+    count += memref_list->count;
+    memref_list = memref_list->next;
+  }
+
+  return count;
+}
+
+uint32_t rc_memrefs_count_modified_memrefs(const rc_memrefs_t* memrefs)
+{
+  uint32_t count = 0;
+  const rc_modified_memref_list_t* modified_memref_list = &memrefs->modified_memrefs;
+  while (modified_memref_list) {
+    count += modified_memref_list->count;
+    modified_memref_list = modified_memref_list->next;
+  }
+
+  return count;
+}
+
+uint32_t rc_memrefs_count_values(const rc_memrefs_t* memrefs)
+{
+  uint32_t count = 0;
+  const rc_value_list_t* value_list = &memrefs->values;
+  while (value_list) {
+    count += value_list->count;
+    value_list = value_list->next;
+  }
+
+  return count;
+}
+
+void rc_memrefs_reset_variables(rc_memrefs_t* memrefs)
+{
+  rc_value_t* variable = memrefs->values.items;
+  const rc_value_t* variable_end = variable + memrefs->values.count;
+
+  for (; variable < variable_end; ++variable)
+    rc_reset_value(variable);
 }
 
 int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address) {
@@ -515,9 +613,12 @@ void rc_update_memref_value(rc_memref_value_t* memref, uint32_t new_value) {
   }
 }
 
-void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_t** memrefs) {
-  parse->first_memref = memrefs;
-  *memrefs = 0;
+void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memrefs_t* memrefs)
+{
+  if (memrefs)
+    memset(memrefs, 0, sizeof(*memrefs));
+
+  parse->memrefs = memrefs;
 }
 
 static uint32_t rc_get_memref_value_value(const rc_memref_value_t* memref, int operand_type) {
@@ -574,19 +675,52 @@ uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_pee
   return value.value.u32;
 }
 
-void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud) {
-  while (memref) {
-    /* indirect memory references are not shared and will be updated in rc_get_memref_value */
-    switch (memref->value.memref_type) {
-    case RC_MEMREF_TYPE_MEMREF:
+void rc_update_memref_values(rc_memrefs_t* memrefs, rc_peek_t peek, void* ud) {
+  rc_memref_list_t* memref_list;
+  rc_modified_memref_list_t* modified_memref_list;
+  rc_value_list_t* value_list;
+
+  memref_list = &memrefs->memrefs;
+  do
+  {
+    rc_memref_t* memref = memref_list->items;
+    const rc_memref_t* memref_stop = memref + memref_list->count;
+
+    for (; memref < memref_stop; ++memref)
       rc_update_memref_value(&memref->value, rc_peek_value(memref->address, memref->value.size, peek, ud));
-      break;
 
-    case RC_MEMREF_TYPE_MODIFIED_MEMREF:
-      rc_update_memref_value(&memref->value, rc_get_modified_memref_value((rc_modified_memref_t*)memref, peek, ud));
-      break;
-    }
+    memref_list = memref_list->next;
+  } while (memref_list);
 
-    memref = memref->next;
+  modified_memref_list = &memrefs->modified_memrefs;
+  if (modified_memref_list->count) {
+    do {
+      rc_modified_memref_t* modified_memref = modified_memref_list->items;
+      const rc_modified_memref_t* modified_memref_stop = modified_memref + modified_memref_list->count;
+
+      for (; modified_memref < modified_memref_stop; ++modified_memref)
+        rc_update_memref_value(&modified_memref->memref.value, rc_get_modified_memref_value(modified_memref, peek, ud));
+
+      modified_memref_list = modified_memref_list->next;
+    } while (modified_memref_list);
+  }
+
+  value_list = &memrefs->values;
+  if (value_list->count) {
+    do {
+      rc_value_t* value = value_list->items;
+      const rc_value_t* value_stop = value + value_list->count;
+      rc_typed_value_t result;
+
+      for (; value < value_stop; ++value) {
+        if (rc_evaluate_value_typed(value, &result, peek, ud, NULL)) {
+          /* store the raw bytes and type to be restored by rc_typed_value_from_memref_value  */
+          rc_update_memref_value(&value->value, result.value.u32);
+          value->value.type = result.type;
+        }
+      }
+
+      value_list = value_list->next;
+    } while (value_list);
   }
 }

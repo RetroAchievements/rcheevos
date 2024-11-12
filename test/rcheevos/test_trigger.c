@@ -10,7 +10,7 @@ static void _assert_parse_trigger(rc_trigger_t** trigger, void* buffer, size_t b
 
   size = rc_trigger_size(memaddr);
   ASSERT_NUM_GREATER(size, 0);
-  ASSERT_NUM_LESS_EQUALS(size, buffer_size);
+  ASSERT_NUM_LESS_EQUALS(size + 4, buffer_size);
 
   overflow = (unsigned*)(((char*)buffer) + size);
   *overflow = 0xCDCDCDCD;
@@ -530,7 +530,7 @@ static void test_measured_addhits() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[256];
+  char buffer[512];
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -1049,7 +1049,7 @@ static void test_measured_if() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[256];
+  char buffer[512];
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -1089,7 +1089,7 @@ static void test_measured_if_comparison() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[256];
+  char buffer[512];
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -1697,7 +1697,7 @@ static void test_evaluate_trigger_primed() {
   uint8_t ram[] = {0x00, 0x01, 0x00, 0x01, 0x00};
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[512];
+  char buffer[640];
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -1823,7 +1823,7 @@ static void test_evaluate_trigger_chained_resetnextif() {
   uint8_t ram[] = {0x00, 0x00, 0x00, 0x00, 0x00};
   memory_t memory;
   rc_trigger_t* trigger;
-  char buffer[512];
+  char buffer[640];
 
   memory.ram = ram;
   memory.size = sizeof(ram);
@@ -1880,13 +1880,16 @@ static void test_evaluate_trigger_chained_resetnextif() {
 
 static void test_prev_prior_share_memref() {
   rc_trigger_t* trigger;
+  rc_memrefs_t* memrefs;
   char buffer[512];
 
   assert_parse_trigger(&trigger, buffer, "0xH0001=d0xH0001_0xH0001!=p0xH0001");
 
-  ASSERT_NUM_EQUALS(trigger->memrefs->address, 1U);
-  ASSERT_NUM_EQUALS(trigger->memrefs->value.size, RC_MEMSIZE_8_BITS);
-  ASSERT_PTR_NULL(trigger->memrefs->next);
+  memrefs = rc_trigger_get_memrefs(trigger);
+  ASSERT_PTR_NOT_NULL(memrefs);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.count, 1);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.items[0].address, 1U);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.items[0].value.size, RC_MEMSIZE_8_BITS);
 
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.type, RC_OPERAND_ADDRESS);
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand2.type, RC_OPERAND_DELTA);
@@ -1896,13 +1899,16 @@ static void test_prev_prior_share_memref() {
 
 static void test_bit_lookups_share_memref() {
   rc_trigger_t* trigger;
+  rc_memrefs_t* memrefs;
   char buffer[512];
 
   assert_parse_trigger(&trigger, buffer, "0xM0001=1_0xN0x0001=0_0xO0x0001=1");
 
-  ASSERT_NUM_EQUALS(trigger->memrefs->address, 1U);
-  ASSERT_NUM_EQUALS(trigger->memrefs->value.size, RC_MEMSIZE_8_BITS);
-  ASSERT_PTR_NULL(trigger->memrefs->next);
+  memrefs = rc_trigger_get_memrefs(trigger);
+  ASSERT_PTR_NOT_NULL(memrefs);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.count, 1);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.items[0].address, 1U);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.items[0].value.size, RC_MEMSIZE_8_BITS);
 
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.size, RC_MEMSIZE_BIT_0);
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 1)->operand1.size, RC_MEMSIZE_BIT_1);
@@ -1911,13 +1917,16 @@ static void test_bit_lookups_share_memref() {
 
 static void test_bitcount_shares_memref() {
   rc_trigger_t* trigger;
+  rc_memrefs_t* memrefs;
   char buffer[512];
 
   assert_parse_trigger(&trigger, buffer, "0xH0001>5_0xK0001!=3");
 
-  ASSERT_NUM_EQUALS(trigger->memrefs->address, 1U);
-  ASSERT_NUM_EQUALS(trigger->memrefs->value.size, RC_MEMSIZE_8_BITS);
-  ASSERT_PTR_NULL(trigger->memrefs->next);
+  memrefs = rc_trigger_get_memrefs(trigger);
+  ASSERT_PTR_NOT_NULL(memrefs);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.count, 1);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.items[0].address, 1U);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.items[0].value.size, RC_MEMSIZE_8_BITS);
 
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.type, RC_OPERAND_ADDRESS);
   ASSERT_NUM_EQUALS(trigger_get_cond(trigger, 0, 0)->operand1.size, RC_MEMSIZE_8_BITS);
@@ -1927,18 +1936,21 @@ static void test_bitcount_shares_memref() {
 
 static void test_large_memref_not_shared() {
   rc_trigger_t* trigger;
+  rc_memrefs_t* memrefs;
   char buffer[512];
 
   assert_parse_trigger(&trigger, buffer, "0xH1234=1_0xX1234>d0xX1234");
 
-  /* this could be shared, but isn't currently */
-  ASSERT_NUM_EQUALS(trigger->memrefs->address, 0x1234);
-  ASSERT_NUM_EQUALS(trigger->memrefs->value.size, RC_MEMSIZE_8_BITS);
-  ASSERT_PTR_NOT_NULL(trigger->memrefs->next);
+  memrefs = rc_trigger_get_memrefs(trigger);
+  ASSERT_PTR_NOT_NULL(memrefs);
 
-  ASSERT_NUM_EQUALS(trigger->memrefs->next->address, 0x1234);
-  ASSERT_NUM_EQUALS(trigger->memrefs->next->value.size, RC_MEMSIZE_32_BITS);
-  ASSERT_PTR_NULL(trigger->memrefs->next->next);
+  /* this could be shared, but isn't currently */
+  ASSERT_NUM_EQUALS(memrefs->memrefs.count, 2);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.items[0].address, 0x1234U);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.items[0].value.size, RC_MEMSIZE_8_BITS);
+
+  ASSERT_NUM_EQUALS(memrefs->memrefs.items[1].address, 0x1234U);
+  ASSERT_NUM_EQUALS(memrefs->memrefs.items[1].value.size, RC_MEMSIZE_32_BITS);
 }
 
 static void test_remember_recall() {

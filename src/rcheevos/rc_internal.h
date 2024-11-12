@@ -21,6 +21,53 @@ typedef struct rc_modified_memref_t {
 }
 rc_modified_memref_t;
 
+typedef struct rc_memref_list_t {
+  rc_memref_t* items;
+  struct rc_memref_list_t* next;
+  uint16_t count;
+  uint16_t capacity;
+} rc_memref_list_t;
+
+typedef struct rc_modified_memref_list_t {
+  rc_modified_memref_t* items;
+  struct rc_modified_memref_list_t* next;
+  uint16_t count;
+  uint16_t capacity;
+} rc_modified_memref_list_t;
+
+typedef struct rc_value_list_t {
+  rc_value_t* items;
+  struct rc_value_list_t* next;
+  uint16_t count;
+  uint16_t capacity;
+} rc_value_list_t;
+
+typedef struct rc_memrefs_t {
+  rc_memref_list_t memrefs;
+  rc_modified_memref_list_t modified_memrefs;
+  rc_value_list_t values;
+} rc_memrefs_t;
+
+typedef struct rc_trigger_with_memrefs_t {
+  rc_trigger_t trigger;
+  rc_memrefs_t memrefs;
+} rc_trigger_with_memrefs_t;
+
+typedef struct rc_lboard_with_memrefs_t {
+  rc_lboard_t lboard;
+  rc_memrefs_t memrefs;
+} rc_lboard_with_memrefs_t;
+
+typedef struct rc_richpresence_with_memrefs_t {
+  rc_richpresence_t richpresence;
+  rc_memrefs_t memrefs;
+} rc_richpresence_with_memrefs_t;
+
+typedef struct rc_value_with_memrefs_t {
+  rc_value_t value;
+  rc_memrefs_t memrefs;
+} rc_value_with_memrefs_t;
+
 /* enum helpers for natvis expansion. Have to use a struct to define the mapping,
  * and a single field to allow the conditional logic to switch on the value */
 typedef struct __rc_bool_enum_t { uint8_t value; } __rc_bool_enum_t;
@@ -38,6 +85,10 @@ typedef struct __rc_memref_list_t { rc_memref_t* first_memref; } __rc_memref_lis
 typedef struct __rc_value_list_t { rc_value_t* first_value; } __rc_value_list_t;
 typedef struct __rc_trigger_state_enum_t { uint8_t value; } __rc_trigger_state_enum_t;
 typedef struct __rc_lboard_state_enum_t { uint8_t value; } __rc_lboard_state_enum_t;
+typedef struct __rc_richpresence_display_list_t { rc_richpresence_display_t* first_display; } __rc_richpresence_display_list_t;
+typedef struct __rc_richpresence_display_part_list_t { rc_richpresence_display_part_t* display; } __rc_richpresence_display_part_list_t;
+typedef struct __rc_richpresence_lookup_list_t { rc_richpresence_lookup_t* first_lookup; } __rc_richpresence_lookup_list_t;
+typedef struct __rc_format_enum_t { uint8_t value; } __rc_format_enum_t;
 
 #define RC_ALLOW_ALIGN(T) struct __align_ ## T { uint8_t ch; T t; };
 
@@ -45,16 +96,24 @@ RC_ALLOW_ALIGN(rc_condition_t)
 RC_ALLOW_ALIGN(rc_condset_t)
 RC_ALLOW_ALIGN(rc_modified_memref_t)
 RC_ALLOW_ALIGN(rc_lboard_t)
+RC_ALLOW_ALIGN(rc_lboard_with_memrefs_t)
 RC_ALLOW_ALIGN(rc_memref_t)
+RC_ALLOW_ALIGN(rc_memref_list_t)
+RC_ALLOW_ALIGN(rc_memrefs_t)
+RC_ALLOW_ALIGN(rc_modified_memref_list_t)
 RC_ALLOW_ALIGN(rc_operand_t)
 RC_ALLOW_ALIGN(rc_richpresence_t)
 RC_ALLOW_ALIGN(rc_richpresence_display_t)
 RC_ALLOW_ALIGN(rc_richpresence_display_part_t)
 RC_ALLOW_ALIGN(rc_richpresence_lookup_t)
 RC_ALLOW_ALIGN(rc_richpresence_lookup_item_t)
+RC_ALLOW_ALIGN(rc_richpresence_with_memrefs_t)
 RC_ALLOW_ALIGN(rc_scratch_string_t)
 RC_ALLOW_ALIGN(rc_trigger_t)
+RC_ALLOW_ALIGN(rc_trigger_with_memrefs_t)
 RC_ALLOW_ALIGN(rc_value_t)
+RC_ALLOW_ALIGN(rc_value_list_t)
+RC_ALLOW_ALIGN(rc_value_with_memrefs_t)
 RC_ALLOW_ALIGN(char)
 
 #define RC_ALIGNOF(T) (sizeof(struct __align_ ## T) - sizeof(T))
@@ -62,6 +121,8 @@ RC_ALLOW_ALIGN(char)
 
 #define RC_ALLOC(t, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
 #define RC_ALLOC_SCRATCH(t, p) ((t*)rc_alloc_scratch((p)->buffer, &(p)->offset, sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
+#define RC_ALLOC_ARRAY(t, n, p) ((t*)rc_alloc((p)->buffer, &(p)->offset, (n) * sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
+#define RC_ALLOC_ARRAY_SCRATCH(t, n, p) ((t*)rc_alloc_scratch((p)->buffer, &(p)->offset, (n) * sizeof(t), RC_ALIGNOF(t), &(p)->scratch, RC_OFFSETOF((p)->scratch.objs, __ ## t)))
 
 #define RC_ALLOC_WITH_TRAILING(container_type, trailing_type, trailing_field, trailing_count, parse) ((container_type*)rc_alloc(\
           (parse)->buffer, &(parse)->offset, \
@@ -81,16 +142,24 @@ typedef struct {
     rc_condset_t* __rc_condset_t;
     rc_modified_memref_t* __rc_modified_memref_t;
     rc_lboard_t* __rc_lboard_t;
+    rc_lboard_with_memrefs_t* __rc_lboard_with_memrefs_t;
     rc_memref_t* __rc_memref_t;
+    rc_memref_list_t* __rc_memref_list_t;
+    rc_memrefs_t* __rc_memrefs_t;
+    rc_modified_memref_list_t* __rc_modified_memref_list_t;
     rc_operand_t* __rc_operand_t;
     rc_richpresence_t* __rc_richpresence_t;
     rc_richpresence_display_t* __rc_richpresence_display_t;
     rc_richpresence_display_part_t* __rc_richpresence_display_part_t;
     rc_richpresence_lookup_t* __rc_richpresence_lookup_t;
     rc_richpresence_lookup_item_t* __rc_richpresence_lookup_item_t;
+    rc_richpresence_with_memrefs_t* __rc_richpresence_with_memrefs_t;
     rc_scratch_string_t __rc_scratch_string_t;
     rc_trigger_t* __rc_trigger_t;
+    rc_trigger_with_memrefs_t* __rc_trigger_with_memrefs_t;
     rc_value_t* __rc_value_t;
+    rc_value_list_t* __rc_value_list_t;
+    rc_value_with_memrefs_t* __rc_value_with_memrefs_t;
 
     /* these fields aren't actually used by the code, but they force the
      * virtual enum wrapper types to exist so natvis can use them */
@@ -110,6 +179,10 @@ typedef struct {
       __rc_value_list_t value_list;
       __rc_trigger_state_enum_t trigger_state;
       __rc_lboard_state_enum_t lboard_state;
+      __rc_richpresence_display_list_t richpresence_display_list;
+      __rc_richpresence_display_part_list_t richpresence_display_part_list;
+      __rc_richpresence_lookup_list_t richpresence_lookup_list;
+      __rc_format_enum_t format;
     } natvis_extension;
   } objs;
 }
@@ -184,8 +257,7 @@ typedef struct {
   void* buffer;
   rc_scratch_t scratch;
 
-  rc_memref_t** first_memref;
-  rc_value_t** variables;
+  rc_memrefs_t* memrefs;
 
   uint32_t measured_target;
   int lines_read;
@@ -201,10 +273,17 @@ typedef struct {
 }
 rc_parse_state_t;
 
+typedef struct rc_preparse_state_t {
+  rc_parse_state_t parse;
+  rc_memrefs_t memrefs;
+} rc_preparse_state_t;
+
 void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx);
-void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memref_t** memrefs);
-void rc_init_parse_state_variables(rc_parse_state_t* parse, rc_value_t** variables);
+void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memrefs_t* memrefs);
 void rc_destroy_parse_state(rc_parse_state_t* parse);
+void rc_init_preparse_state(rc_preparse_state_t* preparse, lua_State* L, int funcs_ndx);
+void rc_preparse_alloc_memrefs(rc_memrefs_t* memrefs, rc_preparse_state_t* preparse);
+void rc_destroy_preparse_state(rc_preparse_state_t *preparse);
 
 void* rc_alloc(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment, rc_scratch_t* scratch, uint32_t scratch_object_pointer_offset);
 void* rc_alloc_scratch(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment, rc_scratch_t* scratch, uint32_t scratch_object_pointer_offset);
@@ -214,17 +293,22 @@ rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t 
 rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t size, const rc_operand_t* parent,
                                                uint8_t modifier_type, const rc_operand_t* modifier);
 int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address);
-void rc_update_memref_values(rc_memref_t* memref, rc_peek_t peek, void* ud);
+void rc_update_memref_values(rc_memrefs_t* memrefs, rc_peek_t peek, void* ud);
 void rc_update_memref_value(rc_memref_value_t* memref, uint32_t value);
 void rc_get_memref_value(rc_typed_value_t* value, rc_memref_t* memref, int operand_type);
 uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_peek_t peek, void* ud);
 uint8_t rc_memref_shared_size(uint8_t size);
 uint32_t rc_memref_mask(uint8_t size);
+uint32_t rc_memrefs_count_memrefs(const rc_memrefs_t* memrefs);
+uint32_t rc_memrefs_count_modified_memrefs(const rc_memrefs_t* memrefs);
+uint32_t rc_memrefs_count_values(const rc_memrefs_t* memrefs);
+void rc_memrefs_reset_variables(rc_memrefs_t* memrefs);
 void rc_transform_memref_value(rc_typed_value_t* value, uint8_t size);
 uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 int rc_trigger_state_active(int state);
+rc_memrefs_t* rc_trigger_get_memrefs(rc_trigger_t* self);
 
 typedef struct rc_condset_with_trailing_conditions_t {
   rc_condset_t condset;
@@ -297,6 +381,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
 int rc_lboard_state_active(int state);
 
 void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script, rc_parse_state_t* parse);
+rc_memrefs_t* rc_richpresence_get_memrefs(rc_richpresence_t* self);
 
 RC_END_C_DECLS
 

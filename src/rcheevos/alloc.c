@@ -94,6 +94,67 @@ char* rc_alloc_str(rc_parse_state_t* parse, const char* text, size_t length) {
   return ptr;
 }
 
+void rc_init_preparse_state(rc_preparse_state_t* preparse, lua_State* L, int funcs_ndx)
+{
+  rc_init_parse_state(&preparse->parse, NULL, L, funcs_ndx);
+  rc_init_parse_state_memrefs(&preparse->parse, &preparse->memrefs);
+}
+
+void rc_destroy_preparse_state(rc_preparse_state_t* preparse)
+{
+  rc_destroy_parse_state(&preparse->parse);
+}
+
+void rc_preparse_alloc_memrefs(rc_memrefs_t* memrefs, rc_preparse_state_t* preparse)
+{
+  const uint32_t num_memrefs = rc_memrefs_count_memrefs(&preparse->memrefs);
+  const uint32_t num_modified_memrefs = rc_memrefs_count_modified_memrefs(&preparse->memrefs);
+  const uint32_t num_values = rc_memrefs_count_values(&preparse->memrefs);
+
+  if (preparse->parse.offset < 0)
+    return;
+
+  if (memrefs) {
+    memset(memrefs, 0, sizeof(*memrefs));
+    preparse->parse.memrefs = memrefs;
+  }
+
+  if (num_memrefs) {
+    rc_memref_t* memref_items = RC_ALLOC_ARRAY(rc_memref_t, num_memrefs, &preparse->parse);
+
+    if (memrefs) {
+      memrefs->memrefs.capacity = num_memrefs;
+      memrefs->memrefs.items = memref_items;
+    }
+  }
+
+  if (num_modified_memrefs) {
+    rc_modified_memref_t* modified_memref_items =
+      RC_ALLOC_ARRAY(rc_modified_memref_t, num_modified_memrefs, &preparse->parse);
+
+    if (memrefs) {
+      memrefs->modified_memrefs.capacity = num_modified_memrefs;
+      memrefs->modified_memrefs.items = modified_memref_items;
+    }
+  }
+
+  if (num_values) {
+    rc_value_t* value_items = RC_ALLOC_ARRAY(rc_value_t, num_values, &preparse->parse);
+
+    if (memrefs) {
+      memrefs->values.capacity = num_values;
+      memrefs->values.items = value_items;
+    }
+  }
+
+  /* when preparsing, this structure will be allocated at the end. when it's allocated earlier
+   * in the buffer, it could be followed by something aligned at 8 bytes. force the offset to
+   * an 8-byte boundary */
+  if (!memrefs) {
+    rc_alloc(preparse->parse.buffer, &preparse->parse.offset, 0, 8, &preparse->parse.scratch, 0);
+  }
+}
+
 void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx)
 {
   /* could use memset here, but rc_parse_state_t contains a 512 byte buffer that doesn't need to be initialized */
@@ -109,8 +170,6 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   parse->scratch.strings = NULL;
   rc_buffer_init(&parse->scratch.buffer);
   memset(&parse->scratch.objs, 0, sizeof(parse->scratch.objs));
-  parse->first_memref = NULL;
-  parse->variables = NULL;
   parse->measured_target = 0;
   parse->lines_read = 0;
   parse->addsource_parent.type = RC_OPERAND_NONE;

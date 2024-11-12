@@ -1781,8 +1781,8 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     else {
       /* populate the item, using the communal memrefs pool */
       rc_init_parse_state(&parse, rc_buffer_reserve(buffer, trigger_size), NULL, 0);
-      parse.first_memref = &load_state->game->runtime.memrefs;
-      parse.variables = &load_state->game->runtime.variables;
+      //parse.first_memref = &load_state->game->runtime.memrefs;
+      //parse.variables = &load_state->game->runtime.variables;
       achievement->trigger = RC_ALLOC(rc_trigger_t, &parse);
       rc_parse_trigger_internal(achievement->trigger, &memaddr, &parse);
 
@@ -1793,7 +1793,6 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
       }
       else {
         rc_buffer_consume(buffer, parse.buffer, (uint8_t*)parse.buffer + parse.offset);
-        achievement->trigger->memrefs = NULL; /* memrefs managed by runtime */
       }
 
       rc_destroy_parse_state(&parse);
@@ -1921,8 +1920,8 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
     else {
       /* populate the item, using the communal memrefs pool */
       rc_init_parse_state(&parse, rc_buffer_reserve(buffer, lboard_size), NULL, 0);
-      parse.first_memref = &load_state->game->runtime.memrefs;
-      parse.variables = &load_state->game->runtime.variables;
+      //parse.first_memref = &load_state->game->runtime.memrefs;
+      //parse.variables = &load_state->game->runtime.variables;
       leaderboard->lboard = RC_ALLOC(rc_lboard_t, &parse);
       rc_parse_lboard_internal(leaderboard->lboard, memaddr, &parse);
 
@@ -1932,7 +1931,6 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
       }
       else {
         rc_buffer_consume(buffer, parse.buffer, (uint8_t*)parse.buffer + parse.offset);
-        leaderboard->lboard->memrefs = NULL; /* memrefs managed by runtime */
       }
 
       rc_destroy_parse_state(&parse);

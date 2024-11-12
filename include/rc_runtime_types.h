@@ -88,10 +88,10 @@ struct rc_memref_t {
   /* The memory address of this variable. */
   uint32_t address;
 
-  /* The next memory reference in the chain. */
-  rc_memref_t* next;
+  struct rc_memref_t* next; // TODO: remove
 };
 
+typedef struct rc_memrefs_t rc_memrefs_t;
 
 /*****************************************************************************\
 | Operands                                                                    |
@@ -270,9 +270,6 @@ struct rc_trigger_t {
   /* The list of sub condition sets in this test. */
   rc_condset_t* alternative;
 
-  /* The memory references required by the trigger. */
-  rc_memref_t* memrefs;
-
   /* The current state of the MEASURED condition. */
   uint32_t measured_value;
 
@@ -285,11 +282,11 @@ struct rc_trigger_t {
   /* True if at least one condition has a non-zero hit count */
   uint8_t has_hits;
 
-  /* True if at least one condition has a non-zero required hit count */
-  uint8_t has_required_hits;
-
   /* True if the measured value should be displayed as a percentage */
   uint8_t measured_as_percent;
+
+  /* True if the trigger has its own rc_memrefs_t */
+  uint8_t has_memrefs;
 };
 
 RC_EXPORT int RC_CCONV rc_trigger_size(const char* memaddr);
@@ -308,17 +305,17 @@ struct rc_value_t {
   /* The current value of the variable. */
   rc_memref_value_t value;
 
+  /* True if the value has its own rc_memrefs_t */
+  uint8_t has_memrefs;
+
   /* The list of possible values (traverse next chain, pick max). */
   rc_condset_t* conditions;
-
-  /* The memory references required by the variable. */
-  rc_memref_t* memrefs;
 
   /* The name of the variable. */
   const char* name;
 
   /* The next variable in the chain. */
-  rc_value_t* next;
+  rc_value_t* next; // TODO: remove
 };
 
 RC_EXPORT int RC_CCONV rc_value_size(const char* memaddr);
@@ -346,9 +343,9 @@ struct rc_lboard_t {
   rc_trigger_t cancel;
   rc_value_t value;
   rc_value_t* progress;
-  rc_memref_t* memrefs;
 
   uint8_t state;
+  uint8_t has_memrefs;
 };
 
 RC_EXPORT int RC_CCONV rc_lboard_size(const char* memaddr);
@@ -427,13 +424,13 @@ struct rc_richpresence_display_t {
   rc_trigger_t trigger;
   rc_richpresence_display_t* next;
   rc_richpresence_display_part_t* display;
+  uint8_t has_required_hits;
 };
 
 struct rc_richpresence_t {
   rc_richpresence_display_t* first_display;
   rc_richpresence_lookup_t* first_lookup;
-  rc_memref_t* memrefs;
-  rc_value_t* variables;
+  uint8_t has_memrefs;
 };
 
 RC_EXPORT int RC_CCONV rc_richpresence_size(const char* script);

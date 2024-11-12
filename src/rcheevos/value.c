@@ -221,6 +221,7 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
     self->value.value = self->value.prior = 0;
     self->value.memref_type = RC_MEMREF_TYPE_VALUE;
     self->value.changed = 0;
+    self->has_memrefs = 0;
     self->next = NULL;
 
     for (condition = self->conditions->conditions; condition; condition = condition->next) {
@@ -242,35 +243,46 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
 }
 
 int rc_value_size(const char* memaddr) {
-  rc_value_t* self;
-  rc_parse_state_t parse;
-  rc_memref_t* first_memref;
-  rc_init_parse_state(&parse, 0, 0, 0);
-  rc_init_parse_state_memrefs(&parse, &first_memref);
+  rc_value_with_memrefs_t* value;
+  rc_preparse_state_t preparse;
+  rc_init_preparse_state(&preparse, NULL, 0);
 
-  self = RC_ALLOC(rc_value_t, &parse);
-  rc_parse_value_internal(self, &memaddr, &parse);
+  value = RC_ALLOC(rc_value_with_memrefs_t, &preparse.parse);
+  rc_parse_value_internal(&value->value, &memaddr, &preparse.parse);
+  rc_preparse_alloc_memrefs(NULL, &preparse);
 
-  rc_destroy_parse_state(&parse);
-  return parse.offset;
+  rc_destroy_preparse_state(&preparse);
+  return preparse.parse.offset;
 }
 
 rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx) {
-  rc_value_t* self;
-  rc_parse_state_t parse;
+  rc_value_with_memrefs_t* value;
+  rc_preparse_state_t preparse;
+  const char* preparse_memaddr = memaddr;
 
   if (!buffer || !memaddr)
     return NULL;
 
-  rc_init_parse_state(&parse, buffer, L, funcs_ndx);
+  rc_init_preparse_state(&preparse, L, funcs_ndx);
+  value = RC_ALLOC(rc_value_with_memrefs_t, &preparse.parse);
+  rc_parse_value_internal(&value->value, &preparse_memaddr, &preparse.parse);
 
-  self = RC_ALLOC(rc_value_t, &parse);
-  rc_init_parse_state_memrefs(&parse, &self->memrefs);
+  rc_init_parse_state(&preparse.parse, buffer, L, funcs_ndx);
+  value = RC_ALLOC(rc_value_with_memrefs_t, &preparse.parse);
+  rc_preparse_alloc_memrefs(&value->memrefs, &preparse);
 
-  rc_parse_value_internal(self, &memaddr, &parse);
+  rc_parse_value_internal(&value->value, &memaddr, &preparse.parse);
+  value->value.has_memrefs = 1;
 
-  rc_destroy_parse_state(&parse);
-  return (parse.offset >= 0) ? self : NULL;
+  rc_destroy_preparse_state(&preparse);
+  return (preparse.parse.offset >= 0) ? &value->value : NULL;
+}
+
+static void rc_update_value_memrefs(rc_value_t* self, rc_peek_t peek, void* ud) {
+  if (self->has_memrefs) {
+    rc_value_with_memrefs_t* value = (rc_value_with_memrefs_t*)self;
+    rc_update_memref_values(&value->memrefs, peek, ud);
+  }
 }
 
 int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t peek, void* ud, lua_State* L) {
@@ -278,7 +290,7 @@ int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t
   rc_condset_t* condset;
   int valid = 0;
 
-  rc_update_memref_values(self->memrefs, peek, ud);
+  rc_update_value_memrefs(self, peek, ud);
 
   value->value.i32 = 0;
   value->type = RC_VALUE_TYPE_SIGNED;
@@ -368,55 +380,79 @@ int rc_value_from_hits(rc_value_t* self)
   return 0;
 }
 
-void rc_init_parse_state_variables(rc_parse_state_t* parse, rc_value_t** variables) {
-  parse->variables = variables;
-  *variables = 0;
-}
-
 rc_value_t* rc_alloc_helper_variable(const char* memaddr, size_t memaddr_len, rc_parse_state_t* parse)
 {
-  rc_value_t** variables = parse->variables;
+  rc_value_list_t* value_list;
   rc_value_t* value;
+  //rc_memrefs_t* memref;
   const char* name;
   uint32_t measured_target;
 
-  while ((value = *variables) != NULL) {
-    if (strncmp(value->name, memaddr, memaddr_len) == 0 && value->name[memaddr_len] == 0)
-      return value;
+  value_list = &parse->memrefs->values;
+  do
+  {
+    const rc_value_t* value_stop;
 
-    variables = &value->next;
-  }
+    value = value_list->items;
+    value_stop = value + value_list->count;
 
-  value = RC_ALLOC_SCRATCH(rc_value_t, parse);
-  memset(&value->value, 0, sizeof(value->value));
-  value->value.size = RC_MEMSIZE_VARIABLE;
-  value->memrefs = NULL;
+    for (; value < value_stop; ++value) {
+      if (strncmp(value->name, memaddr, memaddr_len) == 0 && value->name[memaddr_len] == 0)
+        return value;
+    }
+
+    if (!value_list->next)
+      break;
+
+    value_list = value_list->next;
+  } while (1);
 
   /* capture name before calling parse as parse will update memaddr pointer */
   name = rc_alloc_str(parse, memaddr, memaddr_len);
   if (!name)
     return NULL;
 
+  /* no match found, create a new entry */
+  if (value_list->count < value_list->capacity) {
+    ++value_list->count;
+  } else {
+    const int32_t old_offset = parse->offset;
+
+    if (value_list->capacity != 0) {
+      value_list = value_list->next = RC_ALLOC_SCRATCH(rc_value_list_t, parse);
+      value_list->next = NULL;
+    }
+
+    value_list->items = RC_ALLOC_ARRAY_SCRATCH(rc_value_t, 8, parse);
+    value_list->count = 1;
+    value_list->capacity = 8;
+
+    value = value_list->items;
+
+    /* in preparse mode, don't count this memory, we'll do a single allocation once we have
+     * the final total */
+    if (!parse->buffer)
+      parse->offset = old_offset;
+  }
+
+  memset(&value->value, 0, sizeof(value->value));
+  value->value.size = RC_MEMSIZE_VARIABLE;
+
   /* the helper variable likely has a Measured condition. capture the current measured_target so we can restore it
    * after generating the variable so the variable's Measured target doesn't conflict with the rest of the trigger. */
   measured_target = parse->measured_target;
 
   /* disable variable resolution when defining a variable to prevent infinite recursion */
-  variables = parse->variables;
-  parse->variables = NULL;
+  //memref = parse->memrefs;
+  //parse->memrefs = NULL;
   rc_parse_value_internal(value, &memaddr, parse);
-  parse->variables = variables;
+  //parse->memrefs = memref;
 
   /* restore the measured target */
   parse->measured_target = measured_target;
 
   /* store name after calling parse as parse will set name to (unnamed) */
   value->name = name;
-
-  /* append the new variable to the end of the list (have to re-evaluate in case any others were added) */
-  while (*variables != NULL)
-    variables = &(*variables)->next;
-  *variables = value;
 
   return value;
 }

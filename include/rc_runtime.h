@@ -82,6 +82,7 @@ typedef struct rc_runtime_t {
 
   rc_runtime_richpresence_t* richpresence;
 
+  struct rc_memrefs_t* memrefs_TODO;
   rc_memref_t* memrefs;
   rc_memref_t** next_memref;
 

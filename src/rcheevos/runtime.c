@@ -205,7 +205,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, uint32_t id, const char*
 
   /* populate the item, using the communal memrefs pool */
   rc_init_parse_state(&parse, trigger_buffer, L, funcs_idx);
-  parse.first_memref = &self->memrefs;
+  //parse.first_memref = &self->memrefs;
   trigger = RC_ALLOC(rc_trigger_t, &parse);
   rc_parse_trigger_internal(trigger, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -243,7 +243,6 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, uint32_t id, const char*
   ++self->trigger_count;
 
   /* reset it, and return it */
-  trigger->memrefs = NULL;
   rc_reset_trigger(trigger);
   return RC_OK;
 }
@@ -394,7 +393,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, uint32_t id, const char* mema
   /* populate the item, using the communal memrefs pool */
   rc_init_parse_state(&parse, lboard_buffer, L, funcs_idx);
   lboard = RC_ALLOC(rc_lboard_t, &parse);
-  parse.first_memref = &self->memrefs;
+  //parse.first_memref = &self->memrefs;
   rc_parse_lboard_internal(lboard, memaddr, &parse);
   rc_destroy_parse_state(&parse);
 
@@ -431,7 +430,6 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, uint32_t id, const char* mema
   runtime_lboard->owns_memrefs = rc_runtime_allocated_memrefs(self);
 
   /* reset it, and return it */
-  lboard->memrefs = NULL;
   rc_reset_lboard(lboard);
   return RC_OK;
 }
@@ -525,8 +523,8 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
 
   rc_init_parse_state(&parse, self->richpresence->buffer, L, funcs_idx);
   self->richpresence->richpresence = richpresence = RC_ALLOC(rc_richpresence_t, &parse);
-  parse.first_memref = &self->memrefs;
-  parse.variables = &self->variables;
+  //parse.first_memref = &self->memrefs;
+  //parse.variables = &self->variables;
   rc_parse_richpresence_internal(richpresence, script, &parse);
   rc_destroy_parse_state(&parse);
 
@@ -539,9 +537,6 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   }
 
   self->richpresence->owns_memrefs = rc_runtime_allocated_memrefs(self);
-
-  richpresence->memrefs = NULL;
-  richpresence->variables = NULL;
 
   if (!richpresence->first_display || !richpresence->first_display->display) {
     /* non-existant rich presence */
@@ -569,7 +564,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 
   runtime_event.value = 0;
 
-  rc_update_memref_values(self->memrefs, peek, ud);
+  rc_update_memref_values(self->memrefs_TODO, peek, ud);
   rc_update_variables(self->variables, peek, ud, L);
 
   for (i = self->trigger_count - 1; i >= 0; --i) {
