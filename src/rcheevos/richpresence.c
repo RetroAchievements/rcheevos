@@ -13,29 +13,51 @@ enum {
   RC_FORMAT_UNICODECHAR = 105
 };
 
-static rc_memref_value_t* rc_alloc_helper_variable_memref_value(const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
-  const char* end;
-  rc_value_t* variable;
-  uint32_t address;
-  uint8_t size;
+static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t* part, const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
+  rc_condset_t* condset;
+  rc_value_t* value;
+  void* buffer;
+  int value_size;
 
-  /* single memory reference lookups without a modifier flag can be handled without a variable */
-  end = memaddr;
-  if (rc_parse_memref(&end, &size, &address) == RC_OK) {
-    /* make sure the entire memaddr was consumed. if not, there's an operator and it's a comparison, not a memory reference */
-    if (end == &memaddr[memaddr_len]) {
-      /* if it's not a derived size, we can reference the memref directly */
-      if (rc_memref_shared_size(size) == size)
-        return &rc_alloc_memref(parse, address, size)->value;
+  part->value.type = RC_OPERAND_NONE;
+
+  value_size = rc_value_size(memaddr);
+  if (value_size < 0) {
+    parse->offset = value_size;
+    return;
+  }
+
+  buffer = rc_buffer_alloc(&parse->scratch.buffer, value_size);
+  value = rc_parse_value(buffer, memaddr, NULL, 0);
+  rc_copy_memrefs_into_parse_state(parse, value->memrefs);
+
+  condset = value->conditions;
+  if (condset && !condset->next) {
+    /* single value - if it's only "measured" and "indirect" conditions, we can simplify to a memref */
+    if (condset->num_measured_conditions &&
+        !condset->num_pause_conditions && !condset->num_reset_conditions &&
+        !condset->num_other_conditions && !condset->num_hittarget_conditions) {
+      rc_condition_t* condition = condset->conditions;
+      for (; condition; condition = condition->next) {
+        if (condition->type == RC_CONDITION_MEASURED && condition->required_hits == 0) {
+          rc_sync_operand(&condition->operand1, parse, value->memrefs);
+          memcpy(&part->value, &condition->operand1, sizeof(condition->operand1));
+          break;
+        }
+      }
     }
   }
 
-  /* not a simple memory reference, need to create a variable */
-  variable = rc_alloc_helper_variable(memaddr, memaddr_len, parse);
-  if (!variable)
-    return NULL;
-
-  return &variable->value;
+  /* could not express value with just a memory reference, create a helper variable */
+  if (part->value.type == RC_OPERAND_NONE) {
+    value = rc_alloc_variable(memaddr, memaddr_len, parse);
+    if (value) {
+      part->value.value.memref = (rc_memref_t*)&value->value;
+      part->value.type = RC_OPERAND_ADDRESS;
+      part->value.size = RC_MEMSIZE_32_BITS;
+      part->value.memref_access_type = RC_OPERAND_ADDRESS;
+    }
+  }
 }
 
 static const char* rc_parse_line(const char* line, const char** end, rc_parse_state_t* parse) {
@@ -220,7 +242,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
         part->text = rc_alloc_str(parse, in, (int)(ptr - in));
       }
       else if (part->display_type != RC_FORMAT_UNKNOWN_MACRO) {
-        part->value = rc_alloc_helper_variable_memref_value(line, (int)(ptr - line), parse);
+        rc_alloc_helper_variable_memref_value(part, line, (int)(ptr - line), parse);
         if (parse->offset < 0)
           return 0;
 
@@ -671,7 +693,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         break;
 
       case RC_FORMAT_LOOKUP:
-        rc_typed_value_from_memref_value(&value, part->value);
+        rc_evaluate_operand(&value, &part->value, NULL);
         rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
 
         text = part->lookup->default_label;
@@ -698,7 +720,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         value.type = RC_VALUE_TYPE_UNSIGNED;
 
         do {
-          value.value.u32 = part->value->value;
+          rc_evaluate_operand(&value, &part->value, NULL);
           if (value.value.u32 == 0) {
             /* null terminator - skip over remaining character macros */
             while (part->next && part->next->display_type == RC_FORMAT_ASCIICHAR)
@@ -725,7 +747,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         value.type = RC_VALUE_TYPE_UNSIGNED;
 
         do {
-          value.value.u32 = part->value->value;
+          rc_evaluate_operand(&value, &part->value, NULL);
           if (value.value.u32 == 0) {
             /* null terminator - skip over remaining character macros */
             while (part->next && part->next->display_type == RC_FORMAT_UNICODECHAR)
@@ -770,7 +792,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         break;
 
       default:
-        rc_typed_value_from_memref_value(&value, part->value);
+        rc_evaluate_operand(&value, &part->value, NULL);
         chars = rc_format_typed_value(tmp, sizeof(tmp), &value, part->display_type);
         text = tmp;
         break;

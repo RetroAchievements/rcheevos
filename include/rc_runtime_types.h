@@ -417,7 +417,7 @@ struct rc_richpresence_display_part_t {
   rc_richpresence_display_part_t* next;
   const char* text;
   rc_richpresence_lookup_t* lookup;
-  rc_memref_value_t* value;
+  rc_operand_t value;
   uint8_t display_type;
 };
 

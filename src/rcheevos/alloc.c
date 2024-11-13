@@ -94,6 +94,58 @@ char* rc_alloc_str(rc_parse_state_t* parse, const char* text, size_t length) {
   return ptr;
 }
 
+void rc_sync_operand(rc_operand_t* operand, rc_parse_state_t* parse, const rc_memref_t* memrefs)
+{
+  if (rc_operand_is_memref(operand) || rc_operand_is_recall(operand)) {
+    const rc_memref_t* src_memref = operand->value.memref;
+    const rc_memref_t* memref;
+
+    memref = memrefs;
+    while (memref && memref != src_memref)
+      memref = memref->next;
+
+    if (memref) {
+      switch (memref->value.memref_type) {
+        case RC_MEMREF_TYPE_MEMREF:
+          operand->value.memref = rc_alloc_memref(parse, memref->address, memref->value.size);
+          break;
+
+        case RC_MEMREF_TYPE_MODIFIED_MEMREF: {
+          const rc_modified_memref_t* modified_memref = (const rc_modified_memref_t*)memref;
+
+          rc_modified_memref_t* dst_modified_memref = rc_alloc_modified_memref(parse, modified_memref->memref.value.size,
+            &modified_memref->parent, modified_memref->modifier_type, &modified_memref->modifier);
+
+          operand->value.memref = &dst_modified_memref->memref;
+          break;
+        }
+      }
+    }
+  }
+}
+
+void rc_copy_memrefs_into_parse_state(rc_parse_state_t* parse, rc_memref_t* memrefs)
+{
+  rc_memref_t* memref;
+  for (memref = memrefs; memref; memref = memref->next) {
+    switch (memref->value.memref_type) {
+      case RC_MEMREF_TYPE_MEMREF:
+        rc_alloc_memref(parse, memref->address, memref->value.size);
+        break;
+
+      case RC_MEMREF_TYPE_MODIFIED_MEMREF: {
+        rc_modified_memref_t* modified_memref = (rc_modified_memref_t*)memref;
+        rc_sync_operand(&modified_memref->parent, parse, memrefs);
+        rc_sync_operand(&modified_memref->modifier, parse, memrefs);
+
+        rc_alloc_modified_memref(parse, modified_memref->memref.value.size,
+          &modified_memref->parent, modified_memref->modifier_type, &modified_memref->modifier);
+        break;
+      }
+    }
+  }
+}
+
 void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx)
 {
   /* could use memset here, but rc_parse_state_t contains a 512 byte buffer that doesn't need to be initialized */
