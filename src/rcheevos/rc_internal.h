@@ -26,6 +26,7 @@ typedef struct rc_memref_list_t {
   struct rc_memref_list_t* next;
   uint16_t count;
   uint16_t capacity;
+  uint8_t allocated;
 } rc_memref_list_t;
 
 typedef struct rc_modified_memref_list_t {
@@ -33,6 +34,7 @@ typedef struct rc_modified_memref_list_t {
   struct rc_modified_memref_list_t* next;
   uint16_t count;
   uint16_t capacity;
+  uint8_t allocated;
 } rc_modified_memref_list_t;
 
 typedef struct rc_value_list_t {
@@ -40,6 +42,7 @@ typedef struct rc_value_list_t {
   struct rc_value_list_t* next;
   uint16_t count;
   uint16_t capacity;
+  uint8_t allocated;
 } rc_value_list_t;
 
 typedef struct rc_memrefs_t {
@@ -258,6 +261,8 @@ typedef struct {
   rc_scratch_t scratch;
 
   rc_memrefs_t* memrefs;
+  rc_memrefs_t* existing_memrefs;
+  rc_buffer_t* value_definitions;
 
   uint32_t measured_target;
   int lines_read;
@@ -283,6 +288,7 @@ void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memrefs_t* memrefs)
 void rc_destroy_parse_state(rc_parse_state_t* parse);
 void rc_init_preparse_state(rc_preparse_state_t* preparse, lua_State* L, int funcs_ndx);
 void rc_preparse_alloc_memrefs(rc_memrefs_t* memrefs, rc_preparse_state_t* preparse);
+void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* memrefs);
 void rc_destroy_preparse_state(rc_preparse_state_t *preparse);
 
 void* rc_alloc(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment, rc_scratch_t* scratch, uint32_t scratch_object_pointer_offset);
@@ -299,12 +305,15 @@ void rc_get_memref_value(rc_typed_value_t* value, rc_memref_t* memref, int opera
 uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_peek_t peek, void* ud);
 uint8_t rc_memref_shared_size(uint8_t size);
 uint32_t rc_memref_mask(uint8_t size);
+void rc_transform_memref_value(rc_typed_value_t* value, uint8_t size);
+uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud);
+
+void rc_memrefs_init(rc_memrefs_t* memrefs);
+void rc_memrefs_destroy(rc_memrefs_t* memrefs);
 uint32_t rc_memrefs_count_memrefs(const rc_memrefs_t* memrefs);
 uint32_t rc_memrefs_count_modified_memrefs(const rc_memrefs_t* memrefs);
 uint32_t rc_memrefs_count_values(const rc_memrefs_t* memrefs);
 void rc_memrefs_reset_variables(rc_memrefs_t* memrefs);
-void rc_transform_memref_value(rc_typed_value_t* value, uint8_t size);
-uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 int rc_trigger_state_active(int state);
@@ -363,7 +372,6 @@ int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t
 void rc_reset_value(rc_value_t* self);
 int rc_value_from_hits(rc_value_t* self);
 rc_value_t* rc_alloc_helper_variable(const char* memaddr, size_t memaddr_len, rc_parse_state_t* parse);
-void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L);
 
 void rc_typed_value_convert(rc_typed_value_t* value, char new_type);
 void rc_typed_value_add(rc_typed_value_t* value, const rc_typed_value_t* amount);

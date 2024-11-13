@@ -87,8 +87,6 @@ struct rc_memref_t {
 
   /* The memory address of this variable. */
   uint32_t address;
-
-  struct rc_memref_t* next; // TODO: remove
 };
 
 typedef struct rc_memrefs_t rc_memrefs_t;
@@ -313,9 +311,6 @@ struct rc_value_t {
 
   /* The name of the variable. */
   const char* name;
-
-  /* The next variable in the chain. */
-  rc_value_t* next; // TODO: remove
 };
 
 RC_EXPORT int RC_CCONV rc_value_size(const char* memaddr);

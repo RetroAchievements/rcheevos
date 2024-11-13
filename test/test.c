@@ -107,9 +107,9 @@ int main(void) {
   test_lboard();
   test_richpresence();
   test_runtime();
-  /*
   test_runtime_progress();
 
+  /*
   test_consoleinfo();
   test_rc_validate();
 

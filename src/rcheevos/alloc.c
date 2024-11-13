@@ -155,6 +155,97 @@ void rc_preparse_alloc_memrefs(rc_memrefs_t* memrefs, rc_preparse_state_t* prepa
   }
 }
 
+static uint32_t rc_preparse_array_size(uint32_t needed, uint32_t minimum)
+{
+  while (minimum < needed)
+    minimum <<= 1;
+
+  return minimum;
+}
+
+void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* memrefs)
+{
+  uint32_t num_memrefs = rc_memrefs_count_memrefs(&preparse->memrefs);
+  uint32_t num_modified_memrefs = rc_memrefs_count_modified_memrefs(&preparse->memrefs);
+  uint32_t num_values = rc_memrefs_count_values(&preparse->memrefs);
+  uint32_t available;
+
+  if (preparse->parse.offset < 0)
+    return;
+
+  if (num_memrefs) {
+    rc_memref_list_t* memref_list = &memrefs->memrefs;
+    while (memref_list->count == memref_list->capacity) {
+      if (!memref_list->next)
+        break;
+
+      memref_list = memref_list->next;
+    }
+
+    available = memref_list->capacity - memref_list->count;
+    if (available < num_memrefs) {
+      rc_memref_list_t* new_memref_list = (rc_memref_list_t*)calloc(1, sizeof(rc_memref_list_t));
+      if (!new_memref_list)
+        return;
+
+      new_memref_list->capacity = rc_preparse_array_size(num_memrefs - available, 16);
+      new_memref_list->items = (rc_memref_t*)malloc(new_memref_list->capacity * sizeof(rc_memref_t*));
+      new_memref_list->allocated = 1;
+      memref_list->next = new_memref_list;
+    }
+  }
+
+  if (num_modified_memrefs) {
+    rc_modified_memref_list_t* modified_memref_list = &memrefs->modified_memrefs;
+    while (modified_memref_list->count == modified_memref_list->capacity) {
+      if (!modified_memref_list->next)
+        break;
+
+      modified_memref_list = modified_memref_list->next;
+    }
+
+    available = modified_memref_list->capacity - modified_memref_list->count;
+    if (available < num_memrefs) {
+      rc_modified_memref_list_t* new_modified_memref_list = (rc_modified_memref_list_t*)calloc(1, sizeof(rc_modified_memref_list_t));
+      if (!new_modified_memref_list)
+        return;
+
+      new_modified_memref_list->capacity = rc_preparse_array_size(num_memrefs - available, 8);
+      new_modified_memref_list->items = (rc_modified_memref_t*)malloc(new_modified_memref_list->capacity * sizeof(rc_modified_memref_list_t*));
+      new_modified_memref_list->allocated = 1;
+      modified_memref_list->next = new_modified_memref_list;
+    }
+  }
+
+  if (num_values) {
+    rc_value_list_t* value_list = &memrefs->values;
+    while (value_list->count == value_list->capacity) {
+      if (!value_list->next)
+        break;
+
+      value_list = value_list->next;
+    }
+
+    available = value_list->capacity - value_list->count;
+    if (available < num_memrefs) {
+      rc_value_list_t* new_value_list = (value_list == &memrefs->values) ?
+        &memrefs->values : (rc_value_list_t*)calloc(1, sizeof(rc_value_list_t));
+
+      if (!new_value_list)
+        return;
+
+      new_value_list->capacity = rc_preparse_array_size(num_memrefs - available, 8);
+      new_value_list->items = (rc_value_t*)malloc(new_value_list->capacity * sizeof(rc_value_t*));
+      new_value_list->allocated = 1;
+
+      if (value_list != new_value_list)
+        value_list->next = new_value_list;
+    }
+  }
+
+  preparse->parse.memrefs = memrefs;
+}
+
 void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx)
 {
   /* could use memset here, but rc_parse_state_t contains a 512 byte buffer that doesn't need to be initialized */
@@ -172,12 +263,16 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   memset(&parse->scratch.objs, 0, sizeof(parse->scratch.objs));
   parse->measured_target = 0;
   parse->lines_read = 0;
+  parse->addsource_oper = RC_OPERATOR_NONE;
   parse->addsource_parent.type = RC_OPERAND_NONE;
   parse->indirect_parent.type = RC_OPERAND_NONE;
   parse->remember.type = RC_OPERAND_NONE;
   parse->is_value = 0;
   parse->has_required_hits = 0;
   parse->measured_as_percent = 0;
+  parse->memrefs = NULL;
+  parse->existing_memrefs = NULL;
+  parse->value_definitions = NULL;
 }
 
 void rc_destroy_parse_state(rc_parse_state_t* parse)

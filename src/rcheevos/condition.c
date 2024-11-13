@@ -173,6 +173,11 @@ void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand
     if (rc_operand_is_float(&condition->operand1) || rc_operand_is_float(&condition->operand2))
       new_size = RC_MEMSIZE_FLOAT;
 
+    /* NOTE: this makes the operand include the modification, but we have to also
+     * leave the modification in the condition so the condition reflects the actual
+     * definition. This doesn't affect the evaluation logic since this method is only
+     * called for combining conditions and Measured, and the Measured handling function
+     * ignores the operator assuming it's been handled by a modified memref chain */
     operand->value.memref = (rc_memref_t*)rc_alloc_modified_memref(parse,
       new_size, &condition->operand1, condition->oper, &condition->operand2);
 

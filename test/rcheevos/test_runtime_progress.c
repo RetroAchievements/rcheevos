@@ -75,26 +75,25 @@ static void _assert_deserialize(rc_runtime_t* runtime, uint8_t* buffer)
 
 static void _assert_sized_memref(rc_runtime_t* runtime, uint32_t address, uint8_t size, uint32_t value, uint32_t prev, uint32_t prior)
 {
-  rc_memref_t* memref = runtime->memrefs;
-  while (memref)
-  {
-    if (memref->address == address && memref->value.size == size)
-    {
-      ASSERT_NUM_EQUALS(memref->value.value, value);
-      ASSERT_NUM_EQUALS(memref->value.prior, prior);
+  rc_memref_list_t* memref_list = &runtime->memrefs->memrefs;
+  for (; memref_list; memref_list = memref_list->next) {
+    const rc_memref_t* memref = memref_list->items;
+    const rc_memref_t* memref_end = memref + memref_list->count;
+    for (; memref < memref_end; ++memref) {
+      if (memref->address == address && memref->value.size == size) {
+        ASSERT_NUM_EQUALS(memref->value.value, value);
+        ASSERT_NUM_EQUALS(memref->value.prior, prior);
 
-      if (value == prior)
-      {
-        ASSERT_NUM_EQUALS(memref->value.changed, 0);
+        if (value == prior) {
+          ASSERT_NUM_EQUALS(memref->value.changed, 0);
+        }
+        else {
+          ASSERT_NUM_EQUALS(memref->value.changed, (prev == prior) ? 1 : 0);
+        }
+
+        return;
       }
-      else
-      {
-        ASSERT_NUM_EQUALS(memref->value.changed, (prev == prior) ? 1 : 0);
-      }
-      return;
     }
-
-    memref = memref->next;
   }
 
   ASSERT_FAIL("could not find memref for address %u", address);
@@ -245,46 +244,42 @@ static void update_md5(uint8_t* buffer)
 
 static void reset_runtime(rc_runtime_t* runtime)
 {
+  rc_memref_list_t* memref_list;
   rc_memref_t* memref;
   rc_trigger_t* trigger;
   rc_condition_t* cond;
   rc_condset_t* condset;
   uint32_t i;
 
-  memref = runtime->memrefs;
-  while (memref)
-  {
-    memref->value.value = 0xFF;
-    memref->value.changed = 0;
-    memref->value.prior = 0xFF;
-
-    memref = memref->next;
+  for (memref_list = &runtime->memrefs->memrefs; memref_list; memref_list = memref_list->next) {
+    const rc_memref_t* memref_end;
+    memref = memref_list->items;
+    memref_end = memref + memref_list->count;
+    for (; memref < memref_end; ++memref) {
+      memref->value.value = 0xFF;
+      memref->value.changed = 0;
+      memref->value.prior = 0xFF;
+    }
   }
 
-  for (i = 0; i < runtime->trigger_count; ++i)
-  {
+  for (i = 0; i < runtime->trigger_count; ++i) {
     trigger = runtime->triggers[i].trigger;
-    if (trigger)
-    {
+    if (trigger) {
       trigger->measured_value = 0xFF;
       trigger->measured_target = 0xFF;
 
-      if (trigger->requirement)
-      {
+      if (trigger->requirement) {
         cond = trigger->requirement->conditions;
-        while (cond)
-        {
+        while (cond) {
           cond->current_hits = 0xFF;
           cond = cond->next;
         }
       }
 
       condset = trigger->alternative;
-      while (condset)
-      {
+      while (condset) {
         cond = condset->conditions;
-        while (cond)
-        {
+        while (cond) {
           cond->current_hits = 0xFF;
           cond = cond->next;
         }
@@ -307,7 +302,8 @@ static void test_empty()
   reset_runtime(&runtime);
   assert_deserialize(&runtime, buffer);
 
-  ASSERT_PTR_NULL(runtime.memrefs);
+  ASSERT_NUM_EQUALS(runtime.memrefs->memrefs.count, 0);
+  ASSERT_NUM_EQUALS(runtime.memrefs->modified_memrefs.count, 0);
   ASSERT_NUM_EQUALS(runtime.trigger_count, 0);
   ASSERT_NUM_EQUALS(runtime.lboard_count, 0);
 
@@ -1236,11 +1232,10 @@ static void test_multiple_achievements_deactivated_memrefs()
   assert_hitcount(&runtime, 2, 0, 0, 2);
   assert_hitcount(&runtime, 3, 0, 0, 1);
 
-  /* deactivate an achievement with memrefs - trigger should be nulled */
+  /* deactivate an achievement with memrefs */
   ASSERT_NUM_EQUALS(runtime.trigger_count, 3);
-  ASSERT_TRUE(runtime.triggers[0].owns_memrefs);
   rc_runtime_deactivate_achievement(&runtime, 1);
-  ASSERT_NUM_EQUALS(runtime.trigger_count, 3);
+  ASSERT_NUM_EQUALS(runtime.trigger_count, 2);
 
   assert_serialize(&runtime, buffer, sizeof(buffer));
 
@@ -1291,7 +1286,6 @@ static void test_multiple_achievements_deactivated_no_memrefs()
 
   /* deactivate an achievement without memrefs - trigger should be removed */
   ASSERT_NUM_EQUALS(runtime.trigger_count, 3);
-  ASSERT_FALSE(runtime.triggers[1].owns_memrefs);
   rc_runtime_deactivate_achievement(&runtime, 2);
   ASSERT_NUM_EQUALS(runtime.trigger_count, 2);
 

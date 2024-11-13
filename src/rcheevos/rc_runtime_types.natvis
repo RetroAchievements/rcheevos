@@ -481,8 +481,8 @@
         <DisplayString>{{offset={offset} addsource_parent={addsource_parent} indirect_parent={indirect_parent}}}</DisplayString>
         <Expand>
             <Item Name="offset">offset</Item>
-            <Item Name="memrefs">((__rc_memref_list_t*)first_memref)</Item>
-            <Item Name="variables">((__rc_value_list_t*)&amp;variables)</Item>
+            <Item Name="memrefs">memrefs</Item>
+            <Item Name="existing_memrefs">existing_memrefs</Item>
             <Item Name="addsource_parent">addsource_parent</Item>
             <Item Name="addsource_oper">*((__rc_operator_enum_t*)&amp;addsource_oper)</Item>
             <Item Name="indirect_parent">indirect_parent</Item>

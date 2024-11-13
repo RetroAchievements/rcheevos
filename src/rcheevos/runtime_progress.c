@@ -127,13 +127,7 @@ static void rc_runtime_progress_init(rc_runtime_progress_t* progress, const rc_r
 
 static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
 {
-  rc_memref_t* memref;
-  uint32_t count = 0;
-
-  for (memref = progress->runtime->memrefs; memref; memref = memref->next) {
-    if (memref->value.memref_type == RC_MEMREF_TYPE_MEMREF)
-      ++count;
-  }
+  uint32_t count = rc_memrefs_count_memrefs(progress->runtime->memrefs);
   if (count == 0)
     return RC_OK;
 
@@ -147,18 +141,24 @@ static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
   }
   else {
     uint32_t flags = 0;
-    for (memref = progress->runtime->memrefs; memref; memref = memref->next) {
-      if (memref->value.memref_type != RC_MEMREF_TYPE_MEMREF)
-        continue;
+    const rc_memref_list_t* memref_list = &progress->runtime->memrefs->memrefs;
+    const rc_memref_t* memref;
 
-      flags = memref->value.size;
-      if (memref->value.changed)
-        flags |= RC_MEMREF_FLAG_CHANGED_THIS_FRAME;
+    for (; memref_list; memref_list = memref_list->next) {
+      const rc_memref_t* memref_end;
 
-      rc_runtime_progress_write_uint(progress, memref->address);
-      rc_runtime_progress_write_uint(progress, flags);
-      rc_runtime_progress_write_uint(progress, memref->value.value);
-      rc_runtime_progress_write_uint(progress, memref->value.prior);
+      memref = memref_list->items;
+      memref_end = memref + memref_list->count;
+      for (; memref < memref_end; ++memref) {
+        flags = memref->value.size;
+        if (memref->value.changed)
+          flags |= RC_MEMREF_FLAG_CHANGED_THIS_FRAME;
+
+        rc_runtime_progress_write_uint(progress, memref->address);
+        rc_runtime_progress_write_uint(progress, flags);
+        rc_runtime_progress_write_uint(progress, memref->value.value);
+        rc_runtime_progress_write_uint(progress, memref->value.prior);
+      }
     }
   }
 
@@ -170,61 +170,63 @@ static int rc_runtime_progress_write_memrefs(rc_runtime_progress_t* progress)
 static void rc_runtime_progress_update_modified_memrefs(rc_runtime_progress_t* progress)
 {
   rc_typed_value_t value, prior_value, modifier, prior_modifier;
+  rc_modified_memref_list_t* modified_memref_list;
   rc_modified_memref_t* modified_memref;
   rc_operand_t prior_parent_operand, prior_modifier_operand;
   rc_memref_t prior_parent_memref, prior_modifier_memref;
-  rc_memref_t* memref;
 
-  for (memref = progress->runtime->memrefs; memref; memref = memref->next) {
-    if (memref->value.memref_type == RC_MEMREF_TYPE_MEMREF)
-      continue;
+  modified_memref_list = &progress->runtime->memrefs->modified_memrefs;
+  for (; modified_memref_list; modified_memref_list = modified_memref_list->next) {
+    const rc_modified_memref_t* modified_memref_end;
+    modified_memref = modified_memref_list->items;
+    modified_memref_end = modified_memref + modified_memref_list->count;
+    for (; modified_memref < modified_memref_end; ++modified_memref) {
+      modified_memref->memref.value.changed = 0;
 
-    memref->value.changed = 0;
-    modified_memref = (rc_modified_memref_t*)memref;
+      /* indirect memref values are stored in conditions */
+      if (modified_memref->modifier_type == RC_OPERATOR_INDIRECT_READ)
+        continue;
 
-    /* indirect memref values are stored in conditions */
-    if (modified_memref->modifier_type == RC_OPERATOR_INDIRECT_READ)
-      continue;
+      /* non-indirect memref values can be reconstructed from the parents */
+      memcpy(&prior_parent_operand, &modified_memref->parent, sizeof(prior_parent_operand));
+      if (rc_operand_is_memref(&prior_parent_operand)) {
+        memcpy(&prior_parent_memref, modified_memref->parent.value.memref, sizeof(prior_parent_memref));
+        prior_parent_memref.value.value = prior_parent_memref.value.prior;
+        modified_memref->memref.value.changed |= prior_parent_memref.value.changed;
+        prior_parent_operand.value.memref = &prior_parent_memref;
+      }
 
-    /* non-indirect memref values can be reconstructed from the parents */
-    memcpy(&prior_parent_operand, &modified_memref->parent, sizeof(prior_parent_operand));
-    if (rc_operand_is_memref(&prior_parent_operand)) {
-      memcpy(&prior_parent_memref, modified_memref->parent.value.memref, sizeof(prior_parent_memref));
-      prior_parent_memref.value.value = prior_parent_memref.value.prior;
-      memref->value.changed |= prior_parent_memref.value.changed;
-      prior_parent_operand.value.memref = &prior_parent_memref;
+      memcpy(&prior_modifier_operand, &modified_memref->modifier, sizeof(prior_modifier_operand));
+      if (rc_operand_is_memref(&prior_modifier_operand)) {
+        memcpy(&prior_modifier_memref, modified_memref->modifier.value.memref, sizeof(prior_modifier_memref));
+        prior_modifier_memref.value.value = prior_modifier_memref.value.prior;
+        modified_memref->memref.value.changed |= prior_modifier_memref.value.changed;
+        prior_modifier_operand.value.memref = &prior_modifier_memref;
+      }
+
+      rc_evaluate_operand(&value, &modified_memref->parent, NULL);
+      rc_evaluate_operand(&modifier, &modified_memref->modifier, NULL);
+      rc_evaluate_operand(&prior_value, &prior_parent_operand, NULL);
+      rc_evaluate_operand(&prior_modifier, &prior_modifier_operand, NULL);
+
+      if (modified_memref->modifier_type == RC_OPERATOR_SUB_PARENT) {
+        rc_typed_value_negate(&value);
+        rc_typed_value_add(&value, &modifier);
+
+        rc_typed_value_negate(&prior_value);
+        rc_typed_value_add(&prior_value, &prior_modifier);
+      }
+      else {
+        rc_typed_value_combine(&value, &modifier, modified_memref->modifier_type);
+        rc_typed_value_combine(&prior_value, &prior_modifier, modified_memref->modifier_type);
+      }
+
+      rc_typed_value_convert(&value, modified_memref->memref.value.type);
+      modified_memref->memref.value.value = value.value.u32;
+
+      rc_typed_value_convert(&prior_value, modified_memref->memref.value.type);
+      modified_memref->memref.value.prior = prior_value.value.u32;
     }
-
-    memcpy(&prior_modifier_operand, &modified_memref->modifier, sizeof(prior_modifier_operand));
-    if (rc_operand_is_memref(&prior_modifier_operand)) {
-      memcpy(&prior_modifier_memref, modified_memref->modifier.value.memref, sizeof(prior_modifier_memref));
-      prior_modifier_memref.value.value = prior_modifier_memref.value.prior;
-      memref->value.changed |= prior_modifier_memref.value.changed;
-      prior_modifier_operand.value.memref = &prior_modifier_memref;
-    }
-
-    rc_evaluate_operand(&value, &modified_memref->parent, NULL);
-    rc_evaluate_operand(&modifier, &modified_memref->modifier, NULL);
-    rc_evaluate_operand(&prior_value, &prior_parent_operand, NULL);
-    rc_evaluate_operand(&prior_modifier, &prior_modifier_operand, NULL);
-
-    if (modified_memref->modifier_type == RC_OPERATOR_SUB_PARENT) {
-      rc_typed_value_negate(&value);
-      rc_typed_value_add(&value, &modifier);
-
-      rc_typed_value_negate(&prior_value);
-      rc_typed_value_add(&prior_value, &prior_modifier);
-    }
-    else {
-      rc_typed_value_combine(&value, &modifier, modified_memref->modifier_type);
-      rc_typed_value_combine(&prior_value, &prior_modifier, modified_memref->modifier_type);
-    }
-
-    rc_typed_value_convert(&value, modified_memref->memref.value.type);
-    memref->value.value = value.value.u32;
-
-    rc_typed_value_convert(&prior_value, modified_memref->memref.value.type);
-    memref->value.prior = prior_value.value.u32;
   }
 }
 
@@ -233,11 +235,9 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
   uint32_t entries;
   uint32_t address, flags, value, prior;
   uint8_t size;
+  rc_memref_list_t* unmatched_memref_list = &progress->runtime->memrefs->memrefs;
+  rc_memref_t* first_unmatched_memref = unmatched_memref_list->items;
   rc_memref_t* memref;
-  rc_memref_t* first_unmatched_memref = progress->runtime->memrefs;
-
-  while (first_unmatched_memref && first_unmatched_memref->value.memref_type != RC_MEMREF_TYPE_MEMREF)
-    first_unmatched_memref = first_unmatched_memref->next;
 
   /* re-read the chunk size to determine how many memrefs are present */
   progress->offset -= 4;
@@ -252,23 +252,39 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
     size = flags & 0xFF;
 
     memref = first_unmatched_memref;
-    while (memref) {
-      if (memref->address == address && memref->value.size == size && memref->value.memref_type == RC_MEMREF_TYPE_MEMREF) {
-        memref->value.value = value;
-        memref->value.changed = (flags & RC_MEMREF_FLAG_CHANGED_THIS_FRAME) ? 1 : 0;
-        memref->value.prior = prior;
+    if (memref->address == address && memref->value.size == size) {
+      memref->value.value = value;
+      memref->value.changed = (flags & RC_MEMREF_FLAG_CHANGED_THIS_FRAME) ? 1 : 0;
+      memref->value.prior = prior;
 
-        if (memref == first_unmatched_memref) {
-          first_unmatched_memref = memref->next;
+      first_unmatched_memref++;
+      if (first_unmatched_memref >= unmatched_memref_list->items + unmatched_memref_list->count) {
+        unmatched_memref_list = unmatched_memref_list->next;
+        if (!unmatched_memref_list)
+          break;
+        first_unmatched_memref = unmatched_memref_list->items;
+      }
+    }
+    else {
+      rc_memref_list_t* memref_list = unmatched_memref_list;
+      do {
+        ++memref;
+        if (memref >= memref_list->items + memref_list->count) {
+          memref_list = memref_list->next;
+          if (!memref_list)
+            break;
 
-          while (first_unmatched_memref && first_unmatched_memref->value.memref_type != RC_MEMREF_TYPE_MEMREF)
-            first_unmatched_memref = first_unmatched_memref->next;
+          memref = memref_list->items;
         }
 
-        break;
-      }
+        if (memref->address == address && memref->value.size == size) {
+          memref->value.value = value;
+          memref->value.changed = (flags & RC_MEMREF_FLAG_CHANGED_THIS_FRAME) ? 1 : 0;
+          memref->value.prior = prior;
+          break;
+        }
 
-      memref = memref->next;
+      } while (1);
     }
 
     --entries;
@@ -436,12 +452,11 @@ static int rc_runtime_progress_write_variable(rc_runtime_progress_t* progress, c
 
 static int rc_runtime_progress_write_variables(rc_runtime_progress_t* progress)
 {
-  uint32_t count = 0;
-  const rc_value_t* variable;
+  uint32_t count = rc_memrefs_count_values(progress->runtime->memrefs);
+  const rc_value_list_t* value_list;
+  const rc_value_t* value;
   int result;
 
-  for (variable = progress->runtime->variables; variable; variable = variable->next)
-    ++count;
   if (count == 0)
     return RC_OK;
 
@@ -452,16 +467,23 @@ static int rc_runtime_progress_write_variables(rc_runtime_progress_t* progress)
   rc_runtime_progress_start_chunk(progress, RC_RUNTIME_CHUNK_VARIABLES);
   rc_runtime_progress_write_uint(progress, count);
 
-  for (variable = progress->runtime->variables; variable; variable = variable->next) {
-    uint32_t djb2 = rc_djb2(variable->name);
-    if (progress->offset + 16 > progress->buffer_size)
-      return RC_INSUFFICIENT_BUFFER;
+  value_list = &progress->runtime->memrefs->values;
+  for (; value_list; value_list = value_list->next) {
+    const rc_value_t* value_end;
 
-    rc_runtime_progress_write_uint(progress, djb2);
+    value = value_list->items;
+    value_end = value + value_list->count;
+    for (; value < value_end; ++value) {
+      const uint32_t djb2 = rc_djb2(value->name);
+      if (progress->offset + 16 > progress->buffer_size)
+        return RC_INSUFFICIENT_BUFFER;
 
-    result = rc_runtime_progress_write_variable(progress, variable);
-    if (result != RC_OK)
-      return result;
+      rc_runtime_progress_write_uint(progress, djb2);
+
+      result = rc_runtime_progress_write_variable(progress, value);
+      if (result != RC_OK)
+        return result;
+    }
   }
 
   rc_runtime_progress_end_chunk(progress);
@@ -496,7 +518,8 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
   };
   struct rc_pending_value_t local_pending_variables[32];
   struct rc_pending_value_t* pending_variables;
-  rc_value_t* variable;
+  rc_value_list_t* value_list;
+  rc_value_t* value;
   uint32_t count, serialized_count;
   int result;
   uint32_t i;
@@ -505,10 +528,7 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
   if (serialized_count == 0)
     return RC_OK;
 
-  count = 0;
-  for (variable = progress->runtime->variables; variable; variable = variable->next)
-    ++count;
-
+  count = rc_memrefs_count_values(progress->runtime->memrefs);
   if (count == 0)
     return RC_OK;
 
@@ -522,10 +542,16 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
   }
 
   count = 0;
-  for (variable = progress->runtime->variables; variable; variable = variable->next) {
-    pending_variables[count].variable = variable;
-    pending_variables[count].djb2 = rc_djb2(variable->name);
-    ++count;
+  value_list = &progress->runtime->memrefs->values;
+  for (; value_list; value_list = value_list->next) {
+    const rc_value_t* value_end;
+    value = value_list->items;
+    value_end = value + value_list->count;
+    for (; value < value_end; ++value) {
+      pending_variables[count].variable = value;
+      pending_variables[count].djb2 = rc_djb2(value->name);
+      ++count;
+    }
   }
 
   result = RC_OK;
@@ -533,8 +559,8 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
     uint32_t djb2 = rc_runtime_progress_read_uint(progress);
     for (i = 0; i < count; ++i) {
       if (pending_variables[i].djb2 == djb2) {
-        variable = pending_variables[i].variable;
-        result = rc_runtime_progress_read_variable(progress, variable);
+        value = pending_variables[i].variable;
+        result = rc_runtime_progress_read_variable(progress, value);
         if (result == RC_OK) {
           if (i < count - 1)
             memcpy(&pending_variables[i], &pending_variables[count - 1], sizeof(struct rc_pending_value_t));

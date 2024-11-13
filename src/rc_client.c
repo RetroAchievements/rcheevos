@@ -1130,27 +1130,23 @@ static void rc_client_validate_addresses(rc_client_game_info_t* game, rc_client_
   uint32_t total_count = 0;
   uint32_t invalid_count = 0;
 
-  rc_memref_t** last_memref = &game->runtime.memrefs;
-  rc_memref_t* memref = game->runtime.memrefs;
-  for (; memref; memref = memref->next) {
-    if (memref->value.memref_type == RC_MEMREF_TYPE_MEMREF) {
-      total_count++;
+  rc_memref_list_t* memref_list = &game->runtime.memrefs->memrefs;
+  for (; memref_list; memref_list = memref_list->next) {
+    rc_memref_t* memref = memref_list->items;
+    const rc_memref_t* memref_end = memref + memref_list->count;
+    total_count += memref_list->count;
 
+    for (; memref < memref_end; ++memref) {
       if (memref->address > max_address ||
-        client->callbacks.read_memory(memref->address, buffer, 1, client) == 0) {
-        /* invalid address, remove from chain so we don't have to evaluate it in the future.
-         * it's still there, so anything referencing it will always fetch 0. */
-        *last_memref = memref->next;
+          client->callbacks.read_memory(memref->address, buffer, 1, client) == 0) {
+        memref->value.type = RC_VALUE_TYPE_NONE;
 
         rc_client_invalidate_memref_achievements(game, client, memref);
         rc_client_invalidate_memref_leaderboards(game, client, memref);
 
         invalid_count++;
-        continue;
       }
     }
-
-    last_memref = &memref->next;
   }
 
   game->max_valid_address = max_address;
@@ -4846,22 +4842,11 @@ void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memo
 
 static void rc_client_invalidate_processing_memref(rc_client_t* client)
 {
-  rc_memref_t** next_memref = &client->game->runtime.memrefs;
-  rc_memref_t* memref;
-
   /* if processing_memref is not set, this occurred following a pointer chain. ignore it. */
   if (!client->state.processing_memref)
     return;
 
-  /* invalid memref. remove from chain so we don't have to evaluate it in the future.
-   * it's still there, so anything referencing it will always fetch the current value. */
-  while ((memref = *next_memref) != NULL) {
-    if (memref == client->state.processing_memref) {
-      *next_memref = memref->next;
-      break;
-    }
-    next_memref = &memref->next;
-  }
+  client->state.processing_memref->value.type = RC_VALUE_TYPE_NONE;
 
   rc_client_invalidate_memref_achievements(client->game, client, client->state.processing_memref);
   rc_client_invalidate_memref_leaderboards(client->game, client, client->state.processing_memref);
@@ -4969,39 +4954,73 @@ int rc_client_is_processing_required(rc_client_t* client)
   return (client->game->runtime.richpresence && client->game->runtime.richpresence->richpresence);
 }
 
-static void rc_client_update_memref_values(rc_client_t* client)
-{
-  rc_memref_t* memref = client->game->runtime.memrefs;
-  uint32_t value;
+static void rc_client_update_memref_values(rc_client_t* client) {
+  rc_memrefs_t* memrefs = client->game->runtime.memrefs;
+  rc_memref_list_t* memref_list;
+  rc_modified_memref_list_t* modified_memref_list;
+  rc_value_list_t* value_list;
   int invalidated_memref = 0;
 
-  for (; memref; memref = memref->next) {
-    switch (memref->value.memref_type) {
-      case RC_MEMREF_TYPE_MEMREF:
-        /* if processing_memref is set, and the memory read fails, all dependent achievements will be disabled */
-        client->state.processing_memref = memref;
+  memref_list = &memrefs->memrefs;
+  do {
+    rc_memref_t* memref = memref_list->items;
+    const rc_memref_t* memref_stop = memref + memref_list->count;
+    uint32_t value;
 
-        value = rc_peek_value(memref->address, memref->value.size, client->state.legacy_peek, client);
+    for (; memref < memref_stop; ++memref) {
+      if (memref->value.type == RC_VALUE_TYPE_NONE)
+        continue;
 
-        if (client->state.processing_memref) {
-          rc_update_memref_value(&memref->value, value);
-        }
-        else {
-          /* if the peek function cleared the processing_memref, the memref was invalidated */
-          invalidated_memref = 1;
-        }
-        break;
+      /* if processing_memref is set, and the memory read fails, all dependent achievements will be disabled */
+      client->state.processing_memref = memref;
 
-      case RC_MEMREF_TYPE_MODIFIED_MEMREF:
-        /* clear processing_memref so an invalid read doesn't disable anything */
-        client->state.processing_memref = NULL;
-        rc_update_memref_value(&memref->value,
-          rc_get_modified_memref_value((rc_modified_memref_t*)memref, client->state.legacy_peek, client));
-        break;
+      value = rc_peek_value(memref->address, memref->value.size, client->state.legacy_peek, client);
+
+      if (client->state.processing_memref) {
+        rc_update_memref_value(&memref->value, value);
+      }
+      else {
+        /* if the peek function cleared the processing_memref, the memref was invalidated */
+        invalidated_memref = 1;
+      }
     }
-  }
+
+    memref_list = memref_list->next;
+  } while (memref_list);
 
   client->state.processing_memref = NULL;
+
+  modified_memref_list = &memrefs->modified_memrefs;
+  if (modified_memref_list->count) {
+    do {
+      rc_modified_memref_t* modified_memref = modified_memref_list->items;
+      const rc_modified_memref_t* modified_memref_stop = modified_memref + modified_memref_list->count;
+
+      for (; modified_memref < modified_memref_stop; ++modified_memref)
+        rc_update_memref_value(&modified_memref->memref.value, rc_get_modified_memref_value(modified_memref, client->state.legacy_peek, client));
+
+      modified_memref_list = modified_memref_list->next;
+    } while (modified_memref_list);
+  }
+
+  value_list = &memrefs->values;
+  if (value_list->count) {
+    do {
+      rc_value_t* value = value_list->items;
+      const rc_value_t* value_stop = value + value_list->count;
+      rc_typed_value_t result;
+
+      for (; value < value_stop; ++value) {
+        if (rc_evaluate_value_typed(value, &result, client->state.legacy_peek, client, NULL)) {
+          /* store the raw bytes and type to be restored by rc_typed_value_from_memref_value  */
+          rc_update_memref_value(&value->value, result.value.u32);
+          value->value.type = result.type;
+        }
+      }
+
+      value_list = value_list->next;
+    } while (value_list);
+  }
 
   if (invalidated_memref)
     rc_client_update_active_achievements(client->game);
@@ -5416,7 +5435,6 @@ void rc_client_do_frame(rc_client_t* client)
     rc_client_reset_pending_events(client);
 
     rc_client_update_memref_values(client);
-    rc_update_variables(client->game->runtime.variables, client->state.legacy_peek, client, NULL);
 
     client->game->progress_tracker.progress = 0.0;
     for (subset = client->game->subsets; subset; subset = subset->next) {
@@ -5588,9 +5606,9 @@ static void rc_client_reset_richpresence(rc_client_t* client)
 
 static void rc_client_reset_variables(rc_client_t* client)
 {
-  rc_value_t* variable = client->game->runtime.variables;
-  for (; variable; variable = variable->next)
-    rc_reset_value(variable);
+  rc_memrefs_t* memrefs = client->game->runtime.memrefs;
+  if (memrefs)
+    rc_memrefs_reset_variables(memrefs);
 }
 
 static void rc_client_reset_all(rc_client_t* client)

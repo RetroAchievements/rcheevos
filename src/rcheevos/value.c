@@ -222,7 +222,6 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
     self->value.memref_type = RC_MEMREF_TYPE_VALUE;
     self->value.changed = 0;
     self->has_memrefs = 0;
-    self->next = NULL;
 
     for (condition = self->conditions->conditions; condition; condition = condition->next) {
       if (condition->type == RC_CONDITION_MEASURED) {
@@ -382,33 +381,47 @@ int rc_value_from_hits(rc_value_t* self)
 
 rc_value_t* rc_alloc_helper_variable(const char* memaddr, size_t memaddr_len, rc_parse_state_t* parse)
 {
-  rc_value_list_t* value_list;
-  rc_value_t* value;
+  rc_value_list_t* value_list = NULL;
+  rc_value_t* value = NULL;
   //rc_memrefs_t* memref;
   const char* name;
-  uint32_t measured_target;
+  int i;
 
-  value_list = &parse->memrefs->values;
-  do
-  {
-    const rc_value_t* value_stop;
+  for (i = 0; i < 2; i++) {
+    if (i == 0) {
+      if (!parse->existing_memrefs)
+        continue;
 
-    value = value_list->items;
-    value_stop = value + value_list->count;
-
-    for (; value < value_stop; ++value) {
-      if (strncmp(value->name, memaddr, memaddr_len) == 0 && value->name[memaddr_len] == 0)
-        return value;
+      value_list = &parse->existing_memrefs->values;
+    }
+    else {
+      value_list = &parse->memrefs->values;
     }
 
-    if (!value_list->next)
-      break;
+    do {
+      const rc_value_t* value_stop;
 
-    value_list = value_list->next;
-  } while (1);
+      value = value_list->items;
+      value_stop = value + value_list->count;
+
+      for (; value < value_stop; ++value) {
+        if (strncmp(value->name, memaddr, memaddr_len) == 0 && value->name[memaddr_len] == 0)
+          return value;
+      }
+
+      if (!value_list->next)
+        break;
+
+      value_list = value_list->next;
+    } while (1);
+  }
+
 
   /* capture name before calling parse as parse will update memaddr pointer */
-  name = rc_alloc_str(parse, memaddr, memaddr_len);
+  if (parse->value_definitions)
+    name = rc_buffer_strncpy(parse->value_definitions, memaddr, memaddr_len);
+  else
+    name = rc_alloc_str(parse, memaddr, memaddr_len);
   if (!name)
     return NULL;
 
@@ -426,6 +439,7 @@ rc_value_t* rc_alloc_helper_variable(const char* memaddr, size_t memaddr_len, rc
     value_list->items = RC_ALLOC_ARRAY_SCRATCH(rc_value_t, 8, parse);
     value_list->count = 1;
     value_list->capacity = 8;
+    value_list->allocated = 0;
 
     value = value_list->items;
 
@@ -438,37 +452,47 @@ rc_value_t* rc_alloc_helper_variable(const char* memaddr, size_t memaddr_len, rc
   memset(&value->value, 0, sizeof(value->value));
   value->value.size = RC_MEMSIZE_VARIABLE;
 
-  /* the helper variable likely has a Measured condition. capture the current measured_target so we can restore it
-   * after generating the variable so the variable's Measured target doesn't conflict with the rest of the trigger. */
-  measured_target = parse->measured_target;
+  if (parse->value_definitions) {
+    /* we have to load the definition of the value in shared memory or it could be
+     * discarded when a single reference is eliminated */
+    rc_preparse_state_t preparse;
+    const char* preparse_memaddr = memaddr;
 
-  /* disable variable resolution when defining a variable to prevent infinite recursion */
-  //memref = parse->memrefs;
-  //parse->memrefs = NULL;
-  rc_parse_value_internal(value, &memaddr, parse);
-  //parse->memrefs = memref;
+    rc_init_preparse_state(&preparse, parse->L, parse->funcs_ndx);
+    preparse.parse.memrefs = parse->memrefs;
+    preparse.parse.existing_memrefs = parse->existing_memrefs;
+    rc_parse_value_internal(value, &preparse_memaddr, &preparse.parse);
 
-  /* restore the measured target */
-  parse->measured_target = measured_target;
+    if (preparse.parse.offset > 0) {
+      void* value_buffer = rc_buffer_alloc(parse->value_definitions, preparse.parse.offset);
+
+      rc_init_parse_state(&preparse.parse, value_buffer, parse->L, parse->funcs_ndx);
+      preparse.parse.memrefs = parse->memrefs;
+      preparse.parse.existing_memrefs = parse->existing_memrefs;
+      rc_parse_value_internal(value, &memaddr, &preparse.parse);
+    }
+
+    rc_destroy_preparse_state(&preparse);
+  }
+  else {
+    /* the helper variable likely has a Measured condition. capture the current measured_target so we can restore it
+     * after generating the variable so the variable's Measured target doesn't conflict with the rest of the trigger. */
+    uint32_t measured_target = parse->measured_target;
+
+    /* disable variable resolution when defining a variable to prevent infinite recursion */
+    //memref = parse->memrefs;
+    //parse->memrefs = NULL;
+    rc_parse_value_internal(value, &memaddr, parse);
+    //parse->memrefs = memref;
+
+    /* restore the measured target */
+    parse->measured_target = measured_target;
+  }
 
   /* store name after calling parse as parse will set name to (unnamed) */
   value->name = name;
 
   return value;
-}
-
-void rc_update_variables(rc_value_t* variable, rc_peek_t peek, void* ud, lua_State* L) {
-  rc_typed_value_t result;
-
-  while (variable) {
-    if (rc_evaluate_value_typed(variable, &result, peek, ud, L)) {
-      /* store the raw bytes and type to be restored by rc_typed_value_from_memref_value  */
-      rc_update_memref_value(&variable->value, result.value.u32);
-      variable->value.type = result.type;
-    }
-
-    variable = variable->next;
-  }
 }
 
 void rc_typed_value_from_memref_value(rc_typed_value_t* value, const rc_memref_value_t* memref) {
