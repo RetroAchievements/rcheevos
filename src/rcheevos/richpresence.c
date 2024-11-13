@@ -13,29 +13,66 @@ enum {
   RC_FORMAT_UNICODECHAR = 105
 };
 
-static rc_memref_value_t* rc_alloc_helper_variable_memref_value(const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
-  const char* end;
-  rc_value_t* variable;
-  uint32_t address;
-  uint8_t size;
+static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t* part, const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
+  rc_preparse_state_t preparse;
+  const char* test_memaddr = memaddr;
+  rc_condset_t* condset;
+  rc_value_t* value;
+  int32_t size;
 
-  /* single memory reference lookups without a modifier flag can be handled without a variable */
-  end = memaddr;
-  if (rc_parse_memref(&end, &size, &address) == RC_OK) {
-    /* make sure the entire memaddr was consumed. if not, there's an operator and it's a comparison, not a memory reference */
-    if (end == &memaddr[memaddr_len]) {
-      /* if it's not a derived size, we can reference the memref directly */
-      if (rc_memref_shared_size(size) == size)
-        return &rc_alloc_memref(parse, address, size)->value;
+  part->value.type = RC_OPERAND_NONE;
+
+  /* if the expression can be represented as just a memory reference, do so */
+  rc_init_preparse_state(&preparse, NULL, 0);
+  preparse.parse.existing_memrefs = parse->memrefs;
+  value = RC_ALLOC(rc_value_t, &preparse.parse);
+  rc_parse_value_internal(value, &test_memaddr, &preparse.parse);
+
+  size = preparse.parse.offset;
+  if (size < 0) {
+    parse->offset = size;
+    return;
+  }
+
+  /* ensure new needed memrefs are allocated in the primary buffer */
+  rc_preparse_copy_memrefs(parse, &preparse.memrefs);
+
+  /* parse the value into the scratch buffer so we can look at it */
+  rc_init_parse_state(&preparse.parse, rc_buffer_alloc(&preparse.parse.scratch.buffer, (size_t)size), NULL, 0);
+  preparse.parse.memrefs = parse->memrefs;
+  preparse.parse.existing_memrefs = parse->existing_memrefs;
+  value = RC_ALLOC(rc_value_t, &preparse.parse);
+  test_memaddr = memaddr;
+  rc_parse_value_internal(value, &test_memaddr, &preparse.parse);
+
+  condset = value->conditions;
+  if (condset && !condset->next) {
+    /* single value - if it's only "measured" and "indirect" conditions, we can simplify to a memref */
+    if (condset->num_measured_conditions &&
+        !condset->num_pause_conditions && !condset->num_reset_conditions &&
+        !condset->num_other_conditions && !condset->num_hittarget_conditions) {
+      rc_condition_t* condition = condset->conditions;
+      for (; condition; condition = condition->next) {
+        if (condition->type == RC_CONDITION_MEASURED && condition->required_hits == 0) {
+          memcpy(&part->value, &condition->operand1, sizeof(condition->operand1));
+          break;
+        }
+      }
     }
   }
 
-  /* not a simple memory reference, need to create a variable */
-  variable = rc_alloc_helper_variable(memaddr, memaddr_len, parse);
-  if (!variable)
-    return NULL;
+  rc_destroy_preparse_state(&preparse);
 
-  return &variable->value;
+  /* could not express value with just a memory reference, create a helper variable */
+  if (part->value.type == RC_OPERAND_NONE) {
+    value = rc_alloc_variable(memaddr, memaddr_len, parse);
+    if (value) {
+      part->value.value.memref = (rc_memref_t*)&value->value;
+      part->value.type = RC_OPERAND_ADDRESS;
+      part->value.size = RC_MEMSIZE_32_BITS;
+      part->value.memref_access_type = RC_OPERAND_ADDRESS;
+    }
+  }
 }
 
 static const char* rc_parse_line(const char* line, const char** end, rc_parse_state_t* parse) {
@@ -81,7 +118,7 @@ typedef struct rc_richpresence_builtin_macro_t {
   uint8_t display_type;
 } rc_richpresence_builtin_macro_t;
 
-static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const char* line, const char* endline, rc_parse_state_t* parse, rc_richpresence_lookup_t* first_lookup) {
+static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const char* line, const char* endline, rc_parse_state_t* parse, rc_richpresence_lookup_t* first_lookup, rc_richpresence_t* richpresence) {
   rc_richpresence_display_t* self;
   rc_richpresence_display_part_t* part;
   rc_richpresence_display_part_t** next;
@@ -220,7 +257,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
         part->text = rc_alloc_str(parse, in, (int)(ptr - in));
       }
       else if (part->display_type != RC_FORMAT_UNKNOWN_MACRO) {
-        part->value = rc_alloc_helper_variable_memref_value(line, (int)(ptr - line), parse);
+        rc_alloc_helper_variable_memref_value(part, line, (int)(ptr - line), parse);
         if (parse->offset < 0)
           return 0;
 
@@ -468,6 +505,8 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
   int display_line = 0;
   int chars;
 
+  self->values = NULL;
+
   /* special case for empty script to return 1 line read */
   if (!*script) {
      parse->lines_read = 1;
@@ -555,7 +594,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
           ++ptr;
 
         if (ptr < endline) {
-          *nextdisplay = rc_parse_richpresence_display_internal(ptr + 1, endline, parse, firstlookup);
+          *nextdisplay = rc_parse_richpresence_display_internal(ptr + 1, endline, parse, firstlookup, self);
           if (parse->offset < 0)
             return;
           trigger = &((*nextdisplay)->trigger);
@@ -576,7 +615,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
     } while (1);
 
     /* non-conditional display: string */
-    *nextdisplay = rc_parse_richpresence_display_internal(line, endline, parse, firstlookup);
+    *nextdisplay = rc_parse_richpresence_display_internal(line, endline, parse, firstlookup, self);
     if (*nextdisplay) {
       hasdisplay = 1;
       nextdisplay = &((*nextdisplay)->next);
@@ -606,6 +645,7 @@ int rc_richpresence_size_lines(const char* script, int* lines_read) {
   rc_init_preparse_state(&preparse, NULL, 0);
 
   richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
+  preparse.parse.variables = &richpresence->richpresence.values;
   rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
   rc_preparse_alloc_memrefs(NULL, &preparse);
 
@@ -629,10 +669,12 @@ rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_S
 
   rc_init_preparse_state(&preparse, L, funcs_ndx);
   richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
+  preparse.parse.variables = &richpresence->richpresence.values;
   rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
 
   rc_init_parse_state(&preparse.parse, buffer, L, funcs_ndx);
   richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
+  preparse.parse.variables = &richpresence->richpresence.values;
   rc_preparse_alloc_memrefs(&richpresence->memrefs, &preparse);
 
   rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
@@ -662,6 +704,7 @@ void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, voi
   rc_richpresence_display_t* display;
 
   rc_update_richpresence_memrefs(richpresence, peek, peek_ud);
+  rc_update_values(richpresence->values, peek, peek_ud, L);
 
   for (display = richpresence->first_display; display; display = display->next) {
     if (display->has_required_hits)
@@ -687,7 +730,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         break;
 
       case RC_FORMAT_LOOKUP:
-        rc_typed_value_from_memref_value(&value, part->value);
+        rc_evaluate_operand(&value, &part->value, NULL);
         rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
 
         text = part->lookup->default_label;
@@ -714,7 +757,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         value.type = RC_VALUE_TYPE_UNSIGNED;
 
         do {
-          value.value.u32 = part->value->value;
+          rc_evaluate_operand(&value, &part->value, NULL);
           if (value.value.u32 == 0) {
             /* null terminator - skip over remaining character macros */
             while (part->next && part->next->display_type == RC_FORMAT_ASCIICHAR)
@@ -741,7 +784,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         value.type = RC_VALUE_TYPE_UNSIGNED;
 
         do {
-          value.value.u32 = part->value->value;
+          rc_evaluate_operand(&value, &part->value, NULL);
           if (value.value.u32 == 0) {
             /* null terminator - skip over remaining character macros */
             while (part->next && part->next->display_type == RC_FORMAT_UNICODECHAR)
@@ -786,7 +829,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         break;
 
       default:
-        rc_typed_value_from_memref_value(&value, part->value);
+        rc_evaluate_operand(&value, &part->value, NULL);
         chars = rc_format_typed_value(tmp, sizeof(tmp), &value, part->display_type);
         text = tmp;
         break;
@@ -839,14 +882,14 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size
   return rc_get_richpresence_display_string(richpresence, buffer, buffersize, peek, peek_ud, L);
 }
 
-void rc_reset_richpresence(rc_richpresence_t* self) {
+void rc_reset_richpresence_triggers(rc_richpresence_t* self) {
   rc_richpresence_display_t* display;
 
   for (display = self->first_display; display; display = display->next)
     rc_reset_trigger(&display->trigger);
+}
 
-  if (self->has_memrefs) {
-    rc_richpresence_with_memrefs_t* richpresence = (rc_richpresence_with_memrefs_t*)self;
-    rc_memrefs_reset_variables(&richpresence->memrefs);
-  }
+void rc_reset_richpresence(rc_richpresence_t* self) {
+  rc_reset_richpresence_triggers(self);
+  rc_reset_values(self->values);
 }

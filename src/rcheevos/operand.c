@@ -486,7 +486,7 @@ int rc_operand_is_float(const rc_operand_t* self) {
   return rc_operand_is_float_memref(self);
 }
 
-uint32_t rc_transform_operand_value(uint32_t value, const rc_operand_t* self) {
+static uint32_t rc_transform_operand_value(uint32_t value, const rc_operand_t* self) {
   switch (self->type)
   {
     case RC_OPERAND_BCD:

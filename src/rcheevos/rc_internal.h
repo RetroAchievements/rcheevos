@@ -37,18 +37,9 @@ typedef struct rc_modified_memref_list_t {
   uint8_t allocated;
 } rc_modified_memref_list_t;
 
-typedef struct rc_value_list_t {
-  rc_value_t* items;
-  struct rc_value_list_t* next;
-  uint16_t count;
-  uint16_t capacity;
-  uint8_t allocated;
-} rc_value_list_t;
-
 typedef struct rc_memrefs_t {
   rc_memref_list_t memrefs;
   rc_modified_memref_list_t modified_memrefs;
-  rc_value_list_t values;
 } rc_memrefs_t;
 
 typedef struct rc_trigger_with_memrefs_t {
@@ -115,7 +106,6 @@ RC_ALLOW_ALIGN(rc_scratch_string_t)
 RC_ALLOW_ALIGN(rc_trigger_t)
 RC_ALLOW_ALIGN(rc_trigger_with_memrefs_t)
 RC_ALLOW_ALIGN(rc_value_t)
-RC_ALLOW_ALIGN(rc_value_list_t)
 RC_ALLOW_ALIGN(rc_value_with_memrefs_t)
 RC_ALLOW_ALIGN(char)
 
@@ -161,7 +151,6 @@ typedef struct {
     rc_trigger_t* __rc_trigger_t;
     rc_trigger_with_memrefs_t* __rc_trigger_with_memrefs_t;
     rc_value_t* __rc_value_t;
-    rc_value_list_t* __rc_value_list_t;
     rc_value_with_memrefs_t* __rc_value_with_memrefs_t;
 
     /* these fields aren't actually used by the code, but they force the
@@ -262,7 +251,7 @@ typedef struct {
 
   rc_memrefs_t* memrefs;
   rc_memrefs_t* existing_memrefs;
-  rc_buffer_t* value_definitions;
+  rc_value_t** variables;
 
   uint32_t measured_target;
   int lines_read;
@@ -289,6 +278,7 @@ void rc_destroy_parse_state(rc_parse_state_t* parse);
 void rc_init_preparse_state(rc_preparse_state_t* preparse, lua_State* L, int funcs_ndx);
 void rc_preparse_alloc_memrefs(rc_memrefs_t* memrefs, rc_preparse_state_t* preparse);
 void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* memrefs);
+void rc_preparse_copy_memrefs(rc_parse_state_t* parse, rc_memrefs_t* memrefs);
 void rc_destroy_preparse_state(rc_preparse_state_t *preparse);
 
 void* rc_alloc(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment, rc_scratch_t* scratch, uint32_t scratch_object_pointer_offset);
@@ -312,8 +302,6 @@ void rc_memrefs_init(rc_memrefs_t* memrefs);
 void rc_memrefs_destroy(rc_memrefs_t* memrefs);
 uint32_t rc_memrefs_count_memrefs(const rc_memrefs_t* memrefs);
 uint32_t rc_memrefs_count_modified_memrefs(const rc_memrefs_t* memrefs);
-uint32_t rc_memrefs_count_values(const rc_memrefs_t* memrefs);
-void rc_memrefs_reset_variables(rc_memrefs_t* memrefs);
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse);
 int rc_trigger_state_active(int state);
@@ -371,7 +359,10 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
 int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
 void rc_reset_value(rc_value_t* self);
 int rc_value_from_hits(rc_value_t* self);
-rc_value_t* rc_alloc_helper_variable(const char* memaddr, size_t memaddr_len, rc_parse_state_t* parse);
+rc_value_t* rc_alloc_variable(const char* memaddr, size_t memaddr_len, rc_parse_state_t* parse);
+uint32_t rc_count_values(const rc_value_t* values);
+void rc_update_values(rc_value_t* values, rc_peek_t peek, void* ud, lua_State* L);
+void rc_reset_values(rc_value_t* values);
 
 void rc_typed_value_convert(rc_typed_value_t* value, char new_type);
 void rc_typed_value_add(rc_typed_value_t* value, const rc_typed_value_t* amount);
@@ -390,6 +381,7 @@ int rc_lboard_state_active(int state);
 
 void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script, rc_parse_state_t* parse);
 rc_memrefs_t* rc_richpresence_get_memrefs(rc_richpresence_t* self);
+void rc_reset_richpresence_triggers(rc_richpresence_t* self);
 
 RC_END_C_DECLS
 

@@ -452,11 +452,15 @@ static int rc_runtime_progress_write_variable(rc_runtime_progress_t* progress, c
 
 static int rc_runtime_progress_write_variables(rc_runtime_progress_t* progress)
 {
-  uint32_t count = rc_memrefs_count_values(progress->runtime->memrefs);
-  const rc_value_list_t* value_list;
+  uint32_t count;
   const rc_value_t* value;
   int result;
 
+  if (!progress->runtime->richpresence || !progress->runtime->richpresence->richpresence)
+    return RC_OK;
+
+  value = progress->runtime->richpresence->richpresence->values;
+  count = rc_count_values(value);
   if (count == 0)
     return RC_OK;
 
@@ -467,23 +471,16 @@ static int rc_runtime_progress_write_variables(rc_runtime_progress_t* progress)
   rc_runtime_progress_start_chunk(progress, RC_RUNTIME_CHUNK_VARIABLES);
   rc_runtime_progress_write_uint(progress, count);
 
-  value_list = &progress->runtime->memrefs->values;
-  for (; value_list; value_list = value_list->next) {
-    const rc_value_t* value_end;
+  for (; value; value = value->next) {
+    const uint32_t djb2 = rc_djb2(value->name);
+    if (progress->offset + 16 > progress->buffer_size)
+      return RC_INSUFFICIENT_BUFFER;
 
-    value = value_list->items;
-    value_end = value + value_list->count;
-    for (; value < value_end; ++value) {
-      const uint32_t djb2 = rc_djb2(value->name);
-      if (progress->offset + 16 > progress->buffer_size)
-        return RC_INSUFFICIENT_BUFFER;
+    rc_runtime_progress_write_uint(progress, djb2);
 
-      rc_runtime_progress_write_uint(progress, djb2);
-
-      result = rc_runtime_progress_write_variable(progress, value);
-      if (result != RC_OK)
-        return result;
-    }
+    result = rc_runtime_progress_write_variable(progress, value);
+    if (result != RC_OK)
+      return result;
   }
 
   rc_runtime_progress_end_chunk(progress);
@@ -518,7 +515,6 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
   };
   struct rc_pending_value_t local_pending_variables[32];
   struct rc_pending_value_t* pending_variables;
-  rc_value_list_t* value_list;
   rc_value_t* value;
   uint32_t count, serialized_count;
   int result;
@@ -528,7 +524,11 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
   if (serialized_count == 0)
     return RC_OK;
 
-  count = rc_memrefs_count_values(progress->runtime->memrefs);
+  if (!progress->runtime->richpresence || !progress->runtime->richpresence->richpresence)
+    return RC_OK;
+
+  value = progress->runtime->richpresence->richpresence->values;
+  count = rc_count_values(value);
   if (count == 0)
     return RC_OK;
 
@@ -541,23 +541,17 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
       return RC_OUT_OF_MEMORY;
   }
 
-  count = 0;
-  value_list = &progress->runtime->memrefs->values;
-  for (; value_list; value_list = value_list->next) {
-    const rc_value_t* value_end;
-    value = value_list->items;
-    value_end = value + value_list->count;
-    for (; value < value_end; ++value) {
-      pending_variables[count].variable = value;
-      pending_variables[count].djb2 = rc_djb2(value->name);
-      ++count;
-    }
+  i = count;
+  for (; value; value = value->next) {
+    --i;
+    pending_variables[i].variable = value;
+    pending_variables[i].djb2 = rc_djb2(value->name);
   }
 
   result = RC_OK;
   for (; serialized_count > 0 && result == RC_OK; --serialized_count) {
     uint32_t djb2 = rc_runtime_progress_read_uint(progress);
-    for (i = 0; i < count; ++i) {
+    for (i = count - 1; i >= 0; --i) {
       if (pending_variables[i].djb2 == djb2) {
         value = pending_variables[i].variable;
         result = rc_runtime_progress_read_variable(progress, value);
@@ -846,7 +840,7 @@ static int rc_runtime_progress_read_rich_presence(rc_runtime_progress_t* progres
     return RC_OK;
 
   if (!rc_runtime_progress_match_md5(progress, progress->runtime->richpresence->md5)) {
-    rc_reset_richpresence(progress->runtime->richpresence->richpresence);
+    rc_reset_richpresence_triggers(progress->runtime->richpresence->richpresence);
     return RC_OK;
   }
 
@@ -1062,7 +1056,7 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
     }
 
     if (!seen_rich_presence && runtime->richpresence && runtime->richpresence->richpresence)
-      rc_reset_richpresence(runtime->richpresence->richpresence);
+      rc_reset_richpresence_triggers(runtime->richpresence->richpresence);
   }
 
   return result;

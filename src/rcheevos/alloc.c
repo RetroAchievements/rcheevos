@@ -109,7 +109,6 @@ void rc_preparse_alloc_memrefs(rc_memrefs_t* memrefs, rc_preparse_state_t* prepa
 {
   const uint32_t num_memrefs = rc_memrefs_count_memrefs(&preparse->memrefs);
   const uint32_t num_modified_memrefs = rc_memrefs_count_modified_memrefs(&preparse->memrefs);
-  const uint32_t num_values = rc_memrefs_count_values(&preparse->memrefs);
 
   if (preparse->parse.offset < 0)
     return;
@@ -138,15 +137,6 @@ void rc_preparse_alloc_memrefs(rc_memrefs_t* memrefs, rc_preparse_state_t* prepa
     }
   }
 
-  if (num_values) {
-    rc_value_t* value_items = RC_ALLOC_ARRAY(rc_value_t, num_values, &preparse->parse);
-
-    if (memrefs) {
-      memrefs->values.capacity = num_values;
-      memrefs->values.items = value_items;
-    }
-  }
-
   /* when preparsing, this structure will be allocated at the end. when it's allocated earlier
    * in the buffer, it could be followed by something aligned at 8 bytes. force the offset to
    * an 8-byte boundary */
@@ -167,7 +157,6 @@ void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* me
 {
   uint32_t num_memrefs = rc_memrefs_count_memrefs(&preparse->memrefs);
   uint32_t num_modified_memrefs = rc_memrefs_count_modified_memrefs(&preparse->memrefs);
-  uint32_t num_values = rc_memrefs_count_values(&preparse->memrefs);
   uint32_t available;
 
   if (preparse->parse.offset < 0)
@@ -217,33 +206,72 @@ void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* me
     }
   }
 
-  if (num_values) {
-    rc_value_list_t* value_list = &memrefs->values;
-    while (value_list->count == value_list->capacity) {
-      if (!value_list->next)
-        break;
+  preparse->parse.memrefs = memrefs;
+}
 
-      value_list = value_list->next;
+static void rc_preparse_sync_operand(rc_operand_t* operand, rc_parse_state_t* parse,  const rc_memrefs_t* memrefs)
+{
+  if (rc_operand_is_memref(operand) || rc_operand_is_recall(operand)) {
+    const rc_memref_t* src_memref = operand->value.memref;
+
+    const rc_memref_list_t* memref_list = &memrefs->memrefs;
+    const rc_modified_memref_list_t* modified_memref_list = &memrefs->modified_memrefs;
+
+    for (; memref_list; memref_list = memref_list->next)
+    {
+      const rc_memref_t* memref = memref_list->items;
+      const rc_memref_t* memref_end = memref + memref_list->count;
+
+      for (; memref < memref_end; ++memref) {
+        if (src_memref == memref) {
+          operand->value.memref = rc_alloc_memref(parse, memref->address, memref->value.size);
+          return;
+        }
+      }
     }
 
-    available = value_list->capacity - value_list->count;
-    if (available < num_memrefs) {
-      rc_value_list_t* new_value_list = (value_list == &memrefs->values) ?
-        &memrefs->values : (rc_value_list_t*)calloc(1, sizeof(rc_value_list_t));
+    for (; modified_memref_list; modified_memref_list = modified_memref_list->next) {
+      const rc_modified_memref_t* modified_memref = modified_memref_list->items;
+      const rc_modified_memref_t* modified_memref_end = modified_memref + modified_memref_list->count;
 
-      if (!new_value_list)
-        return;
+      for (; modified_memref < modified_memref_end; ++modified_memref) {
+        if ((const rc_modified_memref_t*)src_memref == modified_memref) {
+          rc_modified_memref_t* dst_modified_memref = rc_alloc_modified_memref(parse, modified_memref->memref.value.size,
+            &modified_memref->parent, modified_memref->modifier_type, &modified_memref->modifier);
 
-      new_value_list->capacity = rc_preparse_array_size(num_memrefs - available, 8);
-      new_value_list->items = (rc_value_t*)malloc(new_value_list->capacity * sizeof(rc_value_t*));
-      new_value_list->allocated = 1;
-
-      if (value_list != new_value_list)
-        value_list->next = new_value_list;
+          operand->value.memref = &dst_modified_memref->memref;
+          return;
+        }
+      }
     }
   }
+}
 
-  preparse->parse.memrefs = memrefs;
+void rc_preparse_copy_memrefs(rc_parse_state_t* parse, rc_memrefs_t* memrefs)
+{
+  const rc_memref_list_t* memref_list = &memrefs->memrefs;
+  const rc_modified_memref_list_t* modified_memref_list = &memrefs->modified_memrefs;
+
+  for (; memref_list; memref_list = memref_list->next) {
+    const rc_memref_t* memref = memref_list->items;
+    const rc_memref_t* memref_end = memref + memref_list->count;
+
+    for (; memref < memref_end; ++memref)
+      rc_alloc_memref(parse, memref->address, memref->value.size);
+  }
+
+  for (; modified_memref_list; modified_memref_list = modified_memref_list->next) {
+    rc_modified_memref_t* modified_memref = modified_memref_list->items;
+    const rc_modified_memref_t* modified_memref_end = modified_memref + modified_memref_list->count;
+
+    for (; modified_memref < modified_memref_end; ++modified_memref) {
+      rc_preparse_sync_operand(&modified_memref->parent, parse, memrefs);
+      rc_preparse_sync_operand(&modified_memref->modifier, parse, memrefs);
+
+      rc_alloc_modified_memref(parse, modified_memref->memref.value.size,
+        &modified_memref->parent, modified_memref->modifier_type, &modified_memref->modifier);
+    }
+  }
 }
 
 void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx)
@@ -261,6 +289,9 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   parse->scratch.strings = NULL;
   rc_buffer_init(&parse->scratch.buffer);
   memset(&parse->scratch.objs, 0, sizeof(parse->scratch.objs));
+  parse->memrefs = NULL;
+  parse->existing_memrefs = NULL;
+  parse->variables = NULL;
   parse->measured_target = 0;
   parse->lines_read = 0;
   parse->addsource_oper = RC_OPERATOR_NONE;
@@ -270,9 +301,6 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   parse->is_value = 0;
   parse->has_required_hits = 0;
   parse->measured_as_percent = 0;
-  parse->memrefs = NULL;
-  parse->existing_memrefs = NULL;
-  parse->value_definitions = NULL;
 }
 
 void rc_destroy_parse_state(rc_parse_state_t* parse)

@@ -98,6 +98,7 @@
     </Type>
     <Type Name="rc_memref_t">
         <DisplayString Condition="value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">{*(rc_modified_memref_t*)&amp;value}</DisplayString>
+        <DisplayString Condition="value.memref_type==RC_MEMREF_TYPE_VALUE">{*(rc_value_t*)&amp;value}</DisplayString>
         <DisplayString Condition="value.size==RC_MEMSIZE_VARIABLE">var</DisplayString>
         <DisplayString>{*((__rc_memsize_enum_func_t*)&amp;value.size)}({address,x})</DisplayString>
         <Expand>
@@ -119,6 +120,7 @@
     </Type>
     <Type Name="__rc_operand_memref_t">
         <DisplayString Condition="operand.value.memref->value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">... {*((__rc_memsize_enum_func_t*)&amp;operand.size)} {operand.value.memref->address,x}</DisplayString>
+        <DisplayString Condition="operand.value.memref->value.memref_type==RC_MEMREF_TYPE_VALUE">value {((rc_value_t*)operand.value.memref)->name,s}</DisplayString>
         <DisplayString>{*((__rc_memsize_enum_func_t*)&amp;operand.size)} {operand.value.memref->address,x}</DisplayString>
         <Expand>
             <Item Name="[rc_modified_memref_t]" Condition="operand.value.memref->value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">(rc_modified_memref_t*)&amp;operand.value</Item>
@@ -323,7 +325,6 @@
             <Item Name="value">value</Item>
             <Item Name="conditions">conditions</Item>
             <Item Name="name">name</Item>
-            <Item Name="next">next</Item>
         </Expand>
     </Type>
     <Type Name="rc_value_list_t">
@@ -386,12 +387,12 @@
     <Type Name="rc_richpresence_display_part_t">
         <DisplayString Condition="display_type==101">{text,s}</DisplayString>
         <DisplayString Condition="display_type==103">[Unknown macro]{text,sb}</DisplayString>
-        <DisplayString Condition="lookup==0">@{text,sb}({*(rc_memref_t*)value,na})</DisplayString>
-        <DisplayString>@{lookup->name,sb}({*(rc_memref_t*)value,na})</DisplayString>
+        <DisplayString Condition="lookup==0">@{text,sb}({value,na})</DisplayString>
+        <DisplayString>@{lookup->name,sb}({value,na})</DisplayString>
         <Expand>
             <Item Name="text" Condition="display_type==101||display_type==103">text</Item>
-            <Item Name="lookup" Condition="display_type==102">lookup</Item>
-            <Item Name="value" Condition="display_type!=101&amp;&amp;display_type!=103">*(rc_memref_t*)value</Item>
+            <Item Name="lookup" Condition="display_type!=101&amp;&amp;display_type!=103">lookup</Item>
+            <Item Name="value" Condition="display_type!=101&amp;&amp;display_type!=103">value</Item>
             <Item Name="display_type">*((__rc_format_enum_t*)&amp;display_type)</Item>
         </Expand>
     </Type>
@@ -476,6 +477,7 @@
             <Item Name="offset">offset</Item>
             <Item Name="memrefs">memrefs</Item>
             <Item Name="existing_memrefs">existing_memrefs</Item>
+            <Item Name="variables">((__rc_value_list_t*)&amp;variables)</Item>
             <Item Name="addsource_parent">addsource_parent</Item>
             <Item Name="addsource_oper">*((__rc_operator_enum_t*)&amp;addsource_oper)</Item>
             <Item Name="indirect_parent">indirect_parent</Item>

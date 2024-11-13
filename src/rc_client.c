@@ -4969,7 +4969,6 @@ static void rc_client_update_memref_values(rc_client_t* client) {
   rc_memrefs_t* memrefs = client->game->runtime.memrefs;
   rc_memref_list_t* memref_list;
   rc_modified_memref_list_t* modified_memref_list;
-  rc_value_list_t* value_list;
   int invalidated_memref = 0;
 
   memref_list = &memrefs->memrefs;
@@ -5014,24 +5013,8 @@ static void rc_client_update_memref_values(rc_client_t* client) {
     } while (modified_memref_list);
   }
 
-  value_list = &memrefs->values;
-  if (value_list->count) {
-    do {
-      rc_value_t* value = value_list->items;
-      const rc_value_t* value_stop = value + value_list->count;
-      rc_typed_value_t result;
-
-      for (; value < value_stop; ++value) {
-        if (rc_evaluate_value_typed(value, &result, client->state.legacy_peek, client, NULL)) {
-          /* store the raw bytes and type to be restored by rc_typed_value_from_memref_value  */
-          rc_update_memref_value(&value->value, result.value.u32);
-          value->value.type = result.type;
-        }
-      }
-
-      value_list = value_list->next;
-    } while (value_list);
-  }
+  if (client->game->runtime.richpresence && client->game->runtime.richpresence->richpresence)
+    rc_update_values(client->game->runtime.richpresence->richpresence->values, client->state.legacy_peek, client, NULL);
 
   if (invalidated_memref)
     rc_client_update_active_achievements(client->game);
@@ -5617,9 +5600,8 @@ static void rc_client_reset_richpresence(rc_client_t* client)
 
 static void rc_client_reset_variables(rc_client_t* client)
 {
-  rc_memrefs_t* memrefs = client->game->runtime.memrefs;
-  if (memrefs)
-    rc_memrefs_reset_variables(memrefs);
+  if (client->game->runtime.richpresence && client->game->runtime.richpresence->richpresence)
+    rc_reset_values(client->game->runtime.richpresence->richpresence->values);
 }
 
 static void rc_client_reset_all(rc_client_t* client)

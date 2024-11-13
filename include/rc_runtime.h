@@ -2,7 +2,6 @@
 #define RC_RUNTIME_H
 
 #include "rc_error.h"
-#include "rc_util.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -81,7 +80,6 @@ typedef struct rc_runtime_t {
   rc_runtime_richpresence_t* richpresence;
 
   struct rc_memrefs_t* memrefs;
-  rc_buffer_t value_definitions;
 
   uint8_t owns_self;
 }

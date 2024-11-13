@@ -168,7 +168,6 @@ void rc_memrefs_destroy(rc_memrefs_t* memrefs)
 {
   rc_memref_list_t* memref_list = &memrefs->memrefs;
   rc_modified_memref_list_t* modified_memref_list = &memrefs->modified_memrefs;
-  rc_value_list_t* value_list = &memrefs->values;
 
   do {
     rc_memref_list_t* current_memref_list = memref_list;
@@ -196,19 +195,6 @@ void rc_memrefs_destroy(rc_memrefs_t* memrefs)
     }
   } while (modified_memref_list);
 
-  do {
-    rc_value_list_t* current_value_list = value_list;
-    value_list = value_list->next;
-
-    if (current_value_list->allocated) {
-      if (current_value_list->items)
-        free(current_value_list->items);
-
-      if (current_value_list != &memrefs->values)
-        free(current_value_list);
-    }
-  } while (value_list);
-
   free(memrefs);
 }
 
@@ -234,27 +220,6 @@ uint32_t rc_memrefs_count_modified_memrefs(const rc_memrefs_t* memrefs)
   }
 
   return count;
-}
-
-uint32_t rc_memrefs_count_values(const rc_memrefs_t* memrefs)
-{
-  uint32_t count = 0;
-  const rc_value_list_t* value_list = &memrefs->values;
-  while (value_list) {
-    count += value_list->count;
-    value_list = value_list->next;
-  }
-
-  return count;
-}
-
-void rc_memrefs_reset_variables(rc_memrefs_t* memrefs)
-{
-  rc_value_t* variable = memrefs->values.items;
-  const rc_value_t* variable_end = variable + memrefs->values.count;
-
-  for (; variable < variable_end; ++variable)
-    rc_reset_value(variable);
 }
 
 int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address) {
@@ -766,7 +731,6 @@ uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_pee
 void rc_update_memref_values(rc_memrefs_t* memrefs, rc_peek_t peek, void* ud) {
   rc_memref_list_t* memref_list;
   rc_modified_memref_list_t* modified_memref_list;
-  rc_value_list_t* value_list;
 
   memref_list = &memrefs->memrefs;
   do
@@ -793,24 +757,5 @@ void rc_update_memref_values(rc_memrefs_t* memrefs, rc_peek_t peek, void* ud) {
 
       modified_memref_list = modified_memref_list->next;
     } while (modified_memref_list);
-  }
-
-  value_list = &memrefs->values;
-  if (value_list->count) {
-    do {
-      rc_value_t* value = value_list->items;
-      const rc_value_t* value_stop = value + value_list->count;
-      rc_typed_value_t result;
-
-      for (; value < value_stop; ++value) {
-        if (rc_evaluate_value_typed(value, &result, peek, ud, NULL)) {
-          /* store the raw bytes and type to be restored by rc_typed_value_from_memref_value  */
-          rc_update_memref_value(&value->value, result.value.u32);
-          value->value.type = result.type;
-        }
-      }
-
-      value_list = value_list->next;
-    } while (value_list);
   }
 }

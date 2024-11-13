@@ -311,6 +311,9 @@ struct rc_value_t {
 
   /* The name of the variable. */
   const char* name;
+
+  /* The next variable in the chain. */
+  rc_value_t* next;
 };
 
 RC_EXPORT int RC_CCONV rc_value_size(const char* memaddr);
@@ -409,7 +412,7 @@ struct rc_richpresence_display_part_t {
   rc_richpresence_display_part_t* next;
   const char* text;
   rc_richpresence_lookup_t* lookup;
-  rc_memref_value_t* value;
+  rc_operand_t value;
   uint8_t display_type;
 };
 
@@ -425,6 +428,7 @@ struct rc_richpresence_display_t {
 struct rc_richpresence_t {
   rc_richpresence_display_t* first_display;
   rc_richpresence_lookup_t* first_lookup;
+  rc_value_t* values;
   uint8_t has_memrefs;
 };
 

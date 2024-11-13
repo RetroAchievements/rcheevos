@@ -51,16 +51,16 @@ void rc_runtime_init(rc_runtime_t* self) {
 
   self->memrefs = (rc_memrefs_t*)malloc(sizeof(*self->memrefs));
   rc_memrefs_init(self->memrefs);
-
-  rc_buffer_init(&self->value_definitions);
 }
 
 void rc_runtime_destroy(rc_runtime_t* self) {
   uint32_t i;
 
   if (self->triggers) {
-    for (i = 0; i < self->trigger_count; ++i)
-      free(self->triggers[i].buffer);
+    for (i = 0; i < self->trigger_count; ++i) {
+      if (self->triggers[i].buffer)
+        free(self->triggers[i].buffer);
+    }
 
     free(self->triggers);
     self->triggers = NULL;
@@ -69,8 +69,10 @@ void rc_runtime_destroy(rc_runtime_t* self) {
   }
 
   if (self->lboards) {
-    for (i = 0; i < self->lboard_count; ++i)
-      free(self->lboards[i].buffer);
+    for (i = 0; i < self->lboard_count; ++i) {
+      if (self->lboards[i].buffer)
+        free(self->lboards[i].buffer);
+    }
 
     free(self->lboards);
     self->lboards = NULL;
@@ -81,15 +83,14 @@ void rc_runtime_destroy(rc_runtime_t* self) {
   while (self->richpresence) {
     rc_runtime_richpresence_t* previous = self->richpresence->previous;
 
-    free(self->richpresence->buffer);
+    if (self->richpresence->buffer)
+      free(self->richpresence->buffer);
     free(self->richpresence);
     self->richpresence = previous;
   }
 
   if (self->memrefs)
     rc_memrefs_destroy(self->memrefs);
-
-  rc_buffer_destroy(&self->value_definitions);
 
   if (self->owns_self)
     free(self);
@@ -460,6 +461,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   rc_init_preparse_state(&preparse, NULL, 0);
   preparse.parse.existing_memrefs = self->memrefs;
   richpresence = RC_ALLOC(rc_richpresence_t, &preparse.parse);
+  preparse.parse.variables = &richpresence->values;
   rc_parse_richpresence_internal(richpresence, script, &preparse.parse);
 
   size = preparse.parse.offset;
@@ -487,8 +489,8 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
 
   rc_init_parse_state(&preparse.parse, self->richpresence->buffer, L, funcs_idx);
   rc_preparse_reserve_memrefs(&preparse, self->memrefs);
-  preparse.parse.value_definitions = &self->value_definitions;
-  self->richpresence->richpresence = richpresence = RC_ALLOC(rc_richpresence_t, &preparse.parse);
+  richpresence = RC_ALLOC(rc_richpresence_t, &preparse.parse);
+  preparse.parse.variables = &richpresence->values;
   rc_parse_richpresence_internal(richpresence, script, &preparse.parse);
   rc_destroy_preparse_state(&preparse);
 
@@ -506,6 +508,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   else {
     /* reset all of the conditions */
     rc_reset_richpresence(richpresence);
+    self->richpresence->richpresence = richpresence;
   }
 
   return RC_OK;
@@ -709,8 +712,6 @@ void rc_runtime_reset(rc_runtime_t* self) {
 
   if (self->richpresence && self->richpresence->richpresence)
     rc_reset_richpresence(self->richpresence->richpresence);
-
-  rc_memrefs_reset_variables(self->memrefs);
 }
 
 static int rc_condset_contains_memref(const rc_condset_t* condset, const rc_memref_t* memref) {
