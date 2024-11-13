@@ -22,7 +22,7 @@ function peek(address, num_bytes, userdata)
 
 ## API
 
-An understanding about how achievements are developed may be useful, you can read more about it [here](http://docs.retroachievements.org/Developer-docs/).
+An understanding about how achievements are developed may be useful, you can read more about it [here](https://docs.retroachievements.org/developer-docs/).
 
 Most of the exposed APIs are documented [here](https://github.com/RetroAchievements/rcheevos/wiki)
 
