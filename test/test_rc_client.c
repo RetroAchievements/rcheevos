@@ -2890,7 +2890,7 @@ static void test_change_media_while_loading(void)
 
   /* media request won't occur until patch data is received */
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
