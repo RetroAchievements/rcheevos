@@ -2270,7 +2270,7 @@ static void test_identify_and_load_game_multiconsole_second(void)
 
   assert_api_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
   async_api_response("r=gameid&m=64b131c5c7fec32985d9c99700babb7e", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=64b131c5c7fec32985d9c99700babb7", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=64b131c5c7fec32985d9c99700babb7e", patchdata_2ach_1lbd);
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=64b131c5c7fec32985d9c99700babb7e&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_PTR_NULL(g_client->state.load);
