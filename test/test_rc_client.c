@@ -2221,7 +2221,7 @@ static void test_identify_and_load_game_multiconsole_first(void)
   iterator->consoles[iterator->index + 1] = 0;
 
   async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   assert_api_not_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
@@ -2270,7 +2270,7 @@ static void test_identify_and_load_game_multiconsole_second(void)
 
   assert_api_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
   async_api_response("r=gameid&m=64b131c5c7fec32985d9c99700babb7e", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=64b131c5c7fec32985d9c99700babb7", patchdata_2ach_1lbd);
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=64b131c5c7fec32985d9c99700babb7e&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2589,7 +2589,7 @@ static void test_identify_and_load_game_multihash_differ(void)
 
   /* second lookup should succeed */
   async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=4989b063a40dcfa28291ff8d675050e3&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
  
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2890,7 +2890,7 @@ static void test_change_media_while_loading(void)
 
   /* media request won't occur until patch data is received */
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
@@ -2933,7 +2933,7 @@ static void test_change_media_while_loading_later(void)
 
   /* get past fetching the patch data so there's a valid console for the change media call */
   async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
 
   /* change_media should immediately attempt to resolve the new hash */
   rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
