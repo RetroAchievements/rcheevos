@@ -1709,9 +1709,10 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* scan;
   rc_buffer_t* buffer;
-  rc_parse_state_t parse;
+  rc_preparse_state_t preparse;
   const char* memaddr;
   size_t size;
+  rc_trigger_t* trigger;
   int trigger_size;
 
   subset->achievements = NULL;
@@ -1741,11 +1742,11 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
       + sizeof(rc_trigger_t) + sizeof(rc_condset_t) * 2 /* trigger container */
       + sizeof(rc_condition_t) * 8 /* assume average trigger length of 8 conditions */
       + sizeof(rc_client_achievement_info_t);
-  rc_buffer_reserve(&load_state->game->buffer, size * num_achievements);
+  buffer = &load_state->game->buffer;
+  rc_buffer_reserve(buffer, size * num_achievements);
 
   /* allocate the achievement array */
   size = sizeof(rc_client_achievement_info_t) * num_achievements;
-  buffer = &load_state->game->buffer;
   achievement = achievements = rc_buffer_alloc(buffer, size);
   memset(achievements, 0, size);
 
@@ -1768,7 +1769,12 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     memaddr = read->definition;
     rc_runtime_checksum(memaddr, achievement->md5);
 
-    trigger_size = rc_trigger_size(memaddr);
+    rc_init_preparse_state(&preparse, NULL, 0);
+    preparse.parse.existing_memrefs = load_state->game->runtime.memrefs;
+    trigger = RC_ALLOC(rc_trigger_t, &preparse.parse);
+    rc_parse_trigger_internal(trigger, &memaddr, &preparse.parse);
+
+    trigger_size = preparse.parse.offset;
     if (trigger_size < 0) {
       RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing achievement %u", trigger_size, read->id);
       achievement->public_.state = RC_CLIENT_ACHIEVEMENT_STATE_DISABLED;
@@ -1776,22 +1782,22 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     }
     else {
       /* populate the item, using the communal memrefs pool */
-      rc_init_parse_state(&parse, rc_buffer_reserve(buffer, trigger_size), NULL, 0);
-      //parse.first_memref = &load_state->game->runtime.memrefs;
-      //parse.variables = &load_state->game->runtime.variables;
-      achievement->trigger = RC_ALLOC(rc_trigger_t, &parse);
-      rc_parse_trigger_internal(achievement->trigger, &memaddr, &parse);
+      rc_init_parse_state(&preparse.parse, rc_buffer_reserve(buffer, trigger_size), NULL, 0);
+      rc_preparse_reserve_memrefs(&preparse, load_state->game->runtime.memrefs);
+      achievement->trigger = RC_ALLOC(rc_trigger_t, &preparse.parse);
+      memaddr = read->definition;
+      rc_parse_trigger_internal(achievement->trigger, &memaddr, &preparse.parse);
 
-      if (parse.offset < 0) {
-        RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing achievement %u", parse.offset, read->id);
+      if (preparse.parse.offset < 0) {
+        RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing achievement %u", preparse.parse.offset, read->id);
         achievement->public_.state = RC_CLIENT_ACHIEVEMENT_STATE_DISABLED;
         achievement->public_.bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED;
       }
       else {
-        rc_buffer_consume(buffer, parse.buffer, (uint8_t*)parse.buffer + parse.offset);
+        rc_buffer_consume(buffer, preparse.parse.buffer, (uint8_t*)preparse.parse.buffer + preparse.parse.offset);
       }
 
-      rc_destroy_parse_state(&parse);
+      rc_destroy_preparse_state(&preparse);
     }
 
     achievement->created_time = read->created;
@@ -1855,10 +1861,11 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
   rc_client_leaderboard_info_t* leaderboards;
   rc_client_leaderboard_info_t* leaderboard;
   rc_buffer_t* buffer;
-  rc_parse_state_t parse;
+  rc_preparse_state_t preparse;
   const char* memaddr;
   const char* ptr;
   size_t size;
+  rc_lboard_t* lboard;
   int lboard_size;
 
   subset->leaderboards = NULL;
@@ -1908,28 +1915,32 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
       leaderboard->value_djb2 = hash;
     }
 
-    lboard_size = rc_lboard_size(memaddr);
+    rc_init_preparse_state(&preparse, NULL, 0);
+    preparse.parse.existing_memrefs = load_state->game->runtime.memrefs;
+    lboard = RC_ALLOC(rc_lboard_t, &preparse.parse);
+    rc_parse_lboard_internal(lboard, memaddr, &preparse.parse);
+
+    lboard_size = preparse.parse.offset;
     if (lboard_size < 0) {
       RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing leaderboard %u", lboard_size, read->id);
       leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
     }
     else {
       /* populate the item, using the communal memrefs pool */
-      rc_init_parse_state(&parse, rc_buffer_reserve(buffer, lboard_size), NULL, 0);
-      //parse.first_memref = &load_state->game->runtime.memrefs;
-      //parse.variables = &load_state->game->runtime.variables;
-      leaderboard->lboard = RC_ALLOC(rc_lboard_t, &parse);
-      rc_parse_lboard_internal(leaderboard->lboard, memaddr, &parse);
+      rc_init_parse_state(&preparse.parse, rc_buffer_reserve(buffer, lboard_size), NULL, 0);
+      rc_preparse_reserve_memrefs(&preparse, load_state->game->runtime.memrefs);
+      leaderboard->lboard = RC_ALLOC(rc_lboard_t, &preparse.parse);
+      rc_parse_lboard_internal(leaderboard->lboard, memaddr, &preparse.parse);
 
-      if (parse.offset < 0) {
-        RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing leaderboard %u", parse.offset, read->id);
+      if (preparse.parse.offset < 0) {
+        RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing leaderboard %u", preparse.parse.offset, read->id);
         leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_DISABLED;
       }
       else {
-        rc_buffer_consume(buffer, parse.buffer, (uint8_t*)parse.buffer + parse.offset);
+        rc_buffer_consume(buffer, preparse.parse.buffer, (uint8_t*)preparse.parse.buffer + preparse.parse.offset);
       }
 
-      rc_destroy_parse_state(&parse);
+      rc_destroy_preparse_state(&preparse);
     }
 
     ++leaderboard;

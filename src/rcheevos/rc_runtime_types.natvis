@@ -104,20 +104,19 @@
             <Item Name="[rc_modified_memref_t]" Condition="value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">(rc_modified_memref_t*)&amp;value</Item>
             <Item Name="value">value</Item>
             <Item Name="address">address</Item>
-            <Item Name="next">next</Item>
         </Expand>
     </Type>
-	<Type Name="rc_memref_list_t">
-		<DisplayString>{{count = {count}}}</DisplayString>
-		<Expand>
-			<Item Name="count">count</Item>
-			<Item Name="capacity">capacity</Item>
-			<ArrayItems>
-				<Size>count</Size>
-				<ValuePointer>items</ValuePointer>
-			</ArrayItems>
-		</Expand>
-	</Type>
+    <Type Name="rc_memref_list_t">
+        <DisplayString>{{count = {count}}}</DisplayString>
+        <Expand>
+            <Item Name="count">count</Item>
+            <Item Name="capacity">capacity</Item>
+            <ArrayItems>
+                <Size>count</Size>
+                <ValuePointer>items</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
     <Type Name="__rc_operand_memref_t">
         <DisplayString Condition="operand.value.memref->value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">... {*((__rc_memsize_enum_func_t*)&amp;operand.size)} {operand.value.memref->address,x}</DisplayString>
         <DisplayString>{*((__rc_memsize_enum_func_t*)&amp;operand.size)} {operand.value.memref->address,x}</DisplayString>
@@ -125,7 +124,6 @@
             <Item Name="[rc_modified_memref_t]" Condition="operand.value.memref->value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">(rc_modified_memref_t*)&amp;operand.value</Item>
             <Item Name="value">operand.value.memref->value</Item>
             <Item Name="address">operand.value.memref->address</Item>
-            <Item Name="next">operand.value.memref->next</Item>
         </Expand>
     </Type>
     <Type Name="__rc_operand_enum_t">
@@ -267,6 +265,16 @@
             </LinkedListItems>
         </Expand>
     </Type>
+    <Type Name="__rc_condset_list_t">
+        <DisplayString Condition="first_condset==0">{{}}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>first_condset</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
     <Type Name="rc_modified_memref_t">
         <DisplayString Condition="modifier_type==RC_OPERATOR_INDIRECT_READ">$({parent} + {modifier})</DisplayString>
         <DisplayString Condition="modifier_type==RC_OPERATOR_SUB_PARENT">({modifier} - {parent})</DisplayString>
@@ -278,18 +286,18 @@
             <Item Name="modifier">modifier</Item>
         </Expand>
     </Type>
-	<Type Name="rc_modified_memref_list_t">
-		<DisplayString>{{count = {count}}}</DisplayString>
-		<Expand>
-			<Item Name="count">count</Item>
-			<Item Name="capacity">capacity</Item>
-			<ArrayItems>
-				<Size>count</Size>
-				<ValuePointer>items</ValuePointer>
-			</ArrayItems>
-		</Expand>
-	</Type>
-	<Type Name="__rc_trigger_state_enum_t">
+    <Type Name="rc_modified_memref_list_t">
+        <DisplayString>{{count = {count}}}</DisplayString>
+        <Expand>
+            <Item Name="count">count</Item>
+            <Item Name="capacity">capacity</Item>
+            <ArrayItems>
+                <Size>count</Size>
+                <ValuePointer>items</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+    <Type Name="__rc_trigger_state_enum_t">
         <DisplayString Condition="value==RC_TRIGGER_STATE_INACTIVE">{RC_TRIGGER_STATE_INACTIVE}</DisplayString>
         <DisplayString Condition="value==RC_TRIGGER_STATE_WAITING">{RC_TRIGGER_STATE_WAITING}</DisplayString>
         <DisplayString Condition="value==RC_TRIGGER_STATE_ACTIVE">{RC_TRIGGER_STATE_ACTIVE}</DisplayString>
@@ -305,12 +313,8 @@
             <Item Name="state">*((__rc_trigger_state_enum_t*)&amp;state)</Item>
             <Item Name="has_hits">*((__rc_bool_enum_t*)&amp;has_hits)</Item>
             <Item Name="measured_as_percent">*((__rc_bool_enum_t*)&amp;measured_as_percent)</Item>
-            <Item Name="requirement">*requirement</Item>
-            <LinkedListItems>
-                <HeadPointer>alternative</HeadPointer>
-                <NextPointer>next</NextPointer>
-                <ValueNode>this</ValueNode>
-            </LinkedListItems>
+            <Item Name="requirement">requirement</Item>
+            <Item Name="alternative">*((__rc_condset_list_t*)&amp;alternative)</Item>
         </Expand>
     </Type>
     <Type Name="rc_value_t">
@@ -322,17 +326,17 @@
             <Item Name="next">next</Item>
         </Expand>
     </Type>
-	<Type Name="rc_value_list_t">
-		<DisplayString>{{count = {count}}}</DisplayString>
-		<Expand>
-			<Item Name="count">count</Item>
-			<Item Name="capacity">capacity</Item>
-			<ArrayItems>
-				<Size>count</Size>
-				<ValuePointer>items</ValuePointer>
-			</ArrayItems>
-		</Expand>
-	</Type>
+    <Type Name="rc_value_list_t">
+        <DisplayString>{{count = {count}}}</DisplayString>
+        <Expand>
+            <Item Name="count">count</Item>
+            <Item Name="capacity">capacity</Item>
+            <ArrayItems>
+                <Size>count</Size>
+                <ValuePointer>items</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
     <Type Name="__rc_lboard_state_enum_t">
         <DisplayString Condition="value==RC_LBOARD_STATE_INACTIVE">{RC_LBOARD_STATE_INACTIVE}</DisplayString>
         <DisplayString Condition="value==RC_LBOARD_STATE_WAITING">{RC_LBOARD_STATE_WAITING}</DisplayString>
@@ -352,118 +356,107 @@
             <Item Name="value">value</Item>
         </Expand>
     </Type>
-	<Type Name="__rc_format_enum_t">
-		<DisplayString Condition="value==RC_FORMAT_FRAMES">{RC_FORMAT_FRAMES}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_SECONDS">{RC_FORMAT_SECONDS}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_CENTISECS">{RC_FORMAT_CENTISECS}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_SCORE">{RC_FORMAT_SCORE}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_VALUE">{RC_FORMAT_VALUE}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_MINUTES">{RC_FORMAT_MINUTES}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_SECONDS_AS_MINUTES">{RC_FORMAT_SECONDS_AS_MINUTES}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_FLOAT1">{RC_FORMAT_FLOAT1}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_FLOAT2">{RC_FORMAT_FLOAT2}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_FLOAT3">{RC_FORMAT_FLOAT3}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_FLOAT4">{RC_FORMAT_FLOAT4}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_FLOAT5">{RC_FORMAT_FLOAT5}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_FLOAT6">{RC_FORMAT_FLOAT6}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_FIXED1">{RC_FORMAT_FIXED1}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_FIXED2">{RC_FORMAT_FIXED2}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_FIXED3">{RC_FORMAT_FIXED3}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_TENS">{RC_FORMAT_TENS}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_HUNDREDS">{RC_FORMAT_HUNDREDS}</DisplayString>
-		<DisplayString Condition="value==RC_FORMAT_THOUSANDS">{RC_FORMAT_THOUSANDS}</DisplayString>
-		<DisplayString Condition="value==101">RC_FORMAT_STRING (101)</DisplayString>
-		<DisplayString Condition="value==102">RC_FORMAT_LOOKUP (102)</DisplayString>
-		<DisplayString Condition="value==103">RC_FORMAT_UNKNOWN_MACRO (103)</DisplayString>
-		<DisplayString Condition="value==104">RC_FORMAT_ASCIICHAR (104)</DisplayString>
-		<DisplayString Condition="value==105">RC_FORMAT_UNICODECHAR (105)</DisplayString>
-		<DisplayString>unknown ({value})</DisplayString>
-	</Type>
-	<Type Name="rc_richpresence_display_part_t">
-		<DisplayString Condition="display_type==101">{text,s}</DisplayString>
-		<DisplayString Condition="display_type==103">[Unknown macro]{text,sb}</DisplayString>
-		<DisplayString Condition="lookup==0">@{text,sb}({*(rc_memref_t*)value,na})</DisplayString>
-		<DisplayString>@{lookup->name,sb}({*(rc_memref_t*)value,na})</DisplayString>
-		<Expand>
-			<Item Name="text" Condition="display_type==101||display_type==103">text</Item>
-			<Item Name="lookup" Condition="display_type==102">lookup</Item>
-			<Item Name="value" Condition="display_type!=101&amp;&amp;display_type!=103">*(rc_memref_t*)value</Item>
-			<Item Name="display_type">*((__rc_format_enum_t*)&amp;display_type)</Item>
-		</Expand>
-	</Type>
-	<Type Name="__rc_richpresence_display_part_list_t">
-		<DisplayString Condition="display->next->next!=0">{display,na} {display->next,na} {display->next->next,na}</DisplayString>
-		<DisplayString Condition="display->next!=0">{display,na} {display->next,na}</DisplayString>
-		<DisplayString>{display,na}</DisplayString>
-		<Expand>
-			<LinkedListItems>
-				<HeadPointer>display</HeadPointer>
-				<NextPointer>next</NextPointer>
-				<ValueNode>this</ValueNode>
-			</LinkedListItems>
-		</Expand>
-	</Type>
-	<Type Name="rc_richpresence_display_t">
-		<Expand>
-			<Item Name="displays">*((__rc_richpresence_display_part_list_t*)&amp;display)</Item>
-			<Item Name="trigger">trigger</Item>
-		</Expand>
-	</Type>
-	<Type Name="__rc_richpresence_display_list_t">
-		<DisplayString Condition="first_display==0">{{NULL}}</DisplayString>
-		<DisplayString>{(void*)&amp;first_display,na}</DisplayString>
-		<Expand>
-			<LinkedListItems>
-				<HeadPointer>first_display</HeadPointer>
-				<NextPointer>next</NextPointer>
-				<ValueNode>this</ValueNode>
-			</LinkedListItems>
-		</Expand>
-	</Type>
-	<Type Name="rc_richpresence_lookup_item_t">
-		<DisplayString Condition="first==last">{first}: {label,na}</DisplayString>
-		<DisplayString>{first}-{last}: {label,na}</DisplayString>
-	</Type>
-	<Type Name="rc_richpresence_lookup_t">
-		<DisplayString>{name,na}</DisplayString>
-		<Expand>
-			<Item Name="name">name</Item>
-			<Item Name="format">*((__rc_format_enum_t*)&amp;format)</Item>
-			<Item Name="default_label" Condition="format>101">default_label</Item>
-			<TreeItems>
-				<HeadPointer>root</HeadPointer>
-				<LeftPointer>left</LeftPointer>
-				<RightPointer>right</RightPointer>
-				<ValueNode>this</ValueNode>
-			</TreeItems>
-		</Expand>
-	</Type>
-	<Type Name="__rc_richpresence_lookup_list_t">
-		<DisplayString Condition="first_lookup==0">{{NULL}}</DisplayString>
-		<DisplayString>{(void*)&amp;first_lookup,na}</DisplayString>
-		<Expand>
-			<LinkedListItems>
-				<HeadPointer>first_lookup</HeadPointer>
-				<NextPointer>next</NextPointer>
-				<ValueNode>this</ValueNode>
-			</LinkedListItems>
-		</Expand>
-	</Type>
-	<Type Name="rc_richpresence_t">
-		<Expand>
-			<Item Name="displays">((__rc_richpresence_display_list_t*)&amp;first_display)</Item>
-			<Item Name="lookups">((__rc_richpresence_lookup_list_t*)&amp;first_lookup)</Item>
-		</Expand>
-	</Type>
-    <Type Name="__rc_memref_list_t">
-        <DisplayString Condition="first_memref==0">{{NULL}}</DisplayString>
-        <DisplayString>{(void**)&amp;first_memref,na}</DisplayString>
+    <Type Name="__rc_format_enum_t">
+        <DisplayString Condition="value==RC_FORMAT_FRAMES">{RC_FORMAT_FRAMES}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_SECONDS">{RC_FORMAT_SECONDS}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_CENTISECS">{RC_FORMAT_CENTISECS}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_SCORE">{RC_FORMAT_SCORE}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_VALUE">{RC_FORMAT_VALUE}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_MINUTES">{RC_FORMAT_MINUTES}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_SECONDS_AS_MINUTES">{RC_FORMAT_SECONDS_AS_MINUTES}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_FLOAT1">{RC_FORMAT_FLOAT1}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_FLOAT2">{RC_FORMAT_FLOAT2}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_FLOAT3">{RC_FORMAT_FLOAT3}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_FLOAT4">{RC_FORMAT_FLOAT4}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_FLOAT5">{RC_FORMAT_FLOAT5}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_FLOAT6">{RC_FORMAT_FLOAT6}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_FIXED1">{RC_FORMAT_FIXED1}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_FIXED2">{RC_FORMAT_FIXED2}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_FIXED3">{RC_FORMAT_FIXED3}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_TENS">{RC_FORMAT_TENS}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_HUNDREDS">{RC_FORMAT_HUNDREDS}</DisplayString>
+        <DisplayString Condition="value==RC_FORMAT_THOUSANDS">{RC_FORMAT_THOUSANDS}</DisplayString>
+        <DisplayString Condition="value==101">RC_FORMAT_STRING (101)</DisplayString>
+        <DisplayString Condition="value==102">RC_FORMAT_LOOKUP (102)</DisplayString>
+        <DisplayString Condition="value==103">RC_FORMAT_UNKNOWN_MACRO (103)</DisplayString>
+        <DisplayString Condition="value==104">RC_FORMAT_ASCIICHAR (104)</DisplayString>
+        <DisplayString Condition="value==105">RC_FORMAT_UNICODECHAR (105)</DisplayString>
+        <DisplayString>unknown ({value})</DisplayString>
+    </Type>
+    <Type Name="rc_richpresence_display_part_t">
+        <DisplayString Condition="display_type==101">{text,s}</DisplayString>
+        <DisplayString Condition="display_type==103">[Unknown macro]{text,sb}</DisplayString>
+        <DisplayString Condition="lookup==0">@{text,sb}({*(rc_memref_t*)value,na})</DisplayString>
+        <DisplayString>@{lookup->name,sb}({*(rc_memref_t*)value,na})</DisplayString>
+        <Expand>
+            <Item Name="text" Condition="display_type==101||display_type==103">text</Item>
+            <Item Name="lookup" Condition="display_type==102">lookup</Item>
+            <Item Name="value" Condition="display_type!=101&amp;&amp;display_type!=103">*(rc_memref_t*)value</Item>
+            <Item Name="display_type">*((__rc_format_enum_t*)&amp;display_type)</Item>
+        </Expand>
+    </Type>
+    <Type Name="__rc_richpresence_display_part_list_t">
+        <DisplayString Condition="display->next->next!=0">{display,na} {display->next,na} {display->next->next,na}</DisplayString>
+        <DisplayString Condition="display->next!=0">{display,na} {display->next,na}</DisplayString>
+        <DisplayString>{display,na}</DisplayString>
         <Expand>
             <LinkedListItems>
-                <HeadPointer>first_memref</HeadPointer>
+                <HeadPointer>display</HeadPointer>
                 <NextPointer>next</NextPointer>
                 <ValueNode>this</ValueNode>
             </LinkedListItems>
+        </Expand>
+    </Type>
+    <Type Name="rc_richpresence_display_t">
+        <Expand>
+            <Item Name="displays">*((__rc_richpresence_display_part_list_t*)&amp;display)</Item>
+            <Item Name="trigger">trigger</Item>
+        </Expand>
+    </Type>
+    <Type Name="__rc_richpresence_display_list_t">
+        <DisplayString Condition="first_display==0">{{NULL}}</DisplayString>
+        <DisplayString>{(void*)&amp;first_display,na}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>first_display</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
+    <Type Name="rc_richpresence_lookup_item_t">
+        <DisplayString Condition="first==last">{first}: {label,na}</DisplayString>
+        <DisplayString>{first}-{last}: {label,na}</DisplayString>
+    </Type>
+    <Type Name="rc_richpresence_lookup_t">
+        <DisplayString>{name,na}</DisplayString>
+        <Expand>
+            <Item Name="name">name</Item>
+            <Item Name="format">*((__rc_format_enum_t*)&amp;format)</Item>
+            <Item Name="default_label" Condition="format>101">default_label</Item>
+            <TreeItems>
+                <HeadPointer>root</HeadPointer>
+                <LeftPointer>left</LeftPointer>
+                <RightPointer>right</RightPointer>
+                <ValueNode>this</ValueNode>
+            </TreeItems>
+        </Expand>
+    </Type>
+    <Type Name="__rc_richpresence_lookup_list_t">
+        <DisplayString Condition="first_lookup==0">{{NULL}}</DisplayString>
+        <DisplayString>{(void*)&amp;first_lookup,na}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>first_lookup</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
+    <Type Name="rc_richpresence_t">
+        <Expand>
+            <Item Name="displays">((__rc_richpresence_display_list_t*)&amp;first_display)</Item>
+            <Item Name="lookups">((__rc_richpresence_lookup_list_t*)&amp;first_lookup)</Item>
         </Expand>
     </Type>
     <Type Name="__rc_value_list_t">
@@ -492,6 +485,25 @@
             <Item Name="measured_as_percent">*((__rc_bool_enum_t*)&amp;measured_as_percent)</Item>
         </Expand>
     </Type>
+    <Type Name="rc_buffer_chunk_t">
+        <DisplayString>{{used={write-start} size={end-start}}}</DisplayString>
+        <Expand>
+            <Item Name="[size]">end-start</Item>
+            <Item Name="[used]">write-start</Item>
+            <Item Name="[available]">end-write</Item>
+            <Item Name="next">next</Item>
+        </Expand>
+    </Type>
+    <Type Name="rc_buffer_t">
+        <DisplayString></DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>&amp;chunk</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
     <Type Name="__rc_runtime_trigger_list_t">
         <DisplayString>{{count={runtime.trigger_count}}}</DisplayString>
         <Expand>
@@ -516,8 +528,7 @@
             <Item Name="triggers">*((__rc_runtime_trigger_list_t*)this)</Item>
             <Item Name="lboards">*((__rc_runtime_lboard_list_t*)this)</Item>
             <Item Name="richpresence">richpresence</Item>
-            <Item Name="memrefs">((__rc_memref_list_t*)&amp;memrefs)</Item>
-            <Item Name="variables">((__rc_value_list_t*)&amp;variables)</Item>
+            <Item Name="memrefs">memrefs</Item>
         </Expand>
     </Type>
 </AutoVisualizer>

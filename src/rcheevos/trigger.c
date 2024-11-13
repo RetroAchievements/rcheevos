@@ -70,14 +70,17 @@ rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, 
   if (!buffer || !memaddr)
     return NULL;
 
+  // first pass: determine how many memrefs are needed
   rc_init_preparse_state(&preparse, L, funcs_ndx);
   trigger = RC_ALLOC(rc_trigger_with_memrefs_t, &preparse.parse);
   rc_parse_trigger_internal(&trigger->trigger, &preparse_memaddr, &preparse.parse);
 
+  // allocate the trigger and memrefs
   rc_init_parse_state(&preparse.parse, buffer, L, funcs_ndx);
   trigger = RC_ALLOC(rc_trigger_with_memrefs_t, &preparse.parse);
   rc_preparse_alloc_memrefs(&trigger->memrefs, &preparse);
 
+  // parse the trigger
   rc_parse_trigger_internal(&trigger->trigger, &memaddr, &preparse.parse);
   trigger->trigger.has_memrefs = 1;
 
