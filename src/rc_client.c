@@ -2371,6 +2371,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   fetch_game_data_request.username = client->user.username;
   fetch_game_data_request.api_token = client->user.token;
   fetch_game_data_request.game_id = load_state->hash->game_id;
+  fetch_game_data_request.game_hash = load_state->hash->hash;
 
   result = rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request);
   if (result != RC_OK) {

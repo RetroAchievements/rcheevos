@@ -73,6 +73,8 @@ typedef struct rc_api_fetch_game_data_request_t {
   const char* api_token;
   /* The unique identifier of the game */
   uint32_t game_id;
+  /* The hash associated to the game being played */
+  const char* game_hash;
 }
 rc_api_fetch_game_data_request_t;
 

@@ -107,6 +107,42 @@ static void test_init_fetch_game_data_request() {
   rc_api_destroy_request(&request);
 }
 
+static void test_init_fetch_game_data_request_game_hash() {
+  rc_api_fetch_game_data_request_t fetch_game_data_request;
+  rc_api_request_t request;
+
+  memset(&fetch_game_data_request, 0, sizeof(fetch_game_data_request));
+  fetch_game_data_request.username = "Username";
+  fetch_game_data_request.api_token = "API_TOKEN";
+  fetch_game_data_request.game_id = 1234;
+  fetch_game_data_request.game_hash = "ABCDEF0123456789";
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=patch&u=Username&t=API_TOKEN&g=1234&m=ABCDEF0123456789");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_game_data_request_game_hash_empty(void) {
+  rc_api_fetch_game_data_request_t fetch_game_data_request;
+  rc_api_request_t request;
+
+  memset(&fetch_game_data_request, 0, sizeof(fetch_game_data_request));
+  fetch_game_data_request.username = "Username";
+  fetch_game_data_request.api_token = "API_TOKEN";
+  fetch_game_data_request.game_id = 1234;
+  fetch_game_data_request.game_hash = "";
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=patch&u=Username&t=API_TOKEN&g=1234");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_init_fetch_game_data_request_no_id() {
   rc_api_fetch_game_data_request_t fetch_game_data_request;
   rc_api_request_t request;
@@ -1270,6 +1306,8 @@ void test_rapi_runtime(void) {
 
   /* patch */
   TEST(test_init_fetch_game_data_request);
+  TEST(test_init_fetch_game_data_request_game_hash);
+  TEST(test_init_fetch_game_data_request_game_hash_empty);
   TEST(test_init_fetch_game_data_request_no_id);
 
   TEST(test_process_fetch_game_data_response_empty);

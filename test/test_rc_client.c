@@ -645,7 +645,7 @@ static void mock_client_load_game(const char* patchdata, const char* unlocks)
   reset_mock_api_handlers();
   event_count = 0;
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlocks);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -659,7 +659,7 @@ static void mock_client_load_game_softcore(const char* patchdata, const char* un
   reset_mock_api_handlers();
   event_count = 0;
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=0&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlocks);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -679,7 +679,7 @@ static rc_client_t* mock_client_game_loaded(const char* patchdata, const char* u
 
 static void mock_client_load_subset(const char* patchdata, const char* unlocks)
 {
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345&m=%5bSUBSET2345%5d", patchdata);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&h=1&m=%5bSUBSET2345%5d&l=" RCHEEVOS_VERSION_STRING, unlocks);
 
   rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success, g_callback_userdata);
@@ -1071,7 +1071,7 @@ static void test_logout_during_fetch_game(void)
     rc_client_callback_expect_no_longer_active, g_callback_userdata);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   rc_client_logout(g_client);
 
@@ -1144,7 +1144,7 @@ static void test_get_user_game_summary_encore_mode(void)
   rc_client_set_unofficial_enabled(g_client, 1);
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_exhaustive);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlock_6_8h_and_9);
 
   rc_client_set_encore_mode_enabled(g_client, 1);
@@ -1402,7 +1402,7 @@ static void test_load_game(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
@@ -1480,10 +1480,10 @@ static void test_load_game_async_login(void)
   /* login completion will trigger process to continue */
   async_api_response("r=login2&u=Username&p=Pa%24%24word",
 	    "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
-  assert_api_pending("r=patch&u=Username&t=ApiToken&g=1234");
+  assert_api_pending("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF");
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA);
 
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION);
 
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
@@ -1606,7 +1606,7 @@ static void test_load_game_gameid_failure(void)
 
   reset_mock_api_handlers();
   mock_api_error("r=gameid&m=0123456789ABCDEF", response_429, 429);
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
@@ -1624,7 +1624,7 @@ static void test_load_game_patch_failure(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_error("r=patch&u=Username&t=ApiToken&g=1234", response_429, 429);
+  mock_api_error("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", response_429, 429);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
@@ -1642,7 +1642,7 @@ static void test_load_game_startsession_failure(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, response_429, 429);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
@@ -1660,7 +1660,7 @@ static void test_load_game_startsession_timeout(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "", 504);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_timeout, g_callback_userdata);
@@ -1678,7 +1678,7 @@ static void test_load_game_startsession_custom_timeout(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING,
     "Request has timed out.", RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR);
 
@@ -1731,7 +1731,7 @@ static void test_load_game_patch_aborted(void)
 
   rc_client_abort_async(g_client, handle);
 
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   assert_api_not_called("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -1754,7 +1754,7 @@ static void test_load_game_startsession_aborted(void)
     rc_client_callback_expect_uncalled, g_callback_userdata);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   rc_client_abort_async(g_client, handle);
 
@@ -1776,7 +1776,7 @@ static void test_load_game_while_spectating(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   /* spectator mode should not start a session or fetch unlocks */
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -1862,7 +1862,7 @@ static void test_load_game_process_game_data(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -1927,7 +1927,7 @@ static void test_load_game_destroy_while_fetching_game_data(void)
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   rc_client_destroy(g_client);
 
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 }
 
 static void test_load_unknown_game(void)
@@ -2078,7 +2078,7 @@ static void test_unload_game_while_fetching_game_data(void)
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   rc_client_unload_game(g_client);
 
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -2095,7 +2095,7 @@ static void test_unload_game_while_starting_session(void)
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_uncalled, g_callback_userdata);
 
   async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   rc_client_unload_game(g_client);
 
@@ -2141,7 +2141,7 @@ static void test_identify_and_load_game_console_specified(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
@@ -2174,7 +2174,7 @@ static void test_identify_and_load_game_console_not_specified(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
@@ -2477,7 +2477,7 @@ static void test_identify_and_load_game_unknown_hash_client_provided(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
@@ -2511,7 +2511,7 @@ static void test_identify_and_load_game_multihash(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "abc.dsk",
@@ -3202,7 +3202,7 @@ static void test_change_media_from_hash_while_loading(void)
 
   /* media request won't occur until patch data is received */
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
@@ -3234,7 +3234,7 @@ static void test_change_media_from_hash_while_loading_later(void)
 
   /* get past fetching the patch data so there's a valid console for the change media call */
   async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
 
   /* change_media should immediately attempt to resolve the new hash */
   rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
@@ -3362,12 +3362,12 @@ static void test_load_subset(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata_subset);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345&m=%5bSUBSET2345%5d", patchdata_subset);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&h=1&m=%5bSUBSET2345%5d&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success, g_callback_userdata);
@@ -4554,11 +4554,11 @@ static void test_achievement_list_subset_buckets_subset_first(void)
   g_client = mock_client_logged_in();
   reset_mock_api_handlers();
   mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":2345}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata_subset2);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345&m=0123456789ABCDEF", patchdata_subset2);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlock_5502);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
 
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
+  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234&m=%5bSUBSET1234%5d", patchdata_exhaustive);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=%5bSUBSET1234%5d&l=" RCHEEVOS_VERSION_STRING, unlock_8);
   rc_client_begin_load_subset(g_client, 1234, rc_client_callback_expect_success, g_callback_userdata);
 
