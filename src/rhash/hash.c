@@ -1582,7 +1582,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   uint16_t ncch_version;
   uint32_t i;
   uint8_t primary_key_y[AES_KEYLEN], program_id[sizeof(uint64_t)];
-  uint8_t iv[AES_BLOCKLEN];
+  uint8_t iv[AES_BLOCKLEN], cia_iv[AES_BLOCKLEN];
   uint8_t exefs_section_name[8];
   uint64_t exefs_section_offset, exefs_section_size;
 
@@ -1710,32 +1710,22 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
 
   if (cia_aes)
   {
-    /* We have to decrypt the data between the header and the ExeFS so the CIA AES state is correct
-     * when we reach the ExeFS. This decrypted data is not included in the RetroAchievements hash */
+    /* CBC decryption works by setting the IV to the encrypted previous block.
+     * Normally this means we would need to decrypt the data between the header and the ExeFS so the CIA AES state is correct.
+     * However, we can abuse how CBC decryption works and just set the IV to last block we would otherwise decrypt.
+     * We don't care about the data betweeen the header and ExeFS, so this works fine. */
 
-    /* This should never happen in practice, but just in case */
-    if (exefs_offset > MAX_BUFFER_SIZE)
-      return rc_hash_error("Too much data required to decrypt in order to hash");
-
-    hash_buffer = (uint8_t*)malloc((uint32_t)exefs_offset);
-    if (!hash_buffer)
+    rc_file_seek(file_handle, (int64_t)exefs_offset - AES_BLOCKLEN, SEEK_CUR);
+    if (rc_file_read(file_handle, cia_iv, AES_BLOCKLEN) != AES_BLOCKLEN)
     {
-      snprintf((char*)header, 0x200, "Failed to allocate %u bytes", (unsigned)exefs_offset);
-      return rc_hash_error((const char*)header);
-    }
-
-    if (rc_file_read(file_handle, hash_buffer, (uint32_t)exefs_offset) != (uint32_t)exefs_offset)
-    {
-      free(hash_buffer);
       return rc_hash_error("Could not read NCCH data");
     }
 
-    AES_CBC_decrypt_buffer(cia_aes, hash_buffer, (uint32_t)exefs_offset);
-    free(hash_buffer);
+    AES_ctx_set_iv(cia_aes, cia_iv);
   }
   else
   {
-    /* No decryption needed, just skip over the in-between data */
+    /* No encryption present, just skip over the in-between data */
     rc_file_seek(file_handle, (int64_t)exefs_offset, SEEK_CUR);
   }
 
