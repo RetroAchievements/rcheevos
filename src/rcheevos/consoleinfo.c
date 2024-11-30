@@ -442,7 +442,7 @@ static const rc_memory_region_t _rc_memory_regions_famicom_disk_system[] = {
     { 0x4000U, 0x4017U, 0x4000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "APU and I/O register" },
     { 0x4018U, 0x401FU, 0x4018U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "APU and I/O test register" },
     { 0x4020U, 0x40FFU, 0x4020U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "FDS I/O registers"},
-    { 0x4100U, 0x5FFFU, 0x4100U, RC_MEMORY_TYPE_READONLY, "Cartridge data"}, // varies by mapper
+    { 0x4100U, 0x5FFFU, 0x4100U, RC_MEMORY_TYPE_READONLY, "Cartridge data"}, /* varies by mapper */
     { 0x6000U, 0xDFFFU, 0x6000U, RC_MEMORY_TYPE_SYSTEM_RAM, "FDS RAM"},
     { 0xE000U, 0xFFFFU, 0xE000U, RC_MEMORY_TYPE_READONLY, "FDS BIOS ROM"},
 };
