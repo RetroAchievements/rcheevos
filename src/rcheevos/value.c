@@ -216,7 +216,7 @@ void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_st
   else
     rc_parse_legacy_value(self, memaddr, parse);
 
-  if (parse->offset >= 0) {
+  if (parse->offset >= 0 && parse->buffer) {
     self->name = "(unnamed)";
     self->value.value = self->value.prior = 0;
     self->value.memref_type = RC_MEMREF_TYPE_VALUE;
@@ -266,7 +266,7 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int 
   value = RC_ALLOC(rc_value_with_memrefs_t, &preparse.parse);
   rc_parse_value_internal(&value->value, &preparse_memaddr, &preparse.parse);
 
-  rc_init_parse_state(&preparse.parse, buffer, L, funcs_ndx);
+  rc_reset_parse_state(&preparse.parse, buffer, L, funcs_ndx);
   value = RC_ALLOC(rc_value_with_memrefs_t, &preparse.parse);
   rc_preparse_alloc_memrefs(&value->memrefs, &preparse);
 

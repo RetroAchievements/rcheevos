@@ -1782,7 +1782,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     }
     else {
       /* populate the item, using the communal memrefs pool */
-      rc_init_parse_state(&preparse.parse, rc_buffer_reserve(buffer, trigger_size), NULL, 0);
+      rc_reset_parse_state(&preparse.parse, rc_buffer_reserve(buffer, trigger_size), NULL, 0);
       rc_preparse_reserve_memrefs(&preparse, load_state->game->runtime.memrefs);
       achievement->trigger = RC_ALLOC(rc_trigger_t, &preparse.parse);
       memaddr = read->definition;
@@ -1927,7 +1927,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
     }
     else {
       /* populate the item, using the communal memrefs pool */
-      rc_init_parse_state(&preparse.parse, rc_buffer_reserve(buffer, lboard_size), NULL, 0);
+      rc_reset_parse_state(&preparse.parse, rc_buffer_reserve(buffer, lboard_size), NULL, 0);
       rc_preparse_reserve_memrefs(&preparse, load_state->game->runtime.memrefs);
       leaderboard->lboard = RC_ALLOC(rc_lboard_t, &preparse.parse);
       rc_parse_lboard_internal(leaderboard->lboard, memaddr, &preparse.parse);

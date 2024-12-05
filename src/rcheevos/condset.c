@@ -114,6 +114,8 @@ static int rc_find_next_classification(const char* memaddr) {
 
   do {
     rc_parse_condition_internal(&condition, &memaddr, &parse);
+    if (parse.offset < 0)
+      break;
 
     classification = rc_classify_condition(&condition);
     switch (classification) {

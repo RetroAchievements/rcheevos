@@ -80,13 +80,10 @@ void rc_runtime_destroy(rc_runtime_t* self) {
     self->lboard_count = self->lboard_capacity = 0;
   }
 
-  while (self->richpresence) {
-    rc_runtime_richpresence_t* previous = self->richpresence->previous;
-
+  if (self->richpresence) {
     if (self->richpresence->buffer)
       free(self->richpresence->buffer);
     free(self->richpresence);
-    self->richpresence = previous;
   }
 
   if (self->memrefs)
@@ -182,7 +179,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, uint32_t id, const char*
     return RC_OUT_OF_MEMORY;
 
   /* populate the item, using the communal memrefs pool */
-  rc_init_parse_state(&preparse.parse, trigger_buffer, L, funcs_idx);
+  rc_reset_parse_state(&preparse.parse, trigger_buffer, L, funcs_idx);
   rc_preparse_reserve_memrefs(&preparse, self->memrefs);
   trigger = RC_ALLOC(rc_trigger_t, &preparse.parse);
   rc_parse_trigger_internal(trigger, &memaddr, &preparse.parse);
@@ -362,7 +359,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, uint32_t id, const char* mema
     return RC_OUT_OF_MEMORY;
 
   /* populate the item, using the communal memrefs pool */
-  rc_init_parse_state(&preparse.parse, lboard_buffer, L, funcs_idx);
+  rc_reset_parse_state(&preparse.parse, lboard_buffer, L, funcs_idx);
   rc_preparse_reserve_memrefs(&preparse, self->memrefs);
   lboard = RC_ALLOC(rc_lboard_t, &preparse.parse);
   rc_parse_lboard_internal(lboard, memaddr, &preparse.parse);
@@ -421,8 +418,6 @@ int rc_runtime_format_lboard_value(char* buffer, int size, int32_t value, int fo
 
 int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua_State* L, int funcs_idx) {
   rc_richpresence_t* richpresence;
-  rc_runtime_richpresence_t* previous;
-  rc_runtime_richpresence_t** previous_ptr;
   rc_preparse_state_t preparse;
   uint8_t md5[16];
   int size;
@@ -433,28 +428,12 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   rc_runtime_checksum(script, md5);
 
   /* look for existing match */
-  previous_ptr = NULL;
-  previous = self->richpresence;
-  while (previous) {
-    if (previous && self->richpresence->richpresence && memcmp(self->richpresence->md5, md5, 16) == 0) {
-      /* unchanged. reset all of the conditions */
-      rc_reset_richpresence(self->richpresence->richpresence);
+  if (self->richpresence && self->richpresence->richpresence && memcmp(self->richpresence->md5, md5, 16) == 0) {
+    /* unchanged. reset all of the conditions */
+    rc_reset_richpresence(self->richpresence->richpresence);
 
-      /* move to front of linked list*/
-      if (previous_ptr) {
-        *previous_ptr = previous->previous;
-        free(self->richpresence->buffer);
-        previous->previous = self->richpresence->previous;
-
-        self->richpresence = previous;
-      }
-
-      /* return success*/
-      return RC_OK;
-    }
-
-    previous_ptr = &previous->previous;
-    previous = previous->previous;
+    /* return success*/
+    return RC_OK;
   }
 
   /* no existing match found, parse script */
@@ -469,10 +448,9 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
     return size;
 
   /* if there's a previous script, free it */
-  previous = self->richpresence;
-  if (previous) {
-    free(previous->buffer);
-    previous = previous->previous;
+  if (self->richpresence) {
+    free(self->richpresence->buffer);
+    free(self->richpresence);
   }
 
   /* allocate and process the new script */
@@ -480,14 +458,13 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   if (!self->richpresence)
     return RC_OUT_OF_MEMORY;
 
-  self->richpresence->previous = previous;
   memcpy(self->richpresence->md5, md5, sizeof(md5));
 
   self->richpresence->buffer = malloc(size);
   if (!self->richpresence->buffer)
     return RC_OUT_OF_MEMORY;
 
-  rc_init_parse_state(&preparse.parse, self->richpresence->buffer, L, funcs_idx);
+  rc_reset_parse_state(&preparse.parse, self->richpresence->buffer, L, funcs_idx);
   rc_preparse_reserve_memrefs(&preparse, self->memrefs);
   richpresence = RC_ALLOC(rc_richpresence_t, &preparse.parse);
   preparse.parse.variables = &richpresence->values;
@@ -497,7 +474,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   if (preparse.parse.offset < 0) {
     free(self->richpresence->buffer);
     free(self->richpresence);
-    self->richpresence = previous;
+    self->richpresence = NULL;
     return preparse.parse.offset;
   }
 

@@ -274,6 +274,7 @@ typedef struct rc_preparse_state_t {
 
 void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx);
 void rc_init_parse_state_memrefs(rc_parse_state_t* parse, rc_memrefs_t* memrefs);
+void rc_reset_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx);
 void rc_destroy_parse_state(rc_parse_state_t* parse);
 void rc_init_preparse_state(rc_preparse_state_t* preparse, lua_State* L, int funcs_ndx);
 void rc_preparse_alloc_memrefs(rc_memrefs_t* memrefs, rc_preparse_state_t* preparse);

@@ -152,7 +152,7 @@ rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, in
   lboard = RC_ALLOC(rc_lboard_with_memrefs_t, &preparse.parse);
   rc_parse_lboard_internal(&lboard->lboard, memaddr, &preparse.parse);
 
-  rc_init_parse_state(&preparse.parse, buffer, L, funcs_ndx);
+  rc_reset_parse_state(&preparse.parse, buffer, L, funcs_ndx);
   lboard = RC_ALLOC(rc_lboard_with_memrefs_t, &preparse.parse);
   rc_preparse_alloc_memrefs(&lboard->memrefs, &preparse);
 

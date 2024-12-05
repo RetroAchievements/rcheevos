@@ -31,6 +31,7 @@ static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t
   size = preparse.parse.offset;
   if (size < 0) {
     parse->offset = size;
+    rc_destroy_preparse_state(&preparse);
     return;
   }
 
@@ -38,7 +39,7 @@ static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t
   rc_preparse_copy_memrefs(parse, &preparse.memrefs);
 
   /* parse the value into the scratch buffer so we can look at it */
-  rc_init_parse_state(&preparse.parse, rc_buffer_alloc(&preparse.parse.scratch.buffer, (size_t)size), NULL, 0);
+  rc_reset_parse_state(&preparse.parse, rc_buffer_alloc(&preparse.parse.scratch.buffer, (size_t)size), NULL, 0);
   preparse.parse.memrefs = parse->memrefs;
   preparse.parse.existing_memrefs = parse->existing_memrefs;
   value = RC_ALLOC(rc_value_t, &preparse.parse);
@@ -672,7 +673,7 @@ rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_S
   preparse.parse.variables = &richpresence->richpresence.values;
   rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
 
-  rc_init_parse_state(&preparse.parse, buffer, L, funcs_ndx);
+  rc_reset_parse_state(&preparse.parse, buffer, L, funcs_ndx);
   richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
   preparse.parse.variables = &richpresence->richpresence.values;
   rc_preparse_alloc_memrefs(&richpresence->memrefs, &preparse);

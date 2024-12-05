@@ -63,7 +63,6 @@ rc_runtime_lboard_t;
 typedef struct rc_runtime_richpresence_t {
   rc_richpresence_t* richpresence;
   void* buffer;
-  struct rc_runtime_richpresence_t* previous;
   uint8_t md5[16];
 }
 rc_runtime_richpresence_t;

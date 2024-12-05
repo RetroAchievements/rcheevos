@@ -273,10 +273,8 @@ void rc_preparse_copy_memrefs(rc_parse_state_t* parse, rc_memrefs_t* memrefs)
   }
 }
 
-void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx)
+void rc_reset_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx)
 {
-  /* could use memset here, but rc_parse_state_t contains a 512 byte buffer that doesn't need to be initialized */
-  parse->offset = 0;
 #ifndef RC_DISABLE_LUA
   parse->L = L;
   parse->funcs_ndx = funcs_ndx;
@@ -284,10 +282,10 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   (void)L;
   (void)funcs_ndx;
 #endif
+
   parse->buffer = buffer;
-  parse->scratch.strings = NULL;
-  rc_buffer_init(&parse->scratch.buffer);
-  memset(&parse->scratch.objs, 0, sizeof(parse->scratch.objs));
+
+  parse->offset = 0;
   parse->memrefs = NULL;
   parse->existing_memrefs = NULL;
   parse->variables = NULL;
@@ -300,6 +298,17 @@ void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, in
   parse->is_value = 0;
   parse->has_required_hits = 0;
   parse->measured_as_percent = 0;
+
+  parse->scratch.strings = NULL;
+}
+
+void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, lua_State* L, int funcs_ndx)
+{
+  /* could use memset here, but rc_parse_state_t contains a 512 byte buffer that doesn't need to be initialized */
+  rc_buffer_init(&parse->scratch.buffer);
+  memset(&parse->scratch.objs, 0, sizeof(parse->scratch.objs));
+
+  rc_reset_parse_state(parse, buffer, L, funcs_ndx);
 }
 
 void rc_destroy_parse_state(rc_parse_state_t* parse)
