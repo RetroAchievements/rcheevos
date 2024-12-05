@@ -217,8 +217,7 @@ static void rc_preparse_sync_operand(rc_operand_t* operand, rc_parse_state_t* pa
     const rc_memref_list_t* memref_list = &memrefs->memrefs;
     const rc_modified_memref_list_t* modified_memref_list = &memrefs->modified_memrefs;
 
-    for (; memref_list; memref_list = memref_list->next)
-    {
+    for (; memref_list; memref_list = memref_list->next) {
       const rc_memref_t* memref = memref_list->items;
       const rc_memref_t* memref_end = memref + memref_list->count;
 

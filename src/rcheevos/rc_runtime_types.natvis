@@ -396,69 +396,18 @@
             <Item Name="display_type">*((__rc_format_enum_t*)&amp;display_type)</Item>
         </Expand>
     </Type>
-    <Type Name="__rc_richpresence_display_part_list_t">
-        <DisplayString Condition="display->next->next!=0">{display,na} {display->next,na} {display->next->next,na}</DisplayString>
-        <DisplayString Condition="display->next!=0">{display,na} {display->next,na}</DisplayString>
-        <DisplayString>{display,na}</DisplayString>
-        <Expand>
-            <LinkedListItems>
-                <HeadPointer>display</HeadPointer>
-                <NextPointer>next</NextPointer>
-                <ValueNode>this</ValueNode>
-            </LinkedListItems>
-        </Expand>
-    </Type>
-	<Type Name="__rc_format_enum_t">
-        <DisplayString Condition="value==RC_FORMAT_FRAMES">{RC_FORMAT_FRAMES}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_SECONDS">{RC_FORMAT_SECONDS}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_CENTISECS">{RC_FORMAT_CENTISECS}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_SCORE">{RC_FORMAT_SCORE}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_VALUE">{RC_FORMAT_VALUE}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_MINUTES">{RC_FORMAT_MINUTES}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_SECONDS_AS_MINUTES">{RC_FORMAT_SECONDS_AS_MINUTES}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_FLOAT1">{RC_FORMAT_FLOAT1}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_FLOAT2">{RC_FORMAT_FLOAT2}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_FLOAT3">{RC_FORMAT_FLOAT3}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_FLOAT4">{RC_FORMAT_FLOAT4}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_FLOAT5">{RC_FORMAT_FLOAT5}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_FLOAT6">{RC_FORMAT_FLOAT6}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_FIXED1">{RC_FORMAT_FIXED1}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_FIXED2">{RC_FORMAT_FIXED2}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_FIXED3">{RC_FORMAT_FIXED3}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_TENS">{RC_FORMAT_TENS}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_HUNDREDS">{RC_FORMAT_HUNDREDS}</DisplayString>
-        <DisplayString Condition="value==RC_FORMAT_THOUSANDS">{RC_FORMAT_THOUSANDS}</DisplayString>
-        <DisplayString Condition="value==101">RC_FORMAT_STRING (101)</DisplayString>
-        <DisplayString Condition="value==102">RC_FORMAT_LOOKUP (102)</DisplayString>
-        <DisplayString Condition="value==103">RC_FORMAT_UNKNOWN_MACRO (103)</DisplayString>
-        <DisplayString Condition="value==104">RC_FORMAT_ASCIICHAR (104)</DisplayString>
-        <DisplayString Condition="value==105">RC_FORMAT_UNICODECHAR (105)</DisplayString>
-        <DisplayString>unknown ({value})</DisplayString>
-    </Type>
-    <Type Name="rc_richpresence_display_part_t">
-        <DisplayString Condition="display_type==101">{text,s}</DisplayString>
-        <DisplayString Condition="display_type==103">[Unknown macro]{text,sb}</DisplayString>
-        <DisplayString Condition="lookup==0">@{text,sb}({value,na})</DisplayString>
-        <DisplayString>@{lookup->name,sb}({value,na})</DisplayString>
-        <Expand>
-            <Item Name="text" Condition="display_type==101||display_type==103">text</Item>
-            <Item Name="lookup" Condition="display_type!=101&amp;&amp;display_type!=103">lookup</Item>
-            <Item Name="value" Condition="display_type!=101&amp;&amp;display_type!=103">value</Item>
-            <Item Name="display_type">*((__rc_format_enum_t*)&amp;display_type)</Item>
-        </Expand>
-    </Type>
-    <Type Name="__rc_richpresence_display_part_list_t">
-        <DisplayString Condition="display->next->next!=0">{display,na} {display->next,na} {display->next->next,na}</DisplayString>
-        <DisplayString Condition="display->next!=0">{display,na} {display->next,na}</DisplayString>
-        <DisplayString>{display,na}</DisplayString>
-        <Expand>
-            <LinkedListItems>
-                <HeadPointer>display</HeadPointer>
-                <NextPointer>next</NextPointer>
-                <ValueNode>this</ValueNode>
-            </LinkedListItems>
-        </Expand>
-    </Type>
+	<Type Name="__rc_richpresence_display_part_list_t">
+		<DisplayString Condition="display->next->next!=0">{display,na} {display->next,na} {display->next->next,na}</DisplayString>
+		<DisplayString Condition="display->next!=0">{display,na} {display->next,na}</DisplayString>
+		<DisplayString>{display,na}</DisplayString>
+		<Expand>
+			<LinkedListItems>
+				<HeadPointer>display</HeadPointer>
+				<NextPointer>next</NextPointer>
+				<ValueNode>this</ValueNode>
+			</LinkedListItems>
+		</Expand>
+	</Type>
     <Type Name="rc_richpresence_display_t">
         <Expand>
             <Item Name="displays">*((__rc_richpresence_display_part_list_t*)&amp;display)</Item>
