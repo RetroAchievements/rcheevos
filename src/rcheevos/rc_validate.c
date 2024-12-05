@@ -17,6 +17,7 @@ static int rc_validate_memref(const rc_memref_t* memref, char result[], const si
 
   switch (console_id) {
     case RC_CONSOLE_NINTENDO:
+    case RC_CONSOLE_FAMICOM_DISK_SYSTEM:
       if (memref->address >= 0x0800 && memref->address <= 0x1FFF) {
         snprintf(result, result_size, "Mirror RAM may not be exposed by emulator (address %04X)", memref->address);
         return 0;

@@ -119,7 +119,8 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 78, "Nintendo DSi");
   TEST_PARAMS2(test_name, 79, "TI-83");
   TEST_PARAMS2(test_name, 80, "Uzebox");
-  TEST_PARAMS2(test_name, 81, "Unknown");
+  TEST_PARAMS2(test_name, 81, "Famicom Disk System");
+  TEST_PARAMS2(test_name, 82, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
@@ -144,6 +145,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_memory, RC_CONSOLE_DREAMCAST, 0x01000000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER, 0x001800);
   TEST_PARAMS2(test_memory, RC_CONSOLE_FAIRCHILD_CHANNEL_F, 0x010C40);
+  TEST_PARAMS2(test_memory, RC_CONSOLE_FAMICOM_DISK_SYSTEM, 0x010000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAMEBOY, 0x034000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAMEBOY_COLOR, 0x034000);
   TEST_PARAMS2(test_memory, RC_CONSOLE_GAMEBOY_ADVANCE, 0x058000);

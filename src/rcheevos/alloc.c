@@ -240,7 +240,7 @@ static void rc_preparse_sync_operand(rc_operand_t* operand, rc_parse_state_t* pa
             &modified_memref->parent, modified_memref->modifier_type, &modified_memref->modifier);
 
           operand->value.memref = &dst_modified_memref->memref;
-          return;
+          break;
         }
       }
     }

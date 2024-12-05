@@ -921,6 +921,63 @@ static void test_memref_indirect()
   rc_runtime_destroy(&runtime);
 }
 
+static void test_memref_indirect_delta()
+{
+  uint8_t ram[] = { 1, 2, 3, 4, 5 };
+  uint8_t buffer1[512];
+  uint8_t buffer2[512];
+  memory_t memory;
+  rc_runtime_t runtime;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  rc_runtime_init(&runtime);
+
+  /* byte(byte(2) + 1) == 5 - third condition just prevents the achievement from triggering*/
+  assert_activate_achievement(&runtime, 1, "I:0xH0002_d0xH0001=3_0xH0004=99");
+  assert_do_frame(&runtime, &memory); /* $2 = 3, $(3+1) = 5, delta = 0 */
+  ram[1] = 3;
+  ram[2] = 0;
+  assert_do_frame(&runtime, &memory); /* $2 = 0, $(0+1) = 3, delta = 5 */
+  assert_do_frame(&runtime, &memory); /* $2 = 0, $(0+1) = 3, delta = 3 */
+
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 1);
+  assert_cond_memref(&runtime, 1, 0, 0, 0, 3, 0);
+  assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
+
+  assert_serialize(&runtime, buffer1, sizeof(buffer1));
+
+  assert_do_frame(&runtime, &memory); /* $2 = 0, $(0+1) = 3, delta = 3 */
+  ram[1] = 6;
+  ram[2] = 1;
+  assert_do_frame(&runtime, &memory); /* $2 = 1, $(1+1) = 1, delta = 3 */
+  assert_do_frame(&runtime, &memory); /* $2 = 1, $(1+1) = 1, delta = 1 */
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 3);
+  assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 0);
+  assert_cond_memref(&runtime, 1, 0, 1, 1, 3, 0);
+
+  assert_serialize(&runtime, buffer2, sizeof(buffer2));
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer1);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 1);
+  assert_cond_memref(&runtime, 1, 0, 0, 0, 3, 0);
+  assert_cond_memref(&runtime, 1, 0, 1, 3, 5, 0);
+
+  reset_runtime(&runtime);
+  assert_deserialize(&runtime, buffer2);
+  assert_hitcount(&runtime, 1, 0, 0, 0);
+  assert_hitcount(&runtime, 1, 0, 1, 3);
+  assert_cond_memref(&runtime, 1, 0, 0, 1, 0, 0);
+  assert_cond_memref(&runtime, 1, 0, 1, 1, 3, 0);
+
+  rc_runtime_destroy(&runtime);
+}
+
 static void test_memref_double_indirect()
 {
   uint8_t ram[] = { 1, 2, 3, 4, 5 };
@@ -1736,6 +1793,7 @@ void test_runtime_progress(void) {
   TEST(test_memref_shared_address);
   TEST(test_memref_addsource);
   TEST(test_memref_indirect);
+  TEST(test_memref_indirect_delta);
   TEST(test_memref_double_indirect);
 
   TEST(test_multiple_achievements);

@@ -72,10 +72,10 @@ typedef struct __rc_value_type_enum_t { uint8_t value; } __rc_value_type_enum_t;
 typedef struct __rc_memref_type_enum_t { uint8_t value; } __rc_memref_type_enum_t;
 typedef struct __rc_condition_enum_t { uint8_t value; } __rc_condition_enum_t;
 typedef struct __rc_condition_enum_str_t { uint8_t value; } __rc_condition_enum_str_t;
+typedef struct __rc_condset_list_t { rc_condset_t* first_condset; } __rc_condset_list_t;
 typedef struct __rc_operator_enum_t { uint8_t value; } __rc_operator_enum_t;
 typedef struct __rc_operator_enum_str_t { uint8_t value; } __rc_operator_enum_str_t;
 typedef struct __rc_operand_memref_t { rc_operand_t operand; } __rc_operand_memref_t; /* requires &rc_operand_t to be the same as &rc_operand_t.value.memref */
-typedef struct __rc_condset_list_t { rc_condset_t* first_condset; } __rc_condset_list_t;
 typedef struct __rc_value_list_t { rc_value_t* first_value; } __rc_value_list_t;
 typedef struct __rc_trigger_state_enum_t { uint8_t value; } __rc_trigger_state_enum_t;
 typedef struct __rc_lboard_state_enum_t { uint8_t value; } __rc_lboard_state_enum_t;
@@ -164,10 +164,10 @@ typedef struct {
       __rc_memref_type_enum_t memref_type;
       __rc_condition_enum_t condition;
       __rc_condition_enum_str_t condition_str;
+      __rc_condset_list_t condset_list;
       __rc_operator_enum_t oper;
       __rc_operator_enum_str_t oper_str;
       __rc_operand_memref_t operand_memref;
-      __rc_condset_list_t condset_list;
       __rc_value_list_t value_list;
       __rc_trigger_state_enum_t trigger_state;
       __rc_lboard_state_enum_t lboard_state;
@@ -280,6 +280,8 @@ void rc_preparse_alloc_memrefs(rc_memrefs_t* memrefs, rc_preparse_state_t* prepa
 void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* memrefs);
 void rc_preparse_copy_memrefs(rc_parse_state_t* parse, rc_memrefs_t* memrefs);
 void rc_destroy_preparse_state(rc_preparse_state_t *preparse);
+void rc_copy_memrefs_into_parse_state(rc_parse_state_t* parse, rc_memref_t* memrefs);
+void rc_sync_operand(rc_operand_t* operand, rc_parse_state_t* parse, const rc_memref_t* memrefs);
 
 void* rc_alloc(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment, rc_scratch_t* scratch, uint32_t scratch_object_pointer_offset);
 void* rc_alloc_scratch(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment, rc_scratch_t* scratch, uint32_t scratch_object_pointer_offset);
