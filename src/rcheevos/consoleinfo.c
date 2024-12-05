@@ -72,6 +72,9 @@ const char* rc_console_name(uint32_t console_id)
     case RC_CONSOLE_FAIRCHILD_CHANNEL_F:
       return "Fairchild Channel F";
 
+    case RC_CONSOLE_FAMICOM_DISK_SYSTEM:
+      return "Famicom Disk System";
+
     case RC_CONSOLE_FM_TOWNS:
       return "FM Towns";
 
@@ -427,6 +430,24 @@ static const rc_memory_region_t _rc_memory_regions_fairchild_channel_f[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_fairchild_channel_f = { _rc_memory_regions_fairchild_channel_f, 4 };
 
+/* ===== Famicon Disk System ===== */
+/* https://fms.komkon.org/EMUL8/NES.html */
+static const rc_memory_region_t _rc_memory_regions_famicom_disk_system[] = {
+    { 0x0000U, 0x07FFU, 0x0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x0800U, 0x0FFFU, 0x0000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirror RAM" }, /* duplicates memory from $0000-$07FF */
+    { 0x1000U, 0x17FFU, 0x0000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirror RAM" }, /* duplicates memory from $0000-$07FF */
+    { 0x1800U, 0x1FFFU, 0x0000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirror RAM" }, /* duplicates memory from $0000-$07FF */
+    { 0x2000U, 0x2007U, 0x2000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "PPU Register" },
+    { 0x2008U, 0x3FFFU, 0x2008U, RC_MEMORY_TYPE_VIRTUAL_RAM, "Mirrored PPU Register" }, /* repeats every 8 bytes */
+    { 0x4000U, 0x4017U, 0x4000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "APU and I/O register" },
+    { 0x4018U, 0x401FU, 0x4018U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "APU and I/O test register" },
+    { 0x4020U, 0x40FFU, 0x4020U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "FDS I/O registers"},
+    { 0x4100U, 0x5FFFU, 0x4100U, RC_MEMORY_TYPE_READONLY, "Cartridge data"}, /* varies by mapper */
+    { 0x6000U, 0xDFFFU, 0x6000U, RC_MEMORY_TYPE_SYSTEM_RAM, "FDS RAM"},
+    { 0xE000U, 0xFFFFU, 0xE000U, RC_MEMORY_TYPE_READONLY, "FDS BIOS ROM"},
+};
+static const rc_memory_regions_t rc_memory_regions_famicom_disk_system = { _rc_memory_regions_famicom_disk_system, 12 };
+
 /* ===== GameBoy / MegaDuck ===== */
 static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
     { 0x000000U, 0x0000FFU, 0x000000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Interrupt vector" },
@@ -698,18 +719,6 @@ static const rc_memory_region_t _rc_memory_regions_nes[] = {
     { 0x4020U, 0x5FFFU, 0x4020U, RC_MEMORY_TYPE_READONLY, "Cartridge data"}, /* varies by mapper */
     { 0x6000U, 0x7FFFU, 0x6000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM"},
     { 0x8000U, 0xFFFFU, 0x8000U, RC_MEMORY_TYPE_READONLY, "Cartridge ROM"},
-
-    /* NOTE: these are the correct mappings for FDS: https://fms.komkon.org/EMUL8/NES.html
-     * 0x6000-0xDFFF is RAM on the FDS system and 0xE000-0xFFFF is FDS BIOS.
-     * If the core implements a memory map, we should still be able to translate the addresses
-     * correctly as we only use the classifications when a memory map is not provided
-
-    { 0x4020U, 0x40FFU, 0x4020U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "FDS I/O registers"},
-    { 0x4100U, 0x5FFFU, 0x4100U, RC_MEMORY_TYPE_READONLY, "Cartridge data"}, // varies by mapper
-    { 0x6000U, 0xDFFFU, 0x6000U, RC_MEMORY_TYPE_SYSTEM_RAM, "FDS RAM"},
-    { 0xE000U, 0xFFFFU, 0xE000U, RC_MEMORY_TYPE_READONLY, "FDS BIOS ROM"},
-
-     */
 };
 static const rc_memory_regions_t rc_memory_regions_nes = { _rc_memory_regions_nes, 11 };
 
@@ -1058,7 +1067,10 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
 
     case RC_CONSOLE_FAIRCHILD_CHANNEL_F:
       return &rc_memory_regions_fairchild_channel_f;
-  
+
+    case RC_CONSOLE_FAMICOM_DISK_SYSTEM:
+      return &rc_memory_regions_famicom_disk_system;
+
     case RC_CONSOLE_GAMEBOY:
       return &rc_memory_regions_gameboy;
 

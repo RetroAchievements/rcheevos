@@ -3132,6 +3132,7 @@ int rc_hash_generate_from_buffer(char hash[33], uint32_t console_id, const uint8
     case RC_CONSOLE_ATARI_LYNX:
       return rc_hash_lynx(hash, buffer, buffer_size);
 
+    case RC_CONSOLE_FAMICOM_DISK_SYSTEM:
     case RC_CONSOLE_NINTENDO:
       return rc_hash_nes(hash, buffer, buffer_size);
 
@@ -3437,6 +3438,7 @@ int rc_hash_generate_from_file(char hash[33], uint32_t console_id, const char* p
     case RC_CONSOLE_ARDUBOY:
     case RC_CONSOLE_ATARI_7800:
     case RC_CONSOLE_ATARI_LYNX:
+    case RC_CONSOLE_FAMICOM_DISK_SYSTEM:
     case RC_CONSOLE_NINTENDO:
     case RC_CONSOLE_PC_ENGINE:
     case RC_CONSOLE_SUPER_CASSETTEVISION:
@@ -3637,7 +3639,11 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         break;
 
       case 'a':
-        if (rc_path_compare_extension(ext, "a78"))
+        if (rc_path_compare_extension(ext, "a26"))
+        {
+          iterator->consoles[0] = RC_CONSOLE_ATARI_2600;
+        }
+        else if (rc_path_compare_extension(ext, "a78"))
         {
           iterator->consoles[0] = RC_CONSOLE_ATARI_7800;
         }
@@ -3779,7 +3785,7 @@ void rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* 
         }
         else if (rc_path_compare_extension(ext, "fds"))
         {
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO;
+          iterator->consoles[0] = RC_CONSOLE_FAMICOM_DISK_SYSTEM;
         }
         else if (rc_path_compare_extension(ext, "fd"))
         {
