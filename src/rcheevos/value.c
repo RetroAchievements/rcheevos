@@ -369,7 +369,7 @@ void rc_init_parse_state_variables(rc_parse_state_t* parse, rc_value_t** variabl
   *variables = 0;
 }
 
-rc_value_t* rc_alloc_helper_variable(const char* memaddr, size_t memaddr_len, rc_parse_state_t* parse)
+rc_value_t* rc_alloc_variable(const char* memaddr, size_t memaddr_len, rc_parse_state_t* parse)
 {
   rc_value_t** variables = parse->variables;
   rc_value_t* value;
