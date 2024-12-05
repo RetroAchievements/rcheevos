@@ -518,7 +518,7 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
   rc_value_t* value;
   uint32_t count, serialized_count;
   int result;
-  uint32_t i;
+  int32_t i;
 
   serialized_count = rc_runtime_progress_read_uint(progress);
   if (serialized_count == 0)
@@ -541,7 +541,7 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
       return RC_OUT_OF_MEMORY;
   }
 
-  i = count;
+  i = (int32_t)count;
   for (; value; value = value->next) {
     --i;
     pending_variables[i].variable = value;
@@ -551,12 +551,12 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
   result = RC_OK;
   for (; serialized_count > 0 && result == RC_OK; --serialized_count) {
     uint32_t djb2 = rc_runtime_progress_read_uint(progress);
-    for (i = count - 1; i >= 0; --i) {
+    for (i = (int32_t)count - 1; i >= 0; --i) {
       if (pending_variables[i].djb2 == djb2) {
         value = pending_variables[i].variable;
         result = rc_runtime_progress_read_variable(progress, value);
         if (result == RC_OK) {
-          if (i < count - 1)
+          if (i < (int32_t)count - 1)
             memcpy(&pending_variables[i], &pending_variables[count - 1], sizeof(struct rc_pending_value_t));
           count--;
         }

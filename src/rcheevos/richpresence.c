@@ -118,7 +118,7 @@ typedef struct rc_richpresence_builtin_macro_t {
   uint8_t display_type;
 } rc_richpresence_builtin_macro_t;
 
-static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const char* line, const char* endline, rc_parse_state_t* parse, rc_richpresence_lookup_t* first_lookup, rc_richpresence_t* richpresence) {
+static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const char* line, const char* endline, rc_parse_state_t* parse, rc_richpresence_lookup_t* first_lookup) {
   rc_richpresence_display_t* self;
   rc_richpresence_display_part_t* part;
   rc_richpresence_display_part_t** next;
@@ -594,7 +594,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
           ++ptr;
 
         if (ptr < endline) {
-          *nextdisplay = rc_parse_richpresence_display_internal(ptr + 1, endline, parse, firstlookup, self);
+          *nextdisplay = rc_parse_richpresence_display_internal(ptr + 1, endline, parse, firstlookup);
           if (parse->offset < 0)
             return;
           trigger = &((*nextdisplay)->trigger);
@@ -615,7 +615,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
     } while (1);
 
     /* non-conditional display: string */
-    *nextdisplay = rc_parse_richpresence_display_internal(line, endline, parse, firstlookup, self);
+    *nextdisplay = rc_parse_richpresence_display_internal(line, endline, parse, firstlookup);
     if (*nextdisplay) {
       hasdisplay = 1;
       nextdisplay = &((*nextdisplay)->next);

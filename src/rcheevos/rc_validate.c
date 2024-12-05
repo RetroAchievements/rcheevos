@@ -43,9 +43,9 @@ static int rc_validate_memref(const rc_memref_t* memref, char result[], const si
   return 1;
 }
 
-int rc_validate_memrefs(const rc_memrefs_t* memref, char result[], const size_t result_size, uint32_t max_address)
+int rc_validate_memrefs(const rc_memrefs_t* memrefs, char result[], const size_t result_size, uint32_t max_address)
 {
-  const rc_memref_list_t* memref_list = &memref->memrefs;
+  const rc_memref_list_t* memref_list = &memrefs->memrefs;
   do {
     const rc_memref_t* memref = memref_list->items;
     const rc_memref_t* memref_stop = memref + memref_list->count;
@@ -70,10 +70,10 @@ static uint32_t rc_console_max_address(uint32_t console_id)
   return 0xFFFFFFFF;
 }
 
-int rc_validate_memrefs_for_console(const rc_memrefs_t* memref, char result[], const size_t result_size, uint32_t console_id)
+int rc_validate_memrefs_for_console(const rc_memrefs_t* memrefs, char result[], const size_t result_size, uint32_t console_id)
 {
   const uint32_t max_address = rc_console_max_address(console_id);
-  const rc_memref_list_t* memref_list = &memref->memrefs;
+  const rc_memref_list_t* memref_list = &memrefs->memrefs;
   do
   {
     const rc_memref_t* memref = memref_list->items;
