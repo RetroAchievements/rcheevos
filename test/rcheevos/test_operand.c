@@ -187,6 +187,9 @@ static void test_parse_memory_references() {
   TEST_PARAMS4(test_parse_operand, "0xHABCD", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0xABCDU);
   TEST_PARAMS4(test_parse_operand, "0xhabcd", RC_OPERAND_ADDRESS, RC_MEMSIZE_8_BITS, 0xABCDU);
   TEST_PARAMS4(test_parse_operand, "fFABCD", RC_OPERAND_ADDRESS, RC_MEMSIZE_FLOAT, 0xABCDU);
+
+  /* doubled up prefix */
+  TEST_PARAMS3(test_parse_error_operand, "0x0xH1234", 0, RC_INVALID_MEMORY_OPERAND);
 }
 
 static void test_parse_delta_memory_references() {
