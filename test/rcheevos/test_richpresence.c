@@ -394,6 +394,9 @@ static void test_conditional_display_invalid() {
   int lines_read = 0;
   ASSERT_NUM_EQUALS(rc_richpresence_size_lines("Display:\n?I:0x0x0000=1?True\nFalse\n", &lines_read), RC_INVALID_MEMORY_OPERAND);
   ASSERT_NUM_EQUALS(lines_read, 2);
+
+  ASSERT_NUM_EQUALS(rc_richpresence_size_lines("Display:\n?0x0000=1 0x0001=2?True\nFalse\n", &lines_read), RC_INVALID_OPERATOR);
+  ASSERT_NUM_EQUALS(lines_read, 2);
 }
 
 static void test_macro_value_adjusted_negative() {
