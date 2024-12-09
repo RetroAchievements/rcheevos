@@ -698,13 +698,13 @@ void test_rc_libretro(void) {
   TEST_SUITE_BEGIN();
 
   /* rc_libretro_disallowed_settings */
-  TEST_PARAMS3(test_allowed_setting, "Beetle PSX", "beetle_psx_cpu_freq_scale", "750%");
-  TEST_PARAMS3(test_allowed_setting, "Beetle PSX", "beetle_psx_cpu_freq_scale", "100%(native)");
+  TEST_PARAMS3(test_allowed_setting,    "Beetle PSX", "beetle_psx_cpu_freq_scale", "750%");
+  TEST_PARAMS3(test_allowed_setting,    "Beetle PSX", "beetle_psx_cpu_freq_scale", "100%(native)");
   TEST_PARAMS3(test_disallowed_setting, "Beetle PSX", "beetle_psx_cpu_freq_scale", "99%");
   TEST_PARAMS3(test_disallowed_setting, "Beetle PSX", "beetle_psx_cpu_freq_scale", "50%");
 
-  TEST_PARAMS3(test_allowed_setting, "Beetle PSX HW", "beetle_psx_hw_cpu_freq_scale", "750%");
-  TEST_PARAMS3(test_allowed_setting, "Beetle PSX HW", "beetle_psx_hw_cpu_freq_scale", "100%(native)");
+  TEST_PARAMS3(test_allowed_setting,    "Beetle PSX HW", "beetle_psx_hw_cpu_freq_scale", "750%");
+  TEST_PARAMS3(test_allowed_setting,    "Beetle PSX HW", "beetle_psx_hw_cpu_freq_scale", "100%(native)");
   TEST_PARAMS3(test_disallowed_setting, "Beetle PSX HW", "beetle_psx_hw_cpu_freq_scale", "99%");
   TEST_PARAMS3(test_disallowed_setting, "Beetle PSX HW", "beetle_psx_hw_cpu_freq_scale", "50%");
 
@@ -734,8 +734,8 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_disallowed_setting, "FCEUmm", "fceumm_region", "Dendy");
   TEST_PARAMS3(test_allowed_setting,    "FCEUmm", "fceumm_palette", "default"); /* setting we don't care about */
 
-  TEST_PARAMS3(test_allowed_setting, "Flycast", "reicast_sh4clock", "500");
-  TEST_PARAMS3(test_allowed_setting, "Flycast", "reicast_sh4clock", "200");
+  TEST_PARAMS3(test_allowed_setting,    "Flycast", "reicast_sh4clock", "500");
+  TEST_PARAMS3(test_allowed_setting,    "Flycast", "reicast_sh4clock", "200");
   TEST_PARAMS3(test_disallowed_setting, "Flycast", "reicast_sh4clock", "190");
   TEST_PARAMS3(test_disallowed_setting, "Flycast", "reicast_sh4clock", "50");
 
@@ -796,9 +796,10 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "PCSX-ReARMed", "pcsx_rearmed_region", "Auto");
   TEST_PARAMS3(test_allowed_setting,    "PCSX-ReARMed", "pcsx_rearmed_region", "NTSC");
   TEST_PARAMS3(test_disallowed_setting, "PCSX-ReARMed", "pcsx_rearmed_region", "PAL");
-  TEST_PARAMS3(test_allowed_setting, "PCSX-ReARMed", "pcsx_rearmed_psxclock", "100");
-  TEST_PARAMS3(test_allowed_setting, "PCSX-ReARMed", "pcsx_rearmed_psxclock", "57");
-  TEST_PARAMS3(test_allowed_setting, "PCSX-ReARMed", "pcsx_rearmed_psxclock", "55");
+  TEST_PARAMS3(test_allowed_setting,    "PCSX-ReARMed", "pcsx_rearmed_psxclock", "auto");
+  TEST_PARAMS3(test_allowed_setting,    "PCSX-ReARMed", "pcsx_rearmed_psxclock", "100");
+  TEST_PARAMS3(test_allowed_setting,    "PCSX-ReARMed", "pcsx_rearmed_psxclock", "57");
+  TEST_PARAMS3(test_allowed_setting,    "PCSX-ReARMed", "pcsx_rearmed_psxclock", "55");
   TEST_PARAMS3(test_disallowed_setting, "PCSX-ReARMed", "pcsx_rearmed_psxclock", "54");
   TEST_PARAMS3(test_disallowed_setting, "PCSX-ReARMed", "pcsx_rearmed_psxclock", "30");
 
@@ -831,8 +832,8 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "Snes9x", "snes9x_layer_5", "enabled");
   TEST_PARAMS3(test_disallowed_setting, "Snes9x", "snes9x_layer_5", "disabled");
 
-  TEST_PARAMS3(test_allowed_setting, "SwanStation", "swanstation_CPU_Overclock", "1000");
-  TEST_PARAMS3(test_allowed_setting, "SwanStation", "swanstation_CPU_Overclock", "100");
+  TEST_PARAMS3(test_allowed_setting,    "SwanStation", "swanstation_CPU_Overclock", "1000");
+  TEST_PARAMS3(test_allowed_setting,    "SwanStation", "swanstation_CPU_Overclock", "100");
   TEST_PARAMS3(test_disallowed_setting, "SwanStation", "swanstation_CPU_Overclock", "99");
   TEST_PARAMS3(test_disallowed_setting, "SwanStation", "swanstation_CPU_Overclock", "50");
 
