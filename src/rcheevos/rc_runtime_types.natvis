@@ -396,18 +396,18 @@
             <Item Name="display_type">*((__rc_format_enum_t*)&amp;display_type)</Item>
         </Expand>
     </Type>
-	<Type Name="__rc_richpresence_display_part_list_t">
-		<DisplayString Condition="display->next->next!=0">{display,na} {display->next,na} {display->next->next,na}</DisplayString>
-		<DisplayString Condition="display->next!=0">{display,na} {display->next,na}</DisplayString>
-		<DisplayString>{display,na}</DisplayString>
-		<Expand>
-			<LinkedListItems>
-				<HeadPointer>display</HeadPointer>
-				<NextPointer>next</NextPointer>
-				<ValueNode>this</ValueNode>
-			</LinkedListItems>
-		</Expand>
-	</Type>
+    <Type Name="__rc_richpresence_display_part_list_t">
+        <DisplayString Condition="display->next->next!=0">{display,na} {display->next,na} {display->next->next,na}</DisplayString>
+        <DisplayString Condition="display->next!=0">{display,na} {display->next,na}</DisplayString>
+        <DisplayString>{display,na}</DisplayString>
+        <Expand>
+            <LinkedListItems>
+                <HeadPointer>display</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>this</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
     <Type Name="rc_richpresence_display_t">
         <Expand>
             <Item Name="displays">*((__rc_richpresence_display_part_list_t*)&amp;display)</Item>

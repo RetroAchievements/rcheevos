@@ -408,7 +408,7 @@ rc_value_t* rc_alloc_variable(const char* memaddr, size_t memaddr_len, rc_parse_
   value->next = NULL;
 
   /* the helper variable likely has a Measured condition. capture the current measured_target so we can restore it
-    * after generating the variable so the variable's Measured target doesn't conflict with the rest of the trigger. */
+   * after generating the variable so the variable's Measured target doesn't conflict with the rest of the trigger. */
   measured_target = parse->measured_target;
   rc_parse_value_internal(value, &memaddr, parse);
   parse->measured_target = measured_target;
