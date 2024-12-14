@@ -1405,6 +1405,21 @@ static void test_richpresence_static(void)
   rc_runtime_destroy(&runtime);
 }
 
+static void test_richpresence_addsource_chain(void)
+{
+  rc_runtime_t runtime;
+  rc_runtime_init(&runtime);
+
+  /* large number of AddSources will exceed the runtime buffer of 32 memrefs and 16 modified memrefs */
+  assert_activate_richpresence(&runtime,
+    "Display:\n"
+    "@Number(0xH0000_0xH0001_0xH0002_0xH0003_0xH0004_0xH0005_0xH0006_0xH0007_"
+            "0xH0010_0xH0011_0xH0012_0xH0013_0xH0014_0xH0015_0xH0016_0xH0017_"
+            "0xH0020_0xH0021_0xH0022_0xH0023_0xH0024_0xH0025_0xH0026_0xH0027_"
+            "0xH0030_0xH0031_0xH0032_0xH0033_0xH0034_0xH0035_0xH0036_0xH0037_"
+            "0xH0040_0xH0041_0xH0042_0xH0043)\n");
+}
+
 typedef struct {
   memory_t memory;
   rc_runtime_t* runtime;
@@ -1636,6 +1651,7 @@ void test_runtime(void) {
   TEST(test_richpresence_reload);
   TEST(test_richpresence_reload_addaddress);
   TEST(test_richpresence_static);
+  TEST(test_richpresence_addsource_chain);
 
   /* invalidate address */
   TEST(test_invalidate_address);

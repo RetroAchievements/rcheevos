@@ -178,7 +178,7 @@ void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* me
         return;
 
       new_memref_list->capacity = rc_preparse_array_size(num_memrefs - available, 16);
-      new_memref_list->items = (rc_memref_t*)malloc(new_memref_list->capacity * sizeof(rc_memref_t*));
+      new_memref_list->items = (rc_memref_t*)malloc(new_memref_list->capacity * sizeof(rc_memref_t));
       new_memref_list->allocated = 1;
       memref_list->next = new_memref_list;
     }
@@ -194,13 +194,13 @@ void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* me
     }
 
     available = modified_memref_list->capacity - modified_memref_list->count;
-    if (available < num_memrefs) {
+    if (available < num_modified_memrefs) {
       rc_modified_memref_list_t* new_modified_memref_list = (rc_modified_memref_list_t*)calloc(1, sizeof(rc_modified_memref_list_t));
       if (!new_modified_memref_list)
         return;
 
-      new_modified_memref_list->capacity = rc_preparse_array_size(num_memrefs - available, 8);
-      new_modified_memref_list->items = (rc_modified_memref_t*)malloc(new_modified_memref_list->capacity * sizeof(rc_modified_memref_list_t*));
+      new_modified_memref_list->capacity = rc_preparse_array_size(num_modified_memrefs - available, 8);
+      new_modified_memref_list->items = (rc_modified_memref_t*)malloc(new_modified_memref_list->capacity * sizeof(rc_modified_memref_t));
       new_modified_memref_list->allocated = 1;
       modified_memref_list->next = new_modified_memref_list;
     }
@@ -209,37 +209,39 @@ void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* me
   preparse->parse.memrefs = memrefs;
 }
 
-static void rc_preparse_sync_operand(rc_operand_t* operand, rc_parse_state_t* parse,  const rc_memrefs_t* memrefs)
+static void rc_preparse_sync_operand(rc_operand_t* operand, rc_parse_state_t* parse, const rc_memrefs_t* memrefs)
 {
   if (rc_operand_is_memref(operand) || rc_operand_is_recall(operand)) {
     const rc_memref_t* src_memref = operand->value.memref;
 
-    const rc_memref_list_t* memref_list = &memrefs->memrefs;
-    const rc_modified_memref_list_t* modified_memref_list = &memrefs->modified_memrefs;
+    if (src_memref->value.memref_type == RC_MEMREF_TYPE_MODIFIED_MEMREF) {
+      const rc_modified_memref_list_t* modified_memref_list = &memrefs->modified_memrefs;
+      for (; modified_memref_list; modified_memref_list = modified_memref_list->next) {
+        const rc_modified_memref_t* modified_memref = modified_memref_list->items;
+        const rc_modified_memref_t* modified_memref_end = modified_memref + modified_memref_list->count;
 
-    for (; memref_list; memref_list = memref_list->next) {
-      const rc_memref_t* memref = memref_list->items;
-      const rc_memref_t* memref_end = memref + memref_list->count;
+        for (; modified_memref < modified_memref_end; ++modified_memref) {
+          if ((const rc_modified_memref_t*)src_memref == modified_memref) {
+            rc_modified_memref_t* dst_modified_memref = rc_alloc_modified_memref(parse, modified_memref->memref.value.size,
+              &modified_memref->parent, modified_memref->modifier_type, &modified_memref->modifier);
 
-      for (; memref < memref_end; ++memref) {
-        if (src_memref == memref) {
-          operand->value.memref = rc_alloc_memref(parse, memref->address, memref->value.size);
-          return;
+            operand->value.memref = &dst_modified_memref->memref;
+            return;
+          }
         }
       }
     }
+    else {
+      const rc_memref_list_t* memref_list = &memrefs->memrefs;
+      for (; memref_list; memref_list = memref_list->next) {
+        const rc_memref_t* memref = memref_list->items;
+        const rc_memref_t* memref_end = memref + memref_list->count;
 
-    for (; modified_memref_list; modified_memref_list = modified_memref_list->next) {
-      const rc_modified_memref_t* modified_memref = modified_memref_list->items;
-      const rc_modified_memref_t* modified_memref_end = modified_memref + modified_memref_list->count;
-
-      for (; modified_memref < modified_memref_end; ++modified_memref) {
-        if ((const rc_modified_memref_t*)src_memref == modified_memref) {
-          rc_modified_memref_t* dst_modified_memref = rc_alloc_modified_memref(parse, modified_memref->memref.value.size,
-            &modified_memref->parent, modified_memref->modifier_type, &modified_memref->modifier);
-
-          operand->value.memref = &dst_modified_memref->memref;
-          break;
+        for (; memref < memref_end; ++memref) {
+          if (src_memref == memref) {
+            operand->value.memref = rc_alloc_memref(parse, memref->address, memref->value.size);
+            return;
+          }
         }
       }
     }

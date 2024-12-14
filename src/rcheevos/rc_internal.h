@@ -200,7 +200,7 @@ rc_typed_value_t;
 
 enum {
   RC_MEMREF_TYPE_MEMREF,                 /* rc_memref_t */
-  RC_MEMREF_TYPE_MODIFIED_MEMREF,        /* rc_indirect_memref_t */
+  RC_MEMREF_TYPE_MODIFIED_MEMREF,        /* rc_modified_memref_t */
   RC_MEMREF_TYPE_VALUE                   /* rc_value_t */
 };
 

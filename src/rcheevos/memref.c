@@ -41,9 +41,14 @@ rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t 
     } while (1);
   }
 
-  /* no match found, create a new entry */
+  /* no match found, find a place to put the new entry */
+  memref_list = &parse->memrefs->memrefs;
+  while (memref_list->count == memref_list->capacity && memref_list->next)
+    memref_list = memref_list->next;
+
+  /* create a new entry */
   if (memref_list->count < memref_list->capacity) {
-    ++memref_list->count;
+    memref = &memref_list->items[memref_list->count++];
   } else {
     const int32_t old_offset = parse->offset;
 
@@ -113,9 +118,14 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
     } while (1);
   }
 
-  /* no match found, create a new entry */
+  /* no match found, find a place to put the new entry */
+  modified_memref_list = &parse->memrefs->modified_memrefs;
+  while (modified_memref_list->count == modified_memref_list->capacity && modified_memref_list->next)
+    modified_memref_list = modified_memref_list->next;
+
+  /* create a new entry */
   if (modified_memref_list->count < modified_memref_list->capacity) {
-    ++modified_memref_list->count;
+    modified_memref = &modified_memref_list->items[modified_memref_list->count++];
   } else {
     const int32_t old_offset = parse->offset;
 

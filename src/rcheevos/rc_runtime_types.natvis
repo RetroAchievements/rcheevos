@@ -110,6 +110,7 @@
     <Type Name="rc_memref_list_t">
         <DisplayString>{{count = {count}}}</DisplayString>
         <Expand>
+            <Item Name="next" Condition="next!=0">next</Item>
             <Item Name="count">count</Item>
             <Item Name="capacity">capacity</Item>
             <ArrayItems>
@@ -291,6 +292,7 @@
     <Type Name="rc_modified_memref_list_t">
         <DisplayString>{{count = {count}}}</DisplayString>
         <Expand>
+            <Item Name="next" Condition="next!=0">next</Item>
             <Item Name="count">count</Item>
             <Item Name="capacity">capacity</Item>
             <ArrayItems>
@@ -477,7 +479,8 @@
             <Item Name="offset">offset</Item>
             <Item Name="memrefs">memrefs</Item>
             <Item Name="existing_memrefs">existing_memrefs</Item>
-            <Item Name="variables">((__rc_value_list_t*)&amp;variables)</Item>
+            <Item Name="variables" Condition="variables==0">variables</Item>
+            <Item Name="variables" Condition="variables!=0">((__rc_value_list_t*)&amp;variables)</Item>
             <Item Name="addsource_parent">addsource_parent</Item>
             <Item Name="addsource_oper">*((__rc_operator_enum_t*)&amp;addsource_oper)</Item>
             <Item Name="indirect_parent">indirect_parent</Item>
