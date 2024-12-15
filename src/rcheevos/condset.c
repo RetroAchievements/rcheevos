@@ -712,8 +712,6 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
         eval_state->measured_value.value.u32 = 0;
       }
     }
-
-    conditions += self->num_pause_conditions;
   }
 
   if (self->num_other_conditions) {
