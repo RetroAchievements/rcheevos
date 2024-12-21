@@ -49,7 +49,7 @@ static int rc_classify_condition(const rc_condition_t* cond) {
 
 static int32_t rc_classify_conditions(rc_condset_t* self, const char* memaddr) {
   rc_parse_state_t parse;
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
   rc_condition_t condition;
   int classification;
   uint32_t index = 0;
@@ -105,7 +105,7 @@ static int32_t rc_classify_conditions(rc_condset_t* self, const char* memaddr) {
 
 static int rc_find_next_classification(const char* memaddr) {
   rc_parse_state_t parse;
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
   rc_condition_t condition;
   int classification;
 
@@ -114,6 +114,8 @@ static int rc_find_next_classification(const char* memaddr) {
 
   do {
     rc_parse_condition_internal(&condition, &memaddr, &parse);
+    if (parse.offset < 0)
+      break;
 
     classification = rc_classify_condition(&condition);
     switch (classification) {
@@ -710,8 +712,6 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
         eval_state->measured_value.value.u32 = 0;
       }
     }
-
-    conditions += self->num_pause_conditions;
   }
 
   if (self->num_other_conditions) {

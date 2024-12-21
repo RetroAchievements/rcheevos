@@ -5,13 +5,14 @@
 
 #include "../src/rc_compat.h"
 
-static void _assert_parse_richpresence(rc_richpresence_t** richpresence, void* buffer, const char* script) {
+static void _assert_parse_richpresence(rc_richpresence_t** richpresence, void* buffer, size_t buffer_size, const char* script) {
   int size;
   unsigned* overflow;
   *richpresence = NULL;
 
   size = rc_richpresence_size(script);
   ASSERT_NUM_GREATER(size, 0);
+  ASSERT_NUM_LESS_EQUALS(size + 4, buffer_size);
 
   overflow = (unsigned*)(((char*)buffer) + size);
   *overflow = 0xCDCDCDCD;
@@ -23,7 +24,7 @@ static void _assert_parse_richpresence(rc_richpresence_t** richpresence, void* b
     ASSERT_FAIL("write past end of buffer");
   }
 }
-#define assert_parse_richpresence(richpresence_out, buffer, script) ASSERT_HELPER(_assert_parse_richpresence(richpresence_out, buffer, script), "assert_parse_richpresence")
+#define assert_parse_richpresence(richpresence_out, buffer, script) ASSERT_HELPER(_assert_parse_richpresence(richpresence_out, buffer, sizeof(buffer), script), "assert_parse_richpresence")
 
 static void _assert_richpresence_output(rc_richpresence_t* richpresence, memory_t* memory, const char* expected_display_string) {
   char output[256];
@@ -81,31 +82,31 @@ static void test_buffer_boundary() {
   memory.size = sizeof(ram);
 
   /* static strings */
-  assert_parse_richpresence(&richpresence, &buffer[32], "Display:\nABCDEFGH");
+  assert_parse_richpresence(&richpresence, buffer, "Display:\nABCDEFGH");
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 7, 8, "ABCDEF"); /* only 6 chars written */
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 8, "ABCDEFG"); /* only 7 chars written */
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 9, 8, "ABCDEFGH"); /* all 8 chars written */
 
   /* number formatting */
-  assert_parse_richpresence(&richpresence, &buffer[32], "Format:V\nFormatType=VALUE\n\nDisplay:\n@V(0xX0000)");
+  assert_parse_richpresence(&richpresence, buffer, "Format:V\nFormatType=VALUE\n\nDisplay:\n@V(0xX0000)");
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 7, 8, "167772"); /* only 6 chars written */
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 8, "1677721"); /* only 7 chars written */
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 9, 8, "16777216"); /* all 8 chars written */
 
   /* lookup */
-  assert_parse_richpresence(&richpresence, &buffer[32], "Lookup:L\n1=ABCDEFGH\n\nDisplay:\n@L(0xH0003)");
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:L\n1=ABCDEFGH\n\nDisplay:\n@L(0xH0003)");
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 7, 8, "ABCDEF"); /* only 6 chars written */
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 8, "ABCDEFG"); /* only 7 chars written */
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 9, 8, "ABCDEFGH"); /* all 8 chars written */
 
   /* unknown macro - "[Unknown macro]L(0xH0003)" = 25 chars */
-  assert_parse_richpresence(&richpresence, &buffer[32], "Display:\n@L(0xH0003)");
+  assert_parse_richpresence(&richpresence, buffer, "Display:\n@L(0xH0003)");
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 7, 25, "[Unkno"); /* only 6 chars written */
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 25, 25, "[Unknown macro]L(0xH0003"); /* only 24 chars written */
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 26, 25, "[Unknown macro]L(0xH0003)"); /* all 25 chars written */
 
   /* multipart */
-  assert_parse_richpresence(&richpresence, &buffer[32], "Lookup:L\n0=\n1=A\n4=ABCD\n8=ABCDEFGH\n\nFormat:V\nFormatType=VALUE\n\nDisplay:\n@L(0xH0000)--@L(0xH0001)--@V(0xH0002)");
+  assert_parse_richpresence(&richpresence, buffer, "Lookup:L\n0=\n1=A\n4=ABCD\n8=ABCDEFGH\n\nFormat:V\nFormatType=VALUE\n\nDisplay:\n@L(0xH0000)--@L(0xH0001)--@V(0xH0002)");
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 5, "----0"); /* initial value fits */
   ram[1] = 4;
   TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 9, "--ABCD-"); /* only 7 chars written */
@@ -1169,7 +1170,7 @@ static void test_builtin_macro_override() {
   uint8_t ram[] = { 0x39, 0x30 };
   memory_t memory;
   rc_richpresence_t* richpresence;
-  char buffer[256];
+  char buffer[512];
 
   memory.ram = ram;
   memory.size = sizeof(ram);

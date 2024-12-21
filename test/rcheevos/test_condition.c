@@ -30,7 +30,7 @@ static void _assert_parse_condition(
 ) {
     rc_condition_t* self;
     rc_parse_state_t parse;
-    rc_memref_t* memrefs;
+    rc_memrefs_t memrefs;
     char buffer[512];
 
     rc_init_parse_state(&parse, buffer, 0, 0);
@@ -106,7 +106,7 @@ static void test_parse_condition_error(const char* memaddr, int expected_error) 
   }
 }
 
-static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memref_t* memrefs) {
+static int evaluate_condition(rc_condition_t* cond, memory_t* memory, rc_memrefs_t* memrefs) {
   rc_eval_state_t eval_state;
 
   memset(&eval_state, 0, sizeof(eval_state));
@@ -121,7 +121,7 @@ static void test_evaluate_condition(const char* memaddr, uint8_t expected_compar
   rc_condition_t* self;
   rc_parse_state_t parse;
   char buffer[512];
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
   int ret;
   uint8_t ram[] = {0x00, 0x11, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -137,11 +137,11 @@ static void test_evaluate_condition(const char* memaddr, uint8_t expected_compar
   ASSERT_NUM_GREATER(parse.offset, 0);
   ASSERT_NUM_EQUALS(*memaddr, 0);
 
-  rc_update_memref_values(memrefs, peek, &memory); /* capture delta for ram[1] */
+  rc_update_memref_values(&memrefs, peek, &memory); /* capture delta for ram[1] */
   ram[1] = 0x12;
 
   ASSERT_NUM_EQUALS(self->optimized_comparator, expected_comparator);
-  ret = evaluate_condition(self, &memory, memrefs);
+  ret = evaluate_condition(self, &memory, &memrefs);
 
   if (expected_result) {
     ASSERT_NUM_EQUALS(ret, 1);
@@ -155,7 +155,7 @@ static void test_default_comparator(const char* memaddr) {
   rc_condition_t* condition;
   rc_parse_state_t parse;
   char buffer[512];
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
 
   rc_init_parse_state(&parse, buffer, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
@@ -177,7 +177,7 @@ static void test_evaluate_condition_float(const char* memaddr, int expected_resu
   rc_condition_t* self;
   rc_parse_state_t parse;
   char buffer[512];
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
   int ret;
   uint8_t ram[] = {0x00, 0x00, 0x00, 0x40, 0x83, 0x49, 0x0F, 0xDB}; /* FF0=2, FF4=2*pi */
   memory_t memory;
@@ -193,7 +193,7 @@ static void test_evaluate_condition_float(const char* memaddr, int expected_resu
   ASSERT_NUM_GREATER(parse.offset, 0);
   ASSERT_NUM_EQUALS(*memaddr, 0);
 
-  ret = evaluate_condition(self, &memory, memrefs);
+  ret = evaluate_condition(self, &memory, &memrefs);
 
   if (expected_result) {
     ASSERT_NUM_EQUALS(ret, 1);
@@ -208,7 +208,7 @@ static void test_condition_compare_delta() {
   rc_condition_t* cond;
   rc_parse_state_t parse;
   char buffer[512];
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
 
   const char* cond_str = "0xH0001>d0xH0001";
   rc_init_parse_state(&parse, buffer, 0, 0);
@@ -222,18 +222,18 @@ static void test_condition_compare_delta() {
   memory.size = sizeof(ram);
 
   /* initial delta value is 0, 0x12 > 0 */
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 1);
 
   /* delta value is now 0x12, 0x12 = 0x12 */
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 
   /* delta value is now 0x12, 0x11 < 0x12 */
   ram[1] = 0x11;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 
   /* delta value is now 0x13, 0x12 > 0x11 */
   ram[1] = 0x12;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 1);
 }
 
 static void test_condition_delta_24bit() {
@@ -242,7 +242,7 @@ static void test_condition_delta_24bit() {
   rc_condition_t* cond;
   rc_parse_state_t parse;
   char buffer[512];
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
 
   const char* cond_str = "0xW0001>d0xW0001";
   rc_init_parse_state(&parse, buffer, 0, 0);
@@ -256,30 +256,30 @@ static void test_condition_delta_24bit() {
   memory.size = sizeof(ram);
 
   /* initial delta value is 0x000000, 0xAB3412 > 0x000000 */
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 1);
 
   /* delta value is now 0xAB3412, 0xAB3412 == 0xAB3412 */
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 
   /* value changes to 0xAB3411, delta value is now 0xAB3412, 0xAB3411 < 0xAB3412 */
   ram[1] = 0x11;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 
   /* value changes to 0xAB3412, delta value is now 0xAB3411, 0xAB3412 > 0xAB3411 */
   ram[1] = 0x12;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 1);
 
   /* ram[4] should not affect the 24-bit value, 0xAB3412 == 0xAB3412 */
   ram[4] = 0xAC;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 
   /* value changes to 0xAB3411, delta is still 0xAB3412, 0xAB3411 < 0xAB3412 */
   ram[1] = 0x11;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 
   /* ram[4] should not affect the 24-bit value, 0xAB3411 == 0xAB3411 */
   ram[4] = 0xAD;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 }
 
 static void test_condition_prior_24bit() {
@@ -288,7 +288,7 @@ static void test_condition_prior_24bit() {
   rc_condition_t* cond;
   rc_parse_state_t parse;
   char buffer[512];
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
 
   const char* cond_str = "0xW0001>p0xW0001";
   rc_init_parse_state(&parse, buffer, 0, 0);
@@ -302,38 +302,38 @@ static void test_condition_prior_24bit() {
   memory.size = sizeof(ram);
 
   /* initial prior value is 0x000000, 0xAB3412 > 0x000000 */
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 1);
 
   /* delta value is now 0xAB3412, but prior is still 0x000000, 0xAB3412 > 0x000000 */
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 1);
 
   /* value changes to 0xAB3411, delta and prior values are now 0xAB3412, 0xAB3411 < 0xAB3412 */
   ram[1] = 0x11;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 
   /* value changes to 0xAB3412, delta and prior values are now 0xAB3411, 0xAB3412 > 0xAB3411 */
   ram[1] = 0x12;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 1);
 
   /* ram[4] should not affect the 24-bit value, 0xAB3412 > 0xAB3411 */
   ram[4] = 0xAC;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 1);
 
   /* ram[4] should not affect the 24-bit value, 0xAB3412 > 0xAB3411 */
   ram[4] = 0xAD;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 1);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 1);
 
   /* value changes to 0xAB3411, delta and prior values are now 0xAB3412, 0xAB3411 < 0xAB3412 */
   ram[1] = 0x11;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 
   /* ram[4] should not affect the 24-bit value, 0xAB3411 < 0xAB3412 */
   ram[4] = 0xAE;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 
   /* ram[4] should not affect the 24-bit value, 0xAB3411 < 0xAB3412 */
   ram[4] = 0xAF;
-  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, memrefs), 0);
+  ASSERT_NUM_EQUALS(evaluate_condition(cond, &memory, &memrefs), 0);
 }
 
 void test_condition(void) {

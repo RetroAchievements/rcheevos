@@ -105,7 +105,18 @@
             <Item Name="[rc_modified_memref_t]" Condition="value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">(rc_modified_memref_t*)&amp;value</Item>
             <Item Name="value">value</Item>
             <Item Name="address">address</Item>
-            <Item Name="next">next</Item>
+        </Expand>
+    </Type>
+    <Type Name="rc_memref_list_t">
+        <DisplayString>{{count = {count}}}</DisplayString>
+        <Expand>
+            <Item Name="next" Condition="next!=0">next</Item>
+            <Item Name="count">count</Item>
+            <Item Name="capacity">capacity</Item>
+            <ArrayItems>
+                <Size>count</Size>
+                <ValuePointer>items</ValuePointer>
+            </ArrayItems>
         </Expand>
     </Type>
     <Type Name="__rc_operand_memref_t">
@@ -116,7 +127,6 @@
             <Item Name="[rc_modified_memref_t]" Condition="operand.value.memref->value.memref_type==RC_MEMREF_TYPE_MODIFIED_MEMREF">(rc_modified_memref_t*)&amp;operand.value</Item>
             <Item Name="value">operand.value.memref->value</Item>
             <Item Name="address">operand.value.memref->address</Item>
-            <Item Name="next">operand.value.memref->next</Item>
         </Expand>
     </Type>
     <Type Name="__rc_operand_enum_t">
@@ -279,6 +289,18 @@
             <Item Name="modifier">modifier</Item>
         </Expand>
     </Type>
+    <Type Name="rc_modified_memref_list_t">
+        <DisplayString>{{count = {count}}}</DisplayString>
+        <Expand>
+            <Item Name="next" Condition="next!=0">next</Item>
+            <Item Name="count">count</Item>
+            <Item Name="capacity">capacity</Item>
+            <ArrayItems>
+                <Size>count</Size>
+                <ValuePointer>items</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
     <Type Name="__rc_trigger_state_enum_t">
         <DisplayString Condition="value==RC_TRIGGER_STATE_INACTIVE">{RC_TRIGGER_STATE_INACTIVE}</DisplayString>
         <DisplayString Condition="value==RC_TRIGGER_STATE_WAITING">{RC_TRIGGER_STATE_WAITING}</DisplayString>
@@ -294,7 +316,6 @@
         <Expand>
             <Item Name="state">*((__rc_trigger_state_enum_t*)&amp;state)</Item>
             <Item Name="has_hits">*((__rc_bool_enum_t*)&amp;has_hits)</Item>
-            <Item Name="has_required_hits">*((__rc_bool_enum_t*)&amp;has_required_hits)</Item>
             <Item Name="measured_as_percent">*((__rc_bool_enum_t*)&amp;measured_as_percent)</Item>
             <Item Name="requirement">requirement</Item>
             <Item Name="alternative">*((__rc_condset_list_t*)&amp;alternative)</Item>
@@ -306,8 +327,17 @@
             <Item Name="value">value</Item>
             <Item Name="conditions">conditions</Item>
             <Item Name="name">name</Item>
-            <Item Name="memrefs">*((__rc_memref_list_t*)&amp;memrefs)</Item>
-            <Item Name="next">next</Item>
+        </Expand>
+    </Type>
+    <Type Name="rc_value_list_t">
+        <DisplayString>{{count = {count}}}</DisplayString>
+        <Expand>
+            <Item Name="count">count</Item>
+            <Item Name="capacity">capacity</Item>
+            <ArrayItems>
+                <Size>count</Size>
+                <ValuePointer>items</ValuePointer>
+            </ArrayItems>
         </Expand>
     </Type>
     <Type Name="__rc_lboard_state_enum_t">
@@ -327,17 +357,6 @@
             <Item Name="submit">submit</Item>
             <Item Name="cancel">cancel</Item>
             <Item Name="value">value</Item>
-        </Expand>
-    </Type>
-    <Type Name="__rc_memref_list_t">
-        <DisplayString Condition="first_memref==0">{{NULL}}</DisplayString>
-        <DisplayString>{(void**)&amp;first_memref,na}</DisplayString>
-        <Expand>
-            <LinkedListItems>
-                <HeadPointer>first_memref</HeadPointer>
-                <NextPointer>next</NextPointer>
-                <ValueNode>this</ValueNode>
-            </LinkedListItems>
         </Expand>
     </Type>
     <Type Name="__rc_format_enum_t">
@@ -458,8 +477,10 @@
         <DisplayString>{{offset={offset} addsource_parent={addsource_parent} indirect_parent={indirect_parent}}}</DisplayString>
         <Expand>
             <Item Name="offset">offset</Item>
-            <Item Name="memrefs">((__rc_memref_list_t*)first_memref)</Item>
-            <Item Name="variables">((__rc_value_list_t*)&amp;variables)</Item>
+            <Item Name="memrefs">memrefs</Item>
+            <Item Name="existing_memrefs">existing_memrefs</Item>
+            <Item Name="variables" Condition="variables==0">variables</Item>
+            <Item Name="variables" Condition="variables!=0">((__rc_value_list_t*)&amp;variables)</Item>
             <Item Name="addsource_parent">addsource_parent</Item>
             <Item Name="addsource_oper">*((__rc_operator_enum_t*)&amp;addsource_oper)</Item>
             <Item Name="indirect_parent">indirect_parent</Item>
@@ -512,8 +533,7 @@
             <Item Name="triggers">*((__rc_runtime_trigger_list_t*)this)</Item>
             <Item Name="lboards">*((__rc_runtime_lboard_list_t*)this)</Item>
             <Item Name="richpresence">richpresence</Item>
-            <Item Name="memrefs">((__rc_memref_list_t*)&amp;memrefs)</Item>
-            <Item Name="variables">((__rc_value_list_t*)&amp;variables)</Item>
+            <Item Name="memrefs">memrefs</Item>
         </Expand>
     </Type>
 </AutoVisualizer>
