@@ -392,7 +392,7 @@ static int validate_richpresence(const char* script, char result[], const size_t
     }
 
     if (success)
-      success = rc_validate_memrefs_for_console(compiled->memrefs, result, result_size, console_id);
+      success = rc_validate_memrefs_for_console(rc_richpresence_get_memrefs(compiled), result, result_size, console_id);
     if (success)
       success = validate_macros(compiled, script, result, result_size);
     if (success)

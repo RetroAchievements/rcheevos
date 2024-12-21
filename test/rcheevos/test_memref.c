@@ -258,19 +258,12 @@ static void test_transforms(void)
 }
 
 static int get_memref_count(rc_parse_state_t* parse) {
-  int count = 0;
-  rc_memref_t *memref = *parse->first_memref;
-  while (memref) {
-    ++count;
-    memref = memref->next;
-  }
-
-  return count;
+  return rc_memrefs_count_memrefs(parse->memrefs) + rc_memrefs_count_modified_memrefs(parse->memrefs);
 }
 
 static void test_allocate_shared_address() {
   rc_parse_state_t parse;
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
   rc_init_parse_state(&parse, NULL, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
@@ -306,7 +299,7 @@ static void test_allocate_shared_address() {
 
 static void test_allocate_shared_address2() {
   rc_parse_state_t parse;
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
   rc_memref_t* memref1;
   rc_memref_t* memref2;
   rc_memref_t* memref3;
@@ -324,8 +317,7 @@ static void test_allocate_shared_address2() {
   ASSERT_NUM_EQUALS(memref1->value.value, 0);
   ASSERT_NUM_EQUALS(memref1->value.changed, 0);
   ASSERT_NUM_EQUALS(memref1->value.prior, 0);
-  ASSERT_PTR_EQUALS(memref1->next, 0);
-
+  
   memref2 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_16_BITS); /* differing size will not match */
   memref3 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_LOW); /* differing size will not match */
   memref4 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_BIT_2); /* differing size will not match */
@@ -351,7 +343,7 @@ static void test_allocate_shared_address2() {
 
 static void test_allocate_shared_indirect_address() {
   rc_parse_state_t parse;
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
   rc_memref_t* parent_memref1, *parent_memref2;
   rc_operand_t parent1, parent2, delta1, intermediate2;
   rc_modified_memref_t* child1, *child2, *child3, *child4;
@@ -420,7 +412,7 @@ static void test_allocate_shared_indirect_address() {
 static void test_sizing_mode_grow_buffer() {
   int i;
   rc_parse_state_t parse;
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
   rc_init_parse_state(&parse, NULL, 0, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
@@ -451,7 +443,7 @@ static void test_sizing_mode_grow_buffer() {
 
 static void test_update_memref_values() {
   rc_parse_state_t parse;
-  rc_memref_t* memrefs;
+  rc_memrefs_t memrefs;
   rc_memref_t* memref1;
   rc_memref_t* memref2;
 
@@ -466,7 +458,7 @@ static void test_update_memref_values() {
   memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
   memref2 = rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS);
 
-  rc_update_memref_values(memrefs, peek, &memory);
+  rc_update_memref_values(&memrefs, peek, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 0x12);
   ASSERT_NUM_EQUALS(memref1->value.changed, 1);
@@ -476,7 +468,7 @@ static void test_update_memref_values() {
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[1] = 3;
-  rc_update_memref_values(memrefs, peek, &memory);
+  rc_update_memref_values(&memrefs, peek, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 3);
   ASSERT_NUM_EQUALS(memref1->value.changed, 1);
@@ -486,7 +478,7 @@ static void test_update_memref_values() {
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[1] = 5;
-  rc_update_memref_values(memrefs, peek, &memory);
+  rc_update_memref_values(&memrefs, peek, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 5);
   ASSERT_NUM_EQUALS(memref1->value.changed, 1);
@@ -496,7 +488,7 @@ static void test_update_memref_values() {
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[2] = 7;
-  rc_update_memref_values(memrefs, peek, &memory);
+  rc_update_memref_values(&memrefs, peek, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 5);
   ASSERT_NUM_EQUALS(memref1->value.changed, 0);

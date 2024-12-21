@@ -14,22 +14,37 @@ enum {
 };
 
 static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t* part, const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
+  rc_preparse_state_t preparse;
+  const char* test_memaddr = memaddr;
   rc_condset_t* condset;
   rc_value_t* value;
-  void* buffer;
-  int value_size;
+  int32_t size;
 
   part->value.type = RC_OPERAND_NONE;
 
-  value_size = rc_value_size(memaddr);
-  if (value_size < 0) {
-    parse->offset = value_size;
+  /* if the expression can be represented as just a memory reference, do so */
+  rc_init_preparse_state(&preparse, NULL, 0);
+  preparse.parse.existing_memrefs = parse->memrefs;
+  value = RC_ALLOC(rc_value_t, &preparse.parse);
+  rc_parse_value_internal(value, &test_memaddr, &preparse.parse);
+
+  size = preparse.parse.offset;
+  if (size < 0) {
+    parse->offset = size;
+    rc_destroy_preparse_state(&preparse);
     return;
   }
 
-  buffer = rc_buffer_alloc(&parse->scratch.buffer, value_size);
-  value = rc_parse_value(buffer, memaddr, NULL, 0);
-  rc_copy_memrefs_into_parse_state(parse, value->memrefs);
+  /* ensure new needed memrefs are allocated in the primary buffer */
+  rc_preparse_copy_memrefs(parse, &preparse.memrefs);
+
+  /* parse the value into the scratch buffer so we can look at it */
+  rc_reset_parse_state(&preparse.parse, rc_buffer_alloc(&preparse.parse.scratch.buffer, (size_t)size), NULL, 0);
+  preparse.parse.memrefs = parse->memrefs;
+  preparse.parse.existing_memrefs = parse->existing_memrefs;
+  value = RC_ALLOC(rc_value_t, &preparse.parse);
+  test_memaddr = memaddr;
+  rc_parse_value_internal(value, &test_memaddr, &preparse.parse);
 
   condset = value->conditions;
   if (condset && !condset->next) {
@@ -40,13 +55,14 @@ static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t
       rc_condition_t* condition = condset->conditions;
       for (; condition; condition = condition->next) {
         if (condition->type == RC_CONDITION_MEASURED && condition->required_hits == 0) {
-          rc_sync_operand(&condition->operand1, parse, value->memrefs);
           memcpy(&part->value, &condition->operand1, sizeof(condition->operand1));
           break;
         }
       }
     }
   }
+
+  rc_destroy_preparse_state(&preparse);
 
   /* could not express value with just a memory reference, create a helper variable */
   if (part->value.type == RC_OPERAND_NONE) {
@@ -490,6 +506,8 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
   int display_line = 0;
   int chars;
 
+  self->values = NULL;
+
   /* special case for empty script to return 1 line read */
   if (!*script) {
      parse->lines_read = 1;
@@ -582,9 +600,9 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
             return;
           trigger = &((*nextdisplay)->trigger);
           rc_parse_trigger_internal(trigger, &line, parse);
-          trigger->memrefs = 0;
           if (parse->offset < 0)
             return;
+          (*nextdisplay)->has_required_hits = parse->has_required_hits;
           if (parse->buffer)
             nextdisplay = &((*nextdisplay)->next);
         }
@@ -615,6 +633,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
 
   /* finalize */
   *nextdisplay = 0;
+  self->has_memrefs = 0;
 
   if (!hasdisplay && parse->offset > 0) {
     parse->offset = RC_MISSING_DISPLAY_STRING;
@@ -622,22 +641,20 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
 }
 
 int rc_richpresence_size_lines(const char* script, int* lines_read) {
-  rc_richpresence_t* self;
-  rc_parse_state_t parse;
-  rc_memref_t* first_memref;
-  rc_value_t* variables;
-  rc_init_parse_state(&parse, 0, 0, 0);
-  rc_init_parse_state_memrefs(&parse, &first_memref);
-  rc_init_parse_state_variables(&parse, &variables);
+  rc_richpresence_with_memrefs_t* richpresence;
+  rc_preparse_state_t preparse;
+  rc_init_preparse_state(&preparse, NULL, 0);
 
-  self = RC_ALLOC(rc_richpresence_t, &parse);
-  rc_parse_richpresence_internal(self, script, &parse);
+  richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
+  preparse.parse.variables = &richpresence->richpresence.values;
+  rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
+  rc_preparse_alloc_memrefs(NULL, &preparse);
 
   if (lines_read)
-    *lines_read = parse.lines_read;
+    *lines_read = preparse.parse.lines_read;
 
-  rc_destroy_parse_state(&parse);
-  return parse.offset;
+  rc_destroy_preparse_state(&preparse);
+  return preparse.parse.offset;
 }
 
 int rc_richpresence_size(const char* script) {
@@ -645,32 +662,53 @@ int rc_richpresence_size(const char* script) {
 }
 
 rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_State* L, int funcs_ndx) {
-  rc_richpresence_t* self;
-  rc_parse_state_t parse;
+  rc_richpresence_with_memrefs_t* richpresence;
+  rc_preparse_state_t preparse;
 
   if (!buffer || !script)
     return NULL;
 
-  rc_init_parse_state(&parse, buffer, L, funcs_ndx);
+  rc_init_preparse_state(&preparse, L, funcs_ndx);
+  richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
+  preparse.parse.variables = &richpresence->richpresence.values;
+  rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
 
-  self = RC_ALLOC(rc_richpresence_t, &parse);
-  rc_init_parse_state_memrefs(&parse, &self->memrefs);
-  rc_init_parse_state_variables(&parse, &self->variables);
+  rc_reset_parse_state(&preparse.parse, buffer, L, funcs_ndx);
+  richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
+  preparse.parse.variables = &richpresence->richpresence.values;
+  rc_preparse_alloc_memrefs(&richpresence->memrefs, &preparse);
 
-  rc_parse_richpresence_internal(self, script, &parse);
+  rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
+  richpresence->richpresence.has_memrefs = 1;
 
-  rc_destroy_parse_state(&parse);
-  return (parse.offset >= 0) ? self : NULL;
+  rc_destroy_preparse_state(&preparse);
+  return (preparse.parse.offset >= 0) ? &richpresence->richpresence : NULL;
+}
+
+static void rc_update_richpresence_memrefs(rc_richpresence_t* self, rc_peek_t peek, void* ud) {
+  if (self->has_memrefs) {
+    rc_richpresence_with_memrefs_t* richpresence = (rc_richpresence_with_memrefs_t*)self;
+    rc_update_memref_values(&richpresence->memrefs, peek, ud);
+  }
+}
+
+rc_memrefs_t* rc_richpresence_get_memrefs(rc_richpresence_t* self) {
+  if (self->has_memrefs) {
+    rc_richpresence_with_memrefs_t* richpresence = (rc_richpresence_with_memrefs_t*)self;
+    return &richpresence->memrefs;
+  }
+
+  return NULL;
 }
 
 void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, lua_State* L) {
   rc_richpresence_display_t* display;
 
-  rc_update_memref_values(richpresence->memrefs, peek, peek_ud);
-  rc_update_variables(richpresence->variables, peek, peek_ud, L);
+  rc_update_richpresence_memrefs(richpresence, peek, peek_ud);
+  rc_update_values(richpresence->values, peek, peek_ud, L);
 
   for (display = richpresence->first_display; display; display = display->next) {
-    if (display->trigger.has_required_hits)
+    if (display->has_required_hits)
       rc_test_trigger(&display->trigger, peek, peek_ud, L);
   }
 }
@@ -828,7 +866,7 @@ int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* bu
       return rc_evaluate_richpresence_display(display->display, buffer, buffersize);
 
     /* triggers with required hits will be updated in rc_update_richpresence */
-    if (!display->trigger.has_required_hits)
+    if (!display->has_required_hits)
       rc_test_trigger(&display->trigger, peek, peek_ud, L);
 
     /* if we've found a valid condition, process it */
@@ -845,13 +883,14 @@ int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size
   return rc_get_richpresence_display_string(richpresence, buffer, buffersize, peek, peek_ud, L);
 }
 
-void rc_reset_richpresence(rc_richpresence_t* self) {
+void rc_reset_richpresence_triggers(rc_richpresence_t* self) {
   rc_richpresence_display_t* display;
-  rc_value_t* variable;
 
   for (display = self->first_display; display; display = display->next)
     rc_reset_trigger(&display->trigger);
+}
 
-  for (variable = self->variables; variable; variable = variable->next)
-    rc_reset_value(variable);
+void rc_reset_richpresence(rc_richpresence_t* self) {
+  rc_reset_richpresence_triggers(self);
+  rc_reset_values(self->values);
 }
