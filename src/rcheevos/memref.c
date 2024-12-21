@@ -268,7 +268,12 @@ int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address) {
       /* case 'y': case 'Y': 64 bit? */
       /* case 'z': case 'Z': 128 bit? */
 
-      case '0': case '1': case '2': case '3': case '4':
+      case '0':
+        if (*aux == 'x') /* user mistyped an extra 0x: 0x0xabcd */
+          return RC_INVALID_MEMORY_OPERAND;
+        /* fallthrough */
+
+      case '1': case '2': case '3': case '4':
       case '5': case '6': case '7': case '8': case '9':
       case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
       case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':

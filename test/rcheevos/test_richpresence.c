@@ -391,6 +391,15 @@ static void test_conditional_display_unnecessary_measured_indirect() {
   assert_richpresence_output(richpresence, &memory, "True");
 }
 
+static void test_conditional_display_invalid() {
+  int lines_read = 0;
+  ASSERT_NUM_EQUALS(rc_richpresence_size_lines("Display:\n?I:0x0x0000=1?True\nFalse\n", &lines_read), RC_INVALID_MEMORY_OPERAND);
+  ASSERT_NUM_EQUALS(lines_read, 2);
+
+  ASSERT_NUM_EQUALS(rc_richpresence_size_lines("Display:\n?0x0000=1 0x0001=2?True\nFalse\n", &lines_read), RC_INVALID_OPERATOR);
+  ASSERT_NUM_EQUALS(lines_read, 2);
+}
+
 static void test_macro_value_adjusted_negative() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -525,6 +534,10 @@ static void test_macro_value_remember_recall() {
 
   ram[2] = 0;
   assert_richpresence_output(richpresence, &memory, "Result is 3");
+}
+
+static void test_macro_value_invalid() {
+  ASSERT_NUM_EQUALS(rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x0x0001) Points"), RC_INVALID_MEMORY_OPERAND);
 }
 
 static void test_macro_hundreds() {
@@ -1343,6 +1356,7 @@ void test_richpresence(void) {
   TEST(test_conditional_display_indirect);
   TEST(test_conditional_display_unnecessary_measured);
   TEST(test_conditional_display_unnecessary_measured_indirect);
+  TEST(test_conditional_display_invalid);
 
   /* value macros */
   TEST(test_macro_value);
@@ -1356,6 +1370,7 @@ void test_richpresence(void) {
   TEST(test_macro_value_divide_by_zero);
   TEST(test_macro_value_divide_by_self);
   TEST(test_macro_value_remember_recall);
+  TEST(test_macro_value_invalid);
 
   /* hundreds macro */
   TEST(test_macro_hundreds);

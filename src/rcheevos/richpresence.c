@@ -598,11 +598,20 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
           *nextdisplay = rc_parse_richpresence_display_internal(ptr + 1, endline, parse, firstlookup);
           if (parse->offset < 0)
             return;
+
           trigger = &((*nextdisplay)->trigger);
           rc_parse_trigger_internal(trigger, &line, parse);
           if (parse->offset < 0)
             return;
+
+          if (line != ptr) {
+            /* incomplete read */
+            parse->offset = RC_INVALID_OPERATOR;
+            return;
+          }
+
           (*nextdisplay)->has_required_hits = parse->has_required_hits;
+
           if (parse->buffer)
             nextdisplay = &((*nextdisplay)->next);
         }
