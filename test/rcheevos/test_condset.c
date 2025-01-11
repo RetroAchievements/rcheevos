@@ -2657,6 +2657,66 @@ static void test_addsource_bits_change() {
   assert_hit_count(condset, 5, 2);
 }
 
+static void test_addsource_bcd() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* bcd(byte(0)) * 100 + bcd(byte(1)) > 4990 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:b0xH0000*100_b0xH0001>4990");
+
+  /* 0*100+12 = 12 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 49*100+89 = 4989 */
+  ram[0] = 0x49;
+  ram[1] = 0x89;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 49*100+99 = 4999 */
+  ram[1] = 0x99;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 50*100+00 = 5000 */
+  ram[0] = 0x50;
+  ram[1] = 0x00;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
+static void test_addsource_invert() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* ~low4(0) + ~high4(0) > 20 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:~0xL0000_~0xU0000>20");
+
+  /* ~0 (F) + ~0 (F) = 1E */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* ~4 (B) + ~9 (6) = 11 */
+  ram[0] = 0x49;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* ~9 (6) + ~9 (6) = 0C */
+  ram[1] = 0x99;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* ~5 (A) + ~1 (E) = 18 */
+  ram[0] = 0x51;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_addhits() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -4519,6 +4579,8 @@ void test_condset(void) {
   TEST(test_subsource_overflow_comparison_lesser_or_equal);
   TEST(test_subsource_float);
   TEST(test_addsource_bits_change);
+  TEST(test_addsource_bcd);
+  TEST(test_addsource_invert);
 
   /* addhits/subhits */
   TEST(test_addhits);
