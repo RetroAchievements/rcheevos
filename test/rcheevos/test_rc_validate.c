@@ -363,6 +363,7 @@ void test_redundant_conditions() {
   TEST_PARAMS2(test_validate_trigger, "0xH0000<5_0xH0000<3", "Condition 1: Redundant with Condition 2");
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1S0xH0000=1", "Alt1 Condition 1: Redundant with Core Condition 1");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1_0xH0000!=1", "Condition 2: Redundant with Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=1_0xH0000!=0", "Condition 2: Redundant with Condition 1"); /* condition 1 effectively 0xH0000=1 */
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1_0xH0000=2", "");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1_T:0xH0000=2", "");
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1_R:0xH0000!=1", "Condition 1: Redundant with Condition 2");
