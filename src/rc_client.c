@@ -1992,14 +1992,28 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
 
   outstanding_requests = rc_client_end_load_state(load_state);
 
-  if (error_message) {
+  if (error_message && result != RC_NOT_FOUND) {
     rc_client_load_error(load_state, result, error_message);
   }
   else if (outstanding_requests < 0) {
     /* previous load state was aborted, load_state was free'd */
   }
+  else if (fetch_game_data_response.id == 0) {
+    load_state->hash->game_id = 0;
+    rc_client_process_resolved_hash(load_state);
+  }
   else {
     rc_client_subset_info_t* subset;
+
+    /* hash exists outside the load state - always update it */
+    load_state->hash->game_id = fetch_game_data_response.id;
+    RC_CLIENT_LOG_INFO_FORMATTED(load_state->client, "Identified game: %u \"%s\" (%s)", load_state->hash->game_id, fetch_game_data_response.title, load_state->hash->hash);
+
+    if (load_state->hash->hash[0] != '[') {
+      /* not [NO HASH] or [SUBSETxx] */
+      load_state->game->public_.id = load_state->hash->game_id;
+      load_state->game->public_.hash = load_state->hash->hash;
+    }
 
     subset = (rc_client_subset_info_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
     memset(subset, 0, sizeof(*subset));
@@ -2375,7 +2389,11 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   memset(&fetch_game_data_request, 0, sizeof(fetch_game_data_request));
   fetch_game_data_request.username = client->user.username;
   fetch_game_data_request.api_token = client->user.token;
-  fetch_game_data_request.game_id = load_state->hash->game_id;
+
+  if (load_state->hash->game_id != RC_CLIENT_UNKNOWN_GAME_ID)
+    fetch_game_data_request.game_id = load_state->hash->game_id;
+  else
+    fetch_game_data_request.game_hash = load_state->hash->hash;
 
   result = rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request);
   if (result != RC_OK) {
@@ -2383,9 +2401,17 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
     return;
   }
 
-  rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA, 1);
+  if (fetch_game_data_request.game_id)
+    rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA, 1);
+  else
+    rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME, 1);
 
-  RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Fetching data for game %u", fetch_game_data_request.game_id);
+  if (fetch_game_data_request.game_id) {
+    RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Fetching data for game %u", fetch_game_data_request.game_id);
+  } else {
+    RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Fetching data for hash %s", fetch_game_data_request.game_hash);
+  }
+
   rc_client_begin_async(client, &load_state->async_handle);
   client->callbacks.server_call(&request, rc_client_fetch_game_data_callback, load_state, client);
 
@@ -2501,7 +2527,14 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
     load_state->game->media_hash->game_hash = load_state->hash;
   }
 
-  if (load_state->hash->game_id == RC_CLIENT_UNKNOWN_GAME_ID) {
+  if (load_state->hash->game_id == 0) {
+    rc_client_process_resolved_hash(load_state);
+  }
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  else if (load_state->hash->game_id == RC_CLIENT_UNKNOWN_GAME_ID &&
+           client->state.external_client && client->state.external_client->add_game_hash) {
+    /* if an add_game_hash external handler exists, do the identification locally, then
+     * pass the resulting game_id/hash to the external client */
     rc_api_resolve_hash_request_t resolve_hash_request;
     rc_api_request_t request;
     int result;
@@ -2522,10 +2555,9 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
 
     rc_api_destroy_request(&request);
   }
+#endif
   else {
-    RC_CLIENT_LOG_INFO_FORMATTED(client, "Identified game: %u (%s)", load_state->hash->game_id, load_state->hash->hash);
-
-    rc_client_process_resolved_hash(load_state);
+    rc_client_begin_fetch_game_data(load_state);
   }
 
   return (client->state.load == load_state) ? &load_state->async_handle : NULL;
