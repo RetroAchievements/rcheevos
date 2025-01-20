@@ -1474,6 +1474,9 @@ static void rc_client_apply_unlocks(rc_client_subset_info_t* subset, rc_api_unlo
       }
     }
   }
+
+  if (subset->next)
+    rc_client_apply_unlocks(subset->next, unlocks, num_unlocks, mode);
 }
 
 static void rc_client_free_pending_media(rc_client_pending_media_t* pending_media)
@@ -1950,23 +1953,6 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
   subset->leaderboards = leaderboards;
 }
 
-static const char* rc_client_subset_extract_title(rc_client_game_info_t* game, const char* title)
-{
-  const char* subset_prefix = strstr(title, "[Subset - ");
-  if (subset_prefix) {
-    const char* start = subset_prefix + 10;
-    const char* stop = strstr(start, "]");
-    const size_t len = stop - start;
-    char* result = (char*)rc_buffer_alloc(&game->buffer, len + 1);
-
-    memcpy(result, start, len);
-    result[len] = '\0';
-    return result;
-  }
-
-  return NULL;
-}
-
 static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
@@ -2003,7 +1989,9 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
     rc_client_process_resolved_hash(load_state);
   }
   else {
-    rc_client_subset_info_t* subset;
+    rc_client_subset_info_t** next_subset;
+    rc_client_subset_info_t* core_subset;
+    uint32_t subset_index;
 
     /* hash exists outside the load state - always update it */
     load_state->hash->game_id = fetch_game_data_response.id;
@@ -2015,12 +2003,12 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
       load_state->game->public_.hash = load_state->hash->hash;
     }
 
-    subset = (rc_client_subset_info_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
-    memset(subset, 0, sizeof(*subset));
-    subset->public_.id = fetch_game_data_response.id;
-    subset->active = 1;
-    snprintf(subset->public_.badge_name, sizeof(subset->public_.badge_name), "%s", fetch_game_data_response.image_name);
-    load_state->subset = subset;
+    core_subset = (rc_client_subset_info_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
+    memset(core_subset, 0, sizeof(*core_subset));
+    core_subset->public_.id = fetch_game_data_response.id;
+    core_subset->active = 1;
+    snprintf(core_subset->public_.badge_name, sizeof(core_subset->public_.badge_name), "%s", fetch_game_data_response.image_name);
+    load_state->subset = core_subset;
 
     if (load_state->game->public_.console_id != RC_CONSOLE_UNKNOWN &&
         fetch_game_data_response.console_id != load_state->game->public_.console_id) {
@@ -2039,54 +2027,45 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
     }
 
     /* process the game data */
-    rc_client_copy_achievements(load_state, subset,
+    rc_client_copy_achievements(load_state, core_subset,
         fetch_game_data_response.achievements, fetch_game_data_response.num_achievements);
-    rc_client_copy_leaderboards(load_state, subset,
+    rc_client_copy_leaderboards(load_state, core_subset,
         fetch_game_data_response.leaderboards, fetch_game_data_response.num_leaderboards);
 
-    if (!load_state->game->subsets) {
-      /* core set */
-      rc_mutex_lock(&load_state->client->state.mutex);
-      load_state->game->public_.title = rc_buffer_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
-      load_state->game->subsets = subset;
-      load_state->game->public_.badge_name = subset->public_.badge_name;
-      load_state->game->public_.console_id = fetch_game_data_response.console_id;
-      rc_mutex_unlock(&load_state->client->state.mutex);
+    /* core set */
+    rc_mutex_lock(&load_state->client->state.mutex);
+    load_state->game->public_.title = rc_buffer_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
+    load_state->game->subsets = core_subset;
+    load_state->game->public_.badge_name = core_subset->public_.badge_name;
+    load_state->game->public_.console_id = fetch_game_data_response.console_id;
+    rc_mutex_unlock(&load_state->client->state.mutex);
 
-      subset->public_.title = load_state->game->public_.title;
+    core_subset->public_.title = load_state->game->public_.title;
 
-      if (fetch_game_data_response.rich_presence_script && fetch_game_data_response.rich_presence_script[0]) {
-        result = rc_runtime_activate_richpresence(&load_state->game->runtime, fetch_game_data_response.rich_presence_script, NULL, 0);
-        if (result != RC_OK) {
-          RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing rich presence", result);
-        }
+    if (fetch_game_data_response.rich_presence_script && fetch_game_data_response.rich_presence_script[0]) {
+      result = rc_runtime_activate_richpresence(&load_state->game->runtime, fetch_game_data_response.rich_presence_script, NULL, 0);
+      if (result != RC_OK) {
+        RC_CLIENT_LOG_WARN_FORMATTED(load_state->client, "Parse error %d processing rich presence", result);
       }
     }
-    else {
-      rc_client_subset_info_t* scan;
 
-      /* subset - extract subset title */
-      subset->public_.title = rc_client_subset_extract_title(load_state->game, fetch_game_data_response.title);
-      if (!subset->public_.title) {
-        const char* core_subset_title = rc_client_subset_extract_title(load_state->game, load_state->game->public_.title);
-        if (core_subset_title) {
-          scan = load_state->game->subsets;
-          for (; scan; scan = scan->next) {
-            if (scan->public_.title == load_state->game->public_.title) {
-              scan->public_.title = core_subset_title;
-              break;
-            }
-          }
-        }
+    next_subset = &core_subset->next;
+    for (subset_index = 0; subset_index < fetch_game_data_response.num_subsets; ++subset_index) {
+      rc_api_subset_definition_t* api_subset = &fetch_game_data_response.subsets[subset_index];
+      rc_client_subset_info_t* subset;
 
-        subset->public_.title = rc_buffer_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
-      }
+      subset = (rc_client_subset_info_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
+      memset(subset, 0, sizeof(*subset));
+      subset->public_.id = api_subset->id;
+      subset->active = 1;
+      snprintf(subset->public_.badge_name, sizeof(subset->public_.badge_name), "%s", api_subset->image_name);
+      subset->public_.title = rc_buffer_strcpy(&load_state->game->buffer, api_subset->title);
 
-      /* append to subset list */
-      scan = load_state->game->subsets;
-      while (scan->next)
-        scan = scan->next;
-      scan->next = subset;
+      rc_client_copy_achievements(load_state, subset, api_subset->achievements, api_subset->num_achievements);
+      rc_client_copy_leaderboards(load_state, subset, api_subset->leaderboards, api_subset->num_leaderboards);
+
+      *next_subset = subset;
+      next_subset = &subset->next;
     }
 
     if (load_state->client->callbacks.post_process_game_data_response) {
@@ -3170,47 +3149,6 @@ int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], si
 }
 
 /* ===== Subsets ===== */
-
-rc_client_async_handle_t* rc_client_begin_load_subset(rc_client_t* client, uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata)
-{
-  char buffer[32];
-  rc_client_load_state_t* load_state;
-
-  if (!client) {
-    callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
-    return NULL;
-  }
-
-#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->begin_load_subset)
-    return client->state.external_client->begin_load_subset(client, subset_id, callback, callback_userdata);
-#endif
-
-  if (!rc_client_is_game_loaded(client)) {
-    callback(RC_NO_GAME_LOADED, rc_error_str(RC_NO_GAME_LOADED), client, callback_userdata);
-    return NULL;
-  }
-
-  snprintf(buffer, sizeof(buffer), "[SUBSET%lu]", (unsigned long)subset_id);
-
-  load_state = (rc_client_load_state_t*)calloc(1, sizeof(*load_state));
-  if (!load_state) {
-    callback(RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY), client, callback_userdata);
-    return NULL;
-  }
-
-  load_state->client = client;
-  load_state->callback = callback;
-  load_state->callback_userdata = callback_userdata;
-  load_state->game = client->game;
-  load_state->hash = rc_client_find_game_hash(client, buffer);
-  load_state->hash->game_id = subset_id;
-  client->state.load = load_state;
-
-  rc_client_process_resolved_hash(load_state);
-
-  return (client->state.load == load_state) ? &load_state->async_handle : NULL;
-}
 
 const rc_client_subset_t* rc_client_get_subset_info(rc_client_t* client, uint32_t subset_id)
 {
