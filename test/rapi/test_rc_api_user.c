@@ -294,19 +294,20 @@ static void test_process_login_response_success()
 static void test_process_login_response_unique_display_name()
 {
   rc_api_login_response_t login_response;
-  const char* server_response = "{\"Success\":true,\"User\":\"USER\",\"DisplayName\":\"Gaming Hero\",\"Token\":\"ApiTOKEN\",\"Score\":1234,\"SoftcoreScore\":789,\"Messages\":2}";
+  const char* server_response = "{\"Success\":true,\"User\":\"GamingHero\",\"AvatarUrl\":\"http://host/UserPic/USER.png\",\"Token\":\"ApiTOKEN\",\"Score\":1234,\"SoftcoreScore\":789,\"Messages\":2}";
 
   memset(&login_response, 0, sizeof(login_response));
 
   ASSERT_NUM_EQUALS(rc_api_process_login_response(&login_response, server_response), RC_OK);
   ASSERT_NUM_EQUALS(login_response.response.succeeded, 1);
   ASSERT_PTR_NULL(login_response.response.error_message);
-  ASSERT_STR_EQUALS(login_response.username, "USER");
+  ASSERT_STR_EQUALS(login_response.username, "GamingHero");
   ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
   ASSERT_NUM_EQUALS(login_response.score, 1234);
   ASSERT_NUM_EQUALS(login_response.score_softcore, 789);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 2);
-  ASSERT_STR_EQUALS(login_response.display_name, "Gaming Hero");
+  ASSERT_STR_EQUALS(login_response.display_name, "GamingHero");
+  ASSERT_STR_EQUALS(login_response.avatar_url, "http://host/UserPic/USER.png");
 
   rc_api_destroy_login_response(&login_response);
 }

@@ -635,6 +635,7 @@ static rc_client_t* mock_client_logged_in(void)
   client->user.display_name = "DisplayName";
   client->user.token = "ApiToken";
   client->user.score = 12345;
+  client->user.avatar_url = "http://host/UserPic/Username.png";
   client->state.user = RC_CLIENT_USER_STATE_LOGGED_IN;
 
   return client;
@@ -717,15 +718,16 @@ static void test_login_with_token(void)
   g_client = mock_client_not_logged_in();
   reset_mock_api_handlers();
   mock_api_response("r=login2&u=User&t=ApiToken",
-	  "{\"Success\":true,\"User\":\"User\",\"DisplayName\":\"Display\",\"Token\":\"ApiToken\",\"Score\":12345,\"Messages\":2}");
+	  "{\"Success\":true,\"User\":\"User\",\"AvatarUrl\":\"http://host/UserPic/USER.png\",\"Token\":\"ApiToken\",\"Score\":12345,\"Messages\":2}");
 
   rc_client_begin_login_with_token(g_client, "User", "ApiToken", rc_client_callback_expect_success, g_callback_userdata);
 
   user = rc_client_get_user_info(g_client);
   ASSERT_PTR_NOT_NULL(user);
   ASSERT_STR_EQUALS(user->username, "User");
-  ASSERT_STR_EQUALS(user->display_name, "Display");
+  ASSERT_STR_EQUALS(user->display_name, "User");
   ASSERT_STR_EQUALS(user->token, "ApiToken");
+  ASSERT_STR_EQUALS(user->avatar_url, "http://host/UserPic/USER.png");
   ASSERT_NUM_EQUALS(user->score, 12345);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
 
@@ -1088,9 +1090,10 @@ static void test_user_get_image_url(void)
 {
   char buffer[256];
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
+  ASSERT_STR_EQUALS(g_client->user.avatar_url, "http://host/UserPic/Username.png");
 
   ASSERT_NUM_EQUALS(rc_client_user_get_image_url(rc_client_get_user_info(g_client), buffer, sizeof(buffer)), RC_OK);
-  ASSERT_STR_EQUALS(buffer, "https://media.retroachievements.org/UserPic/DisplayName.png");
+  ASSERT_STR_EQUALS(buffer, "http://host/UserPic/Username.png");
 
   rc_client_destroy(g_client);
 }

@@ -702,6 +702,7 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
     else
       client->user.display_name = rc_buffer_strcpy(&client->state.buffer, login_response.display_name);
 
+    client->user.avatar_url = rc_buffer_strcpy(&client->state.buffer, login_response.avatar_url);
     client->user.token = rc_buffer_strcpy(&client->state.buffer, login_response.api_token);
     client->user.score = login_response.score;
     client->user.score_softcore = login_response.score_softcore;
@@ -896,6 +897,11 @@ int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], si
 {
   if (!user)
     return RC_INVALID_STATE;
+
+  if (user->avatar_url) {
+    snprintf(buffer, buffer_size, "%s", user->avatar_url);
+    return RC_OK;
+  }
 
   return rc_client_get_image_url(buffer, buffer_size, RC_IMAGE_TYPE_USER, user->display_name);
 }

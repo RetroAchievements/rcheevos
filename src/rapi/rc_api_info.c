@@ -73,7 +73,8 @@ int rc_api_process_fetch_achievement_info_server_response(rc_api_fetch_achieveme
 
   rc_json_field_t entry_fields[] = {
     RC_JSON_NEW_FIELD("User"),
-    RC_JSON_NEW_FIELD("DateAwarded")
+    RC_JSON_NEW_FIELD("DateAwarded"),
+    RC_JSON_NEW_FIELD("AvatarUrl")
   };
 
   memset(response, 0, sizeof(*response));
@@ -115,6 +116,10 @@ int rc_api_process_fetch_achievement_info_server_response(rc_api_fetch_achieveme
       if (!rc_json_get_required_unum(&timet, &response->response, &entry_fields[1], "DateAwarded"))
         return RC_MISSING_VALUE;
       entry->awarded = (time_t)timet;
+
+      rc_json_get_optional_string(&entry->avatar_url, &response->response, &entry_fields[2], "AvatarUrl", NULL);
+      if (!entry->avatar_url)
+        entry->avatar_url = rc_api_build_avatar_url(&response->response.buffer, entry->username);
 
       ++entry;
     }
@@ -191,13 +196,6 @@ int rc_api_process_fetch_leaderboard_info_server_response(rc_api_fetch_leaderboa
     RC_JSON_NEW_FIELD("LBUpdated"),
     RC_JSON_NEW_FIELD("Entries"), /* array */
     RC_JSON_NEW_FIELD("TotalEntries")
-    /* unused fields
-    RC_JSON_NEW_FIELD("GameTitle"),
-    RC_JSON_NEW_FIELD("ConsoleID"),
-    RC_JSON_NEW_FIELD("ConsoleName"),
-    RC_JSON_NEW_FIELD("ForumTopicID"),
-    RC_JSON_NEW_FIELD("GameIcon")
-     * unused fields */
   };
 
   rc_json_field_t entry_fields[] = {
@@ -205,7 +203,8 @@ int rc_api_process_fetch_leaderboard_info_server_response(rc_api_fetch_leaderboa
     RC_JSON_NEW_FIELD("Rank"),
     RC_JSON_NEW_FIELD("Index"),
     RC_JSON_NEW_FIELD("Score"),
-    RC_JSON_NEW_FIELD("DateSubmitted")
+    RC_JSON_NEW_FIELD("DateSubmitted"),
+    RC_JSON_NEW_FIELD("AvatarUrl")
   };
 
   memset(response, 0, sizeof(*response));
@@ -280,6 +279,10 @@ int rc_api_process_fetch_leaderboard_info_server_response(rc_api_fetch_leaderboa
       if (!rc_json_get_required_unum(&timet, &response->response, &entry_fields[4], "DateSubmitted"))
         return RC_MISSING_VALUE;
       entry->submitted = (time_t)timet;
+
+      rc_json_get_optional_string(&entry->avatar_url, &response->response, &entry_fields[5], "AvatarUrl", NULL);
+      if (!entry->avatar_url)
+        entry->avatar_url = rc_api_build_avatar_url(&response->response.buffer, entry->username);
 
       ++entry;
     }

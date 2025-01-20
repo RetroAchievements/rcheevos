@@ -40,6 +40,8 @@ typedef struct rc_api_login_response_t {
   uint32_t num_unread_messages;
   /* The preferred name to display for the player */
   const char* display_name;
+  /* A URL to the user's avatar image */
+  const char* avatar_url;
 
   /* Common server-provided response information */
   rc_api_response_t response;
