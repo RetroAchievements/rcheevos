@@ -2390,6 +2390,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   rc_api_destroy_request(&request);
 }
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
 static void rc_client_identify_game_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
@@ -2434,6 +2435,7 @@ static void rc_client_identify_game_callback(const rc_api_server_response_t* ser
 
   rc_api_destroy_resolve_hash_response(&resolve_hash_response);
 }
+#endif
 
 rc_client_game_hash_t* rc_client_find_game_hash(rc_client_t* client, const char* hash)
 {
