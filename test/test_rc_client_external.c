@@ -732,39 +732,6 @@ typedef struct v1_rc_client_subset_t {
   uint32_t num_leaderboards;
 } v1_rc_client_subset_t;
 
-static const rc_client_subset_t* rc_client_external_get_subset_info(uint32_t subset_id)
-{
-  v1_rc_client_subset_t* subset = (v1_rc_client_subset_t*)
-    rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_subset_t));
-
-  memset(subset, 0, sizeof(*subset));
-  subset->id = 1234;
-  subset->title = "Game Title";
-  memcpy(subset->badge_name, "BDG001", 7);
-  subset->num_achievements = 6;
-  subset->num_leaderboards = 2;
-
-  return (const rc_client_subset_t*)subset;
-}
-
-static void assert_load_subset(rc_client_t* client, uint32_t subset_id)
-{
-  ASSERT_PTR_EQUALS(client, g_client);
-
-  ASSERT_NUM_EQUALS(subset_id, 2345);
-}
-
-static rc_client_async_handle_t* rc_client_external_load_subset(rc_client_t* client,
-  uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata)
-{
-  assert_load_subset(client, subset_id);
-
-  g_external_event = "load_subset";
-
-  callback(RC_OK, NULL, client, callback_userdata);
-  return NULL;
-}
-
 static void rc_client_external_unload_game(void)
 {
   g_external_event = "unload_game";
