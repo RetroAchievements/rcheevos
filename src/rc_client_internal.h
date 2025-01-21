@@ -221,6 +221,7 @@ typedef struct rc_client_subset_info_t {
 
 typedef struct rc_client_game_hash_t {
   char hash[33];
+  uint8_t is_unknown;
   uint32_t game_id;
   struct rc_client_game_hash_t* next;
 } rc_client_game_hash_t;

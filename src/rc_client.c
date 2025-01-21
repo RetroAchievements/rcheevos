@@ -2241,6 +2241,7 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
             load_state->hash_console_id, load_state->hash->hash, client, load_state->callback_userdata);
 
         if (load_state->hash->game_id != 0) {
+          load_state->hash->is_unknown = 1;
           RC_CLIENT_LOG_INFO_FORMATTED(load_state->client, "Client says to load game %u for unidentified hash %s",
             load_state->hash->game_id, load_state->hash->hash);
         }
@@ -2369,7 +2370,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   fetch_game_data_request.username = client->user.username;
   fetch_game_data_request.api_token = client->user.token;
 
-  if (load_state->hash->game_id != RC_CLIENT_UNKNOWN_GAME_ID)
+  if (load_state->hash->is_unknown) /* lookup failed, but client provided a mapping */
     fetch_game_data_request.game_id = load_state->hash->game_id;
   else
     fetch_game_data_request.game_hash = load_state->hash->hash;
@@ -2380,16 +2381,8 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
     return;
   }
 
-  if (fetch_game_data_request.game_id)
-    rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA, 1);
-  else
-    rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME, 1);
-
-  if (fetch_game_data_request.game_id) {
-    RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Fetching data for game %u", fetch_game_data_request.game_id);
-  } else {
-    RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Fetching data for hash %s", fetch_game_data_request.game_hash);
-  }
+  rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME, 1);
+  RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Fetching data for hash %s", fetch_game_data_request.game_hash);
 
   rc_client_begin_async(client, &load_state->async_handle);
   client->callbacks.server_call(&request, rc_client_fetch_game_data_callback, load_state, client);
