@@ -106,8 +106,14 @@ int rc_api_process_fetch_code_notes_server_response(rc_api_fetch_code_notes_resp
         if (!rc_json_get_required_string(&note->author, &response->response, &note_fields[1], "User"))
           return RC_MISSING_VALUE;
 
-        last_author = note->author;
-        last_author_len = len;
+        if (note->author == NULL) {
+          /* ensure we don't pass NULL out to client */
+          last_author = note->author = "";
+          last_author_len = 0;
+        } else {
+          last_author = note->author;
+          last_author_len = len;
+        }
       }
 
       ++note;
