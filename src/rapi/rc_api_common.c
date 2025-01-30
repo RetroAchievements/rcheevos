@@ -1276,13 +1276,13 @@ int rc_api_init_fetch_image_request(rc_api_request_t* request, const rc_api_fetc
   return builder.result;
 }
 
-const char* rc_api_build_avatar_url(rc_buffer_t* buffer, const char* username) {
+const char* rc_api_build_avatar_url(rc_buffer_t* buffer, uint32_t image_type, const char* username) {
   rc_api_fetch_image_request_t image_request;
   rc_api_request_t request;
   int result;
 
   memset(&image_request, 0, sizeof(image_request));
-  image_request.image_type = RC_IMAGE_TYPE_USER;
+  image_request.image_type = image_type;
   image_request.image_name = username;
 
   result = rc_api_init_fetch_image_request(&request, &image_request);

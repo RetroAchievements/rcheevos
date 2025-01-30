@@ -1774,6 +1774,8 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     achievement->public_.rarity = read->rarity;
     achievement->public_.rarity_hardcore = read->rarity_hardcore;
     achievement->public_.type = read->type; /* assert: mapping is 1:1 */
+    achievement->public_.badge_url = rc_buffer_strcpy(buffer, read->badge_url);
+    achievement->public_.badge_locked_url = rc_buffer_strcpy(buffer, read->badge_locked_url);
 
     memaddr = read->definition;
     rc_runtime_checksum(memaddr, achievement->md5);
@@ -2014,6 +2016,7 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
     core_subset->public_.id = fetch_game_data_response.id;
     core_subset->active = 1;
     snprintf(core_subset->public_.badge_name, sizeof(core_subset->public_.badge_name), "%s", fetch_game_data_response.image_name);
+    core_subset->public_.badge_url = rc_buffer_strcpy(&load_state->game->buffer, fetch_game_data_response.image_url);
     load_state->subset = core_subset;
 
     if (load_state->game->public_.console_id != RC_CONSOLE_UNKNOWN &&
@@ -2043,6 +2046,7 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
     load_state->game->public_.title = rc_buffer_strcpy(&load_state->game->buffer, fetch_game_data_response.title);
     load_state->game->subsets = core_subset;
     load_state->game->public_.badge_name = core_subset->public_.badge_name;
+    load_state->game->public_.badge_url = core_subset->public_.badge_url;
     load_state->game->public_.console_id = fetch_game_data_response.console_id;
     rc_mutex_unlock(&load_state->client->state.mutex);
 
@@ -2065,6 +2069,7 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
       subset->public_.id = api_subset->id;
       subset->active = 1;
       snprintf(subset->public_.badge_name, sizeof(subset->public_.badge_name), "%s", api_subset->image_name);
+      subset->public_.badge_url = rc_buffer_strcpy(&load_state->game->buffer, api_subset->image_url);
       subset->public_.title = rc_buffer_strcpy(&load_state->game->buffer, api_subset->title);
 
       rc_client_copy_achievements(load_state, subset, api_subset->achievements, api_subset->num_achievements);
@@ -2187,6 +2192,23 @@ static void rc_client_external_load_state_callback(int result, const char* error
 
 #endif
 
+static void rc_client_initialize_unknown_game(rc_client_game_info_t* game)
+{
+  rc_client_subset_info_t* subset;
+  char buffer[64];
+
+  subset = (rc_client_subset_info_t*)rc_buffer_alloc(&game->buffer, sizeof(rc_client_subset_info_t));
+  memset(subset, 0, sizeof(*subset));
+  subset->public_.title = "";
+  game->subsets = subset;
+
+  game->public_.title = "Unknown Game";
+  game->public_.badge_name = "";
+
+  rc_client_get_image_url(buffer, sizeof(buffer), RC_IMAGE_TYPE_GAME, "000001");
+  game->public_.badge_url = rc_buffer_strcpy(&game->buffer, buffer);
+}
+
 static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
 {
   rc_client_t* client = load_state->client;
@@ -2270,16 +2292,8 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
       }
       else {
 #endif
-        /* mimics rc_client_load_unknown_game without allocating a new game object */
-        rc_client_subset_info_t* subset;
+        rc_client_initialize_unknown_game(load_state->game);
 
-        subset = (rc_client_subset_info_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
-        memset(subset, 0, sizeof(*subset));
-        subset->public_.title = "";
-
-        load_state->game->public_.title = "Unknown Game";
-        load_state->game->public_.badge_name = "";
-        load_state->game->subsets = subset;
         client->game = load_state->game;
         load_state->game = NULL;
 
@@ -2317,20 +2331,13 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
 
 void rc_client_load_unknown_game(rc_client_t* client, const char* tried_hashes)
 {
-  rc_client_subset_info_t* subset;
   rc_client_game_info_t* game;
 
   game = rc_client_allocate_game();
   if (!game)
     return;
 
-  subset = (rc_client_subset_info_t*)rc_buffer_alloc(&game->buffer, sizeof(rc_client_subset_info_t));
-  memset(subset, 0, sizeof(*subset));
-  subset->public_.title = "";
-  game->subsets = subset;
-
-  game->public_.title = "Unknown Game";
-  game->public_.badge_name = "";
+  rc_client_initialize_unknown_game(game);
   game->public_.console_id = RC_CONSOLE_UNKNOWN;
 
   if (strlen(tried_hashes) == 32) { /* only one hash tried, add it to the list */
@@ -3146,6 +3153,11 @@ int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], si
   if (!game)
     return RC_INVALID_STATE;
 
+  if (game->badge_url) {
+    snprintf(buffer, buffer_size, "%s", game->badge_url);
+    return RC_OK;
+  }
+
   return rc_client_get_image_url(buffer, buffer_size, RC_IMAGE_TYPE_GAME, game->badge_name);
 }
 
@@ -3607,6 +3619,16 @@ int rc_client_achievement_get_image_url(const rc_client_achievement_t* achieveme
 
   if (!achievement || !achievement->badge_name[0])
     return rc_client_get_image_url(buffer, buffer_size, image_type, "00000");
+
+  if (image_type == RC_IMAGE_TYPE_ACHIEVEMENT && achievement->badge_url) {
+    snprintf(buffer, buffer_size, "%s", achievement->badge_url);
+    return RC_OK;
+  }
+
+  if (image_type == RC_IMAGE_TYPE_ACHIEVEMENT_LOCKED && achievement->badge_locked_url) {
+    snprintf(buffer, buffer_size, "%s", achievement->badge_locked_url);
+    return RC_OK;
+  }
 
   return rc_client_get_image_url(buffer, buffer_size, image_type, achievement->badge_name);
 }

@@ -1,5 +1,6 @@
 #include "rc_api_info.h"
 #include "rc_api_common.h"
+#include "rc_api_runtime.h"
 
 #include "rc_runtime_types.h"
 
@@ -119,7 +120,7 @@ int rc_api_process_fetch_achievement_info_server_response(rc_api_fetch_achieveme
 
       rc_json_get_optional_string(&entry->avatar_url, &response->response, &entry_fields[2], "AvatarUrl", NULL);
       if (!entry->avatar_url)
-        entry->avatar_url = rc_api_build_avatar_url(&response->response.buffer, entry->username);
+        entry->avatar_url = rc_api_build_avatar_url(&response->response.buffer, RC_IMAGE_TYPE_USER, entry->username);
 
       ++entry;
     }
@@ -282,7 +283,7 @@ int rc_api_process_fetch_leaderboard_info_server_response(rc_api_fetch_leaderboa
 
       rc_json_get_optional_string(&entry->avatar_url, &response->response, &entry_fields[5], "AvatarUrl", NULL);
       if (!entry->avatar_url)
-        entry->avatar_url = rc_api_build_avatar_url(&response->response.buffer, entry->username);
+        entry->avatar_url = rc_api_build_avatar_url(&response->response.buffer, RC_IMAGE_TYPE_USER, entry->username);
 
       ++entry;
     }
