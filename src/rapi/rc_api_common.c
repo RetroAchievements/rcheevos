@@ -320,6 +320,11 @@ static int rc_json_convert_error_code(const char* server_error_code)
         return RC_INVALID_CREDENTIALS;
       break;
 
+    case 'n':
+      if (strcmp(server_error_code, "not_found") == 0)
+        return RC_NOT_FOUND;
+      break;
+
     default:
       break;
   }

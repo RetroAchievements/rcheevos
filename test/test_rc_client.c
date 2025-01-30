@@ -30,6 +30,10 @@ static void* g_callback_userdata = &g_client; /* dummy object to use for callbac
       "\"Description\":\"Desc " id "\",\"Flags\":3,\"Points\":5,\"MemAddr\":\"" memaddr "\"," \
       "\"Author\":\"User1\",\"BadgeName\":\"00" id "\",\"Created\":1367266583,\"Modified\":1376929305}"
 
+#define UNOFFICIAL_ACHIEVEMENT_JSON(id, memaddr) "{\"ID\":" id ",\"Title\":\"Achievement " id "\"," \
+      "\"Description\":\"Desc " id "\",\"Flags\":5,\"Points\":5,\"MemAddr\":\"" memaddr "\"," \
+      "\"Author\":\"User1\",\"BadgeName\":\"00" id "\",\"Created\":1367266583,\"Modified\":1376929305}"
+
 #define TYPED_ACHIEVEMENT_JSON(id, memaddr, type, rarity, rarity_hardcore) "{\"ID\":" id ",\"Title\":\"Achievement " id "\"," \
       "\"Description\":\"Desc " id "\",\"Flags\":3,\"Points\":5,\"MemAddr\":\"" memaddr "\"," \
       "\"Type\":\"" type "\",\"Rarity\":" rarity ",\"RarityHardcore\":" rarity_hardcore "," \
@@ -232,34 +236,83 @@ static const char* patchdata_unofficial_unsupported = "{\"Success\":true,\"Patch
     "}}";
 
 static const char* patchdata_subset = "{\"Success\":true,\"PatchData\":{"
-    "\"ID\":2345,\"Title\":\"Sample Game [Subset - Bonus]\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112234.png\","
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
     "\"Achievements\":["
-      GENERIC_ACHIEVEMENT_JSON("7", "0xH0007=7") ","
+      GENERIC_ACHIEVEMENT_JSON("5", "0xH0005=5") ","
+      GENERIC_ACHIEVEMENT_JSON("6", "M:0xH0006=6") ","
+      GENERIC_ACHIEVEMENT_JSON("7", "T:0xH0007=7_0xH0001=1") ","
       GENERIC_ACHIEVEMENT_JSON("8", "0xH0008=8") ","
-      GENERIC_ACHIEVEMENT_JSON("9", "0xH0009=9")
+      GENERIC_ACHIEVEMENT_JSON("9", "0xH0009=9") ","
+      GENERIC_ACHIEVEMENT_JSON("70", "M:0xX0010=100000") ","
+      GENERIC_ACHIEVEMENT_JSON("71", "G:0xX0010=100000")
     "],"
     "\"Leaderboards\":["
-      GENERIC_LEADERBOARD_JSON("81", "STA:0xH0008=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE") ","
-      GENERIC_LEADERBOARD_JSON("82", "STA:0xH0008=2::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE")
+      GENERIC_LEADERBOARD_JSON("44", "STA:0xH000B=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE") ","
+      GENERIC_LEADERBOARD_JSON("45", "STA:0xH000A=1::CAN:0xH000C=2::SUB:0xH000D=1::VAL:0xH000E", "SCORE") ","   /* different size */
+      GENERIC_LEADERBOARD_JSON("46", "STA:0xH000A=1::CAN:0xH000C=3::SUB:0xH000D=1::VAL:0x 000E", "VALUE") ","   /* different format */
+      GENERIC_LEADERBOARD_JSON("47", "STA:0xH000A=1::CAN:0xH000C=4::SUB:0xH000D=2::VAL:0x 000E", "SCORE") ","   /* different submit */
+      GENERIC_LEADERBOARD_JSON("48", "STA:0xH000A=2::CAN:0xH000C=5::SUB:0xH000D=1::VAL:0x 000E", "SCORE") ","   /* different start */
+      GENERIC_LEADERBOARD_JSON("51", "STA:0xH000A=3::CAN:0xH000C=6::SUB:0xH000D=1::VAL:M:0xH0009=1", "VALUE") "," /* hit count */
+      GENERIC_LEADERBOARD_JSON("52", "STA:0xH000B=3::CAN:0xH000C=7::SUB:0xH000D=1::VAL:M:0xH0009=1", "VALUE")     /* hit count */
+    "],"
+    "\"RichPresencePatch\":\"Display:\\r\\nPoints:@Number(0xH0003)\\r\\n\","
+    "\"Sets\":[{"
+      "\"GameAchievementSetID\":2345,\"SetTitle\":\"Bonus\",\"ImageIcon\":\"/Images/112234.png\","
+      "\"ImageIconURL\":\"http://host/Images/112234.png\","
+      "\"Achievements\":["
+        GENERIC_ACHIEVEMENT_JSON("5501", "0xH0017=7") ","
+        GENERIC_ACHIEVEMENT_JSON("5502", "0xH0018=8") ","
+        GENERIC_ACHIEVEMENT_JSON("5503", "0xH0019=9")
+      "],"
+      "\"Leaderboards\":["
+        GENERIC_LEADERBOARD_JSON("81", "STA:0xH0008=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE") ","
+        GENERIC_LEADERBOARD_JSON("82", "STA:0xH0008=2::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE")
+      "]}"
     "]"
     "}}";
 
-static const char* patchdata_subset2 = "{\"Success\":true,\"PatchData\":{"
-    "\"ID\":2345,\"Title\":\"Sample Game [Subset - Multi]\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112234.png\","
+static const char* patchdata_subset_unofficial_unsupported = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":1234,\"Title\":\"Sample Game\",\"ConsoleID\":17,\"ImageIcon\":\"/Images/112233.png\","
     "\"Achievements\":["
-      GENERIC_ACHIEVEMENT_JSON("5501", "0xH0017=7") ","
-      GENERIC_ACHIEVEMENT_JSON("5502", "0xH0018=8") ","
-      GENERIC_ACHIEVEMENT_JSON("5503", "0xH0019=9")
+      GENERIC_ACHIEVEMENT_JSON("5", "0xH0005=5") ","
+      GENERIC_ACHIEVEMENT_JSON("6", "M:0xH0006=6") ","
+      GENERIC_ACHIEVEMENT_JSON("7", "T:0xH0007=7_0xH0001=1") ","
+      UNOFFICIAL_ACHIEVEMENT_JSON("8", "0xH0008=8") ","
+      GENERIC_ACHIEVEMENT_JSON("9", "0xH0009=9") ","
+      GENERIC_ACHIEVEMENT_JSON("70", "M:0xX0010=100000") ","
+      GENERIC_ACHIEVEMENT_JSON("71", "G:0xX0010=100000")
     "],"
     "\"Leaderboards\":["
+      GENERIC_LEADERBOARD_JSON("44", "STA:0xH000B=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE") ","
+      GENERIC_LEADERBOARD_JSON("45", "STA:0xH000A=1::CAN:0xH000C=2::SUB:0xH000D=1::VAL:0xH000E", "SCORE") ","   /* different size */
+      GENERIC_LEADERBOARD_JSON("46", "STA:0xH000A=1::CAN:0xH000C=3::SUB:0xH000D=1::VAL:0x 000E", "VALUE") ","   /* different format */
+      GENERIC_LEADERBOARD_JSON("47", "STA:0xH000A=1::CAN:0xH000C=4::SUB:0xH000D=2::VAL:0x 000E", "SCORE") ","   /* different submit */
+      GENERIC_LEADERBOARD_JSON("48", "STA:0xH000A=2::CAN:0xH000C=5::SUB:0xH000D=1::VAL:0x 000E", "SCORE") ","   /* different start */
+      GENERIC_LEADERBOARD_JSON("51", "STA:0xH000A=3::CAN:0xH000C=6::SUB:0xH000D=1::VAL:M:0xH0009=1", "VALUE") "," /* hit count */
+      GENERIC_LEADERBOARD_JSON("52", "STA:0xH000B=3::CAN:0xH000C=7::SUB:0xH000D=1::VAL:M:0xH0009=1", "VALUE")     /* hit count */
+    "],"
+    "\"RichPresencePatch\":\"Display:\\r\\nPoints:@Number(0xH0003)\\r\\n\","
+    "\"Sets\":[{"
+      "\"GameAchievementSetID\":2345,\"SetTitle\":\"Bonus\",\"ImageIcon\":\"/Images/112234.png\","
+      "\"ImageIconURL\":\"http://host/Images/112234.png\","
+      "\"Achievements\":["
+        GENERIC_ACHIEVEMENT_JSON("5501", "0xH0017=7") ","
+        UNOFFICIAL_ACHIEVEMENT_JSON("5502", "0xH0018=8") ","
+        GENERIC_ACHIEVEMENT_JSON("5503", "0xHFEFEFEFE=9")
+      "],"
+      "\"Leaderboards\":["
+        GENERIC_LEADERBOARD_JSON("81", "STA:0xH0008=1::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE") ","
+        GENERIC_LEADERBOARD_JSON("82", "STA:0xH0008=2::CAN:0xH000C=1::SUB:0xH000D=1::VAL:0x 000E", "SCORE")
+      "]}"
     "]"
     "}}";
+
+static const char* patchdata_not_found = "{\"Success\":false,\"Error\":\"Unknown game\",\"Code\":\"not_found\",\"Status\":404}";
 
 static const char* no_unlocks = "{\"Success\":true,\"Unlocks\":[],\"HardcoreUnlocks\":[]}";
 
 /* startsession API only returns HardcoreUnlocks if an achievement has been earned in hardcore,
  * even if the softcore unlock has a different timestamp */
-static const char* unlock_5502 = "{\"Success\":true,\"HardcoreUnlocks\":[{\"ID\":5502,\"When\":1234567890}]}";
 static const char* unlock_5501h_and_5502 = "{\"Success\":true,\"Unlocks\":["
       "{\"ID\":5502,\"When\":1234567899}"
     "],\"HardcoreUnlocks\":["
@@ -275,6 +328,10 @@ static const char* unlock_5501_5502_and_5503 = "{\"Success\":true,\"HardcoreUnlo
       "{\"ID\":5503,\"When\":1234567999}"
     "]}";
 static const char* unlock_8 = "{\"Success\":true,\"HardcoreUnlocks\":[{\"ID\":8,\"When\":1234567890}]}";
+static const char* unlock_8_and_5502 = "{\"Success\":true,\"HardcoreUnlocks\":["
+      "{\"ID\":8,\"When\":1234567890},"
+      "{\"ID\":5502,\"When\":1234567890}"
+    "]}";
 static const char* unlock_6_8h_and_9 = "{\"Success\":true,\"Unlocks\":["
       "{\"ID\":6,\"When\":1234567890},"
       "{\"ID\":9,\"When\":1234567899}"
@@ -644,8 +701,7 @@ static void mock_client_load_game(const char* patchdata, const char* unlocks)
 {
   reset_mock_api_handlers();
   event_count = 0;
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlocks);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -658,8 +714,7 @@ static void mock_client_load_game_softcore(const char* patchdata, const char* un
 {
   reset_mock_api_handlers();
   event_count = 0;
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=0&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlocks);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -675,14 +730,6 @@ static rc_client_t* mock_client_game_loaded(const char* patchdata, const char* u
   mock_client_load_game(patchdata, unlocks);
 
   return g_client;
-}
-
-static void mock_client_load_subset(const char* patchdata, const char* unlocks)
-{
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata);
-  mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&h=1&m=%5bSUBSET2345%5d&l=" RCHEEVOS_VERSION_STRING, unlocks);
-
-  rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success, g_callback_userdata);
 }
 
 /* ----- login ----- */
@@ -1003,7 +1050,7 @@ static void test_logout(void)
 
   /* attempt to load game should fail */
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required, g_callback_userdata);
 
@@ -1070,8 +1117,7 @@ static void test_logout_during_fetch_game(void)
   rc_client_begin_load_game(g_client, "0123456789ABCDEF",
     rc_client_callback_expect_no_longer_active, g_callback_userdata);
 
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   rc_client_logout(g_client);
 
@@ -1143,8 +1189,7 @@ static void test_get_user_game_summary_encore_mode(void)
   g_client = mock_client_logged_in();
   rc_client_set_unofficial_enabled(g_client, 1);
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_exhaustive);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlock_6_8h_and_9);
 
   rc_client_set_encore_mode_enabled(g_client, 1);
@@ -1259,7 +1304,7 @@ static void test_get_user_game_summary_unknown_game(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -1302,7 +1347,7 @@ static void test_load_game_unknown_hash(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
 
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
   ASSERT_NUM_EQUALS(rc_client_is_game_loaded(g_client), 0);
@@ -1346,7 +1391,7 @@ static void test_load_game_unknown_hash_repeated(void)
   ASSERT_PTR_NOT_NULL(handle);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
 
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
+  async_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1381,7 +1426,7 @@ static void test_load_game_not_logged_in(void)
   g_client = mock_client_not_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
 
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
@@ -1401,8 +1446,7 @@ static void test_load_game(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
@@ -1470,20 +1514,18 @@ static void test_load_game_async_login(void)
   rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_success, g_callback_userdata);
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
-  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
-
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  /* game load process will stop here waiting for the login to complete */
-  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN);
+
+  /* game load process will stop here waiting for the login to complete */
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   /* login completion will trigger process to continue */
   async_api_response("r=login2&u=Username&p=Pa%24%24word",
 	    "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
-  assert_api_pending("r=patch&u=Username&t=ApiToken&g=1234");
-  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA);
+  assert_api_pending("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
 
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION);
 
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
@@ -1515,17 +1557,16 @@ static void test_load_game_async_login_with_incorrect_password(void)
 
   rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_credentials_error, g_callback_userdata);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required, g_callback_userdata);
-  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN);
 
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   /* game load process will stop here waiting for the login to complete */
-  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   /* login failure will trigger process to continue */
   async_api_error("r=login2&u=Username&p=Pa%24%24word",
       "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\","
       "\"Status\":401,\"Code\":\"invalid_credentials\"}", 401);
-  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   ASSERT_PTR_NULL(g_client->user.username);
 
@@ -1544,15 +1585,14 @@ static void test_load_game_async_login_logout(void)
   rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_login_aborted, g_callback_userdata);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_aborted, g_callback_userdata);
 
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   /* game load process will stop here waiting for the login to complete */
-  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   /* logout will cancel login and allow game load to proceed with failure */
   rc_client_logout(g_client);
   async_api_response("r=login2&u=Username&p=Pa%24%24word",
     "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
-  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   ASSERT_PTR_NULL(g_client->user.username);
 
@@ -1573,15 +1613,14 @@ static void test_load_game_async_login_aborted(void)
   handle = rc_client_begin_login_with_password(g_client, "Username", "Pa$$word", rc_client_callback_expect_uncalled, g_callback_userdata);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_aborted, g_callback_userdata);
 
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   /* game load process will stop here waiting for the login to complete */
-  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   /* login abort will trigger game load process to continue */
   rc_client_abort_async(g_client, handle);
   async_api_response("r=login2&u=Username&p=Pa%24%24word",
     "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
-  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   ASSERT_PTR_NULL(g_client->user.username);
 
@@ -1600,31 +1639,12 @@ static void rc_client_callback_expect_too_many_requests(int result, const char* 
   ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
-static void test_load_game_gameid_failure(void)
-{
-  g_client = mock_client_logged_in();
-
-  reset_mock_api_handlers();
-  mock_api_error("r=gameid&m=0123456789ABCDEF", response_429, 429);
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
-  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
-
-  ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NULL(g_client->game);
-  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
-
-  rc_client_destroy(g_client);
-}
-
 static void test_load_game_patch_failure(void)
 {
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_error("r=patch&u=Username&t=ApiToken&g=1234", response_429, 429);
+  mock_api_error("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", response_429, 429);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
@@ -1641,8 +1661,7 @@ static void test_load_game_startsession_failure(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, response_429, 429);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
@@ -1659,8 +1678,7 @@ static void test_load_game_startsession_timeout(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "", 504);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_timeout, g_callback_userdata);
@@ -1677,36 +1695,11 @@ static void test_load_game_startsession_custom_timeout(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING,
     "Request has timed out.", RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_timeout, g_callback_userdata);
-
-  ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NULL(g_client->game);
-  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
-
-  rc_client_destroy(g_client);
-}
-
-static void test_load_game_gameid_aborted(void)
-{
-  rc_client_async_handle_t* handle;
-
-  g_client = mock_client_logged_in();
-  g_client->callbacks.server_call = rc_client_server_call_async;
-
-  reset_mock_api_handlers();
-
-  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
-    rc_client_callback_expect_uncalled, g_callback_userdata);
-
-  rc_client_abort_async(g_client, handle);
-
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  assert_api_not_called("r=patch&u=Username&t=ApiToken&g=1234");
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -1727,11 +1720,9 @@ static void test_load_game_patch_aborted(void)
   handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
     rc_client_callback_expect_uncalled, g_callback_userdata);
 
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-
   rc_client_abort_async(g_client, handle);
 
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   assert_api_not_called("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -1753,8 +1744,7 @@ static void test_load_game_startsession_aborted(void)
   handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
     rc_client_callback_expect_uncalled, g_callback_userdata);
 
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   rc_client_abort_async(g_client, handle);
 
@@ -1775,8 +1765,7 @@ static void test_load_game_while_spectating(void)
   rc_client_set_spectator_mode_enabled(g_client, 1);
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   /* spectator mode should not start a session or fetch unlocks */
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -1861,8 +1850,7 @@ static void test_load_game_process_game_data(void)
   rc_client_callback_process_game_data_called = 0;
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -1924,10 +1912,9 @@ static void test_load_game_destroy_while_fetching_game_data(void)
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_uncalled, g_callback_userdata);
 
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   rc_client_destroy(g_client);
 
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 }
 
 static void test_load_unknown_game(void)
@@ -2049,24 +2036,6 @@ static void test_unload_game_hides_ui(void)
   ASSERT_NUM_EQUALS(event_count, 0);
 }
 
-static void test_unload_game_while_identifying_game(void)
-{
-  g_client = mock_client_logged_in();
-  g_client->callbacks.server_call = rc_client_server_call_async;
-  reset_mock_api_handlers();
-
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_uncalled, g_callback_userdata);
-
-  rc_client_unload_game(g_client);
-
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-
-  ASSERT_PTR_NULL(g_client->state.load);
-  ASSERT_PTR_NULL(g_client->game);
-
-  rc_client_destroy(g_client);
-}
-
 static void test_unload_game_while_fetching_game_data(void)
 {
   g_client = mock_client_logged_in();
@@ -2075,10 +2044,9 @@ static void test_unload_game_while_fetching_game_data(void)
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_uncalled, g_callback_userdata);
 
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
   rc_client_unload_game(g_client);
 
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -2094,8 +2062,7 @@ static void test_unload_game_while_starting_session(void)
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_uncalled, g_callback_userdata);
 
-  async_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   rc_client_unload_game(g_client);
 
@@ -2140,8 +2107,7 @@ static void test_identify_and_load_game_console_specified(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
@@ -2173,8 +2139,7 @@ static void test_identify_and_load_game_console_not_specified(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
@@ -2213,18 +2178,17 @@ static void test_identify_and_load_game_multiconsole_first(void)
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   /* first hash lookup should be pending. inject a secondary console into the iterator */
-  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_pending("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
   iterator = rc_client_get_load_state_hash_iterator(g_client);
   ASSERT_NUM_EQUALS(iterator->index, 1);
   ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
   iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
   iterator->consoles[iterator->index + 1] = 0;
 
-  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
-  assert_api_not_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
+  assert_api_not_pending("r=patch&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e");
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2259,18 +2223,17 @@ static void test_identify_and_load_game_multiconsole_second(void)
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   /* first hash lookup should be pending. inject a secondary console into the iterator */
-  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_pending("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
   iterator = rc_client_get_load_state_hash_iterator(g_client);
   ASSERT_NUM_EQUALS(iterator->index, 1);
   ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
   iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
   iterator->consoles[iterator->index + 1] = 0;
 
-  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+  async_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
-  assert_api_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
-  async_api_response("r=gameid&m=64b131c5c7fec32985d9c99700babb7e", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  assert_api_pending("r=patch&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e");
+  async_api_response("r=patch&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e" ,patchdata_2ach_1lbd);
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=64b131c5c7fec32985d9c99700babb7e&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2299,7 +2262,7 @@ static void test_identify_and_load_game_unknown_hash(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
       image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
@@ -2338,7 +2301,7 @@ static void test_identify_and_load_game_unknown_hash_repeated(void)
   ASSERT_PTR_NOT_NULL(handle);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
 
-  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+  async_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2385,17 +2348,17 @@ static void test_identify_and_load_game_unknown_hash_multiconsole(void)
     image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   /* first hash lookup should be pending. inject a secondary console into the iterator */
-  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_pending("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
   iterator = rc_client_get_load_state_hash_iterator(g_client);
   ASSERT_NUM_EQUALS(iterator->index, 1);
   ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
   iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
   iterator->consoles[iterator->index + 1] = 0;
 
-  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+  async_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
-  assert_api_pending("r=gameid&m=64b131c5c7fec32985d9c99700babb7e");
-  async_api_response("r=gameid&m=64b131c5c7fec32985d9c99700babb7e", "{\"Success\":true,\"GameID\":0}");
+  assert_api_pending("r=patch&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e");
+  async_api_response("r=patch&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2430,12 +2393,12 @@ static void test_identify_and_load_game_unknown_hash_console_specified(void)
     image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   /* first hash lookup should be pending. iterator should not have been initialized */
-  assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_pending("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
   iterator = rc_client_get_load_state_hash_iterator(g_client);
   ASSERT_NUM_EQUALS(iterator->index, 0);
   ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
 
-  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+  async_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2476,7 +2439,7 @@ static void test_identify_and_load_game_unknown_hash_client_provided(void)
   g_client->callbacks.identify_unknown_hash = rc_client_identify_unknown_hash;
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
@@ -2510,8 +2473,7 @@ static void test_identify_and_load_game_multihash(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "abc.dsk",
@@ -2543,7 +2505,7 @@ static void test_identify_and_load_game_multihash_unknown_game(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "abc.dsk",
       image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
@@ -2561,7 +2523,7 @@ static void test_identify_and_load_game_multihash_unknown_game(void)
   }
 
   /* same hash generated for all dsk consoles - only one server call should be made */
-  assert_api_call_count("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", 1);
+  assert_api_call_count("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", 1);
 
   rc_client_destroy(g_client);
   free(image);
@@ -2584,12 +2546,11 @@ static void test_identify_and_load_game_multihash_differ(void)
   memset(&image[256], 0, 32);
 
   /* first lookup fails */
-  async_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
+  async_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
 
   /* second lookup should succeed */
-  async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=4989b063a40dcfa28291ff8d675050e3&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
  
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2885,12 +2846,9 @@ static void test_change_media_while_loading(void)
   rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
 
-  /* load game lookup */
-  async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
-
   /* media request won't occur until patch data is received */
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
@@ -2932,8 +2890,7 @@ static void test_change_media_while_loading_later(void)
       rc_client_callback_expect_success, g_callback_userdata);
 
   /* get past fetching the patch data so there's a valid console for the change media call */
-  async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
 
   /* change_media should immediately attempt to resolve the new hash */
   rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
@@ -3002,7 +2959,7 @@ static void test_change_media_async_aborted(void)
     rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
-  assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_not_called("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
 
   rc_client_destroy(g_client);
   free(image);
@@ -3197,12 +3154,9 @@ static void test_change_media_from_hash_while_loading(void)
   rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_success, g_callback_userdata);
 
-  /* load game lookup */
-  async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
-
   /* media request won't occur until patch data is received */
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
@@ -3233,8 +3187,7 @@ static void test_change_media_from_hash_while_loading_later(void)
     rc_client_callback_expect_success, g_callback_userdata);
 
   /* get past fetching the patch data so there's a valid console for the change media call */
-  async_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
-  async_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  async_api_response("r=patch&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
 
   /* change_media should immediately attempt to resolve the new hash */
   rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
@@ -3361,16 +3314,10 @@ static void test_load_subset(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_subset);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
-
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata_subset);
-  mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&h=1&m=%5bSUBSET2345%5d&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
-
-  rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -3382,8 +3329,8 @@ static void test_load_subset(void)
     ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
     ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
-    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 7);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 7);
   }
 
   subset = rc_client_get_subset_info(g_client, 2345);
@@ -3399,10 +3346,10 @@ static void test_load_subset(void)
     ASSERT_NUM_EQUALS(subset->num_leaderboards, 2);
 
     achievement = &subset_info->achievements[0];
-    ASSERT_NUM_EQUALS(achievement->public_.id, 7);
-    ASSERT_STR_EQUALS(achievement->public_.title, "Achievement 7");
-    ASSERT_STR_EQUALS(achievement->public_.description, "Desc 7");
-    ASSERT_STR_EQUALS(achievement->public_.badge_name, "007");
+    ASSERT_NUM_EQUALS(achievement->public_.id, 5501);
+    ASSERT_STR_EQUALS(achievement->public_.title, "Achievement 5501");
+    ASSERT_STR_EQUALS(achievement->public_.description, "Desc 5501");
+    ASSERT_STR_EQUALS(achievement->public_.badge_name, "005501");
     ASSERT_NUM_EQUALS(achievement->public_.points, 5);
     ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
@@ -3413,10 +3360,10 @@ static void test_load_subset(void)
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     achievement = &subset_info->achievements[1];
-    ASSERT_NUM_EQUALS(achievement->public_.id, 8);
-    ASSERT_STR_EQUALS(achievement->public_.title, "Achievement 8");
-    ASSERT_STR_EQUALS(achievement->public_.description, "Desc 8");
-    ASSERT_STR_EQUALS(achievement->public_.badge_name, "008");
+    ASSERT_NUM_EQUALS(achievement->public_.id, 5502);
+    ASSERT_STR_EQUALS(achievement->public_.title, "Achievement 5502");
+    ASSERT_STR_EQUALS(achievement->public_.description, "Desc 5502");
+    ASSERT_STR_EQUALS(achievement->public_.badge_name, "005502");
     ASSERT_NUM_EQUALS(achievement->public_.points, 5);
     ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
@@ -3424,10 +3371,10 @@ static void test_load_subset(void)
     ASSERT_PTR_NOT_NULL(achievement->trigger);
 
     achievement = &subset_info->achievements[2];
-    ASSERT_NUM_EQUALS(achievement->public_.id, 9);
-    ASSERT_STR_EQUALS(achievement->public_.title, "Achievement 9");
-    ASSERT_STR_EQUALS(achievement->public_.description, "Desc 9");
-    ASSERT_STR_EQUALS(achievement->public_.badge_name, "009");
+    ASSERT_NUM_EQUALS(achievement->public_.id, 5503);
+    ASSERT_STR_EQUALS(achievement->public_.title, "Achievement 5503");
+    ASSERT_STR_EQUALS(achievement->public_.description, "Desc 5503");
+    ASSERT_STR_EQUALS(achievement->public_.badge_name, "005503");
     ASSERT_NUM_EQUALS(achievement->public_.points, 5);
     ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
@@ -4261,8 +4208,7 @@ static void test_achievement_list_subset_with_unofficial_and_unsupported(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_unofficial_enabled(g_client, 1);
-  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks);
-  mock_client_load_subset(patchdata_subset, no_unlocks);
+  mock_client_load_game(patchdata_subset_unofficial_unsupported, no_unlocks);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -4271,20 +4217,25 @@ static void test_achievement_list_subset_with_unofficial_and_unsupported(void)
     ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
     ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Sample Game - Locked");
-    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
-    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
-    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
-    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 1234);
-    ASSERT_STR_EQUALS(list->buckets[1].label, "Sample Game - Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 6);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[1]->id, 6);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[2]->id, 7);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[3]->id, 9);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[4]->id, 70);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[5]->id, 71);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Bonus - Locked");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
-    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5503);
-    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5501);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
     ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 2345);
-    ASSERT_STR_EQUALS(list->buckets[2].label, "Bonus - Locked");
-    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 3);
-    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 7);
-    ASSERT_NUM_EQUALS(list->buckets[2].achievements[1]->id, 8);
-    ASSERT_NUM_EQUALS(list->buckets[2].achievements[2]->id, 9);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Bonus - Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5503);
 
     rc_client_destroy_achievement_list(list);
   }
@@ -4292,12 +4243,18 @@ static void test_achievement_list_subset_with_unofficial_and_unsupported(void)
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
-    ASSERT_NUM_EQUALS(list->num_buckets, 1);
+    ASSERT_NUM_EQUALS(list->num_buckets, 2);
     ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL);
     ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Sample Game - Unofficial");
     ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
-    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5502);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 8);
+
+    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL);
+    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[1].label, "Bonus - Unofficial");
+    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5502);
 
     rc_client_destroy_achievement_list(list);
   }
@@ -4305,29 +4262,41 @@ static void test_achievement_list_subset_with_unofficial_and_unsupported(void)
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
-    ASSERT_NUM_EQUALS(list->num_buckets, 4);
+    ASSERT_NUM_EQUALS(list->num_buckets, 5);
     ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
     ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
     ASSERT_STR_EQUALS(list->buckets[0].label, "Sample Game - Locked");
-    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 1);
-    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
+    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 6);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[1]->id, 6);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[2]->id, 7);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[3]->id, 9);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[4]->id, 70);
+    ASSERT_NUM_EQUALS(list->buckets[0].achievements[5]->id, 71);
+
     ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL);
     ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 1234);
     ASSERT_STR_EQUALS(list->buckets[1].label, "Sample Game - Unofficial");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
-    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5502);
-    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
-    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 1234);
-    ASSERT_STR_EQUALS(list->buckets[2].label, "Sample Game - Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 8);
+
+    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Bonus - Locked");
     ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 1);
-    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5503);
-    ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+    ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5501);
+
+    ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL);
     ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 2345);
-    ASSERT_STR_EQUALS(list->buckets[3].label, "Bonus - Locked");
-    ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 3);
-    ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 7);
-    ASSERT_NUM_EQUALS(list->buckets[3].achievements[1]->id, 8);
-    ASSERT_NUM_EQUALS(list->buckets[3].achievements[2]->id, 9);
+    ASSERT_STR_EQUALS(list->buckets[3].label, "Bonus - Unofficial");
+    ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 5502);
+
+    ASSERT_NUM_EQUALS(list->buckets[4].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
+    ASSERT_NUM_EQUALS(list->buckets[4].subset_id, 2345);
+    ASSERT_STR_EQUALS(list->buckets[4].label, "Bonus - Unsupported");
+    ASSERT_NUM_EQUALS(list->buckets[4].num_achievements, 1);
+    ASSERT_NUM_EQUALS(list->buckets[4].achievements[0]->id, 5503);
 
     rc_client_destroy_achievement_list(list);
   }
@@ -4344,8 +4313,7 @@ static void test_achievement_list_subset_buckets(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, unlock_8);
-  mock_client_load_subset(patchdata_subset2, unlock_5502);
+  g_client = mock_client_game_loaded(patchdata_subset, unlock_8_and_5502);
   mock_memory(memory, sizeof(memory));
 
   rc_client_do_frame(g_client); /* advance achievements out of waiting state */
@@ -4393,14 +4361,14 @@ static void test_achievement_list_subset_buckets(void)
 
     ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
     ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 2345);
-    ASSERT_STR_EQUALS(list->buckets[2].label, "Multi - Locked");
+    ASSERT_STR_EQUALS(list->buckets[2].label, "Bonus - Locked");
     ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 2);
     ASSERT_NUM_EQUALS(list->buckets[2].achievements[0]->id, 5501);
     ASSERT_NUM_EQUALS(list->buckets[2].achievements[1]->id, 5503);
 
     ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
     ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 2345);
-    ASSERT_STR_EQUALS(list->buckets[3].label, "Multi - Unlocked");
+    ASSERT_STR_EQUALS(list->buckets[3].label, "Bonus - Unlocked");
     ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 5502);
 
@@ -4464,13 +4432,13 @@ static void test_achievement_list_subset_buckets(void)
 
     ASSERT_NUM_EQUALS(list->buckets[4].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
     ASSERT_NUM_EQUALS(list->buckets[4].subset_id, 2345);
-    ASSERT_STR_EQUALS(list->buckets[4].label, "Multi - Locked");
+    ASSERT_STR_EQUALS(list->buckets[4].label, "Bonus - Locked");
     ASSERT_NUM_EQUALS(list->buckets[4].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[4].achievements[0]->id, 5503);
 
     ASSERT_NUM_EQUALS(list->buckets[5].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
     ASSERT_NUM_EQUALS(list->buckets[5].subset_id, 2345);
-    ASSERT_STR_EQUALS(list->buckets[5].label, "Multi - Unlocked");
+    ASSERT_STR_EQUALS(list->buckets[5].label, "Bonus - Unlocked");
     ASSERT_NUM_EQUALS(list->buckets[5].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[5].achievements[0]->id, 5502);
 
@@ -4525,95 +4493,16 @@ static void test_achievement_list_subset_buckets(void)
 
     ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
     ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 2345);
-    ASSERT_STR_EQUALS(list->buckets[3].label, "Multi - Locked");
+    ASSERT_STR_EQUALS(list->buckets[3].label, "Bonus - Locked");
     ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
     ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 5503);
 
     ASSERT_NUM_EQUALS(list->buckets[4].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
     ASSERT_NUM_EQUALS(list->buckets[4].subset_id, 2345);
-    ASSERT_STR_EQUALS(list->buckets[4].label, "Multi - Unlocked");
+    ASSERT_STR_EQUALS(list->buckets[4].label, "Bonus - Unlocked");
     ASSERT_NUM_EQUALS(list->buckets[4].num_achievements, 2);
     ASSERT_NUM_EQUALS(list->buckets[4].achievements[0]->id, 5501);
     ASSERT_NUM_EQUALS(list->buckets[4].achievements[1]->id, 5502);
-
-    rc_client_destroy_achievement_list(list);
-  }
-
-  rc_client_destroy(g_client);
-}
-
-static void test_achievement_list_subset_buckets_subset_first(void)
-{
-  rc_client_achievement_list_t* list;
-  rc_client_achievement_t** iter;
-  rc_client_achievement_t* achievement;
-
-  uint8_t memory[64];
-  memset(memory, 0, sizeof(memory));
-
-  g_client = mock_client_logged_in();
-  reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":2345}");
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=2345", patchdata_subset2);
-  mock_api_response("r=startsession&u=Username&t=ApiToken&g=2345&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlock_5502);
-  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
-
-  mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_exhaustive);
-  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=%5bSUBSET1234%5d&l=" RCHEEVOS_VERSION_STRING, unlock_8);
-  rc_client_begin_load_subset(g_client, 1234, rc_client_callback_expect_success, g_callback_userdata);
-
-  mock_memory(memory, sizeof(memory));
-
-  rc_client_do_frame(g_client); /* advance achievements out of waiting state */
-  event_count = 0;
-
-  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
-  ASSERT_PTR_NOT_NULL(list);
-  if (list) {
-    ASSERT_NUM_EQUALS(list->num_buckets, 4);
-
-    ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 2345);
-    ASSERT_STR_EQUALS(list->buckets[0].label, "Multi - Locked");
-    ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
-    ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 5501);
-    ASSERT_NUM_EQUALS(list->buckets[0].achievements[1]->id, 5503);
-
-    ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
-    ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 2345);
-    ASSERT_STR_EQUALS(list->buckets[1].label, "Multi - Unlocked");
-    ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
-    ASSERT_NUM_EQUALS(list->buckets[1].achievements[0]->id, 5502);
-
-    ASSERT_NUM_EQUALS(list->buckets[2].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_NUM_EQUALS(list->buckets[2].subset_id, 1234);
-    ASSERT_STR_EQUALS(list->buckets[2].label, "Sample Game - Locked");
-    ASSERT_NUM_EQUALS(list->buckets[2].num_achievements, 6);
-    iter = list->buckets[2].achievements;
-    achievement = *iter++;
-    ASSERT_NUM_EQUALS(achievement->id, 5);
-    achievement = *iter++;
-    ASSERT_NUM_EQUALS(achievement->id, 6);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "");
-    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
-    achievement = *iter++;
-    ASSERT_NUM_EQUALS(achievement->id, 7);
-    achievement = *iter++;
-    ASSERT_NUM_EQUALS(achievement->id, 9);
-    achievement = *iter++;
-    ASSERT_NUM_EQUALS(achievement->id, 70);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "");
-    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
-    achievement = *iter++;
-    ASSERT_NUM_EQUALS(achievement->id, 71);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "");
-    ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
-
-    ASSERT_NUM_EQUALS(list->buckets[3].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
-    ASSERT_NUM_EQUALS(list->buckets[3].subset_id, 1234);
-    ASSERT_STR_EQUALS(list->buckets[3].label, "Sample Game - Unlocked");
-    ASSERT_NUM_EQUALS(list->buckets[3].num_achievements, 1);
-    ASSERT_NUM_EQUALS(list->buckets[3].achievements[0]->id, 8);
 
     rc_client_destroy_achievement_list(list);
   }
@@ -4956,8 +4845,7 @@ static void test_leaderboard_list_subset(void)
 
   g_client = mock_client_logged_in();
   mock_memory(memory, sizeof(memory));
-  mock_client_load_game(patchdata_exhaustive, no_unlocks);
-  mock_client_load_subset(patchdata_subset, no_unlocks);
+  mock_client_load_game(patchdata_subset, no_unlocks);
 
   rc_client_do_frame(g_client);
 
@@ -6031,8 +5919,7 @@ static void test_do_frame_achievement_trigger_subset(void)
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
 
-  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
-  mock_client_load_subset(patchdata_2ach_1lbd, no_unlocks);
+  g_client = mock_client_game_loaded(patchdata_subset, no_unlocks);
 
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game) {
@@ -6069,8 +5956,7 @@ static void test_do_frame_achievement_trigger_subset(void)
     mock_api_response("r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6",
         "{\"Success\":true,\"Score\":5437,\"SoftcoreScore\":777,\"AchievementID\":8,\"AchievementsRemaining\":11}");
 
-    memory[1] = 3;
-    memory[2] = 7;
+    memory[0x17] = 7;
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 1);
 
@@ -8860,7 +8746,7 @@ static void test_deserialize_progress_unknown_game(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=gameid&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":0}");
+  mock_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   ASSERT_NUM_EQUALS(rc_client_progress_size(g_client), 0);
@@ -9352,12 +9238,10 @@ void test_client(void) {
   TEST(test_load_game_async_login_with_incorrect_password);
   TEST(test_load_game_async_login_logout);
   TEST(test_load_game_async_login_aborted);
-  TEST(test_load_game_gameid_failure);
   TEST(test_load_game_patch_failure);
   TEST(test_load_game_startsession_failure);
   TEST(test_load_game_startsession_timeout);
   TEST(test_load_game_startsession_custom_timeout);
-  TEST(test_load_game_gameid_aborted);
   TEST(test_load_game_patch_aborted);
   TEST(test_load_game_startsession_aborted);
   TEST(test_load_game_while_spectating);
@@ -9369,7 +9253,6 @@ void test_client(void) {
   /* unload game */
   TEST(test_unload_game);
   TEST(test_unload_game_hides_ui);
-  TEST(test_unload_game_while_identifying_game);
   TEST(test_unload_game_while_fetching_game_data);
   TEST(test_unload_game_while_starting_session);
 
@@ -9434,7 +9317,6 @@ void test_client(void) {
   TEST(test_achievement_list_buckets_with_unsynced);
   TEST(test_achievement_list_subset_with_unofficial_and_unsupported);
   TEST(test_achievement_list_subset_buckets);
-  TEST(test_achievement_list_subset_buckets_subset_first);
 
   TEST(test_achievement_get_image_url);
 

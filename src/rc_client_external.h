@@ -95,7 +95,7 @@ typedef struct rc_client_external_t
   rc_client_external_begin_identify_and_load_game_func_t begin_identify_and_load_game;
   rc_client_external_begin_load_game_func_t begin_load_game;
   rc_client_external_get_game_info_func_t get_game_info;
-  rc_client_external_begin_load_subset_t begin_load_subset;
+  rc_client_external_begin_load_subset_t begin_load_subset; /* DEPRECATED */
   rc_client_external_get_subset_info_func_t get_subset_info;
   rc_client_external_action_func_t unload_game;
   rc_client_external_get_user_game_summary_func_t get_user_game_summary;

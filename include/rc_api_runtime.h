@@ -73,6 +73,8 @@ typedef struct rc_api_fetch_game_data_request_t {
   const char* api_token;
   /* The unique identifier of the game */
   uint32_t game_id;
+  /* The generated hash of the game to be identified (ignored if game_id is not 0) */
+  const char* game_hash;
 }
 rc_api_fetch_game_data_request_t;
 
@@ -105,7 +107,7 @@ typedef struct rc_api_achievement_definition_t {
   uint32_t category;
   /* The title of the achievement */
   const char* title;
-  /* The dscription of the achievement */
+  /* The description of the achievement */
   const char* description;
   /* The definition of the achievement to be passed to rc_runtime_activate_achievement */
   const char* definition;
@@ -123,8 +125,35 @@ typedef struct rc_api_achievement_definition_t {
   float rarity;
   /* The approximate rarity of the achievement in hardcore (X% of users have earned the achievement in hardcore) */
   float rarity_hardcore;
+  /* The URL for the achievement badge */
+  const char* badge_url;
+  /* The URL for the locked achievement badge */
+  const char* badge_locked_url;
 }
 rc_api_achievement_definition_t;
+
+/* A game subset definition */
+typedef struct rc_api_subset_definition_t {
+  /* The unique identifier of the subset */
+  uint32_t id;
+  /* The title of the subset */
+  const char* title;
+  /* The image name for the subset badge */
+  const char* image_name;
+  /* The URL for the subset badge */
+  const char* image_url;
+
+  /* An array of achievements for the game */
+  rc_api_achievement_definition_t* achievements;
+  /* The number of items in the achievements array */
+  uint32_t num_achievements;
+
+  /* An array of leaderboards for the game */
+  rc_api_leaderboard_definition_t* leaderboards;
+  /* The number of items in the leaderboards array */
+  uint32_t num_leaderboards;
+}
+rc_api_subset_definition_t;
 
 #define RC_ACHIEVEMENT_CATEGORY_CORE 3
 #define RC_ACHIEVEMENT_CATEGORY_UNOFFICIAL 5
@@ -146,6 +175,8 @@ typedef struct rc_api_fetch_game_data_response_t {
   const char* title;
   /* The image name for the game badge */
   const char* image_name;
+  /* The URL for the game badge */
+  const char* image_url;
   /* The rich presence script for the game to be passed to rc_runtime_activate_richpresence */
   const char* rich_presence_script;
 
@@ -158,6 +189,11 @@ typedef struct rc_api_fetch_game_data_response_t {
   rc_api_leaderboard_definition_t* leaderboards;
   /* The number of items in the leaderboards array */
   uint32_t num_leaderboards;
+
+  /* An array of subsets for the game */
+  rc_api_subset_definition_t* subsets;
+  /* The number of items in the subsets array */
+  uint32_t num_subsets;
 
   /* Common server-provided response information */
   rc_api_response_t response;

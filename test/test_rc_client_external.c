@@ -732,63 +732,6 @@ typedef struct v1_rc_client_subset_t {
   uint32_t num_leaderboards;
 } v1_rc_client_subset_t;
 
-static const rc_client_subset_t* rc_client_external_get_subset_info(uint32_t subset_id)
-{
-  v1_rc_client_subset_t* subset = (v1_rc_client_subset_t*)
-    rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_subset_t));
-
-  memset(subset, 0, sizeof(*subset));
-  subset->id = 1234;
-  subset->title = "Game Title";
-  memcpy(subset->badge_name, "BDG001", 7);
-  subset->num_achievements = 6;
-  subset->num_leaderboards = 2;
-
-  return (const rc_client_subset_t*)subset;
-}
-
-static void assert_load_subset(rc_client_t* client, uint32_t subset_id)
-{
-  ASSERT_PTR_EQUALS(client, g_client);
-
-  ASSERT_NUM_EQUALS(subset_id, 2345);
-}
-
-static rc_client_async_handle_t* rc_client_external_load_subset(rc_client_t* client,
-  uint32_t subset_id, rc_client_callback_t callback, void* callback_userdata)
-{
-  assert_load_subset(client, subset_id);
-
-  g_external_event = "load_subset";
-
-  callback(RC_OK, NULL, client, callback_userdata);
-  return NULL;
-}
-
-static void test_load_subset(void)
-{
-  const rc_client_subset_t* subset;
-
-  g_client = mock_client_with_external();
-  g_client->state.external_client->begin_load_subset = rc_client_external_load_subset;
-  g_client->state.external_client->get_subset_info = rc_client_external_get_subset_info;
-
-  rc_client_begin_load_subset(g_client, 2345, rc_client_callback_expect_success, g_callback_userdata);
-
-  ASSERT_STR_EQUALS(g_external_event, "load_subset");
-
-  /* user data should come from external client. validate structure */
-  subset = rc_client_get_subset_info(g_client, 2345);
-  ASSERT_PTR_NOT_NULL(subset);
-  ASSERT_NUM_EQUALS(subset->id, 1234);
-  ASSERT_STR_EQUALS(subset->title, "Game Title");
-  ASSERT_STR_EQUALS(subset->badge_name, "BDG001");
-  ASSERT_NUM_EQUALS(subset->num_achievements, 6);
-  ASSERT_NUM_EQUALS(subset->num_leaderboards, 2);
-
-  rc_client_destroy(g_client);
-}
-
 static void rc_client_external_unload_game(void)
 {
   g_external_event = "unload_game";
@@ -1323,7 +1266,6 @@ void test_client_external(void) {
 #endif
   TEST(test_change_media_from_hash);
   TEST(test_add_game_hash);
-  TEST(test_load_subset);
 
   TEST(test_unload_game);
 
