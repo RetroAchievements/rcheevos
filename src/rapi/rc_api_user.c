@@ -53,7 +53,7 @@ int rc_api_process_login_server_response(rc_api_login_response_t* response, cons
     RC_JSON_NEW_FIELD("Score"),
     RC_JSON_NEW_FIELD("SoftcoreScore"),
     RC_JSON_NEW_FIELD("Messages"),
-    RC_JSON_NEW_FIELD("DisplayName")
+    RC_JSON_NEW_FIELD("AvatarUrl")
   };
 
   memset(response, 0, sizeof(*response));
@@ -72,7 +72,14 @@ int rc_api_process_login_server_response(rc_api_login_response_t* response, cons
   rc_json_get_optional_unum(&response->score_softcore, &fields[6], "SoftcoreScore", 0);
   rc_json_get_optional_unum(&response->num_unread_messages, &fields[7], "Messages", 0);
 
-  rc_json_get_optional_string(&response->display_name, &response->response, &fields[8], "DisplayName", response->username);
+  /* For the highest level of backwards compatibility, we have decided to just send the
+   * display_name back to the client as the "case-corrected username", and allow it to
+   * be used as the Username field for the other APIs. */
+  response->display_name = response->username;
+
+  rc_json_get_optional_string(&response->avatar_url, &response->response, &fields[8], "AvatarUrl", NULL);
+  if (!response->avatar_url)
+    response->avatar_url = rc_api_build_avatar_url(&response->response.buffer, response->username);
 
   return RC_OK;
 }

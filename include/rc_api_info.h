@@ -33,6 +33,8 @@ rc_api_fetch_achievement_info_request_t;
 typedef struct rc_api_achievement_awarded_entry_t {
   /* The user associated to the entry */
   const char* username;
+  /* A URL to the user's avatar image */
+  const char* avatar_url;
   /* When the achievement was awarded */
   time_t awarded;
 }
@@ -88,6 +90,8 @@ rc_api_fetch_leaderboard_info_request_t;
 typedef struct rc_api_lboard_info_entry_t {
   /* The user associated to the entry */
   const char* username;
+  /* A URL to the user's avatar image */
+  const char* avatar_url;
   /* The rank of the entry */
   uint32_t rank;
   /* The index of the entry */

@@ -188,6 +188,7 @@ typedef struct rc_client_user_t {
   uint32_t score;
   uint32_t score_softcore;
   uint32_t num_unread_messages;
+  const char* avatar_url;
 } rc_client_user_t;
 
 /**

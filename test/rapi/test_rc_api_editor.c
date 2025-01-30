@@ -131,6 +131,42 @@ static void test_init_fetch_code_notes_response_deleted_items()
   rc_api_destroy_fetch_code_notes_response(&fetch_code_notes_response);
 }
 
+static void test_init_fetch_code_notes_response_null_user()
+{
+  rc_api_fetch_code_notes_response_t fetch_code_notes_response;
+  const char* server_response = "{\"Success\":true,\"CodeNotes\":["
+    "{\"User\":\"User\",\"Address\":\"0x001234\",\"Note\":\"01=true\"},"
+    "{\"User\":\"User\",\"Address\":\"0x002000\",\"Note\":\"Happy\"},"
+    "{\"User\":null,\"Address\":\"0x002002\",\"Note\":\"Sad\"},"
+    "{\"User\":\"User\",\"Address\":\"0x002ABC\",\"Note\":\"Banana\\n0=a\"}"
+    "]}";
+  memset(&fetch_code_notes_response, 0, sizeof(fetch_code_notes_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_code_notes_response(&fetch_code_notes_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_code_notes_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_code_notes_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_code_notes_response.num_notes, 4);
+  ASSERT_PTR_NOT_NULL(fetch_code_notes_response.notes);
+
+  ASSERT_NUM_EQUALS(fetch_code_notes_response.notes[0].address, 0x1234);
+  ASSERT_STR_EQUALS(fetch_code_notes_response.notes[0].author, "User");
+  ASSERT_STR_EQUALS(fetch_code_notes_response.notes[0].note, "01=true");
+
+  ASSERT_NUM_EQUALS(fetch_code_notes_response.notes[1].address, 0x2000);
+  ASSERT_STR_EQUALS(fetch_code_notes_response.notes[1].author, "User");
+  ASSERT_STR_EQUALS(fetch_code_notes_response.notes[1].note, "Happy");
+
+  ASSERT_NUM_EQUALS(fetch_code_notes_response.notes[2].address, 0x2002);
+  ASSERT_STR_EQUALS(fetch_code_notes_response.notes[2].author, "");
+  ASSERT_STR_EQUALS(fetch_code_notes_response.notes[2].note, "Sad");
+
+  ASSERT_NUM_EQUALS(fetch_code_notes_response.notes[3].address, 0x2ABC);
+  ASSERT_STR_EQUALS(fetch_code_notes_response.notes[3].author, "User");
+  ASSERT_STR_EQUALS(fetch_code_notes_response.notes[3].note, "Banana\n0=a");
+
+  rc_api_destroy_fetch_code_notes_response(&fetch_code_notes_response);
+}
+
 static void test_init_update_code_note_request()
 {
   rc_api_update_code_note_request_t update_code_note_request;
@@ -711,6 +747,7 @@ void test_rapi_editor(void) {
   TEST(test_init_fetch_code_notes_response_one_item);
   TEST(test_init_fetch_code_notes_response_several_items);
   TEST(test_init_fetch_code_notes_response_deleted_items);
+  TEST(test_init_fetch_code_notes_response_null_user);
 
   /* update code note */
   TEST(test_init_update_code_note_request);
