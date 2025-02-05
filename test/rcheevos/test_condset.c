@@ -660,12 +660,15 @@ static void test_resetif_hitcount() {
   assert_hit_count(condset, 0, 2);
   assert_hit_count(condset, 1, 4);
   assert_hit_count(condset, 2, 1);
+  ASSERT_NUM_EQUALS(condset_get_cond(condset, 2)->is_true, 1);
 
   /* second hit on reset condition should reset everything */
   assert_evaluate_condset(condset, memrefs, &memory, 0);
   assert_hit_count(condset, 0, 0);
   assert_hit_count(condset, 1, 0);
   assert_hit_count(condset, 2, 0);
+  /* is_true=3 indicates the condition was true this frame, and its hit target was met before it got reset */
+  ASSERT_NUM_EQUALS(condset_get_cond(condset, 2)->is_true, 3);
 }
 
 static void test_resetif_hitcount_one() {
@@ -718,12 +721,17 @@ static void test_resetif_hitcount_addhits() {
   assert_evaluate_condset(condset, memrefs, &memory, 1);
   assert_hit_count(condset, 0, 1);
   assert_hit_count(condset, 1, 1);
+  ASSERT_NUM_EQUALS(condset_get_cond(condset, 0)->is_true, 1);
+  ASSERT_NUM_EQUALS(condset_get_cond(condset, 1)->is_true, 1);
 
-  /* total hitcount is met (2 for each condition, need 3 total) , everything resets */
+  /* total hitcount is met (2 for first condition, 1 for second, need 3 total) , everything resets */
   ram[4] = 0x54;
   assert_evaluate_condset(condset, memrefs, &memory, 0);
   assert_hit_count(condset, 0, 0);
   assert_hit_count(condset, 1, 0);
+  ASSERT_NUM_EQUALS(condset_get_cond(condset, 0)->is_true, 1);
+  /* is_true=2 indicates the condition was not true this frame, but its hit target was met before it got reset due to the AddHits */
+  ASSERT_NUM_EQUALS(condset_get_cond(condset, 1)->is_true, 2);
 }
 
 static void test_pauseif_resetif_hitcounts() {
