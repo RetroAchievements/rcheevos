@@ -450,6 +450,10 @@ static void rc_client_event_handler(const rc_client_event_t* e, rc_client_t* cli
       break;
     }
 
+    case RC_CLIENT_EVENT_SUBSET_COMPLETED:
+      events[event_count].id = e->subset->id;
+      break;
+
     default:
       events[event_count].id = 0;
       break;
@@ -6748,6 +6752,64 @@ static void test_do_frame_mastery_encore(void)
   rc_client_destroy(g_client);
 }
 
+static void test_do_frame_mastery_subset(void)
+{
+  rc_client_event_t* event;
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_subset, unlock_5501_and_5502);
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    const uint32_t num_active = g_client->game->runtime.trigger_count;
+    mock_memory(memory, sizeof(memory));
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    memory[0x19] = 9;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5503);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 5503));
+
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
+    ASSERT_NUM_EQUALS(g_client->user.score, 12345 + 5);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 0);
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    async_api_response("r=awardachievement&u=Username&t=ApiToken&a=5503&h=1&m=0123456789ABCDEF&v=50486c3ea9e2e32bb3683017b1488f88",
+      "{\"Success\":true,\"Score\":5432,\"SoftcoreScore\":777,\"AchievementID\":5503,\"AchievementsRemaining\":0}");
+
+    ASSERT_NUM_EQUALS(event_count, 0);
+    ASSERT_NUM_EQUALS(g_client->user.score, 5432);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_SUBSET_COMPLETED, 2345);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_PTR_EQUALS(event->subset, rc_client_get_subset_info(g_client, 2345));
+  }
+
+  rc_client_destroy(g_client);
+}
+
 static void test_do_frame_leaderboard_started(void)
 {
   rc_client_event_t* event;
@@ -9364,6 +9426,7 @@ void test_client(void) {
   TEST(test_do_frame_achievement_challenge_indicator_primed_while_reset_next);
   TEST(test_do_frame_mastery);
   TEST(test_do_frame_mastery_encore);
+  TEST(test_do_frame_mastery_subset);
   TEST(test_do_frame_leaderboard_started);
   TEST(test_do_frame_leaderboard_update);
   TEST(test_do_frame_leaderboard_failed);
