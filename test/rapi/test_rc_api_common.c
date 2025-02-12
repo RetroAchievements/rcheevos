@@ -740,7 +740,7 @@ static void test_init_fetch_image_request_explicit_default_host()
   rc_api_host_t host;
 
   memset(&host, 0, sizeof(host));
-  host.host = "https://retroachievements.org";
+  host.host = rc_api_default_host();
 
   memset(&fetch_image_request, 0, sizeof(fetch_image_request));
   fetch_image_request.image_name = "0123324";

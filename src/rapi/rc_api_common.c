@@ -1204,6 +1204,10 @@ static void rc_api_update_host(char** host, const char* hostname) {
   }
 }
 
+const char* rc_api_default_host(void) {
+  return RETROACHIEVEMENTS_HOST;
+}
+
 void rc_api_set_host(const char* hostname) {
   if (hostname && strcmp(hostname, RETROACHIEVEMENTS_HOST) == 0)
     hostname = NULL;
