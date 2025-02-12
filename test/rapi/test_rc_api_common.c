@@ -506,13 +506,13 @@ static void test_url_build_dorequest_url_default_host() {
   rc_api_request_t request;
   rc_api_fetch_image_request_t api_params;
 
-  rc_api_url_build_dorequest_url(&request);
+  rc_api_url_build_dorequest_url(&request, NULL);
   ASSERT_STR_EQUALS(request.url, "https://retroachievements.org/dorequest.php");
   rc_api_destroy_request(&request);
 
   api_params.image_type = RC_IMAGE_TYPE_ACHIEVEMENT;
   api_params.image_name = "12345";
-  rc_api_init_fetch_image_request(&request, &api_params);
+  rc_api_init_fetch_image_request_hosted(&request, &api_params, NULL);
   ASSERT_STR_EQUALS(request.url, "https://media.retroachievements.org/Badge/12345.png");
   rc_api_destroy_request(&request);
 }
@@ -520,58 +520,58 @@ static void test_url_build_dorequest_url_default_host() {
 static void test_url_build_dorequest_url_default_host_nonssl() {
   rc_api_request_t request;
   rc_api_fetch_image_request_t api_params;
+  rc_api_host_t host;
 
-  rc_api_set_host("http://retroachievements.org");
+  memset(&host, 0, sizeof(host));
+  host.host = "http://retroachievements.org";
 
-  rc_api_url_build_dorequest_url(&request);
+  rc_api_url_build_dorequest_url(&request, &host);
   ASSERT_STR_EQUALS(request.url, "http://retroachievements.org/dorequest.php");
   rc_api_destroy_request(&request);
 
   api_params.image_type = RC_IMAGE_TYPE_ACHIEVEMENT;
   api_params.image_name = "12345";
-  rc_api_init_fetch_image_request(&request, &api_params);
+  rc_api_init_fetch_image_request_hosted(&request, &api_params, &host);
   ASSERT_STR_EQUALS(request.url, "http://media.retroachievements.org/Badge/12345.png");
   rc_api_destroy_request(&request);
-
-  rc_api_set_host(NULL);
 }
 
 static void test_url_build_dorequest_url_custom_host() {
   rc_api_request_t request;
   rc_api_fetch_image_request_t api_params;
+  rc_api_host_t host;
 
-  rc_api_set_host("http://localhost");
+  memset(&host, 0, sizeof(host));
+  host.host = "http://localhost";
 
-  rc_api_url_build_dorequest_url(&request);
+  rc_api_url_build_dorequest_url(&request, &host);
   ASSERT_STR_EQUALS(request.url, "http://localhost/dorequest.php");
   rc_api_destroy_request(&request);
 
   api_params.image_type = RC_IMAGE_TYPE_ACHIEVEMENT;
   api_params.image_name = "12345";
-  rc_api_init_fetch_image_request(&request, &api_params);
+  rc_api_init_fetch_image_request_hosted(&request, &api_params, &host);
   ASSERT_STR_EQUALS(request.url, "http://localhost/Badge/12345.png");
   rc_api_destroy_request(&request);
-
-  rc_api_set_host(NULL);
 }
 
 static void test_url_build_dorequest_url_custom_host_no_protocol() {
   rc_api_request_t request;
   rc_api_fetch_image_request_t api_params;
+  rc_api_host_t host;
 
-  rc_api_set_host("my.host");
+  memset(&host, 0, sizeof(host));
+  host.host = "my.host";
 
-  rc_api_url_build_dorequest_url(&request);
+  rc_api_url_build_dorequest_url(&request, &host);
   ASSERT_STR_EQUALS(request.url, "http://my.host/dorequest.php");
   rc_api_destroy_request(&request);
 
   api_params.image_type = RC_IMAGE_TYPE_ACHIEVEMENT;
   api_params.image_name = "12345";
-  rc_api_init_fetch_image_request(&request, &api_params);
+  rc_api_init_fetch_image_request_hosted(&request, &api_params, &host);
   ASSERT_STR_EQUALS(request.url, "http://my.host/Badge/12345.png");
   rc_api_destroy_request(&request);
-
-  rc_api_set_host(NULL);
 }
 
 static void test_url_builder_append_encoded_str(const char* input, const char* expected) {
@@ -717,57 +717,60 @@ static void test_init_fetch_image_request_custom_host()
 {
   rc_api_fetch_image_request_t fetch_image_request;
   rc_api_request_t request;
+  rc_api_host_t host;
 
-  rc_api_set_host("http://localhost");
+  memset(&host, 0, sizeof(host));
+  host.host = "http://localhost";
 
   memset(&fetch_image_request, 0, sizeof(fetch_image_request));
   fetch_image_request.image_name = "0123324";
   fetch_image_request.image_type = RC_IMAGE_TYPE_GAME;
 
-  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_OK);
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request_hosted(&request, &fetch_image_request, &host), RC_OK);
   ASSERT_STR_EQUALS(request.url, "http://localhost/Images/0123324.png");
   ASSERT_PTR_NULL(request.post_data);
 
   rc_api_destroy_request(&request);
-  rc_api_set_host(NULL);
 }
 
 static void test_init_fetch_image_request_explicit_default_host()
 {
   rc_api_fetch_image_request_t fetch_image_request;
   rc_api_request_t request;
+  rc_api_host_t host;
 
-  rc_api_set_host("https://retroachievements.org");
+  memset(&host, 0, sizeof(host));
+  host.host = "https://retroachievements.org";
 
   memset(&fetch_image_request, 0, sizeof(fetch_image_request));
   fetch_image_request.image_name = "0123324";
   fetch_image_request.image_type = RC_IMAGE_TYPE_GAME;
 
-  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_OK);
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request_hosted(&request, &fetch_image_request, &host), RC_OK);
   ASSERT_STR_EQUALS(request.url, "https://media.retroachievements.org/Images/0123324.png");
   ASSERT_PTR_NULL(request.post_data);
 
   rc_api_destroy_request(&request);
-  rc_api_set_host(NULL);
 }
 
 static void test_init_fetch_image_request_explicit_nonssl_host()
 {
   rc_api_fetch_image_request_t fetch_image_request;
   rc_api_request_t request;
+  rc_api_host_t host;
 
-  rc_api_set_host("http://retroachievements.org");
+  memset(&host, 0, sizeof(host));
+  host.host = "http://retroachievements.org";
 
   memset(&fetch_image_request, 0, sizeof(fetch_image_request));
   fetch_image_request.image_name = "0123324";
   fetch_image_request.image_type = RC_IMAGE_TYPE_GAME;
 
-  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_OK);
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request_hosted(&request, &fetch_image_request, &host), RC_OK);
   ASSERT_STR_EQUALS(request.url, "http://media.retroachievements.org/Images/0123324.png");
   ASSERT_PTR_NULL(request.post_data);
 
   rc_api_destroy_request(&request);
-  rc_api_set_host(NULL);
 }
 
 void test_rapi_common(void) {
@@ -867,7 +870,7 @@ void test_rapi_common(void) {
   TEST_PARAMS3(test_json_get_unum_array, "[A,B,C]", 3, RC_MISSING_VALUE);
   TEST(test_json_get_unum_array_trailing_comma);
 
-  /* rc_api_url_build_dorequest_url / rc_api_set_host */
+  /* rc_api_url_build_dorequest_url / rc_api_url_build_dorequest_url_hosted */
   TEST(test_url_build_dorequest_url_default_host);
   TEST(test_url_build_dorequest_url_default_host_nonssl);
   TEST(test_url_build_dorequest_url_custom_host);

@@ -352,7 +352,7 @@ rc_client_async_handle_t* rc_client_begin_load_raintegration(rc_client_t* client
   }
 
   memset(&request, 0, sizeof(request));
-  rc_api_url_build_dorequest_url(&request);
+  rc_api_url_build_dorequest_url(&request, NULL);
   rc_url_builder_init(&builder, &request.buffer, 48);
   rc_url_builder_append_str_param(&builder, "r", "latestintegration");
   request.post_data = rc_url_builder_finalize(&builder);
