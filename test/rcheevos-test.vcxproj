@@ -247,6 +247,7 @@
     <ClInclude Include="..\src\rc_version.h" />
     <ClInclude Include="..\src\rhash\aes.h" />
     <ClInclude Include="..\src\rhash\md5.h" />
+    <ClInclude Include="..\src\rhash\rc_hash_internal.h" />
     <ClInclude Include="libretro.h" />
     <ClInclude Include="rcheevos\mock_memory.h" />
     <ClInclude Include="rhash\data.h" />

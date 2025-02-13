@@ -10,6 +10,7 @@
 
 #include "rc_consoles.h"
 #include "rc_compat.h"
+#include "rhash/rc_hash_internal.h"
 
 #include <ctype.h>
 #include <string.h>
@@ -21,7 +22,6 @@ extern int64_t rc_file_tell(void* file_handle);
 extern size_t rc_file_read(void* file_handle, void* buffer, int requested_bytes);
 extern void rc_file_close(void* file_handle);
 extern int rc_path_compare_extension(const char* path, const char* ext);
-extern int rc_hash_error(const char* message);
 
 
 static rc_libretro_message_callback rc_libretro_verbose_message_callback = NULL;
@@ -759,7 +759,7 @@ void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
 
   file_handle = rc_file_open(m3u_path);
   if (!file_handle) {
-    rc_hash_error("Could not open playlist");
+    rc_hash_error(NULL, "Could not open playlist");
     return;
   }
 

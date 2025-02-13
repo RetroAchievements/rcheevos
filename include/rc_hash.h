@@ -11,51 +11,14 @@ RC_BEGIN_C_DECLS
 
   /* ===================================================== */
 
-  /* generates a hash from a block of memory.
-   * returns non-zero on success, or zero on failure.
-   */
-  RC_EXPORT int RC_CCONV rc_hash_generate_from_buffer(char hash[33], uint32_t console_id, const uint8_t* buffer, size_t buffer_size);
-
-  /* generates a hash from a file.
-   * returns non-zero on success, or zero on failure.
-   */
-  RC_EXPORT int RC_CCONV rc_hash_generate_from_file(char hash[33], uint32_t console_id, const char* path);
-
-  /* ===================================================== */
-
-  /* data for rc_hash_iterate
-   */
-  typedef struct rc_hash_iterator
-  {
-    const uint8_t* buffer;
-    size_t buffer_size;
-    uint8_t consoles[12];
-    int index;
-    const char* path;
-  } rc_hash_iterator_t;
-
-  /* initializes a rc_hash_iterator
-   * - path must be provided
-   * - if buffer and buffer_size are provided, path may be a filename (i.e. for something extracted from a zip file)
-   */
-  RC_EXPORT void RC_CCONV rc_hash_initialize_iterator(struct rc_hash_iterator* iterator, const char* path, const uint8_t* buffer, size_t buffer_size);
-
-  /* releases resources associated to a rc_hash_iterator
-   */
-  RC_EXPORT void RC_CCONV rc_hash_destroy_iterator(struct rc_hash_iterator* iterator);
-
-  /* generates the next hash for the data in the rc_hash_iterator.
-   * returns non-zero if a hash was generated, or zero if no more hashes can be generated for the data.
-   */
-  RC_EXPORT int RC_CCONV rc_hash_iterate(char hash[33], struct rc_hash_iterator* iterator);
-
-  /* ===================================================== */
-
   /* specifies a function to call when an error occurs to display the error message */
   typedef void (RC_CCONV *rc_hash_message_callback)(const char*);
+
+  /* [deprecated] set callbacks in rc_hash_iterator_t */
   RC_EXPORT void RC_CCONV rc_hash_init_error_message_callback(rc_hash_message_callback callback);
 
   /* specifies a function to call for verbose logging */
+  /* [deprecated] set callbacks in rc_hash_iterator_t */
   RC_EXPORT void rc_hash_init_verbose_message_callback(rc_hash_message_callback callback);
 
   /* ===================================================== */
@@ -145,7 +108,60 @@ RC_BEGIN_C_DECLS
                                                                 uint8_t out_primary_key[16], uint8_t out_secondary_key[16]);
   RC_EXPORT void RC_CCONV rc_hash_init_3ds_get_ncch_normal_keys_func(rc_hash_3ds_get_ncch_normal_keys_func func);
 
-  /* ===================================================== */
+/* ===================================================== */
+
+typedef struct rc_hash_callbacks {
+  rc_hash_message_callback verbose_message;
+  rc_hash_message_callback error_message;
+} rc_hash_callbacks_t;
+
+/* data for rc_hash_iterate
+ */
+typedef struct rc_hash_iterator {
+  const uint8_t* buffer;
+  size_t buffer_size;
+  uint8_t consoles[12];
+  int index;
+  const char* path;
+
+  rc_hash_callbacks_t callbacks;
+} rc_hash_iterator_t;
+
+/* initializes a rc_hash_iterator
+ * - path must be provided
+ * - if buffer and buffer_size are provided, path may be a filename (i.e. for something extracted from a zip file)
+ */
+RC_EXPORT void RC_CCONV rc_hash_initialize_iterator(rc_hash_iterator_t* iterator, const char* path, const uint8_t* buffer, size_t buffer_size);
+
+/* releases resources associated to a rc_hash_iterator
+ */
+RC_EXPORT void RC_CCONV rc_hash_destroy_iterator(rc_hash_iterator_t* iterator);
+
+/* generates the next hash for the data in the rc_hash_iterator.
+ * returns non-zero if a hash was generated, or zero if no more hashes can be generated for the data.
+ */
+RC_EXPORT int RC_CCONV rc_hash_iterate(char hash[33], rc_hash_iterator_t* iterator);
+
+/* generates a hash for the data in the rc_hash_iterator.
+ * returns non-zero if a hash was generated.
+ */
+RC_EXPORT int RC_CCONV rc_hash_generate(char hash[33], uint32_t console_id, const rc_hash_iterator_t* iterator);
+
+/* ===================================================== */
+
+/* generates a hash from a block of memory.
+ * returns non-zero on success, or zero on failure.
+ */
+/* [deprecated] use rc_hash_generate instead */
+RC_EXPORT int RC_CCONV rc_hash_generate_from_buffer(char hash[33], uint32_t console_id, const uint8_t* buffer, size_t buffer_size);
+
+/* generates a hash from a file.
+ * returns non-zero on success, or zero on failure.
+ */
+/* [deprecated] use rc_hash_generate instead */
+RC_EXPORT int RC_CCONV rc_hash_generate_from_file(char hash[33], uint32_t console_id, const char* path);
+
+/* ===================================================== */
 
 RC_END_C_DECLS
 

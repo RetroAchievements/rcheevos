@@ -398,6 +398,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\rhash\aes.h" />
+    <ClInclude Include="..\src\rhash\rc_hash_internal.h">
+      <Filter>src\rhash</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\src\rcheevos\rc_runtime_types.natvis">
