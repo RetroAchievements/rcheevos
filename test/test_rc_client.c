@@ -3432,8 +3432,8 @@ static void test_load_subset(void)
 static void test_achievement_list_simple(void)
 {
   rc_client_achievement_list_t* list;
-  rc_client_achievement_t** iter;
-  rc_client_achievement_t* achievement;
+  const rc_client_achievement_t** iter;
+  const rc_client_achievement_t* achievement;
 
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
@@ -3468,8 +3468,8 @@ static void test_achievement_list_simple(void)
 static void test_achievement_list_simple_with_unlocks(void)
 {
   rc_client_achievement_list_t* list;
-  rc_client_achievement_t** iter;
-  rc_client_achievement_t* achievement;
+  const rc_client_achievement_t** iter;
+  const rc_client_achievement_t* achievement;
 
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, unlock_5501h_and_5502);
 
@@ -3528,8 +3528,8 @@ static void test_achievement_list_simple_with_unlocks(void)
 static void test_achievement_list_simple_with_unlocks_encore_mode(void)
 {
   rc_client_achievement_list_t* list;
-  rc_client_achievement_t** iter;
-  rc_client_achievement_t* achievement;
+  const rc_client_achievement_t** iter;
+  const rc_client_achievement_t* achievement;
 
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -3771,8 +3771,8 @@ static void test_achievement_list_simple_with_unofficial_off(void)
 static void test_achievement_list_buckets(void)
 {
   rc_client_achievement_list_t* list;
-  rc_client_achievement_t** iter;
-  rc_client_achievement_t* achievement;
+  const rc_client_achievement_t** iter;
+  const rc_client_achievement_t* achievement;
 
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -3957,8 +3957,8 @@ static void test_achievement_list_buckets(void)
 static void test_achievement_list_buckets_progress_sort(void)
 {
   rc_client_achievement_list_t* list;
-  rc_client_achievement_t** iter;
-  rc_client_achievement_t* achievement;
+  const rc_client_achievement_t** iter;
+  const rc_client_achievement_t* achievement;
 
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -4028,8 +4028,8 @@ static void test_achievement_list_buckets_progress_sort(void)
 static void test_achievement_list_buckets_progress_sort_big_ids(void)
 {
   rc_client_achievement_list_t* list;
-  rc_client_achievement_t** iter;
-  rc_client_achievement_t* achievement;
+  const rc_client_achievement_t** iter;
+  const rc_client_achievement_t* achievement;
 
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -4329,8 +4329,8 @@ static void test_achievement_list_subset_with_unofficial_and_unsupported(void)
 static void test_achievement_list_subset_buckets(void)
 {
   rc_client_achievement_list_t* list;
-  rc_client_achievement_t** iter;
-  rc_client_achievement_t* achievement;
+  const rc_client_achievement_t** iter;
+  const rc_client_achievement_t* achievement;
 
   uint8_t memory[64];
   memset(memory, 0, sizeof(memory));
@@ -4561,8 +4561,8 @@ static void test_achievement_get_image_url(void)
 static void test_leaderboard_list_simple(void)
 {
   rc_client_leaderboard_list_t* list;
-  rc_client_leaderboard_t** iter;
-  rc_client_leaderboard_t* leaderboard;
+  const rc_client_leaderboard_t** iter;
+  const rc_client_leaderboard_t* leaderboard;
   uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
 
   g_client = mock_client_logged_in();
@@ -4634,8 +4634,8 @@ static void test_leaderboard_list_simple(void)
 static void test_leaderboard_list_simple_with_unsupported(void)
 {
   rc_client_leaderboard_list_t* list;
-  rc_client_leaderboard_t** iter;
-  rc_client_leaderboard_t* leaderboard;
+  const rc_client_leaderboard_t** iter;
+  const rc_client_leaderboard_t* leaderboard;
   uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
 
   g_client = mock_client_logged_in();
@@ -4683,8 +4683,8 @@ static void test_leaderboard_list_simple_with_unsupported(void)
 static void test_leaderboard_list_buckets(void)
 {
   rc_client_leaderboard_list_t* list;
-  rc_client_leaderboard_t** iter;
-  rc_client_leaderboard_t* leaderboard;
+  const rc_client_leaderboard_t** iter;
+  const rc_client_leaderboard_t* leaderboard;
   uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
 
   g_client = mock_client_logged_in();
@@ -4765,8 +4765,8 @@ static void test_leaderboard_list_buckets(void)
 static void test_leaderboard_list_buckets_with_unsupported(void)
 {
   rc_client_leaderboard_list_t* list;
-  rc_client_leaderboard_t** iter;
-  rc_client_leaderboard_t* leaderboard;
+  const rc_client_leaderboard_t** iter;
+  const rc_client_leaderboard_t* leaderboard;
   uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
 
   g_client = mock_client_logged_in();
@@ -4861,8 +4861,8 @@ static void test_leaderboard_list_buckets_with_unsupported(void)
 static void test_leaderboard_list_subset(void)
 {
   rc_client_leaderboard_list_t* list;
-  rc_client_leaderboard_t** iter;
-  rc_client_leaderboard_t* leaderboard;
+  const rc_client_leaderboard_t** iter;
+  const rc_client_leaderboard_t* leaderboard;
   uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
 
   g_client = mock_client_logged_in();
@@ -4966,8 +4966,8 @@ static void test_leaderboard_list_subset(void)
 static void test_leaderboard_list_hidden(void)
 {
   rc_client_leaderboard_list_t* list;
-  rc_client_leaderboard_t** iter;
-  rc_client_leaderboard_t* leaderboard;
+  const rc_client_leaderboard_t** iter;
+  const rc_client_leaderboard_t* leaderboard;
   uint8_t memory[16] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 };
 
   g_client = mock_client_logged_in();

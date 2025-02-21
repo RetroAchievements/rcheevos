@@ -308,6 +308,9 @@
     </ClCompile>
     <ClCompile Include="..\src\rc_version.c" />
     <ClCompile Include="..\src\rhash\aes.c" />
+    <ClCompile Include="..\src\rc_client_external.c">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">
@@ -398,6 +401,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\rhash\aes.h" />
+    <ClInclude Include="..\src\rc_client_external_versions.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\src\rcheevos\rc_runtime_types.natvis">
