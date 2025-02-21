@@ -3738,8 +3738,7 @@ static void rc_client_award_achievement_callback(const rc_api_server_response_t*
               RC_CLIENT_LOG_INFO_FORMATTED(ach_data->client, "Subset %u %s", ach_data->client->game->public_.id,
                 ach_data->client->state.hardcore ? "mastered" : "completed");
 
-              /* TODO: subset mastery notification */
-              subset->mastery = RC_CLIENT_MASTERY_STATE_SHOWN;
+              subset->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
             }
           }
         }
@@ -5182,7 +5181,12 @@ static void rc_client_raise_mastery_event(rc_client_t* client, rc_client_subset_
   rc_client_event_t client_event;
 
   memset(&client_event, 0, sizeof(client_event));
-  client_event.type = RC_CLIENT_EVENT_GAME_COMPLETED;
+  client_event.subset = &subset->public_;
+
+  if (subset == client->game->subsets)
+    client_event.type = RC_CLIENT_EVENT_GAME_COMPLETED;
+  else
+    client_event.type = RC_CLIENT_EVENT_SUBSET_COMPLETED;
 
   subset->mastery = RC_CLIENT_MASTERY_STATE_SHOWN;
 

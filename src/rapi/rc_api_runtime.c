@@ -440,7 +440,7 @@ int rc_api_process_fetch_game_data_server_response(rc_api_fetch_game_data_respon
   rc_json_get_optional_array(&response->num_subsets, &array_field, &patchdata_fields[8], "Sets");
   if (response->num_subsets) {
     response->subsets = (rc_api_subset_definition_t*)rc_buffer_alloc(&response->response.buffer, response->num_subsets * sizeof(rc_api_subset_definition_t));
-    if (!response->leaderboards)
+    if (!response->subsets)
       return RC_OUT_OF_MEMORY;
 
     result = rc_api_process_fetch_game_data_subsets(response, response->subsets, &array_field);
