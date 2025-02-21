@@ -4396,8 +4396,42 @@ static void test_addaddress_scaled_negative() {
   assert_evaluate_condset(condset, memrefs, &memory, 0);
 }
 
-static void test_addaddress_shared_size()
-{
+static void test_addaddress_double_read() {
+  uint8_t ram[] = {0x01, 0x02, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* $($0 + $1) == 22 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000+0xH0001_0xH0000=22");
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* value is correct */
+  ram[3] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* adjust first address */
+  ram[0] = 2;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* new value is correct */
+  ram[4] = 22;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* point to original value */
+  ram[1] = 1;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* original value no longer correct */
+  ram[3] = 11;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+}
+
+static void test_addaddress_shared_size() {
   uint8_t ram[] = { 0x01, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_condset_t* condset;
@@ -4633,6 +4667,7 @@ void test_condset(void) {
   TEST(test_addaddress_adjust_both_sides_different_bases);
   TEST(test_addaddress_scaled);
   TEST(test_addaddress_scaled_negative);
+  TEST(test_addaddress_double_read);
   TEST(test_addaddress_shared_size);
 
   /* prior */

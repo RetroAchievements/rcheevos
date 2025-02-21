@@ -366,6 +366,8 @@ static const char* response_503 =
     "</body>\n"
     "</html>";
 
+static const char* default_game_badge = "https://media.retroachievements.org/Images/000001.png";
+
 /* ----- helpers ----- */
 
 static void _assert_achievement_state(rc_client_t* client, uint32_t id, int expected_state)
@@ -1374,6 +1376,7 @@ static void test_load_game_unknown_hash(void)
     ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
     ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
     ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_url, default_game_badge);
     ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 0);
     ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 0);
     ASSERT_NUM_EQUALS(g_client->game->subsets->public_.id, 0);
@@ -1409,6 +1412,7 @@ static void test_load_game_unknown_hash_repeated(void)
   ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
   ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
   ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_url, default_game_badge);
 
   /* second request should use the hash cache and not need an asynchronous call */
   handle = rc_client_begin_load_game(g_client,
@@ -1424,6 +1428,7 @@ static void test_load_game_unknown_hash_repeated(void)
   ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
   ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
   ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_url, default_game_badge);
 
   rc_client_destroy(g_client);
 }
@@ -1474,6 +1479,7 @@ static void test_load_game(void)
     ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
     ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
     ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_url, "https://media.retroachievements.org/Images/112233.png");
     ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
     ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
 
@@ -1482,6 +1488,8 @@ static void test_load_game(void)
     ASSERT_STR_EQUALS(achievement->public_.title, "Ach1");
     ASSERT_STR_EQUALS(achievement->public_.description, "Desc1");
     ASSERT_STR_EQUALS(achievement->public_.badge_name, "00234");
+    ASSERT_STR_EQUALS(achievement->public_.badge_url, "https://media.retroachievements.org/Badge/00234.png");
+    ASSERT_STR_EQUALS(achievement->public_.badge_locked_url, "https://media.retroachievements.org/Badge/00234_lock.png");
     ASSERT_NUM_EQUALS(achievement->public_.points, 5);
     ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
@@ -1493,6 +1501,8 @@ static void test_load_game(void)
     ASSERT_STR_EQUALS(achievement->public_.title, "Ach2");
     ASSERT_STR_EQUALS(achievement->public_.description, "Desc2");
     ASSERT_STR_EQUALS(achievement->public_.badge_name, "00235");
+    ASSERT_STR_EQUALS(achievement->public_.badge_url, "https://media.retroachievements.org/Badge/00235.png");
+    ASSERT_STR_EQUALS(achievement->public_.badge_locked_url, "https://media.retroachievements.org/Badge/00235_lock.png");
     ASSERT_NUM_EQUALS(achievement->public_.points, 2);
     ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
@@ -3289,8 +3299,9 @@ static void test_game_get_image_url(void)
 static void test_game_get_image_url_non_ssl(void)
 {
   char buffer[256];
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
+  g_client = mock_client_logged_in();
   rc_client_set_host(g_client, "http://retroachievements.org");
+  mock_client_load_game(patchdata_2ach_1lbd, no_unlocks);
 
   ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "http://media.retroachievements.org/Images/112233.png");
@@ -3301,8 +3312,9 @@ static void test_game_get_image_url_non_ssl(void)
 static void test_game_get_image_url_custom(void)
 {
   char buffer[256];
-  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
+  g_client = mock_client_logged_in();
   rc_client_set_host(g_client, "localhost");
+  mock_client_load_game(patchdata_2ach_1lbd, no_unlocks);
 
   ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
   ASSERT_STR_EQUALS(buffer, "http://localhost/Images/112233.png");
@@ -3349,6 +3361,7 @@ static void test_load_subset(void)
     ASSERT_NUM_EQUALS(subset->id, 2345);
     ASSERT_STR_EQUALS(subset->title, "Bonus");
     ASSERT_STR_EQUALS(subset->badge_name, "112234");
+    ASSERT_STR_EQUALS(subset->badge_url, "http://host/Images/112234.png");
     ASSERT_NUM_EQUALS(subset->num_achievements, 3);
     ASSERT_NUM_EQUALS(subset->num_leaderboards, 2);
 
@@ -3357,6 +3370,8 @@ static void test_load_subset(void)
     ASSERT_STR_EQUALS(achievement->public_.title, "Achievement 5501");
     ASSERT_STR_EQUALS(achievement->public_.description, "Desc 5501");
     ASSERT_STR_EQUALS(achievement->public_.badge_name, "005501");
+    ASSERT_STR_EQUALS(achievement->public_.badge_url, "https://media.retroachievements.org/Badge/005501.png");
+    ASSERT_STR_EQUALS(achievement->public_.badge_locked_url, "https://media.retroachievements.org/Badge/005501_lock.png");
     ASSERT_NUM_EQUALS(achievement->public_.points, 5);
     ASSERT_NUM_EQUALS(achievement->public_.unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->public_.state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);

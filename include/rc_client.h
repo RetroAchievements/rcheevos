@@ -188,6 +188,7 @@ typedef struct rc_client_user_t {
   uint32_t score;
   uint32_t score_softcore;
   uint32_t num_unread_messages;
+  /* minimum version: 11.7 */
   const char* avatar_url;
 } rc_client_user_t;
 
@@ -268,6 +269,8 @@ typedef struct rc_client_game_t {
   const char* title;
   const char* hash;
   const char* badge_name;
+  /* minimum version: 11.7 */
+  const char* badge_url;
 } rc_client_game_t;
 
 /**
@@ -307,6 +310,9 @@ typedef struct rc_client_subset_t {
 
   uint32_t num_achievements;
   uint32_t num_leaderboards;
+
+  /* minimum version: 11.7 */
+  const char* badge_url;
 } rc_client_subset_t;
 
 RC_EXPORT const rc_client_subset_t* RC_CCONV rc_client_get_subset_info(rc_client_t* client, uint32_t subset_id);
@@ -374,6 +380,9 @@ typedef struct rc_client_achievement_t {
   float rarity;
   float rarity_hardcore;
   uint8_t type;
+  /* minimum version: 11.7 */
+  const char* badge_url;
+  const char* badge_locked_url;
 } rc_client_achievement_t;
 
 /**

@@ -448,6 +448,7 @@ static void test_process_fetch_game_data_response_achievement_null_author()
     "\"Achievements\":["
     "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
     "\"MemAddr\":\"0=1\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+    "\"BadgeURL\":\"http://host/Badge/00234.png\",\"BadgeLockedURL\":\"http://host/Badge/00234_lock.png\","
     "\"Created\":1367266583,\"Modified\":1376929305},"
     "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
     "\"MemAddr\":\"0=2\",\"Author\":null,\"BadgeName\":\"00235\","
@@ -487,6 +488,8 @@ static void test_process_fetch_game_data_response_achievement_null_author()
   ASSERT_STR_EQUALS(achievement->definition, "0=1");
   ASSERT_STR_EQUALS(achievement->author, "User1");
   ASSERT_STR_EQUALS(achievement->badge_name, "00234");
+  ASSERT_STR_EQUALS(achievement->badge_url, "http://host/Badge/00234.png");
+  ASSERT_STR_EQUALS(achievement->badge_locked_url, "http://host/Badge/00234_lock.png");
   ASSERT_NUM_EQUALS(achievement->created, 1367266583);
   ASSERT_NUM_EQUALS(achievement->updated, 1376929305);
 
@@ -499,6 +502,8 @@ static void test_process_fetch_game_data_response_achievement_null_author()
   ASSERT_STR_EQUALS(achievement->definition, "0=2");
   ASSERT_STR_EQUALS(achievement->author, "");
   ASSERT_STR_EQUALS(achievement->badge_name, "00235");
+  ASSERT_STR_EQUALS(achievement->badge_url, "https://media.retroachievements.org/Badge/00235.png");
+  ASSERT_STR_EQUALS(achievement->badge_locked_url, "https://media.retroachievements.org/Badge/00235_lock.png");
   ASSERT_NUM_EQUALS(achievement->created, 1376970283);
   ASSERT_NUM_EQUALS(achievement->updated, 1376970283);
 
@@ -511,6 +516,8 @@ static void test_process_fetch_game_data_response_achievement_null_author()
   ASSERT_STR_EQUALS(achievement->definition, "0=3");
   ASSERT_STR_EQUALS(achievement->author, "");
   ASSERT_STR_EQUALS(achievement->badge_name, "00236");
+  ASSERT_STR_EQUALS(achievement->badge_url, "https://media.retroachievements.org/Badge/00236.png");
+  ASSERT_STR_EQUALS(achievement->badge_locked_url, "https://media.retroachievements.org/Badge/00236_lock.png");
   ASSERT_NUM_EQUALS(achievement->created, 1376969412);
   ASSERT_NUM_EQUALS(achievement->updated, 1376969412);
 
@@ -523,6 +530,8 @@ static void test_process_fetch_game_data_response_achievement_null_author()
   ASSERT_STR_EQUALS(achievement->definition, "0=4");
   ASSERT_STR_EQUALS(achievement->author, "User1");
   ASSERT_STR_EQUALS(achievement->badge_name, "00236");
+  ASSERT_STR_EQUALS(achievement->badge_url, "https://media.retroachievements.org/Badge/00236.png");
+  ASSERT_STR_EQUALS(achievement->badge_locked_url, "https://media.retroachievements.org/Badge/00236_lock.png");
   ASSERT_NUM_EQUALS(achievement->created, 1504474554);
   ASSERT_NUM_EQUALS(achievement->updated, 1504474554);
 
@@ -592,6 +601,7 @@ static void test_process_fetch_game_data_response_rich_presence() {
   rc_api_fetch_game_data_response_t fetch_game_data_response;
   const char* server_response = "{\"Success\":true,\"PatchData\":{"
       "\"ID\":177,\"Title\":\"Some Other Game\",\"ConsoleID\":2,\"ImageIcon\":\"/Images/000001.png\","
+      "\"ImageIconURL\":\"http://host/Images/000001.png\","
       "\"Achievements\":[],\"Leaderboards\":[],"
       "\"RichPresencePatch\":\"Display:\\r\\nTest\\r\\n\""
       "}}";
@@ -604,6 +614,7 @@ static void test_process_fetch_game_data_response_rich_presence() {
   ASSERT_STR_EQUALS(fetch_game_data_response.title, "Some Other Game");
   ASSERT_NUM_EQUALS(fetch_game_data_response.console_id, 2);
   ASSERT_STR_EQUALS(fetch_game_data_response.image_name, "000001");
+  ASSERT_STR_EQUALS(fetch_game_data_response.image_url, "http://host/Images/000001.png");
   ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "Display:\r\nTest\r\n");
   ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 0);
   ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 0);
@@ -627,6 +638,7 @@ static void test_process_fetch_game_data_response_rich_presence_null() {
   ASSERT_STR_EQUALS(fetch_game_data_response.title, "Some Other Game");
   ASSERT_NUM_EQUALS(fetch_game_data_response.console_id, 2);
   ASSERT_STR_EQUALS(fetch_game_data_response.image_name, "000001");
+  ASSERT_STR_EQUALS(fetch_game_data_response.image_url, "https://media.retroachievements.org/Images/000001.png");
   ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "");
   ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 0);
   ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 0);
@@ -650,6 +662,7 @@ static void test_process_fetch_game_data_response_rich_presence_tab() {
   ASSERT_STR_EQUALS(fetch_game_data_response.title, "Some Other Game");
   ASSERT_NUM_EQUALS(fetch_game_data_response.console_id, 2);
   ASSERT_STR_EQUALS(fetch_game_data_response.image_name, "000001");
+  ASSERT_STR_EQUALS(fetch_game_data_response.image_url, "https://media.retroachievements.org/Images/000001.png");
   ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "Display:\r\nTest\tTab\r\n");
   ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 0);
   ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 0);

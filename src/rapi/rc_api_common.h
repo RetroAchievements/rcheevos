@@ -77,7 +77,7 @@ void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* 
 void rc_api_url_build_dorequest_url(rc_api_request_t* request);
 int rc_api_url_build_dorequest(rc_api_url_builder_t* builder, const char* api, const char* username, const char* api_token);
 
-const char* rc_api_build_avatar_url(rc_buffer_t* buffer, const char* username);
+const char* rc_api_build_avatar_url(rc_buffer_t* buffer, uint32_t image_type, const char* username);
 
 RC_END_C_DECLS
 

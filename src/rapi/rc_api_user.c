@@ -1,5 +1,6 @@
 #include "rc_api_user.h"
 #include "rc_api_common.h"
+#include "rc_api_runtime.h"
 
 #include "../rc_version.h"
 
@@ -79,7 +80,7 @@ int rc_api_process_login_server_response(rc_api_login_response_t* response, cons
 
   rc_json_get_optional_string(&response->avatar_url, &response->response, &fields[8], "AvatarUrl", NULL);
   if (!response->avatar_url)
-    response->avatar_url = rc_api_build_avatar_url(&response->response.buffer, response->username);
+    response->avatar_url = rc_api_build_avatar_url(&response->response.buffer, RC_IMAGE_TYPE_USER, response->username);
 
   return RC_OK;
 }
