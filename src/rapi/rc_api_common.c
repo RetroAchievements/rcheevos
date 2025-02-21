@@ -1173,9 +1173,9 @@ int rc_api_url_build_dorequest(rc_api_url_builder_t* builder, const char* api, c
 
 /* --- Set Host --- */
 
-static void rc_api_update_host(char** host, const char* hostname) {
+static void rc_api_update_host(const char** host, const char* hostname) {
   if (*host != NULL)
-    free(*host);
+    free((void*)*host);
 
   if (hostname != NULL) {
     if (strstr(hostname, "://")) {
