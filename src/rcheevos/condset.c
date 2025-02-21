@@ -507,6 +507,10 @@ static void rc_condset_evaluate_reset_if(rc_condition_t* condition, rc_eval_stat
   const uint8_t cond_valid = rc_condset_evaluate_condition(condition, eval_state);
 
   if (cond_valid) {
+    /* flag the condition as being responsible for the reset */
+    /* make sure not to modify bit0, as we use bitwise-and operators to combine truthiness */
+    condition->is_true |= 0x02;
+
     /* set cannot be valid if we've hit a reset condition */
     eval_state->is_true = eval_state->is_primed = 0;
 

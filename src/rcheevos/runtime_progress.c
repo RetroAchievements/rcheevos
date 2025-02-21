@@ -40,7 +40,7 @@ typedef struct rc_runtime_progress_t {
 
 #define RC_VAR_FLAG_HAS_COND_DATA         0x01000000
 
-#define RC_COND_FLAG_IS_TRUE                            0x00000001
+#define RC_COND_FLAG_IS_TRUE_MASK                       0x00000003
 #define RC_COND_FLAG_OPERAND1_IS_INDIRECT_MEMREF        0x00010000
 #define RC_COND_FLAG_OPERAND1_MEMREF_CHANGED_THIS_FRAME 0x00020000
 #define RC_COND_FLAG_OPERAND2_IS_INDIRECT_MEMREF        0x00100000
@@ -325,9 +325,7 @@ static int rc_runtime_progress_write_condset(rc_runtime_progress_t* progress, rc
 
   cond = condset->conditions;
   while (cond) {
-    flags = 0;
-    if (cond->is_true)
-      flags |= RC_COND_FLAG_IS_TRUE;
+    flags = (cond->is_true & RC_COND_FLAG_IS_TRUE_MASK);
 
     if (rc_runtime_progress_is_indirect_memref(&cond->operand1)) {
       flags |= RC_COND_FLAG_OPERAND1_IS_INDIRECT_MEMREF;
@@ -381,7 +379,7 @@ static int rc_runtime_progress_read_condset(rc_runtime_progress_t* progress, rc_
     cond->current_hits = rc_runtime_progress_read_uint(progress);
     flags = rc_runtime_progress_read_uint(progress);
 
-    cond->is_true = (flags & RC_COND_FLAG_IS_TRUE) ? 1 : 0;
+    cond->is_true = (flags & RC_COND_FLAG_IS_TRUE_MASK);
 
     if (flags & RC_COND_FLAG_OPERAND1_IS_INDIRECT_MEMREF) {
       if (!rc_operand_is_memref(&cond->operand1)) /* this should never happen, but better safe than sorry */

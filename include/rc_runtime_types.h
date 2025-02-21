@@ -199,7 +199,15 @@ struct rc_condition_t {
   /* The comparison operator to use. (RC_OPERATOR_*) */
   uint8_t oper; /* operator is a reserved word in C++. */
 
-  /* Whether or not the condition evaluated true on the last check. (bool) */
+  /* Will be non-zero if the condition evaluated true on the last check.
+   * - The lowest bit indicates whether the condition itself was true.
+   * - The second lowest bit will only ever be set on ResetIf conditions.
+   *   If set, it indicates that the condition was responsible for resetting the
+   *   trigger. A reset clears all hit counts, so the condition may not appear to
+   *   be true just from looking at it (in which case the lower bit will be 0).
+   *   Also, the condition might have only met its required_hits target though
+   *   an AddHits chain which will have also been reset.
+   */
   uint8_t is_true;
 
   /* Unique identifier of optimized comparator to use. (RC_PROCESSING_COMPARE_*) */
