@@ -605,10 +605,11 @@ static int rc_hash_finalize(md5_state_t* md5, char hash[33])
 
 static int rc_hash_buffer(char hash[33], const uint8_t* buffer, size_t buffer_size, const rc_hash_iterator_t* iterator)
 {
+  md5_state_t md5;
+
   if (buffer_size > MAX_BUFFER_SIZE)
     buffer_size = MAX_BUFFER_SIZE;
 
-  md5_state_t md5;
   md5_init(&md5);
 
   md5_append(&md5, buffer, (int)buffer_size);
@@ -1137,8 +1138,9 @@ static int rc_hash_ms_dos_parent(md5_state_t* md5, const struct rc_hash_ms_dos_d
   parent_handle = rc_file_open(parent_path);
   if (!parent_handle)
   {
+    rc_hash_iterator_error_formatted(iterator, "DOSZ parent file '%s' does not exist", parent_path);
     free(parent_path);
-    return rc_hash_iterator_error_formatted(iterator, "DOSZ parent file '%s' does not exist", parent_path);
+    return 0;
   }
 
   /* Fully hash the parent DOSZ ahead of the child */

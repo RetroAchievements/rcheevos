@@ -72,8 +72,6 @@ typedef struct rc_libretro_hash_entry_t
   char                             hash[33];
 } rc_libretro_hash_entry_t;
 
-typedef void (RC_CCONV* rc_libretro_message_callback)(const char*);
-
 typedef struct rc_libretro_hash_set_t
 {
   struct rc_libretro_hash_entry_t* entries;
