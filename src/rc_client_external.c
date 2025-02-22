@@ -118,6 +118,8 @@ static void rc_client_destroy_achievement_list_wrapper(rc_client_achievement_lis
     free((void*)wrapper->info.public_.buckets);
 
   rc_client_destroy_achievement_list(wrapper->source_list);
+
+  free(wrapper);
 }
 
 rc_client_achievement_list_t* rc_client_external_convert_v1_achievement_list(const rc_client_t* client, rc_client_achievement_list_t* v1_achievement_list)
