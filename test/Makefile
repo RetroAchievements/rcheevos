@@ -125,7 +125,7 @@ else ifeq ($(BUILD), retroarch)
     # Also include the RC_CLIENT_SUPPORTS_EXTERNAL flag to ensure we do the full level of validation on the
     # most code. The c89 build will ensure things still build without the RC_CLIENT_SUPPORTS_EXTERNAL flag.
     CFLAGS += -DRC_CLIENT_SUPPORTS_EXTERNAL
-    OBJ += test_rc_client_external.o
+    OBJ += $(RC_SRC)/rc_client_external.o test_rc_client_external.o
 else
     $(error unknown BUILD "$(BUILD)")
 endif

@@ -302,7 +302,7 @@ typedef struct rc_client_state_t {
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   rc_client_external_t* external_client;
-  rc_client_external_conversions_t* external_client_conversions;
+  struct rc_client_external_conversions_t* external_client_conversions;
 #endif
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
   rc_client_raintegration_t* raintegration;

@@ -123,6 +123,7 @@ static void rc_client_destroy_achievement_list_wrapper(rc_client_achievement_lis
 rc_client_achievement_list_t* rc_client_external_convert_v1_achievement_list(const rc_client_t* client, rc_client_achievement_list_t* v1_achievement_list)
 {
   rc_client_achievement_list_wrapper_t* new_list;
+  (void)client;
 
   new_list = (rc_client_achievement_list_wrapper_t*)calloc(1, sizeof(*new_list));
   if (!new_list)
@@ -157,13 +158,12 @@ rc_client_achievement_list_t* rc_client_external_convert_v1_achievement_list(con
       memcpy(bucket, src_bucket, sizeof(*src_bucket));
 
       if (src_bucket->num_achievements) {
-        const v1_rc_client_achievement_t** src_achievement = src_bucket->achievements;
+        const v1_rc_client_achievement_t** src_achievement = (const v1_rc_client_achievement_t**)src_bucket->achievements;
         const v1_rc_client_achievement_t** stop_achievement = src_achievement + src_bucket->num_achievements;
-        rc_client_achievement_t** achievement;
+        rc_client_achievement_t** achievement = &new_list->achievements_pointers[num_achievements];
 
-        bucket->achievements = &new_list->achievements_pointers[num_achievements];
+        bucket->achievements = (const rc_client_achievement_t**)achievement;
 
-        achievement = bucket->achievements;
         for (; src_achievement < stop_achievement; ++src_achievement, ++achievement) {
           *achievement = &new_list->achievements[num_achievements++];
           memcpy(*achievement, *src_achievement, sizeof(**src_achievement));

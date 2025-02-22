@@ -145,7 +145,7 @@ void rc_client_load_unknown_game(rc_client_t* client, const char* hash);
 
 /* conversion support */
 
-typedef struct rc_client_external_conversions_t rc_client_external_conversions_t;
+struct rc_client_external_conversions_t;
 const rc_client_user_t* rc_client_external_convert_v1_user(const rc_client_t* client, const rc_client_user_t* v1_user);
 const rc_client_game_t* rc_client_external_convert_v1_game(const rc_client_t* client, const rc_client_game_t* v1_game);
 const rc_client_subset_t* rc_client_external_convert_v1_subset(const rc_client_t* client, const rc_client_subset_t* v1_subset);
