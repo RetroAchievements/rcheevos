@@ -556,9 +556,11 @@ static void rc_condset_evaluate_measured(rc_condition_t* condition, rc_eval_stat
 }
 
 static void rc_condset_evaluate_measured_if(rc_condition_t* condition, rc_eval_state_t* eval_state) {
-  rc_condset_evaluate_standard(condition, eval_state);
+  const uint8_t cond_valid = rc_condset_evaluate_condition(condition, eval_state);
 
-  eval_state->can_measure &= condition->is_true;
+  eval_state->is_true &= cond_valid;
+  eval_state->is_primed &= cond_valid;
+  eval_state->can_measure &= cond_valid;
 }
 
 static void rc_condset_evaluate_add_hits(rc_condition_t* condition, rc_eval_state_t* eval_state) {
@@ -703,6 +705,17 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
   }
 
   if (self->num_measured_conditions) {
+    /* IMPORTANT: reset hit counts on these conditions before processing them so
+     *            the MeasuredIf logic and Measured value are correct.
+     *      NOTE: a ResetIf in a later alt group may not have been processed yet.
+     *            Accept that as a weird edge case, and just recommend the user
+     *            move the ResetIf if it becomes a problem. */
+    if (eval_state->was_reset) {
+      int i;
+      for (i = 0; i < self->num_measured_conditions; ++i)
+        conditions[i].current_hits = 0;
+    }
+
     /* the measured value must be calculated every frame, even if hit counts will be reset */
     rc_test_condset_internal(conditions, self->num_measured_conditions, eval_state, 0);
     conditions += self->num_measured_conditions;

@@ -106,6 +106,76 @@ static void test_evaluate_measured_value_with_pause() {
   ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 2);
 }
 
+static void test_evaluated_and_next_measured_if_value() {
+  rc_value_t* self;
+  const rc_condition_t* cond2;
+  const rc_condition_t* cond4;
+  uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
+  memory_t memory;
+  char buffer[2048];
+  const char* memaddr = "R:0xH0004=1_N:0xH0000=1.1._N:d0xH0000=9_Q:0xH0000=0.1._M:100";
+  int ret;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  ret = rc_value_size(memaddr);
+  ASSERT_NUM_GREATER_EQUALS(ret, 0);
+
+  self = rc_parse_value(buffer, memaddr, NULL, 0);
+  ASSERT_PTR_NOT_NULL(self);
+
+  cond2 = self->conditions->conditions->next;
+  cond4 = cond2->next->next;
+
+  /* measured if cannot be true */
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(cond2->current_hits, 0);
+  ASSERT_NUM_EQUALS(cond4->current_hits, 0);
+
+  /* capture first hit, measured_if still not true */
+  ram[0] = 1;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(cond2->current_hits, 1);
+  ASSERT_NUM_EQUALS(cond4->current_hits, 0);
+
+  /* reset */
+  ram[4] = 1;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(cond2->current_hits, 0);
+  ASSERT_NUM_EQUALS(cond4->current_hits, 0);
+
+  /* clear reset */
+  ram[4] = 0;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(cond2->current_hits, 1);
+  ASSERT_NUM_EQUALS(cond4->current_hits, 0);
+
+  /* prime measured_if */
+  ram[0] = 9;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(cond2->current_hits, 1);
+  ASSERT_NUM_EQUALS(cond4->current_hits, 0);
+
+  /* trigger measured if */
+  ram[0] = 0;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 100);
+  ASSERT_NUM_EQUALS(cond2->current_hits, 1);
+  ASSERT_NUM_EQUALS(cond4->current_hits, 1);
+
+  /* measured if should remain triggered */
+  ram[0] = 1;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 100);
+  ASSERT_NUM_EQUALS(cond2->current_hits, 1);
+  ASSERT_NUM_EQUALS(cond4->current_hits, 1);
+
+  /* reset */
+  ram[4] = 1;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(cond2->current_hits, 0);
+  ASSERT_NUM_EQUALS(cond4->current_hits, 0);
+}
+
 static void test_evaluate_measured_value_with_reset() {
   rc_value_t* self;
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
@@ -572,6 +642,7 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "B0xH01", 12);
   TEST_PARAMS2(test_evaluate_value, "B0x00001", 3412);
   TEST_PARAMS2(test_evaluate_value, "B0xH03", 111); /* 0xAB not really BCD */
+  TEST_PARAMS2(test_evaluate_value, "B0xW00", 341200);
 
   /* non-comparison measured values just return the value at the address and have no target */
   TEST_PARAMS2(test_measured_value_target, "M:0xH0002", 0);
@@ -679,6 +750,7 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "Q:0xH0001!=0_M:0xH0002", 0x34);
   TEST_PARAMS2(test_evaluate_value, "Q:0xH0001=0_M:0xH0002", 0);
   TEST_PARAMS2(test_evaluate_value, "Q:0xH0001!=0_M:1", 1);
+  TEST(test_evaluated_and_next_measured_if_value);
 
   /* using accumulator */
   TEST_PARAMS2(test_evaluate_value, "K:0xH01_M:{recall}", 0x12); /* 18-> recall accumulator, Measurement = 18 */
