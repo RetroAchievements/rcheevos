@@ -3296,32 +3296,6 @@ static void test_game_get_image_url(void)
   rc_client_destroy(g_client);
 }
 
-static void test_game_get_image_url_non_ssl(void)
-{
-  char buffer[256];
-  g_client = mock_client_logged_in();
-  rc_client_set_host(g_client, "http://retroachievements.org");
-  mock_client_load_game(patchdata_2ach_1lbd, no_unlocks);
-
-  ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
-  ASSERT_STR_EQUALS(buffer, "http://media.retroachievements.org/Images/112233.png");
-
-  rc_client_destroy(g_client);
-}
-
-static void test_game_get_image_url_custom(void)
-{
-  char buffer[256];
-  g_client = mock_client_logged_in();
-  rc_client_set_host(g_client, "localhost");
-  mock_client_load_game(patchdata_2ach_1lbd, no_unlocks);
-
-  ASSERT_NUM_EQUALS(rc_client_game_get_image_url(rc_client_get_game_info(g_client), buffer, sizeof(buffer)), RC_OK);
-  ASSERT_STR_EQUALS(buffer, "http://localhost/Images/112233.png");
-
-  rc_client_destroy(g_client);
-}
-
 /* ----- subset ----- */
 
 static void test_load_subset(void)
@@ -9379,8 +9353,6 @@ void test_client(void) {
 
   /* game */
   TEST(test_game_get_image_url);
-  TEST(test_game_get_image_url_non_ssl);
-  TEST(test_game_get_image_url_custom);
 
   /* subset */
   TEST(test_load_subset);

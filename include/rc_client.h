@@ -121,7 +121,7 @@ RC_EXPORT void* RC_CCONV rc_client_get_userdata(const rc_client_t* client);
 /**
  * Sets the name of the server to use.
  */
-RC_EXPORT void RC_CCONV rc_client_set_host(const rc_client_t* client, const char* hostname);
+RC_EXPORT void RC_CCONV rc_client_set_host(rc_client_t* client, const char* hostname);
 
 typedef uint64_t rc_clock_t;
 typedef rc_clock_t (RC_CCONV *rc_get_time_millisecs_func_t)(const rc_client_t* client);

@@ -641,7 +641,7 @@ static int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_
   memset(&image_request, 0, sizeof(image_request));
   image_request.image_type = image_type;
   image_request.image_name = image_name;
-  result = rc_api_init_fetch_image_request(&request, &image_request);
+  result = rc_api_init_fetch_image_request_hosted(&request, &image_request, NULL);
   if (result == RC_OK)
     snprintf(buffer, buffer_size, "%s", request.url);
 
@@ -731,7 +731,7 @@ static rc_client_async_handle_t* rc_client_begin_login(rc_client_t* client,
 {
   rc_client_generic_callback_data_t* callback_data;
   rc_api_request_t request;
-  int result = rc_api_init_login_request(&request, login_request);
+  int result = rc_api_init_login_request_hosted(&request, login_request, &client->state.host);
   const char* error_message = rc_error_str(result);
 
   if (result == RC_OK) {
@@ -1695,7 +1695,7 @@ static void rc_client_begin_start_session(rc_client_load_state_t* load_state)
   start_session_params.game_hash = load_state->hash->hash;
   start_session_params.hardcore = client->state.hardcore;
 
-  result = rc_api_init_start_session_request(&start_session_request, &start_session_params);
+  result = rc_api_init_start_session_request_hosted(&start_session_request, &start_session_params, &client->state.host);
   if (result != RC_OK) {
     rc_client_load_error(load_state, result, rc_error_str(result));
   }
@@ -2388,7 +2388,7 @@ static void rc_client_begin_fetch_game_data(rc_client_load_state_t* load_state)
   else
     fetch_game_data_request.game_hash = load_state->hash->hash;
 
-  result = rc_api_init_fetch_game_data_request(&request, &fetch_game_data_request);
+  result = rc_api_init_fetch_game_data_request_hosted(&request, &fetch_game_data_request, &client->state.host);
   if (result != RC_OK) {
     rc_client_load_error(load_state, result, rc_error_str(result));
     return;
@@ -2529,7 +2529,7 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
     memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
     resolve_hash_request.game_hash = hash;
 
-    result = rc_api_init_resolve_hash_request(&request, &resolve_hash_request);
+    result = rc_api_init_resolve_hash_request_hosted(&request, &resolve_hash_request, &client->state.host);
     if (result != RC_OK) {
       rc_client_load_error(load_state, result, rc_error_str(result));
       return NULL;
@@ -2898,7 +2898,7 @@ static rc_client_async_handle_t* rc_client_begin_change_media_internal(rc_client
   memset(&resolve_hash_request, 0, sizeof(resolve_hash_request));
   resolve_hash_request.game_hash = game_hash->hash;
 
-  result = rc_api_init_resolve_hash_request(&request, &resolve_hash_request);
+  result = rc_api_init_resolve_hash_request_hosted(&request, &resolve_hash_request, &client->state.host);
   if (result != RC_OK) {
     callback(result, rc_error_str(result), client, callback_userdata);
     return NULL;
@@ -3794,7 +3794,7 @@ static void rc_client_award_achievement_server_call(rc_client_award_achievement_
     api_params.seconds_since_unlock = (uint32_t)((now - ach_data->unlock_time) / 1000);
   }
 
-  result = rc_api_init_award_achievement_request(&request, &api_params);
+  result = rc_api_init_award_achievement_request_hosted(&request, &api_params, &ach_data->client->state.host);
   if (result != RC_OK) {
     RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Error constructing unlock request for achievement %u: %s", ach_data->id, rc_error_str(result));
     free(ach_data);
@@ -4455,7 +4455,7 @@ static void rc_client_submit_leaderboard_entry_server_call(rc_client_submit_lead
     api_params.seconds_since_completion = (uint32_t)((now - lboard_data->submit_time) / 1000);
   }
 
-  result = rc_api_init_submit_lboard_entry_request(&request, &api_params);
+  result = rc_api_init_submit_lboard_entry_request_hosted(&request, &api_params, &lboard_data->client->state.host);
   if (result != RC_OK) {
     RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Error constructing submit leaderboard entry for leaderboard %u: %s", lboard_data->id, rc_error_str(result));
     return;
@@ -4629,7 +4629,7 @@ static rc_client_async_handle_t* rc_client_begin_fetch_leaderboard_info(rc_clien
   int result;
   const char* error_message;
 
-  result = rc_api_init_fetch_leaderboard_info_request(&request, lbinfo_request);
+  result = rc_api_init_fetch_leaderboard_info_request_hosted(&request, lbinfo_request, &client->state.host);
 
   if (result != RC_OK) {
     error_message = rc_error_str(result);
@@ -4755,7 +4755,7 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
   api_params.game_hash = client->game->public_.hash;
   api_params.hardcore = client->state.hardcore;
 
-  result = rc_api_init_ping_request(&request, &api_params);
+  result = rc_api_init_ping_request_hosted(&request, &api_params, &client->state.host);
   if (result != RC_OK) {
     RC_CLIENT_LOG_WARN_FORMATTED(client, "Error generating ping request: %s", rc_error_str(result));
   }
@@ -6079,23 +6079,25 @@ void* rc_client_get_userdata(const rc_client_t* client)
   return client ? client->callbacks.client_data : NULL;
 }
 
-void rc_client_set_host(const rc_client_t* client, const char* hostname)
+void rc_client_set_host(rc_client_t* client, const char* hostname)
 {
-  /* if empty, just pass NULL */
-  if (hostname && !hostname[0])
-    hostname = NULL;
+  if (!client)
+    return;
 
-  /* clear the image host so it'll use the custom host for images too */
-  rc_api_set_image_host(NULL);
+  /* clear out any previously specified host information */
+  memset(&client->state.host, 0, sizeof(client->state.host));
 
-  /* set the custom host */
-  if (hostname && client) {
-    RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Using host: %s", hostname);
+  if (hostname && (!hostname[0] || strcmp(hostname, rc_api_default_host()) == 0)) {
+    RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Using host: %s", rc_api_default_host());
+    hostname = rc_api_default_host();
   }
-  rc_api_set_host(hostname);
+  else {
+    RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Using host: %s", hostname);
+    client->state.host.host = rc_buffer_strcpy(&client->state.buffer, hostname);
+  }
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client && client->state.external_client && client->state.external_client->set_host)
+  if (client->state.external_client && client->state.external_client->set_host)
     client->state.external_client->set_host(hostname);
 #endif
 }

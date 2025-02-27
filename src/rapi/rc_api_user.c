@@ -9,9 +9,15 @@
 /* --- Login --- */
 
 int rc_api_init_login_request(rc_api_request_t* request, const rc_api_login_request_t* api_params) {
+  return rc_api_init_login_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_login_request_hosted(rc_api_request_t* request,
+                                     const rc_api_login_request_t* api_params,
+                                     const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (!api_params->username || !*api_params->username)
     return RC_INVALID_STATE;
@@ -92,9 +98,15 @@ void rc_api_destroy_login_response(rc_api_login_response_t* response) {
 /* --- Start Session --- */
 
 int rc_api_init_start_session_request(rc_api_request_t* request, const rc_api_start_session_request_t* api_params) {
+  return rc_api_init_start_session_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_start_session_request_hosted(rc_api_request_t* request,
+                                             const rc_api_start_session_request_t* api_params,
+                                             const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (api_params->game_id == 0)
     return RC_INVALID_STATE;
@@ -209,9 +221,15 @@ void rc_api_destroy_start_session_response(rc_api_start_session_response_t* resp
 /* --- Fetch User Unlocks --- */
 
 int rc_api_init_fetch_user_unlocks_request(rc_api_request_t* request, const rc_api_fetch_user_unlocks_request_t* api_params) {
+  return rc_api_init_fetch_user_unlocks_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_fetch_user_unlocks_request_hosted(rc_api_request_t* request,
+                                                  const rc_api_fetch_user_unlocks_request_t* api_params,
+                                                  const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   rc_url_builder_init(&builder, &request->buffer, 48);
   if (rc_api_url_build_dorequest(&builder, "unlocks", api_params->username, api_params->api_token)) {

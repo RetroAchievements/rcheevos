@@ -12,9 +12,15 @@
 /* --- Fetch Achievement Info --- */
 
 int rc_api_init_fetch_achievement_info_request(rc_api_request_t* request, const rc_api_fetch_achievement_info_request_t* api_params) {
+  return rc_api_init_fetch_achievement_info_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_fetch_achievement_info_request_hosted(rc_api_request_t* request,
+                                                      const rc_api_fetch_achievement_info_request_t* api_params,
+                                                      const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (api_params->achievement_id == 0)
     return RC_INVALID_STATE;
@@ -136,9 +142,15 @@ void rc_api_destroy_fetch_achievement_info_response(rc_api_fetch_achievement_inf
 /* --- Fetch Leaderboard Info --- */
 
 int rc_api_init_fetch_leaderboard_info_request(rc_api_request_t* request, const rc_api_fetch_leaderboard_info_request_t* api_params) {
+  return rc_api_init_fetch_leaderboard_info_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_fetch_leaderboard_info_request_hosted(rc_api_request_t* request,
+                                                      const rc_api_fetch_leaderboard_info_request_t* api_params,
+                                                      const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (api_params->leaderboard_id == 0)
     return RC_INVALID_STATE;
@@ -299,9 +311,15 @@ void rc_api_destroy_fetch_leaderboard_info_response(rc_api_fetch_leaderboard_inf
 /* --- Fetch Games List --- */
 
 int rc_api_init_fetch_games_list_request(rc_api_request_t* request, const rc_api_fetch_games_list_request_t* api_params) {
+  return rc_api_init_fetch_games_list_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_fetch_games_list_request_hosted(rc_api_request_t* request,
+                                                const rc_api_fetch_games_list_request_t* api_params,
+                                                const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (api_params->console_id == 0)
     return RC_INVALID_STATE;
@@ -384,11 +402,17 @@ void rc_api_destroy_fetch_games_list_response(rc_api_fetch_games_list_response_t
 /* --- Fetch Game Titles --- */
 
 int rc_api_init_fetch_game_titles_request(rc_api_request_t* request, const rc_api_fetch_game_titles_request_t* api_params) {
+  return rc_api_init_fetch_game_titles_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_fetch_game_titles_request_hosted(rc_api_request_t* request,
+                                                 const rc_api_fetch_game_titles_request_t* api_params,
+                                                 const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
   char num[16];
   uint32_t i;
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (api_params->num_game_ids == 0)
     return RC_INVALID_STATE;

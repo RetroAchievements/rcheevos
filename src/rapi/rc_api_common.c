@@ -13,8 +13,7 @@
 #define RETROACHIEVEMENTS_IMAGE_HOST "https://media.retroachievements.org"
 #define RETROACHIEVEMENTS_HOST_NONSSL "http://retroachievements.org"
 #define RETROACHIEVEMENTS_IMAGE_HOST_NONSSL "http://media.retroachievements.org"
-static char* g_host = NULL;
-static char* g_imagehost = NULL;
+rc_api_host_t g_host = { NULL, NULL };
 
 /* --- rc_json --- */
 
@@ -1133,21 +1132,25 @@ void rc_url_builder_append_str_param(rc_api_url_builder_t* builder, const char* 
   rc_url_builder_append_encoded_str(builder, value);
 }
 
-void rc_api_url_build_dorequest_url(rc_api_request_t* request) {
+void rc_api_url_build_dorequest_url(rc_api_request_t* request, const rc_api_host_t* host) {
   #define DOREQUEST_ENDPOINT "/dorequest.php"
   rc_buffer_init(&request->buffer);
 
-  if (!g_host) {
+  if (!host || !host->host) {
     request->url = RETROACHIEVEMENTS_HOST DOREQUEST_ENDPOINT;
   }
   else {
     const size_t endpoint_len = sizeof(DOREQUEST_ENDPOINT);
-    const size_t host_len = strlen(g_host);
-    const size_t url_len = host_len + endpoint_len;
+    const size_t host_len = strlen(host->host);
+    const size_t protocol_len = (strstr(host->host, "://")) ? 0 : 7;
+    const size_t url_len = protocol_len + host_len + endpoint_len;
     uint8_t* url = rc_buffer_reserve(&request->buffer, url_len);
 
-    memcpy(url, g_host, host_len);
-    memcpy(url + host_len, DOREQUEST_ENDPOINT, endpoint_len);
+    if (protocol_len)
+      memcpy(url, "http://", protocol_len);
+
+    memcpy(url + protocol_len, host->host, host_len);
+    memcpy(url + protocol_len + host_len, DOREQUEST_ENDPOINT, endpoint_len);
     rc_buffer_consume(&request->buffer, url, url + url_len);
 
     request->url = (char*)url;
@@ -1170,9 +1173,9 @@ int rc_api_url_build_dorequest(rc_api_url_builder_t* builder, const char* api, c
 
 /* --- Set Host --- */
 
-static void rc_api_update_host(char** host, const char* hostname) {
+static void rc_api_update_host(const char** host, const char* hostname) {
   if (*host != NULL)
-    free(*host);
+    free((void*)*host);
 
   if (hostname != NULL) {
     if (strstr(hostname, "://")) {
@@ -1201,11 +1204,15 @@ static void rc_api_update_host(char** host, const char* hostname) {
   }
 }
 
+const char* rc_api_default_host(void) {
+  return RETROACHIEVEMENTS_HOST;
+}
+
 void rc_api_set_host(const char* hostname) {
   if (hostname && strcmp(hostname, RETROACHIEVEMENTS_HOST) == 0)
     hostname = NULL;
 
-  rc_api_update_host(&g_host, hostname);
+  rc_api_update_host(&g_host.host, hostname);
 
   if (!hostname) {
     /* also clear out the image hostname */
@@ -1219,24 +1226,45 @@ void rc_api_set_host(const char* hostname) {
 }
 
 void rc_api_set_image_host(const char* hostname) {
-  rc_api_update_host(&g_imagehost, hostname);
+  rc_api_update_host(&g_host.media_host, hostname);
 }
 
 /* --- Fetch Image --- */
 
 int rc_api_init_fetch_image_request(rc_api_request_t* request, const rc_api_fetch_image_request_t* api_params) {
+  return rc_api_init_fetch_image_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_fetch_image_request_hosted(rc_api_request_t* request, const rc_api_fetch_image_request_t* api_params, const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
 
   rc_buffer_init(&request->buffer);
   rc_url_builder_init(&builder, &request->buffer, 64);
 
-  if (g_imagehost) {
-    rc_url_builder_append(&builder, g_imagehost, strlen(g_imagehost));
+  if (host && host->media_host) {
+    /* custom media host provided */
+    if (!strstr(host->host, "://"))
+      rc_url_builder_append(&builder, "http://", 7);
+    rc_url_builder_append(&builder, host->media_host, strlen(host->media_host));
   }
-  else if (g_host) {
-    rc_url_builder_append(&builder, g_host, strlen(g_host));
+  else if (host && host->host) {
+    if (strcmp(host->host, RETROACHIEVEMENTS_HOST_NONSSL) == 0) {
+      /* if host specifically set to non-ssl host, and no media host provided, use non-ssl media host */
+      rc_url_builder_append(&builder, RETROACHIEVEMENTS_IMAGE_HOST_NONSSL, sizeof(RETROACHIEVEMENTS_IMAGE_HOST_NONSSL) - 1);
+    }
+    else if (strcmp(host->host, RETROACHIEVEMENTS_HOST) == 0) {
+      /* if host specifically set to ssl host, and no media host provided, use media host */
+      rc_url_builder_append(&builder, RETROACHIEVEMENTS_IMAGE_HOST, sizeof(RETROACHIEVEMENTS_IMAGE_HOST) - 1);
+    }
+    else {
+      /* custom host and no media host provided. assume custom host is also media host */
+      if (!strstr(host->host, "://"))
+        rc_url_builder_append(&builder, "http://", 7);
+      rc_url_builder_append(&builder, host->host, strlen(host->host));
+    }
   }
   else {
+    /* no custom host provided */
     rc_url_builder_append(&builder, RETROACHIEVEMENTS_IMAGE_HOST, sizeof(RETROACHIEVEMENTS_IMAGE_HOST) - 1);
   }
 

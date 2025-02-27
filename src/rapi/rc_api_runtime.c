@@ -13,9 +13,15 @@
 /* --- Resolve Hash --- */
 
 int rc_api_init_resolve_hash_request(rc_api_request_t* request, const rc_api_resolve_hash_request_t* api_params) {
+  return rc_api_init_resolve_hash_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_resolve_hash_request_hosted(rc_api_request_t* request,
+                                            const rc_api_resolve_hash_request_t* api_params,
+                                            const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (!api_params->game_hash || !*api_params->game_hash)
     return RC_INVALID_STATE;
@@ -65,9 +71,15 @@ void rc_api_destroy_resolve_hash_response(rc_api_resolve_hash_response_t* respon
 /* --- Fetch Game Data --- */
 
 int rc_api_init_fetch_game_data_request(rc_api_request_t* request, const rc_api_fetch_game_data_request_t* api_params) {
+  return rc_api_init_fetch_game_data_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_fetch_game_data_request_hosted(rc_api_request_t* request,
+                                               const rc_api_fetch_game_data_request_t* api_params,
+                                               const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (api_params->game_id == 0 && (!api_params->game_hash || !api_params->game_hash[0]))
     return RC_INVALID_STATE;
@@ -465,9 +477,15 @@ void rc_api_destroy_fetch_game_data_response(rc_api_fetch_game_data_response_t* 
 /* --- Ping --- */
 
 int rc_api_init_ping_request(rc_api_request_t* request, const rc_api_ping_request_t* api_params) {
+  return rc_api_init_ping_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_ping_request_hosted(rc_api_request_t* request,
+                                    const rc_api_ping_request_t* api_params,
+                                    const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (api_params->game_id == 0)
     return RC_INVALID_STATE;
@@ -520,12 +538,18 @@ void rc_api_destroy_ping_response(rc_api_ping_response_t* response) {
 /* --- Award Achievement --- */
 
 int rc_api_init_award_achievement_request(rc_api_request_t* request, const rc_api_award_achievement_request_t* api_params) {
+  return rc_api_init_award_achievement_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_award_achievement_request_hosted(rc_api_request_t* request,
+                                                 const rc_api_award_achievement_request_t* api_params,
+                                                 const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
   char buffer[33];
   md5_state_t md5;
   md5_byte_t digest[16];
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (api_params->achievement_id == 0)
     return RC_INVALID_STATE;
@@ -621,12 +645,18 @@ void rc_api_destroy_award_achievement_response(rc_api_award_achievement_response
 /* --- Submit Leaderboard Entry --- */
 
 int rc_api_init_submit_lboard_entry_request(rc_api_request_t* request, const rc_api_submit_lboard_entry_request_t* api_params) {
+  return rc_api_init_submit_lboard_entry_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_submit_lboard_entry_request_hosted(rc_api_request_t* request,
+                                                   const rc_api_submit_lboard_entry_request_t* api_params,
+                                                   const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
   char buffer[33];
   md5_state_t md5;
   md5_byte_t digest[16];
 
-  rc_api_url_build_dorequest_url(request);
+  rc_api_url_build_dorequest_url(request, host);
 
   if (api_params->leaderboard_id == 0)
     return RC_INVALID_STATE;
