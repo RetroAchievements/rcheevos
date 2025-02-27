@@ -1,5 +1,6 @@
 #include "rc_client.h"
 
+#include "../src/rc_client_external_versions.h"
 #include "../src/rc_client_internal.h"
 #include "../src/rc_version.h"
 #include "rc_consoles.h"
@@ -22,6 +23,17 @@ extern void mock_api_response(const char* request_params, const char* response_b
 extern void mock_api_error(const char* request_params, const char* response_body, int http_status_code);
 
 /* end from test_rc_client.c */
+
+#define RC_OFFSETOF(s,f) ((uint32_t)((uint8_t*)&(((s*)(0))->f) - ((uint8_t*)0)))
+
+#define ASSERT_FIELD_OFFSET(struct1, struct2, field) { \
+  const uint32_t __o1 = RC_OFFSETOF(struct1, field); \
+  const uint32_t __o2 = RC_OFFSETOF(struct2, field); \
+  if (__o1 != __o2) { \
+    ASSERT_FAIL("Expected: " #struct1 "." #field " at offset %u (%s:%d)\n  Found: " #struct2 "." #field " at offset %u", \
+                __o1, test_framework_basename(__FILE__), __LINE__, __o2); \
+  } \
+}
 
 static uint32_t rc_client_read_memory(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client)
 {
@@ -323,14 +335,26 @@ static void test_add_game_hash(void)
 
 /* ----- login ----- */
 
-typedef struct v1_rc_client_user_t {
-  const char* display_name;
-  const char* username;
-  const char* token;
-  uint32_t score;
-  uint32_t score_softcore;
-  uint32_t num_unread_messages;
-} v1_rc_client_user_t;
+static void test_v1_user_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, display_name);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, username);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, token);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, score);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, score_softcore);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, num_unread_messages);
+}
+
+static void test_v3_user_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, display_name);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, username);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, token);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, score);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, score_softcore);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, num_unread_messages);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, avatar_url);
+}
 
 static void assert_login_with_password(rc_client_t* client, const char* username, const char* password)
 {
@@ -351,7 +375,7 @@ static rc_client_async_handle_t* rc_client_external_login_with_password(rc_clien
   return NULL;
 }
 
-static const rc_client_user_t* rc_client_external_get_user_info(void)
+static const rc_client_user_t* rc_client_external_get_user_info_v1(void)
 {
   v1_rc_client_user_t* user = (v1_rc_client_user_t*)
       rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_user_t));
@@ -367,13 +391,31 @@ static const rc_client_user_t* rc_client_external_get_user_info(void)
   return (rc_client_user_t*)user;
 }
 
+static const rc_client_user_t* rc_client_external_get_user_info_v3(void)
+{
+  v3_rc_client_user_t* user = (v3_rc_client_user_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v3_rc_client_user_t));
+
+  memset(user, 0, sizeof(*user));
+  user->display_name = "User";
+  user->username = "User";
+  user->token = "ApiToken";
+  user->score = 12345;
+  user->score_softcore = 123;
+  user->num_unread_messages = 2;
+  user->avatar_url = "/UserPic/User.png";
+
+  return (rc_client_user_t*)user;
+}
+
 static void test_login_with_password(void)
 {
   const rc_client_user_t* user;
 
   g_client = mock_client_with_external();
   g_client->state.external_client->begin_login_with_password = rc_client_external_login_with_password;
-  g_client->state.external_client->get_user_info = rc_client_external_get_user_info;
+  g_client->state.external_client->get_user_info = rc_client_external_get_user_info_v1;
+  g_client->state.external_client->get_user_info_v3 = rc_client_external_get_user_info_v3;
 
   rc_client_begin_login_with_password(g_client, "User", "Pa$$word", rc_client_callback_expect_success, g_callback_userdata);
 
@@ -388,6 +430,7 @@ static void test_login_with_password(void)
   ASSERT_NUM_EQUALS(user->score, 12345);
   ASSERT_NUM_EQUALS(user->score_softcore, 123);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
+  ASSERT_STR_EQUALS(user->avatar_url, "/UserPic/User.png");
 
   /* ensure non-external client user was not initialized */
   ASSERT_PTR_NULL(g_client->user.username);
@@ -414,13 +457,13 @@ static rc_client_async_handle_t* rc_client_external_login_with_token(rc_client_t
   return NULL;
 }
 
-static void test_login_with_token(void)
+static void test_login_with_token_v1(void)
 {
   const rc_client_user_t* user;
 
   g_client = mock_client_with_external();
   g_client->state.external_client->begin_login_with_token = rc_client_external_login_with_token;
-  g_client->state.external_client->get_user_info = rc_client_external_get_user_info;
+  g_client->state.external_client->get_user_info = rc_client_external_get_user_info_v1;
 
   rc_client_begin_login_with_token(g_client, "User", "ApiToken", rc_client_callback_expect_success, g_callback_userdata);
 
@@ -435,6 +478,36 @@ static void test_login_with_token(void)
   ASSERT_NUM_EQUALS(user->score, 12345);
   ASSERT_NUM_EQUALS(user->score_softcore, 123);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
+  ASSERT_PTR_NULL(user->avatar_url);
+
+  /* ensure non-external client user was not initialized */
+  ASSERT_PTR_NULL(g_client->user.username);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_login_with_token(void)
+{
+  const rc_client_user_t* user;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_login_with_token = rc_client_external_login_with_token;
+  g_client->state.external_client->get_user_info_v3 = rc_client_external_get_user_info_v3;
+
+  rc_client_begin_login_with_token(g_client, "User", "ApiToken", rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "login");
+
+  /* user data should come from external client. validate structure */
+  user = rc_client_get_user_info(g_client);
+  ASSERT_PTR_NOT_NULL(user);
+  ASSERT_STR_EQUALS(user->username, "User");
+  ASSERT_STR_EQUALS(user->display_name, "User");
+  ASSERT_STR_EQUALS(user->token, "ApiToken");
+  ASSERT_NUM_EQUALS(user->score, 12345);
+  ASSERT_NUM_EQUALS(user->score_softcore, 123);
+  ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
+  ASSERT_STR_EQUALS(user->avatar_url, "/UserPic/User.png");
 
   /* ensure non-external client user was not initialized */
   ASSERT_PTR_NULL(g_client->user.username);
@@ -466,15 +539,26 @@ static void test_logout(void)
 
 /* ----- load game ----- */
 
-typedef struct v1_rc_client_game_t {
-  uint32_t id;
-  uint32_t console_id;
-  const char* title;
-  const char* hash;
-  const char* badge_name;
-} v1_rc_client_game_t;
+static void test_v1_game_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v1_rc_client_game_t, id);
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v1_rc_client_game_t, console_id);
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v1_rc_client_game_t, title);
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v1_rc_client_game_t, hash);
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v1_rc_client_game_t, badge_name);
+}
 
-static const rc_client_game_t* rc_client_external_get_game_info(void)
+static void test_v3_game_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v3_rc_client_game_t, id);
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v3_rc_client_game_t, console_id);
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v3_rc_client_game_t, title);
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v3_rc_client_game_t, hash);
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v3_rc_client_game_t, badge_name);
+  ASSERT_FIELD_OFFSET(rc_client_game_t, v3_rc_client_game_t, badge_url);
+}
+
+static const rc_client_game_t* rc_client_external_get_game_info_v1(void)
 {
   v1_rc_client_game_t* game = (v1_rc_client_game_t*)
     rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_game_t));
@@ -485,6 +569,22 @@ static const rc_client_game_t* rc_client_external_get_game_info(void)
   game->title = "Game Title";
   game->hash = "GAME_HASH";
   game->badge_name = "BDG001";
+
+  return (const rc_client_game_t*)game;
+}
+
+static const rc_client_game_t* rc_client_external_get_game_info_v3(void)
+{
+  v3_rc_client_game_t* game = (v3_rc_client_game_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v3_rc_client_game_t));
+
+  memset(game, 0, sizeof(*game));
+  game->id = 1234;
+  game->console_id = RC_CONSOLE_PLAYSTATION;
+  game->title = "Game Title";
+  game->hash = "GAME_HASH";
+  game->badge_name = "BDG001";
+  game->badge_url = "/Badge/BDG001.png";
 
   return (const rc_client_game_t*)game;
 }
@@ -514,7 +614,7 @@ static rc_client_async_handle_t* rc_client_external_identify_and_load_game(rc_cl
   return NULL;
 }
 
-static void test_identify_and_load_game(void)
+static void test_identify_and_load_game_v1(void)
 {
   size_t image_size;
   uint8_t* image = generate_nes_file(32, 1, &image_size);
@@ -522,7 +622,7 @@ static void test_identify_and_load_game(void)
 
   g_client = mock_client_with_external();
   g_client->state.external_client->begin_identify_and_load_game = rc_client_external_identify_and_load_game;
-  g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info_v1;
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
@@ -537,6 +637,39 @@ static void test_identify_and_load_game(void)
   ASSERT_STR_EQUALS(game->title, "Game Title");
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  ASSERT_PTR_NULL(game->badge_url);
+  /* ensure non-external client game was not initialized */
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_load_game(void)
+{
+  size_t image_size;
+  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const rc_client_game_t* game;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_identify_and_load_game = rc_client_external_identify_and_load_game;
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info_v1;
+  g_client->state.external_client->get_game_info_v3 = rc_client_external_get_game_info_v3;
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game");
+
+  /* user data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
   /* ensure non-external client game was not initialized */
   ASSERT_PTR_NULL(g_client->game);
 
@@ -564,19 +697,19 @@ static rc_client_async_handle_t* rc_client_external_load_game(rc_client_t* clien
   return NULL;
 }
 
-static void test_load_game(void)
+static void test_load_game_v1(void)
 {
   const rc_client_game_t* game;
 
   g_client = mock_client_with_external();
   g_client->state.external_client->begin_load_game = rc_client_external_load_game;
-  g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info_v1;
 
   rc_client_begin_load_game(g_client, "6a2305a2b6675a97ff792709be1ca857", rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_external_event, "load_game");
 
-  /* user data should come from external client. validate structure */
+  /* game data should come from external client. validate structure */
   game = rc_client_get_game_info(g_client);
   ASSERT_PTR_NOT_NULL(game);
   ASSERT_NUM_EQUALS(game->id, 1234);
@@ -584,6 +717,35 @@ static void test_load_game(void)
   ASSERT_STR_EQUALS(game->title, "Game Title");
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  ASSERT_PTR_NULL(game->badge_url);
+  /* ensure non-external client user was not initialized */
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_game(void)
+{
+  const rc_client_game_t* game;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_load_game = rc_client_external_load_game;
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info_v1;
+  g_client->state.external_client->get_game_info_v3 = rc_client_external_get_game_info_v3;
+
+  rc_client_begin_load_game(g_client, "6a2305a2b6675a97ff792709be1ca857", rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game");
+
+  /* game data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
   /* ensure non-external client user was not initialized */
   ASSERT_PTR_NULL(g_client->game);
 
@@ -630,7 +792,7 @@ static void test_identify_and_load_game_external_hash(void)
   g_client = mock_client_with_external();
   g_client->state.external_client->add_game_hash = rc_client_external_add_game_hash;
   g_client->state.external_client->begin_load_game = rc_client_external_load_game;
-  g_client->state.external_client->get_game_info = rc_client_external_get_game_info;
+  g_client->state.external_client->get_game_info_v3 = rc_client_external_get_game_info_v3;
 
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   g_external_int = 0;
@@ -650,6 +812,7 @@ static void test_identify_and_load_game_external_hash(void)
   ASSERT_STR_EQUALS(game->title, "Game Title");
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
   /* ensure internal client game was initialized to hold media hashes */
   ASSERT_PTR_NOT_NULL(g_client->game);
 
@@ -723,14 +886,95 @@ static void test_change_media_from_hash(void)
   rc_client_destroy(g_client);
 }
 
-typedef struct v1_rc_client_subset_t {
-  uint32_t id;
-  const char* title;
-  char badge_name[16];
+static const rc_client_subset_t* rc_client_external_get_subset_info_v1(uint32_t subset_id)
+{
+  v1_rc_client_subset_t* subset = (v1_rc_client_subset_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_subset_t));
 
-  uint32_t num_achievements;
-  uint32_t num_leaderboards;
-} v1_rc_client_subset_t;
+  memset(subset, 0, sizeof(*subset));
+  subset->id = subset_id;
+  subset->title = "Subset Title";
+  snprintf(subset->badge_name, sizeof(subset->badge_name), "%s", "BDG001");
+  subset->num_achievements = 2;
+  subset->num_leaderboards = 1;
+
+  return (const rc_client_subset_t*)subset;
+}
+
+static const rc_client_subset_t* rc_client_external_get_subset_info_v3(uint32_t subset_id)
+{
+  v3_rc_client_subset_t* subset = (v3_rc_client_subset_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v3_rc_client_subset_t));
+
+  memset(subset, 0, sizeof(*subset));
+  subset->id = subset_id;
+  subset->title = "Subset Title";
+  snprintf(subset->badge_name, sizeof(subset->badge_name), "%s", "BDG001");
+  subset->num_achievements = 2;
+  subset->num_leaderboards = 1;
+  subset->badge_url = "/Badge/BDG001.png";
+
+  return (const rc_client_subset_t*)subset;
+}
+
+static void test_v1_subset_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v1_rc_client_subset_t, id);
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v1_rc_client_subset_t, title);
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v1_rc_client_subset_t, badge_name);
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v1_rc_client_subset_t, num_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v1_rc_client_subset_t, num_leaderboards);
+}
+
+static void test_v3_subset_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v3_rc_client_subset_t, id);
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v3_rc_client_subset_t, title);
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v3_rc_client_subset_t, badge_name);
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v3_rc_client_subset_t, num_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v3_rc_client_subset_t, num_leaderboards);
+  ASSERT_FIELD_OFFSET(rc_client_subset_t, v3_rc_client_subset_t, badge_url);
+}
+
+static void test_get_subset_info_v1(void)
+{
+  const rc_client_subset_t* subset;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_subset_info = rc_client_external_get_subset_info_v1;
+
+  /* subset data should come from external client. validate structure */
+  subset = rc_client_get_subset_info(g_client, 1234);
+  ASSERT_PTR_NOT_NULL(subset);
+  ASSERT_NUM_EQUALS(subset->id, 1234);
+  ASSERT_STR_EQUALS(subset->title, "Subset Title");
+  ASSERT_STR_EQUALS(subset->badge_name, "BDG001");
+  ASSERT_NUM_EQUALS(subset->num_achievements, 2);
+  ASSERT_NUM_EQUALS(subset->num_leaderboards, 1);
+  ASSERT_PTR_NULL(subset->badge_url);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_subset_info(void)
+{
+  const rc_client_subset_t* subset;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_subset_info_v3 = rc_client_external_get_subset_info_v3;
+
+  /* subset data should come from external client. validate structure */
+  subset = rc_client_get_subset_info(g_client, 1234);
+  ASSERT_PTR_NOT_NULL(subset);
+  ASSERT_NUM_EQUALS(subset->id, 1234);
+  ASSERT_STR_EQUALS(subset->title, "Subset Title");
+  ASSERT_STR_EQUALS(subset->badge_name, "BDG001");
+  ASSERT_NUM_EQUALS(subset->num_achievements, 2);
+  ASSERT_NUM_EQUALS(subset->num_leaderboards, 1);
+  ASSERT_STR_EQUALS(subset->badge_url, "/Badge/BDG001.png");
+
+  rc_client_destroy(g_client);
+}
 
 static void rc_client_external_unload_game(void)
 {
@@ -751,28 +995,53 @@ static void test_unload_game(void)
 
 /* ----- achievements ----- */
 
-typedef struct v1_rc_client_achievement_t {
-  const char* title;
-  const char* description;
-  char badge_name[8];
-  char measured_progress[24];
-  float measured_percent;
-  uint32_t id;
-  uint32_t points;
-  time_t unlock_time;
-  uint8_t state;
-  uint8_t category;
-  uint8_t bucket;
-  uint8_t unlocked;
-} v1_rc_client_achievement_t;
+static void test_v1_achievement_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, id);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, description);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, badge_name);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, measured_progress);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, measured_percent);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, id);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, points);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, unlock_time);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, state);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, category);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, bucket);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, unlocked);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, rarity);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, rarity_hardcore);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, type);
+}
 
-static const rc_client_achievement_t* rc_client_external_get_achievement_info(uint32_t id)
+static void test_v3_achievement_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, id);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, description);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, badge_name);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, measured_progress);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, measured_percent);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, id);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, points);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, unlock_time);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, state);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, category);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, bucket);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, unlocked);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, rarity);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, rarity_hardcore);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, type);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, badge_url);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, badge_locked_url);
+}
+
+static const rc_client_achievement_t* rc_client_external_get_achievement_info_v1(uint32_t id)
 {
   v1_rc_client_achievement_t* achievement = (v1_rc_client_achievement_t*)
     rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_achievement_t));
 
   memset(achievement, 0, sizeof(*achievement));
-  achievement->id = 1234;
+  achievement->id = id;
   achievement->title = "Achievement Title";
   achievement->description = "Do something cool";
   memcpy(achievement->badge_name, "BDG1234", 8);
@@ -782,83 +1051,35 @@ static const rc_client_achievement_t* rc_client_external_get_achievement_info(ui
   achievement->category = RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE;
   achievement->bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
   achievement->unlocked = RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE;
+  achievement->rarity = 75.0f;
+  achievement->rarity_hardcore = 66.66f;
+  achievement->type = RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE;
 
   return (const rc_client_achievement_t*)achievement;
 }
 
-typedef struct v1_rc_client_achievement_bucket_t {
-  rc_client_achievement_t** achievements;
-  uint32_t num_achievements;
-
-  const char* label;
-  uint32_t subset_id;
-  uint8_t bucket_type;
-} v1_rc_client_achievement_bucket_t;
-
-typedef struct v1_rc_client_achievement_list_t {
-  v1_rc_client_achievement_bucket_t* buckets;
-  uint32_t num_buckets;
-} v1_rc_client_achievement_list_t;
-
-typedef struct v1_rc_client_achievement_list_info_t {
-  v1_rc_client_achievement_list_t public_;
-  rc_client_destroy_achievement_list_func_t destroy_func;
-} v1_rc_client_achievement_list_info_t;
-
-static void assert_achievement_list_category_grouping(int category, int grouping)
+static const rc_client_achievement_t* rc_client_external_get_achievement_info_v3(uint32_t id)
 {
-  ASSERT_NUM_EQUALS(category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
-  ASSERT_NUM_EQUALS(grouping, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
-}
+  v3_rc_client_achievement_t* achievement = (v3_rc_client_achievement_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v3_rc_client_achievement_t));
 
-static void rc_client_external_destroy_achievement_list(rc_client_achievement_list_info_t* list)
-{
-  g_external_event = "destroyed";
-  free(list);
-}
-
-static rc_client_achievement_list_info_t* rc_client_external_create_achievement_list(int category, int grouping)
-{
-  v1_rc_client_achievement_list_info_t* list;
-
-  assert_achievement_list_category_grouping(category, grouping);
-
-  list = (v1_rc_client_achievement_list_info_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_achievement_bucket_t));
-  if (list) {
-    list->public_.num_buckets = 1;
-    list->public_.buckets = (v1_rc_client_achievement_bucket_t*)((uint8_t*)list + sizeof(*list));
-    list->public_.buckets[0].num_achievements = 2; /* didn't actually allocate these */
-    list->public_.buckets[0].bucket_type = RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
-    list->public_.buckets[0].label = "Locked";
-    list->public_.buckets[0].subset_id = 1234;
-
-    list->destroy_func = rc_client_external_destroy_achievement_list;
-  }
-
-  return (rc_client_achievement_list_info_t*)list;
-}
-
-static void test_create_achievement_list(void)
-{
-  rc_client_achievement_list_t* list;
-
-  g_client = mock_client_with_external();
-  g_client->state.external_client->create_achievement_list = rc_client_external_create_achievement_list;
-
-  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
-  ASSERT_PTR_NOT_NULL(list);
-  ASSERT_NUM_EQUALS(list->num_buckets, 1);
-  ASSERT_PTR_NOT_NULL(list->buckets);
-  ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
-  ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-  ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
-  ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
-
-  rc_client_destroy_achievement_list(list);
-
-  ASSERT_STR_EQUALS(g_external_event, "destroyed");
-
-  rc_client_destroy(g_client);
+  memset(achievement, 0, sizeof(*achievement));
+  achievement->id = id;
+  achievement->title = "Achievement Title";
+  achievement->description = "Do something cool";
+  memcpy(achievement->badge_name, "BDG1234", 8);
+  achievement->measured_percent = 33.5;
+  achievement->points = 5;
+  achievement->state = RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE;
+  achievement->category = RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE;
+  achievement->bucket = RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
+  achievement->unlocked = RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE;
+  achievement->rarity = 75.0f;
+  achievement->rarity_hardcore = 66.66f;
+  achievement->type = RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE;
+  achievement->badge_url = "/Badge/000234.png";
+  achievement->badge_locked_url = "/Badge/000234_locked.png";
+  return (const rc_client_achievement_t*)achievement;
 }
 
 static void test_has_achievements(void)
@@ -875,16 +1096,16 @@ static void test_has_achievements(void)
   rc_client_destroy(g_client);
 }
 
-static void test_get_achievement_info(void)
+static void test_get_achievement_info_v1(void)
 {
   const rc_client_achievement_t* achievement;
 
   g_client = mock_client_with_external();
-  g_client->state.external_client->get_achievement_info = rc_client_external_get_achievement_info;
+  g_client->state.external_client->get_achievement_info = rc_client_external_get_achievement_info_v1;
 
   achievement = rc_client_get_achievement_info(g_client, 4);
   ASSERT_PTR_NOT_NULL(achievement);
-  ASSERT_NUM_EQUALS(achievement->id, 1234);
+  ASSERT_NUM_EQUALS(achievement->id, 4);
   ASSERT_STR_EQUALS(achievement->title, "Achievement Title");
   ASSERT_STR_EQUALS(achievement->description, "Do something cool");
   ASSERT_STR_EQUALS(achievement->badge_name, "BDG1234");
@@ -894,6 +1115,188 @@ static void test_get_achievement_info(void)
   ASSERT_NUM_EQUALS(achievement->category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
   ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
   ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+  ASSERT_FLOAT_EQUALS(achievement->rarity, 75.0f);
+  ASSERT_FLOAT_EQUALS(achievement->rarity_hardcore, 66.66f);
+  ASSERT_NUM_EQUALS(achievement->type, RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_achievement_info(void)
+{
+  const rc_client_achievement_t* achievement;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_achievement_info = rc_client_external_get_achievement_info_v1;
+  g_client->state.external_client->get_achievement_info_v3 = rc_client_external_get_achievement_info_v3;
+
+  achievement = rc_client_get_achievement_info(g_client, 4);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->id, 4);
+  ASSERT_STR_EQUALS(achievement->title, "Achievement Title");
+  ASSERT_STR_EQUALS(achievement->description, "Do something cool");
+  ASSERT_STR_EQUALS(achievement->badge_name, "BDG1234");
+  ASSERT_FLOAT_EQUALS(achievement->measured_percent, 33.5);
+  ASSERT_NUM_EQUALS(achievement->points, 5);
+  ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(achievement->category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+  ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+  ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
+  ASSERT_FLOAT_EQUALS(achievement->rarity, 75.0f);
+  ASSERT_FLOAT_EQUALS(achievement->rarity_hardcore, 66.66f);
+  ASSERT_NUM_EQUALS(achievement->type, RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE);
+  ASSERT_STR_EQUALS(achievement->badge_url, "/Badge/000234.png");
+  ASSERT_STR_EQUALS(achievement->badge_locked_url, "/Badge/000234_locked.png");
+
+  rc_client_destroy(g_client);
+}
+
+static void test_v1_achievement_list_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_achievement_list_info_t, v1_rc_client_achievement_list_info_t, public_);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_list_info_t, v1_rc_client_achievement_list_info_t, destroy_func);
+
+  ASSERT_FIELD_OFFSET(rc_client_achievement_list_t, v1_rc_client_achievement_list_t, buckets);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_list_t, v1_rc_client_achievement_list_t, num_buckets);
+
+  ASSERT_FIELD_OFFSET(rc_client_achievement_bucket_t, v1_rc_client_achievement_bucket_t, achievements);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_bucket_t, v1_rc_client_achievement_bucket_t, num_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_bucket_t, v1_rc_client_achievement_bucket_t, label);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_bucket_t, v1_rc_client_achievement_bucket_t, subset_id);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_bucket_t, v1_rc_client_achievement_bucket_t, bucket_type);
+}
+
+static void test_v3_achievement_list_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_achievement_list_info_t, v3_rc_client_achievement_list_info_t, public_);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_list_info_t, v3_rc_client_achievement_list_info_t, destroy_func);
+
+  ASSERT_FIELD_OFFSET(rc_client_achievement_list_t, v3_rc_client_achievement_list_t, buckets);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_list_t, v3_rc_client_achievement_list_t, num_buckets);
+
+  ASSERT_FIELD_OFFSET(rc_client_achievement_bucket_t, v3_rc_client_achievement_bucket_t, achievements);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_bucket_t, v3_rc_client_achievement_bucket_t, num_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_bucket_t, v3_rc_client_achievement_bucket_t, label);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_bucket_t, v3_rc_client_achievement_bucket_t, subset_id);
+  ASSERT_FIELD_OFFSET(rc_client_achievement_bucket_t, v3_rc_client_achievement_bucket_t, bucket_type);
+}
+
+static void assert_achievement_list_category_grouping(int category, int grouping)
+{
+  ASSERT_NUM_EQUALS(category, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE);
+  ASSERT_NUM_EQUALS(grouping, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+}
+
+static void rc_client_external_destroy_achievement_list(rc_client_achievement_list_info_t* list)
+{
+  g_external_event = "destroyed";
+  free(list);
+}
+
+static rc_client_achievement_list_info_t* rc_client_external_create_achievement_list_v1(int category, int grouping)
+{
+  v1_rc_client_achievement_list_info_t* list;
+
+  assert_achievement_list_category_grouping(category, grouping);
+
+  list = (v1_rc_client_achievement_list_info_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_achievement_bucket_t) + sizeof(v1_rc_client_achievement_t*) * 2);
+  if (list) {
+    list->public_.num_buckets = 1;
+    list->public_.buckets = (v1_rc_client_achievement_bucket_t*)((uint8_t*)list + sizeof(*list));
+    list->public_.buckets[0].achievements = (v1_rc_client_achievement_t**)((uint8_t*)list->public_.buckets + sizeof(*list->public_.buckets));
+    list->public_.buckets[0].achievements[0] = (v1_rc_client_achievement_t*)rc_client_external_get_achievement_info_v1(1234);
+    list->public_.buckets[0].achievements[1] = (v1_rc_client_achievement_t*)rc_client_external_get_achievement_info_v1(1235);
+    list->public_.buckets[0].num_achievements = 2;
+    list->public_.buckets[0].bucket_type = RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
+    list->public_.buckets[0].label = "Locked";
+    list->public_.buckets[0].subset_id = 1234;
+
+    list->destroy_func = rc_client_external_destroy_achievement_list;
+  }
+
+  return (rc_client_achievement_list_info_t*)list;
+}
+
+static rc_client_achievement_list_info_t* rc_client_external_create_achievement_list_v3(int category, int grouping)
+{
+  v3_rc_client_achievement_list_info_t* list;
+
+  assert_achievement_list_category_grouping(category, grouping);
+
+  list = (v3_rc_client_achievement_list_info_t*)calloc(1, sizeof(*list) + sizeof(v3_rc_client_achievement_bucket_t) + sizeof(v3_rc_client_achievement_t*) * 2);
+  if (list) {
+    v3_rc_client_achievement_bucket_t* bucket;
+    list->public_.num_buckets = 1;
+    list->public_.buckets = bucket = (v3_rc_client_achievement_bucket_t*)((uint8_t*)list + sizeof(*list));
+    bucket->achievements = (const v3_rc_client_achievement_t**)((uint8_t*)list->public_.buckets + sizeof(*list->public_.buckets));
+    bucket->achievements[0] = (const v3_rc_client_achievement_t*)rc_client_external_get_achievement_info_v3(1234);
+    bucket->achievements[1] = (const v3_rc_client_achievement_t*)rc_client_external_get_achievement_info_v3(1235);
+    bucket->num_achievements = 2;
+    bucket->bucket_type = RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
+    bucket->label = "Locked";
+    bucket->subset_id = 1234;
+
+    list->destroy_func = rc_client_external_destroy_achievement_list;
+  }
+
+  return (rc_client_achievement_list_info_t*)list;
+}
+
+static void test_create_achievement_list_v1(void)
+{
+  rc_client_achievement_list_t* list;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->create_achievement_list = rc_client_external_create_achievement_list_v1;
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  ASSERT_NUM_EQUALS(list->num_buckets, 1);
+  ASSERT_PTR_NOT_NULL(list->buckets);
+  ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
+  ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 1234);
+  ASSERT_NUM_EQUALS(list->buckets[0].achievements[1]->id, 1235);
+  ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+  ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
+  ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+
+  // only difference between v1 and v3 create_achievement_list is the badge_url/badge_unlocked_url fields on each achievement
+  ASSERT_PTR_NULL(list->buckets[0].achievements[0]->badge_url);
+  ASSERT_PTR_NULL(list->buckets[0].achievements[0]->badge_locked_url);
+
+  rc_client_destroy_achievement_list(list);
+
+  ASSERT_STR_EQUALS(g_external_event, "destroyed");
+
+  rc_client_destroy(g_client);
+}
+
+static void test_create_achievement_list(void)
+{
+  rc_client_achievement_list_t* list;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->create_achievement_list = rc_client_external_create_achievement_list_v1;
+  g_client->state.external_client->create_achievement_list_v3 = rc_client_external_create_achievement_list_v3;
+
+  list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS);
+  ASSERT_PTR_NOT_NULL(list);
+  ASSERT_NUM_EQUALS(list->num_buckets, 1);
+  ASSERT_PTR_NOT_NULL(list->buckets);
+  ASSERT_NUM_EQUALS(list->buckets[0].num_achievements, 2);
+  ASSERT_NUM_EQUALS(list->buckets[0].achievements[0]->id, 1234);
+  ASSERT_NUM_EQUALS(list->buckets[0].achievements[1]->id, 1235);
+  ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+  ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
+  ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
+
+  // only difference between v1 and v3 create_achievement_list is the badge_url/badge_unlocked_url fields on each achievement
+  ASSERT_STR_EQUALS(list->buckets[0].achievements[0]->badge_url, "/Badge/000234.png");
+  ASSERT_STR_EQUALS(list->buckets[0].achievements[0]->badge_locked_url, "/Badge/000234_locked.png");
+
+  rc_client_destroy_achievement_list(list);
+
+  ASSERT_STR_EQUALS(g_external_event, "destroyed");
 
   rc_client_destroy(g_client);
 }
@@ -1249,15 +1652,23 @@ void test_client_external(void) {
   TEST(test_get_user_agent_clause);
 
   /* login */
+  TEST(test_v1_user_field_offsets);
+  TEST(test_v3_user_field_offsets);
   TEST(test_login_with_password);
+  TEST(test_login_with_token_v1);
   TEST(test_login_with_token);
 
   TEST(test_logout);
 
   /* load game */
+  TEST(test_v1_game_field_offsets);
+  TEST(test_v3_game_field_offsets);
+
 #ifdef RC_CLIENT_SUPPORTS_HASH
+  TEST(test_identify_and_load_game_v1);
   TEST(test_identify_and_load_game);
 #endif
+  TEST(test_load_game_v1);
   TEST(test_load_game);
   TEST(test_get_user_game_summary);
 #ifdef RC_CLIENT_SUPPORTS_HASH
@@ -1269,10 +1680,23 @@ void test_client_external(void) {
 
   TEST(test_unload_game);
 
+  /* subsets */
+  TEST(test_v1_subset_field_offsets);
+  TEST(test_v3_subset_field_offsets);
+  TEST(test_get_subset_info_v1);
+  TEST(test_get_subset_info);
+
   /* achievements */
-  TEST(test_create_achievement_list);
+  TEST(test_v1_achievement_field_offsets);
+  TEST(test_v3_achievement_field_offsets);
   TEST(test_has_achievements);
+  TEST(test_get_achievement_info_v1);
   TEST(test_get_achievement_info);
+
+  TEST(test_v1_achievement_list_field_offsets);
+  TEST(test_v3_achievement_list_field_offsets);
+  TEST(test_create_achievement_list_v1);
+  TEST(test_create_achievement_list);
 
   /* leaderboards */
   TEST(test_create_leaderboard_list);

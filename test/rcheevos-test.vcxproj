@@ -150,6 +150,7 @@
     <ClCompile Include="..\src\rcheevos\trigger.c" />
     <ClCompile Include="..\src\rcheevos\value.c" />
     <ClCompile Include="..\src\rc_client.c" />
+    <ClCompile Include="..\src\rc_client_external.c" />
     <ClCompile Include="..\src\rc_client_raintegration.c" />
     <ClCompile Include="..\src\rc_compat.c" />
     <ClCompile Include="..\src\rc_libretro.c" />
@@ -241,6 +242,7 @@
     <ClInclude Include="..\src\rapi\rc_api_common.h" />
     <ClInclude Include="..\src\rcheevos\rc_validate.h" />
     <ClInclude Include="..\src\rc_client_external.h" />
+    <ClInclude Include="..\src\rc_client_external_versions.h" />
     <ClInclude Include="..\src\rc_client_internal.h" />
     <ClInclude Include="..\src\rc_compat.h" />
     <ClInclude Include="..\src\rc_libretro.h" />

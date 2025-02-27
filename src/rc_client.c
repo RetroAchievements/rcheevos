@@ -886,8 +886,13 @@ const rc_client_user_t* rc_client_get_user_info(const rc_client_t* client)
     return NULL;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->get_user_info)
-    return client->state.external_client->get_user_info();
+  if (client->state.external_client) {
+    if (client->state.external_client->get_user_info_v3)
+      return client->state.external_client->get_user_info_v3();
+
+    if (client->state.external_client->get_user_info)
+      return rc_client_external_convert_v1_user(client, client->state.external_client->get_user_info());
+  }
 #endif
 
   return (client->state.user == RC_CLIENT_USER_STATE_LOGGED_IN) ? &client->user : NULL;
@@ -2176,8 +2181,8 @@ static void rc_client_external_load_state_callback(int result, const char* error
   }
   else {
     /* keep partial game object for media_hash management */
-    if (client->state.external_client && client->state.external_client->get_game_info) {
-      const rc_client_game_t* info = client->state.external_client->get_game_info();
+    if (client->state.external_client) {
+      const rc_client_game_t* info = rc_client_get_game_info(client);
       load_state->game->public_.console_id = info->console_id;
       client->game = load_state->game;
       load_state->game = NULL;
@@ -2697,19 +2702,17 @@ int rc_client_get_load_game_state(const rc_client_t* client)
 
 int rc_client_is_game_loaded(const rc_client_t* client)
 {
-  const rc_client_game_t* game;
-
   if (!client)
     return 0;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->get_game_info)
-    game = client->state.external_client->get_game_info();
-  else
+  if (client->state.external_client) {
+    const rc_client_game_t* game = rc_client_get_game_info(client);
+    return (game && game->id != 0);
+  }
 #endif
-    game = client->game ? &client->game->public_ : NULL;
 
-  return (game && game->id != 0);
+  return (client->game && client->game->public_.id != 0);
 }
 
 static void rc_client_game_mark_ui_to_be_hidden(rc_client_t* client, rc_client_game_info_t* game)
@@ -3141,8 +3144,13 @@ const rc_client_game_t* rc_client_get_game_info(const rc_client_t* client)
     return NULL;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->get_game_info)
-    return client->state.external_client->get_game_info();
+  if (client->state.external_client) {
+    if (client->state.external_client->get_game_info_v3)
+      return client->state.external_client->get_game_info_v3();
+
+    if (client->state.external_client->get_game_info)
+      return rc_client_external_convert_v1_game(client, client->state.external_client->get_game_info());
+  } 
 #endif
 
   return client->game ? &client->game->public_ : NULL;
@@ -3171,8 +3179,13 @@ const rc_client_subset_t* rc_client_get_subset_info(rc_client_t* client, uint32_
     return NULL;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->get_subset_info)
-    return client->state.external_client->get_subset_info(subset_id);
+  if (client->state.external_client) {
+    if (client->state.external_client->get_subset_info_v3)
+      return client->state.external_client->get_subset_info_v3(subset_id);
+
+    if (client->state.external_client->get_subset_info)
+      return rc_client_external_convert_v1_subset(client, client->state.external_client->get_subset_info(subset_id));
+  }
 #endif
 
   if (!client->game)
@@ -3338,8 +3351,8 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 {
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* stop;
-  rc_client_achievement_t** bucket_achievements;
-  rc_client_achievement_t** achievement_ptr;
+  const rc_client_achievement_t** bucket_achievements;
+  const rc_client_achievement_t** achievement_ptr;
   rc_client_achievement_bucket_t* bucket_ptr;
   rc_client_achievement_list_info_t* list;
   rc_client_subset_info_t* subset;
@@ -3369,8 +3382,14 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
     return (rc_client_achievement_list_t*)calloc(1, sizeof(rc_client_achievement_list_info_t));
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->create_achievement_list)
-    return (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list(category, grouping);
+  if (client->state.external_client) {
+    if (client->state.external_client->create_achievement_list_v3)
+      return (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list_v3(category, grouping);
+
+    if (client->state.external_client->create_achievement_list)
+      return rc_client_external_convert_v1_achievement_list(client,
+        (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list(category, grouping));
+  }
 #endif
 
   if (!client->game)
@@ -3440,8 +3459,8 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   buckets_size = RC_ALIGN(num_buckets * sizeof(rc_client_achievement_bucket_t));
 
   list = (rc_client_achievement_list_info_t*)malloc(list_size + buckets_size + num_achievements * sizeof(rc_client_achievement_t*));
-  bucket_ptr = list->public_.buckets = (rc_client_achievement_bucket_t*)((uint8_t*)list + list_size);
-  achievement_ptr = (rc_client_achievement_t**)((uint8_t*)bucket_ptr + buckets_size);
+  list->public_.buckets = bucket_ptr = (rc_client_achievement_bucket_t*)((uint8_t*)list + list_size);
+  achievement_ptr = (const rc_client_achievement_t**)((uint8_t*)bucket_ptr + buckets_size);
 
   if (grouping == RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS) {
     for (i = 0; i < sizeof(shared_bucket_order) / sizeof(shared_bucket_order[0]); ++i) {
@@ -3596,8 +3615,13 @@ const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* clien
     return NULL;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->get_achievement_info)
-    return client->state.external_client->get_achievement_info(id);
+  if (client->state.external_client) {
+    if (client->state.external_client->get_achievement_info_v3)
+      return client->state.external_client->get_achievement_info_v3(id);
+
+    if (client->state.external_client->get_achievement_info)
+      return rc_client_external_convert_v1_achievement(client, client->state.external_client->get_achievement_info(id));
+  }
 #endif
 
   if (!client->game)
@@ -3992,8 +4016,8 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
 {
   rc_client_leaderboard_info_t* leaderboard;
   rc_client_leaderboard_info_t* stop;
-  rc_client_leaderboard_t** bucket_leaderboards;
-  rc_client_leaderboard_t** leaderboard_ptr;
+  const rc_client_leaderboard_t** bucket_leaderboards;
+  const rc_client_leaderboard_t** leaderboard_ptr;
   rc_client_leaderboard_bucket_t* bucket_ptr;
   rc_client_leaderboard_list_info_t* list;
   rc_client_subset_info_t* subset;
@@ -4088,8 +4112,8 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
   buckets_size = RC_ALIGN(num_buckets * sizeof(rc_client_leaderboard_bucket_t));
 
   list = (rc_client_leaderboard_list_info_t*)malloc(list_size + buckets_size + num_leaderboards * sizeof(rc_client_leaderboard_t*));
-  bucket_ptr = list->public_.buckets = (rc_client_leaderboard_bucket_t*)((uint8_t*)list + list_size);
-  leaderboard_ptr = (rc_client_leaderboard_t**)((uint8_t*)bucket_ptr + buckets_size);
+  list->public_.buckets = bucket_ptr = (rc_client_leaderboard_bucket_t*)((uint8_t*)list + list_size);
+  leaderboard_ptr = (const rc_client_leaderboard_t**)((uint8_t*)bucket_ptr + buckets_size);
 
   if (grouping == RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING) {
     for (i = 0; i < sizeof(shared_bucket_order) / sizeof(shared_bucket_order[0]); ++i) {

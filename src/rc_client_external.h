@@ -129,12 +129,28 @@ typedef struct rc_client_external_t
   rc_client_external_add_game_hash_func_t add_game_hash;
   rc_client_external_set_string_func_t load_unknown_game;
 
+  /* VERSION 3 */
+  rc_client_external_get_user_info_func_t get_user_info_v3;
+  rc_client_external_get_game_info_func_t get_game_info_v3;
+  rc_client_external_get_subset_info_func_t get_subset_info_v3;
+  rc_client_external_get_achievement_info_func_t get_achievement_info_v3;
+  rc_client_external_create_achievement_list_func_t create_achievement_list_v3;
+
 } rc_client_external_t;
 
-#define RC_CLIENT_EXTERNAL_VERSION 2
+#define RC_CLIENT_EXTERNAL_VERSION 3
 
 void rc_client_add_game_hash(rc_client_t* client, const char* hash, uint32_t game_id);
 void rc_client_load_unknown_game(rc_client_t* client, const char* hash);
+
+/* conversion support */
+
+struct rc_client_external_conversions_t;
+const rc_client_user_t* rc_client_external_convert_v1_user(const rc_client_t* client, const rc_client_user_t* v1_user);
+const rc_client_game_t* rc_client_external_convert_v1_game(const rc_client_t* client, const rc_client_game_t* v1_game);
+const rc_client_subset_t* rc_client_external_convert_v1_subset(const rc_client_t* client, const rc_client_subset_t* v1_subset);
+const rc_client_achievement_t* rc_client_external_convert_v1_achievement(const rc_client_t* client, const rc_client_achievement_t* v1_achievement);
+rc_client_achievement_list_t* rc_client_external_convert_v1_achievement_list(const rc_client_t* client, rc_client_achievement_list_t* v1_achievement_list);
 
 RC_END_C_DECLS
 
