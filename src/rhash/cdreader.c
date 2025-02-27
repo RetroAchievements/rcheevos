@@ -1,4 +1,4 @@
-#include "rc_hash.h"
+#include "rc_hash_internal.h"
 
 #include "../rc_compat.h"
 
@@ -12,10 +12,8 @@ extern void rc_file_seek(void* file_handle, int64_t offset, int origin);
 extern int64_t rc_file_tell(void* file_handle);
 extern size_t rc_file_read(void* file_handle, void* buffer, int requested_bytes);
 extern void rc_file_close(void* file_handle);
-extern int rc_hash_error(const char* message);
 extern const char* rc_path_get_filename(const char* path);
 extern int rc_path_compare_extension(const char* path, const char* ext);
-extern rc_hash_message_callback verbose_message_callback;
 
 struct cdrom_t
 {
@@ -113,9 +111,7 @@ static void* cdreader_open_bin_track(const char* path, uint32_t track)
 
   if (track > 1)
   {
-    if (verbose_message_callback)
-      verbose_message_callback("Cannot locate secondary tracks without a cue sheet");
-
+    rc_hash_verbose(NULL, "Cannot locate secondary tracks without a cue sheet");
     return NULL;
   }
 
@@ -162,8 +158,7 @@ static void* cdreader_open_bin_track(const char* path, uint32_t track)
     {
       free(cdrom);
 
-      if (verbose_message_callback)
-        verbose_message_callback("Could not determine sector size");
+      rc_hash_verbose(NULL, "Could not determine sector size");
 
       return NULL;
     }
@@ -240,9 +235,7 @@ static char* cdreader_get_bin_path(const char* cue_path, const char* bin_name)
   char* bin_filename = (char*)malloc(needed);
   if (!bin_filename)
   {
-    char buffer[64];
-    snprintf(buffer, sizeof(buffer), "Failed to allocate %u bytes", (unsigned)needed);
-    rc_hash_error((const char*)buffer);
+    rc_hash_error_formatted(NULL, "Failed to allocate %u bytes", (unsigned)needed);
   }
   else
   {
@@ -259,20 +252,7 @@ static int64_t cdreader_get_bin_size(const char* cue_path, const char* bin_name)
   char* bin_filename = cdreader_get_bin_path(cue_path, bin_name);
   if (bin_filename)
   {
-    /* disable verbose messaging while getting file size */
-    rc_hash_message_callback old_verbose_message_callback = verbose_message_callback;
-    void* file_handle;
-    verbose_message_callback = NULL;
-
-    file_handle = rc_file_open(bin_filename);
-    if (file_handle)
-    {
-      rc_file_seek(file_handle, 0, SEEK_END);
-      size = rc_file_tell(file_handle);
-      rc_file_close(file_handle);
-    }
-
-    verbose_message_callback = old_verbose_message_callback;
+    size = rc_file_size(bin_filename);
     free(bin_filename);
   }
 
@@ -369,18 +349,15 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
         {
           current_track.pregap_sectors = (sector_offset - current_track.first_sector);
 
-          if (verbose_message_callback)
           {
-            char message[128];
             char* scan = current_track.mode;
             while (*scan && !isspace((unsigned char)*scan))
               ++scan;
             *scan = '\0';
 
             /* it's undesirable to truncate offset to 32-bits, but %lld isn't defined in c89. */
-            snprintf(message, sizeof(message), "Found %s track %d (first sector %d, sector size %d, %d pregap sectors)",
+            rc_hash_verbose_formatted(NULL, "Found %s track %d (first sector %d, sector size %d, %d pregap sectors)",
                      current_track.mode, current_track.id, current_track.first_sector, current_track.sector_size, current_track.pregap_sectors);
-            verbose_message_callback(message);
           }
 
           if (current_track.id == track)
@@ -534,8 +511,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
     cdrom = (struct cdrom_t*)calloc(1, sizeof(*cdrom));
     if (!cdrom)
     {
-      snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", (unsigned)sizeof(*cdrom));
-      rc_hash_error((const char*)buffer);
+      rc_hash_error_formatted(NULL, "Failed to allocate %u bytes", (unsigned)sizeof(*cdrom));
       return NULL;
     }
 
@@ -552,30 +528,23 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track)
     {
       if (cdreader_open_bin(cdrom, bin_filename, current_track.mode))
       {
-        if (verbose_message_callback)
-        {
-          if (cdrom->track_pregap_sectors)
-            snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d, %d pregap sectors)",
-                     track, cdrom->sector_size, cdrom->track_pregap_sectors);
-          else
-            snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d)", track, cdrom->sector_size);
-
-          verbose_message_callback((const char*)buffer);
-        }
+        if (cdrom->track_pregap_sectors)
+          rc_hash_verbose_formatted(NULL, "Opened track %d (sector size %d, %d pregap sectors)",
+                    track, cdrom->sector_size, cdrom->track_pregap_sectors);
+        else
+          rc_hash_verbose_formatted(NULL, "Opened track %d (sector size %d)", track, cdrom->sector_size);
       }
       else
       {
         if (cdrom->file_handle)
         {
           rc_file_close(cdrom->file_handle);
-          snprintf((char*)buffer, sizeof(buffer), "Could not determine sector size for %s track", current_track.mode);
+          rc_hash_error_formatted(NULL, "Could not determine sector size for %s track", current_track.mode);
         }
         else
         {
-          snprintf((char*)buffer, sizeof(buffer), "Could not open %s", bin_filename);
+          rc_hash_error_formatted(NULL, "Could not open %s", bin_filename);
         }
-
-        rc_hash_error((const char*)buffer);
 
         free(cdrom);
         cdrom = NULL;
@@ -740,8 +709,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
   cdrom = (struct cdrom_t*)calloc(1, sizeof(*cdrom));
   if (!cdrom)
   {
-    snprintf((char*)buffer, sizeof(buffer), "Failed to allocate %u bytes", (unsigned)sizeof(*cdrom));
-    rc_hash_error((const char*)buffer);
+    rc_hash_error_formatted(NULL, "Failed to allocate %u bytes", (unsigned)sizeof(*cdrom));
     return NULL;
   }
 
@@ -771,16 +739,11 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track)
     cdrom->track_id = current_track;
 #endif
 
-    if (verbose_message_callback)
-    {
-      snprintf((char*)buffer, sizeof(buffer), "Opened track %d (sector size %d)", current_track, cdrom->sector_size);
-      verbose_message_callback((const char*)buffer);
-    }
+    rc_hash_verbose_formatted(NULL, "Opened track %d (sector size %d)", current_track, cdrom->sector_size);
   }
   else
   {
-    snprintf((char*)buffer, sizeof(buffer), "Could not open %s", bin_path);
-    rc_hash_error((const char*)buffer);
+    rc_hash_error_formatted(NULL, "Could not open %s", bin_path);
 
     free(cdrom);
     cdrom = NULL;
