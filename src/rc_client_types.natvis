@@ -357,6 +357,7 @@
             <Item Name="log_level">*((__rc_client_log_level_enum_t*)&amp;log_level)</Item>
             <Item Name="user">*((__rc_client_user_state_enum_t*)&amp;user)</Item>
             <Item Name="scheduled_callbacks">*((__rc_client_scheduled_callback_list_t*)this)</Item>
+            <Item Name="host">host</Item>
             <Item Name="load">load</Item>
         </Expand>
     </Type>

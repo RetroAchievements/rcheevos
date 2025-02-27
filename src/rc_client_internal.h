@@ -299,6 +299,7 @@ typedef struct rc_client_state_t {
   rc_buffer_t buffer;
 
   rc_client_scheduled_callback_data_t* scheduled_callbacks;
+  rc_api_host_t host;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   rc_client_external_t* external_client;
