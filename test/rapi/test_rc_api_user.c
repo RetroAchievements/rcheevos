@@ -695,6 +695,113 @@ static void test_init_fetch_user_unlocks_response_several_items()
   rc_api_destroy_fetch_user_unlocks_response(&fetch_user_unlocks_response);
 }
 
+static void test_init_fetch_followed_users_request()
+{
+  rc_api_fetch_followed_users_request_t fetch_followed_users_request;
+  rc_api_request_t request;
+
+  memset(&fetch_followed_users_request, 0, sizeof(fetch_followed_users_request));
+  fetch_followed_users_request.username = "Username";
+  fetch_followed_users_request.api_token = "API_TOKEN";
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_followed_users_request(&request, &fetch_followed_users_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=getfriendlist&u=Username&t=API_TOKEN");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_followed_users_response_empty_array()
+{
+  rc_api_fetch_followed_users_response_t fetch_followed_users_response;
+  rc_api_server_response_t server_response;
+  memset(&fetch_followed_users_response, 0, sizeof(fetch_followed_users_response));
+
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = "{\"Success\":true,\"Friends\":[]}";
+  server_response.body_length = strlen(server_response.body);
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_followed_users_server_response(&fetch_followed_users_response, &server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_followed_users_response.response.error_message);
+  ASSERT_PTR_NULL(fetch_followed_users_response.users);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.num_users, 0);
+
+  rc_api_destroy_fetch_followed_users_response(&fetch_followed_users_response);
+}
+
+static void test_init_fetch_followed_users_response_invalid_credentials()
+{
+  rc_api_fetch_followed_users_response_t fetch_followed_users_response;
+  rc_api_server_response_t server_response;
+  memset(&fetch_followed_users_response, 0, sizeof(fetch_followed_users_response));
+
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+  server_response.body_length = strlen(server_response.body);
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_followed_users_server_response(&fetch_followed_users_response, &server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(fetch_followed_users_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_PTR_NULL(fetch_followed_users_response.users);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.num_users, 0);
+
+  rc_api_destroy_fetch_followed_users_response(&fetch_followed_users_response);
+}
+
+static void test_init_fetch_followed_users_response_several_items()
+{
+  rc_api_fetch_followed_users_response_t fetch_followed_users_response;
+  rc_api_server_response_t server_response;
+  memset(&fetch_followed_users_response, 0, sizeof(fetch_followed_users_response));
+
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = "{\"Success\":true,\"Friends\":["
+                           "{\"Friend\":\"Bob\",\"AvatarUrl\":\"/User/Bob.png\",\"RAPoints\":1234,\"LastSeen\":\"Doing stuff\"}," /* legacy format */
+                           "{\"Friend\":\"Jane\",\"AvatarUrl\":\"/User/Jane.png\",\"RAPoints\":5,\"LastSeen\":\"Winning\","
+                            "\"LastSeenTime\":1234567890,\"LastGameId\":6,\"LastGameTitle\":\"The Game\",\"LastGameIconUrl\":\"/Badges/000006.png\"},"
+                           "{\"Friend\":\"Bill\",\"AvatarUrl\":\"/User/Bill.png\",\"RAPoints\":0,\"LastSeen\":\"Unknown\","
+                            "\"LastSeenTime\":1234567800,\"LastGameId\":null,\"LastGameTitle\":null,\"LastGameIconUrl\":null}"
+                         "]}";
+  server_response.body_length = strlen(server_response.body);
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_followed_users_server_response(&fetch_followed_users_response, &server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_followed_users_response.response.error_message);
+  ASSERT_PTR_NOT_NULL(fetch_followed_users_response.users);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.num_users, 3);
+
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[0].display_name, "Bob");
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[0].avatar_url, "/User/Bob.png");
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[0].score, 1234);
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[0].recent_activity.description, "Doing stuff");
+  ASSERT_PTR_NULL(fetch_followed_users_response.users[0].recent_activity.context);
+  ASSERT_PTR_NULL(fetch_followed_users_response.users[0].recent_activity.context_image_url);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[0].recent_activity.context_id, 0);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[0].recent_activity.when, 0);
+
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[1].display_name, "Jane");
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[1].avatar_url, "/User/Jane.png");
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[1].score, 5);
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[1].recent_activity.description, "Winning");
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[1].recent_activity.context, "The Game");
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[1].recent_activity.context_image_url, "/Badges/000006.png");
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[1].recent_activity.context_id, 6);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[1].recent_activity.when, 1234567890);
+
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[2].display_name, "Bill");
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[2].avatar_url, "/User/Bill.png");
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[2].score, 0);
+  ASSERT_STR_EQUALS(fetch_followed_users_response.users[2].recent_activity.description, "Unknown");
+  ASSERT_PTR_NULL(fetch_followed_users_response.users[2].recent_activity.context);
+  ASSERT_PTR_NULL(fetch_followed_users_response.users[2].recent_activity.context_image_url);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[2].recent_activity.context_id, 0);
+  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[2].recent_activity.when, 1234567800);
+
+  rc_api_destroy_fetch_followed_users_response(&fetch_followed_users_response);
+}
+
 void test_rapi_user(void) {
   TEST_SUITE_BEGIN();
 
@@ -738,6 +845,13 @@ void test_rapi_user(void) {
   TEST(test_init_fetch_user_unlocks_response_invalid_credentials);
   TEST(test_init_fetch_user_unlocks_response_one_item);
   TEST(test_init_fetch_user_unlocks_response_several_items);
+
+  /* followed users */
+  TEST(test_init_fetch_followed_users_request);
+
+  TEST(test_init_fetch_followed_users_response_empty_array);
+  TEST(test_init_fetch_followed_users_response_invalid_credentials);
+  TEST(test_init_fetch_followed_users_response_several_items);
 
   TEST_SUITE_END();
 }
