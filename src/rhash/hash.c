@@ -1,5 +1,7 @@
 #include "rc_hash.h"
 
+#include "rc_hash_internal.h"
+
 #include "../rc_compat.h"
 
 #include "aes.h"
@@ -3504,11 +3506,11 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
   }
 }
 
-static void rc_hash_iterator_append_console(struct rc_hash_iterator* iterator, uint8_t console_id)
-{
+static void rc_hash_initialize_iterator_from_path(rc_hash_iterator_t* iterator, const char* path);
+
+static void rc_hash_iterator_append_console(struct rc_hash_iterator* iterator, uint8_t console_id) {
   int i = 0;
-  while (iterator->consoles[i] != 0)
-  {
+  while (iterator->consoles[i] != 0) {
     if (iterator->consoles[i] == console_id)
       return;
 
@@ -3518,38 +3520,119 @@ static void rc_hash_iterator_append_console(struct rc_hash_iterator* iterator, u
   iterator->consoles[i] = console_id;
 }
 
-static void rc_hash_initialize_dsk_iterator(struct rc_hash_iterator* iterator, const char* path)
-{
+static void rc_hash_reset_iterator(rc_hash_iterator_t* iterator) {
+  memset(iterator, 0, sizeof(*iterator));
+
+  iterator->callbacks.verbose_message = verbose_message_callback;
+  iterator->callbacks.error_message = error_message_callback;
+}
+
+static void rc_hash_initialize_iterator_single(rc_hash_iterator_t* iterator, const char* path, int data) {
+  (void)path;
+  iterator->consoles[0] = (uint8_t)data;
+}
+
+static void rc_hash_initialize_iterator_single_with_path(rc_hash_iterator_t* iterator, const char* path, int data) {
+  iterator->consoles[0] = (uint8_t)data;
+
+  if (!iterator->path)
+    iterator->path = strdup(path);
+}
+
+static void rc_hash_initialize_iterator_bin(rc_hash_iterator_t* iterator, const char* path, int data) {
+  (void)data;
+
+  if (iterator->buffer_size == 0) {
+    /* raw bin file may be a CD track. if it's more than 32MB, try a CD hash. */
+    const int64_t size = rc_file_size(path);
+    if (size > 32 * 1024 * 1024) {
+      iterator->consoles[0] = RC_CONSOLE_3DO; /* 4DO supports directly opening the bin file */
+      iterator->consoles[1] = RC_CONSOLE_PLAYSTATION; /* PCSX ReARMed supports directly opening the bin file*/
+      iterator->consoles[2] = RC_CONSOLE_PLAYSTATION_2; /* PCSX2 supports directly opening the bin file*/
+      iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* Genesis Plus GX supports directly opening the bin file*/
+
+      /* fallback to megadrive which just does a full hash. */
+      iterator->consoles[4] = RC_CONSOLE_MEGA_DRIVE;
+      return;
+    }
+  }
+
+  /* bin is associated with MegaDrive, Sega32X, Atari 2600, Watara Supervision, MegaDuck,
+   * Fairchild Channel F, Arcadia 2001, Interton VC 4000, and Super Cassette Vision.
+   * Since they all use the same hashing algorithm, only specify one of them */
+  iterator->consoles[0] = RC_CONSOLE_MEGA_DRIVE;
+}
+
+static void rc_hash_initialize_iterator_chd(rc_hash_iterator_t* iterator, const char* path, int data) {
+  (void)data;
+
+  iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
+  iterator->consoles[1] = RC_CONSOLE_PLAYSTATION_2;
+  iterator->consoles[2] = RC_CONSOLE_DREAMCAST;
+  iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
+  iterator->consoles[4] = RC_CONSOLE_PSP;
+  iterator->consoles[5] = RC_CONSOLE_PC_ENGINE_CD;
+  iterator->consoles[6] = RC_CONSOLE_3DO;
+  iterator->consoles[7] = RC_CONSOLE_NEO_GEO_CD;
+  iterator->consoles[8] = RC_CONSOLE_PCFX;
+
+  if (!iterator->path)
+    iterator->path = strdup(path);
+}
+
+static void rc_hash_initialize_iterator_cue(rc_hash_iterator_t* iterator, const char* path, int data) {
+  (void)data;
+
+  iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
+  iterator->consoles[1] = RC_CONSOLE_PLAYSTATION_2;
+  iterator->consoles[2] = RC_CONSOLE_DREAMCAST;
+  iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
+  iterator->consoles[4] = RC_CONSOLE_PC_ENGINE_CD;
+  iterator->consoles[5] = RC_CONSOLE_3DO;
+  iterator->consoles[6] = RC_CONSOLE_PCFX;
+  iterator->consoles[7] = RC_CONSOLE_NEO_GEO_CD;
+  iterator->consoles[8] = RC_CONSOLE_ATARI_JAGUAR_CD;
+
+  if (!iterator->path)
+    iterator->path = strdup(path);
+}
+
+static void rc_hash_initialize_iterator_d88(rc_hash_iterator_t* iterator, const char* path, int data) {
+  (void)path;
+  (void)data;
+
+  iterator->consoles[0] = RC_CONSOLE_PC8800;
+  iterator->consoles[1] = RC_CONSOLE_SHARPX1;
+}
+
+static void rc_hash_initialize_iterator_dsk(rc_hash_iterator_t* iterator, const char* path, int data) {
   size_t size = iterator->buffer_size;
   if (size == 0)
     size = rc_file_size(path);
 
-  if (size == 512 * 9 * 80) /* 360KB */
-  {
+  (void)data;
+
+  if (size == 512 * 9 * 80) { /* 360KB */
     /* FAT-12 3.5" DD (512 byte sectors, 9 sectors per track, 80 tracks per side */
     /* FAT-12 5.25" DD double-sided (512 byte sectors, 9 sectors per track, 80 tracks per side */
     iterator->consoles[0] = RC_CONSOLE_MSX;
   }
-  else if (size == 512 * 9 * 80 * 2) /* 720KB */
-  {
+  else if (size == 512 * 9 * 80 * 2) { /* 720KB */
     /* FAT-12 3.5" DD double-sided (512 byte sectors, 9 sectors per track, 80 tracks per side */
     iterator->consoles[0] = RC_CONSOLE_MSX;
   }
-  else if (size == 512 * 9 * 40) /* 180KB */
-  {
+  else if (size == 512 * 9 * 40) { /* 180KB */
     /* FAT-12 5.25" DD (512 byte sectors, 9 sectors per track, 40 tracks per side */
     iterator->consoles[0] = RC_CONSOLE_MSX;
 
     /* AMSDOS 3" - 40 tracks */
     iterator->consoles[1] = RC_CONSOLE_AMSTRAD_PC;
   }
-  else if (size == 256 * 16 * 35) /* 140KB */
-  {
+  else if (size == 256 * 16 * 35) { /* 140KB */
     /* Apple II new format - 256 byte sectors, 16 sectors per track, 35 tracks per side */
     iterator->consoles[0] = RC_CONSOLE_APPLE_II;
   }
-  else if (size == 256 * 13 * 35) /* 113.75KB */
-  {
+  else if (size == 256 * 13 * 35) { /* 113.75KB */
     /* Apple II old format - 256 byte sectors, 13 sectors per track, 35 tracks per side */
     iterator->consoles[0] = RC_CONSOLE_APPLE_II;
   }
@@ -3563,489 +3646,211 @@ static void rc_hash_initialize_dsk_iterator(struct rc_hash_iterator* iterator, c
   rc_hash_iterator_append_console(iterator, RC_CONSOLE_APPLE_II);
 }
 
-static void rc_hash_reset_iterator(rc_hash_iterator_t* iterator) {
-  memset(iterator, 0, sizeof(*iterator));
+static void rc_hash_initialize_iterator_iso(rc_hash_iterator_t* iterator, const char* path, int data) {
+  (void)data;
 
-  iterator->callbacks.verbose_message = verbose_message_callback;
-  iterator->callbacks.error_message = error_message_callback;
+  iterator->consoles[0] = RC_CONSOLE_PLAYSTATION_2;
+  iterator->consoles[1] = RC_CONSOLE_PSP;
+  iterator->consoles[2] = RC_CONSOLE_3DO;
+  iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
+  iterator->consoles[4] = RC_CONSOLE_GAMECUBE;
+
+  if (!iterator->path)
+    iterator->path = strdup(path);
+}
+
+static void rc_hash_initialize_iterator_m3u(rc_hash_iterator_t* iterator, const char* path, int data) {
+  (void)data;
+
+  /* temporarily set the iterator path to the m3u file so we can extract the
+   * path of the first disc. rc_hash_get_first_item_from_playlist will return
+   * an allocated string or NULL, so rc_hash_destroy_iterator won't get tripped
+   * up by the non-allocted value we're about to assign.
+   */
+  iterator->path = path;
+  iterator->path = rc_hash_get_first_item_from_playlist(iterator);
+  if (!iterator->path) /* did not find a disc */
+    return;
+
+  iterator->buffer = NULL; /* ignore buffer; assume it's the m3u contents */
+
+  rc_hash_initialize_iterator_from_path(iterator, iterator->path);
+}
+
+static void rc_hash_initialize_iterator_nib(rc_hash_iterator_t* iterator, const char* path, int data) {
+  (void)path;
+  (void)data;
+
+  iterator->consoles[0] = RC_CONSOLE_APPLE_II;
+  iterator->consoles[1] = RC_CONSOLE_COMMODORE_64;
+}
+
+static void rc_hash_initialize_iterator_rom(rc_hash_iterator_t* iterator, const char* path, int data) {
+  (void)path;
+  (void)data;
+
+  /* rom is associated with MSX, Thomson TO-8, and Fairchild Channel F.
+   * Since they all use the same hashing algorithm, only specify one of them */
+  iterator->consoles[0] = RC_CONSOLE_MSX;
+}
+
+static void rc_hash_initialize_iterator_tap(rc_hash_iterator_t* iterator, const char* path, int data) {
+  (void)path;
+  (void)data;
+
+  /* also Oric and ZX Spectrum, but all are full file hashes */
+  iterator->consoles[0] = RC_CONSOLE_COMMODORE_64;
+}
+
+static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[] = {
+  { "2d", rc_hash_initialize_iterator_single, RC_CONSOLE_SHARPX1 },
+  { "3ds", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
+  { "3dsx", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
+  { "7z", rc_hash_initialize_iterator_single_with_path, RC_CONSOLE_ARCADE },
+  { "83g", rc_hash_initialize_iterator_single, RC_CONSOLE_TI83 }, /* http://tibasicdev.wikidot.com/file-extensions */
+  { "83p", rc_hash_initialize_iterator_single, RC_CONSOLE_TI83 },
+  { "a26", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_2600 },
+  { "a78", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_7800 },
+  { "app", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
+  { "axf", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
+  { "bin", rc_hash_initialize_iterator_bin, 0 },
+  { "bs", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },
+  { "cart", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_CASSETTEVISION },
+  { "cas", rc_hash_initialize_iterator_single, RC_CONSOLE_MSX },
+  { "cci", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
+  { "chd", rc_hash_initialize_iterator_chd, 0 },
+  { "chf", rc_hash_initialize_iterator_single, RC_CONSOLE_FAIRCHILD_CHANNEL_F },
+  { "cia", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
+  { "col", rc_hash_initialize_iterator_single, RC_CONSOLE_COLECOVISION },
+  { "csw", rc_hash_initialize_iterator_single, RC_CONSOLE_ZX_SPECTRUM },
+  { "cue", rc_hash_initialize_iterator_cue, 0 },
+  { "cxi", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
+  { "d64", rc_hash_initialize_iterator_single, RC_CONSOLE_COMMODORE_64 },
+  { "d88", rc_hash_initialize_iterator_d88, 0 },
+  { "dosz", rc_hash_initialize_iterator_single, RC_CONSOLE_MS_DOS },
+  { "dsk", rc_hash_initialize_iterator_dsk, 0 },
+  { "elf", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
+  { "fd", rc_hash_initialize_iterator_single, RC_CONSOLE_THOMSONTO8 },
+  { "fds", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO },
+  { "fig", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },
+  { "gb", rc_hash_initialize_iterator_single, RC_CONSOLE_GAMEBOY },
+  { "gba", rc_hash_initialize_iterator_single, RC_CONSOLE_GAMEBOY_ADVANCE },
+  { "gbc", rc_hash_initialize_iterator_single, RC_CONSOLE_GAMEBOY_COLOR },
+  { "gdi", rc_hash_initialize_iterator_single, RC_CONSOLE_DREAMCAST },
+  { "gg", rc_hash_initialize_iterator_single, RC_CONSOLE_GAME_GEAR },
+  { "hex", rc_hash_initialize_iterator_single, RC_CONSOLE_ARDUBOY },
+  { "iso", rc_hash_initialize_iterator_iso, 0 },
+  { "jag", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_JAGUAR },
+  { "k7", rc_hash_initialize_iterator_single, RC_CONSOLE_THOMSONTO8 }, /* tape */
+  { "lnx", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_LYNX },
+  { "m3u", rc_hash_initialize_iterator_m3u, 0 },
+  { "m5", rc_hash_initialize_iterator_single, RC_CONSOLE_THOMSONTO8 }, /* cartridge */
+  { "m7", rc_hash_initialize_iterator_single, RC_CONSOLE_THOMSONTO8 }, /* cartridge */
+  { "md", rc_hash_initialize_iterator_single, RC_CONSOLE_MEGA_DRIVE },
+  { "min", rc_hash_initialize_iterator_single, RC_CONSOLE_POKEMON_MINI },
+  { "mx1", rc_hash_initialize_iterator_single, RC_CONSOLE_MSX },
+  { "mx2", rc_hash_initialize_iterator_single, RC_CONSOLE_MSX },
+  { "n64", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_64 },
+  { "ndd", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_64 },
+  { "nds", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_DS }, /* handles both DS and DSi */
+  { "nes", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO },
+  { "ngc", rc_hash_initialize_iterator_single, RC_CONSOLE_NEOGEO_POCKET },
+  { "nib", rc_hash_initialize_iterator_nib, 0 },
+  { "pbp", rc_hash_initialize_iterator_single, RC_CONSOLE_PSP },
+  { "pce", rc_hash_initialize_iterator_single, RC_CONSOLE_PC_ENGINE },
+  { "pgm", rc_hash_initialize_iterator_single, RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER },
+  { "pzx", rc_hash_initialize_iterator_single, RC_CONSOLE_ZX_SPECTRUM },
+  { "ri", rc_hash_initialize_iterator_single, RC_CONSOLE_MSX },
+  { "rom", rc_hash_initialize_iterator_rom, 0 },
+  { "sap", rc_hash_initialize_iterator_single, RC_CONSOLE_THOMSONTO8 }, /* disk */
+  { "scl", rc_hash_initialize_iterator_single, RC_CONSOLE_ZX_SPECTRUM },
+  { "sfc", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },
+  { "sg", rc_hash_initialize_iterator_single, RC_CONSOLE_SG1000 },
+  { "sgx", rc_hash_initialize_iterator_single, RC_CONSOLE_PC_ENGINE },
+  { "smc", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },
+  { "sv", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPERVISION },
+  { "swc", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },
+  { "tap", rc_hash_initialize_iterator_tap, 0 },
+  { "tic", rc_hash_initialize_iterator_single, RC_CONSOLE_TIC80 },
+  { "trd", rc_hash_initialize_iterator_single, RC_CONSOLE_ZX_SPECTRUM },
+  { "tvc", rc_hash_initialize_iterator_single, RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER },
+  { "tzx", rc_hash_initialize_iterator_single, RC_CONSOLE_ZX_SPECTRUM },
+  { "uze", rc_hash_initialize_iterator_single, RC_CONSOLE_UZEBOX },
+  { "v64", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_64 },
+  { "vb", rc_hash_initialize_iterator_single, RC_CONSOLE_VIRTUAL_BOY },
+  { "wasm", rc_hash_initialize_iterator_single, RC_CONSOLE_WASM4 },
+  { "woz", rc_hash_initialize_iterator_single, RC_CONSOLE_APPLE_II },
+  { "wsc", rc_hash_initialize_iterator_single, RC_CONSOLE_WONDERSWAN },
+  { "z64", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_64 },
+  { "zip", rc_hash_initialize_iterator_single_with_path, RC_CONSOLE_ARCADE }
+};
+
+const rc_hash_iterator_ext_handler_entry_t* rc_hash_get_iterator_ext_handlers(size_t* num_handlers) {
+  *num_handlers = sizeof(rc_hash_iterator_ext_handlers) / sizeof(rc_hash_iterator_ext_handlers[0]);
+  return rc_hash_iterator_ext_handlers;
+}
+
+static int rc_hash_iterator_find_handler(const void* left, const void* right) {
+  const rc_hash_iterator_ext_handler_entry_t* left_handler =
+    (const rc_hash_iterator_ext_handler_entry_t*)left;
+  const rc_hash_iterator_ext_handler_entry_t* right_handler =
+    (const rc_hash_iterator_ext_handler_entry_t*)right;
+
+  return strcmp(left_handler->ext, right_handler->ext);
+}
+
+static void rc_hash_initialize_iterator_from_path(rc_hash_iterator_t* iterator, const char* path) {
+  size_t num_handlers;
+  const rc_hash_iterator_ext_handler_entry_t* handlers = rc_hash_get_iterator_ext_handlers(&num_handlers);
+  const rc_hash_iterator_ext_handler_entry_t* handler;
+  rc_hash_iterator_ext_handler_entry_t search;
+  const char* ext = rc_path_get_extension(path);
+  size_t index;
+
+  /* lowercase the extension as we copy it into the search object */
+  memset(&search, 0, sizeof(search));
+  for (index = 0; index < sizeof(search.ext) - 1; ++index) {
+    const int c = (int)ext[index];
+    if (!c)
+      break;
+
+    search.ext[index] = tolower(c);
+  }
+
+  /* find the handler for the extension */
+  handler = bsearch(&search, handlers, num_handlers, sizeof(*handler), rc_hash_iterator_find_handler);
+  if (handler) {
+    handler->handler(iterator, path, handler->data);
+  } else {
+    /* if we didn't match the extension, default to something that does a whole file hash */
+    if (!iterator->consoles[0])
+      iterator->consoles[0] = RC_CONSOLE_GAMEBOY;
+  }
 }
 
 void rc_hash_initialize_iterator(rc_hash_iterator_t* iterator, const char* path, const uint8_t* buffer, size_t buffer_size)
 {
-  int need_path = !buffer;
-
   rc_hash_reset_iterator(iterator);
   iterator->buffer = buffer;
   iterator->buffer_size = buffer_size;
 
-  iterator->consoles[0] = 0;
+  rc_hash_initialize_iterator_from_path(iterator, path);
 
-  do
-  {
-    const char* ext = rc_path_get_extension(path);
-    switch (tolower(*ext))
-    {
-      case '2':
-        if (rc_path_compare_extension(ext, "2d"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_SHARPX1;
-        }
-        break;
+  if (iterator->callbacks.verbose_message) {
+    char message[256];
+    int count = 0;
+    while (iterator->consoles[count])
+      ++count;
 
-      case '3':
-        if (rc_path_compare_extension(ext, "3ds") ||
-            rc_path_compare_extension(ext, "3dsx"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
-        }
-        break;
+    snprintf(message, sizeof(message), "Found %d potential consoles for %s file extension", count, rc_path_get_extension(path));
+    iterator->callbacks.verbose_message(message);
+  }
 
-      case '7':
-        if (rc_path_compare_extension(ext, "7z"))
-        {
-          /* decompressing zip file not supported */
-          iterator->consoles[0] = RC_CONSOLE_ARCADE;
-          need_path = 1;
-        }
-        break;
-
-      case '8':
-        /* http://tibasicdev.wikidot.com/file-extensions */
-        if (rc_path_compare_extension(ext, "83g") ||
-            rc_path_compare_extension(ext, "83p"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_TI83;
-        }
-        break;
-
-      case 'a':
-        if (rc_path_compare_extension(ext, "a26"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ATARI_2600;
-        }
-        else if (rc_path_compare_extension(ext, "a78"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ATARI_7800;
-        }
-        else if (rc_path_compare_extension(ext, "app") ||
-                 rc_path_compare_extension(ext, "axf"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
-        }
-        break;
-
-      case 'b':
-        if (rc_path_compare_extension(ext, "bin")) {
-          if (buffer_size == 0) {
-            /* raw bin file may be a CD track. if it's more than 32MB, try a CD hash. */
-            const int64_t size = rc_file_size(path);
-            if (size > 32 * 1024 * 1024) {
-              iterator->consoles[0] = RC_CONSOLE_3DO; /* 4DO supports directly opening the bin file */
-              iterator->consoles[1] = RC_CONSOLE_PLAYSTATION; /* PCSX ReARMed supports directly opening the bin file*/
-              iterator->consoles[2] = RC_CONSOLE_PLAYSTATION_2; /* PCSX2 supports directly opening the bin file*/
-              iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* Genesis Plus GX supports directly opening the bin file*/
-
-              /* fallback to megadrive which just does a full hash. */
-              iterator->consoles[4] = RC_CONSOLE_MEGA_DRIVE;
-              break;
-            }
-          }
-
-          /* bin is associated with MegaDrive, Sega32X, Atari 2600, Watara Supervision, MegaDuck,
-           * Fairchild Channel F, Arcadia 2001, Interton VC 4000, and Super Cassette Vision.
-           * Since they all use the same hashing algorithm, only specify one of them */
-          iterator->consoles[0] = RC_CONSOLE_MEGA_DRIVE;
-        }
-        else if (rc_path_compare_extension(ext, "bs"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_SUPER_NINTENDO;
-        }
-        break;
-
-      case 'c':
-        if (rc_path_compare_extension(ext, "cue"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
-          iterator->consoles[1] = RC_CONSOLE_PLAYSTATION_2;
-          iterator->consoles[2] = RC_CONSOLE_DREAMCAST;
-          iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
-          iterator->consoles[4] = RC_CONSOLE_PC_ENGINE_CD;
-          iterator->consoles[5] = RC_CONSOLE_3DO;
-          iterator->consoles[6] = RC_CONSOLE_PCFX;
-          iterator->consoles[7] = RC_CONSOLE_NEO_GEO_CD;
-          iterator->consoles[8] = RC_CONSOLE_ATARI_JAGUAR_CD;
-          need_path = 1;
-        }
-        else if (rc_path_compare_extension(ext, "chd"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
-          iterator->consoles[1] = RC_CONSOLE_PLAYSTATION_2;
-          iterator->consoles[2] = RC_CONSOLE_DREAMCAST;
-          iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
-          iterator->consoles[4] = RC_CONSOLE_PSP;
-          iterator->consoles[5] = RC_CONSOLE_PC_ENGINE_CD;
-          iterator->consoles[6] = RC_CONSOLE_3DO;
-          iterator->consoles[7] = RC_CONSOLE_NEO_GEO_CD;
-          iterator->consoles[8] = RC_CONSOLE_PCFX;
-          need_path = 1;
-        }
-        else if (rc_path_compare_extension(ext, "col"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_COLECOVISION;
-        }
-        else if (rc_path_compare_extension(ext, "cas"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_MSX;
-        }
-        else if (rc_path_compare_extension(ext, "chf"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_FAIRCHILD_CHANNEL_F;
-        }
-        else if (rc_path_compare_extension(ext, "cart"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_SUPER_CASSETTEVISION;
-        }
-        else if (rc_path_compare_extension(ext, "cci") ||
-                 rc_path_compare_extension(ext, "cia") ||
-                 rc_path_compare_extension(ext, "cxi"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
-        }
-        else if (rc_path_compare_extension(ext, "csw"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ZX_SPECTRUM;
-        }
-        break;
-
-      case 'd':
-        if (rc_path_compare_extension(ext, "dsk"))
-        {
-          rc_hash_initialize_dsk_iterator(iterator, path);
-        }
-        else if (rc_path_compare_extension(ext, "d64"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_COMMODORE_64;
-        }
-        else if (rc_path_compare_extension(ext, "d88"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_PC8800;
-          iterator->consoles[1] = RC_CONSOLE_SHARPX1;
-        }
-        else if (rc_path_compare_extension(ext, "dosz"))
-        {
-            iterator->consoles[0] = RC_CONSOLE_MS_DOS;
-        }
-        break;
-
-      case 'e':
-        if (rc_path_compare_extension(ext, "elf"))
-        {
-          /* This should probably apply to more consoles in the future */
-          /* Although in any case this just hashes the entire file */
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO_3DS;
-        }
-        break;
-
-      case 'f':
-        if (rc_path_compare_extension(ext, "fig"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_SUPER_NINTENDO;
-        }
-        else if (rc_path_compare_extension(ext, "fds"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_FAMICOM_DISK_SYSTEM;
-        }
-        else if (rc_path_compare_extension(ext, "fd"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* disk */
-        }
-        break;
-
-      case 'g':
-        if (rc_path_compare_extension(ext, "gba"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_GAMEBOY_ADVANCE;
-        }
-        else if (rc_path_compare_extension(ext, "gbc"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_GAMEBOY_COLOR;
-        }
-        else if (rc_path_compare_extension(ext, "gb"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_GAMEBOY;
-        }
-        else if (rc_path_compare_extension(ext, "gg"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_GAME_GEAR;
-        }
-        else if (rc_path_compare_extension(ext, "gdi"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_DREAMCAST;
-        }
-        break;
-
-      case 'h':
-        if (rc_path_compare_extension(ext, "hex"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ARDUBOY;
-        }
-        break;
-
-      case 'i':
-        if (rc_path_compare_extension(ext, "iso"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_PLAYSTATION_2;
-          iterator->consoles[1] = RC_CONSOLE_PSP;
-          iterator->consoles[2] = RC_CONSOLE_3DO;
-          iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
-          iterator->consoles[4] = RC_CONSOLE_GAMECUBE;
-          need_path = 1;
-        }
-        break;
-
-      case 'j':
-        if (rc_path_compare_extension(ext, "jag"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ATARI_JAGUAR;
-        }
-        break;
-
-      case 'k':
-        if (rc_path_compare_extension(ext, "k7"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* tape */
-        }
-        break;
-
-      case 'l':
-        if (rc_path_compare_extension(ext, "lnx"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ATARI_LYNX;
-        }
-        break;
-
-      case 'm':
-        if (rc_path_compare_extension(ext, "m3u"))
-        {
-          /* temporarily set the iterator path to the m3u file so we can extract the
-           * path of the first disc. rc_hash_get_first_item_from_playlist will return
-           * an allocated string or NULL, so rc_hash_destroy_iterator won't get tripped
-           * up by the non-allocted value we're about to assign.
-           */
-          iterator->path = path;
-          iterator->path = rc_hash_get_first_item_from_playlist(iterator);
-          if (!iterator->path) /* did not find a disc */
-            return;
-
-          iterator->buffer = NULL; /* ignore buffer; assume it's the m3u contents */
-
-          path = iterator->path;
-          continue; /* retry with disc path */
-        }
-        else if (rc_path_compare_extension(ext, "md"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_MEGA_DRIVE;
-        }
-        else if (rc_path_compare_extension(ext, "min"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_POKEMON_MINI;
-        }
-        else if (rc_path_compare_extension(ext, "mx1"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_MSX;
-        }
-        else if (rc_path_compare_extension(ext, "mx2"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_MSX;
-        }
-        else if (rc_path_compare_extension(ext, "m5"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* cartridge */
-        }
-        else if (rc_path_compare_extension(ext, "m7"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* cartridge */
-        }
-        break;
-
-      case 'n':
-        if (rc_path_compare_extension(ext, "nes"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO;
-        }
-        else if (rc_path_compare_extension(ext, "nds"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO_DS; /* ASSERT: handles both DS and DSi */
-        }
-        else if (rc_path_compare_extension(ext, "n64") ||
-                 rc_path_compare_extension(ext, "ndd"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO_64;
-        }
-        else if (rc_path_compare_extension(ext, "ngc"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_NEOGEO_POCKET;
-        }
-        else if (rc_path_compare_extension(ext, "nib"))
-        {
-            /* also Apple II, but both are full-file hashes */
-            iterator->consoles[0] = RC_CONSOLE_COMMODORE_64;
-        }
-        break;
-
-      case 'p':
-        if (rc_path_compare_extension(ext, "pce"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_PC_ENGINE;
-        }
-        else if (rc_path_compare_extension(ext, "pbp"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_PSP;
-        }
-        else if (rc_path_compare_extension(ext, "pgm"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER;
-        }
-        else if (rc_path_compare_extension(ext, "pzx"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ZX_SPECTRUM;
-        }
-        break;
-
-      case 'r':
-        if (rc_path_compare_extension(ext, "rom"))
-        {
-          /* rom is associated with MSX, Thomson TO-8, and Fairchild Channel F.
-           * Since they all use the same hashing algorithm, only specify one of them */
-          iterator->consoles[0] = RC_CONSOLE_MSX;
-        }
-        if (rc_path_compare_extension(ext, "ri"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_MSX;
-        }
-        break;
-
-      case 's':
-        if (rc_path_compare_extension(ext, "smc") ||
-            rc_path_compare_extension(ext, "sfc") ||
-            rc_path_compare_extension(ext, "swc"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_SUPER_NINTENDO;
-        }
-        else if (rc_path_compare_extension(ext, "sg"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_SG1000;
-        }
-        else if (rc_path_compare_extension(ext, "sgx"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_PC_ENGINE;
-        }
-        else if (rc_path_compare_extension(ext, "sv"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_SUPERVISION;
-        }
-        else if (rc_path_compare_extension(ext, "sap"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_THOMSONTO8; /* disk */
-        }
-        else if (rc_path_compare_extension(ext, "scl"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ZX_SPECTRUM;
-        }
-        break;
-
-      case 't':
-        if (rc_path_compare_extension(ext, "tap"))
-        {
-          /* also Commodore 64 and ZX Spectrum, but all are full file hashes */
-          iterator->consoles[0] = RC_CONSOLE_ORIC;
-        }
-        else if (rc_path_compare_extension(ext, "tic"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_TIC80;
-        }
-        else if (rc_path_compare_extension(ext, "tvc"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER;
-        }
-        else if (rc_path_compare_extension(ext, "trd") ||
-                 rc_path_compare_extension(ext, "tzx"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_ZX_SPECTRUM;
-        }
-        break;
-
-      case 'u':
-        if (rc_path_compare_extension(ext, "uze"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_UZEBOX;
-        }
-        break;
-
-      case 'v':
-        if (rc_path_compare_extension(ext, "vb"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_VIRTUAL_BOY;
-        }
-        else if (rc_path_compare_extension(ext, "v64"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO_64;
-        }
-        break;
-
-      case 'w':
-        if (rc_path_compare_extension(ext, "wsc"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_WONDERSWAN;
-        }
-        else if (rc_path_compare_extension(ext, "wasm"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_WASM4;
-        }
-        else if (rc_path_compare_extension(ext, "woz"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_APPLE_II;
-        }
-        break;
-
-      case 'z':
-        if (rc_path_compare_extension(ext, "zip"))
-        {
-          /* decompressing zip file not supported */
-          iterator->consoles[0] = RC_CONSOLE_ARCADE;
-          need_path = 1;
-        }
-        else if (rc_path_compare_extension(ext, "z64"))
-        {
-          iterator->consoles[0] = RC_CONSOLE_NINTENDO_64;
-        }
-        break;
-    }
-
-    if (iterator->callbacks.verbose_message) {
-      char message[256];
-      int count = 0;
-      while (iterator->consoles[count])
-        ++count;
-
-      snprintf(message, sizeof(message), "Found %d potential consoles for %s file extension", count, ext);
-      iterator->callbacks.verbose_message(message);
-    }
-
-    /* loop is only for specific cases that redirect to another file - like m3u */
-    break;
-  } while (1);
-
-  if (need_path && !iterator->path)
+  if (!iterator->buffer && !iterator->path)
     iterator->path = strdup(path);
-
-  /* if we didn't match the extension, default to something that does a whole file hash */
-  if (!iterator->consoles[0])
-    iterator->consoles[0] = RC_CONSOLE_GAMEBOY;
 }
 
-void rc_hash_destroy_iterator(rc_hash_iterator_t* iterator)
-{
+void rc_hash_destroy_iterator(rc_hash_iterator_t* iterator) {
   if (iterator->path) {
     free((void*)iterator->path);
     iterator->path = NULL;
