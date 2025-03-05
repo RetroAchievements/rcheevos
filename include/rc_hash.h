@@ -113,6 +113,8 @@ RC_BEGIN_C_DECLS
 typedef struct rc_hash_callbacks {
   rc_hash_message_callback verbose_message;
   rc_hash_message_callback error_message;
+
+  struct rc_hash_cdreader cdreader;
 } rc_hash_callbacks_t;
 
 /* data for rc_hash_iterate

@@ -49,26 +49,38 @@ void rc_hash_init_error_message_callback(rc_hash_message_callback callback)
   error_message_callback = callback;
 }
 
-int rc_hash_error(const rc_hash_callbacks_t* callbacks, const char* message) {
+static rc_hash_message_callback rc_hash_get_error_message_callback(const rc_hash_callbacks_t* callbacks) {
   if (callbacks && callbacks->error_message)
-    callbacks->error_message(message);
-  else if (error_message_callback)
-    error_message_callback(message);
+    return callbacks->error_message;
+
+  if (error_message_callback)
+    return error_message_callback;
+
+  if (callbacks && callbacks->verbose_message)
+    return callbacks->verbose_message;
+
+  if (error_message_callback)
+    return error_message_callback;
+
+  return NULL;
+}
+
+int rc_hash_error(const rc_hash_callbacks_t* callbacks, const char* message) {
+  rc_hash_message_callback message_callback = rc_hash_get_error_message_callback(callbacks);
+
+  if (message_callback)
+    message_callback(message);
 
   return 0;
 }
 
 int rc_hash_error_formatted(const rc_hash_callbacks_t* callbacks, const char* format, ...) {
-  if (callbacks && callbacks->error_message) {
+  rc_hash_message_callback message_callback = rc_hash_get_error_message_callback(callbacks);
+
+  if (message_callback) {
     va_list args;
     va_start(args, format);
-    rc_hash_dispatch_message_va(callbacks->error_message, format, args);
-    va_end(args);
-  }
-  else if (error_message_callback) {
-    va_list args;
-    va_start(args, format);
-    rc_hash_dispatch_message_va(error_message_callback, format, args);
+    rc_hash_dispatch_message_va(message_callback, format, args);
     va_end(args);
   }
 
@@ -76,17 +88,21 @@ int rc_hash_error_formatted(const rc_hash_callbacks_t* callbacks, const char* fo
 }
 
 static int rc_hash_iterator_error(const rc_hash_iterator_t* iterator, const char* message) {
-  if (iterator->callbacks.error_message)
-    iterator->callbacks.error_message(message);
+  rc_hash_message_callback message_callback = rc_hash_get_error_message_callback(&iterator->callbacks);
+
+  if (message_callback)
+    message_callback(message);
 
   return 0;
 }
 
 static int rc_hash_iterator_error_formatted(const rc_hash_iterator_t* iterator, const char* format, ...) {
-  if (iterator->callbacks.error_message) {
+  rc_hash_message_callback message_callback = rc_hash_get_error_message_callback(&iterator->callbacks);
+
+  if (message_callback) {
     va_list args;
     va_start(args, format);
-    rc_hash_dispatch_message_va(iterator->callbacks.error_message, format, args);
+    rc_hash_dispatch_message_va(message_callback, format, args);
     va_end(args);
   }
 
@@ -102,6 +118,8 @@ void rc_hash_verbose(const rc_hash_callbacks_t* callbacks, const char* message)
 {
   if (callbacks->verbose_message)
     callbacks->verbose_message(message);
+  else if (verbose_message_callback)
+    verbose_message_callback(message);
 }
 
 void rc_hash_verbose_formatted(const rc_hash_callbacks_t* callbacks, const char* format, ...) {
@@ -119,10 +137,8 @@ void rc_hash_verbose_formatted(const rc_hash_callbacks_t* callbacks, const char*
   }
 }
 
-static void rc_hash_iterator_verbose(const rc_hash_iterator_t* iterator, const char* message)
-{
-  if (iterator->callbacks.verbose_message)
-    iterator->callbacks.verbose_message(message);
+static void rc_hash_iterator_verbose(const rc_hash_iterator_t* iterator, const char* message) {
+  rc_hash_verbose(&iterator->callbacks, message);
 }
 
 static void rc_hash_iterator_verbose_formatted(const rc_hash_iterator_t* iterator, const char* format, ...) {
@@ -130,6 +146,12 @@ static void rc_hash_iterator_verbose_formatted(const rc_hash_iterator_t* iterato
     va_list args;
     va_start(args, format);
     rc_hash_dispatch_message_va(iterator->callbacks.verbose_message, format, args);
+    va_end(args);
+  }
+  else if (verbose_message_callback) {
+    va_list args;
+    va_start(args, format);
+    rc_hash_dispatch_message_va(verbose_message_callback, format, args);
     va_end(args);
   }
 }
@@ -342,49 +364,53 @@ void rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader)
   }
 }
 
-static void* rc_cd_open_track(const char* path, uint32_t track)
+static void* rc_cd_open_track(const rc_hash_iterator_t* iterator, uint32_t track)
 {
-  if (cdreader && cdreader->open_track)
-    return cdreader->open_track(path, track);
+  if (iterator->callbacks.cdreader.open_track)
+    return iterator->callbacks.cdreader.open_track(iterator->path, track);
 
-  if (error_message_callback)
-    error_message_callback("no hook registered for cdreader_open_track");
+  if (cdreader && cdreader->open_track)
+    return cdreader->open_track(iterator->path, track);
+
+  rc_hash_iterator_error(iterator, "no hook registered for cdreader_open_track");
   return NULL;
 }
 
-static size_t rc_cd_read_sector(void* track_handle, uint32_t sector, void* buffer, size_t requested_bytes)
+static size_t rc_cd_read_sector(const rc_hash_iterator_t* iterator, void* track_handle, uint32_t sector, void* buffer, size_t requested_bytes)
 {
+  if (iterator->callbacks.cdreader.read_sector)
+    return iterator->callbacks.cdreader.read_sector(track_handle, sector, buffer, requested_bytes);
+
   if (cdreader && cdreader->read_sector)
     return cdreader->read_sector(track_handle, sector, buffer, requested_bytes);
 
-  if (error_message_callback)
-    error_message_callback("no hook registered for cdreader_read_sector");
+  rc_hash_iterator_error(iterator, "no hook registered for cdreader_read_sector");
   return 0;
 }
 
-static uint32_t rc_cd_first_track_sector(void* track_handle)
+static uint32_t rc_cd_first_track_sector(const rc_hash_iterator_t* iterator, void* track_handle)
 {
+  if (iterator->callbacks.cdreader.first_track_sector)
+    return iterator->callbacks.cdreader.first_track_sector(track_handle);
+
   if (cdreader && cdreader->first_track_sector)
     return cdreader->first_track_sector(track_handle);
 
-  if (error_message_callback)
-    error_message_callback("no hook registered for cdreader_first_track_sector");
+  rc_hash_iterator_error(iterator, "no hook registered for cdreader_first_track_sector");
   return 0;
 }
 
-static void rc_cd_close_track(void* track_handle)
+static void rc_cd_close_track(const rc_hash_iterator_t* iterator, void* track_handle)
 {
-  if (cdreader && cdreader->close_track)
-  {
+  if (iterator->callbacks.cdreader.close_track)
+    iterator->callbacks.cdreader.close_track(track_handle);
+  else if (cdreader && cdreader->close_track)
     cdreader->close_track(track_handle);
-    return;
-  }
-
-  if (error_message_callback)
-    error_message_callback("no hook registered for cdreader_close_track");
+  else
+    rc_hash_iterator_error(iterator, "no hook registered for cdreader_close_track");
 }
 
-static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uint32_t* size)
+static uint32_t rc_cd_find_file_sector(const rc_hash_iterator_t* iterator, void* track_handle, const char* path, uint32_t* size)
 {
   uint8_t buffer[2048], *tmp;
   int sector;
@@ -407,7 +433,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uin
     memcpy(buffer, path, slash - path);
     buffer[slash - path] = '\0';
 
-    sector = rc_cd_find_file_sector(track_handle, (const char *)buffer, NULL);
+    sector = rc_cd_find_file_sector(iterator, track_handle, (const char *)buffer, NULL);
     if (!sector)
       return 0;
 
@@ -420,7 +446,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uin
     uint32_t logical_block_size;
 
     /* find the cd information */
-    if (!rc_cd_read_sector(track_handle, rc_cd_first_track_sector(track_handle) + 16, buffer, 256))
+    if (!rc_cd_read_sector(iterator, track_handle, rc_cd_first_track_sector(iterator, track_handle) + 16, buffer, 256))
       return 0;
 
     /* the directory_record starts at 156, the sector containing the table of contents is 2 bytes into that.
@@ -439,7 +465,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uin
   }
 
   /* fetch and process the directory record */
-  if (!rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer)))
+  if (!rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer)))
     return 0;
 
   tmp = buffer;
@@ -451,7 +477,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uin
       if (num_sectors > 1)
       {
         --num_sectors;
-        if (rc_cd_read_sector(track_handle, ++sector, buffer, sizeof(buffer)))
+        if (rc_cd_read_sector(iterator, track_handle, ++sector, buffer, sizeof(buffer)))
         {
           tmp = buffer;
           continue;
@@ -466,12 +492,7 @@ static uint32_t rc_cd_find_file_sector(void* track_handle, const char* path, uin
     {
       sector = tmp[2] | (tmp[3] << 8) | (tmp[4] << 16);
 
-      if (verbose_message_callback)
-      {
-        char message[128];
-        snprintf(message, sizeof(message), "Found %s at sector %d", path, sector);
-        verbose_message_callback(message);
-      }
+      rc_hash_iterator_verbose_formatted(iterator, "Found %s at sector %d", path, sector);
 
       if (size)
         *size = tmp[10] | (tmp[11] << 8) | (tmp[12] << 16) | (tmp[13] << 24);
@@ -632,12 +653,12 @@ static int rc_hash_unheadered_iterator_buffer(char hash[33], const rc_hash_itera
   return rc_hash_buffer(hash, iterator->buffer + header_size, iterator->buffer_size - header_size, iterator);
 }
 
-static int rc_hash_cd_file(md5_state_t* md5, void* track_handle, uint32_t sector, const char* name, uint32_t size, const char* description)
+static int rc_hash_cd_file(md5_state_t* md5, const rc_hash_iterator_t* iterator, void* track_handle, uint32_t sector, const char* name, uint32_t size, const char* description)
 {
   uint8_t buffer[2048];
   size_t num_read;
 
-  if ((num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
+  if ((num_read = rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer))) < sizeof(buffer))
   {
     char message[128];
     snprintf(message, sizeof(message), "Could not read %s", description);
@@ -673,9 +694,9 @@ static int rc_hash_cd_file(md5_state_t* md5, void* track_handle, uint32_t sector
 
     ++sector;
     if (size >= sizeof(buffer))
-      num_read = rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+      num_read = rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer));
     else
-      num_read = rc_cd_read_sector(track_handle, sector, buffer, size);
+      num_read = rc_cd_read_sector(iterator, track_handle, sector, buffer, size);
   } while (num_read > 0);
 
   return 1;
@@ -692,14 +713,14 @@ static int rc_hash_3do(char hash[33], const rc_hash_iterator_t* iterator)
   int offset, stop;
   size_t size = 0;
 
-  track_handle = rc_cd_open_track(iterator->path, 1);
+  track_handle = rc_cd_open_track(iterator, 1);
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track");
 
   /* the Opera filesystem stores the volume information in the first 132 bytes of sector 0
    * https://github.com/barbeque/3dodump/blob/master/OperaFS-Format.md
    */
-  rc_cd_read_sector(track_handle, 0, buffer, 132);
+  rc_cd_read_sector(iterator, track_handle, 0, buffer, 132);
 
   if (memcmp(buffer, operafs_identifier, sizeof(operafs_identifier)) == 0)
   {
@@ -729,7 +750,7 @@ static int rc_hash_3do(char hash[33], const rc_hash_iterator_t* iterator)
 
     do
     {
-      rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+      rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer));
 
       /* offset to start of entries is at offset 0x10 (assume 0x10 and 0x11 are always 0) */
       offset = buffer[0x12] * 256 + buffer[0x13];
@@ -785,7 +806,7 @@ static int rc_hash_3do(char hash[33], const rc_hash_iterator_t* iterator)
 
     if (size == 0)
     {
-      rc_cd_close_track(track_handle);
+      rc_cd_close_track(iterator, track_handle);
       return rc_hash_iterator_error(iterator, "Could not find LaunchMe");
     }
 
@@ -793,23 +814,23 @@ static int rc_hash_3do(char hash[33], const rc_hash_iterator_t* iterator)
 
     while (size > 2048)
     {
-      rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+      rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer));
       md5_append(&md5, buffer, sizeof(buffer));
 
       ++sector;
       size -= 2048;
     }
 
-    rc_cd_read_sector(track_handle, sector, buffer, size);
+    rc_cd_read_sector(iterator, track_handle, sector, buffer, size);
     md5_append(&md5, buffer, (int)size);
   }
   else
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     return rc_hash_iterator_error(iterator, "Not a 3DO CD");
   }
 
-  rc_cd_close_track(track_handle);
+  rc_cd_close_track(iterator, track_handle);
 
   return rc_hash_finalize(&md5, hash);
 }
@@ -1363,7 +1384,7 @@ static int rc_hash_jaguar_cd(char hash[33], const rc_hash_iterator_t* iterator)
 
   /* Jaguar CD header is in the first sector of the first data track OF THE SECOND SESSION.
    * The first track must be an audio track, but may be a warning message or actual game audio */
-  track_handle = rc_cd_open_track(iterator->path, RC_HASH_CDTRACK_FIRST_OF_SECOND_SESSION);
+  track_handle = rc_cd_open_track(iterator, RC_HASH_CDTRACK_FIRST_OF_SECOND_SESSION);
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track");
 
@@ -1372,8 +1393,8 @@ static int rc_hash_jaguar_cd(char hash[33], const rc_hash_iterator_t* iterator)
    * is byteswapped. Then another 32 byte that reads "ATARI APPROVED DATA HEADER ATRI "
    * (possibly byteswapped). Then a big-endian 32-bit value for the address where the boot code
    * should be loaded, and a second big-endian 32-bit value for the size of the boot code. */ 
-  sector = rc_cd_first_track_sector(track_handle);
-  rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+  sector = rc_cd_first_track_sector(iterator, track_handle);
+  rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer));
 
   for (i = 64; i < sizeof(buffer) - 32 - 4 * 3; i++)
   {
@@ -1395,7 +1416,7 @@ static int rc_hash_jaguar_cd(char hash[33], const rc_hash_iterator_t* iterator)
 
   if (size == 0) /* did not see ATARI APPROVED DATA HEADER */
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     return rc_hash_iterator_error(iterator, "Not a Jaguar CD");
   }
 
@@ -1427,9 +1448,9 @@ static int rc_hash_jaguar_cd(char hash[33], const rc_hash_iterator_t* iterator)
       md5_append(&md5, &buffer[offset], remaining);
       size -= remaining;
       offset = 0;
-    } while (rc_cd_read_sector(track_handle, ++sector, buffer, sizeof(buffer)) == sizeof(buffer));
+    } while (rc_cd_read_sector(iterator, track_handle, ++sector, buffer, sizeof(buffer)) == sizeof(buffer));
 
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
 
     if (size > 0)
       return rc_hash_iterator_error(iterator, "Not enough data");
@@ -1450,14 +1471,14 @@ static int rc_hash_jaguar_cd(char hash[33], const rc_hash_iterator_t* iterator)
 
     rc_hash_iterator_verbose_formatted(iterator, "Potential homebrew at sector %u, checking for KART data in track 2", sector);
 
-    track_handle = rc_cd_open_track(iterator->path, 2);
+    track_handle = rc_cd_open_track(iterator, 2);
     if (!track_handle)
       return rc_hash_iterator_error(iterator, "Could not open track");
 
     /* track 2 of the homebrew code has the 64 bytes or ATRI followed by 32 bytes of "ATARI APPROVED DATA HEADER ATRI!",
      * then 64 bytes of KART repeating. */
-    sector = rc_cd_first_track_sector(track_handle);
-    rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+    sector = rc_cd_first_track_sector(iterator, track_handle);
+    rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer));
     if (memcmp(&buffer[0x5E], "RT!IRTKA", 8) != 0)
       return rc_hash_iterator_error(iterator, "Homebrew executable not found in track 2");
 
@@ -1489,23 +1510,23 @@ static int rc_hash_neogeo_cd(char hash[33], const rc_hash_iterator_t* iterator)
   uint32_t size;
   md5_state_t md5;
 
-  track_handle = rc_cd_open_track(iterator->path, 1);
+  track_handle = rc_cd_open_track(iterator, 1);
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track");
 
   /* https://wiki.neogeodev.org/index.php?title=IPL_file, https://wiki.neogeodev.org/index.php?title=PRG_file
    * IPL file specifies data to be loaded before the game starts. PRG files are the executable code
    */
-  sector = rc_cd_find_file_sector(track_handle, "IPL.TXT", &size);
+  sector = rc_cd_find_file_sector(iterator, track_handle, "IPL.TXT", &size);
   if (!sector)
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     return rc_hash_iterator_error(iterator, "Not a NeoGeo CD game disc");
   }
 
-  if (rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer)) == 0)
+  if (rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer)) == 0)
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     return 0;
   }
 
@@ -1524,10 +1545,10 @@ static int rc_hash_neogeo_cd(char hash[33], const rc_hash_iterator_t* iterator)
       ptr += 4;
       *ptr++ = '\0';
 
-      sector = rc_cd_find_file_sector(track_handle, start, &size);
-      if (!sector || !rc_hash_cd_file(&md5, track_handle, sector, NULL, size, start))
+      sector = rc_cd_find_file_sector(iterator, track_handle, start, &size);
+      if (!sector || !rc_hash_cd_file(&md5, iterator, track_handle, sector, NULL, size, start))
       {
-        rc_cd_close_track(track_handle);
+        rc_cd_close_track(iterator, track_handle);
         return rc_hash_iterator_error_formatted(iterator, "Could not read %.16s", start);
       }
     }
@@ -1539,7 +1560,7 @@ static int rc_hash_neogeo_cd(char hash[33], const rc_hash_iterator_t* iterator)
     ++ptr;
   } while (*ptr != '\0' && *ptr != '\x1a');
 
-  rc_cd_close_track(track_handle);
+  rc_cd_close_track(iterator, track_handle);
   return rc_hash_finalize(&md5, hash);
 }
 
@@ -2444,7 +2465,7 @@ static int rc_hash_pce_track(char hash[33], void* track_handle, const rc_hash_it
    * the string "PC Engine CD-ROM SYSTEM" should exist at 32 bytes into the sector
    * http://shu.sheldows.com/shu/download/pcedocs/pce_cdrom.html
    */
-  if (rc_cd_read_sector(track_handle, rc_cd_first_track_sector(track_handle) + 1, buffer, 128) < 128)
+  if (rc_cd_read_sector(iterator, track_handle, rc_cd_first_track_sector(iterator, track_handle) + 1, buffer, 128) < 128)
   {
     return rc_hash_iterator_error(iterator, "Not a PC Engine CD");
   }
@@ -2467,10 +2488,10 @@ static int rc_hash_pce_track(char hash[33], void* track_handle, const rc_hash_it
 
     rc_hash_iterator_verbose_formatted(iterator, "Hashing %d sectors starting at sector %d", num_sectors, sector);
 
-    sector += rc_cd_first_track_sector(track_handle);
+    sector += rc_cd_first_track_sector(iterator, track_handle);
     while (num_sectors > 0)
     {
-      rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+      rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer));
       md5_append(&md5, buffer, sizeof(buffer));
 
       ++sector;
@@ -2478,12 +2499,12 @@ static int rc_hash_pce_track(char hash[33], void* track_handle, const rc_hash_it
     }
   }
   /* GameExpress CDs use a standard Joliet filesystem - locate and hash the BOOT.BIN */
-  else if ((sector = rc_cd_find_file_sector(track_handle, "BOOT.BIN", &size)) != 0 && size < MAX_BUFFER_SIZE)
+  else if ((sector = rc_cd_find_file_sector(iterator, track_handle, "BOOT.BIN", &size)) != 0 && size < MAX_BUFFER_SIZE)
   {
     md5_init(&md5);
     while (size > sizeof(buffer))
     {
-      rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+      rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer));
       md5_append(&md5, buffer, sizeof(buffer));
 
       ++sector;
@@ -2492,7 +2513,7 @@ static int rc_hash_pce_track(char hash[33], void* track_handle, const rc_hash_it
 
     if (size > 0)
     {
-      rc_cd_read_sector(track_handle, sector, buffer, size);
+      rc_cd_read_sector(iterator, track_handle, sector, buffer, size);
       md5_append(&md5, buffer, size);
     }
   }
@@ -2507,13 +2528,13 @@ static int rc_hash_pce_track(char hash[33], void* track_handle, const rc_hash_it
 static int rc_hash_pce_cd(char hash[33], const rc_hash_iterator_t* iterator)
 {
   int result;
-  void* track_handle = rc_cd_open_track(iterator->path, RC_HASH_CDTRACK_FIRST_DATA);
+  void* track_handle = rc_cd_open_track(iterator, RC_HASH_CDTRACK_FIRST_DATA);
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track");
 
   result = rc_hash_pce_track(hash, track_handle, iterator);
 
-  rc_cd_close_track(track_handle);
+  rc_cd_close_track(iterator, track_handle);
 
   return result;
 }
@@ -2526,24 +2547,24 @@ static int rc_hash_pcfx_cd(char hash[33], const rc_hash_iterator_t* iterator)
   int sector, num_sectors;
 
   /* PC-FX executable can be in any track. Assume it's in the largest data track and check there first */
-  track_handle = rc_cd_open_track(iterator->path, RC_HASH_CDTRACK_LARGEST);
+  track_handle = rc_cd_open_track(iterator, RC_HASH_CDTRACK_LARGEST);
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track");
 
   /* PC-FX CD will have a header marker in sector 0 */
-  sector = rc_cd_first_track_sector(track_handle);
-  rc_cd_read_sector(track_handle, sector, buffer, 32);
+  sector = rc_cd_first_track_sector(iterator, track_handle);
+  rc_cd_read_sector(iterator, track_handle, sector, buffer, 32);
   if (memcmp("PC-FX:Hu_CD-ROM", &buffer[0], 15) != 0)
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
 
     /* not found in the largest data track, check track 2 */
-    track_handle = rc_cd_open_track(iterator->path, 2);
+    track_handle = rc_cd_open_track(iterator, 2);
     if (!track_handle)
       return rc_hash_iterator_error(iterator, "Could not open track");
 
-    sector = rc_cd_first_track_sector(track_handle);
-    rc_cd_read_sector(track_handle, sector, buffer, 32);
+    sector = rc_cd_first_track_sector(iterator, track_handle);
+    rc_cd_read_sector(iterator, track_handle, sector, buffer, 32);
   }
 
   if (memcmp("PC-FX:Hu_CD-ROM", &buffer[0], 15) == 0)
@@ -2551,7 +2572,7 @@ static int rc_hash_pcfx_cd(char hash[33], const rc_hash_iterator_t* iterator)
     /* PC-FX boot header fills the first two sectors of the disc
      * https://bitbucket.org/trap15/pcfxtools/src/master/pcfx-cdlink.c
      * the important stuff is the first 128 bytes of the second sector (title being the first 32) */
-    rc_cd_read_sector(track_handle, sector + 1, buffer, 128);
+    rc_cd_read_sector(iterator, track_handle, sector + 1, buffer, 128);
 
     md5_init(&md5);
     md5_append(&md5, buffer, 128);
@@ -2577,10 +2598,10 @@ static int rc_hash_pcfx_cd(char hash[33], const rc_hash_iterator_t* iterator)
       verbose_message_callback(message);
     }
 
-    sector += rc_cd_first_track_sector(track_handle);
+    sector += rc_cd_first_track_sector(iterator, track_handle);
     while (num_sectors > 0)
     {
-      rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer));
+      rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer));
       md5_append(&md5, buffer, sizeof(buffer));
 
       ++sector;
@@ -2590,20 +2611,20 @@ static int rc_hash_pcfx_cd(char hash[33], const rc_hash_iterator_t* iterator)
   else
   {
     int result = 0;
-    rc_cd_read_sector(track_handle, sector + 1, buffer, 128);
+    rc_cd_read_sector(iterator, track_handle, sector + 1, buffer, 128);
 
     /* some PC-FX CDs still identify as PCE CDs */
     if (memcmp("PC Engine CD-ROM SYSTEM", &buffer[32], 23) == 0)
       result = rc_hash_pce_track(hash, track_handle, iterator);
 
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     if (result)
       return result;
 
     return rc_hash_iterator_error(iterator, "Not a PC-FX CD");
   }
 
-  rc_cd_close_track(track_handle);
+  rc_cd_close_track(iterator, track_handle);
 
   return rc_hash_finalize(&md5, hash);
 }
@@ -2620,29 +2641,29 @@ static int rc_hash_dreamcast(char hash[33], const rc_hash_iterator_t* iterator)
   int i = 0;
 
   /* track 03 is the data track that contains the TOC and IP.BIN */
-  track_handle = rc_cd_open_track(iterator->path, 3);
+  track_handle = rc_cd_open_track(iterator, 3);
   if (track_handle)
   {
     /* first 256 bytes from first sector should have IP.BIN structure that stores game meta information
      * https://mc.pp.se/dc/ip.bin.html */
-    rc_cd_read_sector(track_handle, rc_cd_first_track_sector(track_handle), buffer, sizeof(buffer));
+    rc_cd_read_sector(iterator, track_handle, rc_cd_first_track_sector(iterator, track_handle), buffer, sizeof(buffer));
   }
 
   if (memcmp(&buffer[0], "SEGA SEGAKATANA ", 16) != 0)
   {
     if (track_handle)
-      rc_cd_close_track(track_handle);
+      rc_cd_close_track(iterator, track_handle);
 
     /* not a gd-rom dreamcast file. check for mil-cd by looking for the marker in the first data track */
-    track_handle = rc_cd_open_track(iterator->path, RC_HASH_CDTRACK_FIRST_DATA);
+    track_handle = rc_cd_open_track(iterator, RC_HASH_CDTRACK_FIRST_DATA);
     if (!track_handle)
       return rc_hash_iterator_error(iterator, "Could not open track");
 
-    rc_cd_read_sector(track_handle, rc_cd_first_track_sector(track_handle), buffer, sizeof(buffer));
+    rc_cd_read_sector(iterator, track_handle, rc_cd_first_track_sector(iterator, track_handle), buffer, sizeof(buffer));
     if (memcmp(&buffer[0], "SEGA SEGAKATANA ", 16) != 0)
     {
       /* did not find marker on track 3 or first data track */
-      rc_cd_close_track(track_handle);
+      rc_cd_close_track(iterator, track_handle);
       return rc_hash_iterator_error(iterator, "Not a Dreamcast CD");
     }
   }
@@ -2673,40 +2694,41 @@ static int rc_hash_dreamcast(char hash[33], const rc_hash_iterator_t* iterator)
    * nothing can be done, as even the core doesn't run the game in this case. */
   if (i == 0)
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     return rc_hash_iterator_error(iterator, "Boot executable not specified on IP.BIN");
   }
 
   memcpy(exe_file, &buffer[96], i);
   exe_file[i] = '\0';
 
-  sector = rc_cd_find_file_sector(track_handle, exe_file, &size);
+  sector = rc_cd_find_file_sector(iterator, track_handle, exe_file, &size);
   if (sector == 0)
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     return rc_hash_iterator_error(iterator, "Could not locate boot executable");
   }
 
-  if (rc_cd_read_sector(track_handle, sector, buffer, 1))
+  if (rc_cd_read_sector(iterator, track_handle, sector, buffer, 1))
   {
     /* the boot executable is in the primary data track */
   }
   else
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
 
     /* the boot executable is normally in the last track */
-    track_handle = rc_cd_open_track(iterator->path, RC_HASH_CDTRACK_LAST);
+    track_handle = rc_cd_open_track(iterator, RC_HASH_CDTRACK_LAST);
   }
 
-  result = rc_hash_cd_file(&md5, track_handle, sector, NULL, size, "boot executable");
-  rc_cd_close_track(track_handle);
+  result = rc_hash_cd_file(&md5, iterator, track_handle, sector, NULL, size, "boot executable");
+  rc_cd_close_track(iterator, track_handle);
 
   rc_hash_finalize(&md5, hash);
   return result;
 }
 
-static int rc_hash_find_playstation_executable(void* track_handle, const char* boot_key, const char* cdrom_prefix, 
+static int rc_hash_find_playstation_executable(const rc_hash_iterator_t* iterator, void* track_handle,
+                                               const char* boot_key, const char* cdrom_prefix,
                                                char exe_name[], uint32_t exe_name_size, uint32_t* exe_size)
 {
   uint8_t buffer[2048];
@@ -2717,11 +2739,11 @@ static int rc_hash_find_playstation_executable(void* track_handle, const char* b
   const size_t cdrom_prefix_len = strlen(cdrom_prefix);
   int sector;
 
-  sector = rc_cd_find_file_sector(track_handle, "SYSTEM.CNF", NULL);
+  sector = rc_cd_find_file_sector(iterator, track_handle, "SYSTEM.CNF", NULL);
   if (!sector)
     return 0;
 
-  size = (uint32_t)rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer) - 1);
+  size = (uint32_t)rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer) - 1);
   buffer[size] = '\0';
 
   sector = 0;
@@ -2761,7 +2783,7 @@ static int rc_hash_find_playstation_executable(void* track_handle, const char* b
           verbose_message_callback((const char*)buffer);
         }
 
-        sector = rc_cd_find_file_sector(track_handle, exe_name, exe_size);
+        sector = rc_cd_find_file_sector(iterator, track_handle, exe_name, exe_size);
         break;
       }
     }
@@ -2784,14 +2806,14 @@ static int rc_hash_psx(char hash[33], const rc_hash_iterator_t* iterator)
   int result = 0;
   md5_state_t md5;
 
-  track_handle = rc_cd_open_track(iterator->path, 1);
+  track_handle = rc_cd_open_track(iterator, 1);
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track");
 
-  sector = rc_hash_find_playstation_executable(track_handle, "BOOT", "cdrom:", exe_name, sizeof(exe_name), &size);
+  sector = rc_hash_find_playstation_executable(iterator, track_handle, "BOOT", "cdrom:", exe_name, sizeof(exe_name), &size);
   if (!sector)
   {
-    sector = rc_cd_find_file_sector(track_handle, "PSX.EXE", &size);
+    sector = rc_cd_find_file_sector(iterator, track_handle, "PSX.EXE", &size);
     if (sector)
       memcpy(exe_name, "PSX.EXE", 8);
   }
@@ -2800,7 +2822,7 @@ static int rc_hash_psx(char hash[33], const rc_hash_iterator_t* iterator)
   {
     rc_hash_iterator_error(iterator, "Could not locate primary executable");
   }
-  else if (rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer)) < sizeof(buffer))
+  else if (rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer)) < sizeof(buffer))
   {
     rc_hash_iterator_error(iterator, "Could not read primary executable");
   }
@@ -2824,11 +2846,11 @@ static int rc_hash_psx(char hash[33], const rc_hash_iterator_t* iterator)
     md5_init(&md5);
     md5_append(&md5, (md5_byte_t*)exe_name, (int)strlen(exe_name));
 
-    result = rc_hash_cd_file(&md5, track_handle, sector, exe_name, size, "primary executable");
+    result = rc_hash_cd_file(&md5, iterator, track_handle, sector, exe_name, size, "primary executable");
     rc_hash_finalize(&md5, hash);
   }
 
-  rc_cd_close_track(track_handle);
+  rc_cd_close_track(iterator, track_handle);
 
   return result;
 }
@@ -2843,16 +2865,16 @@ static int rc_hash_ps2(char hash[33], const rc_hash_iterator_t* iterator)
   int result = 0;
   md5_state_t md5;
 
-  track_handle = rc_cd_open_track(iterator->path, 1);
+  track_handle = rc_cd_open_track(iterator, 1);
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track");
 
-  sector = rc_hash_find_playstation_executable(track_handle, "BOOT2", "cdrom0:", exe_name, sizeof(exe_name), &size);
+  sector = rc_hash_find_playstation_executable(iterator, track_handle, "BOOT2", "cdrom0:", exe_name, sizeof(exe_name), &size);
   if (!sector)
   {
     rc_hash_iterator_error(iterator, "Could not locate primary executable");
   }
-  else if (rc_cd_read_sector(track_handle, sector, buffer, sizeof(buffer)) < sizeof(buffer))
+  else if (rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer)) < sizeof(buffer))
   {
     rc_hash_iterator_error(iterator, "Could not read primary executable");
   }
@@ -2869,11 +2891,11 @@ static int rc_hash_ps2(char hash[33], const rc_hash_iterator_t* iterator)
     md5_init(&md5);
     md5_append(&md5, (md5_byte_t*)exe_name, (int)strlen(exe_name));
 
-    result = rc_hash_cd_file(&md5, track_handle, sector, exe_name, size, "primary executable");
+    result = rc_hash_cd_file(&md5, iterator, track_handle, sector, exe_name, size, "primary executable");
     rc_hash_finalize(&md5, hash);
   }
 
-  rc_cd_close_track(track_handle);
+  rc_cd_close_track(iterator, track_handle);
 
   return result;
 }
@@ -2893,7 +2915,7 @@ static int rc_hash_psp(char hash[33], const rc_hash_iterator_t* iterator)
   if (rc_path_compare_extension(iterator->path, "pbp"))
     return rc_hash_whole_file(hash, iterator);
 
-  track_handle = rc_cd_open_track(iterator->path, 1);
+  track_handle = rc_cd_open_track(iterator, 1);
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track");
 
@@ -2901,34 +2923,34 @@ static int rc_hash_psp(char hash[33], const rc_hash_iterator_t* iterator)
    * PSP_GAME/PARAM.SFO contains key/value pairs identifying the game for the system (i.e. serial number,
    * name, version). PSP_GAME/SYSDIR/EBOOT.BIN is the encrypted primary executable.
    */
-  sector = rc_cd_find_file_sector(track_handle, "PSP_GAME\\PARAM.SFO", &size);
+  sector = rc_cd_find_file_sector(iterator, track_handle, "PSP_GAME\\PARAM.SFO", &size);
   if (!sector)
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     return rc_hash_iterator_error(iterator, "Not a PSP game disc");
   }
 
   md5_init(&md5);
-  if (!rc_hash_cd_file(&md5, track_handle, sector, NULL, size, "PSP_GAME\\PARAM.SFO"))
+  if (!rc_hash_cd_file(&md5, iterator, track_handle, sector, NULL, size, "PSP_GAME\\PARAM.SFO"))
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     return 0;
   }
 
-  sector = rc_cd_find_file_sector(track_handle, "PSP_GAME\\SYSDIR\\EBOOT.BIN", &size);
+  sector = rc_cd_find_file_sector(iterator, track_handle, "PSP_GAME\\SYSDIR\\EBOOT.BIN", &size);
   if (!sector)
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     return rc_hash_iterator_error(iterator, "Could not find primary executable");
   }
 
-  if (!rc_hash_cd_file(&md5, track_handle, sector, NULL, size, "PSP_GAME\\SYSDIR\\EBOOT.BIN"))
+  if (!rc_hash_cd_file(&md5, iterator, track_handle, sector, NULL, size, "PSP_GAME\\SYSDIR\\EBOOT.BIN"))
   {
-    rc_cd_close_track(track_handle);
+    rc_cd_close_track(iterator, track_handle);
     return 0;
   }
 
-  rc_cd_close_track(track_handle);
+  rc_cd_close_track(iterator, track_handle);
   return rc_hash_finalize(&md5, hash);
 }
 
@@ -2937,7 +2959,7 @@ static int rc_hash_sega_cd(char hash[33], const rc_hash_iterator_t* iterator)
   uint8_t buffer[512];
   void* track_handle;
 
-  track_handle = rc_cd_open_track(iterator->path, 1);
+  track_handle = rc_cd_open_track(iterator, 1);
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track");
 
@@ -2949,8 +2971,8 @@ static int rc_hash_sega_cd(char hash[33], const rc_hash_iterator_t* iterator)
    * hashing the volume and ROM headers is sufficient for identifying the game, and we'll have to trust
    * that our players aren't modifying anything else on the disc.
    */
-  rc_cd_read_sector(track_handle, 0, buffer, sizeof(buffer));
-  rc_cd_close_track(track_handle);
+  rc_cd_read_sector(iterator, track_handle, 0, buffer, sizeof(buffer));
+  rc_cd_close_track(iterator, track_handle);
 
   if (memcmp(buffer, "SEGADISCSYSTEM  ", 16) != 0 && /* Sega CD */
       memcmp(buffer, "SEGA SEGASATURN ", 16) != 0)   /* Sega Saturn */
@@ -3525,6 +3547,9 @@ static void rc_hash_reset_iterator(rc_hash_iterator_t* iterator) {
 
   iterator->callbacks.verbose_message = verbose_message_callback;
   iterator->callbacks.error_message = error_message_callback;
+
+  if (cdreader)
+    memcpy(&iterator->callbacks.cdreader, cdreader, sizeof(*cdreader));
 }
 
 static void rc_hash_initialize_iterator_single(rc_hash_iterator_t* iterator, const char* path, int data) {
