@@ -1,5 +1,7 @@
 #include "rc_hash.h"
 
+#include "../rhash/rc_hash_internal.h"
+
 #include "../rc_compat.h"
 #include "../test_framework.h"
 #include "data.h"
@@ -2208,6 +2210,19 @@ static void test_hash_file_without_ext()
   ASSERT_STR_EQUALS(hash_iterator, "64b131c5c7fec32985d9c99700babb7e");
 }
 
+static void test_hash_handler_table_order()
+{
+  size_t num_handlers;
+  const rc_hash_iterator_ext_handler_entry_t* handlers = rc_hash_get_iterator_ext_handlers(&num_handlers);
+  int index;
+
+  for (index = 1; index < num_handlers; ++index) {
+    if (strcmp(handlers[index].ext, handlers[index - 1].ext) <= 0) {
+      ASSERT_FAIL("handler[%s] after handler[%s]", handlers[index].ext, handlers[index - 1].ext);
+    }
+  }
+}
+
 /* ========================================================================= */
 
 void test_hash(void) {
@@ -2513,6 +2528,7 @@ void test_hash(void) {
 
   /* other */
   TEST(test_hash_file_without_ext);
+  TEST(test_hash_handler_table_order);
 
   TEST_SUITE_END();
 }
