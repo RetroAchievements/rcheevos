@@ -26,8 +26,8 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
 
 /* ===================================================== */
 
-static rc_hash_message_callback error_message_callback = NULL;
-rc_hash_message_callback verbose_message_callback = NULL;
+static rc_hash_message_callback g_error_message_callback = NULL;
+rc_hash_message_callback g_verbose_message_callback = NULL;
 
 static void rc_hash_dispatch_message_va(const rc_hash_message_callback callback, const char* format, va_list args)
 {
@@ -46,21 +46,21 @@ static void rc_hash_dispatch_message_va(const rc_hash_message_callback callback,
 
 void rc_hash_init_error_message_callback(rc_hash_message_callback callback)
 {
-  error_message_callback = callback;
+  g_error_message_callback = callback;
 }
 
 static rc_hash_message_callback rc_hash_get_error_message_callback(const rc_hash_callbacks_t* callbacks) {
   if (callbacks && callbacks->error_message)
     return callbacks->error_message;
 
-  if (error_message_callback)
-    return error_message_callback;
+  if (g_error_message_callback)
+    return g_error_message_callback;
 
   if (callbacks && callbacks->verbose_message)
     return callbacks->verbose_message;
 
-  if (error_message_callback)
-    return error_message_callback;
+  if (g_verbose_message_callback)
+    return g_verbose_message_callback;
 
   return NULL;
 }
@@ -111,15 +111,15 @@ static int rc_hash_iterator_error_formatted(const rc_hash_iterator_t* iterator, 
 
 void rc_hash_init_verbose_message_callback(rc_hash_message_callback callback)
 {
-  verbose_message_callback = callback;
+  g_verbose_message_callback = callback;
 }
 
 void rc_hash_verbose(const rc_hash_callbacks_t* callbacks, const char* message)
 {
   if (callbacks->verbose_message)
     callbacks->verbose_message(message);
-  else if (verbose_message_callback)
-    verbose_message_callback(message);
+  else if (g_verbose_message_callback)
+    g_verbose_message_callback(message);
 }
 
 void rc_hash_verbose_formatted(const rc_hash_callbacks_t* callbacks, const char* format, ...) {
@@ -129,10 +129,10 @@ void rc_hash_verbose_formatted(const rc_hash_callbacks_t* callbacks, const char*
     rc_hash_dispatch_message_va(callbacks->verbose_message, format, args);
     va_end(args);
   }
-  else if (verbose_message_callback) {
+  else if (g_verbose_message_callback) {
     va_list args;
     va_start(args, format);
-    rc_hash_dispatch_message_va(verbose_message_callback, format, args);
+    rc_hash_dispatch_message_va(g_verbose_message_callback, format, args);
     va_end(args);
   }
 }
@@ -148,18 +148,18 @@ static void rc_hash_iterator_verbose_formatted(const rc_hash_iterator_t* iterato
     rc_hash_dispatch_message_va(iterator->callbacks.verbose_message, format, args);
     va_end(args);
   }
-  else if (verbose_message_callback) {
+  else if (g_verbose_message_callback) {
     va_list args;
     va_start(args, format);
-    rc_hash_dispatch_message_va(verbose_message_callback, format, args);
+    rc_hash_dispatch_message_va(g_verbose_message_callback, format, args);
     va_end(args);
   }
 }
 
 /* ===================================================== */
 
-static struct rc_hash_filereader filereader_funcs;
-static struct rc_hash_filereader* filereader = NULL;
+static struct rc_hash_filereader g_filereader_funcs;
+static struct rc_hash_filereader* g_filereader = NULL;
 
 #if defined(WINVER) && WINVER >= 0x0500
 static void* filereader_open(const char* path)
@@ -248,129 +248,122 @@ static void filereader_close(void* file_handle)
 /* for unit tests - normally would call rc_hash_init_custom_filereader(NULL) */
 void rc_hash_reset_filereader(void)
 {
-  filereader = NULL;
+  g_filereader = NULL;
 }
 
 void rc_hash_init_custom_filereader(struct rc_hash_filereader* reader)
 {
   /* initialize with defaults first */
-  filereader_funcs.open = filereader_open;
-  filereader_funcs.seek = filereader_seek;
-  filereader_funcs.tell = filereader_tell;
-  filereader_funcs.read = filereader_read;
-  filereader_funcs.close = filereader_close;
+  g_filereader_funcs.open = filereader_open;
+  g_filereader_funcs.seek = filereader_seek;
+  g_filereader_funcs.tell = filereader_tell;
+  g_filereader_funcs.read = filereader_read;
+  g_filereader_funcs.close = filereader_close;
 
   /* hook up any provided custom handlers */
   if (reader) {
     if (reader->open)
-      filereader_funcs.open = reader->open;
+      g_filereader_funcs.open = reader->open;
 
     if (reader->seek)
-      filereader_funcs.seek = reader->seek;
+      g_filereader_funcs.seek = reader->seek;
 
     if (reader->tell)
-      filereader_funcs.tell = reader->tell;
+      g_filereader_funcs.tell = reader->tell;
 
     if (reader->read)
-      filereader_funcs.read = reader->read;
+      g_filereader_funcs.read = reader->read;
 
     if (reader->close)
-      filereader_funcs.close = reader->close;
+      g_filereader_funcs.close = reader->close;
   }
 
-  filereader = &filereader_funcs;
+  g_filereader = &g_filereader_funcs;
 }
 
-void* rc_file_open(const char* path)
-{
-  void* handle;
+static void* rc_file_open(const rc_hash_iterator_t* iterator, const char* path) {
+  void* handle = NULL;
 
-  if (!filereader)
-  {
-    rc_hash_init_custom_filereader(NULL);
-    if (!filereader)
-      return NULL;
-  }
-
-  handle = filereader->open(path);
-  if (handle && verbose_message_callback)
-  {
-    char message[1024];
-    snprintf(message, sizeof(message), "Opened %s", rc_path_get_filename(path));
-    verbose_message_callback(message);
+  if (!iterator->callbacks.filereader.open) {
+    rc_hash_iterator_error(iterator, "No callback registered for opening files");
+  } else {
+    handle = iterator->callbacks.filereader.open(path);
+    if (handle)
+      rc_hash_iterator_verbose_formatted(iterator, "Opened %s", rc_path_get_filename(path));
   }
 
   return handle;
 }
 
-void rc_file_seek(void* file_handle, int64_t offset, int origin)
+static void rc_file_seek(const rc_hash_iterator_t* iterator, void* file_handle, int64_t offset, int origin)
 {
-  if (filereader)
-    filereader->seek(file_handle, offset, origin);
+  if (iterator->callbacks.filereader.seek)
+    iterator->callbacks.filereader.seek(file_handle, offset, origin);
 }
 
-int64_t rc_file_tell(void* file_handle)
+static int64_t rc_file_tell(const rc_hash_iterator_t* iterator, void* file_handle)
 {
-  return (filereader) ? filereader->tell(file_handle) : 0;
+  return iterator->callbacks.filereader.tell ? iterator->callbacks.filereader.tell(file_handle) : 0;
 }
 
-size_t rc_file_read(void* file_handle, void* buffer, int requested_bytes)
+static size_t rc_file_read(const rc_hash_iterator_t* iterator, void* file_handle, void* buffer, int requested_bytes)
 {
-  return (filereader) ? filereader->read(file_handle, buffer, requested_bytes) : 0;
+  return iterator->callbacks.filereader.read ? iterator->callbacks.filereader.read(file_handle, buffer, requested_bytes) : 0;
 }
 
-void rc_file_close(void* file_handle)
+static void rc_file_close(const rc_hash_iterator_t* iterator, void* file_handle)
 {
-  if (filereader)
-    filereader->close(file_handle);
+  if (iterator->callbacks.filereader.close)
+    iterator->callbacks.filereader.close(file_handle);
 }
 
-int64_t rc_file_size(const char* path)
+static int64_t rc_file_size(const rc_hash_iterator_t* iterator, const char* path)
 {
   int64_t size = 0;
-  void* file;
 
-  /* disable verbose messaging while getting file size */
-  rc_hash_message_callback old_verbose_message_callback = verbose_message_callback;
-  verbose_message_callback = NULL;
-
-  file = rc_file_open(path);
-  if (file) {
-    rc_file_seek(file, 0, SEEK_END);
-    size = rc_file_tell(file);
-    rc_file_close(file);
+  /* don't use rc_file_open to avoid log statements */
+  if (!iterator->callbacks.filereader.open) {
+    rc_hash_iterator_error(iterator, "No callback registered for opening files");
+  } else {
+    void* handle = iterator->callbacks.filereader.open(path);
+    if (handle) {
+      rc_file_seek(iterator, handle, 0, SEEK_END);
+      size = rc_file_tell(iterator, handle);
+      rc_file_close(iterator, handle);
+    }
   }
-
-  verbose_message_callback = old_verbose_message_callback;
 
   return size;
 }
 
 /* ===================================================== */
 
-static struct rc_hash_cdreader cdreader_funcs;
-struct rc_hash_cdreader* cdreader = NULL;
+static struct rc_hash_cdreader g_cdreader_funcs;
+static struct rc_hash_cdreader* g_cdreader = NULL;
 
 void rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader)
 {
   if (reader)
   {
-    memcpy(&cdreader_funcs, reader, sizeof(cdreader_funcs));
-    cdreader = &cdreader_funcs;
+    memcpy(&g_cdreader_funcs, reader, sizeof(g_cdreader_funcs));
+    g_cdreader = &g_cdreader_funcs;
   }
   else
   {
-    cdreader = NULL;
+    g_cdreader = NULL;
   }
 }
 
 static void* rc_cd_open_track(const rc_hash_iterator_t* iterator, uint32_t track)
 {
+  if (iterator->callbacks.cdreader.open_track_filereader)
+    return iterator->callbacks.cdreader.open_track_filereader(iterator->path, track, &iterator->callbacks.filereader);
+
   if (iterator->callbacks.cdreader.open_track)
     return iterator->callbacks.cdreader.open_track(iterator->path, track);
 
-  if (cdreader && cdreader->open_track)
-    return cdreader->open_track(iterator->path, track);
+  if (g_cdreader && g_cdreader->open_track)
+    return g_cdreader->open_track(iterator->path, track);
 
   rc_hash_iterator_error(iterator, "no hook registered for cdreader_open_track");
   return NULL;
@@ -381,8 +374,8 @@ static size_t rc_cd_read_sector(const rc_hash_iterator_t* iterator, void* track_
   if (iterator->callbacks.cdreader.read_sector)
     return iterator->callbacks.cdreader.read_sector(track_handle, sector, buffer, requested_bytes);
 
-  if (cdreader && cdreader->read_sector)
-    return cdreader->read_sector(track_handle, sector, buffer, requested_bytes);
+  if (g_cdreader && g_cdreader->read_sector)
+    return g_cdreader->read_sector(track_handle, sector, buffer, requested_bytes);
 
   rc_hash_iterator_error(iterator, "no hook registered for cdreader_read_sector");
   return 0;
@@ -393,8 +386,8 @@ static uint32_t rc_cd_first_track_sector(const rc_hash_iterator_t* iterator, voi
   if (iterator->callbacks.cdreader.first_track_sector)
     return iterator->callbacks.cdreader.first_track_sector(track_handle);
 
-  if (cdreader && cdreader->first_track_sector)
-    return cdreader->first_track_sector(track_handle);
+  if (g_cdreader && g_cdreader->first_track_sector)
+    return g_cdreader->first_track_sector(track_handle);
 
   rc_hash_iterator_error(iterator, "no hook registered for cdreader_first_track_sector");
   return 0;
@@ -404,8 +397,8 @@ static void rc_cd_close_track(const rc_hash_iterator_t* iterator, void* track_ha
 {
   if (iterator->callbacks.cdreader.close_track)
     iterator->callbacks.cdreader.close_track(track_handle);
-  else if (cdreader && cdreader->close_track)
-    cdreader->close_track(track_handle);
+  else if (g_cdreader && g_cdreader->close_track)
+    g_cdreader->close_track(track_handle);
   else
     rc_hash_iterator_error(iterator, "no hook registered for cdreader_close_track");
 }
@@ -850,8 +843,8 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle, const struct rc
   int64_t i_file, archive_size, ecdh_ofs, total_files, cdir_size, cdir_ofs;
   struct rc_hash_zip_idx* hashindices, *hashindex;
 
-  rc_file_seek(file_handle, 0, SEEK_END);
-  archive_size = rc_file_tell(file_handle);
+  rc_file_seek(iterator, file_handle, 0, SEEK_END);
+  archive_size = rc_file_tell(iterator, file_handle);
 
   /* Basic sanity checks - reject files which are too small */
   eocdirhdr_size = 22; /* the 'end of central directory header' is 22 bytes */
@@ -874,8 +867,8 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle, const struct rc
     if (n > archive_size)
       n = (int)archive_size;
 
-    rc_file_seek(file_handle, ecdh_ofs, SEEK_SET);
-    if (rc_file_read(file_handle, buf, n) != (size_t)n)
+    rc_file_seek(iterator, file_handle, ecdh_ofs, SEEK_SET);
+    if (rc_file_read(iterator, file_handle, buf, n) != (size_t)n)
       return rc_hash_iterator_error(iterator, "ZIP read error");
 
     for (i = n - 4; i >= 0; --i)
@@ -893,8 +886,8 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle, const struct rc
   }
 
   /* Read and verify the end of central directory record. */
-  rc_file_seek(file_handle, ecdh_ofs, SEEK_SET);
-  if (rc_file_read(file_handle, buf, eocdirhdr_size) != eocdirhdr_size)
+  rc_file_seek(iterator, file_handle, ecdh_ofs, SEEK_SET);
+  if (rc_file_read(iterator, file_handle, buf, eocdirhdr_size) != eocdirhdr_size)
     return rc_hash_iterator_error(iterator, "Failed to read ZIP central directory");
 
   /* Read central dir information from end of central directory header */
@@ -909,15 +902,15 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle, const struct rc
   if ((cdir_ofs == 0xFFFFFFFF || cdir_size == 0xFFFFFFFF || total_files == 0xFFFF) && ecdh_ofs >= (20 + 56))
   {
     /* Read the ZIP64 end of central directory locator if it actually exists */
-    rc_file_seek(file_handle, ecdh_ofs - 20, SEEK_SET);
-    if (rc_file_read(file_handle, buf, 20) == 20 && RC_ZIP_READ_LE32(buf) == 0x07064b50) /* locator signature */
+    rc_file_seek(iterator, file_handle, ecdh_ofs - 20, SEEK_SET);
+    if (rc_file_read(iterator, file_handle, buf, 20) == 20 && RC_ZIP_READ_LE32(buf) == 0x07064b50) /* locator signature */
     {
       /* Found the locator, now read the actual ZIP64 end of central directory header */
       int64_t ecdh64_ofs = (int64_t)RC_ZIP_READ_LE64(buf + 0x08);
       if (ecdh64_ofs <= (archive_size - 56))
       {
-        rc_file_seek(file_handle, ecdh64_ofs, SEEK_SET);
-        if (rc_file_read(file_handle, buf, 56) == 56 && RC_ZIP_READ_LE32(buf) == 0x06064b50) /* header signature */
+        rc_file_seek(iterator, file_handle, ecdh64_ofs, SEEK_SET);
+        if (rc_file_read(iterator, file_handle, buf, 56) == 56 && RC_ZIP_READ_LE32(buf) == 0x06064b50) /* header signature */
         {
           total_files = RC_ZIP_READ_LE64(buf + 0x20);
           cdir_size   = RC_ZIP_READ_LE64(buf + 0x28);
@@ -941,8 +934,8 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle, const struct rc
   /* Read entire central directory to a buffer */
   if (!alloc_buf)
     return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
-  rc_file_seek(file_handle, cdir_ofs, SEEK_SET);
-  if ((int64_t)rc_file_read(file_handle, alloc_buf, (int)cdir_size) != cdir_size)
+  rc_file_seek(iterator, file_handle, cdir_ofs, SEEK_SET);
+  if ((int64_t)rc_file_read(iterator, file_handle, alloc_buf, (int)cdir_size) != cdir_size)
   {
     free(alloc_buf);
     return rc_hash_iterator_error(iterator, "Failed to read central directory of ZIP file");
@@ -1132,7 +1125,7 @@ static int rc_hash_ms_dos_parent(md5_state_t* md5, const struct rc_hash_ms_dos_d
   }
 
   /* Try to open the parent DOSZ file */
-  parent_handle = rc_file_open(parent_path);
+  parent_handle = rc_file_open(iterator, parent_path);
   if (!parent_handle)
   {
     rc_hash_iterator_error_formatted(iterator, "DOSZ parent file '%s' does not exist", parent_path);
@@ -1144,7 +1137,7 @@ static int rc_hash_ms_dos_parent(md5_state_t* md5, const struct rc_hash_ms_dos_d
   parent.path = parent_path;
   parent.child = child;
   parent_res = rc_hash_zip_file(md5, parent_handle, &parent, iterator);
-  rc_file_close(parent_handle);
+  rc_file_close(iterator, parent_handle);
   free(parent_path);
   return parent_res;
 }
@@ -1161,14 +1154,14 @@ static int rc_hash_ms_dos_dosc(md5_state_t* md5, const struct rc_hash_ms_dos_dos
 
     /* Swap the z to c and use the same capitalization, hash the file if it exists */
     dosc_path[path_len-1] = (dosz->path[path_len-1] == 'z' ? 'c' : 'C');
-    file_handle = rc_file_open(dosc_path);
+    file_handle = rc_file_open(iterator, dosc_path);
     free(dosc_path);
 
     if (file_handle)
     {
       /* Hash the DOSC as a plain zip file (pass NULL as dosz state) */
       int res = rc_hash_zip_file(md5, file_handle, NULL, iterator);
-      rc_file_close(file_handle);
+      rc_file_close(iterator, file_handle);
       if (!res)
         return 0;
     }
@@ -1183,7 +1176,7 @@ static int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator)
   md5_state_t md5;
   int res;
 
-  void* file_handle = rc_file_open(iterator->path);
+  void* file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle)
     return rc_hash_iterator_error(iterator, "Could not open file");
 
@@ -1192,7 +1185,7 @@ static int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator)
   dosz.path = iterator->path;
   dosz.child = NULL;
   res = rc_hash_zip_file(&md5, file_handle, &dosz, iterator);
-  rc_file_close(file_handle);
+  rc_file_close(iterator, file_handle);
 
   if (!res)
     return 0;
@@ -1566,20 +1559,20 @@ static int rc_hash_n64(char hash[33], const rc_hash_iterator_t* iterator)
   int is_v64 = 0;
   int is_n64 = 0;
 
-  file_handle = rc_file_open(iterator->path);
+  file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle)
     return rc_hash_iterator_error(iterator, "Could not open file");
 
   buffer = (uint8_t*)malloc(buffer_size);
   if (!buffer) {
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
     return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
   }
   stop = buffer + buffer_size;
 
   /* read first byte so we can detect endianness */
-  rc_file_seek(file_handle, 0, SEEK_SET);
-  rc_file_read(file_handle, buffer, 1);
+  rc_file_seek(iterator, file_handle, 0, SEEK_SET);
+  rc_file_read(iterator, file_handle, buffer, 1);
 
   if (buffer[0] == 0x80) { /* z64 format (big endian [native]) */
   }
@@ -1595,15 +1588,15 @@ static int rc_hash_n64(char hash[33], const rc_hash_iterator_t* iterator)
   }
   else {
     free(buffer);
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
 
     rc_hash_iterator_verbose(iterator, "Not a Nintendo 64 ROM");
     return 0;
   }
 
   /* calculate total file size */
-  rc_file_seek(file_handle, 0, SEEK_END);
-  remaining = (size_t)rc_file_tell(file_handle);
+  rc_file_seek(iterator, file_handle, 0, SEEK_END);
+  remaining = (size_t)rc_file_tell(iterator, file_handle);
   if (remaining > MAX_BUFFER_SIZE)
     remaining = MAX_BUFFER_SIZE;
 
@@ -1612,9 +1605,9 @@ static int rc_hash_n64(char hash[33], const rc_hash_iterator_t* iterator)
   /* begin hashing */
   md5_init(&md5);
 
-  rc_file_seek(file_handle, 0, SEEK_SET);
+  rc_file_seek(iterator, file_handle, 0, SEEK_SET);
   while (remaining >= buffer_size) {
-    rc_file_read(file_handle, buffer, (int)buffer_size);
+    rc_file_read(iterator, file_handle, buffer, (int)buffer_size);
 
     if (is_v64)
       rc_hash_byteswap16(buffer, stop);
@@ -1626,7 +1619,7 @@ static int rc_hash_n64(char hash[33], const rc_hash_iterator_t* iterator)
   }
 
   if (remaining > 0) {
-    rc_file_read(file_handle, buffer, (int)remaining);
+    rc_file_read(iterator, file_handle, buffer, (int)remaining);
 
     stop = buffer + remaining;
     if (is_v64)
@@ -1638,7 +1631,7 @@ static int rc_hash_n64(char hash[33], const rc_hash_iterator_t* iterator)
   }
 
   /* cleanup */
-  rc_file_close(file_handle);
+  rc_file_close(iterator, file_handle);
   free(buffer);
 
   return rc_hash_finalize(iterator, &md5, hash);
@@ -1788,8 +1781,8 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
      * However, we can abuse how CBC decryption works and just set the IV to last block we would otherwise decrypt.
      * We don't care about the data betweeen the header and ExeFS, so this works fine. */
 
-    rc_file_seek(file_handle, (int64_t)exefs_offset - AES_BLOCKLEN, SEEK_CUR);
-    if (rc_file_read(file_handle, cia_iv, AES_BLOCKLEN) != AES_BLOCKLEN)
+    rc_file_seek(iterator, file_handle, (int64_t)exefs_offset - AES_BLOCKLEN, SEEK_CUR);
+    if (rc_file_read(iterator, file_handle, cia_iv, AES_BLOCKLEN) != AES_BLOCKLEN)
       return rc_hash_iterator_error(iterator, "Could not read NCCH data");
 
     AES_ctx_set_iv(cia_aes, cia_iv);
@@ -1797,7 +1790,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   else
   {
     /* No encryption present, just skip over the in-between data */
-    rc_file_seek(file_handle, (int64_t)exefs_offset, SEEK_CUR);
+    rc_file_seek(iterator, file_handle, (int64_t)exefs_offset, SEEK_CUR);
   }
 
   hash_buffer = (uint8_t*)malloc(exefs_buffer_size);
@@ -1815,7 +1808,7 @@ static int rc_hash_nintendo_3ds_ncch(md5_state_t* md5, void* file_handle, uint8_
   rc_hash_iterator_verbose_formatted(iterator, "Hashing %u bytes for ExeFS (at NCCH offset %08X%08X)",
     (unsigned)exefs_buffer_size, (unsigned)(exefs_offset >> 32), (unsigned)exefs_offset);
 
-  if (rc_file_read(file_handle, hash_buffer, exefs_buffer_size) != exefs_buffer_size)
+  if (rc_file_read(iterator, file_handle, hash_buffer, exefs_buffer_size) != exefs_buffer_size)
   {
     free(hash_buffer);
     return rc_hash_iterator_error(iterator, "Could not read ExeFS data");
@@ -1968,24 +1961,24 @@ static int rc_hash_nintendo_3ds_cia(md5_state_t* md5, void* file_handle, uint8_t
 
   /* Check if this CIA is encrypted, if it isn't, we can hash it right away */
 
-  rc_file_seek(file_handle, tmd_offset, SEEK_SET);
-  if (rc_file_read(file_handle, header, 4) != 4)
+  rc_file_seek(iterator, file_handle, tmd_offset, SEEK_SET);
+  if (rc_file_read(iterator, file_handle, header, 4) != 4)
     return rc_hash_iterator_error(iterator, "Could not read TMD signature type");
 
   signature_size = rc_hash_nintendo_3ds_cia_signature_size(header, iterator);
   if (signature_size == 0)
     return 0; /* rc_hash_nintendo_3ds_cia_signature_size will call rc_hash_error, so we don't need to do so here */
 
-  rc_file_seek(file_handle, signature_size + 0x9E, SEEK_CUR);
-  if (rc_file_read(file_handle, header, 2) != 2)
+  rc_file_seek(iterator, file_handle, signature_size + 0x9E, SEEK_CUR);
+  if (rc_file_read(iterator, file_handle, header, 2) != 2)
     return rc_hash_iterator_error(iterator, "Could not read TMD content count");
 
   content_count = (header[0] << 8) | header[1];
 
-  rc_file_seek(file_handle, 0x9C4 - 0x9E - 2, SEEK_CUR);
+  rc_file_seek(iterator, file_handle, 0x9C4 - 0x9E - 2, SEEK_CUR);
   for (i = 0; i < content_count; i++)
   {
-    if (rc_file_read(file_handle, header, 0x30) != 0x30)
+    if (rc_file_read(iterator, file_handle, header, 0x30) != 0x30)
       return rc_hash_iterator_error(iterator, "Could not read TMD content chunk");
 
     /* Content index 0 is the main content (i.e. the 3DS executable)  */
@@ -2001,8 +1994,8 @@ static int rc_hash_nintendo_3ds_cia(md5_state_t* md5, void* file_handle, uint8_t
   if ((header[7] & 1) == 0)
   {
     /* Not encrypted, we can hash the NCCH immediately */
-    rc_file_seek(file_handle, content_offset, SEEK_SET);
-    if (rc_file_read(file_handle, header, 0x200) != 0x200)
+    rc_file_seek(iterator, file_handle, content_offset, SEEK_SET);
+    if (rc_file_read(iterator, file_handle, header, 0x200) != 0x200)
       return rc_hash_iterator_error(iterator, "Could not read NCCH header");
 
     if (memcmp(&header[0x100], "NCCH", 4) != 0)
@@ -2017,16 +2010,16 @@ static int rc_hash_nintendo_3ds_cia(md5_state_t* md5, void* file_handle, uint8_t
   /* Acquire the encrypted title key, title id, and common key index from the ticket */
   /* These will be needed to decrypt the title key, and that will be needed to decrypt the CIA */
 
-  rc_file_seek(file_handle, tik_offset, SEEK_SET);
-  if (rc_file_read(file_handle, header, 4) != 4)
+  rc_file_seek(iterator, file_handle, tik_offset, SEEK_SET);
+  if (rc_file_read(iterator, file_handle, header, 4) != 4)
     return rc_hash_iterator_error(iterator, "Could not read ticket signature type");
 
   signature_size = rc_hash_nintendo_3ds_cia_signature_size(header, iterator);
   if (signature_size == 0)
     return 0;
 
-  rc_file_seek(file_handle, signature_size, SEEK_CUR);
-  if (rc_file_read(file_handle, header, 0xB2) != 0xB2)
+  rc_file_seek(iterator, file_handle, signature_size, SEEK_CUR);
+  if (rc_file_read(iterator, file_handle, header, 0xB2) != 0xB2)
     return rc_hash_iterator_error(iterator, "Could not read ticket data");
 
   memcpy(title_key, &header[0x7F], sizeof(title_key));
@@ -2048,8 +2041,8 @@ static int rc_hash_nintendo_3ds_cia(md5_state_t* md5, void* file_handle, uint8_t
 
   /* Now we can hash the NCCH */
 
-  rc_file_seek(file_handle, content_offset, SEEK_SET);
-  if (rc_file_read(file_handle, header, 0x200) != 0x200)
+  rc_file_seek(iterator, file_handle, content_offset, SEEK_SET);
+  if (rc_file_read(iterator, file_handle, header, 0x200) != 0x200)
     return rc_hash_iterator_error(iterator, "Could not read NCCH header");
 
   memset(iv, 0, sizeof(iv)); /* Content index is iv (which is always 0 for main content) */
@@ -2082,11 +2075,11 @@ static int rc_hash_nintendo_3ds_3dsx(md5_state_t* md5, void* file_handle, uint8_
   if (!hash_buffer)
     return rc_hash_iterator_error_formatted(iterator, "Failed to allocate %u bytes", (unsigned)code_size);
 
-  rc_file_seek(file_handle, code_offset, SEEK_SET);
+  rc_file_seek(iterator, file_handle, code_offset, SEEK_SET);
 
   rc_hash_iterator_verbose_formatted(iterator, "Hashing %u bytes for 3DSX (at %08X)", (unsigned)code_size, (unsigned)code_offset);
 
-  if (rc_file_read(file_handle, hash_buffer, code_size) != code_size)
+  if (rc_file_read(iterator, file_handle, hash_buffer, code_size) != code_size)
   {
     free(hash_buffer);
     return rc_hash_iterator_error(iterator, "Could not read 3DSX code segment");
@@ -2105,16 +2098,16 @@ static int rc_hash_nintendo_3ds(char hash[33], const rc_hash_iterator_t* iterato
   uint8_t header[0x200]; /* NCCH and NCSD headers are both 0x200 bytes */
   int64_t header_offset;
 
-  file_handle = rc_file_open(iterator->path);
+  file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle)
     return rc_hash_iterator_error(iterator, "Could not open file");
 
-  rc_file_seek(file_handle, 0, SEEK_SET);
+  rc_file_seek(iterator, file_handle, 0, SEEK_SET);
 
   /* If we don't have a full header, this is probably not a 3DS ROM */
-  if (rc_file_read(file_handle, header, sizeof(header)) != sizeof(header))
+  if (rc_file_read(iterator, file_handle, header, sizeof(header)) != sizeof(header))
   {
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
     return rc_hash_iterator_error(iterator, "Could not read 3DS ROM header");
   }
 
@@ -2138,16 +2131,16 @@ static int rc_hash_nintendo_3ds(char hash[33], const rc_hash_iterator_t* iterato
       "Detected NCSD header, seeking to NCCH partition at %08X%08X",
       (unsigned)(header_offset >> 32), (unsigned)header_offset);
 
-    rc_file_seek(file_handle, header_offset, SEEK_SET);
-    if (rc_file_read(file_handle, header, sizeof(header)) != sizeof(header))
+    rc_file_seek(iterator, file_handle, header_offset, SEEK_SET);
+    if (rc_file_read(iterator, file_handle, header, sizeof(header)) != sizeof(header))
     {
-      rc_file_close(file_handle);
+      rc_file_close(iterator, file_handle);
       return rc_hash_iterator_error(iterator, "Could not read 3DS NCCH header");
     }
 
     if (memcmp(&header[0x100], "NCCH", 4) != 0)
     {
-      rc_file_close(file_handle);
+      rc_file_close(iterator, file_handle);
       return rc_hash_iterator_error_formatted(iterator, "3DS NCCH header was not at %08X%08X", (unsigned)(header_offset >> 32), (unsigned)header_offset);
     }
   }
@@ -2156,11 +2149,11 @@ static int rc_hash_nintendo_3ds(char hash[33], const rc_hash_iterator_t* iterato
   {
     if (rc_hash_nintendo_3ds_ncch(&md5, file_handle, header, NULL, iterator))
     {
-      rc_file_close(file_handle);
+      rc_file_close(iterator, file_handle);
       return rc_hash_finalize(iterator, &md5, hash);
     }
 
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
     return rc_hash_iterator_error(iterator, "Failed to hash 3DS NCCH container");
   }
 
@@ -2173,11 +2166,11 @@ static int rc_hash_nintendo_3ds(char hash[33], const rc_hash_iterator_t* iterato
 
     if (rc_hash_nintendo_3ds_cia(&md5, file_handle, header, iterator))
     {
-      rc_file_close(file_handle);
+      rc_file_close(iterator, file_handle);
       return rc_hash_finalize(iterator, &md5, hash);
     }
 
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
     return rc_hash_iterator_error(iterator, "Failed to hash 3DS CIA container");
   }
 
@@ -2188,11 +2181,11 @@ static int rc_hash_nintendo_3ds(char hash[33], const rc_hash_iterator_t* iterato
 
     if (rc_hash_nintendo_3ds_3dsx(&md5, file_handle, header, iterator))
     {
-      rc_file_close(file_handle);
+      rc_file_close(iterator, file_handle);
       return rc_hash_finalize(iterator, &md5, hash);
     }
 
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
     return rc_hash_iterator_error(iterator, "Failed to hash 3DS 3DSX container");
   }
 
@@ -2202,11 +2195,11 @@ static int rc_hash_nintendo_3ds(char hash[33], const rc_hash_iterator_t* iterato
     rc_hash_iterator_verbose(iterator, "Detected AXF/ELF file, hashing entire file");
 
     /* Don't bother doing anything fancy here, just hash entire file */
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
     return rc_hash_whole_file(hash, iterator);
   }
 
-  rc_file_close(file_handle);
+  rc_file_close(iterator, file_handle);
   return rc_hash_iterator_error(iterator, "Not a 3DS ROM");
 }
 
@@ -2220,12 +2213,12 @@ static int rc_hash_nintendo_ds(char hash[33], const rc_hash_iterator_t* iterator
   md5_state_t md5;
   void* file_handle;
 
-  file_handle = rc_file_open(iterator->path);
+  file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle)
     return rc_hash_iterator_error(iterator, "Could not open file");
 
-  rc_file_seek(file_handle, 0, SEEK_SET);
-  if (rc_file_read(file_handle, header, sizeof(header)) != 512)
+  rc_file_seek(iterator, file_handle, 0, SEEK_SET);
+  if (rc_file_read(iterator, file_handle, header, sizeof(header)) != 512)
     return rc_hash_iterator_error(iterator, "Failed to read header");
 
   if (header[0] == 0x2E && header[1] == 0x00 && header[2] == 0x00 && header[3] == 0xEA &&
@@ -2235,8 +2228,8 @@ static int rc_hash_nintendo_ds(char hash[33], const rc_hash_iterator_t* iterator
     rc_hash_iterator_verbose(iterator, "Ignoring SuperCard header");
 
     offset = 512;
-    rc_file_seek(file_handle, offset, SEEK_SET);
-    rc_file_read(file_handle, header, sizeof(header));
+    rc_file_seek(iterator, file_handle, offset, SEEK_SET);
+    rc_file_read(iterator, file_handle, header, sizeof(header));
   }
 
   arm9_addr = header[0x20] | (header[0x21] << 8) | (header[0x22] << 16) | (header[0x23] << 24);
@@ -2260,7 +2253,7 @@ static int rc_hash_nintendo_ds(char hash[33], const rc_hash_iterator_t* iterator
   hash_buffer = (uint8_t*)malloc(hash_size);
   if (!hash_buffer)
   {
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
     return rc_hash_iterator_error_formatted(iterator, "Failed to allocate %u bytes", hash_size);
   }
 
@@ -2271,20 +2264,20 @@ static int rc_hash_nintendo_ds(char hash[33], const rc_hash_iterator_t* iterator
 
   rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte arm9 code (at %08X)", arm9_size, arm9_addr);
 
-  rc_file_seek(file_handle, arm9_addr + offset, SEEK_SET);
-  rc_file_read(file_handle, hash_buffer, arm9_size);
+  rc_file_seek(iterator, file_handle, arm9_addr + offset, SEEK_SET);
+  rc_file_read(iterator, file_handle, hash_buffer, arm9_size);
   md5_append(&md5, hash_buffer, arm9_size);
 
   rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte arm7 code (at %08X)", arm7_size, arm7_addr);
 
-  rc_file_seek(file_handle, arm7_addr + offset, SEEK_SET);
-  rc_file_read(file_handle, hash_buffer, arm7_size);
+  rc_file_seek(iterator, file_handle, arm7_addr + offset, SEEK_SET);
+  rc_file_read(iterator, file_handle, hash_buffer, arm7_size);
   md5_append(&md5, hash_buffer, arm7_size);
 
   rc_hash_iterator_verbose_formatted(iterator, "Hashing 2560 byte icon and labels data (at %08X)", icon_addr);
 
-  rc_file_seek(file_handle, icon_addr + offset, SEEK_SET);
-  num_read = rc_file_read(file_handle, hash_buffer, 0xA00);
+  rc_file_seek(iterator, file_handle, icon_addr + offset, SEEK_SET);
+  num_read = rc_file_read(iterator, file_handle, hash_buffer, 0xA00);
   if (num_read < 0xA00)
   {
     /* some homebrew games don't provide a full icon block, and no data after the icon block.
@@ -2298,7 +2291,7 @@ static int rc_hash_nintendo_ds(char hash[33], const rc_hash_iterator_t* iterator
   md5_append(&md5, hash_buffer, 0xA00);
 
   free(hash_buffer);
-  rc_file_close(file_handle);
+  rc_file_close(iterator, file_handle);
 
   return rc_hash_finalize(iterator, &md5, hash);
 }
@@ -2319,26 +2312,26 @@ static int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
   uint32_t dol_buf_size = 0;
   uint32_t ix;
 
-  file_handle = rc_file_open(iterator->path);
+  file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle)
     return rc_hash_iterator_error(iterator, "Could not open file");
 
   /* Verify Gamecube */
-  rc_file_seek(file_handle, 0x1c, SEEK_SET);
-  rc_file_read(file_handle, quad_buffer, 4);
+  rc_file_seek(iterator, file_handle, 0x1c, SEEK_SET);
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
   if (quad_buffer[0] != 0xC2|| quad_buffer[1] != 0x33 || quad_buffer[2] != 0x9F || quad_buffer[3] != 0x3D)
   {
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
     return rc_hash_iterator_error(iterator, "Not a Gamecube disc");
   }
 
   /* GetApploaderSize */
-  rc_file_seek(file_handle, BASE_HEADER_SIZE + 0x14, SEEK_SET);
+  rc_file_seek(iterator, file_handle, BASE_HEADER_SIZE + 0x14, SEEK_SET);
   apploader_header_size = 0x20;
-  rc_file_read(file_handle, quad_buffer, 4);
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
   apploader_body_size =
     (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
-  rc_file_read(file_handle, quad_buffer, 4);
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
   apploader_trailer_size =
     (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
   header_size = BASE_HEADER_SIZE + apploader_header_size + apploader_body_size + apploader_trailer_size;
@@ -2349,11 +2342,11 @@ static int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
   buffer = (uint8_t*)malloc(header_size);
   if (!buffer)
   {
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
     return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
   }
-  rc_file_seek(file_handle, 0, SEEK_SET);
-  rc_file_read(file_handle, buffer, header_size);
+  rc_file_seek(iterator, file_handle, 0, SEEK_SET);
+  rc_file_read(iterator, file_handle, buffer, header_size);
   md5_init(&md5);
 
   rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte header", header_size);
@@ -2367,8 +2360,8 @@ static int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
   free(buffer);
 
   /* Find offsetsand sizes for the 7 main.dol code segments and 11 main.dol data segments */
-  rc_file_seek(file_handle, dol_offset, SEEK_SET);
-  rc_file_read(file_handle, addr_buffer, 0xD8);
+  rc_file_seek(iterator, file_handle, dol_offset, SEEK_SET);
+  rc_file_read(iterator, file_handle, addr_buffer, 0xD8);
   for (ix = 0; ix < 18; ix++)
   {
     dol_offsets[ix] =
@@ -2388,7 +2381,7 @@ static int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
   buffer = (uint8_t*)malloc(dol_buf_size);
   if (!buffer)
   {
-    rc_file_close(file_handle);
+    rc_file_close(iterator, file_handle);
     return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
   }
   for (ix = 0; ix < 18; ix++)
@@ -2401,14 +2394,14 @@ static int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
     else
       rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte main.dol data segment %u", dol_sizes[ix], ix - 7);
 
-    rc_file_seek(file_handle, dol_offsets[ix], SEEK_SET);
-    rc_file_read(file_handle, buffer, dol_sizes[ix]);
+    rc_file_seek(iterator, file_handle, dol_offsets[ix], SEEK_SET);
+    rc_file_read(iterator, file_handle, buffer, dol_sizes[ix]);
 
     md5_append(&md5, buffer, dol_sizes[ix]);
   }
 
   /* Finalize */
-  rc_file_close(file_handle);
+  rc_file_close(iterator, file_handle);
   free(buffer);
 
   return rc_hash_finalize(iterator, &md5, hash);
@@ -3028,28 +3021,25 @@ static void rc_file_close_buffered_file(void* file_handle)
 
 static int rc_hash_file_from_buffer(char hash[33], uint32_t console_id, const rc_hash_iterator_t* iterator)
 {
-  struct rc_hash_filereader buffered_filereader_funcs;
-  struct rc_hash_filereader* old_filereader = filereader;
   int result;
 
   rc_hash_iterator_t buffered_file_iterator;
   memset(&buffered_file_iterator, 0, sizeof(buffered_file_iterator));
   memcpy(&buffered_file_iterator.callbacks, &iterator->callbacks, sizeof(iterator->callbacks));
 
-  memset(&buffered_filereader_funcs, 0, sizeof(buffered_filereader_funcs));
-  buffered_filereader_funcs.open = rc_file_open_buffered_file;
-  buffered_filereader_funcs.close = rc_file_close_buffered_file;
-  buffered_filereader_funcs.read = rc_file_read_buffered_file;
-  buffered_filereader_funcs.seek = rc_file_seek_buffered_file;
-  buffered_filereader_funcs.tell = rc_file_tell_buffered_file;
-  filereader = &buffered_filereader_funcs;
+  buffered_file_iterator.callbacks.filereader.open = rc_file_open_buffered_file;
+  buffered_file_iterator.callbacks.filereader.close = rc_file_close_buffered_file;
+  buffered_file_iterator.callbacks.filereader.read = rc_file_read_buffered_file;
+  buffered_file_iterator.callbacks.filereader.seek = rc_file_seek_buffered_file;
+  buffered_file_iterator.callbacks.filereader.tell = rc_file_tell_buffered_file;
+  buffered_file_iterator.path = "memory stream";
 
   rc_buffered_file.data = rc_buffered_file.read_ptr = iterator->buffer;
   rc_buffered_file.data_size = iterator->buffer_size;
 
   result = rc_hash_from_file(hash, console_id, &buffered_file_iterator);
 
-  filereader = old_filereader;
+  buffered_file_iterator.path = NULL;
   rc_hash_destroy_iterator(&buffered_file_iterator);
   return result;
 }
@@ -3139,12 +3129,12 @@ static int rc_hash_whole_file(char hash[33], const rc_hash_iterator_t* iterator)
   size_t remaining;
   int result = 0;
 
-  file_handle = rc_file_open(iterator->path);
+  file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle)
     return rc_hash_iterator_error(iterator, "Could not open file");
 
-  rc_file_seek(file_handle, 0, SEEK_END);
-  size = rc_file_tell(file_handle);
+  rc_file_seek(iterator, file_handle, 0, SEEK_END);
+  size = rc_file_tell(iterator, file_handle);
 
   if (size > MAX_BUFFER_SIZE) {
     rc_hash_iterator_verbose_formatted(iterator, "Hashing first %u bytes (of %u bytes) of %s", MAX_BUFFER_SIZE, (unsigned)size, rc_path_get_filename(iterator->path));
@@ -3160,17 +3150,17 @@ static int rc_hash_whole_file(char hash[33], const rc_hash_iterator_t* iterator)
   buffer = (uint8_t*)malloc(buffer_size);
   if (buffer)
   {
-    rc_file_seek(file_handle, 0, SEEK_SET);
+    rc_file_seek(iterator, file_handle, 0, SEEK_SET);
     while (remaining >= buffer_size)
     {
-      rc_file_read(file_handle, buffer, (int)buffer_size);
+      rc_file_read(iterator, file_handle, buffer, (int)buffer_size);
       md5_append(&md5, buffer, (int)buffer_size);
       remaining -= buffer_size;
     }
 
     if (remaining > 0)
     {
-      rc_file_read(file_handle, buffer, (int)remaining);
+      rc_file_read(iterator, file_handle, buffer, (int)remaining);
       md5_append(&md5, buffer, (int)remaining);
     }
 
@@ -3178,7 +3168,7 @@ static int rc_hash_whole_file(char hash[33], const rc_hash_iterator_t* iterator)
     result = rc_hash_finalize(iterator, &md5, hash);
   }
 
-  rc_file_close(file_handle);
+  rc_file_close(iterator, file_handle);
   return result;
 }
 
@@ -3189,12 +3179,12 @@ static int rc_hash_buffered_file(char hash[33], uint32_t console_id, const rc_ha
   int result = 0;
   void* file_handle;
 
-  file_handle = rc_file_open(iterator->path);
+  file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle)
     return rc_hash_iterator_error(iterator, "Could not open file");
 
-  rc_file_seek(file_handle, 0, SEEK_END);
-  size = rc_file_tell(file_handle);
+  rc_file_seek(iterator, file_handle, 0, SEEK_END);
+  size = rc_file_tell(iterator, file_handle);
 
   if (size > MAX_BUFFER_SIZE) {
     rc_hash_iterator_verbose_formatted(iterator, "Buffering first %u bytes (of %d bytes) of %s", MAX_BUFFER_SIZE, (unsigned)size, rc_path_get_filename(iterator->path));
@@ -3212,15 +3202,15 @@ static int rc_hash_buffered_file(char hash[33], uint32_t console_id, const rc_ha
     buffer_iterator.buffer = buffer;
     buffer_iterator.buffer_size = (size_t)size;
 
-    rc_file_seek(file_handle, 0, SEEK_SET);
-    rc_file_read(file_handle, buffer, (int)size);
+    rc_file_seek(iterator, file_handle, 0, SEEK_SET);
+    rc_file_read(iterator, file_handle, buffer, (int)size);
 
     result = rc_hash_from_buffer(hash, console_id, &buffer_iterator);
 
     free(buffer);
   }
 
-  rc_file_close(file_handle);
+  rc_file_close(iterator, file_handle);
   return result;
 }
 
@@ -3256,16 +3246,16 @@ static const char* rc_hash_get_first_item_from_playlist(const rc_hash_iterator_t
   size_t num_read, path_len, file_len;
   void* file_handle;
 
-  file_handle = rc_file_open(iterator->path);
+  file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle) {
     rc_hash_iterator_error(iterator, "Could not open playlist");
     return NULL;
   }
 
-  num_read = rc_file_read(file_handle, buffer, sizeof(buffer) - 1);
+  num_read = rc_file_read(iterator, file_handle, buffer, sizeof(buffer) - 1);
   buffer[num_read] = '\0';
 
-  rc_file_close(file_handle);
+  rc_file_close(iterator, file_handle);
 
   ptr = start = buffer;
   do {
@@ -3503,11 +3493,23 @@ static void rc_hash_iterator_append_console(struct rc_hash_iterator* iterator, u
 static void rc_hash_reset_iterator(rc_hash_iterator_t* iterator) {
   memset(iterator, 0, sizeof(*iterator));
 
-  iterator->callbacks.verbose_message = verbose_message_callback;
-  iterator->callbacks.error_message = error_message_callback;
+  iterator->callbacks.verbose_message = g_verbose_message_callback;
+  iterator->callbacks.error_message = g_error_message_callback;
 
-  if (cdreader)
-    memcpy(&iterator->callbacks.cdreader, cdreader, sizeof(*cdreader));
+  if (g_filereader) {
+    memcpy(&iterator->callbacks.filereader, g_filereader, sizeof(*g_filereader));
+  } else if (!iterator->callbacks.filereader.open) {
+    iterator->callbacks.filereader.open = filereader_open;
+    iterator->callbacks.filereader.close = filereader_close;
+    iterator->callbacks.filereader.seek = filereader_seek;
+    iterator->callbacks.filereader.tell = filereader_tell;
+    iterator->callbacks.filereader.read = filereader_read;
+  }
+
+  if (g_cdreader)
+    memcpy(&iterator->callbacks.cdreader, g_cdreader, sizeof(*g_cdreader));
+  else
+    rc_hash_get_default_cdreader(&iterator->callbacks.cdreader);
 }
 
 static void rc_hash_initialize_iterator_single(rc_hash_iterator_t* iterator, const char* path, int data) {
@@ -3527,7 +3529,7 @@ static void rc_hash_initialize_iterator_bin(rc_hash_iterator_t* iterator, const 
 
   if (iterator->buffer_size == 0) {
     /* raw bin file may be a CD track. if it's more than 32MB, try a CD hash. */
-    const int64_t size = rc_file_size(path);
+    const int64_t size = rc_file_size(iterator, path);
     if (size > 32 * 1024 * 1024) {
       iterator->consoles[0] = RC_CONSOLE_3DO; /* 4DO supports directly opening the bin file */
       iterator->consoles[1] = RC_CONSOLE_PLAYSTATION; /* PCSX ReARMed supports directly opening the bin file*/
@@ -3591,7 +3593,7 @@ static void rc_hash_initialize_iterator_d88(rc_hash_iterator_t* iterator, const 
 static void rc_hash_initialize_iterator_dsk(rc_hash_iterator_t* iterator, const char* path, int data) {
   size_t size = iterator->buffer_size;
   if (size == 0)
-    size = rc_file_size(path);
+    size = rc_file_size(iterator, path);
 
   (void)data;
 

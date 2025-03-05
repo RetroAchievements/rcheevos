@@ -9,6 +9,7 @@
 RC_BEGIN_C_DECLS
 
 void init_mock_filereader();
+void get_mock_filereader(struct rc_hash_filereader* reader);
 void init_mock_cdreader();
 
 void rc_hash_reset_filereader();

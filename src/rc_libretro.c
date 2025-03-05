@@ -15,15 +15,6 @@
 #include <ctype.h>
 #include <string.h>
 
-/* internal helper functions in hash.c */
-extern void* rc_file_open(const char* path);
-extern void rc_file_seek(void* file_handle, int64_t offset, int origin);
-extern int64_t rc_file_tell(void* file_handle);
-extern size_t rc_file_read(void* file_handle, void* buffer, int requested_bytes);
-extern void rc_file_close(void* file_handle);
-extern int rc_path_compare_extension(const char* path, const char* ext);
-
-
 static rc_libretro_message_callback rc_libretro_verbose_message_callback = NULL;
 
 /* a value that starts with a comma is a CSV.
@@ -744,7 +735,8 @@ void rc_libretro_memory_destroy(rc_libretro_memory_regions_t* regions) {
 }
 
 void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
-                               const char* m3u_path, rc_libretro_get_image_path_func get_image_path) {
+                               const char* m3u_path, rc_libretro_get_image_path_func get_image_path,
+                               const rc_hash_filereader_t* file_reader) {
   char image_path[1024];
   char* m3u_contents;
   char* ptr;
@@ -757,22 +749,20 @@ void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
   if (!rc_path_compare_extension(m3u_path, "m3u"))
     return;
 
-  file_handle = rc_file_open(m3u_path);
+  file_handle = file_reader->open(m3u_path);
   if (!file_handle) {
     rc_hash_error(NULL, "Could not open playlist");
     return;
   }
 
-  rc_file_seek(file_handle, 0, SEEK_END);
-  file_len = rc_file_tell(file_handle);
-  rc_file_seek(file_handle, 0, SEEK_SET);
+  file_reader->seek(file_handle, 0, SEEK_END);
+  file_len = file_reader->tell(file_handle);
+  file_reader->seek(file_handle, 0, SEEK_SET);
 
   m3u_contents = (char*)malloc((size_t)file_len + 1);
   if (m3u_contents) {
-    rc_file_read(file_handle, m3u_contents, (int)file_len);
+    file_reader->read(file_handle, m3u_contents, (int)file_len);
     m3u_contents[file_len] = '\0';
-
-    rc_file_close(file_handle);
 
     ptr = m3u_contents;
     do
@@ -806,6 +796,9 @@ void rc_libretro_hash_set_init(struct rc_libretro_hash_set_t* hash_set,
 
     free(m3u_contents);
   }
+
+  if (file_reader->close)
+    file_reader->close(file_handle);
 
   if (hash_set->entries_count > 0) {
     /* at least one save disk was found. make sure the core supports the #SAVEDISK: extension by
