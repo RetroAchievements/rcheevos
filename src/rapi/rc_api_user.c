@@ -278,3 +278,96 @@ int rc_api_process_fetch_user_unlocks_server_response(rc_api_fetch_user_unlocks_
 void rc_api_destroy_fetch_user_unlocks_response(rc_api_fetch_user_unlocks_response_t* response) {
   rc_buffer_destroy(&response->response.buffer);
 }
+
+/* --- Fetch Followed Users --- */
+
+int rc_api_init_fetch_followed_users_request(rc_api_request_t* request, const rc_api_fetch_followed_users_request_t* api_params) {
+  return rc_api_init_fetch_followed_users_request_hosted(request, api_params, &g_host);
+}
+
+int rc_api_init_fetch_followed_users_request_hosted(rc_api_request_t* request,
+                                                    const rc_api_fetch_followed_users_request_t* api_params,
+                                                    const rc_api_host_t* host) {
+  rc_api_url_builder_t builder;
+
+  rc_api_url_build_dorequest_url(request, host);
+
+  rc_url_builder_init(&builder, &request->buffer, 48);
+  if (rc_api_url_build_dorequest(&builder, "getfriendlist", api_params->username, api_params->api_token)) {
+    request->post_data = rc_url_builder_finalize(&builder);
+    request->content_type = RC_CONTENT_TYPE_URLENCODED;
+  }
+
+  return builder.result;
+}
+
+int rc_api_process_fetch_followed_users_server_response(rc_api_fetch_followed_users_response_t* response, const rc_api_server_response_t* server_response) {
+  rc_json_field_t array_field;
+  rc_json_iterator_t iterator;
+  rc_api_followed_user_t* user;
+  uint32_t timet;
+  int result;
+  rc_json_field_t fields[] = {
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Friends")
+  };
+
+  rc_json_field_t followed_user_entry_fields[] = {
+    RC_JSON_NEW_FIELD("Friend"),
+    RC_JSON_NEW_FIELD("AvatarUrl"),
+    RC_JSON_NEW_FIELD("RAPoints"),
+    RC_JSON_NEW_FIELD("LastSeen"),
+    RC_JSON_NEW_FIELD("LastSeenTime"),
+    RC_JSON_NEW_FIELD("LastGameId"),
+    RC_JSON_NEW_FIELD("LastGameTitle"),
+    RC_JSON_NEW_FIELD("LastGameIconUrl"),
+  };
+
+  memset(response, 0, sizeof(*response));
+  rc_buffer_init(&response->response.buffer);
+
+  result = rc_json_parse_server_response(&response->response, server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  if (result != RC_OK || !response->response.succeeded)
+    return result;
+
+  if (!rc_json_get_required_array(&response->num_users, &array_field, &response->response, &fields[2], "Friends"))
+    return RC_MISSING_VALUE;
+
+  if (response->num_users) {
+    response->users = (rc_api_followed_user_t*)rc_buffer_alloc(&response->response.buffer, response->num_users * sizeof(rc_api_followed_user_t));
+    if (!response->users)
+      return RC_OUT_OF_MEMORY;
+
+    memset(&iterator, 0, sizeof(iterator));
+    iterator.json = array_field.value_start;
+    iterator.end = array_field.value_end;
+
+    user = response->users;
+    while (rc_json_get_array_entry_object(followed_user_entry_fields, sizeof(followed_user_entry_fields) / sizeof(followed_user_entry_fields[0]), &iterator)) {
+      if (!rc_json_get_required_string(&user->display_name, &response->response, &followed_user_entry_fields[0], "Friend"))
+        return RC_MISSING_VALUE;
+      if (!rc_json_get_required_string(&user->avatar_url, &response->response, &followed_user_entry_fields[1], "AvatarUrl"))
+        return RC_MISSING_VALUE;
+      if (!rc_json_get_required_unum(&user->score, &response->response, &followed_user_entry_fields[2], "RAPoints"))
+        return RC_MISSING_VALUE;
+
+      rc_json_get_optional_string(&user->recent_activity.description, &response->response, &followed_user_entry_fields[3], "LastSeen", NULL);
+
+      rc_json_get_optional_unum(&timet, &followed_user_entry_fields[4], "LastSeenTime", 0);
+      user->recent_activity.when = (time_t)timet;
+
+      rc_json_get_optional_unum(&user->recent_activity.context_id, &followed_user_entry_fields[5], "LastGameId", 0);
+      rc_json_get_optional_string(&user->recent_activity.context, &response->response, &followed_user_entry_fields[6], "LastGameTitle", NULL);
+      rc_json_get_optional_string(&user->recent_activity.context_image_url, &response->response, &followed_user_entry_fields[7], "LastGameIconUrl", NULL);
+
+      ++user;
+    }
+  }
+
+  return RC_OK;
+}
+
+void rc_api_destroy_fetch_followed_users_response(rc_api_fetch_followed_users_response_t* response) {
+  rc_buffer_destroy(&response->response.buffer);
+}
