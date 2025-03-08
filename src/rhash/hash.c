@@ -3593,7 +3593,7 @@ static void rc_hash_initialize_iterator_d88(rc_hash_iterator_t* iterator, const 
 static void rc_hash_initialize_iterator_dsk(rc_hash_iterator_t* iterator, const char* path, int data) {
   size_t size = iterator->buffer_size;
   if (size == 0)
-    size = rc_file_size(iterator, path);
+    size = (size_t)rc_file_size(iterator, path);
 
   (void)data;
 
