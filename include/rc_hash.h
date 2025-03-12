@@ -40,15 +40,16 @@ RC_BEGIN_C_DECLS
   /* closes the file */
   typedef void (RC_CCONV *rc_hash_filereader_close_file_handler)(void* file_handle);
 
-  struct rc_hash_filereader
+  typedef struct rc_hash_filereader
   {
     rc_hash_filereader_open_file_handler      open;
     rc_hash_filereader_seek_handler           seek;
     rc_hash_filereader_tell_handler           tell;
     rc_hash_filereader_read_handler           read;
     rc_hash_filereader_close_file_handler     close;
-  };
+  } rc_hash_filereader_t;
 
+  /* [deprecated] set callbacks in rc_hash_iterator_t */
   RC_EXPORT void RC_CCONV rc_hash_init_custom_filereader(struct rc_hash_filereader* reader);
 
   /* ===================================================== */
@@ -62,6 +63,7 @@ RC_BEGIN_C_DECLS
    * returns a handle to be passed to the other functions, or NULL if the track could not be opened.
    */
   typedef void* (RC_CCONV *rc_hash_cdreader_open_track_handler)(const char* path, uint32_t track);
+  typedef void* (RC_CCONV* rc_hash_cdreader_open_track_filereader_handler)(const char* path, uint32_t track, const rc_hash_filereader_t* filereader);
 
   /* attempts to read the specified number of bytes from the file starting at the specified absolute sector.
    * returns the number of bytes actually read.
@@ -74,16 +76,19 @@ RC_BEGIN_C_DECLS
   /* gets the absolute sector index for the first sector of a track */
   typedef uint32_t(RC_CCONV *rc_hash_cdreader_first_track_sector_handler)(void* track_handle);
 
-  struct rc_hash_cdreader
+  typedef struct rc_hash_cdreader
   {
     rc_hash_cdreader_open_track_handler              open_track;
     rc_hash_cdreader_read_sector_handler             read_sector;
     rc_hash_cdreader_close_track_handler             close_track;
     rc_hash_cdreader_first_track_sector_handler      first_track_sector;
-  };
+    rc_hash_cdreader_open_track_filereader_handler   open_track_filereader;
+  } rc_hash_cdreader_t;
 
   RC_EXPORT void RC_CCONV rc_hash_get_default_cdreader(struct rc_hash_cdreader* cdreader);
+  /* [deprecated] don't set callbacks in rc_hash_iterator_t */
   RC_EXPORT void RC_CCONV rc_hash_init_default_cdreader(void);
+  /* [deprecated] set callbacks in rc_hash_iterator_t */
   RC_EXPORT void RC_CCONV rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader);
 
   /* specifies a function called to obtain a 3DS CIA decryption normal key.
@@ -113,6 +118,9 @@ RC_BEGIN_C_DECLS
 typedef struct rc_hash_callbacks {
   rc_hash_message_callback verbose_message;
   rc_hash_message_callback error_message;
+
+  rc_hash_filereader_t filereader;
+  rc_hash_cdreader_t cdreader;
 } rc_hash_callbacks_t;
 
 /* data for rc_hash_iterate

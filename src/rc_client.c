@@ -6108,6 +6108,9 @@ void rc_client_set_host(rc_client_t* client, const char* hostname)
   if (!client)
     return;
 
+  if (client->state.host.host && hostname && strcmp(hostname, client->state.host.host) == 0)
+    return;
+
   /* clear out any previously specified host information */
   memset(&client->state.host, 0, sizeof(client->state.host));
 
