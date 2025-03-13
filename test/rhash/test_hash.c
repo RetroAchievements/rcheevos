@@ -907,117 +907,6 @@ static void test_hash_gamecube()
 
 /* ========================================================================= */
 
-static void test_hash_msdos_dosz()
-{
-  size_t image_size;
-  uint8_t* image = generate_zip_file(&image_size);
-  char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "59a255662262f5ada32791b8c36e8ea7";
-
-  mock_file(0, "game.dosz", image, image_size);
-
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_MS_DOS, "game.dosz");
-
-  /* test file identification from iterator */
-  struct rc_hash_iterator iterator;
-  rc_hash_initialize_iterator(&iterator, "game.dosz", NULL, 0);
-  int result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* cleanup */
-  free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_md5);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
-}
-
-static void test_hash_msdos_dosz_zip64()
-{
-  size_t image_size;
-  uint8_t* image = generate_zip64_file(&image_size);
-  char hash_file[33];
-  const char* expected_md5 = "927dad0a57a2860267ab7bcdb8bc3f61";
-
-  mock_file(0, "game.dosz", image, image_size);
-
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_MS_DOS, "game.dosz");
-
-  /* cleanup */
-  free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_md5);
-}
-
-static void test_hash_msdos_dosz_with_dosc()
-{
-  size_t image_size;
-  uint8_t* image = generate_zip_file(&image_size);
-  char hash_dosc[33];
-  const char* expected_dosc_md5 = "dd0c0b0c170c30722784e5e962764c35";
-
-  /* Add main dosz file and overlay dosc file which will get hashed together */
-  mock_file(0, "game.dosz", image, image_size);
-  mock_file(1, "game.dosc", image, image_size);
-
-  /* test file hash */
-  int result_dosc = rc_hash_generate_from_file(hash_dosc, RC_CONSOLE_MS_DOS, "game.dosz");
-
-  /* cleanup */
-  free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_dosc, 1);
-  ASSERT_STR_EQUALS(hash_dosc, expected_dosc_md5);
-}
-
-static void test_hash_msdos_dosz_with_parent()
-{
-  size_t image_base_size, image_child_size;
-  uint8_t* image_base = generate_zip_file(&image_base_size);
-  uint8_t* image_child = generate_child_dosz_file(&image_child_size);
-  char hash_dosz[33], hash_dosc[33], hash_dosc2[33];
-  const char* expected_dosz_md5 = "623c759476b8b5adb46362f8f0b60769";
-  const char* expected_dosc_md5 = "ecd9d776cbaad63094829d7b8dbe5959";
-  const char* expected_dosc2_md5 = "cb55c123936ad84479032ea6444cb1a1";
-
-  /* Add base dosz file and child dosz file which will get hashed together */
-  mock_file(0, "base.dosz", image_base, image_base_size);
-  mock_file(1, "child.dosz", image_child, image_child_size);
-
-  /* test file hash */
-  int result_dosz = rc_hash_generate_from_file(hash_dosz, RC_CONSOLE_MS_DOS, "child.dosz");
-
-  /* test file hash with base.dosc also existing */
-  mock_file(2, "base.dosc", image_base, image_base_size);
-  int result_dosc = rc_hash_generate_from_file(hash_dosc, RC_CONSOLE_MS_DOS, "child.dosz");
-
-  /* test file hash with child.dosc also existing */
-  mock_file(3, "child.dosc", image_base, image_base_size);
-  int result_dosc2 = rc_hash_generate_from_file(hash_dosc2, RC_CONSOLE_MS_DOS, "child.dosz");
-
-  /* cleanup */
-  free(image_base);
-  free(image_child);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_dosz, 1);
-  ASSERT_NUM_EQUALS(result_dosc, 1);
-  ASSERT_NUM_EQUALS(result_dosc2, 1);
-  ASSERT_STR_EQUALS(hash_dosz, expected_dosz_md5);
-  ASSERT_STR_EQUALS(hash_dosc, expected_dosc_md5);
-  ASSERT_STR_EQUALS(hash_dosc2, expected_dosc2_md5);
-}
-
-/* ========================================================================= */
-
 static void test_hash_nes_32k()
 {
   size_t image_size;
@@ -2376,12 +2265,6 @@ void test_hash(void) {
   /* MSX */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
-
-  /* MS DOS */
-  TEST(test_hash_msdos_dosz);
-  TEST(test_hash_msdos_dosz_zip64);
-  TEST(test_hash_msdos_dosz_with_dosc);
-  TEST(test_hash_msdos_dosz_with_parent);
 
   /* Neo Geo CD */
   TEST(test_hash_neogeocd);

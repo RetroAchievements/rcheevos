@@ -138,11 +138,13 @@ else
     OBJ += $(RC_HASH_SRC)/aes.o \
            $(RC_HASH_SRC)/cdreader.o \
            $(RC_HASH_SRC)/hash.o \
+           $(RC_HASH_SRC)/hash_zip.o \
            $(RC_SRC)/rc_libretro.o \
            rhash/data.o \
            rhash/mock_filereader.o \
            rhash/test_cdreader.o \
            rhash/test_hash.o \
+           rhash/test_hash_zip.o \
            test_rc_libretro.o
 endif
 
