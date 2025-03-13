@@ -91,12 +91,15 @@ RC_BEGIN_C_DECLS
   /* [deprecated] set callbacks in rc_hash_iterator_t */
   RC_EXPORT void RC_CCONV rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader);
 
+#ifndef RC_HASH_NO_ENCRYPTED
+
   /* specifies a function called to obtain a 3DS CIA decryption normal key.
    * this key would be derived from slot0x3DKeyX and the common key specified by the passed index.
    * the normal key should be written in big endian format
    * returns non-zero on success, or zero on failure.
    */
   typedef int (RC_CCONV *rc_hash_3ds_get_cia_normal_key_func)(uint8_t common_key_index, uint8_t out_normal_key[16]);
+  /* [deprecated] set callbacks in rc_hash_iterator_t */
   RC_EXPORT void RC_CCONV rc_hash_init_3ds_get_cia_normal_key_func(rc_hash_3ds_get_cia_normal_key_func func);
 
   /* specifies a function called to obtain 3DS NCCH decryption normal keys.
@@ -111,7 +114,10 @@ RC_BEGIN_C_DECLS
    */
   typedef int (RC_CCONV *rc_hash_3ds_get_ncch_normal_keys_func)(uint8_t primary_key_y[16], uint8_t secondary_key_x_slot, uint8_t* optional_program_id,
                                                                 uint8_t out_primary_key[16], uint8_t out_secondary_key[16]);
+  /* [deprecated] set callbacks in rc_hash_iterator_t */
   RC_EXPORT void RC_CCONV rc_hash_init_3ds_get_ncch_normal_keys_func(rc_hash_3ds_get_ncch_normal_keys_func func);
+
+#endif
 
 /* ===================================================== */
 
@@ -121,6 +127,13 @@ typedef struct rc_hash_callbacks {
 
   rc_hash_filereader_t filereader;
   rc_hash_cdreader_t cdreader;
+
+#ifndef RC_HASH_NO_ENCRYPTED
+  struct rc_hash_encryption_callbacks {
+    rc_hash_3ds_get_cia_normal_key_func get_3ds_cia_normal_key;
+    rc_hash_3ds_get_ncch_normal_keys_func get_3ds_ncch_normal_keys;
+  } encryption;
+#endif
 } rc_hash_callbacks_t;
 
 /* data for rc_hash_iterate

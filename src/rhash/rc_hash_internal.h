@@ -28,6 +28,9 @@ int rc_hash_iterator_error(const rc_hash_iterator_t* iterator, const char* messa
 int rc_hash_iterator_error_formatted(const rc_hash_iterator_t* iterator, const char* format, ...);
 
 
+/* arbitrary limit to prevent allocating and hashing large files */
+#define MAX_BUFFER_SIZE 64 * 1024 * 1024
+
 int rc_hash_finalize(const rc_hash_iterator_t* iterator, md5_state_t* md5, char hash[33]);
 
 
@@ -59,8 +62,18 @@ typedef struct rc_hash_cdrom_track_t {
 #endif
 } rc_hash_cdrom_track_t;
 
-/* hash_zip.c */
-int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator);
+
+int rc_hash_whole_file(char hash[33], const rc_hash_iterator_t* iterator);
+
+#ifndef RC_HASH_NO_ENCRYPTED
+  /* hash_encrypted.c */
+  int rc_hash_nintendo_3ds(char hash[33], const rc_hash_iterator_t* iterator);
+#endif
+
+#ifndef RC_HASH_NO_ZIP
+  /* hash_zip.c */
+  int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator);
+#endif
 
 RC_END_C_DECLS
 

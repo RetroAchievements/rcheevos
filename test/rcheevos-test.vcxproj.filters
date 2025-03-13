@@ -317,6 +317,9 @@
     <ClCompile Include="rhash\test_hash_zip.c">
       <Filter>tests\rhash</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rhash\hash_encrypted.c">
+      <Filter>src\rhash</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">

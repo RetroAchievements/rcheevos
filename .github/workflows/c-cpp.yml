@@ -94,14 +94,23 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install valgrind gcc-multilib # bits/libc-header-start.h
-    - name: Build
+    - name: Build HAVE_HASH=0
       run: make ARCH=x64 BUILD=c89 HAVE_HASH=0 test
       working-directory: test
-    - name: Run tests
+    - name: Run tests HAVE_HASH=0
       run: ./test
       working-directory: test
-    - name: Valgrind
-      run: make ARCH=x64 BUILD=c89 HAVE_HASH=0 valgrind
+    - name: Build HAVE_ZIP=0
+      run: make ARCH=x64 BUILD=c89 clean && make ARCH=x64 BUILD=c89 HAVE_ZIP=0 test
+      working-directory: test
+    - name: Run tests HAVE_ZIP=0
+      run: ./test
+      working-directory: test
+    - name: Build HAVE_ENCRYPTED=0
+      run: make ARCH=x64 BUILD=c89 clean && make ARCH=x64 BUILD=c89 HAVE_ENCRYPTED=0 test
+      working-directory: test
+    - name: Run tests HAVE_ENCRYPTED=0
+      run: ./test
       working-directory: test
 
   windows-x64-msbuild:

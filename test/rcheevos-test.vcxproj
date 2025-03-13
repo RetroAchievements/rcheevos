@@ -159,6 +159,7 @@
     <ClCompile Include="..\src\rhash\aes.c" />
     <ClCompile Include="..\src\rhash\cdreader.c" />
     <ClCompile Include="..\src\rhash\hash.c" />
+    <ClCompile Include="..\src\rhash\hash_encrypted.c" />
     <ClCompile Include="..\src\rhash\hash_zip.c" />
     <ClCompile Include="..\src\rhash\md5.c" />
     <ClCompile Include="..\src\rurl\url.c" />
