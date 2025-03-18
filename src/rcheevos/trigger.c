@@ -158,6 +158,8 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   char is_paused;
   char is_primed;
 
+  (void)L;
+
   switch (self->state)
   {
     case RC_TRIGGER_STATE_TRIGGERED:

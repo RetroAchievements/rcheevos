@@ -337,6 +337,8 @@ int32_t rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State*
   rc_typed_value_t result;
   int valid = rc_evaluate_value_typed(self, &result, peek, ud);
 
+  (void)L;
+
   if (valid) {
     /* if not paused, store the value so that it's available when paused. */
     rc_typed_value_convert(&result, RC_VALUE_TYPE_UNSIGNED);

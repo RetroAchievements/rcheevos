@@ -947,6 +947,8 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
   int seen_rich_presence = 0;
   int result = RC_OK;
 
+  (void)L;
+
   if (!serialized || serialized_size < RC_RUNTIME_MIN_BUFFER_SIZE) {
     rc_runtime_reset(runtime);
     return RC_INSUFFICIENT_BUFFER;
