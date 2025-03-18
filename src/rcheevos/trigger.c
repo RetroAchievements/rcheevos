@@ -62,13 +62,13 @@ int rc_trigger_size(const char* memaddr) {
   return preparse.parse.offset;
 }
 
-rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx) {
+rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, void* unused_L, int unused_funcs_idx) {
   rc_trigger_with_memrefs_t* trigger;
   rc_preparse_state_t preparse;
   const char* preparse_memaddr = memaddr;
 
-  (void)L;
-  (void)funcs_ndx;
+  (void)unused_L;
+  (void)unused_funcs_idx;
 
   if (!buffer || !memaddr)
     return NULL;
@@ -149,7 +149,7 @@ rc_memrefs_t* rc_trigger_get_memrefs(rc_trigger_t* self) {
   return NULL;
 }
 
-int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, void* unused_L) {
   rc_eval_state_t eval_state;
   rc_condset_t* condset;
   rc_typed_value_t measured_value;
@@ -158,7 +158,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   char is_paused;
   char is_primed;
 
-  (void)L;
+  (void)unused_L;
 
   switch (self->state)
   {
@@ -316,11 +316,11 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   return self->state;
 }
 
-int rc_test_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+int rc_test_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, void* unused_L) {
   /* for backwards compatibilty, rc_test_trigger always assumes the achievement is active */
   self->state = RC_TRIGGER_STATE_ACTIVE;
 
-  return (rc_evaluate_trigger(self, peek, ud, L) == RC_TRIGGER_STATE_TRIGGERED);
+  return (rc_evaluate_trigger(self, peek, ud, unused_L) == RC_TRIGGER_STATE_TRIGGERED);
 }
 
 void rc_reset_trigger(rc_trigger_t* self) {

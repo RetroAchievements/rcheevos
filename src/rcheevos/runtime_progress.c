@@ -892,12 +892,12 @@ static int rc_runtime_progress_serialize_internal(rc_runtime_progress_t* progres
   return RC_OK;
 }
 
-uint32_t rc_runtime_progress_size(const rc_runtime_t* runtime, lua_State* L)
+uint32_t rc_runtime_progress_size(const rc_runtime_t* runtime, void* unused_L)
 {
   rc_runtime_progress_t progress;
   int result;
 
-  (void)L;
+  (void)unused_L;
 
   rc_runtime_progress_init(&progress, runtime);
   progress.buffer_size = 0xFFFFFFFF;
@@ -909,16 +909,16 @@ uint32_t rc_runtime_progress_size(const rc_runtime_t* runtime, lua_State* L)
   return progress.offset;
 }
 
-int rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, lua_State* L)
+int rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, void* unused_L)
 {
-  return rc_runtime_serialize_progress_sized(buffer, 0xFFFFFFFF, runtime, L);
+  return rc_runtime_serialize_progress_sized(buffer, 0xFFFFFFFF, runtime, unused_L);
 }
 
-int rc_runtime_serialize_progress_sized(uint8_t* buffer, uint32_t buffer_size, const rc_runtime_t* runtime, lua_State* L)
+int rc_runtime_serialize_progress_sized(uint8_t* buffer, uint32_t buffer_size, const rc_runtime_t* runtime, void* unused_L)
 {
   rc_runtime_progress_t progress;
 
-  (void)L;
+  (void)unused_L;
 
   if (!buffer)
     return RC_INVALID_STATE;
@@ -930,12 +930,12 @@ int rc_runtime_serialize_progress_sized(uint8_t* buffer, uint32_t buffer_size, c
   return rc_runtime_progress_serialize_internal(&progress);
 }
 
-int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const uint8_t* serialized, lua_State* L)
+int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const uint8_t* serialized, void* unused_L)
 {
-  return rc_runtime_deserialize_progress_sized(runtime, serialized, 0xFFFFFFFF, L);
+  return rc_runtime_deserialize_progress_sized(runtime, serialized, 0xFFFFFFFF, unused_L);
 }
 
-int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* serialized, uint32_t serialized_size, lua_State* L)
+int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* serialized, uint32_t serialized_size, void* unused_L)
 {
   rc_runtime_progress_t progress;
   md5_state_t state;
@@ -947,7 +947,7 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
   int seen_rich_presence = 0;
   int result = RC_OK;
 
-  (void)L;
+  (void)unused_L;
 
   if (!serialized || serialized_size < RC_RUNTIME_MIN_BUFFER_SIZE) {
     rc_runtime_reset(runtime);

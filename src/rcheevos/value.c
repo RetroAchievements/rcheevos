@@ -254,13 +254,13 @@ int rc_value_size(const char* memaddr) {
   return preparse.parse.offset;
 }
 
-rc_value_t* rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx) {
+rc_value_t* rc_parse_value(void* buffer, const char* memaddr, void* unused_L, int unused_funcs_idx) {
   rc_value_with_memrefs_t* value;
   rc_preparse_state_t preparse;
   const char* preparse_memaddr = memaddr;
 
-  (void)L;
-  (void)funcs_ndx;
+  (void)unused_L;
+  (void)unused_funcs_idx;
 
   if (!buffer || !memaddr)
     return NULL;
@@ -333,11 +333,11 @@ int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t
   return valid;
 }
 
-int32_t rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, lua_State* L) {
+int32_t rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, void* unused_L) {
   rc_typed_value_t result;
   int valid = rc_evaluate_value_typed(self, &result, peek, ud);
 
-  (void)L;
+  (void)unused_L;
 
   if (valid) {
     /* if not paused, store the value so that it's available when paused. */

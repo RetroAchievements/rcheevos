@@ -10,8 +10,6 @@ RC_BEGIN_C_DECLS
 
 #ifndef RC_RUNTIME_H /* prevents pedantic redefiniton error */
 
-typedef struct lua_State lua_State;
-
 typedef struct rc_trigger_t rc_trigger_t;
 typedef struct rc_lboard_t rc_lboard_t;
 typedef struct rc_richpresence_t rc_richpresence_t;
@@ -291,9 +289,9 @@ struct rc_trigger_t {
 };
 
 RC_EXPORT int RC_CCONV rc_trigger_size(const char* memaddr);
-RC_EXPORT rc_trigger_t* RC_CCONV rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
-RC_EXPORT int RC_CCONV rc_evaluate_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* L);
-RC_EXPORT int RC_CCONV rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, lua_State* L);
+RC_EXPORT rc_trigger_t* RC_CCONV rc_parse_trigger(void* buffer, const char* memaddr, void* unused_L, int unused_funcs_idx);
+RC_EXPORT int RC_CCONV rc_evaluate_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, void* unused_L);
+RC_EXPORT int RC_CCONV rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, void* unused_L);
 RC_EXPORT void RC_CCONV rc_reset_trigger(rc_trigger_t* self);
 
 /*****************************************************************************\
@@ -320,8 +318,8 @@ struct rc_value_t {
 };
 
 RC_EXPORT int RC_CCONV rc_value_size(const char* memaddr);
-RC_EXPORT rc_value_t* RC_CCONV rc_parse_value(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
-RC_EXPORT int32_t RC_CCONV rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, lua_State* L);
+RC_EXPORT rc_value_t* RC_CCONV rc_parse_value(void* buffer, const char* memaddr, void* unused_L, int unused_funcs_idx);
+RC_EXPORT int32_t RC_CCONV rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, void* unused_L);
 
 /*****************************************************************************\
 | Leaderboards                                                                |
@@ -350,8 +348,8 @@ struct rc_lboard_t {
 };
 
 RC_EXPORT int RC_CCONV rc_lboard_size(const char* memaddr);
-RC_EXPORT rc_lboard_t* RC_CCONV rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, int funcs_ndx);
-RC_EXPORT int RC_CCONV rc_evaluate_lboard(rc_lboard_t* lboard, int32_t* value, rc_peek_t peek, void* peek_ud, lua_State* L);
+RC_EXPORT rc_lboard_t* RC_CCONV rc_parse_lboard(void* buffer, const char* memaddr, void* unused_L, int unused_funcs_idx);
+RC_EXPORT int RC_CCONV rc_evaluate_lboard(rc_lboard_t* lboard, int32_t* value, rc_peek_t peek, void* peek_ud, void* unused_L);
 RC_EXPORT void RC_CCONV rc_reset_lboard(rc_lboard_t* lboard);
 
 /*****************************************************************************\
@@ -437,10 +435,10 @@ struct rc_richpresence_t {
 
 RC_EXPORT int RC_CCONV rc_richpresence_size(const char* script);
 RC_EXPORT int RC_CCONV rc_richpresence_size_lines(const char* script, int* lines_read);
-RC_EXPORT rc_richpresence_t* RC_CCONV rc_parse_richpresence(void* buffer, const char* script, lua_State* L, int funcs_ndx);
-RC_EXPORT int RC_CCONV rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
-RC_EXPORT void RC_CCONV rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, lua_State* L);
-RC_EXPORT int RC_CCONV rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, lua_State* L);
+RC_EXPORT rc_richpresence_t* RC_CCONV rc_parse_richpresence(void* buffer, const char* script, void* unused_L, int unused_funcs_idx);
+RC_EXPORT int RC_CCONV rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, void* unused_L);
+RC_EXPORT void RC_CCONV rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, void* unused_L);
+RC_EXPORT int RC_CCONV rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, void* unused_L);
 RC_EXPORT void RC_CCONV rc_reset_richpresence(rc_richpresence_t* self);
 
 RC_END_C_DECLS

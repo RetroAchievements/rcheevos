@@ -670,12 +670,12 @@ int rc_richpresence_size(const char* script) {
   return rc_richpresence_size_lines(script, NULL);
 }
 
-rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, lua_State* L, int funcs_ndx) {
+rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, void* unused_L, int unused_funcs_idx) {
   rc_richpresence_with_memrefs_t* richpresence;
   rc_preparse_state_t preparse;
 
-  (void)L;
-  (void)funcs_ndx;
+  (void)unused_L;
+  (void)unused_funcs_idx;
 
   if (!buffer || !script)
     return NULL;
@@ -713,7 +713,7 @@ rc_memrefs_t* rc_richpresence_get_memrefs(rc_richpresence_t* self) {
   return NULL;
 }
 
-void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, lua_State* L) {
+void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, void* unused_L) {
   rc_richpresence_display_t* display;
 
   rc_update_richpresence_memrefs(richpresence, peek, peek_ud);
@@ -721,7 +721,7 @@ void rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, voi
 
   for (display = richpresence->first_display; display; display = display->next) {
     if (display->has_required_hits)
-      rc_test_trigger(&display->trigger, peek, peek_ud, L);
+      rc_test_trigger(&display->trigger, peek, peek_ud, unused_L);
   }
 }
 
@@ -869,7 +869,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
   return (int)(ptr - buffer);
 }
 
-int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
+int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, void* unused_L) {
   rc_richpresence_display_t* display;
 
   for (display = richpresence->first_display; display; display = display->next) {
@@ -879,7 +879,7 @@ int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* bu
 
     /* triggers with required hits will be updated in rc_update_richpresence */
     if (!display->has_required_hits)
-      rc_test_trigger(&display->trigger, peek, peek_ud, L);
+      rc_test_trigger(&display->trigger, peek, peek_ud, unused_L);
 
     /* if we've found a valid condition, process it */
     if (display->trigger.state == RC_TRIGGER_STATE_TRIGGERED)
@@ -890,9 +890,9 @@ int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* bu
   return 0;
 }
 
-int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, lua_State* L) {
-  rc_update_richpresence(richpresence, peek, peek_ud, L);
-  return rc_get_richpresence_display_string(richpresence, buffer, buffersize, peek, peek_ud, L);
+int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, void* unused_L) {
+  rc_update_richpresence(richpresence, peek, peek_ud, unused_L);
+  return rc_get_richpresence_display_string(richpresence, buffer, buffersize, peek, peek_ud, unused_L);
 }
 
 void rc_reset_richpresence_triggers(rc_richpresence_t* self) {
