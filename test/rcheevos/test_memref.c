@@ -264,7 +264,7 @@ static int get_memref_count(rc_parse_state_t* parse) {
 static void test_allocate_shared_address() {
   rc_parse_state_t parse;
   rc_memrefs_t memrefs;
-  rc_init_parse_state(&parse, NULL, 0, 0);
+  rc_init_parse_state(&parse, NULL);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
@@ -306,7 +306,7 @@ static void test_allocate_shared_address2() {
   rc_memref_t* memref4;
   rc_memref_t* memref5;
   rc_memref_t* memrefX;
-  rc_init_parse_state(&parse, NULL, 0, 0);
+  rc_init_parse_state(&parse, NULL);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
@@ -351,7 +351,7 @@ static void test_allocate_shared_indirect_address() {
   rc_operand_set_const(&offset0, 0);
   rc_operand_set_const(&offset4, 4);
 
-  rc_init_parse_state(&parse, NULL, 0, 0);
+  rc_init_parse_state(&parse, NULL);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   parent1.value.memref = parent_memref1 = rc_alloc_memref(&parse, 88, RC_MEMSIZE_16_BITS);
@@ -413,7 +413,7 @@ static void test_sizing_mode_grow_buffer() {
   int i;
   rc_parse_state_t parse;
   rc_memrefs_t memrefs;
-  rc_init_parse_state(&parse, NULL, 0, 0);
+  rc_init_parse_state(&parse, NULL);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   /* memrefs are allocated 16 at a time */
@@ -452,7 +452,7 @@ static void test_update_memref_values() {
   memory.ram = ram;
   memory.size = sizeof(ram);
 
-  rc_init_parse_state(&parse, NULL, 0, 0);
+  rc_init_parse_state(&parse, NULL);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);

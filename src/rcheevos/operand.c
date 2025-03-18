@@ -5,62 +5,22 @@
 #include <math.h>
 #include <string.h>
 
-#ifndef RC_DISABLE_LUA
-
-RC_BEGIN_C_DECLS
-
-#include <lua.h>
-#include <lauxlib.h>
-
-RC_END_C_DECLS
-
-#endif /* RC_DISABLE_LUA */
-
-static int rc_parse_operand_lua(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
+static int rc_parse_operand_func_call(rc_operand_t* self, const char** memaddr) {
   const char* aux = *memaddr;
-#ifndef RC_DISABLE_LUA
-  const char* id;
-#endif
 
   if (*aux++ != '@') {
-    return RC_INVALID_LUA_OPERAND;
+    return RC_INVALID_FUNC_OPERAND;
   }
 
   if (!isalpha((unsigned char)*aux)) {
-    return RC_INVALID_LUA_OPERAND;
+    return RC_INVALID_FUNC_OPERAND;
   }
-
-#ifndef RC_DISABLE_LUA
-  id = aux;
-#endif
 
   while (isalnum((unsigned char)*aux) || *aux == '_') {
     aux++;
   }
 
-#ifndef RC_DISABLE_LUA
-
-  if (parse->L != 0) {
-    if (!lua_istable(parse->L, parse->funcs_ndx)) {
-      return RC_INVALID_LUA_OPERAND;
-    }
-
-    lua_pushlstring(parse->L, id, aux - id);
-    lua_gettable(parse->L, parse->funcs_ndx);
-
-    if (!lua_isfunction(parse->L, -1)) {
-      lua_pop(parse->L, 1);
-      return RC_INVALID_LUA_OPERAND;
-    }
-
-    self->value.luafunc = luaL_ref(parse->L, LUA_REGISTRYINDEX);
-  }
-
-#else
-  (void)parse;
-#endif /* RC_DISABLE_LUA */
-
-  self->type = RC_OPERAND_LUA;
+  self->type = RC_OPERAND_FUNC;
   self->size = RC_MEMSIZE_32_BITS;
   self->memref_access_type = RC_OPERAND_ADDRESS;
   *memaddr = aux;
@@ -322,7 +282,7 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t*
       break;
 
     case '@':
-      ret = rc_parse_operand_lua(self, &aux, parse);
+      ret = rc_parse_operand_func_call(self, &aux);
 
       if (ret < 0)
         return ret;
@@ -333,27 +293,6 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t*
   *memaddr = aux;
   return RC_OK;
 }
-
-#ifndef RC_DISABLE_LUA
-
-typedef struct {
-  rc_peek_t peek;
-  void* ud;
-}
-rc_luapeek_t;
-
-static int rc_luapeek(lua_State* L) {
-  uint32_t address = (uint32_t)luaL_checkinteger(L, 1);
-  uint32_t num_bytes = (uint32_t)luaL_checkinteger(L, 2);
-  rc_luapeek_t* luapeek = (rc_luapeek_t*)lua_touserdata(L, 3);
-
-  uint32_t value = luapeek->peek(address, num_bytes, luapeek->ud);
-
-  lua_pushinteger(L, value);
-  return 1;
-}
-
-#endif /* RC_DISABLE_LUA */
 
 void rc_operand_set_const(rc_operand_t* self, uint32_t value) {
   self->size = RC_MEMSIZE_32_BITS;
@@ -456,7 +395,7 @@ int rc_operand_type_is_memref(uint8_t type) {
   switch (type) {
     case RC_OPERAND_CONST:
     case RC_OPERAND_FP:
-    case RC_OPERAND_LUA:
+    case RC_OPERAND_FUNC:
     case RC_OPERAND_RECALL:
       return 0;
 
@@ -629,10 +568,6 @@ void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t n
 }
 
 void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_eval_state_t* eval_state) {
-#ifndef RC_DISABLE_LUA
-  rc_luapeek_t luapeek;
-#endif /* RC_DISABLE_LUA */
-
   /* step 1: read memory */
   switch (self->type) {
     case RC_OPERAND_CONST:
@@ -645,34 +580,10 @@ void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_
       result->value.f32 = (float)self->value.dbl;
       return;
 
-    case RC_OPERAND_LUA:
+    case RC_OPERAND_FUNC:
+      /* this feature was never actualized */
       result->type = RC_VALUE_TYPE_UNSIGNED;
       result->value.u32 = 0;
-
-#ifndef RC_DISABLE_LUA
-      if (eval_state->L != 0) {
-        lua_rawgeti(eval_state->L, LUA_REGISTRYINDEX, self->value.luafunc);
-        lua_pushcfunction(eval_state->L, rc_luapeek);
-
-        luapeek.peek = eval_state->peek;
-        luapeek.ud = eval_state->peek_userdata;
-
-        lua_pushlightuserdata(eval_state->L, &luapeek);
-
-        if (lua_pcall(eval_state->L, 2, 1, 0) == LUA_OK) {
-          if (lua_isboolean(eval_state->L, -1)) {
-            result->value.u32 = (uint32_t)lua_toboolean(eval_state->L, -1);
-          }
-          else {
-            result->value.u32 = (uint32_t)lua_tonumber(eval_state->L, -1);
-          }
-        }
-
-        lua_pop(eval_state->L, 1);
-      }
-
-#endif /* RC_DISABLE_LUA */
-
       return;
 
     case RC_OPERAND_RECALL:

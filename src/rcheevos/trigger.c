@@ -52,7 +52,7 @@ void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_pars
 int rc_trigger_size(const char* memaddr) {
   rc_trigger_with_memrefs_t* trigger;
   rc_preparse_state_t preparse;
-  rc_init_preparse_state(&preparse, NULL, 0);
+  rc_init_preparse_state(&preparse);
 
   trigger = RC_ALLOC(rc_trigger_with_memrefs_t, &preparse.parse);
   rc_parse_trigger_internal(&trigger->trigger, &memaddr, &preparse.parse);
@@ -67,16 +67,19 @@ rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, lua_State* L, 
   rc_preparse_state_t preparse;
   const char* preparse_memaddr = memaddr;
 
+  (void)L;
+  (void)funcs_ndx;
+
   if (!buffer || !memaddr)
     return NULL;
 
   /* first pass : determine how many memrefs are needed */
-  rc_init_preparse_state(&preparse, L, funcs_ndx);
+  rc_init_preparse_state(&preparse);
   trigger = RC_ALLOC(rc_trigger_with_memrefs_t, &preparse.parse);
   rc_parse_trigger_internal(&trigger->trigger, &preparse_memaddr, &preparse.parse);
 
   /* allocate the trigger and memrefs */
-  rc_reset_parse_state(&preparse.parse, buffer, L, funcs_ndx);
+  rc_reset_parse_state(&preparse.parse, buffer);
   trigger = RC_ALLOC(rc_trigger_with_memrefs_t, &preparse.parse);
   rc_preparse_alloc_memrefs(&trigger->memrefs, &preparse);
 
@@ -181,11 +184,6 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, lua_State*
   memset(&eval_state, 0, sizeof(eval_state));
   eval_state.peek = peek;
   eval_state.peek_userdata = ud;
-#ifndef RC_DISABLE_LUA
-  eval_state.L = L;
-#else
-  (void)L;
-#endif
 
   measured_value.type = RC_VALUE_TYPE_NONE;
 

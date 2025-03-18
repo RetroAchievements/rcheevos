@@ -131,7 +131,7 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
 int rc_lboard_size(const char* memaddr) {
   rc_lboard_with_memrefs_t* lboard;
   rc_preparse_state_t preparse;
-  rc_init_preparse_state(&preparse, NULL, 0);
+  rc_init_preparse_state(&preparse);
 
   lboard = RC_ALLOC(rc_lboard_with_memrefs_t, &preparse.parse);
   rc_parse_lboard_internal(&lboard->lboard, memaddr, &preparse.parse);
@@ -145,14 +145,17 @@ rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, lua_State* L, in
   rc_lboard_with_memrefs_t* lboard;
   rc_preparse_state_t preparse;
 
+  (void)L;
+  (void)funcs_ndx;
+
   if (!buffer || !memaddr)
     return 0;
 
-  rc_init_preparse_state(&preparse, L, funcs_ndx);
+  rc_init_preparse_state(&preparse);
   lboard = RC_ALLOC(rc_lboard_with_memrefs_t, &preparse.parse);
   rc_parse_lboard_internal(&lboard->lboard, memaddr, &preparse.parse);
 
-  rc_reset_parse_state(&preparse.parse, buffer, L, funcs_ndx);
+  rc_reset_parse_state(&preparse.parse, buffer);
   lboard = RC_ALLOC(rc_lboard_with_memrefs_t, &preparse.parse);
   rc_preparse_alloc_memrefs(&lboard->memrefs, &preparse);
 

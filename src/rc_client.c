@@ -1785,7 +1785,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     memaddr = read->definition;
     rc_runtime_checksum(memaddr, achievement->md5);
 
-    rc_init_preparse_state(&preparse, NULL, 0);
+    rc_init_preparse_state(&preparse);
     preparse.parse.existing_memrefs = load_state->game->runtime.memrefs;
     trigger = RC_ALLOC(rc_trigger_t, &preparse.parse);
     rc_parse_trigger_internal(trigger, &memaddr, &preparse.parse);
@@ -1798,7 +1798,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     }
     else {
       /* populate the item, using the communal memrefs pool */
-      rc_reset_parse_state(&preparse.parse, rc_buffer_reserve(buffer, trigger_size), NULL, 0);
+      rc_reset_parse_state(&preparse.parse, rc_buffer_reserve(buffer, trigger_size));
       rc_preparse_reserve_memrefs(&preparse, load_state->game->runtime.memrefs);
       achievement->trigger = RC_ALLOC(rc_trigger_t, &preparse.parse);
       memaddr = read->definition;
@@ -1931,7 +1931,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
       leaderboard->value_djb2 = hash;
     }
 
-    rc_init_preparse_state(&preparse, NULL, 0);
+    rc_init_preparse_state(&preparse);
     preparse.parse.existing_memrefs = load_state->game->runtime.memrefs;
     lboard = RC_ALLOC(rc_lboard_t, &preparse.parse);
     rc_parse_lboard_internal(lboard, memaddr, &preparse.parse);
@@ -1943,7 +1943,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
     }
     else {
       /* populate the item, using the communal memrefs pool */
-      rc_reset_parse_state(&preparse.parse, rc_buffer_reserve(buffer, lboard_size), NULL, 0);
+      rc_reset_parse_state(&preparse.parse, rc_buffer_reserve(buffer, lboard_size));
       rc_preparse_reserve_memrefs(&preparse, load_state->game->runtime.memrefs);
       leaderboard->lboard = RC_ALLOC(rc_lboard_t, &preparse.parse);
       rc_parse_lboard_internal(leaderboard->lboard, memaddr, &preparse.parse);
@@ -5030,7 +5030,7 @@ static void rc_client_update_memref_values(rc_client_t* client) {
   }
 
   if (client->game->runtime.richpresence && client->game->runtime.richpresence->richpresence)
-    rc_update_values(client->game->runtime.richpresence->richpresence->values, client->state.legacy_peek, client, NULL);
+    rc_update_values(client->game->runtime.richpresence->richpresence->values, client->state.legacy_peek, client);
 
   if (invalidated_memref)
     rc_client_update_active_achievements(client->game);

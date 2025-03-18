@@ -127,6 +127,9 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, uint32_t id, const char*
   int32_t size;
   uint32_t i;
 
+  (void)L;
+  (void)funcs_idx;
+
   if (memaddr == NULL)
     return RC_INVALID_MEMORY_OPERAND;
 
@@ -165,7 +168,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, uint32_t id, const char*
   }
 
   /* item has not been previously registered, determine how much space we need for it, and allocate it */
-  rc_init_preparse_state(&preparse, NULL, 0);
+  rc_init_preparse_state(&preparse);
   preparse.parse.existing_memrefs = self->memrefs;
   trigger = RC_ALLOC(rc_trigger_t, &preparse.parse);
   rc_parse_trigger_internal(trigger, &preparse_memaddr, &preparse.parse);
@@ -179,7 +182,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, uint32_t id, const char*
     return RC_OUT_OF_MEMORY;
 
   /* populate the item, using the communal memrefs pool */
-  rc_reset_parse_state(&preparse.parse, trigger_buffer, L, funcs_idx);
+  rc_reset_parse_state(&preparse.parse, trigger_buffer);
   rc_preparse_reserve_memrefs(&preparse, self->memrefs);
   trigger = RC_ALLOC(rc_trigger_t, &preparse.parse);
   rc_parse_trigger_internal(trigger, &memaddr, &preparse.parse);
@@ -307,6 +310,9 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, uint32_t id, const char* mema
   int size;
   uint32_t i;
 
+  (void)L;
+  (void)funcs_idx;
+
   if (memaddr == 0)
     return RC_INVALID_MEMORY_OPERAND;
 
@@ -345,7 +351,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, uint32_t id, const char* mema
   }
 
   /* item has not been previously registered, determine how much space we need for it, and allocate it */
-  rc_init_preparse_state(&preparse, NULL, 0);
+  rc_init_preparse_state(&preparse);
   preparse.parse.existing_memrefs = self->memrefs;
   lboard = RC_ALLOC(rc_lboard_t, &preparse.parse);
   rc_parse_lboard_internal(lboard, memaddr, &preparse.parse);
@@ -359,7 +365,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, uint32_t id, const char* mema
     return RC_OUT_OF_MEMORY;
 
   /* populate the item, using the communal memrefs pool */
-  rc_reset_parse_state(&preparse.parse, lboard_buffer, L, funcs_idx);
+  rc_reset_parse_state(&preparse.parse, lboard_buffer);
   rc_preparse_reserve_memrefs(&preparse, self->memrefs);
   lboard = RC_ALLOC(rc_lboard_t, &preparse.parse);
   rc_parse_lboard_internal(lboard, memaddr, &preparse.parse);
@@ -422,6 +428,9 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   uint8_t md5[16];
   int size;
 
+  (void)L;
+  (void)funcs_idx;
+
   if (script == NULL)
     return RC_MISSING_DISPLAY_STRING;
 
@@ -437,7 +446,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   }
 
   /* no existing match found, parse script */
-  rc_init_preparse_state(&preparse, NULL, 0);
+  rc_init_preparse_state(&preparse);
   preparse.parse.existing_memrefs = self->memrefs;
   richpresence = RC_ALLOC(rc_richpresence_t, &preparse.parse);
   preparse.parse.variables = &richpresence->values;
@@ -464,7 +473,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, lua
   if (!self->richpresence->buffer)
     return RC_OUT_OF_MEMORY;
 
-  rc_reset_parse_state(&preparse.parse, self->richpresence->buffer, L, funcs_idx);
+  rc_reset_parse_state(&preparse.parse, self->richpresence->buffer);
   rc_preparse_reserve_memrefs(&preparse, self->memrefs);
   richpresence = RC_ALLOC(rc_richpresence_t, &preparse.parse);
   preparse.parse.variables = &richpresence->values;

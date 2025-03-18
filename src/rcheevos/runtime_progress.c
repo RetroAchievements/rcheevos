@@ -28,8 +28,6 @@ typedef struct rc_runtime_progress_t {
   uint32_t buffer_size;
 
   uint32_t chunk_size_offset;
-
-  lua_State* L;
 } rc_runtime_progress_t;
 
 #define assert_chunk_size(expected_size) assert((uint32_t)(progress->offset - progress->chunk_size_offset - 4) == (uint32_t)(expected_size))
@@ -116,11 +114,10 @@ static void rc_runtime_progress_end_chunk(rc_runtime_progress_t* progress)
   }
 }
 
-static void rc_runtime_progress_init(rc_runtime_progress_t* progress, const rc_runtime_t* runtime, lua_State* L)
+static void rc_runtime_progress_init(rc_runtime_progress_t* progress, const rc_runtime_t* runtime)
 {
   memset(progress, 0, sizeof(rc_runtime_progress_t));
   progress->runtime = runtime;
-  progress->L = L;
 }
 
 #define RC_RUNTIME_SERIALIZED_MEMREF_SIZE 16 /* 4x uint: address, flags, value, prior */
@@ -302,7 +299,7 @@ static int rc_runtime_progress_is_indirect_memref(rc_operand_t* oper)
     case RC_OPERAND_CONST:
     case RC_OPERAND_FP:
     case RC_OPERAND_RECALL:
-    case RC_OPERAND_LUA:
+    case RC_OPERAND_FUNC:
       return 0;
 
     default:
@@ -900,7 +897,9 @@ uint32_t rc_runtime_progress_size(const rc_runtime_t* runtime, lua_State* L)
   rc_runtime_progress_t progress;
   int result;
 
-  rc_runtime_progress_init(&progress, runtime, L);
+  (void)L;
+
+  rc_runtime_progress_init(&progress, runtime);
   progress.buffer_size = 0xFFFFFFFF;
 
   result = rc_runtime_progress_serialize_internal(&progress);
@@ -919,10 +918,12 @@ int rc_runtime_serialize_progress_sized(uint8_t* buffer, uint32_t buffer_size, c
 {
   rc_runtime_progress_t progress;
 
+  (void)L;
+
   if (!buffer)
     return RC_INVALID_STATE;
 
-  rc_runtime_progress_init(&progress, runtime, L);
+  rc_runtime_progress_init(&progress, runtime);
   progress.buffer = (uint8_t*)buffer;
   progress.buffer_size = buffer_size;
 
@@ -951,7 +952,7 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
     return RC_INSUFFICIENT_BUFFER;
   }
 
-  rc_runtime_progress_init(&progress, runtime, L);
+  rc_runtime_progress_init(&progress, runtime);
   progress.buffer = (uint8_t*)serialized;
 
   if (rc_runtime_progress_read_uint(&progress) != RC_RUNTIME_MARKER) {

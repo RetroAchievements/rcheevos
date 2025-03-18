@@ -99,7 +99,7 @@ enum {
   RC_OPERAND_DELTA,          /* The value last known at this address. */
   RC_OPERAND_CONST,          /* A 32-bit unsigned integer. */
   RC_OPERAND_FP,             /* A floating point value. */
-  RC_OPERAND_LUA,            /* A Lua function that provides the value. */
+  RC_OPERAND_FUNC,           /* A function that provides the value. */
   RC_OPERAND_PRIOR,          /* The last differing value at this address. */
   RC_OPERAND_BCD,            /* The BCD-decoded value of a live address in RAM. */
   RC_OPERAND_INVERTED,       /* The twos-complement value of a live address in RAM. */
@@ -116,9 +116,6 @@ typedef struct rc_operand_t {
 
     /* A floating point value. */
     double dbl;
-
-    /* A reference to the Lua function that provides the value. */
-    int luafunc;
   } value;
 
   /* specifies which member of the value union is being used (RC_OPERAND_*) */

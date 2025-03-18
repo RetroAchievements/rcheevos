@@ -8,49 +8,7 @@
 
 #include <assert.h>
 
-#ifndef RC_DISABLE_LUA
-#include "lua.h"
-#include "lauxlib.h"
-
-#include "rcheevos/mock_memory.h"
-#endif
-
 #define TIMING_TEST 0
-
-#if !defined(TIMING_TEST) || TIMING_TEST == 0
-static void test_lua(void) {
-  {
-    /*------------------------------------------------------------------------
-    TestLua
-    ------------------------------------------------------------------------*/
-
-#ifndef RC_DISABLE_LUA
-
-    lua_State* L;
-    const char* luacheevo = "return { test = function(peek, ud) return peek(0, 4, ud) end }";
-    uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
-    memory_t memory;
-    rc_trigger_t* trigger;
-    char buffer[2048];
-
-    memory.ram = ram;
-    memory.size = sizeof(ram);
-
-    L = luaL_newstate();
-    luaL_loadbufferx(L, luacheevo, strlen(luacheevo), "luacheevo.lua", "t");
-    lua_call(L, 0, 1);
-
-    memory.ram = ram;
-    memory.size = sizeof(ram);
-
-    trigger = rc_parse_trigger(buffer, "@test=0xX0", L, 1);
-    assert(rc_test_trigger(trigger, peek, &memory, L) != 0);
-
-    lua_close(L);
-#endif /* RC_DISABLE_LUA */
-  }
-}
-#endif
 
 extern void test_timing();
 
@@ -111,8 +69,6 @@ int main(void) {
 
   test_consoleinfo();
   test_rc_validate();
-
-  test_lua();
 
   test_url();
 
