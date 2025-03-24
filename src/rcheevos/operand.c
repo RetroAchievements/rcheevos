@@ -588,41 +588,26 @@ static uint32_t rc_transform_operand_value(uint32_t value, const rc_operand_t* s
 void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t new_size) {
   rc_modified_memref_t* modified_memref;
 
-  if (rc_operand_is_memref(&parse->addsource_parent)) {
+  if ((self->type == RC_OPERAND_DELTA || self->type == RC_OPERAND_PRIOR) &&
+        self->type == parse->addsource_parent.type) {
+    /* if adding prev(x) and prev(y), just add x and y and take the prev of that.
+     * same for adding prior(x) and prior(y). */
     rc_operand_t modifier;
+    memcpy(&modifier, self, sizeof(modifier));
+    modifier.type = parse->addsource_parent.type = RC_OPERAND_ADDRESS;
 
-    if ((self->type == RC_OPERAND_DELTA || self->type == RC_OPERAND_PRIOR) &&
-         self->type == parse->addsource_parent.type) {
-      /* if adding prev(x) and prev(y), just add x and y and take the prev of that */
-      memcpy(&modifier, self, sizeof(modifier));
-      modifier.type = parse->addsource_parent.type = RC_OPERAND_ADDRESS;
-
-      modified_memref = rc_alloc_modified_memref(parse,
-          new_size, &parse->addsource_parent, parse->addsource_oper, &modifier);
-    }
-    else {
-      modified_memref = rc_alloc_modified_memref(parse,
-          new_size, &parse->addsource_parent, parse->addsource_oper, self);
-    }
+    modified_memref = rc_alloc_modified_memref(parse,
+        new_size, &parse->addsource_parent, parse->addsource_oper, &modifier);
   }
   else {
-    /*  N + A => A + N */
-    /* -N + A => A - N */
     modified_memref = rc_alloc_modified_memref(parse,
-      new_size, &parse->addsource_parent, parse->addsource_oper, self);
+        new_size, &parse->addsource_parent, parse->addsource_oper, self);
+
+    /* the modified memref will contain the combination of modified values, take the current value from that */
+    self->type = self->memref_access_type = RC_OPERAND_ADDRESS;
   }
 
   self->value.memref = (rc_memref_t*)modified_memref;
-
-  if (!rc_operand_is_memref(self)) {
-    /* if adding a constant, change the type to be address (current value) */
-    self->type = self->memref_access_type = RC_OPERAND_ADDRESS;
-  }
-  else if (rc_operand_type_is_transform(self->type)) {
-    /* transform is applied in the modified_memref. change the type to be
-     * address (current value) to avoid applying the transform again */
-    self->type = self->memref_access_type = RC_OPERAND_ADDRESS;
-  }
 
   /* result of an AddSource operation is always a 32-bit integer (even if parent or modifier is a float) */
   self->size = RC_MEMSIZE_32_BITS;
