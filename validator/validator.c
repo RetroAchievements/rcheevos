@@ -53,7 +53,7 @@ static const char* type_string(char type) {
     case RC_OPERAND_DELTA: return "Delta";
     case RC_OPERAND_CONST: return "Value";
     case RC_OPERAND_FP: return "Float";
-    case RC_OPERAND_LUA: return "Lua";
+    case RC_OPERAND_FUNC: return "Func";
     case RC_OPERAND_PRIOR: return "Prior";
     case RC_OPERAND_BCD: return "BCD";
     case RC_OPERAND_INVERTED: return "Inverted";

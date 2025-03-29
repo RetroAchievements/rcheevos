@@ -33,7 +33,7 @@ static void _assert_parse_condition(
     rc_memrefs_t memrefs;
     char buffer[512];
 
-    rc_init_parse_state(&parse, buffer, 0, 0);
+    rc_init_parse_state(&parse, buffer);
     rc_init_parse_state_memrefs(&parse, &memrefs);
     self = rc_parse_condition(&memaddr, &parse);
     rc_destroy_parse_state(&parse);
@@ -129,7 +129,7 @@ static void test_evaluate_condition(const char* memaddr, uint8_t expected_compar
   memory.ram = ram;
   memory.size = sizeof(ram);
 
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   self = rc_parse_condition(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -157,7 +157,7 @@ static void test_default_comparator(const char* memaddr) {
   char buffer[512];
   rc_memrefs_t memrefs;
 
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   condset = rc_parse_condset(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -185,7 +185,7 @@ static void test_evaluate_condition_float(const char* memaddr, int expected_resu
   memory.ram = ram;
   memory.size = sizeof(ram);
 
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   self = rc_parse_condition(&memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -211,7 +211,7 @@ static void test_condition_compare_delta() {
   rc_memrefs_t memrefs;
 
   const char* cond_str = "0xH0001>d0xH0001";
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   cond = rc_parse_condition(&cond_str, &parse);
   rc_destroy_parse_state(&parse);
@@ -245,7 +245,7 @@ static void test_condition_delta_24bit() {
   rc_memrefs_t memrefs;
 
   const char* cond_str = "0xW0001>d0xW0001";
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   cond = rc_parse_condition(&cond_str, &parse);
   rc_destroy_parse_state(&parse);
@@ -291,7 +291,7 @@ static void test_condition_prior_24bit() {
   rc_memrefs_t memrefs;
 
   const char* cond_str = "0xW0001>p0xW0001";
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   cond = rc_parse_condition(&cond_str, &parse);
   rc_destroy_parse_state(&parse);

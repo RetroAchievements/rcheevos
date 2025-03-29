@@ -2,7 +2,6 @@
 #  ARCH          architecture - "x86" or "x64" [detected if not set]
 #  BUILD         use flags for specified upstream consumer - "c89" or "retroarch" [default to "c89"]
 #  DEBUG         if set to anything, builds with DEBUG symbols
-#  HAVE_LUA      if set to anything, includes the lua functionality
 #  HAVE_HASH     if set to 0, excludes the hash functionality
 
 RC_SRC=../src
@@ -10,7 +9,6 @@ RC_CHEEVOS_SRC=$(RC_SRC)/rcheevos
 RC_URL_SRC=$(RC_SRC)/rurl
 RC_HASH_SRC=$(RC_SRC)/rhash
 RC_API_SRC=$(RC_SRC)/rapi
-LUA_SRC=lua/src
 
 # default parameter values
 ifeq ($(ARCH),)
@@ -87,7 +85,7 @@ OBJ=$(RC_SRC)/rc_compat.o \
     test.o
 
 # compile flags
-CFLAGS=-Wall -Wno-long-long -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+CFLAGS=-Wall -Werror -Wno-long-long -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 INCLUDES=-I../include -I$(RC_CHEEVOS_SRC) -I.
 
 ifeq ($(ARCH), x86)
@@ -146,29 +144,6 @@ else
            test_rc_libretro.o
 endif
 
-# LUA support
-ifdef HAVE_LUA
-  OBJ += $(LUA_SRC)/lapi.o $(LUA_SRC)/lcode.o $(LUA_SRC)/lctype.o $(LUA_SRC)/ldebug.o \
-         $(LUA_SRC)/ldo.o $(LUA_SRC)/ldump.o $(LUA_SRC)/lfunc.o $(LUA_SRC)/lgc.o $(LUA_SRC)/llex.o \
-         $(LUA_SRC)/lmem.o $(LUA_SRC)/lobject.o $(LUA_SRC)/lopcodes.o $(LUA_SRC)/lparser.o \
-         $(LUA_SRC)/lstate.o $(LUA_SRC)/lstring.o $(LUA_SRC)/ltable.o $(LUA_SRC)/ltm.o \
-         $(LUA_SRC)/lundump.o $(LUA_SRC)/lvm.o $(LUA_SRC)/lzio.o $(LUA_SRC)/lauxlib.o \
-         $(LUA_SRC)/lbaselib.o $(LUA_SRC)/lbitlib.o $(LUA_SRC)/lcorolib.o $(LUA_SRC)/ldblib.o \
-         $(LUA_SRC)/liolib.o $(LUA_SRC)/lmathlib.o $(LUA_SRC)/loslib.o $(LUA_SRC)/lstrlib.o \
-         $(LUA_SRC)/ltablib.o $(LUA_SRC)/lutf8lib.o $(LUA_SRC)/loadlib.o $(LUA_SRC)/linit.o
-
-  CFLAGS += -DLUA_32BITS
-
-  ifeq ($(BUILD), c89)
-    CFLAGS += -DLUA_USE_C89
-  endif
-
-  INCLUDES += -I$(LUA_SRC)
-  EXTRA += |HAVE_LUA
-else
-  CFLAGS += -DRC_DISABLE_LUA -Werror
-endif
-
 # recipes
 $(info ==== rcheevos test [$(BUILD)/$(ARCH)$(EXTRA)] ====)
 
@@ -188,9 +163,6 @@ $(RC_URL_SRC)/%.o: $(RC_URL_SRC)/%.c
 
 $(RC_API_SRC)/%.o: $(RC_API_SRC)/%.c
 	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
-
-$(LUA_SRC)/%.o: $(LUA_SRC)/%.c
-	$(CC) $(CFLAGS) -I$(LUA_SRC) -c $< -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
