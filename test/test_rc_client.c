@@ -418,8 +418,8 @@ static void rc_client_event_handler(const rc_client_event_t* e, rc_client_t* cli
       /* cap the entries at 2, none of the mocked responses have anything larger */
       memcpy(&scoreboard, e->leaderboard_scoreboard, sizeof(scoreboard));
       scoreboard.num_top_entries = (scoreboard.num_top_entries > 2) ? 2 : scoreboard.num_top_entries;
+      memcpy(scoreboard_entries, e->leaderboard_scoreboard->top_entries, scoreboard.num_top_entries * sizeof(scoreboard_entries[0]));
       for (i = 0; i < scoreboard.num_top_entries; i++) {
-        memcpy(&scoreboard_entries[i], &e->leaderboard_scoreboard->top_entries[i], sizeof(scoreboard_entries[i]));
         strcpy_s(scoreboard_top_usernames[i], sizeof(scoreboard_top_usernames[i]), scoreboard_entries[i].username);
         scoreboard_entries[i].username = scoreboard_top_usernames[i];
       }
@@ -2118,8 +2118,8 @@ static void test_identify_and_load_game_required_fields(void)
 
 static void test_identify_and_load_game_console_specified(void)
 {
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
 
   g_client = mock_client_logged_in();
 
@@ -2127,7 +2127,7 @@ static void test_identify_and_load_game_console_specified(void)
   mock_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
       image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2150,8 +2150,8 @@ static void test_identify_and_load_game_console_specified(void)
 
 static void test_identify_and_load_game_console_not_specified(void)
 {
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
 
   g_client = mock_client_logged_in();
 
@@ -2159,7 +2159,7 @@ static void test_identify_and_load_game_console_not_specified(void)
   mock_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.gb",
       image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2179,6 +2179,9 @@ static void test_identify_and_load_game_console_not_specified(void)
   rc_client_destroy(g_client);
   free(image);
 }
+
+#ifndef RC_HASH_NO_ROMS
+uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size);
 
 static void test_identify_and_load_game_multiconsole_first(void)
 {
@@ -2271,17 +2274,19 @@ static void test_identify_and_load_game_multiconsole_second(void)
   free(image);
 }
 
+#endif /* RC_HASH_NO_ROMS */
+
 static void test_identify_and_load_game_unknown_hash(void)
 {
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
 
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
   mock_api_response("r=patch&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes",
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.gb",
       image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2290,7 +2295,7 @@ static void test_identify_and_load_game_unknown_hash(void)
     ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
     ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
-    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_NINTENDO);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_GAMEBOY);
     ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
     ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
@@ -2303,8 +2308,8 @@ static void test_identify_and_load_game_unknown_hash(void)
 static void test_identify_and_load_game_unknown_hash_repeated(void)
 {
   rc_client_async_handle_t* handle;
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
 
   g_client = mock_client_logged_in();
   g_client->callbacks.server_call = rc_client_server_call_async;
@@ -2313,7 +2318,7 @@ static void test_identify_and_load_game_unknown_hash_repeated(void)
 
   /* first request should resolve the hash asynchronously */
   handle = rc_client_begin_identify_and_load_game(g_client,
-      RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes", image, image_size,
+      RC_CONSOLE_UNKNOWN, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_unknown_game, g_callback_userdata);
   ASSERT_PTR_NOT_NULL(handle);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
@@ -2325,14 +2330,14 @@ static void test_identify_and_load_game_unknown_hash_repeated(void)
   ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
   ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
-  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_NINTENDO);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_GAMEBOY);
   ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
   ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
   ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
 
   /* second request should use the hash cache and not need an asynchronous call */
   handle = rc_client_begin_identify_and_load_game(g_client,
-      RC_CONSOLE_UNKNOWN, "foo.zip#foo.nes", image, image_size,
+      RC_CONSOLE_UNKNOWN, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_unknown_game, g_callback_userdata);
   ASSERT_PTR_NULL(handle);
 
@@ -2341,7 +2346,7 @@ static void test_identify_and_load_game_unknown_hash_repeated(void)
   ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
   ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
-  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_NINTENDO);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_GAMEBOY);
   ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
   ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
   ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
@@ -2349,6 +2354,8 @@ static void test_identify_and_load_game_unknown_hash_repeated(void)
   rc_client_destroy(g_client);
   free(image);
 }
+
+#ifndef RC_HASH_NO_ROMS
 
 static void test_identify_and_load_game_unknown_hash_multiconsole(void)
 {
@@ -2394,11 +2401,13 @@ static void test_identify_and_load_game_unknown_hash_multiconsole(void)
   free(image);
 }
 
+#endif
+
 static void test_identify_and_load_game_unknown_hash_console_specified(void)
 {
   rc_hash_iterator_t* iterator;
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
 
   g_client = mock_client_logged_in();
   g_client->callbacks.server_call = rc_client_server_call_async;
@@ -2406,7 +2415,7 @@ static void test_identify_and_load_game_unknown_hash_console_specified(void)
   reset_mock_api_handlers();
 
   /* explicitly specify we only want the NES hash processed */
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
     image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   /* first hash lookup should be pending. iterator should not have been initialized */
@@ -2423,7 +2432,7 @@ static void test_identify_and_load_game_unknown_hash_console_specified(void)
     ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
 
     ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
-    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_NINTENDO);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_GAMEBOY);
     ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
     ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
     ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
@@ -2435,7 +2444,7 @@ static void test_identify_and_load_game_unknown_hash_console_specified(void)
 
 static void assert_unknown_hash_parameters(uint32_t console_id, const char* hash, rc_client_t* client, void* callback_data)
 {
-  ASSERT_NUM_EQUALS(console_id, 7);
+  ASSERT_NUM_EQUALS(console_id, RC_CONSOLE_GAMEBOY);
   ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
   ASSERT_PTR_EQUALS(client, g_client);
   ASSERT_PTR_EQUALS(callback_data, g_callback_userdata);
@@ -2449,8 +2458,8 @@ static uint32_t rc_client_identify_unknown_hash(uint32_t console_id, const char*
 
 static void test_identify_and_load_game_unknown_hash_client_provided(void)
 {
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
 
   g_client = mock_client_logged_in();
   g_client->callbacks.identify_unknown_hash = rc_client_identify_unknown_hash;
@@ -2460,7 +2469,7 @@ static void test_identify_and_load_game_unknown_hash_client_provided(void)
   mock_api_response("r=patch&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2637,7 +2646,7 @@ static void test_change_media_no_game_loaded(void)
 
   g_client = mock_client_logged_in();
 
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_no_game_loaded, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2657,7 +2666,7 @@ static void test_change_media_same_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
 
   /* changing known discs within a game set is expected to succeed */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2704,7 +2713,7 @@ static void test_change_media_known_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":5555}");
 
   /* changing to a known disc from another game is allowed */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2741,7 +2750,7 @@ static void test_change_media_unknown_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
 
   /* changing to an unknown disc is not allowed - could be a hacked version of one of the game's discs */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_hardcore_disabled_undentified_media, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2780,7 +2789,7 @@ static void test_change_media_unhashable(void)
   g_client->game->public_.console_id = RC_CONSOLE_NINTENDO_64;
 
   /* changing to a disc not supported by the system is allowed */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2817,11 +2826,11 @@ static void test_change_media_back_and_forth(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
 
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
   rc_client_begin_change_media(g_client, "foo.zip#foo2.nes", image2, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
   rc_client_begin_change_media(g_client, "foo.zip#foo2.nes", image2, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
@@ -2860,7 +2869,7 @@ static void test_change_media_while_loading(void)
 
   rc_client_begin_load_game(g_client, "4989b063a40dcfa28291ff8d675050e3",
       rc_client_callback_expect_success, g_callback_userdata);
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
 
   /* media request won't occur until patch data is received */
@@ -2910,7 +2919,7 @@ static void test_change_media_while_loading_later(void)
   async_api_response("r=patch&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
 
   /* change_media should immediately attempt to resolve the new hash */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
   assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
@@ -2948,7 +2957,7 @@ static void test_change_media_async_aborted(void)
   reset_mock_api_handlers();
 
   /* changing known discs within a game set is expected to succeed */
-  handle = rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  handle = rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
     rc_client_callback_expect_uncalled, g_callback_userdata);
 
   rc_client_abort_async(g_client, handle);
@@ -2972,7 +2981,7 @@ static void test_change_media_async_aborted(void)
   /* hash should still have been captured and lookup should succeed without having to call server again */
   reset_mock_api_handlers();
 
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
     rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
@@ -2991,7 +3000,7 @@ static void test_change_media_client_error(void)
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   mock_api_error("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "Internet not available.", RC_API_SERVER_RESPONSE_CLIENT_ERROR);
 
-  handle = rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size,
+  handle = rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_no_internet, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -9315,11 +9324,15 @@ void test_client(void) {
   TEST(test_identify_and_load_game_required_fields);
   TEST(test_identify_and_load_game_console_specified);
   TEST(test_identify_and_load_game_console_not_specified);
+ #ifndef RC_HASH_NO_ROMS
   TEST(test_identify_and_load_game_multiconsole_first);
   TEST(test_identify_and_load_game_multiconsole_second);
+ #endif
   TEST(test_identify_and_load_game_unknown_hash);
   TEST(test_identify_and_load_game_unknown_hash_repeated);
+ #ifndef RC_HASH_NO_ROMS
   TEST(test_identify_and_load_game_unknown_hash_multiconsole);
+ #endif
   TEST(test_identify_and_load_game_unknown_hash_console_specified);
   TEST(test_identify_and_load_game_unknown_hash_client_provided);
   TEST(test_identify_and_load_game_multihash);

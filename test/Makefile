@@ -3,6 +3,7 @@
 #  BUILD                 use flags for specified upstream consumer - "c89" or "retroarch" [default to "c89"]
 #  DEBUG                 if set to anything, builds with DEBUG symbols
 #  HAVE_HASH             if set to 0, excludes all hash functionality
+#  HAVE_HASH_ROM         if set to 0, excludes rom hash generation
 #  HAVE_HASH_ZIP         if set to 0, excludes zip hash generation
 #  HAVE_HASH_ENCRYPTED   if set to 0, excludes encrypted hash generation
 
@@ -143,6 +144,14 @@ else
            rhash/test_cdreader.o \
            rhash/test_hash.o \
            test_rc_libretro.o
+
+    ifeq ($(HAVE_HASH_ROM), 0)
+        EXTRA += |NO_HASH_ROM
+        CFLAGS += -DRC_HASH_NO_ROMS
+    else
+        OBJ += $(RC_HASH_SRC)/hash_rom.o \
+               rhash/test_hash_rom.o
+    endif
 
     ifeq ($(HAVE_HASH_ZIP), 0)
         EXTRA += |NO_HASH_ZIP

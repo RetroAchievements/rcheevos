@@ -2151,7 +2151,6 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
     default:
       return rc_hash_iterator_error_formatted(iterator, "Unsupported console for file hash: %d", console_id);
 
-#ifndef RC_HASH_NO_ROMS
     case RC_CONSOLE_ARCADIA_2001:
     case RC_CONSOLE_ATARI_2600:
     case RC_CONSOLE_ATARI_JAGUAR:
@@ -2201,7 +2200,6 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
     case RC_CONSOLE_SUPER_NINTENDO:
       /* additional logic whole-file hash - buffer then call rc_hash_generate_from_buffer */
       return rc_hash_buffered_file(hash, console_id, iterator);
-#endif
 
     case RC_CONSOLE_AMSTRAD_PC:
     case RC_CONSOLE_APPLE_II:

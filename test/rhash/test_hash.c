@@ -1539,6 +1539,9 @@ static void test_hash_m3u_absolute_path(const char* absolute_path)
   assert_valid_m3u(absolute_path, "relative/test.m3u", m3u_contents);
 }
 
+#ifndef RC_HASH_NO_ROMS
+uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size);
+
 static void test_hash_file_without_ext()
 {
   size_t image_size;
@@ -1572,6 +1575,7 @@ static void test_hash_file_without_ext()
   ASSERT_NUM_EQUALS(result_iterator, 1);
   ASSERT_STR_EQUALS(hash_iterator, "64b131c5c7fec32985d9c99700babb7e");
 }
+#endif
 
 static void test_hash_handler_table_order()
 {
@@ -1697,7 +1701,9 @@ void test_hash(void) {
   TEST_PARAMS1(test_hash_m3u_absolute_path, "samba:/absolute/test.d88");
 
   /* other */
+#ifndef RC_HASH_NO_ROMS
   TEST(test_hash_file_without_ext);
+#endif
   TEST(test_hash_handler_table_order);
 
   TEST_SUITE_END();

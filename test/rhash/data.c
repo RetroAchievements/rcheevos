@@ -74,34 +74,6 @@ void fill_image(uint8_t* image, size_t size)
   }
 }
 
-uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size)
-{
-  uint8_t* image;
-  size_t size_needed = kb * 1024;
-  if (with_header)
-    size_needed += 16;
-
-  image = (uint8_t*)calloc(size_needed, 1);
-  if (image != NULL) {
-    if (with_header) {
-      image[0] = 'N';
-      image[1] = 'E';
-      image[2] = 'S';
-      image[3] = '\x1A';
-      image[4] = (uint8_t)(kb / 16);
-
-      fill_image(image + 16, size_needed - 16);
-    }
-    else {
-      fill_image(image, size_needed);
-    }
-  }
-
-  if (image_size)
-    *image_size = size_needed;
-  return image;
-}
-
 uint8_t* generate_gamecube_iso(size_t mb, size_t* image_size)
 {
   uint8_t* image;

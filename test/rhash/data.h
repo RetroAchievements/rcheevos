@@ -20,8 +20,6 @@ uint8_t* generate_pcfx_bin(uint32_t binary_sectors, size_t* image_size);
 uint8_t* generate_psx_bin(const char* binary_name, uint32_t binary_size, size_t* image_size);
 uint8_t* generate_ps2_bin(const char* binary_name, uint32_t binary_size, size_t* image_size);
 
-uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size);
-
 uint8_t* generate_gamecube_iso(size_t mb, size_t* image_size);
 
 uint8_t* generate_iso9660_bin(uint32_t binary_sectors, const char* volume_label, size_t* image_size);

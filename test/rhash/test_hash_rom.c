@@ -199,7 +199,7 @@ static void test_hash_atari_7800_with_header()
 
 /* ========================================================================= */
 
-static uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size)
+uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size)
 {
   uint8_t* image;
   size_t size_needed = kb * 1024;
