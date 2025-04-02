@@ -2,6 +2,8 @@
 
 #include "../rc_compat.h"
 
+#include <ctype.h>
+
 /* ===================================================== */
 
 static int rc_hash_unheadered_iterator_buffer(char hash[33], const rc_hash_iterator_t* iterator, size_t header_size)
