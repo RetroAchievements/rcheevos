@@ -1358,47 +1358,40 @@ static int rc_hash_nintendo_ds(char hash[33], const rc_hash_iterator_t* iterator
   return rc_hash_finalize(iterator, &md5, hash);
 }
 
-static int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
+static int rc_hash_nintendo_disc_partition(md5_state_t* md5,
+                                           const rc_hash_iterator_t* iterator,
+                                           void* file_handle,
+                                           const uint32_t part_offset,
+                                           uint8_t wii_shift)
 {
-  md5_state_t md5;
-  void* file_handle;
   const uint32_t BASE_HEADER_SIZE = 0x2440;
   const uint32_t MAX_HEADER_SIZE = 1024 * 1024;
+
   uint32_t apploader_header_size, apploader_body_size, apploader_trailer_size, header_size;
+
   uint8_t quad_buffer[4];
   uint8_t addr_buffer[0xD8];
   uint8_t* buffer;
-  uint32_t dol_offset;
-  uint32_t dol_offsets[18];
-  uint32_t dol_sizes[18];
-  uint32_t dol_buf_size = 0;
-  uint32_t ix;
 
-  file_handle = rc_file_open(iterator, iterator->path);
-  if (!file_handle)
-    return rc_hash_iterator_error(iterator, "Could not open file");
+  uint64_t dol_offset;
+  uint64_t dol_offsets[18];
+  uint64_t dol_sizes[18];
 
-  /* Verify Gamecube */
-  rc_file_seek(iterator, file_handle, 0x1c, SEEK_SET);
-  rc_file_read(iterator, file_handle, quad_buffer, 4);
-  if (quad_buffer[0] != 0xC2|| quad_buffer[1] != 0x33 || quad_buffer[2] != 0x9F || quad_buffer[3] != 0x3D)
-  {
-    rc_file_close(iterator, file_handle);
-    return rc_hash_iterator_error(iterator, "Not a Gamecube disc");
-  }
+  uint8_t ix;
+  uint64_t remaining_size;
+  const uint32_t MAX_CHUNK_SIZE = 1024 * 1024;
 
   /* GetApploaderSize */
-  rc_file_seek(iterator, file_handle, BASE_HEADER_SIZE + 0x14, SEEK_SET);
+  rc_file_seek(iterator, file_handle, part_offset + BASE_HEADER_SIZE + 0x14, SEEK_SET);
   apploader_header_size = 0x20;
   rc_file_read(iterator, file_handle, quad_buffer, 4);
   apploader_body_size =
-    (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+    ((uint32_t)quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
   rc_file_read(iterator, file_handle, quad_buffer, 4);
   apploader_trailer_size =
-    (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+    ((uint32_t)quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
   header_size = BASE_HEADER_SIZE + apploader_header_size + apploader_body_size + apploader_trailer_size;
-  if (header_size > MAX_HEADER_SIZE)
-    header_size = MAX_HEADER_SIZE;
+  if (header_size > MAX_HEADER_SIZE) header_size = MAX_HEADER_SIZE;
 
   /* Hash headers */
   buffer = (uint8_t*)malloc(header_size);
@@ -1407,40 +1400,37 @@ static int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
     rc_file_close(iterator, file_handle);
     return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
   }
-  rc_file_seek(iterator, file_handle, 0, SEEK_SET);
+  rc_file_seek(iterator, file_handle, part_offset, SEEK_SET);
   rc_file_read(iterator, file_handle, buffer, header_size);
-  md5_init(&md5);
-
-  rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte header", header_size);
-
-  md5_append(&md5, buffer, header_size);
+  rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte partition header", header_size);
+  md5_append(md5, buffer, header_size);
 
   /* GetBootDOLOffset
    * Base header size is guaranteed larger than 0x423 therefore buffer contains dol_offset right now
    */
-  dol_offset = (buffer[0x420] << 24) | (buffer[0x421] << 16) | (buffer[0x422] << 8) | buffer[0x423];
+  dol_offset = (((uint64_t)buffer[0x420] << 24) |
+                ((uint64_t)buffer[0x421] << 16) |
+                ((uint64_t)buffer[0x422] << 8) |
+                (uint64_t)buffer[0x423]) << wii_shift;
   free(buffer);
 
-  /* Find offsetsand sizes for the 7 main.dol code segments and 11 main.dol data segments */
-  rc_file_seek(iterator, file_handle, dol_offset, SEEK_SET);
+  /* Find offsets and sizes for the 7 main.dol code segments and 11 main.dol data segments */
+  rc_file_seek(iterator, file_handle, part_offset + dol_offset, SEEK_SET);
   rc_file_read(iterator, file_handle, addr_buffer, 0xD8);
   for (ix = 0; ix < 18; ix++)
   {
-    dol_offsets[ix] =
-      (addr_buffer[0x0 + ix * 4] << 24) |
-      (addr_buffer[0x1 + ix * 4] << 16) |
-      (addr_buffer[0x2 + ix * 4] << 8) |
-      addr_buffer[0x3 + ix * 4];
-    dol_sizes[ix] =
-      (addr_buffer[0x90 + ix * 4] << 24) |
-      (addr_buffer[0x91 + ix * 4] << 16) |
-      (addr_buffer[0x92 + ix * 4] << 8) |
-      addr_buffer[0x93 + ix * 4];
-    dol_buf_size = (dol_sizes[ix] > dol_buf_size) ? dol_sizes[ix] : dol_buf_size;
+    dol_offsets[ix] = (((uint64_t)addr_buffer[0x0 + ix * 4] << 24) |
+                       ((uint64_t)addr_buffer[0x1 + ix * 4] << 16) |
+                       ((uint64_t)addr_buffer[0x2 + ix * 4] << 8) |
+                       (uint64_t)addr_buffer[0x3 + ix * 4]) << wii_shift;
+    dol_sizes[ix] = (((uint64_t)addr_buffer[0x90 + ix * 4] << 24) |
+                     ((uint64_t)addr_buffer[0x91 + ix * 4] << 16) |
+                     ((uint64_t)addr_buffer[0x92 + ix * 4] << 8) |
+                     (uint64_t)addr_buffer[0x93 + ix * 4]) << wii_shift;
   }
 
   /* Iterate through the 18 main.dol segments and hash each */
-  buffer = (uint8_t*)malloc(dol_buf_size);
+  buffer = (uint8_t*)malloc(MAX_CHUNK_SIZE);
   if (!buffer)
   {
     rc_file_close(iterator, file_handle);
@@ -1450,23 +1440,198 @@ static int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
   {
     if (dol_sizes[ix] == 0)
       continue;
-
+    rc_file_seek(iterator, file_handle, part_offset + dol_offsets[ix], SEEK_SET);
     if (ix < 7)
       rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte main.dol code segment %u", dol_sizes[ix], ix);
     else
       rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte main.dol data segment %u", dol_sizes[ix], ix - 7);
+    remaining_size = dol_sizes[ix];
+    while (remaining_size > MAX_CHUNK_SIZE)
+    {
+      rc_file_read(iterator, file_handle, buffer, MAX_CHUNK_SIZE);
+      md5_append(md5, buffer, MAX_CHUNK_SIZE);
+      remaining_size -= MAX_CHUNK_SIZE;
+    }
+    rc_file_read(iterator, file_handle, buffer, (int32_t)remaining_size);
+    md5_append(md5, buffer, (int32_t)remaining_size);
+  }
 
-    rc_file_seek(iterator, file_handle, dol_offsets[ix], SEEK_SET);
-    rc_file_read(iterator, file_handle, buffer, dol_sizes[ix]);
+  free(buffer);
+  return 1;
+}
 
-    md5_append(&md5, buffer, dol_sizes[ix]);
+static int rc_hash_wii(md5_state_t* md5,
+                       const rc_hash_iterator_t* iterator,
+                       void* file_handle)
+{
+  const uint32_t MAIN_HEADER_SIZE = 0x80;
+  const uint64_t REGION_CODE_ADDRESS = 0x4E000;
+  const uint32_t CLUSTER_SIZE = 0x7C00;
+  const uint32_t MAX_CLUSTER_COUNT = 1024;
+
+  uint32_t partition_info_table[8];
+  uint8_t total_partition_count = 0;
+  uint32_t* partition_table;
+  uint32_t tmd_offset;
+  uint32_t tmd_size;
+  uint32_t part_offset;
+  uint32_t part_size;
+  uint32_t cluster_count;
+
+  uint8_t quad_buffer[4];
+  uint8_t* buffer;
+
+  uint32_t ix, jx, kx;
+  uint8_t encrypted;
+
+  /* Check encryption byte - if 0x61 is 0, disc is encrypted */
+  rc_file_seek(iterator, file_handle, 0x61, SEEK_SET);
+  rc_file_read(iterator, file_handle, quad_buffer, 1);
+  encrypted = (quad_buffer[0] == 0);
+
+  /* Hash main headers */
+  buffer = (uint8_t*)malloc(CLUSTER_SIZE);
+  if (!buffer)
+  {
+    rc_file_close(iterator, file_handle);
+    return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
+  }
+  rc_file_seek(iterator, file_handle, 0, SEEK_SET);
+  rc_file_read(iterator, file_handle, buffer, MAIN_HEADER_SIZE);
+
+  rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte main header for [%c%c%c%c%c%c]",
+                                     MAIN_HEADER_SIZE, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+  md5_append(md5, buffer, MAIN_HEADER_SIZE);
+
+  /* Hash region code */
+  rc_file_seek(iterator, file_handle, REGION_CODE_ADDRESS, SEEK_SET);
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
+  md5_append(md5, quad_buffer, 4);
+
+  /* Scan partition table */
+  rc_file_seek(iterator, file_handle, 0x40000, SEEK_SET);
+  for (ix = 0; ix < 8; ix++)
+  {
+    rc_file_read(iterator, file_handle, quad_buffer, 4);
+    partition_info_table[ix] =
+      ((uint32_t)quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+    if (ix % 2 == 0)
+      total_partition_count += partition_info_table[ix];
+  }
+  partition_table = (uint32_t*)malloc(total_partition_count * 4 * 2);
+  kx = 0;
+  for (jx = 0; jx < 8; jx += 2)
+  {
+    rc_file_seek(iterator, file_handle, ((uint64_t)partition_info_table[jx + 1]) << 2, SEEK_SET);
+    for (ix = 0; ix < partition_info_table[jx]; ix++)
+    {
+      rc_file_read(iterator, file_handle, quad_buffer, 4);
+      partition_table[kx++] =
+        ((uint32_t)quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+      rc_file_read(iterator, file_handle, quad_buffer, 4);
+      partition_table[kx++] =
+        ((uint32_t)quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+    }
+  }
+
+  /* Read each partition */
+  for (jx = 0; jx < (uint32_t)total_partition_count * 2; jx += 2)
+  {
+    /* Don't hash Update partition*/
+    if (partition_table[jx + 1] == 1)
+      continue;
+
+    /* Hash title metadata */
+    rc_file_seek(iterator, file_handle, ((uint64_t)partition_table[jx] << 2) + 0x2A4, SEEK_SET);
+    rc_file_read(iterator, file_handle, quad_buffer, 4);
+    tmd_size =
+      (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+    rc_file_read(iterator, file_handle, quad_buffer, 4);
+    tmd_offset =
+      ((uint64_t)((quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3])) << 2;
+
+    if (tmd_size > CLUSTER_SIZE)
+    {
+      tmd_size = CLUSTER_SIZE;
+    }
+    rc_file_seek(iterator, file_handle, ((uint64_t)partition_table[jx] << 2) + tmd_offset, SEEK_SET);
+    rc_file_read(iterator, file_handle, buffer, tmd_size);
+    rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte title metadata (partition type %u)",
+                                       tmd_size, partition_table[jx + 1]);
+    md5_append(md5, buffer, tmd_size);
+
+    /* Hash partition */
+    rc_file_seek(iterator, file_handle, ((uint64_t)partition_table[jx] << 2) + 0x2B8, SEEK_SET);
+    rc_file_read(iterator, file_handle, quad_buffer, 4);
+    part_offset =
+      ((uint64_t)((quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3])) << 2;
+    rc_file_read(iterator, file_handle, quad_buffer, 4);
+    part_size =
+      ((uint64_t)((quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3])) << 2;
+
+    if (encrypted)
+    {
+      cluster_count = (part_size / 0x8000 > MAX_CLUSTER_COUNT) ? MAX_CLUSTER_COUNT : part_size / 0x8000;
+      rc_hash_iterator_verbose_formatted(iterator, "Hashing %u encrypted clusters (%u bytes)",
+                                         cluster_count, cluster_count * CLUSTER_SIZE);
+      buffer = (uint8_t*)malloc(CLUSTER_SIZE);
+      for (ix = 0; ix < cluster_count; ix++)
+      {
+        rc_file_seek(iterator, file_handle, part_offset + (ix * 0x8000) + 0x400, SEEK_SET);
+        rc_file_read(iterator, file_handle, buffer, CLUSTER_SIZE);
+        md5_append(md5, buffer, CLUSTER_SIZE);
+      }
+    }
+    else /* Decrypted */
+    {
+      if (rc_hash_nintendo_disc_partition(md5, iterator, file_handle, part_offset, 2) == 0)
+      {
+        free(partition_table);
+        free(buffer);
+        return 0;
+      }
+    }
+  }
+  free(partition_table);
+  free(buffer);
+  return 1;
+}
+
+static int rc_hash_nintendo_disc(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  md5_state_t md5;
+  void* file_handle;
+
+  uint8_t quad_buffer[4];
+  uint8_t success;
+
+  file_handle = rc_file_open(iterator, iterator->path);
+  if (!file_handle)
+    return rc_hash_iterator_error(iterator, "Could not open file");
+
+  md5_init(&md5);
+  /* Check Gamecube */
+  rc_file_seek(iterator, file_handle, 0x1c, SEEK_SET);
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
+  if (quad_buffer[0] == 0xC2 && quad_buffer[1] == 0x33 && quad_buffer[2] == 0x9F && quad_buffer[3] == 0x3D)
+  {
+    success = rc_hash_nintendo_disc_partition(&md5, iterator, file_handle, 0, 0);
+  } else {
+    /* Check Wii */
+    rc_file_seek(iterator, file_handle, 0x18, SEEK_SET);
+    rc_file_read(iterator, file_handle, quad_buffer, 4);
+    if (quad_buffer[0] == 0x5D && quad_buffer[1] == 0x1C && quad_buffer[2] == 0x9E && quad_buffer[3] == 0xA3)
+    {
+      success = rc_hash_wii(&md5, iterator, file_handle);
+    } else {
+      success = rc_hash_iterator_error(iterator, "Not a supported Nintendo disc");
+    }
   }
 
   /* Finalize */
   rc_file_close(iterator, file_handle);
-  free(buffer);
 
-  return rc_hash_finalize(iterator, &md5, hash);
+  return success == 0 ? 0 : rc_hash_finalize(iterator, &md5, hash);
 }
 
 static int rc_hash_pce(char hash[33], const rc_hash_iterator_t* iterator)
@@ -2471,7 +2636,8 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
       return rc_hash_dreamcast(hash, iterator);
 
     case RC_CONSOLE_GAMECUBE:
-      return rc_hash_gamecube(hash, iterator);
+    case RC_CONSOLE_WII:
+      return rc_hash_nintendo_disc(hash, iterator);
 
 #ifndef RC_HASH_NO_ZIP
     case RC_CONSOLE_MS_DOS:

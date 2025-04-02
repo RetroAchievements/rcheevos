@@ -30,6 +30,10 @@ static void rc_client_external_conversions_init(const rc_client_t* client)
 const rc_client_user_t* rc_client_external_convert_v1_user(const rc_client_t* client, const rc_client_user_t* v1_user)
 {
   rc_client_user_t* converted;
+
+  if (!v1_user)
+    return NULL;
+
   rc_client_external_conversions_init(client);
 
   converted = &client->state.external_client_conversions->user;
@@ -41,6 +45,10 @@ const rc_client_user_t* rc_client_external_convert_v1_user(const rc_client_t* cl
 const rc_client_game_t* rc_client_external_convert_v1_game(const rc_client_t* client, const rc_client_game_t* v1_game)
 {
   rc_client_game_t* converted;
+
+  if (!v1_game)
+    return NULL;
+
   rc_client_external_conversions_init(client);
 
   converted = &client->state.external_client_conversions->game;
@@ -54,6 +62,9 @@ const rc_client_subset_t* rc_client_external_convert_v1_subset(const rc_client_t
   rc_client_subset_t* converted = NULL;
   const uint32_t num_subsets = sizeof(client->state.external_client_conversions->subsets) / sizeof(client->state.external_client_conversions->subsets[0]);
   uint32_t index;
+
+  if (!v1_subset)
+    return NULL;
 
   rc_client_external_conversions_init(client);
 
@@ -79,6 +90,9 @@ const rc_client_achievement_t* rc_client_external_convert_v1_achievement(const r
   rc_client_achievement_t* converted = NULL;
   const uint32_t num_achievements = sizeof(client->state.external_client_conversions->achievements) / sizeof(client->state.external_client_conversions->achievements[0]);
   uint32_t index;
+
+  if (!v1_achievement)
+    return NULL;
 
   rc_client_external_conversions_init(client);
 
@@ -126,6 +140,9 @@ rc_client_achievement_list_t* rc_client_external_convert_v1_achievement_list(con
 {
   rc_client_achievement_list_wrapper_t* new_list;
   (void)client;
+
+  if (!v1_achievement_list)
+    return NULL;
 
   new_list = (rc_client_achievement_list_wrapper_t*)calloc(1, sizeof(*new_list));
   if (!new_list)

@@ -573,6 +573,11 @@ static const rc_client_game_t* rc_client_external_get_game_info_v1(void)
   return (const rc_client_game_t*)game;
 }
 
+static const rc_client_game_t* rc_client_external_get_game_info_v1_not_found(void)
+{
+  return NULL;
+}
+
 static const rc_client_game_t* rc_client_external_get_game_info_v3(void)
 {
   v3_rc_client_game_t* game = (v3_rc_client_game_t*)
@@ -748,6 +753,20 @@ static void test_load_game(void)
   ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
   /* ensure non-external client user was not initialized */
   ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_game_info_v1_no_game_loaded(void)
+{
+  const rc_client_game_t* game;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info_v1_not_found;
+
+  /* game data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NULL(game);
 
   rc_client_destroy(g_client);
 }
@@ -1058,6 +1077,11 @@ static const rc_client_achievement_t* rc_client_external_get_achievement_info_v1
   return (const rc_client_achievement_t*)achievement;
 }
 
+static const rc_client_achievement_t* rc_client_external_get_achievement_info_v1_not_found(uint32_t id)
+{
+  return NULL;
+}
+
 static const rc_client_achievement_t* rc_client_external_get_achievement_info_v3(uint32_t id)
 {
   v3_rc_client_achievement_t* achievement = (v3_rc_client_achievement_t*)
@@ -1118,6 +1142,19 @@ static void test_get_achievement_info_v1(void)
   ASSERT_FLOAT_EQUALS(achievement->rarity, 75.0f);
   ASSERT_FLOAT_EQUALS(achievement->rarity_hardcore, 66.66f);
   ASSERT_NUM_EQUALS(achievement->type, RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_achievement_info_v1_not_found(void)
+{
+  const rc_client_achievement_t* achievement;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_achievement_info = rc_client_external_get_achievement_info_v1_not_found;
+
+  achievement = rc_client_get_achievement_info(g_client, 4);
+  ASSERT_PTR_NULL(achievement);
 
   rc_client_destroy(g_client);
 }
@@ -1670,6 +1707,7 @@ void test_client_external(void) {
 #endif
   TEST(test_load_game_v1);
   TEST(test_load_game);
+  TEST(test_get_game_info_v1_no_game_loaded);
   TEST(test_get_user_game_summary);
 #ifdef RC_CLIENT_SUPPORTS_HASH
   TEST(test_identify_and_load_game_external_hash);
@@ -1691,6 +1729,7 @@ void test_client_external(void) {
   TEST(test_v3_achievement_field_offsets);
   TEST(test_has_achievements);
   TEST(test_get_achievement_info_v1);
+  TEST(test_get_achievement_info_v1_not_found);
   TEST(test_get_achievement_info);
 
   TEST(test_v1_achievement_list_field_offsets);

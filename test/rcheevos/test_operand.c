@@ -8,7 +8,7 @@ static void _assert_parse_operand(rc_operand_t* self, char* buffer, const char**
   rc_memrefs_t memrefs;
   int ret;
 
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   ret = rc_parse_operand(self, memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -65,7 +65,7 @@ static void test_parse_error_operand(const char* memaddr, int valid_chars, int e
   const char* begin = memaddr;
   rc_memrefs_t memrefs;
 
-  rc_init_parse_state(&parse, 0, 0, 0);
+  rc_init_parse_state(&parse, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   ret = rc_parse_operand(&self, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -95,7 +95,7 @@ static void test_evaluate_operand(const char* memaddr, memory_t* memory, uint32_
   char buffer[512];
   uint32_t value;
 
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&self, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -124,7 +124,7 @@ static void test_evaluate_operand_float(const char* memaddr, memory_t* memory, d
   char buffer[512];
   float value;
 
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&self, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -531,7 +531,7 @@ static void test_evaluate_delta_memory_reference() {
   memory.size = sizeof(ram);
 
   memaddr = "d0xh1";
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&op, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -569,7 +569,7 @@ void test_evaluate_prior_memory_reference() {
   memory.size = sizeof(ram);
 
   memaddr = "p0xh1";
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&op, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -642,7 +642,7 @@ static void test_evaluate_delta_memory_reference_float() {
   memory.size = sizeof(ram);
 
   memaddr = "dff0";
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&op, &memaddr, &parse);
   rc_destroy_parse_state(&parse);

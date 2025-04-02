@@ -55,7 +55,7 @@ static int32_t rc_classify_conditions(rc_condset_t* self, const char* memaddr) {
   uint32_t index = 0;
   uint32_t chain_length = 1;
 
-  rc_init_parse_state(&parse, NULL, NULL, 0);
+  rc_init_parse_state(&parse, NULL);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   do {
@@ -109,7 +109,7 @@ static int rc_find_next_classification(const char* memaddr) {
   rc_condition_t condition;
   int classification;
 
-  rc_init_parse_state(&parse, NULL, NULL, 0);
+  rc_init_parse_state(&parse, NULL);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   do {

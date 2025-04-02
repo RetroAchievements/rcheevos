@@ -8,7 +8,7 @@ static void _assert_parse_condset(rc_condset_t** condset, rc_memrefs_t* memrefs,
   rc_parse_state_t parse;
   int size;
 
-  rc_init_parse_state(&parse, buffer, 0, 0);
+  rc_init_parse_state(&parse, buffer);
   rc_init_parse_state_memrefs(&parse, memrefs);
 
   *condset = rc_parse_condset(&memaddr, &parse);
@@ -2725,6 +2725,70 @@ static void test_addsource_invert() {
   assert_evaluate_condset(condset, memrefs, &memory, 1);
 }
 
+static void test_subsource_mem_delta() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* -byte(0) + prior(byte(0)) = 10 */
+  assert_parse_condset(&condset, &memrefs, buffer, "B:0xH0000_d0xH0000=10");
+
+  /* -0 + 0 = 10 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* -5 + 0 = 10 */
+  ram[0] = 5;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* -15 + 5 = 10 */
+  ram[0] = 15;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* -5 + 15 = 10 */
+  ram[0] = 5;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* -5 + 5 = 10 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+}
+
+static void test_subsource_mem_prior() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* -byte(0) + prior(byte(0)) = 10 */
+  assert_parse_condset(&condset, &memrefs, buffer, "B:0xH0000_p0xH0000=10");
+
+  /* -0 + 0 = 10 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* -5 + 0 = 10 */
+  ram[0] = 5;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* -15 + 5 = 10 */
+  ram[0] = 15;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* -5 + 15 = 10 */
+  ram[0] = 5;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* -5 + 15 = 10 */
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_addhits() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -4623,6 +4687,8 @@ void test_condset(void) {
   TEST(test_addsource_bits_change);
   TEST(test_addsource_bcd);
   TEST(test_addsource_invert);
+  TEST(test_subsource_mem_delta);
+  TEST(test_subsource_mem_prior);
 
   /* addhits/subhits */
   TEST(test_addhits);

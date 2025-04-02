@@ -4,9 +4,6 @@
     <Filter Include="src">
       <UniqueIdentifier>{c1b8966b-c711-43ce-ac8a-1dcca6b41ff3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\lua">
-      <UniqueIdentifier>{9d6d4e6d-a0b7-4181-b536-93e34de1e625}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\rcheevos">
       <UniqueIdentifier>{43b6b53b-c37e-453e-97bf-df56c515f1a7}</UniqueIdentifier>
     </Filter>
@@ -59,105 +56,6 @@
     </ClCompile>
     <ClCompile Include="..\src\rcheevos\condset.c">
       <Filter>src\rcheevos</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lapi.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lauxlib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lbaselib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lbitlib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lcode.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lcorolib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lctype.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\ldblib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\ldebug.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\ldo.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\ldump.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lfunc.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lgc.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\linit.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\liolib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\llex.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lmathlib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lmem.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\loadlib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lobject.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lopcodes.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\loslib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lparser.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lstate.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lstring.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lstrlib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\ltable.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\ltablib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\ltm.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lundump.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lutf8lib.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lvm.c">
-      <Filter>src\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lua\src\lzio.c">
-      <Filter>src\lua</Filter>
     </ClCompile>
     <ClCompile Include="..\src\rcheevos\richpresence.c">
       <Filter>src\rcheevos</Filter>
