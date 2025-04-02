@@ -159,6 +159,8 @@
     <ClCompile Include="..\src\rhash\aes.c" />
     <ClCompile Include="..\src\rhash\cdreader.c" />
     <ClCompile Include="..\src\rhash\hash.c" />
+    <ClCompile Include="..\src\rhash\hash_encrypted.c" />
+    <ClCompile Include="..\src\rhash\hash_zip.c" />
     <ClCompile Include="..\src\rhash\md5.c" />
     <ClCompile Include="..\src\rurl\url.c" />
     <ClCompile Include="rapi\test_rc_api_common.c" />
@@ -184,6 +186,7 @@
     <ClCompile Include="rhash\mock_filereader.c" />
     <ClCompile Include="rhash\test_cdreader.c" />
     <ClCompile Include="rhash\test_hash.c" />
+    <ClCompile Include="rhash\test_hash_zip.c" />
     <ClCompile Include="rurl\test_url.c" />
     <ClCompile Include="test.c" />
     <ClCompile Include="test_rc_client.c" />

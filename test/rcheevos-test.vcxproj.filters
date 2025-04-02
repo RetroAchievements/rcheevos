@@ -209,6 +209,15 @@
     <ClCompile Include="..\src\rc_client_external.c">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rhash\hash_zip.c">
+      <Filter>src\rhash</Filter>
+    </ClCompile>
+    <ClCompile Include="rhash\test_hash_zip.c">
+      <Filter>tests\rhash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rhash\hash_encrypted.c">
+      <Filter>src\rhash</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">

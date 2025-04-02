@@ -1,8 +1,10 @@
 # supported parameters
-#  ARCH          architecture - "x86" or "x64" [detected if not set]
-#  BUILD         use flags for specified upstream consumer - "c89" or "retroarch" [default to "c89"]
-#  DEBUG         if set to anything, builds with DEBUG symbols
-#  HAVE_HASH     if set to 0, excludes the hash functionality
+#  ARCH                  architecture - "x86" or "x64" [detected if not set]
+#  BUILD                 use flags for specified upstream consumer - "c89" or "retroarch" [default to "c89"]
+#  DEBUG                 if set to anything, builds with DEBUG symbols
+#  HAVE_HASH             if set to 0, excludes all hash functionality
+#  HAVE_HASH_ZIP         if set to 0, excludes zip hash generation
+#  HAVE_HASH_ENCRYPTED   if set to 0, excludes encrypted hash generation
 
 RC_SRC=../src
 RC_CHEEVOS_SRC=$(RC_SRC)/rcheevos
@@ -133,8 +135,7 @@ ifeq ($(HAVE_HASH), 0)
     EXTRA += |NO_HASH
 else
     CFLAGS += -DRC_CLIENT_SUPPORTS_HASH
-    OBJ += $(RC_HASH_SRC)/aes.o \
-           $(RC_HASH_SRC)/cdreader.o \
+    OBJ += $(RC_HASH_SRC)/cdreader.o \
            $(RC_HASH_SRC)/hash.o \
            $(RC_SRC)/rc_libretro.o \
            rhash/data.o \
@@ -142,6 +143,22 @@ else
            rhash/test_cdreader.o \
            rhash/test_hash.o \
            test_rc_libretro.o
+
+    ifeq ($(HAVE_HASH_ZIP), 0)
+        EXTRA += |NO_HASH_ZIP
+        CFLAGS += -DRC_HASH_NO_ZIP
+    else
+        OBJ += $(RC_HASH_SRC)/hash_zip.o \
+               rhash/test_hash_zip.o
+    endif
+
+    ifeq ($(HAVE_HASH_ENCRYPTED), 0)
+        EXTRA += |NO_HASH_ENCRYPTED
+        CFLAGS += -DRC_HASH_NO_ENCRYPTED
+    else
+        OBJ += $(RC_HASH_SRC)/hash_encrypted.o \
+               $(RC_HASH_SRC)/aes.o
+    endif
 endif
 
 # recipes

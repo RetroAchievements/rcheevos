@@ -40,6 +40,7 @@ extern void test_url();
 
 extern void test_cdreader();
 extern void test_hash();
+extern void test_hash_zip();
 
 extern void test_rapi_common();
 extern void test_rapi_user();
@@ -90,6 +91,9 @@ int main(void) {
   test_rc_libretro(); /* libretro extensions require hash support */
   test_cdreader();
   test_hash();
+ #ifndef RC_HASH_NO_ZIP
+  test_hash_zip();
+ #endif
 #endif
 #endif
 
