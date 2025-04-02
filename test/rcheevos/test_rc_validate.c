@@ -137,6 +137,11 @@ static void test_addhits_chain_without_target() {
   TEST_PARAMS2(test_validate_trigger, "D:0xH1234=1_0xH2345=2", "Condition 2: Final condition in AddHits chain must have a hit target");
   TEST_PARAMS2(test_validate_trigger, "C:0xH1234=1_0xH2345=2.1.", "");
   TEST_PARAMS2(test_validate_trigger, "D:0xH1234=1_0xH2345=2.1.", "");
+
+  /* ResetIf at the end of a hit chain does not require a hit target.
+   * It's meant to reset things if some subset of conditions have been true. */
+  TEST_PARAMS2(test_validate_trigger, "C:0xH1234=1_C:0xH2345=2_R:0=1.1.", "");
+  TEST_PARAMS2(test_validate_trigger, "C:0xH1234=1_C:0xH2345=2_R:0=1", "");
 }
 
 static void test_range_comparisons() {
