@@ -33,8 +33,13 @@ int rc_hash_iterator_error_formatted(const rc_hash_iterator_t* iterator, const c
 
 int rc_hash_finalize(const rc_hash_iterator_t* iterator, md5_state_t* md5, char hash[33]);
 
+int rc_hash_buffer(char hash[33], const uint8_t* buffer, size_t buffer_size, const rc_hash_iterator_t* iterator);
+void rc_hash_byteswap16(uint8_t* buffer, const uint8_t* stop);
+void rc_hash_byteswap32(uint8_t* buffer, const uint8_t* stop);
+
 
 const char* rc_path_get_filename(const char* path);
+const char* rc_path_get_extension(const char* path);
 int rc_path_compare_extension(const char* path, const char* ext);
 
 
@@ -64,6 +69,20 @@ typedef struct rc_hash_cdrom_track_t {
 
 
 int rc_hash_whole_file(char hash[33], const rc_hash_iterator_t* iterator);
+
+#ifndef RC_HASH_NO_ROMS
+  /* hash_rom.c */
+  int rc_hash_7800(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_arcade(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_text(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_lynx(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_nes(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_n64(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_nintendo_ds(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_pce(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_scv(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_snes(char hash[33], const rc_hash_iterator_t* iterator);
+#endif
 
 #ifndef RC_HASH_NO_ENCRYPTED
   /* hash_encrypted.c */

@@ -218,6 +218,12 @@
     <ClCompile Include="..\src\rhash\hash_encrypted.c">
       <Filter>src\rhash</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rhash\hash_rom.c">
+      <Filter>src\rhash</Filter>
+    </ClCompile>
+    <ClCompile Include="rhash\test_hash_rom.c">
+      <Filter>tests\rhash</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\rcheevos.h">

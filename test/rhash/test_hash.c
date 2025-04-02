@@ -9,38 +9,25 @@
 
 #include <stdlib.h>
 
-static int hash_mock_file(const char* filename, char hash[33], uint32_t console_id, const uint8_t* buffer, size_t buffer_size)
-{
-  mock_file(0, filename, buffer, buffer_size);
-
-  return rc_hash_generate_from_file(hash, console_id, filename);
-}
-
-static void iterate_mock_file(struct rc_hash_iterator *iterator, const char* filename, const uint8_t* buffer, size_t buffer_size)
-{
-  mock_file(0, filename, buffer, buffer_size);
-
-  rc_hash_initialize_iterator(iterator, filename, NULL, 0);
-}
-
 /* ========================================================================= */
 
-static void test_hash_full_file(uint32_t console_id, const char* filename, size_t size, const char* expected_md5)
+void test_hash_full_file(uint32_t console_id, const char* filename, size_t size, const char* expected_md5)
 {
   uint8_t* image = generate_generic_file(size);
   char hash_buffer[33], hash_file[33], hash_iterator[33];
+  mock_file(0, filename, image, size);
 
   /* test full buffer hash */
   int result_buffer = rc_hash_generate_from_buffer(hash_buffer, console_id, image, size);
 
   /* test full file hash */
-  int result_file = hash_mock_file(filename, hash_file, console_id, image, size);
+  int result_file = rc_hash_generate_from_file(hash_file, console_id, filename);
 
   /* test file identification from iterator */
   int result_iterator;
   struct rc_hash_iterator iterator;
 
-  iterate_mock_file(&iterator, filename, image, size);
+  rc_hash_initialize_iterator(&iterator, filename, NULL, 0);
   result_iterator = rc_hash_iterate(hash_iterator, &iterator);
   rc_hash_destroy_iterator(&iterator);
 
@@ -81,7 +68,7 @@ static void test_hash_unknown_format(uint32_t console_id, const char* path)
   ASSERT_STR_EQUALS(hash_iterator, "");
 }
 
-static void test_hash_m3u(uint32_t console_id, const char* filename, size_t size, const char* expected_md5)
+void test_hash_m3u(uint32_t console_id, const char* filename, size_t size, const char* expected_md5)
 {
   uint8_t* image = generate_generic_file(size);
   char hash_file[33], hash_iterator[33];
@@ -103,29 +90,6 @@ static void test_hash_m3u(uint32_t console_id, const char* filename, size_t size
 
   /* cleanup */
   free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_md5);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
-}
-
-static void test_hash_filename(uint32_t console_id, const char* path, const char* expected_md5)
-{
-  char hash_file[33], hash_iterator[33];
-
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, console_id, path);
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, path, NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
 
   /* validation */
   ASSERT_NUM_EQUALS(result_file, 1);
@@ -320,130 +284,6 @@ static void test_hash_3do_long_directory()
   /* validation */
   ASSERT_NUM_EQUALS(result_file, 1);
   ASSERT_STR_EQUALS(hash_file, expected_md5);
-}
-
-/* ========================================================================= */
-
-static void test_hash_arduboy()
-{
-  char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "67b64633285a7f965064ba29dab45148";
-
-  const char* hex_input =
-      ":100000000C94690D0C94910D0C94910D0C94910D20\n"
-      ":100010000C94910D0C94910D0C94910D0C94910DE8\n"
-      ":100020000C94910D0C94910D0C94C32A0C94352BC7\n"
-      ":00000001FF\n";
-  mock_file(0, "game.hex", (const uint8_t*)hex_input, strlen(hex_input));
-
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARDUBOY, "game.hex");
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.hex", NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_md5);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
-}
-
-static void test_hash_arduboy_crlf()
-{
-  char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "67b64633285a7f965064ba29dab45148";
-
-  const char* hex_input =
-      ":100000000C94690D0C94910D0C94910D0C94910D20\r\n"
-      ":100010000C94910D0C94910D0C94910D0C94910DE8\r\n"
-      ":100020000C94910D0C94910D0C94C32A0C94352BC7\r\n"
-      ":00000001FF\r\n";
-  mock_file(0, "game.hex", (const uint8_t*)hex_input, strlen(hex_input));
-
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARDUBOY, "game.hex");
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.hex", NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_md5);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
-}
-
-static void test_hash_arduboy_no_final_lf()
-{
-  char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "67b64633285a7f965064ba29dab45148";
-
-  const char* hex_input =
-      ":100000000C94690D0C94910D0C94910D0C94910D20\n"
-      ":100010000C94910D0C94910D0C94910D0C94910DE8\n"
-      ":100020000C94910D0C94910D0C94C32A0C94352BC7\n"
-      ":00000001FF";
-  mock_file(0, "game.hex", (const uint8_t*)hex_input, strlen(hex_input));
-
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARDUBOY, "game.hex");
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.hex", NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_md5);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
-}
-
-/* ========================================================================= */
-
-static void test_hash_atari_7800()
-{
-  size_t image_size;
-  uint8_t* image = generate_atari_7800_file(16, 0, &image_size);
-  char hash[33];
-  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_ATARI_7800, image, image_size);
-  free(image);
-
-  ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "455f07d8500f3fabc54906737866167f");
-  ASSERT_NUM_EQUALS(image_size, 16384);
-}
-
-static void test_hash_atari_7800_with_header()
-{
-  size_t image_size;
-  uint8_t* image = generate_atari_7800_file(16, 1, &image_size);
-  char hash[33];
-  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_ATARI_7800, image, image_size);
-  free(image);
-
-  /* NOTE: expectation is that this hash matches the hash in test_hash_atari_7800 */
-  ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "455f07d8500f3fabc54906737866167f");
-  ASSERT_NUM_EQUALS(image_size, 16384 + 128);
 }
 
 /* ========================================================================= */
@@ -903,340 +743,6 @@ static void test_hash_gamecube()
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 
   ASSERT_NUM_EQUALS(image_size, 32 * 1024 * 1024);
-}
-
-/* ========================================================================= */
-
-static void test_hash_nes_32k()
-{
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 0, &image_size);
-  char hash[33];
-  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_NINTENDO, image, image_size);
-  free(image);
-
-  ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
-  ASSERT_NUM_EQUALS(image_size, 32768);
-}
-
-static void test_hash_nes_32k_with_header()
-{
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
-  char hash[33];
-  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_NINTENDO, image, image_size);
-  free(image);
-
-  /* NOTE: expectation is that this hash matches the hash in test_hash_nes_32k */
-  ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
-  ASSERT_NUM_EQUALS(image_size, 32768 + 16);
-}
-
-static void test_hash_nes_256k()
-{
-  size_t image_size;
-  uint8_t* image = generate_nes_file(256, 0, &image_size);
-  char hash[33];
-  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_NINTENDO, image, image_size);
-  free(image);
-
-  ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "545d527301b8ae148153988d6c4fcb84");
-  ASSERT_NUM_EQUALS(image_size, 262144);
-}
-
-static void test_hash_fds_two_sides()
-{
-  size_t image_size;
-  uint8_t* image = generate_fds_file(2, 0, &image_size);
-  char hash[33];
-  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_NINTENDO, image, image_size);
-  free(image);
-
-  ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "fd770d4d34c00760fabda6ad294a8f0b");
-  ASSERT_NUM_EQUALS(image_size, 65500 * 2);
-}
-
-static void test_hash_fds_two_sides_with_header()
-{
-  size_t image_size;
-  uint8_t* image = generate_fds_file(2, 1, &image_size);
-  char hash[33];
-  int result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_NINTENDO, image, image_size);
-  free(image);
-
-  /* NOTE: expectation is that this hash matches the hash in test_hash_fds_two_sides */
-  ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "fd770d4d34c00760fabda6ad294a8f0b");
-  ASSERT_NUM_EQUALS(image_size, 65500 * 2 + 16);
-}
-
-static void test_hash_nes_file_32k()
-{
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 0, &image_size);
-  char hash[33];
-  int result = hash_mock_file("test.nes", hash, RC_CONSOLE_NINTENDO, image, image_size);
-  free(image);
-
-  ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
-  ASSERT_NUM_EQUALS(image_size, 32768);
-}
-
-static void test_hash_nes_iterator_32k()
-{
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 0, &image_size);
-  char hash1[33], hash2[33];
-  int result1, result2;
-  struct rc_hash_iterator iterator;
-  iterate_mock_file(&iterator, "test.nes", image, image_size);
-  result1 = rc_hash_iterate(hash1, &iterator);
-  result2 = rc_hash_iterate(hash2, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-  free(image);
-
-  ASSERT_NUM_EQUALS(result1, 1);
-  ASSERT_STR_EQUALS(hash1, "6a2305a2b6675a97ff792709be1ca857");
-
-  ASSERT_NUM_EQUALS(result2, 0);
-  ASSERT_STR_EQUALS(hash2, "");
-}
-
-static void test_hash_nes_file_iterator_32k()
-{
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 0, &image_size);
-  char hash1[33], hash2[33];
-  int result1, result2;
-  struct rc_hash_iterator iterator;
-  rc_hash_initialize_iterator(&iterator, "test.nes", image, image_size);
-  result1 = rc_hash_iterate(hash1, &iterator);
-  result2 = rc_hash_iterate(hash2, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-  free(image);
-
-  ASSERT_NUM_EQUALS(result1, 1);
-  ASSERT_STR_EQUALS(hash1, "6a2305a2b6675a97ff792709be1ca857");
-
-  ASSERT_NUM_EQUALS(result2, 0);
-  ASSERT_STR_EQUALS(hash2, "");
-}
-
-/* ========================================================================= */
-
-static void test_hash_n64(uint8_t* buffer, size_t buffer_size, const char* expected_hash)
-{
-  char hash[33];
-  int result;
-
-  rc_hash_reset_filereader(); /* explicitly unset the filereader */
-  result = rc_hash_generate_from_buffer(hash, RC_CONSOLE_NINTENDO_64, buffer, buffer_size);
-  init_mock_filereader(); /* restore the mock filereader */
-
-  ASSERT_NUM_EQUALS(result, 1);
-  ASSERT_STR_EQUALS(hash, expected_hash);
-}
-
-static void test_hash_n64_file(const char* filename, uint8_t* buffer, size_t buffer_size, const char* expected_hash)
-{
-  char hash_file[33], hash_iterator[33];
-  mock_file(0, filename, buffer, buffer_size);
-
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO_64, filename);
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, filename, NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_hash);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
-}
-
-/* ========================================================================= */
-
-static void test_hash_nds()
-{
-  size_t image_size;
-  uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
-  char hash_file[33], hash_iterator[33];
-  const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
-
-  mock_file(0, "game.nds", image, image_size);
-
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO_DS, "game.nds");
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.nds", NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* cleanup */
-  free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_hash);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
-}
-
-static void test_hash_nds_supercard()
-{
-  size_t image_size, image2_size;
-  uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
-  char hash_file[33], hash_iterator[33];
-  const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
-  ASSERT_PTR_NOT_NULL(image);
-  ASSERT_NUM_GREATER(image_size, 0);
-
-  /* inject the SuperCard header (512 bytes) */
-  image2_size = image_size + 512;
-  uint8_t* image2 = malloc(image2_size);
-  ASSERT_PTR_NOT_NULL(image2);
-  memcpy(&image2[512], &image[0], image_size);
-  memset(&image2[0], 0, 512);
-  image2[0] = 0x2E;
-  image2[1] = 0x00;
-  image2[2] = 0x00;
-  image2[3] = 0xEA;
-  image2[0xB0] = 0x44;
-  image2[0xB1] = 0x46;
-  image2[0xB2] = 0x96;
-  image2[0xB3] = 0x00;
-
-  mock_file(0, "game.nds", image2, image2_size);
-
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO_DS, "game.nds");
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.nds", NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* cleanup */
-  free(image);
-  free(image2);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_hash);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
-}
-
-static void test_hash_nds_buffered()
-{
-  size_t image_size;
-  uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
-  char hash_buffer[33], hash_iterator[33];
-  const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
-
-  /* test file hash */
-  int result_buffer = rc_hash_generate_from_buffer(hash_buffer, RC_CONSOLE_NINTENDO_DS, image, image_size);
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.nds", image, image_size);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* cleanup */
-  free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_buffer, 1);
-  ASSERT_STR_EQUALS(hash_buffer, expected_hash);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
-}
-
-/* ========================================================================= */
-
-static void test_hash_dsi()
-{
-  size_t image_size;
-  uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
-  char hash_file[33], hash_iterator[33];
-  const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
-
-  mock_file(0, "game.nds", image, image_size);
-
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_NINTENDO_DSI, "game.nds");
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.nds", NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* cleanup */
-  free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_hash);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
-}
-
-static void test_hash_dsi_buffered()
-{
-  size_t image_size;
-  uint8_t* image = generate_nds_file(2, 1234567, 654321, &image_size);
-  char hash_buffer[33], hash_iterator[33];
-  const char* expected_hash = "56b30c276cba4affa886bd38e8e34d7e";
-
-  /* test file hash */
-  int result_buffer = rc_hash_generate_from_buffer(hash_buffer, RC_CONSOLE_NINTENDO_DSI, image, image_size);
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.nds", image, image_size);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* cleanup */
-  free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_buffer, 1);
-  ASSERT_STR_EQUALS(hash_buffer, expected_hash);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_hash);
 }
 
 /* ========================================================================= */
@@ -1907,38 +1413,6 @@ static void test_hash_saturn_invalid_header()
   free(image);
 }
 
-static void test_hash_scv_cart()
-{
-  size_t image_size = 32768 + 32;
-  uint8_t* image = generate_generic_file(image_size);
-  char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "4309c9844b44f9ff8256dfc04687b8fd";
-
-  memcpy(image, "EmuSCV....CART..................", 32);
-
-  mock_file(0, "game.cart", image, image_size);
-  /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_SUPER_CASSETTEVISION, "game.cart");
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "game.cart", NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* cleanup */
-  free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_md5);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
-}
-
 /* ========================================================================= */
 
 static void assert_valid_m3u(const char* disc_filename, const char* m3u_filename, const char* m3u_contents)
@@ -2138,67 +1612,6 @@ void test_hash(void) {
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_APPLE_II, "test.dsk", 143360, "88be638f4d78b4072109e55f13e8a0ac");
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_APPLE_II, "test.dsk", 143360, "88be638f4d78b4072109e55f13e8a0ac");
 
-  /* Arduboy */
-  TEST(test_hash_arduboy);
-  TEST(test_hash_arduboy_crlf);
-  TEST(test_hash_arduboy_no_final_lf);
-
-  /* Arcade */
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "game.7z", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "roms\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "C:\\roms\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/roms/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/games/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/roms/game.7z", "c8d46d341bea4fd5bff866a65ff8aea9");
-
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/nes_game.zip", "9b7aad36b365712fc93728088de4c209");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/nes/game.zip", "9b7aad36b365712fc93728088de4c209");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "C:\\roms\\nes\\game.zip", "9b7aad36b365712fc93728088de4c209");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "C:\\roms\\NES\\game.zip", "9b7aad36b365712fc93728088de4c209");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "nes\\game.zip", "9b7aad36b365712fc93728088de4c209");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/snes/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/nes2/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
-
-  /* we don't care that multiple aliases for the same system generate different hashes - the point is
-   * that they don't generate the same hash as an actual arcade ROM with the same filename. */
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/chf/game.zip", "6ef57f16562ea0c7f49d93853b313e32");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/channelf/game.zip", "7b6506637a0cc79bd1d24a43a34fa3b9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/coleco/game.zip", "c546f63ae7de98add4b9f221a4749260");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/colecovision/game.zip", "47279207b94dbf2a45cb13efa56d685e");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/msx/game.zip", "59ab85f6b56324fd81b4e324b804c29f");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/msx1/game.zip", "33328d832dcb0854383cdd4a4565c459");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/pce/game.zip", "c414a783f3983bbe2e9e01d9d5320c7e");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/pcengine/game.zip", "49370c3cbe98bdcdce545c68379487db");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/sgx/game.zip", "db545ab29694bfda1010317d4bac83b8");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/supergrafx/game.zip", "5665c9ef4c2f6609d8e420c4d86ba692");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/tg16/game.zip", "8b6c5c2e54915be2cdba63973862e143");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/fds/game.zip", "c0c135a97e8c577cfdf9204823ff211f");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/gamegear/game.zip", "f6f471e952b8103032b723f57bdbe767");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/mastersystem/game.zip", "f4805afe0ff5647140a26bd0a1057373");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/sms/game.zip", "43f35f575dead94dd2f42f9caf69fe5a");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/megadriv/game.zip", "f99d0aaf12ba3eb6ced9878c76692c63");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/megadrive/game.zip", "73eb5d7034b382093b1d36414d9e84e4");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/genesis/game.zip", "b62f810c63e1cba7f5b7569643bec236");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/sg1000/game.zip", "e8f6c711c4371f09537b4f2a7a304d6c");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/spectrum/game.zip", "a5f62157b2617bd728c4b1bc885c29e9");
-  TEST_PARAMS3(test_hash_filename, RC_CONSOLE_ARCADE, "/home/user/ngp/game.zip", "d4133b74c4e57274ca514e27a370dcb6");
-
-  /* Arcadia 2001 */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ARCADIA_2001, "test.bin", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
-
-  /* Atari 2600 */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_2600, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");
-
-  /* Atari 7800 */
-  TEST(test_hash_atari_7800);
-  TEST(test_hash_atari_7800_with_header);
-
-  /* Atari Jaguar */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ATARI_JAGUAR, "test.jag", 0x400000, "a247ec8a8c42e18fcb80702dfadac14b");
-
   /* Atari Jaguar CD */
   TEST(test_hash_atari_jaguar_cd);
   TEST(test_hash_atari_jaguar_cd_byteswapped);
@@ -2206,9 +1619,6 @@ void test_hash(void) {
   TEST(test_hash_atari_jaguar_cd_no_header);
   TEST(test_hash_atari_jaguar_cd_no_sessions);
   TEST(test_hash_atari_jaguar_cd_homebrew);
-
-  /* Colecovision */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_COLECOVISION, "test.col", 16384, "455f07d8500f3fabc54906737866167f");
 
   /* Commodore 64 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_COMMODORE_64, "test.nib", 327936, "e7767d32b23e3fa62c5a250a08caeba3");
@@ -2220,47 +1630,8 @@ void test_hash(void) {
   TEST(test_hash_dreamcast_split_bin);
   TEST(test_hash_dreamcast_cue);
 
-  /* Elektor TV Games Computer */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER, "test.pgm", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER, "test.tvc", 1861, "37097124a29aff663432d049654a17dc");
-
-  /* Fairchild Channel F */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_FAIRCHILD_CHANNEL_F, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_FAIRCHILD_CHANNEL_F, "test.chf", 2048, "02c3f2fa186388ba8eede9147fb431c4");
-
-  /* Gameboy */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_GAMEBOY, "test.gb", 131072, "a0f425b23200568132ba76b2405e3933");
-
-  /* Gameboy Color */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_GAMEBOY_COLOR, "test.gbc", 2097152, "cf86acf519625a25a17b1246975e90ae");
-
-  /* Gameboy Advance */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_GAMEBOY_COLOR, "test.gba", 4194304, "a247ec8a8c42e18fcb80702dfadac14b");
-
   /* Gamecube */
   TEST(test_hash_gamecube);
-
-  /* Game Gear */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_GAME_GEAR, "test.gg", 524288, "68f0f13b598e0b66461bc578375c3888");
-
-  /* Intellivision */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_INTELLIVISION, "test.bin", 8192, "ce1127f881b40ce6a67ecefba50e2835");
-
-  /* Interton VC 4000 */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_INTERTON_VC_4000, "test.bin", 2048, "02c3f2fa186388ba8eede9147fb431c4");
-
-  /* Magnavox Odyssey 2 */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MAGNAVOX_ODYSSEY2, "test.bin", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
-
-  /* Master System */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MASTER_SYSTEM, "test.sms", 131072, "a0f425b23200568132ba76b2405e3933");
-
-  /* Mega Drive */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MEGA_DRIVE, "test.md", 1048576, "da9461b3b0f74becc3ccf6c2a094c516");
-  TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_MEGA_DRIVE, "test.md", 1048576, "da9461b3b0f74becc3ccf6c2a094c516");
-
-  /* Mega Duck */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MEGADUCK, "test.bin", 65536, "8e6576cd5c21e44e0bbfc4480577b040");
 
   /* MSX */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_MSX, "test.dsk", 737280, "0e73fe94e5f2e2d8216926eae512b7a6");
@@ -2271,50 +1642,9 @@ void test_hash(void) {
   TEST(test_hash_neogeocd_multiple_prg);
   TEST(test_hash_neogeocd_lowercase_ipl_contents);
 
-  /* Neo Geo Pocket */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_NEOGEO_POCKET, "test.ngc", 2097152, "cf86acf519625a25a17b1246975e90ae");
-
-  /* NES */
-  TEST(test_hash_nes_32k);
-  TEST(test_hash_nes_32k_with_header);
-  TEST(test_hash_nes_256k);
-  TEST(test_hash_fds_two_sides);
-  TEST(test_hash_fds_two_sides_with_header);
-
-  TEST(test_hash_nes_file_32k);
-  TEST(test_hash_nes_file_iterator_32k);
-  TEST(test_hash_nes_iterator_32k);
-
-  /* Nintendo 64 */
-  TEST_PARAMS3(test_hash_n64, test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS3(test_hash_n64, test_rom_v64, sizeof(test_rom_v64), "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS3(test_hash_n64, test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS4(test_hash_n64_file, "game.z64", test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS4(test_hash_n64_file, "game.v64", test_rom_v64, sizeof(test_rom_v64), "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91");
-  TEST_PARAMS4(test_hash_n64_file, "game.n64", test_rom_z64, sizeof(test_rom_z64), "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
-  TEST_PARAMS4(test_hash_n64_file, "game.z64", test_rom_n64, sizeof(test_rom_n64), "06096d7ce21cb6bcde38391534c4eb91"); /* misnamed */
-  TEST_PARAMS3(test_hash_n64, test_rom_ndd, sizeof(test_rom_ndd), "a698b32a52970d8a52a5a52c83acc2a9");
-
-  /* Nintendo DS */
-  TEST(test_hash_nds);
-  TEST(test_hash_nds_supercard);
-  TEST(test_hash_nds_buffered);
-
-  /* Nintendo DSi */
-  TEST(test_hash_dsi);
-  TEST(test_hash_dsi_buffered);
-
-  /* Oric (no fixed file size) */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ORIC, "test.tap", 18119, "953a2baa3232c63286aeae36b2172cef");
-
   /* PC-8800 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC8800, "test.d88", 348288, "8cca4121bf87200f45e91b905a9f5afd");
   TEST_PARAMS4(test_hash_m3u, RC_CONSOLE_PC8800, "test.d88", 348288, "8cca4121bf87200f45e91b905a9f5afd");
-
-  /* PC Engine */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC_ENGINE, "test.pce", 524288, "68f0f13b598e0b66461bc578375c3888");
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC_ENGINE, "test.pce", 524288 + 512, "258c93ebaca1c3f488ab48218e5e8d38");
 
   /* PC Engine CD */
   TEST(test_hash_pce_cd);
@@ -2340,56 +1670,13 @@ void test_hash(void) {
   TEST(test_hash_psp_video);
   TEST(test_hash_psp_homebrew);
 
-  /* Pokemon Mini */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_POKEMON_MINI, "test.min", 524288, "68f0f13b598e0b66461bc578375c3888");
-
   /* Sega CD */
   TEST(test_hash_sega_cd);
   TEST(test_hash_sega_cd_invalid_header);
 
-  /* Sega 32X */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SEGA_32X, "test.bin", 3145728, "07d733f252896ec41b4fd521fe610e2c");
-
   /* Sega Saturn */
   TEST(test_hash_saturn);
   TEST(test_hash_saturn_invalid_header);
-
-  /* SG-1000 */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SG1000, "test.sg", 32768, "6a2305a2b6675a97ff792709be1ca857");
-
-  /* SNES */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_NINTENDO, "test.smc", 524288, "68f0f13b598e0b66461bc578375c3888");
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_NINTENDO, "test.smc", 524288 + 512, "258c93ebaca1c3f488ab48218e5e8d38");
-
-  /* Super Cassette Vision */
-  TEST(test_hash_scv_cart);
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPER_CASSETTEVISION, "test.bin", 32768, "6a2305a2b6675a97ff792709be1ca857");
-
-  /* TI-83 */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_TI83, "test.83g", 1695, "bfb6048395a425c69743900785987c42");
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_TI83, "test.83p", 2500, "6e81d530ee9a79d4f4f505729ad74bb5");
-
-  /* TIC-80 */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_TIC80, "test.tic", 67682, "79b96f4ffcedb3ce8210a83b22cd2c69");
-
-  /* Uzebox */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_UZEBOX, "test.uze", 53654, "a9aab505e92edc034d3c732869159789");
-
-  /* Vectrex */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SG1000, "test.vec", 4096, "572686c3a073162e4ec6eff86e6f6e3a");
-
-  /* VirtualBoy */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SG1000, "test.vb", 524288, "68f0f13b598e0b66461bc578375c3888");
-
-  /* Watara Supervision */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_SUPERVISION, "test.sv", 32768, "6a2305a2b6675a97ff792709be1ca857");
-
-  /* WASM-4 */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WASM4, "test.wasm", 33454, "bce38bb5f05622fc7e0e56757059d180");
-
-  /* WonderSwan */
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.ws", 524288, "68f0f13b598e0b66461bc578375c3888");
-  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.wsc", 4194304, "a247ec8a8c42e18fcb80702dfadac14b");
 
   /* ZX Spectrum */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ZX_SPECTRUM, "test.tap", 1596, "714a9f455e616813dd5421c5b347e5e5");

@@ -5,37 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* first 64 bytes of SUPER MARIO 64 ROM in each N64 format */
-uint8_t test_rom_z64[64] = {
-  0x80, 0x37, 0x12, 0x40, 0x00, 0x00, 0x00, 0x0F, 0x80, 0x24, 0x60, 0x00, 0x00, 0x00, 0x14, 0x44,
-  0x63, 0x5A, 0x2B, 0xFF, 0x8B, 0x02, 0x23, 0x26, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x53, 0x55, 0x50, 0x45, 0x52, 0x20, 0x4D, 0x41, 0x52, 0x49, 0x4F, 0x20, 0x36, 0x34, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4E, 0x53, 0x4D, 0x45, 0x00
-};
-
-uint8_t test_rom_v64[64] = {
-  0x37, 0x80, 0x40, 0x12, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14,
-  0x5A, 0x63, 0xFF, 0x2B, 0x02, 0x8B, 0x26, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x55, 0x53, 0x45, 0x50, 0x20, 0x52, 0x41, 0x4D, 0x49, 0x52, 0x20, 0x4F, 0x34, 0x36, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4E, 0x00, 0x4D, 0x53, 0x00, 0x45
-};
-
-uint8_t test_rom_n64[64] = {
-  0x40, 0x12, 0x37, 0x80, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x60, 0x24, 0x80, 0x44, 0x14, 0x00, 0x00,
-  0xFF, 0x2B, 0x5A, 0x63, 0x26, 0x23, 0x02, 0x8B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x45, 0x50, 0x55, 0x53, 0x41, 0x4D, 0x20, 0x52, 0x20, 0x4F, 0x49, 0x52, 0x20, 0x20, 0x34, 0x36,
-  0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x4E, 0x00, 0x00, 0x00, 0x00, 0x45, 0x4D, 0x53
-};
-
-/* first 64 bytes of DOSHIN THE GIANT in ndd format */
-uint8_t test_rom_ndd[64] = {
-  0xE8, 0x48, 0xD3, 0x16, 0x10, 0x13, 0x00, 0x45, 0x0C, 0x18, 0x24, 0x30, 0x3C, 0x48, 0x54, 0x60,
-  0x6C, 0x78, 0x84, 0x90, 0x9C, 0xA8, 0xB4, 0xC0, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x02, 0x5C, 0x00,
-  0x10, 0x16, 0x1C, 0x22, 0x28, 0x2A, 0x31, 0x32, 0x3A, 0x40, 0x46, 0x4C, 0x04, 0x0C, 0x14, 0x1C,
-  0x24, 0x2C, 0x34, 0x3C, 0x44, 0x4C, 0x54, 0x5C, 0x04, 0x0C, 0x14, 0x1C, 0x24, 0x2C, 0x34, 0x3C
-};
-
-static void fill_image(uint8_t* image, size_t size)
+void fill_image(uint8_t* image, size_t size)
 {
   int seed = (int)(size ^ (size >> 8) ^ ((size - 1) * 25387));
   int count;
@@ -112,10 +82,8 @@ uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size)
     size_needed += 16;
 
   image = (uint8_t*)calloc(size_needed, 1);
-  if (image != NULL)
-  {
-    if (with_header)
-    {
+  if (image != NULL) {
+    if (with_header) {
       image[0] = 'N';
       image[1] = 'E';
       image[2] = 'S';
@@ -124,84 +92,9 @@ uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size)
 
       fill_image(image + 16, size_needed - 16);
     }
-    else
-    {
+    else {
       fill_image(image, size_needed);
     }
-  }
-
-  if (image_size)
-    *image_size = size_needed;
-  return image;
-}
-
-uint8_t* generate_fds_file(size_t sides, int with_header, size_t* image_size)
-{
-  uint8_t* image;
-  size_t size_needed = sides * 65500;
-  if (with_header)
-    size_needed += 16;
-
-  image = (uint8_t*)calloc(size_needed, 1);
-  if (image != NULL)
-  {
-    if (with_header)
-    {
-      image[0] = 'F';
-      image[1] = 'D';
-      image[2] = 'S';
-      image[3] = '\x1A';
-      image[4] = (uint8_t)sides;
-
-      fill_image(image + 16, size_needed - 16);
-    }
-    else
-    {
-      fill_image(image, size_needed);
-    }
-  }
-
-  if (image_size)
-    *image_size = size_needed;
-  return image;
-}
-
-uint8_t* generate_nds_file(size_t mb, uint32_t arm9_size, uint32_t arm7_size, size_t* image_size)
-{
-  uint8_t* image;
-  const size_t size_needed = mb * 1024 * 1024;
-
-  image = (uint8_t*)calloc(size_needed, 1);
-  if (image != NULL)
-  {
-    uint32_t arm9_addr = 65536;
-    uint32_t arm7_addr = arm9_addr + arm9_size;
-    uint32_t icon_addr = arm7_addr + arm7_size;
-
-    fill_image(image, size_needed);
-
-    image[0x20] = (arm9_addr & 0xFF);
-    image[0x21] = ((arm9_addr >> 8) & 0xFF);
-    image[0x22] = ((arm9_addr >> 16) & 0xFF);
-    image[0x23] = ((arm9_addr >> 24) & 0xFF);
-    image[0x2C] = (arm9_size & 0xFF);
-    image[0x2D] = ((arm9_size >> 8) & 0xFF);
-    image[0x2E] = ((arm9_size >> 16) & 0xFF);
-    image[0x2F] = ((arm9_size >> 24) & 0xFF);
-
-    image[0x30] = (arm7_addr & 0xFF);
-    image[0x31] = ((arm7_addr >> 8) & 0xFF);
-    image[0x32] = ((arm7_addr >> 16) & 0xFF);
-    image[0x33] = ((arm7_addr >> 24) & 0xFF);
-    image[0x3C] = (arm7_size & 0xFF);
-    image[0x3D] = ((arm7_size >> 8) & 0xFF);
-    image[0x3E] = ((arm7_size >> 16) & 0xFF);
-    image[0x3F] = ((arm7_size >> 24) & 0xFF);
-
-    image[0x68] = (icon_addr & 0xFF);
-    image[0x69] = ((icon_addr >> 8) & 0xFF);
-    image[0x6A] = ((icon_addr >> 16) & 0xFF);
-    image[0x6B] = ((icon_addr >> 24) & 0xFF);
   }
 
   if (image_size)
@@ -245,44 +138,6 @@ uint8_t* generate_gamecube_iso(size_t mb, size_t* image_size)
       image[dol_sizes_addr + ix] = (ix % 4 == 2) ? (0x30 + 1 + ix / 4) : 0; 
       /* 0x000000ff for every other size */
       image[dol_sizes_addr + 0x90 + ix] = (ix % 8 == 3) ? 0xff : 0; 
-    }
-  }
-
-  if (image_size)
-    *image_size = size_needed;
-  return image;
-}
-
-uint8_t* generate_atari_7800_file(size_t kb, int with_header, size_t* image_size)
-{
-  uint8_t* image;
-  size_t size_needed = kb * 1024;
-  if (with_header)
-    size_needed += 128;
-
-  image = (uint8_t*)calloc(size_needed, 1);
-  if (image != NULL)
-  {
-    if (with_header)
-    {
-      const uint8_t header[128] = {
-        3, 'A', 'T', 'A', 'R', 'I', '7', '8', '0', '0', 0, 0, 0, 0, 0, 0, /* version + magic text */
-        0, 'G', 'a', 'm', 'e', 'N', 'a', 'm', 'e', 0, 0, 0, 0, 0, 0, 0,   /* game name */
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                   /* game name (cont'd) */
-        0, 0, 2, 0, 0, 0, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0,                   /* attributes */
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                   /* unused */
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                   /* unused */
-        0, 0, 0, 0, 'A', 'C', 'T', 'U', 'A', 'L', ' ', 'C', 'A', 'R', 'T',/* magic text*/
-        'D', 'A', 'T', 'A', ' ', 'S', 'T', 'A', 'R', 'T', 'S', ' ', 'H', 'E', 'R', 'E' /* magic text */
-      };
-      memcpy(image, header, sizeof(header));
-      image[50] = (uint8_t)(kb / 4); /* 4-byte value starting at address 49 is the ROM size without header */
-
-      fill_image(image + 128, size_needed - 128);
-    }
-    else
-    {
-      fill_image(image, size_needed);
     }
   }
 
