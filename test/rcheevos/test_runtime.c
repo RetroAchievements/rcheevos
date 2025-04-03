@@ -1139,15 +1139,15 @@ static void test_richpresence(void)
 
   /* first frame should update display string with correct memrfs */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2570 Points");
+  assert_richpresence_display_string(&runtime, &memory, "Score is 2,570 Points");
 
   /* calling rc_runtime_get_richpresence without calling rc_runtime_do_frame should return the same string as memrefs aren't updated */
   ram[1] = 20;
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2570 Points");
+  assert_richpresence_display_string(&runtime, &memory, "Score is 2,570 Points");
 
   /* call rc_runtime_do_frame to update memrefs */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2580 Points");
+  assert_richpresence_display_string(&runtime, &memory, "Score is 2,580 Points");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1166,7 +1166,7 @@ static void test_richpresence_starts_with_macro(void)
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Points");
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570 Points");
+  assert_richpresence_display_string(&runtime, &memory, "2,570 Points");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1185,7 +1185,7 @@ static void test_richpresence_macro_only(void)
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001)");
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570");
+  assert_richpresence_display_string(&runtime, &memory, "2,570");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1208,13 +1208,13 @@ static void test_richpresence_conditional(void)
 
   /* first frame should update display string with correct memrfs */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570 points");
+  assert_richpresence_display_string(&runtime, &memory, "2,570 points");
 
   /* update display string */
   ram[0] = 0;
   ram[1] = 20;
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2580 Points");
+  assert_richpresence_display_string(&runtime, &memory, "Score is 2,580 Points");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1237,21 +1237,21 @@ static void test_richpresence_conditional_with_hits(void)
 
   /* first frame should update display string with correct memrfs */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570 points");
+  assert_richpresence_display_string(&runtime, &memory, "2,570 points");
 
   /* one hit is not enough to switch display strings, but the memref does get updated */
   ram[0] = 1;
   ram[1] = 20;
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2580 points");
+  assert_richpresence_display_string(&runtime, &memory, "2,580 points");
 
   /* second hit is enough */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2580 Points");
+  assert_richpresence_display_string(&runtime, &memory, "Score is 2,580 Points");
 
   /* no more hits are accumulated */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2580 Points");
+  assert_richpresence_display_string(&runtime, &memory, "Score is 2,580 Points");
 
   /* same test without intermediary evaluation of display string */
   rc_runtime_reset(&runtime);
@@ -1262,7 +1262,7 @@ static void test_richpresence_conditional_with_hits(void)
   ram[0] = 1;
   assert_do_frame(&runtime, &memory); /* one hit */
   assert_do_frame(&runtime, &memory); /* two hits */
-  assert_richpresence_display_string(&runtime, &memory, "Score is 2590 Points");
+  assert_richpresence_display_string(&runtime, &memory, "Score is 2,590 Points");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1285,18 +1285,18 @@ static void test_richpresence_conditional_with_hits_after_match(void)
 
   /* first frame should update display string with correct memrfs */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "It's 2570");
+  assert_richpresence_display_string(&runtime, &memory, "It's 2,570");
 
   /* first condition is true, but one hit should still be tallied on the second conditional */
   ram[0] = 1;
   ram[1] = 20;
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "It's 2580");
+  assert_richpresence_display_string(&runtime, &memory, "It's 2,580");
 
   /* first conditio no longer true, second condtion will get it's second hit, which is enough */
   ram[2] = 20;
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "Score is 5140 Points");
+  assert_richpresence_display_string(&runtime, &memory, "Score is 5,140 Points");
 
   /* same test without intermediary evaluation of display string */
   rc_runtime_reset(&runtime);
@@ -1310,7 +1310,7 @@ static void test_richpresence_conditional_with_hits_after_match(void)
   assert_do_frame(&runtime, &memory); /* one hit */
   ram[2] = 20;
   assert_do_frame(&runtime, &memory); /* two hits */
-  assert_richpresence_display_string(&runtime, &memory, "Score is 5140 Points");
+  assert_richpresence_display_string(&runtime, &memory, "Score is 5,140 Points");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1333,17 +1333,17 @@ static void test_richpresence_reload(void)
 
   /* first frame should update display string with correct memrfs */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570 Points");
+  assert_richpresence_display_string(&runtime, &memory, "2,570 Points");
 
   /* reloading should generate display string with current memrefs */
   ram[1] = 20;
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Bananas");
-  assert_richpresence_display_string(&runtime, &memory, "2570 Bananas");
+  assert_richpresence_display_string(&runtime, &memory, "2,570 Bananas");
 
   /* first frame after reloading should update display string */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2580 Bananas");
+  assert_richpresence_display_string(&runtime, &memory, "2,580 Bananas");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1367,18 +1367,18 @@ static void test_richpresence_reload_addaddress(void)
 
   /* first frame should update display string with correct memrfs */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2570 Points");
+  assert_richpresence_display_string(&runtime, &memory, "2,570 Points");
 
   /* reloading should generate display string with current memrefs */
   /* the entire AddAddress expression will be a single variable, which will have a current value. */
   ram[2] = 20;
   assert_activate_richpresence(&runtime,
       "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(I:0xH0000_M:0x 0001) Bananas");
-  assert_richpresence_display_string(&runtime, &memory, "2570 Bananas");
+  assert_richpresence_display_string(&runtime, &memory, "2,570 Bananas");
 
   /* first frame after reloading should update display string */
   assert_do_frame(&runtime, &memory);
-  assert_richpresence_display_string(&runtime, &memory, "2580 Bananas");
+  assert_richpresence_display_string(&runtime, &memory, "2,580 Bananas");
 
   rc_runtime_destroy(&runtime);
 }
@@ -1635,8 +1635,8 @@ void test_runtime(void) {
 
   /* leaderboards */
   TEST(test_lboard);
-  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_VALUE, 12345, "12345");
-  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_VALUE, -12345, "-12345");
+  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_VALUE, 12345, "12,345");
+  TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_VALUE, -12345, "-12,345");
   TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_VALUE, 0xFFFFFFFF, "-1");
   TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_SCORE, 12345, "012345");
   TEST_PARAMS3(test_format_lboard_value, RC_FORMAT_SECONDS, 345, "5:45");

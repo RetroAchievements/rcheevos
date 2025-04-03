@@ -89,9 +89,9 @@ static void test_buffer_boundary() {
 
   /* number formatting */
   assert_parse_richpresence(&richpresence, buffer, "Format:V\nFormatType=VALUE\n\nDisplay:\n@V(0xX0000)");
-  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 7, 8, "167772"); /* only 6 chars written */
-  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 8, 8, "1677721"); /* only 7 chars written */
-  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 9, 8, "16777216"); /* all 8 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 9, 10, "16,777,2"); /* only 8 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 10, 10, "16,777,21"); /* only 8 chars written */
+  TEST_PARAMS5(assert_buffer_boundary, richpresence, &memory, 11, 10, "16,777,216"); /* all 10 chars written */
 
   /* lookup */
   assert_parse_richpresence(&richpresence, buffer, "Lookup:L\n1=ABCDEFGH\n\nDisplay:\n@L(0xH0003)");
@@ -275,10 +275,10 @@ static void test_macro_value() {
   memory.size = sizeof(ram);
 
   assert_parse_richpresence(&richpresence, buffer, "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001) Points");
-  assert_richpresence_output(richpresence, &memory, "13330 Points");
+  assert_richpresence_output(richpresence, &memory, "13,330 Points");
 
   ram[1] = 20;
-  assert_richpresence_output(richpresence, &memory, "13332 Points");
+  assert_richpresence_output(richpresence, &memory, "13,332 Points");
 }
 
 static void test_macro_value_nibble() {
@@ -410,10 +410,10 @@ static void test_macro_value_adjusted_negative() {
   memory.size = sizeof(ram);
 
   assert_parse_richpresence(&richpresence, buffer, "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x 0001_V-10000) Points");
-  assert_richpresence_output(richpresence, &memory, "3330 Points");
+  assert_richpresence_output(richpresence, &memory, "3,330 Points");
 
   ram[2] = 7;
-  assert_richpresence_output(richpresence, &memory, "-8190 Points");
+  assert_richpresence_output(richpresence, &memory, "-8,190 Points");
 }
 
 static void test_macro_value_from_formula() {
@@ -426,10 +426,10 @@ static void test_macro_value_from_formula() {
   memory.size = sizeof(ram);
 
   assert_parse_richpresence(&richpresence, buffer, "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0xH0001*100_0xH0002) Points");
-  assert_richpresence_output(richpresence, &memory, "1852 Points");
+  assert_richpresence_output(richpresence, &memory, "1,852 Points");
 
   ram[1] = 32;
-  assert_richpresence_output(richpresence, &memory, "3252 Points");
+  assert_richpresence_output(richpresence, &memory, "3,252 Points");
 }
 
 static void test_macro_value_from_hits() {
@@ -553,10 +553,10 @@ static void test_macro_hundreds() {
   assert_richpresence_output(richpresence, &memory, "Result is 0");
 
   ram[0] = 18;
-  assert_richpresence_output(richpresence, &memory, "Result is 1800");
+  assert_richpresence_output(richpresence, &memory, "Result is 1,800");
 
   ram[0] = 255;
-  assert_richpresence_output(richpresence, &memory, "Result is 25500");
+  assert_richpresence_output(richpresence, &memory, "Result is 25,500");
 
   ram[0] = 0;
   assert_richpresence_output(richpresence, &memory, "Result is 0");
@@ -1036,7 +1036,7 @@ static void test_macro_escaped() {
 
   /* ensures @ can be used in the display string by escaping it */
   assert_parse_richpresence(&richpresence, buffer, "Format:Points\nFormatType=VALUE\n\nDisplay:\n\\@Points(0x 0001) \\@@Points(0x 0001) Points");
-  assert_richpresence_output(richpresence, &memory, "@Points(0x 0001) @13330 Points");
+  assert_richpresence_output(richpresence, &memory, "@Points(0x 0001) @13,330 Points");
 }
 
 static void test_macro_undefined() {
@@ -1163,7 +1163,7 @@ static void test_builtin_macro_unsigned_large() {
   memory.size = sizeof(ram);
 
   assert_parse_richpresence(&richpresence, buffer, "Display:\n@Unsigned(0xX0)");
-  assert_richpresence_output(richpresence, &memory, "3344556677");
+  assert_richpresence_output(richpresence, &memory, "3,344,556,677");
 }
 
 static void test_builtin_macro_override() {
@@ -1425,7 +1425,7 @@ void test_richpresence(void) {
   TEST(test_macro_non_numeric_parameter);
 
   /* builtin macros */
-  TEST_PARAMS2(test_builtin_macro, "Number", "12345");
+  TEST_PARAMS2(test_builtin_macro, "Number", "12,345");
   TEST_PARAMS2(test_builtin_macro, "Score", "012345");
   TEST_PARAMS2(test_builtin_macro, "Centiseconds", "2:03.45");
   TEST_PARAMS2(test_builtin_macro, "Seconds", "3h25:45");
@@ -1439,10 +1439,11 @@ void test_richpresence(void) {
   TEST_PARAMS2(test_builtin_macro_float, "Float4", "77.1339");
   TEST_PARAMS2(test_builtin_macro_float, "Float5", "77.13393");
   TEST_PARAMS2(test_builtin_macro_float, "Float6", "77.133926");
-  TEST_PARAMS2(test_builtin_macro, "Fixed1", "1234.5");
+  TEST_PARAMS2(test_builtin_macro, "Fixed1", "1,234.5");
   TEST_PARAMS2(test_builtin_macro, "Fixed2", "123.45");
   TEST_PARAMS2(test_builtin_macro, "Fixed3", "12.345");
-  TEST_PARAMS2(test_builtin_macro, "Unsigned", "12345");
+  TEST_PARAMS2(test_builtin_macro, "Unsigned", "12,345");
+  TEST_PARAMS2(test_builtin_macro, "Unformatted", "12345");
   TEST(test_builtin_macro_unsigned_large);
   TEST(test_builtin_macro_override);
 
