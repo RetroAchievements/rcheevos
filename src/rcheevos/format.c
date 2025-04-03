@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 int rc_parse_format(const char* format_str) {
   switch (*format_str++) {
@@ -183,7 +184,7 @@ static int rc_format_insert_commas(int chars, char* buffer, size_t size)
 
   /* if there's not enough room to insert the commas, leave string as-is, but return wanted space */
   chars += to_insert;
-  if (chars >= size)
+  if (chars >= (int)size)
     return chars;
 
   /* move the trailing part of the string */
