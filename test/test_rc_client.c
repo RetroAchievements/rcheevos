@@ -3835,7 +3835,7 @@ static void test_achievement_list_buckets(void)
     ASSERT_NUM_EQUALS(achievement->id, 9);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 70);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "25600/100000");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25,600/100,000");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 71);
@@ -3908,7 +3908,7 @@ static void test_achievement_list_buckets(void)
     ASSERT_NUM_EQUALS(achievement->id, 9);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 70);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "25600/100000");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25,600/100,000");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 71);
@@ -3974,7 +3974,7 @@ static void test_achievement_list_buckets_progress_sort(void)
     ASSERT_STR_EQUALS(achievement->measured_progress, "86/100");
     achievement = *iter++;
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 85.5f);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "855/1000");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "855/1,000");
     achievement = *iter++;
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 85.0f);
     ASSERT_STR_EQUALS(achievement->measured_progress, "85/100");
@@ -4413,7 +4413,7 @@ static void test_achievement_list_subset_buckets(void)
     ASSERT_NUM_EQUALS(achievement->id, 9);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 70);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "25600/100000");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25,600/100,000");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 71);
@@ -4473,7 +4473,7 @@ static void test_achievement_list_subset_buckets(void)
     ASSERT_NUM_EQUALS(achievement->id, 9);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 70);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "25600/100000");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "25,600/100,000");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 25.6);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 71);
@@ -6052,7 +6052,7 @@ static void test_do_frame_achievement_measured(void)
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
     ASSERT_NUM_EQUALS(achievement->unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "12345/100000");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "12,345/100,000");
 
     achievement = rc_client_get_achievement_info(g_client, 71);
     ASSERT_PTR_NOT_NULL(achievement);
@@ -6079,7 +6079,7 @@ static void test_do_frame_achievement_measured(void)
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
     ASSERT_NUM_EQUALS(achievement->unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "12346/100000");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "12,346/100,000");
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -6096,7 +6096,7 @@ static void test_do_frame_achievement_measured(void)
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
     ASSERT_NUM_EQUALS(achievement->unlock_time, 0);
     ASSERT_NUM_EQUALS(achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "13114/100000");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "13,114/100,000");
 
     achievement = rc_client_get_achievement_info(g_client, 71);
     ASSERT_PTR_NOT_NULL(achievement);
@@ -6180,7 +6180,7 @@ static void test_do_frame_achievement_measured_progress_event(void)
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 50.0);
 
     achievement = rc_client_get_achievement_info(g_client, 70);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "49999/100000");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "49,999/100,000");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 49.999);
 
     event_count = 0;
@@ -6199,7 +6199,7 @@ static void test_do_frame_achievement_measured_progress_event(void)
     ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
     ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
     ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 70));
-    ASSERT_STR_EQUALS(event->achievement->measured_progress, "49998/100000");
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "49,998/100,000");
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -6246,7 +6246,7 @@ static void test_do_frame_achievement_measured_progress_event(void)
     ASSERT_NUM_EQUALS(event->achievement->unlock_time, 0);
     ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
     ASSERT_PTR_EQUALS(event->achievement, rc_client_get_achievement_info(g_client, 70));
-    ASSERT_STR_EQUALS(event->achievement->measured_progress, "66667/100000");
+    ASSERT_STR_EQUALS(event->achievement->measured_progress, "66,667/100,000");
     
     event_count = 0;
     rc_client_do_frame(g_client);
