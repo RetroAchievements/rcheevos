@@ -147,7 +147,7 @@ else
 
     ifeq ($(HAVE_HASH_ROM), 0)
         EXTRA += |NO_HASH_ROM
-        CFLAGS += -DRC_HASH_NO_ROMS
+        CFLAGS += -DRC_HASH_NO_ROM
     else
         OBJ += $(RC_HASH_SRC)/hash_rom.o \
                rhash/test_hash_rom.o

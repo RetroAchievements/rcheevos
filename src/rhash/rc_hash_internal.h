@@ -70,7 +70,7 @@ typedef struct rc_hash_cdrom_track_t {
 
 int rc_hash_whole_file(char hash[33], const rc_hash_iterator_t* iterator);
 
-#ifndef RC_HASH_NO_ROMS
+#ifndef RC_HASH_NO_ROM
   /* hash_rom.c */
   int rc_hash_7800(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_arcade(char hash[33], const rc_hash_iterator_t* iterator);

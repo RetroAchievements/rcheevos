@@ -1902,7 +1902,7 @@ static int rc_hash_from_buffer(char hash[33], uint32_t console_id, const rc_hash
     case RC_CONSOLE_ZX_SPECTRUM:
       return rc_hash_buffer(hash, iterator->buffer, iterator->buffer_size, iterator);
 
-#ifndef RC_HASH_NO_ROMS
+#ifndef RC_HASH_NO_ROM
     case RC_CONSOLE_ARDUBOY:
       /* https://en.wikipedia.org/wiki/Intel_HEX */
       return rc_hash_text(hash, iterator);
@@ -2218,7 +2218,7 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
 
       return rc_hash_3do(hash, iterator);
 
-#ifndef RC_HASH_NO_ROMS
+#ifndef RC_HASH_NO_ROM
     case RC_CONSOLE_ARCADE:
       return rc_hash_arcade(hash, iterator);
 #endif
@@ -2244,7 +2244,7 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
     case RC_CONSOLE_NEO_GEO_CD:
       return rc_hash_neogeo_cd(hash, iterator);
 
-#ifndef RC_HASH_NO_ROMS
+#ifndef RC_HASH_NO_ROM
     case RC_CONSOLE_NINTENDO_64:
       return rc_hash_n64(hash, iterator);
 #endif
@@ -2254,7 +2254,7 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
       return rc_hash_nintendo_3ds(hash, iterator);
 #endif
 
-#ifndef RC_HASH_NO_ROMS
+#ifndef RC_HASH_NO_ROM
     case RC_CONSOLE_NINTENDO_DS:
     case RC_CONSOLE_NINTENDO_DSI:
       return rc_hash_nintendo_ds(hash, iterator);

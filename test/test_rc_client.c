@@ -2180,7 +2180,7 @@ static void test_identify_and_load_game_console_not_specified(void)
   free(image);
 }
 
-#ifndef RC_HASH_NO_ROMS
+#ifndef RC_HASH_NO_ROM
 uint8_t* generate_nes_file(size_t kb, int with_header, size_t* image_size);
 
 static void test_identify_and_load_game_multiconsole_first(void)
@@ -2274,7 +2274,7 @@ static void test_identify_and_load_game_multiconsole_second(void)
   free(image);
 }
 
-#endif /* RC_HASH_NO_ROMS */
+#endif /* RC_HASH_NO_ROM */
 
 static void test_identify_and_load_game_unknown_hash(void)
 {
@@ -2355,7 +2355,7 @@ static void test_identify_and_load_game_unknown_hash_repeated(void)
   free(image);
 }
 
-#ifndef RC_HASH_NO_ROMS
+#ifndef RC_HASH_NO_ROM
 
 static void test_identify_and_load_game_unknown_hash_multiconsole(void)
 {
@@ -9324,13 +9324,13 @@ void test_client(void) {
   TEST(test_identify_and_load_game_required_fields);
   TEST(test_identify_and_load_game_console_specified);
   TEST(test_identify_and_load_game_console_not_specified);
- #ifndef RC_HASH_NO_ROMS
+ #ifndef RC_HASH_NO_ROM
   TEST(test_identify_and_load_game_multiconsole_first);
   TEST(test_identify_and_load_game_multiconsole_second);
  #endif
   TEST(test_identify_and_load_game_unknown_hash);
   TEST(test_identify_and_load_game_unknown_hash_repeated);
- #ifndef RC_HASH_NO_ROMS
+ #ifndef RC_HASH_NO_ROM
   TEST(test_identify_and_load_game_unknown_hash_multiconsole);
  #endif
   TEST(test_identify_and_load_game_unknown_hash_console_specified);

@@ -40,7 +40,7 @@ extern void test_url();
 
 extern void test_cdreader();
 extern void test_hash();
-#ifndef RC_HASH_NO_ROMS
+#ifndef RC_HASH_NO_ROM
 extern void test_hash_rom();
 #endif
 #ifndef RC_HASH_NO_ZIP
@@ -96,7 +96,7 @@ int main(void) {
   test_rc_libretro(); /* libretro extensions require hash support */
   test_cdreader();
   test_hash();
- #ifndef RC_HASH_NO_ROMS
+ #ifndef RC_HASH_NO_ROM
   test_hash_rom();
  #endif
  #ifndef RC_HASH_NO_ZIP
