@@ -4607,6 +4607,7 @@ static void test_ignore_parse_errors(const char* memaddr, uint8_t is_value, int3
   memaddr_test = memaddr;
   rc_parse_condset(&memaddr_test, &preparse.parse);
   ASSERT_NUM_EQUALS(preparse.parse.offset, expected_error);
+  rc_destroy_preparse_state(&preparse);
 
   rc_init_preparse_state(&preparse);
   preparse.parse.is_value = is_value;
@@ -4615,6 +4616,7 @@ static void test_ignore_parse_errors(const char* memaddr, uint8_t is_value, int3
   memaddr_test = memaddr;
   rc_parse_condset(&memaddr_test, &preparse.parse);
   ASSERT_NUM_GREATER(preparse.parse.offset, 0);
+  rc_destroy_preparse_state(&preparse);
 }
 
 void test_condset(void) {
