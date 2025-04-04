@@ -4596,6 +4596,27 @@ static void test_prior_sequence() {
   assert_hit_count(condset, 2, 1);
 }
 
+static void test_ignore_parse_errors(const char* memaddr, uint8_t is_value, int32_t expected_error)
+{
+  const char* memaddr_test;
+
+  rc_preparse_state_t preparse;
+  rc_init_preparse_state(&preparse);
+  preparse.parse.is_value = is_value;
+
+  memaddr_test = memaddr;
+  rc_parse_condset(&memaddr_test, &preparse.parse);
+  ASSERT_NUM_EQUALS(preparse.parse.offset, expected_error);
+
+  rc_init_preparse_state(&preparse);
+  preparse.parse.is_value = is_value;
+  preparse.parse.ignore_non_parse_errors = 1;
+
+  memaddr_test = memaddr;
+  rc_parse_condset(&memaddr_test, &preparse.parse);
+  ASSERT_NUM_GREATER(preparse.parse.offset, 0);
+}
+
 void test_condset(void) {
   TEST_SUITE_BEGIN();
 
@@ -4738,6 +4759,15 @@ void test_condset(void) {
 
   /* prior */
   TEST(test_prior_sequence);
+
+  /* ignore parse errors */
+  TEST_PARAMS3(test_ignore_parse_errors, "M:0x1234=5_M:0x1234=6", 0, RC_MULTIPLE_MEASURED);
+  TEST_PARAMS3(test_ignore_parse_errors, "M:0x1234", 0, RC_INVALID_OPERATOR); /* right side required for Measured non-value */
+  TEST_PARAMS3(test_ignore_parse_errors, "M:0x1234=0x2345", 0, RC_INVALID_MEASURED_TARGET);
+  TEST_PARAMS3(test_ignore_parse_errors, "0x1234=6", 1, RC_INVALID_VALUE_FLAG);
+  TEST_PARAMS3(test_ignore_parse_errors, "T:0x1234=6", 1, RC_INVALID_VALUE_FLAG);
+  TEST_PARAMS3(test_ignore_parse_errors, "R:0x1234", 0, RC_INVALID_OPERATOR);
+  TEST_PARAMS3(test_ignore_parse_errors, "K:0x1234<6", 0, RC_INVALID_OPERATOR);
 
   TEST_SUITE_END();
 }
