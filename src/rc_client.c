@@ -2547,6 +2547,11 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
 
     rc_api_destroy_request(&request);
   }
+  else if (load_state->hash->game_id != RC_CLIENT_UNKNOWN_GAME_ID &&
+           client->state.external_client && client->state.external_client->begin_load_game) {
+    rc_client_begin_async(client, &load_state->async_handle);
+    client->state.external_client->begin_load_game(client, load_state->hash->hash, rc_client_external_load_state_callback, load_state);
+  }
 #endif
   else {
     rc_client_begin_fetch_game_data(load_state);

@@ -63,6 +63,11 @@ static void rc_client_callback_expect_success(int result, const char* error_mess
   ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
 }
 
+static void rc_client_external_unload_game(void)
+{
+  g_external_event = "unload_game";
+}
+
 /* ----- settings ----- */
 
 static int rc_client_external_get_int(void)
@@ -682,6 +687,58 @@ static void test_identify_and_load_game(void)
   free(image);
 }
 
+static void test_identify_and_reload_game(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+  const rc_client_game_t* game;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_identify_and_load_game = rc_client_external_identify_and_load_game;
+  g_client->state.external_client->get_game_info = rc_client_external_get_game_info_v1;
+  g_client->state.external_client->get_game_info_v3 = rc_client_external_get_game_info_v3;
+  g_client->state.external_client->unload_game = rc_client_external_unload_game;
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game");
+
+  /* user data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
+  /* ensure non-external client game was not initialized */
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_unload_game(g_client);
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game");
+
+  /* user data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
+  /* ensure non-external client game was not initialized */
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
 #endif /* RC_CLIENT_SUPPORTS_HASH */
 
 static void assert_load_game(rc_client_t* client, const char* hash)
@@ -815,6 +872,65 @@ static void test_identify_and_load_game_external_hash(void)
 
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   g_external_int = 0;
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game"); /* begin_load_game called */
+  ASSERT_NUM_EQUALS(g_external_int, 1234); /* add_game_hash called */
+  ASSERT_PTR_NULL(g_client->state.load);
+
+  /* user data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
+  /* ensure internal client game was initialized to hold media hashes */
+  ASSERT_PTR_NOT_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_identify_and_reload_game_external_hash(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+  const rc_client_game_t* game;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->add_game_hash = rc_client_external_add_game_hash;
+  g_client->state.external_client->begin_load_game = rc_client_external_load_game;
+  g_client->state.external_client->get_game_info_v3 = rc_client_external_get_game_info_v3;
+  g_client->state.external_client->unload_game = rc_client_external_unload_game;
+
+  mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
+  g_external_int = 0;
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
+    image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "load_game"); /* begin_load_game called */
+  ASSERT_NUM_EQUALS(g_external_int, 1234); /* add_game_hash called */
+  ASSERT_PTR_NULL(g_client->state.load);
+
+  /* user data should come from external client. validate structure */
+  game = rc_client_get_game_info(g_client);
+  ASSERT_PTR_NOT_NULL(game);
+  ASSERT_NUM_EQUALS(game->id, 1234);
+  ASSERT_NUM_EQUALS(game->console_id, RC_CONSOLE_PLAYSTATION);
+  ASSERT_STR_EQUALS(game->title, "Game Title");
+  ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
+  ASSERT_STR_EQUALS(game->badge_name, "BDG001");
+  ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
+  /* ensure internal client game was initialized to hold media hashes */
+  ASSERT_PTR_NOT_NULL(g_client->game);
+
+  rc_client_unload_game(g_client);
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
@@ -993,11 +1109,6 @@ static void test_get_subset_info(void)
   ASSERT_STR_EQUALS(subset->badge_url, "/Badge/BDG001.png");
 
   rc_client_destroy(g_client);
-}
-
-static void rc_client_external_unload_game(void)
-{
-  g_external_event = "unload_game";
 }
 
 static void test_unload_game(void)
@@ -1704,6 +1815,7 @@ void test_client_external(void) {
 #ifdef RC_CLIENT_SUPPORTS_HASH
   TEST(test_identify_and_load_game_v1);
   TEST(test_identify_and_load_game);
+  TEST(test_identify_and_reload_game);
 #endif
   TEST(test_load_game_v1);
   TEST(test_load_game);
@@ -1711,6 +1823,7 @@ void test_client_external(void) {
   TEST(test_get_user_game_summary);
 #ifdef RC_CLIENT_SUPPORTS_HASH
   TEST(test_identify_and_load_game_external_hash);
+  TEST(test_identify_and_reload_game_external_hash);
   TEST(test_change_media);
 #endif
   TEST(test_change_media_from_hash);
