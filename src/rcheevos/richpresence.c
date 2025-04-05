@@ -230,7 +230,8 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
           {"Fixed1", 6, RC_FORMAT_FIXED1},
           {"Fixed2", 6, RC_FORMAT_FIXED2},
           {"Fixed3", 6, RC_FORMAT_FIXED3},
-          {"Unsigned", 8, RC_FORMAT_UNSIGNED_VALUE}
+          {"Unsigned", 8, RC_FORMAT_UNSIGNED_VALUE},
+          {"Unformatted", 11, RC_FORMAT_UNFORMATTED}
         };
         size_t i;
 

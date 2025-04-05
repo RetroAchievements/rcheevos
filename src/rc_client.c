@@ -3244,8 +3244,11 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
           achievement->public_.measured_percent = ((float)new_measured_value * 100) / (float)achievement->trigger->measured_target;
 
           if (!achievement->trigger->measured_as_percent) {
-            snprintf(achievement->public_.measured_progress, sizeof(achievement->public_.measured_progress),
-                "%lu/%lu", (unsigned long)new_measured_value, (unsigned long)achievement->trigger->measured_target);
+            char* ptr = achievement->public_.measured_progress;
+            const int buffer_size = (int)sizeof(achievement->public_.measured_progress);
+            const int chars = rc_format_value(ptr, buffer_size, (int32_t)new_measured_value, RC_FORMAT_UNSIGNED_VALUE);
+            ptr[chars] = '/';
+            rc_format_value(ptr + chars + 1, buffer_size - chars - 1, (int32_t)achievement->trigger->measured_target, RC_FORMAT_UNSIGNED_VALUE);
           }
           else if (achievement->public_.measured_percent >= 1.0) {
             snprintf(achievement->public_.measured_progress, sizeof(achievement->public_.measured_progress),
