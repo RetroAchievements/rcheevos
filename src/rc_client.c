@@ -2287,6 +2287,12 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
 
     if (load_state->hash->game_id == 0) {
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+ #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
+      if (client->state.raintegration && client->state.raintegration->set_console_id) {
+        if (load_state->game->public_.console_id != RC_CONSOLE_UNKNOWN)
+          client->state.raintegration->set_console_id(load_state->game->public_.console_id);
+      }
+ #endif
       if (client->state.external_client) {
         if (client->state.external_client->load_unknown_game) {
           client->state.external_client->load_unknown_game(load_state->game->public_.hash);
