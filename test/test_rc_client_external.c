@@ -601,10 +601,10 @@ static void assert_identify_and_load_game(rc_client_t* client,
 {
   ASSERT_PTR_EQUALS(client, g_client);
 
-  ASSERT_NUM_EQUALS(console_id, RC_CONSOLE_NINTENDO);
-  ASSERT_STR_EQUALS(file_path, "foo.zip#foo.nes");
+  ASSERT_NUM_EQUALS(console_id, RC_CONSOLE_GAMEBOY);
+  ASSERT_STR_EQUALS(file_path, "foo.zip#foo.gb");
   ASSERT_PTR_NOT_NULL(data);
-  ASSERT_NUM_EQUALS(32784, data_size);
+  ASSERT_NUM_EQUALS(32768, data_size);
 }
 
 static rc_client_async_handle_t* rc_client_external_identify_and_load_game(rc_client_t* client,
@@ -621,15 +621,15 @@ static rc_client_async_handle_t* rc_client_external_identify_and_load_game(rc_cl
 
 static void test_identify_and_load_game_v1(void)
 {
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
   const rc_client_game_t* game;
 
   g_client = mock_client_with_external();
   g_client->state.external_client->begin_identify_and_load_game = rc_client_external_identify_and_load_game;
   g_client->state.external_client->get_game_info = rc_client_external_get_game_info_v1;
 
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_external_event, "load_game");
@@ -652,8 +652,8 @@ static void test_identify_and_load_game_v1(void)
 
 static void test_identify_and_load_game(void)
 {
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
   const rc_client_game_t* game;
 
   g_client = mock_client_with_external();
@@ -661,7 +661,7 @@ static void test_identify_and_load_game(void)
   g_client->state.external_client->get_game_info = rc_client_external_get_game_info_v1;
   g_client->state.external_client->get_game_info_v3 = rc_client_external_get_game_info_v3;
 
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_external_event, "load_game");
@@ -804,8 +804,8 @@ static void test_get_user_game_summary(void)
 
 static void test_identify_and_load_game_external_hash(void)
 {
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
   const rc_client_game_t* game;
 
   g_client = mock_client_with_external();
@@ -816,7 +816,7 @@ static void test_identify_and_load_game_external_hash(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   g_external_int = 0;
 
-  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_NINTENDO, "foo.zip#foo.nes",
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_external_event, "load_game"); /* begin_load_game called */
@@ -842,9 +842,9 @@ static void test_identify_and_load_game_external_hash(void)
 static void assert_change_media(rc_client_t* client, const char* file_path, const uint8_t* data, size_t data_size)
 {
   ASSERT_PTR_EQUALS(client, g_client);
-  ASSERT_STR_EQUALS(file_path, "foo.zip#foo.nes");
+  ASSERT_STR_EQUALS(file_path, "foo.zip#foo.gb");
   ASSERT_PTR_NOT_NULL(data);
-  ASSERT_NUM_EQUALS(data_size, 32784);
+  ASSERT_NUM_EQUALS(data_size, 32768);
 }
 
 static rc_client_async_handle_t* rc_client_external_begin_change_media(rc_client_t* client, const char* file_path,
@@ -860,13 +860,13 @@ static rc_client_async_handle_t* rc_client_external_begin_change_media(rc_client
 
 static void test_change_media(void)
 {
-  size_t image_size;
-  uint8_t* image = generate_nes_file(32, 1, &image_size);
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
 
   g_client = mock_client_with_external();
   g_client->state.external_client->begin_change_media = rc_client_external_begin_change_media;
 
-  rc_client_begin_change_media(g_client, "foo.zip#foo.nes", image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_external_event, "change_media");
 
