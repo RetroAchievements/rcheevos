@@ -256,6 +256,7 @@ typedef struct {
   uint8_t is_value;
   uint8_t has_required_hits;
   uint8_t measured_as_percent;
+  uint8_t ignore_non_parse_errors;
 }
 rc_parse_state_t;
 
