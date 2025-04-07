@@ -1117,15 +1117,14 @@ static int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
   return success == 0 ? 0 : rc_hash_finalize(iterator, &md5, hash);
 }
 
-static int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator)
+static int rc_hash_wii_disc(md5_state_t* md5,
+                            const rc_hash_iterator_t* iterator,
+                            void* file_handle)
 {
   const uint32_t MAIN_HEADER_SIZE = 0x80;
   const uint64_t REGION_CODE_ADDRESS = 0x4E000;
   const uint32_t CLUSTER_SIZE = 0x7C00;
   const uint32_t MAX_CLUSTER_COUNT = 1024;
-
-  md5_state_t md5;
-  void* file_handle;
 
   uint32_t partition_info_table[8];
   uint8_t total_partition_count = 0;
@@ -1141,20 +1140,6 @@ static int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator)
 
   uint32_t ix, jx, kx;
   uint8_t encrypted;
-
-  file_handle = rc_file_open(iterator, iterator->path);
-  if (!file_handle)
-    return rc_hash_iterator_error(iterator, "Could not open file");
-
-  md5_init(&md5);
-  /* Check Magic Word */
-  rc_file_seek(iterator, file_handle, 0x18, SEEK_SET);
-  rc_file_read(iterator, file_handle, quad_buffer, 4);
-  if (!(quad_buffer[0] == 0x5D && quad_buffer[1] == 0x1C && quad_buffer[2] == 0x9E && quad_buffer[3] == 0xA3))
-  {
-    rc_file_close(iterator, file_handle);
-    return rc_hash_iterator_error(iterator, "Not a Wii disc");
-  }
 
   /* Check encryption byte - if 0x61 is 0, disc is encrypted */
   rc_file_seek(iterator, file_handle, 0x61, SEEK_SET);
@@ -1173,12 +1158,12 @@ static int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator)
 
   rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte main header for [%c%c%c%c%c%c]",
                                      MAIN_HEADER_SIZE, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
-  md5_append(&md5, buffer, MAIN_HEADER_SIZE);
+  md5_append(md5, buffer, MAIN_HEADER_SIZE);
 
   /* Hash region code */
   rc_file_seek(iterator, file_handle, REGION_CODE_ADDRESS, SEEK_SET);
   rc_file_read(iterator, file_handle, quad_buffer, 4);
-  md5_append(&md5, quad_buffer, 4);
+  md5_append(md5, quad_buffer, 4);
 
   /* Scan partition table */
   rc_file_seek(iterator, file_handle, 0x40000, SEEK_SET);
@@ -1230,7 +1215,7 @@ static int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator)
     rc_file_read(iterator, file_handle, buffer, tmd_size);
     rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte title metadata (partition type %u)",
                                        tmd_size, partition_table[jx + 1]);
-    md5_append(&md5, buffer, tmd_size);
+    md5_append(md5, buffer, tmd_size);
 
     /* Hash partition */
     rc_file_seek(iterator, file_handle, ((uint64_t)partition_table[jx] << 2) + 0x2B8, SEEK_SET);
@@ -1251,12 +1236,12 @@ static int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator)
       {
         rc_file_seek(iterator, file_handle, part_offset + (ix * 0x8000) + 0x400, SEEK_SET);
         rc_file_read(iterator, file_handle, buffer, CLUSTER_SIZE);
-        md5_append(&md5, buffer, CLUSTER_SIZE);
+        md5_append(md5, buffer, CLUSTER_SIZE);
       }
     }
     else /* Decrypted */
     {
-      if (rc_hash_nintendo_disc_partition(&md5, iterator, file_handle, part_offset, 2) == 0)
+      if (rc_hash_nintendo_disc_partition(md5, iterator, file_handle, part_offset, 2) == 0)
       {
         free(partition_table);
         free(buffer);
@@ -1267,8 +1252,124 @@ static int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator)
   }
   free(partition_table);
   free(buffer);
+  return 1;
+}
+
+static int rc_hash_wiiware(md5_state_t* md5,
+                           const rc_hash_iterator_t* iterator,
+                           void* file_handle)
+{
+  uint32_t cert_chain_size, ticket_size, tmd_size;
+  uint32_t tmd_start_addr, content_count, content_addr, content_size, buffer_size;
+  uint32_t ix;
+
+  uint8_t quad_buffer[4];
+  uint8_t* buffer;
+
+  rc_file_seek(iterator, file_handle, 0x08, SEEK_SET);
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
+  cert_chain_size =
+    (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+  /* Each content is individually aligned to a 0x40-byte boundary. */
+  cert_chain_size = (cert_chain_size + 0x3F) & ~0x3F;
+  rc_file_seek(iterator, file_handle, 0x10, SEEK_SET);
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
+  ticket_size =
+    (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+  ticket_size = (ticket_size + 0x3F) & ~0x3F;
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
+  tmd_size =
+    (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+  tmd_size = (tmd_size + 0x3F) & ~0x3F;
+
+  tmd_start_addr = 0x40 + cert_chain_size + ticket_size;
+  if (tmd_size > MAX_BUFFER_SIZE)
+    tmd_size = MAX_BUFFER_SIZE;
+  buffer = (uint8_t*)malloc(tmd_size);
+
+  /* Hash TMD */
+  rc_file_seek(iterator, file_handle, tmd_start_addr, SEEK_SET);
+  rc_file_read(iterator, file_handle, buffer, tmd_size);
+  rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte TMD", tmd_size);
+  md5_append(md5, buffer, tmd_size);
+  free(buffer);
+
+  /* Get count of content sections */
+  rc_file_seek(iterator, file_handle, (uint64_t)tmd_start_addr + 0x1de, SEEK_SET);
+  rc_file_read(iterator, file_handle, quad_buffer, 2);
+  content_count = (quad_buffer[0] << 8) | quad_buffer[1];
+  rc_hash_iterator_verbose_formatted(iterator, "Hashing %u content sections", content_count);
+  content_addr = tmd_start_addr + tmd_size;
+  for (ix = 0; ix < content_count; ix++)
+  {
+    /* Get content section size */
+    rc_file_seek(iterator, file_handle, (uint64_t)tmd_start_addr + 0x1e4 + 8 + ix * 0x20, SEEK_SET);
+    rc_file_read(iterator, file_handle, quad_buffer, 4);
+    if (quad_buffer[0] == 0x00 && quad_buffer[1] == 0x00 && quad_buffer[2] == 0x00 && quad_buffer[3] == 0x00)
+    {
+      rc_file_read(iterator, file_handle, quad_buffer, 4);
+      content_size =
+        (quad_buffer[0] << 24) | (quad_buffer[1] << 16) | (quad_buffer[2] << 8) | quad_buffer[3];
+      /* Padding between content should be ignored. But because the content data is encrypted,
+      the size to hash for each content should be rounded up to the size of an AES block (16 bytes). */
+      content_size = (content_size + 0x0F) & ~0x0F;
+    }
+    else
+    {
+      content_size = MAX_BUFFER_SIZE;
+    }
+    buffer_size = (content_size > MAX_BUFFER_SIZE) ? MAX_BUFFER_SIZE : content_size;
+    /* Hash content */
+    buffer = (uint8_t*)malloc(buffer_size);
+    rc_file_seek(iterator, file_handle, content_addr, SEEK_SET);
+    rc_file_read(iterator, file_handle, buffer, buffer_size);
+    md5_append(md5, buffer, buffer_size);
+    content_addr += content_size;
+    content_addr = (content_addr + 0x3F) & ~0x3F;
+    free(buffer);
+  }
+
+  return 1;
+}
+
+static int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  md5_state_t md5;
+  void* file_handle;
+
+  uint8_t quad_buffer[4];
+  uint8_t success;
+
+  file_handle = rc_file_open(iterator, iterator->path);
+  if (!file_handle)
+    return rc_hash_iterator_error(iterator, "Could not open file");
+
+  md5_init(&md5);
+  /* Check Magic Words */
+  rc_file_seek(iterator, file_handle, 0x18, SEEK_SET);
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
+  if (quad_buffer[0] == 0x5D && quad_buffer[1] == 0x1C && quad_buffer[2] == 0x9E && quad_buffer[3] == 0xA3)
+  {
+    success = rc_hash_wii_disc(&md5, iterator, file_handle);
+  }
+  else
+  {
+    rc_file_seek(iterator, file_handle, 0x04, SEEK_SET);
+    rc_file_read(iterator, file_handle, quad_buffer, 4);
+    if (quad_buffer[0] == 'I' && quad_buffer[1] == 's' && quad_buffer[2] == 0x00 && quad_buffer[3] == 0x00)
+    {
+      success = rc_hash_wiiware(&md5, iterator, file_handle);
+    }
+    else
+    {
+      success = rc_hash_iterator_error(iterator, "Not a supported Wii file");
+    }
+  }
+
+  /* Finalize */
   rc_file_close(iterator, file_handle);
-  return rc_hash_finalize(iterator, &md5, hash);
+
+  return success == 0 ? 0 : rc_hash_finalize(iterator, &md5, hash);
 }
 
 static int rc_hash_pce_track(char hash[33], void* track_handle, const rc_hash_iterator_t* iterator)
@@ -2604,6 +2705,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "uze", rc_hash_initialize_iterator_single, RC_CONSOLE_UZEBOX },
   { "v64", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_64 },
   { "vb", rc_hash_initialize_iterator_single, RC_CONSOLE_VIRTUAL_BOY },
+  { "wad", rc_hash_initialize_iterator_single, RC_CONSOLE_WII },
   { "wasm", rc_hash_initialize_iterator_single, RC_CONSOLE_WASM4 },
   { "woz", rc_hash_initialize_iterator_single, RC_CONSOLE_APPLE_II },
   { "wsc", rc_hash_initialize_iterator_single, RC_CONSOLE_WONDERSWAN },
