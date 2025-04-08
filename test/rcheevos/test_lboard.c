@@ -573,6 +573,58 @@ static void test_value_from_float_scaled() {
   ASSERT_NUM_EQUALS(value, 314);
 }
 
+static void test_value_from_division() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_lboard_t* lboard;
+  char buffer[1024];
+  int value;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_lboard(&lboard, buffer, "STA:0xH00=1::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH02/2");
+  ASSERT_NUM_EQUALS(lboard->state, RC_LBOARD_STATE_WAITING);
+
+  /* submit is true, but leaderboard has not started */
+  ram[0] = 3;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(value, 0); /* value is only calculated in STARTED and TRIGGERED states */
+
+  /* cancel is true - still not started */
+  ram[0] = 2;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* start is true - will activate */
+  ram[0] = 1;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 0x1a);
+
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 0x1a);
+
+  /* cancel is true - will deactivate */
+  ram[0] = 2;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_CANCELED);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* submit is true, but leaderboard is not active */
+  ram[0] = 3;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(value, 0);
+
+  /* start is true - will activate */
+  ram[0] = 1;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_STARTED);
+  ASSERT_NUM_EQUALS(value, 0x1a);
+
+  /* submit is true - will submit */
+  ram[0] = 3;
+  ASSERT_NUM_EQUALS(evaluate_lboard(lboard, &memory, &value), RC_LBOARD_STATE_TRIGGERED);
+  ASSERT_NUM_EQUALS(value, 0x1a);
+}
+
 static void test_maximum_value_from_conditions() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -684,6 +736,7 @@ void test_lboard(void) {
   TEST(test_value_from_addhits);
   TEST(test_value_from_float);
   TEST(test_value_from_float_scaled);
+  TEST(test_value_from_division);
   TEST(test_maximum_value_from_conditions);
   TEST(test_measured_value_and_condition);
 
