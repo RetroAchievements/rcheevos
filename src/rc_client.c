@@ -2287,6 +2287,12 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
 
     if (load_state->hash->game_id == 0) {
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+ #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
+      if (client->state.raintegration && client->state.raintegration->set_console_id) {
+        if (load_state->game->public_.console_id != RC_CONSOLE_UNKNOWN)
+          client->state.raintegration->set_console_id(load_state->game->public_.console_id);
+      }
+ #endif
       if (client->state.external_client) {
         if (client->state.external_client->load_unknown_game) {
           client->state.external_client->load_unknown_game(load_state->game->public_.hash);
@@ -2546,6 +2552,11 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
     client->callbacks.server_call(&request, rc_client_identify_game_callback, load_state, client);
 
     rc_api_destroy_request(&request);
+  }
+  else if (load_state->hash->game_id != RC_CLIENT_UNKNOWN_GAME_ID &&
+           client->state.external_client && client->state.external_client->begin_load_game) {
+    rc_client_begin_async(client, &load_state->async_handle);
+    client->state.external_client->begin_load_game(client, load_state->hash->hash, rc_client_external_load_state_callback, load_state);
   }
 #endif
   else {
