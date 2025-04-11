@@ -55,6 +55,7 @@ static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr, r
     }
     else {
       memcpy(self, &parse->remember, sizeof(*self));
+      self->is_combining = 0;
       self->memref_access_type = self->type;
     }
     self->type = RC_OPERAND_RECALL;
@@ -146,6 +147,8 @@ int rc_parse_operand(rc_operand_t* self, const char** memaddr, rc_parse_state_t*
   unsigned long value;
   int negative;
   int allow_decimal = 0;
+
+  self->is_combining = 0;
 
   switch (*aux) {
     case 'h': case 'H': /* hex constant */
