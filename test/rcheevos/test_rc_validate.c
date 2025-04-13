@@ -225,6 +225,7 @@ void test_address_range() {
   TEST_PARAMS2(test_validate_trigger_64k, "0xH1234>0xH12345", "Condition 1: Address 12345 out of range (max FFFF)");
   TEST_PARAMS2(test_validate_trigger_64k, "0xH12345>0xH12345", "Condition 1: Address 12345 out of range (max FFFF)");
   TEST_PARAMS2(test_validate_trigger_64k, "0xX1234>h12345", "");
+  TEST_PARAMS2(test_validate_trigger_64k, "K:0xX1234&1073741823_K:0xX2345+{recall}_0=1", "");
 
   /* support for multiple memory blocks and edge addresses */
   TEST_PARAMS2(test_validate_trigger_128k, "0xH1234>0xH1235", "");
@@ -236,6 +237,7 @@ void test_address_range() {
   /* AddAddress can use really big values for negative offsets, don't flag them. */
   TEST_PARAMS2(test_validate_trigger_128k, "I:0xX1234_0xHFFFFFF00>5", "");
   TEST_PARAMS2(test_validate_trigger_128k, "I:0xX1234_0xH1234>5_0xHFFFFFF00>5", "Condition 3: Address FFFFFF00 out of range (max 1FFFF)");
+  TEST_PARAMS2(test_validate_trigger_128k, "I:0xX1234_0xHFFFFFF00*2>5", "");
 
   /* console-specific warnings */
   TEST_PARAMS3(test_validate_trigger_console, "0xH0123>23", "", RC_CONSOLE_NINTENDO);
