@@ -704,6 +704,13 @@ static rc_client_t* mock_client_logged_in(void)
   return client;
 }
 
+static rc_client_t* mock_client_logged_in_async(void)
+{
+  rc_client_t* client = mock_client_logged_in();
+  client->callbacks.server_call = rc_client_server_call_async;
+  return client;
+}
+
 static void mock_client_load_game(const char* patchdata, const char* unlocks)
 {
   reset_mock_api_handlers();
@@ -1518,6 +1525,67 @@ static void test_load_game(void)
     ASSERT_PTR_NOT_NULL(leaderboard->lboard);
     ASSERT_NUM_NOT_EQUALS(leaderboard->value_djb2, 0);
     ASSERT_PTR_NULL(leaderboard->tracker);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_load_game_async_load_different_game(void)
+{
+  static const char* patchdata_alternate = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":2345,\"Title\":\"Other Game\",\"ConsoleID\":7,\"ImageIcon\":\"/Images/555555.png\","
+    "\"Achievements\":["
+      GENERIC_ACHIEVEMENT_JSON("1", "0xH0000=5") ","
+      GENERIC_ACHIEVEMENT_JSON("2", "0xHFFFF=5") ","
+      GENERIC_ACHIEVEMENT_JSON("3", "0xH10000=5")
+    "],"
+    "\"Leaderboards\":[]"
+    "}}";
+
+  g_client = mock_client_logged_in_async();
+  reset_mock_api_handlers();
+
+  /* start loading first game */
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_no_longer_active, g_callback_userdata);
+  assert_api_pending("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
+
+  /* receive data for first game, start session for first game */
+  async_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION);
+
+  /* start loading second game*/
+  rc_client_begin_load_game(g_client, "ABCDEF0123456789", rc_client_callback_expect_success, g_callback_userdata);
+  assert_api_pending("r=patch&u=Username&t=ApiToken&m=ABCDEF0123456789");
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
+
+  /* session started for first game, should abort */
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
+
+  /* receive data for second game, start session for second game */
+  async_api_response("r=patch&u=Username&t=ApiToken&m=ABCDEF0123456789", patchdata_alternate);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION);
+
+  /* session started for second game, should succeed */
+  async_api_response("r=startsession&u=Username&t=ApiToken&g=2345&h=1&m=ABCDEF0123456789&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_DONE);
+
+  /* verify second game was loaded */
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 2345);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 7);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Other Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "ABCDEF0123456789");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "555555");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 3);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 0);
   }
 
   rc_client_destroy(g_client);
@@ -9297,6 +9365,7 @@ void test_client(void) {
   TEST(test_load_game_unknown_hash_repeated);
   TEST(test_load_game_not_logged_in);
   TEST(test_load_game);
+  TEST(test_load_game_async_load_different_game);
   TEST(test_load_game_async_login);
   TEST(test_load_game_async_login_with_incorrect_password);
   TEST(test_load_game_async_login_logout);

@@ -2566,6 +2566,26 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
   return (client->state.load == load_state) ? &load_state->async_handle : NULL;
 }
 
+static void rc_client_abort_load_in_progress(rc_client_t* client)
+{
+  rc_client_load_state_t* load_state;
+
+  rc_mutex_lock(&client->state.mutex);
+
+  load_state = client->state.load;
+  if (load_state) {
+    /* this mimics rc_client_abort_async without nesting the lock */
+    load_state->async_handle.aborted = RC_CLIENT_ASYNC_ABORTED;
+
+    client->state.load = NULL;
+  }
+
+  rc_mutex_unlock(&client->state.mutex);
+
+  if (load_state && load_state->callback)
+    load_state->callback(RC_ABORTED, "The requested game is no longer active", load_state->client, load_state->callback_userdata);
+}
+
 rc_client_async_handle_t* rc_client_begin_load_game(rc_client_t* client, const char* hash, rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_load_state_t* load_state;
@@ -2579,6 +2599,8 @@ rc_client_async_handle_t* rc_client_begin_load_game(rc_client_t* client, const c
     callback(RC_INVALID_STATE, "hash is required", client, callback_userdata);
     return NULL;
   }
+
+  rc_client_abort_load_in_progress(client);
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->begin_load_game)
@@ -2620,6 +2642,8 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
     callback(RC_INVALID_STATE, "client is required", client, callback_userdata);
     return NULL;
   }
+
+  rc_client_abort_load_in_progress(client);
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   /* if a add_game_hash handler exists, do the identification locally, then pass the
