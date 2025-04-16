@@ -2496,7 +2496,9 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
 {
   rc_client_t* client = load_state->client;
   rc_client_game_hash_t* old_hash;
+#ifdef RC_CLIENT_SUPPORTS_HASH
   size_t i;
+#endif
 
   if (!rc_client_attach_load_state(client, load_state)) {
     rc_client_free_load_state(load_state);
@@ -2506,6 +2508,7 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
   old_hash = load_state->hash;
   load_state->hash = rc_client_find_game_hash(client, hash);
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
   i = 0;
   do {
     if (!load_state->tried_hashes[i]) {
@@ -2521,6 +2524,7 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
       break;
     }
   } while (1);
+#endif
 
   if (file_path) {
     rc_client_media_hash_t* media_hash =
