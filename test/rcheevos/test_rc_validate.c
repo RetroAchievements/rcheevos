@@ -274,6 +274,16 @@ void test_delta_pointers() {
   TEST_PARAMS2(test_validate_trigger, "I:0xX1234_I:0xH0010_0xH0000=1", "");
 }
 
+void test_nonsized_pointers() {
+  TEST_PARAMS2(test_validate_trigger, "I:Ff1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
+  TEST_PARAMS2(test_validate_trigger, "I:Fb1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
+  TEST_PARAMS2(test_validate_trigger, "I:Fm1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
+  TEST_PARAMS2(test_validate_trigger, "I:Fh1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
+  TEST_PARAMS2(test_validate_trigger, "I:0xH1234*f1.5_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
+  TEST_PARAMS2(test_validate_trigger, "I:b0xH1234_0xH0000=1", "Condition 1: Using transformed value in AddAddress calcuation");
+  TEST_PARAMS2(test_validate_trigger, "I:~0xH1234_0xH0000=1", "Condition 1: Using transformed value in AddAddress calcuation");
+}
+
 void test_float_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "fF1234=f2.3", "");
   TEST_PARAMS2(test_validate_trigger, "fM1234=f2.3", "");
@@ -436,6 +446,7 @@ void test_rc_validate(void) {
   test_size_comparisons();
   test_address_range();
   test_delta_pointers();
+  test_nonsized_pointers();
   test_float_comparisons();
   test_conflicting_conditions();
   test_redundant_conditions();
