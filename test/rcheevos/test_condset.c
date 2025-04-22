@@ -4680,6 +4680,41 @@ static void test_get_real_operand1_recall(void)
   ASSERT_NUM_EQUALS(operand->is_combining, 0);
 }
 
+static void test_get_real_operand1_indirect_static()
+{
+  rc_condset_t* condset;
+  rc_condition_t* condition;
+  const rc_operand_t* operand;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  assert_parse_condset(&condset, &memrefs, buffer, "I:8_I:0xH0010_0xH0020=2");
+
+  condition = condset->conditions;
+  ASSERT_NUM_EQUALS(condition->operand1.is_combining, 0);
+  operand = rc_condition_get_real_operand1(condition);
+  ASSERT_NUM_EQUALS(operand->type, RC_OPERAND_CONST);
+  ASSERT_NUM_EQUALS(operand->size, RC_MEMSIZE_32_BITS);
+  ASSERT_NUM_EQUALS(operand->value.num, 8);
+  ASSERT_NUM_EQUALS(operand->is_combining, 0);
+
+  condition = condition->next;
+  ASSERT_NUM_EQUALS(condition->operand1.is_combining, 0);
+  operand = rc_condition_get_real_operand1(condition);
+  ASSERT_NUM_EQUALS(operand->type, RC_OPERAND_ADDRESS);
+  ASSERT_NUM_EQUALS(operand->size, RC_MEMSIZE_8_BITS);
+  ASSERT_NUM_EQUALS(operand->value.memref->address, 0x0010);
+  ASSERT_NUM_EQUALS(operand->is_combining, 0);
+
+  condition = condition->next;
+  ASSERT_NUM_EQUALS(condition->operand1.is_combining, 0);
+  operand = rc_condition_get_real_operand1(condition);
+  ASSERT_NUM_EQUALS(operand->type, RC_OPERAND_ADDRESS);
+  ASSERT_NUM_EQUALS(operand->size, RC_MEMSIZE_8_BITS);
+  ASSERT_NUM_EQUALS(operand->value.memref->address, 0x0020);
+  ASSERT_NUM_EQUALS(operand->is_combining, 0);
+}
+
 static void test_ignore_parse_errors(const char* memaddr, uint8_t is_value, int32_t expected_error)
 {
   const char* memaddr_test;
@@ -4849,6 +4884,7 @@ void test_condset(void) {
   /* get_real_operand1 */
   TEST(test_get_real_operand1);
   TEST(test_get_real_operand1_recall);
+  TEST(test_get_real_operand1_indirect_static);
 
   /* ignore parse errors */
   TEST_PARAMS3(test_ignore_parse_errors, "M:0x1234=5_M:0x1234=6", 0, RC_MULTIPLE_MEASURED);
