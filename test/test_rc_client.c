@@ -1440,6 +1440,56 @@ static void test_load_game_unknown_hash_repeated(void)
   rc_client_destroy(g_client);
 }
 
+static void test_load_game_unknown_hash_multiple(void)
+{
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  /* first request */
+  handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
+                                     rc_client_callback_expect_unknown_game, g_callback_userdata);
+  ASSERT_PTR_NOT_NULL(handle);
+  ASSERT_PTR_NOT_NULL(g_client->state.load);
+
+  async_api_response("r=patch&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_url, default_game_badge);
+
+  /* second request */
+  handle = rc_client_begin_load_game(g_client, "FEDCBA9876543210",
+                                     rc_client_callback_expect_unknown_game, g_callback_userdata);
+  ASSERT_PTR_NOT_NULL(handle);
+  ASSERT_PTR_NOT_NULL(g_client->state.load);
+
+  async_api_response("r=patch&u=Username&t=ApiToken&m=FEDCBA9876543210", patchdata_not_found);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_UNKNOWN);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "FEDCBA9876543210");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_url, default_game_badge);
+
+  rc_client_destroy(g_client);
+}
+
 static void test_load_game_not_logged_in(void)
 {
   g_client = mock_client_not_logged_in();
@@ -2421,6 +2471,61 @@ static void test_identify_and_load_game_unknown_hash_repeated(void)
 
   rc_client_destroy(g_client);
   free(image);
+}
+
+static void test_identify_and_load_game_unknown_hash_multiple(void)
+{
+  rc_client_async_handle_t* handle;
+
+  const size_t disk_size = 256 * 16 * 35; /* 140KB - Apple II disk size */
+  uint8_t* disk = generate_generic_file(disk_size);
+
+  g_client = mock_client_logged_in();
+  g_client->callbacks.server_call = rc_client_server_call_async;
+
+  reset_mock_api_handlers();
+
+  /* first request */
+  handle = rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_APPLE_II,
+    "disk1.dsk", disk, disk_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
+  ASSERT_PTR_NOT_NULL(handle);
+  ASSERT_PTR_NOT_NULL(g_client->state.load);
+
+  async_api_response("r=patch&u=Username&t=ApiToken&m=88be638f4d78b4072109e55f13e8a0ac", patchdata_not_found);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_APPLE_II);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "88be638f4d78b4072109e55f13e8a0ac");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_url, default_game_badge);
+
+  /* second request - modify file so new hash is generated */
+  disk[16]++;
+  handle = rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_APPLE_II,
+    "disk1.dsk", disk, disk_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
+  ASSERT_PTR_NOT_NULL(handle);
+  ASSERT_PTR_NOT_NULL(g_client->state.load);
+
+  async_api_response("r=patch&u=Username&t=ApiToken&m=8e39c6077108cafd6193d1c649b5d695", patchdata_not_found);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+  ASSERT_NUM_EQUALS(g_client->game->public_.id, 0);
+  ASSERT_NUM_EQUALS(g_client->game->public_.console_id, RC_CONSOLE_APPLE_II);
+  ASSERT_STR_EQUALS(g_client->game->public_.title, "Unknown Game");
+  ASSERT_STR_EQUALS(g_client->game->public_.hash, "8e39c6077108cafd6193d1c649b5d695");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "");
+  ASSERT_STR_EQUALS(g_client->game->public_.badge_url, default_game_badge);
+
+  free(disk);
+  rc_client_destroy(g_client);
 }
 
 #ifndef RC_HASH_NO_ROM
@@ -9363,6 +9468,7 @@ void test_client(void) {
   TEST(test_load_game_required_fields);
   TEST(test_load_game_unknown_hash);
   TEST(test_load_game_unknown_hash_repeated);
+  TEST(test_load_game_unknown_hash_multiple);
   TEST(test_load_game_not_logged_in);
   TEST(test_load_game);
   TEST(test_load_game_async_load_different_game);
@@ -9399,6 +9505,7 @@ void test_client(void) {
  #endif
   TEST(test_identify_and_load_game_unknown_hash);
   TEST(test_identify_and_load_game_unknown_hash_repeated);
+  TEST(test_identify_and_load_game_unknown_hash_multiple);
  #ifndef RC_HASH_NO_ROM
   TEST(test_identify_and_load_game_unknown_hash_multiconsole);
  #endif

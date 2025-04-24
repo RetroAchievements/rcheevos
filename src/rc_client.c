@@ -64,6 +64,7 @@ typedef struct rc_client_load_state_t
 
 #ifdef RC_CLIENT_SUPPORTS_HASH
   rc_hash_iterator_t hash_iterator;
+  rc_client_game_hash_t* tried_hashes[4];
 #endif
   rc_client_pending_media_t* pending_media;
 
@@ -2229,40 +2230,31 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
       return;
     }
 
-    if (load_state->game->media_hash &&
-        load_state->game->media_hash->game_hash &&
-        load_state->game->media_hash->game_hash->next) {
+    if (load_state->tried_hashes[1]) {
       /* multiple hashes were tried, create a CSV */
-      struct rc_client_game_hash_t* game_hash = load_state->game->media_hash->game_hash;
-      int count = 1;
+      size_t i;
+      size_t count = 0;
       char* ptr;
-      size_t size;
+      size_t size = 0;
 
-      size = strlen(game_hash->hash) + 1;
-      while (game_hash->next) {
-        game_hash = game_hash->next;
-        size += strlen(game_hash->hash) + 1;
+      for (i = 0; i < sizeof(load_state->tried_hashes) / sizeof(load_state->tried_hashes[0]); ++i) {
+        if (!load_state->tried_hashes[i])
+          break;
+
+        size += strlen(load_state->tried_hashes[i]->hash) + 1;
         count++;
       }
 
       ptr = (char*)rc_buffer_alloc(&load_state->game->buffer, size);
-      ptr += size - 1;
-      *ptr = '\0';
-      game_hash = load_state->game->media_hash->game_hash;
-      do {
-        const size_t hash_len = strlen(game_hash->hash);
-        ptr -= hash_len;
-        memcpy(ptr, game_hash->hash, hash_len);
-
-        game_hash = game_hash->next;
-        if (!game_hash)
-          break;
-
-        ptr--;
-        *ptr = ',';
-      } while (1);
-
       load_state->game->public_.hash = ptr;
+      for (i = 0; i < count; i++) {
+        const size_t hash_len = strlen(load_state->tried_hashes[i]->hash);
+        memcpy(ptr, load_state->tried_hashes[i]->hash, hash_len);
+        ptr += hash_len;
+        *ptr++ = ',';
+      }
+      *(ptr - 1) = '\0';
+
       load_state->game->public_.console_id = RC_CONSOLE_UNKNOWN;
     } else {
       /* only a single hash was tried, capture it */
@@ -2504,6 +2496,9 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
 {
   rc_client_t* client = load_state->client;
   rc_client_game_hash_t* old_hash;
+#ifdef RC_CLIENT_SUPPORTS_HASH
+  size_t i;
+#endif
 
   if (!rc_client_attach_load_state(client, load_state)) {
     rc_client_free_load_state(load_state);
@@ -2512,6 +2507,24 @@ static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* loa
 
   old_hash = load_state->hash;
   load_state->hash = rc_client_find_game_hash(client, hash);
+
+#ifdef RC_CLIENT_SUPPORTS_HASH
+  i = 0;
+  do {
+    if (!load_state->tried_hashes[i]) {
+      load_state->tried_hashes[i] = load_state->hash;
+      break;
+    }
+
+    if (load_state->tried_hashes[i] == load_state->hash)
+      break;
+
+    if (++i == sizeof(load_state->tried_hashes) / sizeof(load_state->tried_hashes[0])) {
+      RC_CLIENT_LOG_VERBOSE(client, "tried_hashes buffer is full");
+      break;
+    }
+  } while (1);
+#endif
 
   if (file_path) {
     rc_client_media_hash_t* media_hash =
