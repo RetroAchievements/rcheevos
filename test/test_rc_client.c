@@ -8556,6 +8556,9 @@ static void test_can_pause(void)
   uint32_t frames_remaining;
   int i;
 
+  /* pause without client should be allowed */
+  ASSERT_NUM_EQUALS(rc_client_can_pause(NULL, NULL), 1);
+
   g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 1);
 

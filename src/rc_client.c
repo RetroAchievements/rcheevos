@@ -5726,6 +5726,9 @@ void rc_client_reset(rc_client_t* client)
 
 int rc_client_can_pause(rc_client_t* client, uint32_t* frames_remaining)
 {
+  if (!client)
+    return 1;
+
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->can_pause)
     return client->state.external_client->can_pause(frames_remaining);
