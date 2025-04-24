@@ -118,16 +118,11 @@ static int rc_parse_operand_memory(rc_operand_t* self, const char** memaddr, rc_
   }
 
   if (parse->indirect_parent.type != RC_OPERAND_NONE) {
-    if (parse->indirect_parent.type == RC_OPERAND_CONST) {
-      self->value.memref = rc_alloc_memref(parse, address + parse->indirect_parent.value.num, size);
-    }
-    else {
-      rc_operand_t offset;
-      rc_operand_set_const(&offset, address);
+    rc_operand_t offset;
+    rc_operand_set_const(&offset, address);
 
-      self->value.memref = (rc_memref_t*)rc_alloc_modified_memref(parse,
-        size, &parse->indirect_parent, RC_OPERATOR_INDIRECT_READ, &offset);
-    }
+    self->value.memref = (rc_memref_t*)rc_alloc_modified_memref(parse,
+      size, &parse->indirect_parent, RC_OPERATOR_INDIRECT_READ, &offset);
   }
   else {
     self->value.memref = rc_alloc_memref(parse, address, size);
