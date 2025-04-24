@@ -1086,14 +1086,46 @@ static int rc_hash_nintendo_disc_partition(md5_state_t* md5,
   return 1;
 }
 
-static int rc_hash_wii(md5_state_t* md5,
-                       const rc_hash_iterator_t* iterator,
-                       void* file_handle)
+static int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  md5_state_t md5;
+  void* file_handle;
+
+  uint8_t quad_buffer[4];
+  uint8_t success;
+
+  file_handle = rc_file_open(iterator, iterator->path);
+  if (!file_handle)
+    return rc_hash_iterator_error(iterator, "Could not open file");
+
+  md5_init(&md5);
+  /* Check Magic Word */
+  rc_file_seek(iterator, file_handle, 0x1c, SEEK_SET);
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
+  if (quad_buffer[0] == 0xC2 && quad_buffer[1] == 0x33 && quad_buffer[2] == 0x9F && quad_buffer[3] == 0x3D)
+  {
+    success = rc_hash_nintendo_disc_partition(&md5, iterator, file_handle, 0, 0);
+  }
+  else
+  {
+    success = rc_hash_iterator_error(iterator, "Not a Gamecube disc");
+  }
+
+  /* Finalize */
+  rc_file_close(iterator, file_handle);
+
+  return success == 0 ? 0 : rc_hash_finalize(iterator, &md5, hash);
+}
+
+static int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator)
 {
   const uint32_t MAIN_HEADER_SIZE = 0x80;
   const uint64_t REGION_CODE_ADDRESS = 0x4E000;
   const uint32_t CLUSTER_SIZE = 0x7C00;
   const uint32_t MAX_CLUSTER_COUNT = 1024;
+
+  md5_state_t md5;
+  void* file_handle;
 
   uint32_t partition_info_table[8];
   uint8_t total_partition_count = 0;
@@ -1109,6 +1141,20 @@ static int rc_hash_wii(md5_state_t* md5,
 
   uint32_t ix, jx, kx;
   uint8_t encrypted;
+
+  file_handle = rc_file_open(iterator, iterator->path);
+  if (!file_handle)
+    return rc_hash_iterator_error(iterator, "Could not open file");
+
+  md5_init(&md5);
+  /* Check Magic Word */
+  rc_file_seek(iterator, file_handle, 0x18, SEEK_SET);
+  rc_file_read(iterator, file_handle, quad_buffer, 4);
+  if (!(quad_buffer[0] == 0x5D && quad_buffer[1] == 0x1C && quad_buffer[2] == 0x9E && quad_buffer[3] == 0xA3))
+  {
+    rc_file_close(iterator, file_handle);
+    return rc_hash_iterator_error(iterator, "Not a Wii disc");
+  }
 
   /* Check encryption byte - if 0x61 is 0, disc is encrypted */
   rc_file_seek(iterator, file_handle, 0x61, SEEK_SET);
@@ -1127,12 +1173,12 @@ static int rc_hash_wii(md5_state_t* md5,
 
   rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte main header for [%c%c%c%c%c%c]",
                                      MAIN_HEADER_SIZE, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
-  md5_append(md5, buffer, MAIN_HEADER_SIZE);
+  md5_append(&md5, buffer, MAIN_HEADER_SIZE);
 
   /* Hash region code */
   rc_file_seek(iterator, file_handle, REGION_CODE_ADDRESS, SEEK_SET);
   rc_file_read(iterator, file_handle, quad_buffer, 4);
-  md5_append(md5, quad_buffer, 4);
+  md5_append(&md5, quad_buffer, 4);
 
   /* Scan partition table */
   rc_file_seek(iterator, file_handle, 0x40000, SEEK_SET);
@@ -1184,7 +1230,7 @@ static int rc_hash_wii(md5_state_t* md5,
     rc_file_read(iterator, file_handle, buffer, tmd_size);
     rc_hash_iterator_verbose_formatted(iterator, "Hashing %u byte title metadata (partition type %u)",
                                        tmd_size, partition_table[jx + 1]);
-    md5_append(md5, buffer, tmd_size);
+    md5_append(&md5, buffer, tmd_size);
 
     /* Hash partition */
     rc_file_seek(iterator, file_handle, ((uint64_t)partition_table[jx] << 2) + 0x2B8, SEEK_SET);
@@ -1205,59 +1251,24 @@ static int rc_hash_wii(md5_state_t* md5,
       {
         rc_file_seek(iterator, file_handle, part_offset + (ix * 0x8000) + 0x400, SEEK_SET);
         rc_file_read(iterator, file_handle, buffer, CLUSTER_SIZE);
-        md5_append(md5, buffer, CLUSTER_SIZE);
+        md5_append(&md5, buffer, CLUSTER_SIZE);
       }
     }
     else /* Decrypted */
     {
-      if (rc_hash_nintendo_disc_partition(md5, iterator, file_handle, part_offset, 2) == 0)
+      if (rc_hash_nintendo_disc_partition(&md5, iterator, file_handle, part_offset, 2) == 0)
       {
         free(partition_table);
         free(buffer);
-        return 0;
+        rc_file_close(iterator, file_handle);
+        return rc_hash_iterator_error(iterator, "Failed to hash Wii partition");
       }
     }
   }
   free(partition_table);
   free(buffer);
-  return 1;
-}
-
-static int rc_hash_nintendo_disc(char hash[33], const rc_hash_iterator_t* iterator)
-{
-  md5_state_t md5;
-  void* file_handle;
-
-  uint8_t quad_buffer[4];
-  uint8_t success;
-
-  file_handle = rc_file_open(iterator, iterator->path);
-  if (!file_handle)
-    return rc_hash_iterator_error(iterator, "Could not open file");
-
-  md5_init(&md5);
-  /* Check Gamecube */
-  rc_file_seek(iterator, file_handle, 0x1c, SEEK_SET);
-  rc_file_read(iterator, file_handle, quad_buffer, 4);
-  if (quad_buffer[0] == 0xC2 && quad_buffer[1] == 0x33 && quad_buffer[2] == 0x9F && quad_buffer[3] == 0x3D)
-  {
-    success = rc_hash_nintendo_disc_partition(&md5, iterator, file_handle, 0, 0);
-  } else {
-    /* Check Wii */
-    rc_file_seek(iterator, file_handle, 0x18, SEEK_SET);
-    rc_file_read(iterator, file_handle, quad_buffer, 4);
-    if (quad_buffer[0] == 0x5D && quad_buffer[1] == 0x1C && quad_buffer[2] == 0x9E && quad_buffer[3] == 0xA3)
-    {
-      success = rc_hash_wii(&md5, iterator, file_handle);
-    } else {
-      success = rc_hash_iterator_error(iterator, "Not a supported Nintendo disc");
-    }
-  }
-
-  /* Finalize */
   rc_file_close(iterator, file_handle);
-
-  return success == 0 ? 0 : rc_hash_finalize(iterator, &md5, hash);
+  return rc_hash_finalize(iterator, &md5, hash);
 }
 
 static int rc_hash_pce_track(char hash[33], void* track_handle, const rc_hash_iterator_t* iterator)
@@ -2233,8 +2244,7 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
       return rc_hash_dreamcast(hash, iterator);
 
     case RC_CONSOLE_GAMECUBE:
-    case RC_CONSOLE_WII:
-      return rc_hash_nintendo_disc(hash, iterator);
+      return rc_hash_gamecube(hash, iterator);
 
 #ifndef RC_HASH_NO_ZIP
     case RC_CONSOLE_MS_DOS:
@@ -2296,6 +2306,9 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
         return rc_hash_generate_from_playlist(hash, console_id, iterator);
 
       return rc_hash_sega_cd(hash, iterator);
+
+    case RC_CONSOLE_WII:
+      return rc_hash_wii(hash, iterator);
   }
 }
 
