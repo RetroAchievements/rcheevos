@@ -1303,7 +1303,7 @@ static int rc_hash_wiiware(md5_state_t* md5,
   for (ix = 0; ix < content_count; ix++)
   {
     /* Get content section size */
-    rc_file_seek(iterator, file_handle, (uint64_t)tmd_start_addr + 0x1e4 + 8 + ix * 0x20, SEEK_SET);
+    rc_file_seek(iterator, file_handle, (uint64_t)tmd_start_addr + 0x1e4 + 8 + ix * 0x24, SEEK_SET);
     rc_file_read(iterator, file_handle, quad_buffer, 4);
     if (quad_buffer[0] == 0x00 && quad_buffer[1] == 0x00 && quad_buffer[2] == 0x00 && quad_buffer[3] == 0x00)
     {
