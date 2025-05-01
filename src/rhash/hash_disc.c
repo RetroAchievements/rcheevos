@@ -4,6 +4,8 @@
 
 #include "../rc_compat.h"
 
+#include <ctype.h>
+
 /* ===================================================== */
 
 static struct rc_hash_cdreader g_cdreader_funcs;
