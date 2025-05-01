@@ -10,6 +10,9 @@
 #include <share.h>
 #endif
 
+#include <ctype.h>
+#include <stdarg.h>
+
 const char* rc_path_get_filename(const char* path);
 static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_iterator_t* iterator);
 
