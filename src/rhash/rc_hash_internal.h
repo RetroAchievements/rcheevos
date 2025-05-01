@@ -84,8 +84,28 @@ int rc_hash_whole_file(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_snes(char hash[33], const rc_hash_iterator_t* iterator);
 #endif
 
+#ifndef RC_HASH_NO_DISC
+  /* hash_disc.c */
+  void rc_hash_reset_iterator_disc(rc_hash_iterator_t* iterator);
+
+  int rc_hash_3do(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_dreamcast(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_jaguar_cd(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_neogeo_cd(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_pce_cd(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_pcfx_cd(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_psx(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_ps2(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_psp(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_sega_cd(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator);
+#endif
+
 #ifndef RC_HASH_NO_ENCRYPTED
   /* hash_encrypted.c */
+  void rc_hash_reset_iterator_encrypted(rc_hash_iterator_t* iterator);
+
   int rc_hash_nintendo_3ds(char hash[33], const rc_hash_iterator_t* iterator);
 #endif
 

@@ -145,6 +145,8 @@ void mock_empty_file(int index, const char* filename, size_t mock_size)
   mock_file(index, filename, NULL, mock_size);
 }
 
+#ifndef RC_HASH_NO_DISC
+
 static void* _mock_cd_open_track(const char* path, uint32_t track)
 {
   if (track == RC_HASH_CDTRACK_LAST)
@@ -224,6 +226,8 @@ void init_mock_cdreader()
 
   mock_cd_tracks = 0;
 }
+
+#endif
 
 const char* get_mock_filename(void* file_handle)
 {

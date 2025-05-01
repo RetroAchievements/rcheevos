@@ -38,10 +38,13 @@ extern void test_rc_validate();
 
 extern void test_url();
 
-extern void test_cdreader();
 extern void test_hash();
 #ifndef RC_HASH_NO_ROM
 extern void test_hash_rom();
+#endif
+#ifndef RC_HASH_NO_DISC
+extern void test_cdreader();
+extern void test_hash_disc();
 #endif
 #ifndef RC_HASH_NO_ZIP
 extern void test_hash_zip();
@@ -94,10 +97,13 @@ int main(void) {
 #ifdef RC_CLIENT_SUPPORTS_HASH
   /* no direct compile option for hash support, so leverage RC_CLIENT_SUPPORTS_HASH */
   test_rc_libretro(); /* libretro extensions require hash support */
-  test_cdreader();
   test_hash();
  #ifndef RC_HASH_NO_ROM
   test_hash_rom();
+ #endif
+ #ifndef RC_HASH_NO_DISC
+  test_cdreader();
+  test_hash_disc();
  #endif
  #ifndef RC_HASH_NO_ZIP
   test_hash_zip();
