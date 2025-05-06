@@ -483,7 +483,7 @@ static void test_login_with_token_v1(void)
   ASSERT_NUM_EQUALS(user->score, 12345);
   ASSERT_NUM_EQUALS(user->score_softcore, 123);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
-  ASSERT_PTR_NULL(user->avatar_url);
+  ASSERT_STR_EQUALS(user->avatar_url, "https://media.retroachievements.org/UserPic/User.png");
 
   /* ensure non-external client user was not initialized */
   ASSERT_PTR_NULL(g_client->user.username);
@@ -647,7 +647,8 @@ static void test_identify_and_load_game_v1(void)
   ASSERT_STR_EQUALS(game->title, "Game Title");
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
-  ASSERT_PTR_NULL(game->badge_url);
+  ASSERT_STR_EQUALS(game->badge_url, "https://media.retroachievements.org/Images/BDG001.png");
+
   /* ensure non-external client game was not initialized */
   ASSERT_PTR_NULL(g_client->game);
 
@@ -779,7 +780,8 @@ static void test_load_game_v1(void)
   ASSERT_STR_EQUALS(game->title, "Game Title");
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
-  ASSERT_PTR_NULL(game->badge_url);
+  ASSERT_STR_EQUALS(game->badge_url, "https://media.retroachievements.org/Images/BDG001.png");
+
   /* ensure non-external client user was not initialized */
   ASSERT_PTR_NULL(g_client->game);
 
@@ -808,6 +810,7 @@ static void test_load_game(void)
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
   ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
+
   /* ensure non-external client user was not initialized */
   ASSERT_PTR_NULL(g_client->game);
 
@@ -889,6 +892,7 @@ static void test_identify_and_load_game_external_hash(void)
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
   ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
+
   /* ensure internal client game was initialized to hold media hashes */
   ASSERT_PTR_NOT_NULL(g_client->game);
 
@@ -927,6 +931,7 @@ static void test_identify_and_reload_game_external_hash(void)
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
   ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
+
   /* ensure internal client game was initialized to hold media hashes */
   ASSERT_PTR_NOT_NULL(g_client->game);
 
@@ -948,6 +953,7 @@ static void test_identify_and_reload_game_external_hash(void)
   ASSERT_STR_EQUALS(game->hash, "GAME_HASH");
   ASSERT_STR_EQUALS(game->badge_name, "BDG001");
   ASSERT_STR_EQUALS(game->badge_url, "/Badge/BDG001.png");
+
   /* ensure internal client game was initialized to hold media hashes */
   ASSERT_PTR_NOT_NULL(g_client->game);
 
@@ -1086,7 +1092,7 @@ static void test_get_subset_info_v1(void)
   ASSERT_STR_EQUALS(subset->badge_name, "BDG001");
   ASSERT_NUM_EQUALS(subset->num_achievements, 2);
   ASSERT_NUM_EQUALS(subset->num_leaderboards, 1);
-  ASSERT_PTR_NULL(subset->badge_url);
+  ASSERT_STR_EQUALS(subset->badge_url, "https://media.retroachievements.org/Images/BDG001.png");
 
   rc_client_destroy(g_client);
 }
@@ -1253,6 +1259,8 @@ static void test_get_achievement_info_v1(void)
   ASSERT_FLOAT_EQUALS(achievement->rarity, 75.0f);
   ASSERT_FLOAT_EQUALS(achievement->rarity_hardcore, 66.66f);
   ASSERT_NUM_EQUALS(achievement->type, RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE);
+  ASSERT_STR_EQUALS(achievement->badge_url, "https://media.retroachievements.org/Badge/BDG1234.png");
+  ASSERT_STR_EQUALS(achievement->badge_locked_url, "https://media.retroachievements.org/Badge/BDG1234_lock.png");
 
   rc_client_destroy(g_client);
 }
@@ -1408,9 +1416,8 @@ static void test_create_achievement_list_v1(void)
   ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
   ASSERT_STR_EQUALS(list->buckets[0].label, "Locked");
 
-  // only difference between v1 and v3 create_achievement_list is the badge_url/badge_unlocked_url fields on each achievement
-  ASSERT_PTR_NULL(list->buckets[0].achievements[0]->badge_url);
-  ASSERT_PTR_NULL(list->buckets[0].achievements[0]->badge_locked_url);
+  ASSERT_STR_EQUALS(list->buckets[0].achievements[0]->badge_url, "https://media.retroachievements.org/Badge/BDG1234.png");
+  ASSERT_STR_EQUALS(list->buckets[0].achievements[0]->badge_locked_url, "https://media.retroachievements.org/Badge/BDG1234_lock.png");
 
   rc_client_destroy_achievement_list(list);
 
