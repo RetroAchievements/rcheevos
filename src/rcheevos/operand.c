@@ -358,7 +358,7 @@ int rc_operator_is_modifying(int oper) {
   }
 }
 
-static int rc_memsize_is_float(uint8_t size) {
+int rc_memsize_is_float(uint8_t size) {
   switch (size) {
     case RC_MEMSIZE_FLOAT:
     case RC_MEMSIZE_FLOAT_BE:

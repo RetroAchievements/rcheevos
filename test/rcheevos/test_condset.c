@@ -4130,6 +4130,84 @@ static void test_addaddress_indirect_pointer_with_delta()
   assert_hit_count(condset, 3, 2);
 }
 
+static void test_addaddress_indirect_pointer_with_subsource()
+{
+  uint8_t ram[] = { 0x01, 0x02, 0x03, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(byte(0)*2+2) == 22 - prev(byte(byte(0)*2+2) == 20 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0000*2_B:d0xH0002_I:0xH0000*2_0xH0002=20");
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 0xAB, delta = 0, diff = 0xAB */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 0x22, delta = 0xAB, diff = 0x77 */
+  ram[4] = 0x22;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 0x36, delta = 0x22, diff = 0x14 */
+  ram[4] = 0x36;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* byte(0) = 0, byte(0*2+2 [2]) = 0x03, delta = 0x36, diff = 0xCD */
+  ram[0] = 0;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* byte(0) = 0, byte(0*2+2 [2]) = 0x17, delta = 0x03, diff = 0x14 */
+  ram[2] = 0x17;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* byte(0) = 1, byte(1*2+2 [4]) = 0x2B, delta = 0x17, diff = 0x14 */
+  ram[0] = 1;
+  ram[4] = 0x2B;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
+static void test_addaddress_indirect_pointer_with_subsource_float()
+{
+  uint8_t ram[] = { 0x02, 0x05, 0x00, 0x00, 0x42, 0x70, 0x00, 0x00, 0x41, 0xc4, 0x00, 0x00 };
+  /*                                        ^ ------ 60.0 ------ ^  ^ ------ 24.5 ------ ^ */
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* float(byte(0) + 2) - float(byte(1) + 3) == 15.0 */
+  assert_parse_condset(&condset, &memrefs, buffer, "I:0xH0001_B:fB0003_I:0xH0000_fB0002=f15.0");
+
+  /* float(4) = 60.0, float(8) = 24.5, 60.0 - 24.5 = 35.5 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* float(4) = 60.0, float(8) = 45.0, 60.0 - 45.0 = 15.0 */
+  ram[8] = 0x42;
+  ram[9] = 0x34;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* float(8) = 45.0, float(4) = 60.0, 45.0 - 60.0 = -15.0 */
+  ram[0] = 0x06;
+  ram[1] = 0x01;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* float(8) = 24.5, float(4) = 60.0, 24.5 - 60.0 = -35.5 */
+  ram[8] = 0x41;
+  ram[9] = 0xc4;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* float(8) = 24.5, float(4) = 9.5, 24.5 - 9.5 = 15.0 */
+  ram[4] = 0x41;
+  ram[5] = 0x18;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_addaddress_indirect_pointer_from_memory() {
   uint8_t ram[] = { 0x01, 0x01, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -4865,6 +4943,8 @@ void test_condset(void) {
   TEST(test_addaddress_indirect_pointer_out_of_range);
   TEST(test_addaddress_indirect_pointer_multiple);
   TEST(test_addaddress_indirect_pointer_with_delta);
+  TEST(test_addaddress_indirect_pointer_with_subsource);
+  TEST(test_addaddress_indirect_pointer_with_subsource_float);
   TEST(test_addaddress_indirect_pointer_from_memory);
   TEST(test_addaddress_indirect_constant);
   TEST(test_addaddress_pointer_data_size_differs_from_pointer_size);
