@@ -4,6 +4,7 @@
 #  DEBUG                 if set to anything, builds with DEBUG symbols
 #  HAVE_HASH             if set to 0, excludes all hash functionality
 #  HAVE_HASH_ROM         if set to 0, excludes rom hash generation
+#  HAVE_HASH_DISC        if set to 0, excludes disc hash generation
 #  HAVE_HASH_ZIP         if set to 0, excludes zip hash generation
 #  HAVE_HASH_ENCRYPTED   if set to 0, excludes encrypted hash generation
 
@@ -136,12 +137,10 @@ ifeq ($(HAVE_HASH), 0)
     EXTRA += |NO_HASH
 else
     CFLAGS += -DRC_CLIENT_SUPPORTS_HASH
-    OBJ += $(RC_HASH_SRC)/cdreader.o \
-           $(RC_HASH_SRC)/hash.o \
+    OBJ += $(RC_HASH_SRC)/hash.o \
            $(RC_SRC)/rc_libretro.o \
            rhash/data.o \
            rhash/mock_filereader.o \
-           rhash/test_cdreader.o \
            rhash/test_hash.o \
            test_rc_libretro.o
 
@@ -151,6 +150,16 @@ else
     else
         OBJ += $(RC_HASH_SRC)/hash_rom.o \
                rhash/test_hash_rom.o
+    endif
+
+    ifeq ($(HAVE_HASH_DISC), 0)
+        EXTRA += |NO_HASH_DISC
+        CFLAGS += -DRC_HASH_NO_DISC
+    else
+        OBJ += $(RC_HASH_SRC)/cdreader.o \
+               $(RC_HASH_SRC)/hash_disc.o \
+               rhash/test_cdreader.o \
+               rhash/test_hash_disc.o
     endif
 
     ifeq ($(HAVE_HASH_ZIP), 0)

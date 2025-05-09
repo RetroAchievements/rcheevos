@@ -2154,6 +2154,43 @@ static void test_remember_recall_in_pause_with_chain()
   assert_evaluate_trigger(trigger, &memory, 1);
 }
 
+static void test_remember_recall_in_addaddress()
+{
+  uint8_t ram[] = { 0x02, 0x03, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(byte(0x0001) + (byte(0x0000) - 1) * 2) == 60 */
+  assert_parse_trigger(&trigger, buffer, "K:0xH0000-1_K:{recall}*2_I:{recall}+0xH0001_0xH0000=60");
+
+  /* byte(3 + (2 - 1) * 2) => byte(3+2) => byte(5) == 60 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* condition is true */
+  ram[5] = 60;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* byte(3 + (3 - 1) * 2) => byte(3+4) => byte(7) == 60 */
+  ram[0] = 3;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* condition is true */
+  ram[7] = 60;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* byte(0 + (3 - 1) * 2) => byte(0+4) => byte(4) == 60 */
+  ram[1] = 0;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* condition is true */
+  ram[4] = 60;
+  assert_evaluate_trigger(trigger, &memory, 1);
+}
+
 /* ======================================================== */
 
 void test_trigger(void) {
@@ -2224,6 +2261,7 @@ void test_trigger(void) {
   TEST(test_remember_recall_use_same_value_multiple);
   TEST(test_remember_recall_in_pause_and_main);
   TEST(test_remember_recall_in_pause_with_chain);
+  TEST(test_remember_recall_in_addaddress);
 
   TEST_SUITE_END();
 }
