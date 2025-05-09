@@ -316,7 +316,7 @@ int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right) {
     case RC_OPERAND_FP:
       return (left->value.dbl == right->value.dbl);
     case RC_OPERAND_RECALL:
-      return 1;
+      return (left->value.memref == right->value.memref);
     default:
       break;
   }

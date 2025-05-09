@@ -2034,6 +2034,40 @@ static void test_remember_recall_separate_accumulator_per_group() {
   assert_hit_count(trigger, 2, 2, 5U);
 }
 
+static void test_remember_recall_separate_accumulator_per_group_complex()
+{
+  uint8_t ram[128];
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[1280];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+  memset(ram, 0, sizeof(ram));
+
+  assert_parse_trigger(&trigger, buffer, "0=0SK:0x 0002&1023_K:{recall}*2_K:{recall}+4_{recall}=100SK:0x 0004&1023_K:{recall}*2_K:{recall}+4_{recall}=100");
+
+  /* $2=0000 & 03FF = 0000 * 2 = 0000 + 4 = 0004 ?= 100 = false */
+  /* $4=0000 & 03FF = 0000 * 2 = 0000 + 4 = 0004 ?= 100 = false */
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* $2=0030 & 03FF = 0030 * 2 = 0060 + 4 = 0064 ?= 100 = true */
+  /* $4=0000 & 03FF = 0000 * 2 = 0000 + 4 = 0004 ?= 100 = false */
+  ram[2] = 0x30;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* $2=0000 & 03FF = 0000 * 2 = 0000 + 4 = 0004 ?= 100 = false */
+  /* $4=0030 & 03FF = 0030 * 2 = 0060 + 4 = 0064 ?= 100 = true */
+  ram[2] = 0x00;
+  ram[4] = 0x30;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* $2=0000 & 03FF = 0000 * 2 = 0000 + 4 = 0004 ?= 100 = false */
+  /* $4=0000 & 03FF = 0000 * 2 = 0000 + 4 = 0004 ?= 100 = false */
+  ram[4] = 0x00;
+  assert_evaluate_trigger(trigger, &memory, 0);
+}
+
 static void test_remember_recall_use_same_value_multiple() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -2258,6 +2292,7 @@ void test_trigger(void) {
   /* accumulator - remember and recall*/
   TEST(test_remember_recall);
   TEST(test_remember_recall_separate_accumulator_per_group);
+  TEST(test_remember_recall_separate_accumulator_per_group_complex);
   TEST(test_remember_recall_use_same_value_multiple);
   TEST(test_remember_recall_in_pause_and_main);
   TEST(test_remember_recall_in_pause_with_chain);
