@@ -402,7 +402,9 @@ void test_redundant_conditions() {
   TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0004_A:0xX0008_Q:0xH0000=1", ""); /* longer second chain */
   TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1SQ:0xH0000=1", ""); /* same measuredif can appear in different groups */
   TEST_PARAMS2(test_validate_trigger, "T:0xH0000!=0_T:0xH0000=6", "Condition 1: Redundant with Condition 2");
-  TEST_PARAMS2(test_validate_trigger, "0xH0000!=0_T:0xH0000=6", ""); /* trigger not redundant with non-trigger */
+  TEST_PARAMS2(test_validate_trigger, "0xH0000!=0_T:0xH0000=6", ""); /* trigger more restrictive than non-trigger */
+  TEST_PARAMS2(test_validate_trigger, "T:0xH0000!=0_0xH0000=6", "Condition 1: Redundant with Condition 2"); /* trigger less restrictive than non-trigger */
+  TEST_PARAMS2(test_validate_trigger, "0xH0000=6_T:0xH0000=6", "Condition 2: Redundant with Condition 1"); /* trigger same as non-trigger */
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1_Q:0xH0000=1", "Condition 1: Redundant with Condition 2");
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1S0xH0000!=0S0xH0001=2", "Alt1 Condition 1: Redundant with Core Condition 1");
   TEST_PARAMS2(test_validate_trigger, "0xH0000!=0S0xH0000=1S0xH0001=2", ""); /* more restrictive alt 1 is not redundant with core */
