@@ -199,8 +199,10 @@ static uint32_t rc_max_chain_value(const rc_operand_t* operand)
 {
   if (rc_operand_is_memref(operand) && operand->value.memref->value.memref_type == RC_MEMREF_TYPE_MODIFIED_MEMREF) {
     const rc_modified_memref_t* modified_memref = (const rc_modified_memref_t*)operand->value.memref;
-    const uint32_t op_max = rc_max_chain_value(&modified_memref->parent);
-    return rc_scale_value(op_max, modified_memref->modifier_type, &modified_memref->modifier);
+    if (modified_memref->modifier_type != RC_OPERATOR_INDIRECT_READ) {
+      const uint32_t op_max = rc_max_chain_value(&modified_memref->parent);
+      return rc_scale_value(op_max, modified_memref->modifier_type, &modified_memref->modifier);
+    }
   }
 
   return rc_max_value(operand);

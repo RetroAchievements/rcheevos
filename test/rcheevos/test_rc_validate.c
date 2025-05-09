@@ -206,6 +206,8 @@ static void test_range_comparisons() {
   /* max for SubSource is always 0xFFFFFFFF */
   TEST_PARAMS2(test_validate_trigger, "B:0xH1234_0xH1235<510", "");
   TEST_PARAMS2(test_validate_trigger, "B:0xH1234_0xH1235<=510", "");
+
+  TEST_PARAMS2(test_validate_trigger, "I:0xG1234&536870911_R:0xG0000=4294967294", "");
 }
 
 void test_size_comparisons() {
