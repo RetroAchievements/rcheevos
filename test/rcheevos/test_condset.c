@@ -1642,6 +1642,16 @@ static void test_resetnextif_pause_lock() {
   assert_hit_count(condset, 1, 0);
 }
 
+static void test_resetnextif_unfinished() {
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[512];
+
+  assert_parse_condset(&condset, &memrefs, buffer, "0xH0001=0_Z:0xH0002=22");
+
+  ASSERT_NUM_EQUALS(condset->num_other_conditions, 2);
+}
+
 static void test_addsource() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -2789,6 +2799,17 @@ static void test_subsource_mem_prior() {
   assert_evaluate_condset(condset, memrefs, &memory, 1);
 }
 
+static void test_addsource_unfinished() {
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[512];
+
+  assert_parse_condset(&condset, &memrefs, buffer, "0xH0001=0_A:0xH0002=22");
+
+  ASSERT_NUM_EQUALS(condset->num_other_conditions, 1);
+  ASSERT_NUM_EQUALS(condset->num_indirect_conditions, 1);
+}
+
 static void test_addhits() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -3033,6 +3054,16 @@ static void test_subhits_below_zero() {
   assert_evaluate_condset(condset, memrefs, &memory, 1);
   assert_hit_count(condset, 0, 2);
   assert_hit_count(condset, 1, 6);
+}
+
+static void test_addhits_unfinished() {
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[512];
+
+  assert_parse_condset(&condset, &memrefs, buffer, "0xH0001=0_C:0xH0002=22");
+
+  ASSERT_NUM_EQUALS(condset->num_other_conditions, 2);
 }
 
 static void test_andnext() {
@@ -4798,6 +4829,7 @@ void test_condset(void) {
   TEST(test_resetnextif_chain_andnext);
   TEST(test_resetnextif_chain_with_hits);
   TEST(test_resetnextif_pause_lock);
+  TEST(test_resetnextif_unfinished);
 
   /* addsource/subsource */
   TEST(test_addsource);
@@ -4831,6 +4863,7 @@ void test_condset(void) {
   TEST(test_addsource_invert);
   TEST(test_subsource_mem_delta);
   TEST(test_subsource_mem_prior);
+  TEST(test_addsource_unfinished);
 
   /* addhits/subhits */
   TEST(test_addhits);
@@ -4839,6 +4872,7 @@ void test_condset(void) {
   TEST(test_addhits_multiple);
   TEST(test_subhits);
   TEST(test_subhits_below_zero);
+  TEST(test_addhits_unfinished);
 
   /* andnext */
   TEST(test_andnext);
