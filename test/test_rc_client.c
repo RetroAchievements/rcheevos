@@ -3478,6 +3478,85 @@ static void test_game_get_image_url(void)
   rc_client_destroy(g_client);
 }
 
+/* ----- fetch hash library ----- */
+
+static void test_fetch_hash_library_response(int result, const char* error_message,
+  rc_client_hash_library_t* list, rc_client_t* client, void* callback_userdata)
+{
+  rc_client_callback_expect_success(result, error_message, client, callback_userdata);
+  if (result != RC_OK)
+    return;
+
+  ASSERT_NUM_EQUALS(list->num_entries, 3);
+  ASSERT_NUM_EQUALS(list->entries[0].game_id, 1);
+  ASSERT_STR_EQUALS(list->entries[0].hash, "aabbccddeeff00112233445566778899");
+  ASSERT_NUM_EQUALS(list->entries[1].game_id, 1);
+  ASSERT_STR_EQUALS(list->entries[1].hash, "99aabbccddeeff001122334455667788");
+  ASSERT_NUM_EQUALS(list->entries[2].game_id, 2);
+  ASSERT_STR_EQUALS(list->entries[2].hash, "8899aabbccddeeff0011223344556677");
+
+  rc_client_destroy_hash_library(list);
+}
+
+static void test_fetch_hash_library(void)
+{
+  g_client = mock_client_not_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=hashlibrary&c=1", "{\"Success\":true,\"MD5List\":{"
+    "\"aabbccddeeff00112233445566778899\":1,"
+    "\"99aabbccddeeff001122334455667788\":1,"
+    "\"8899aabbccddeeff0011223344556677\":2"
+    "}}");
+
+  rc_client_begin_fetch_hash_library(g_client, 1, test_fetch_hash_library_response, g_callback_userdata);
+  rc_client_destroy(g_client);
+}
+
+/* ----- all user progress ----- */
+
+static void test_fetch_all_user_progress_response(int result, const char* error_message,
+  rc_client_all_user_progress_t* list, rc_client_t* client, void* callback_userdata)
+{
+  rc_client_callback_expect_success(result, error_message, client, callback_userdata);
+  if (result != RC_OK)
+    return;
+
+  ASSERT_NUM_EQUALS(list->num_entries, 4);
+  ASSERT_NUM_EQUALS(list->entries[0].game_id, 10);
+  ASSERT_NUM_EQUALS(list->entries[0].num_achievements, 11);
+  ASSERT_NUM_EQUALS(list->entries[0].num_unlocked_achievements, 0);
+  ASSERT_NUM_EQUALS(list->entries[0].num_unlocked_achievements_hardcore, 0);
+  ASSERT_NUM_EQUALS(list->entries[1].game_id, 20);
+  ASSERT_NUM_EQUALS(list->entries[1].num_achievements, 21);
+  ASSERT_NUM_EQUALS(list->entries[1].num_unlocked_achievements, 22);
+  ASSERT_NUM_EQUALS(list->entries[1].num_unlocked_achievements_hardcore, 0);
+  ASSERT_NUM_EQUALS(list->entries[2].game_id, 30);
+  ASSERT_NUM_EQUALS(list->entries[2].num_achievements, 31);
+  ASSERT_NUM_EQUALS(list->entries[2].num_unlocked_achievements, 32);
+  ASSERT_NUM_EQUALS(list->entries[2].num_unlocked_achievements_hardcore, 33);
+  ASSERT_NUM_EQUALS(list->entries[3].game_id, 40);
+  ASSERT_NUM_EQUALS(list->entries[3].num_achievements, 41);
+  ASSERT_NUM_EQUALS(list->entries[3].num_unlocked_achievements, 0);
+  ASSERT_NUM_EQUALS(list->entries[3].num_unlocked_achievements_hardcore, 43);
+
+  rc_client_destroy_all_user_progress(list);
+}
+
+static void test_fetch_all_user_progress(void)
+{
+  g_client = mock_client_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=allprogress&u=Username&t=ApiToken&c=1", "{\"Success\":true,\"Response\":{\"10\":{\"Achievements\":11},"
+      "\"20\":{\"Achievements\":21,\"Unlocked\":22},"
+      "\"30\":{\"Achievements\":31,\"Unlocked\":32,\"UnlockedHardcore\":33},"
+      "\"40\":{\"Achievements\":41,\"UnlockedHardcore\":43}}}");
+
+  rc_client_begin_fetch_all_user_progress(g_client, 1, test_fetch_all_user_progress_response, g_callback_userdata);
+  rc_client_destroy(g_client);
+}
+
 /* ----- subset ----- */
 
 static void test_load_subset(void)
@@ -9545,6 +9624,12 @@ void test_client(void) {
 
   /* game */
   TEST(test_game_get_image_url);
+
+  /* hash library */
+  TEST(test_fetch_hash_library);
+
+  /* all user progress */
+  TEST(test_fetch_all_user_progress);
 
   /* subset */
   TEST(test_load_subset);
