@@ -575,8 +575,7 @@ static int rc_hash_from_buffer(char hash[33], uint32_t console_id, const rc_hash
 
 #ifndef RC_HASH_NO_ROM
     case RC_CONSOLE_ARDUBOY:
-      /* https://en.wikipedia.org/wiki/Intel_HEX */
-      return rc_hash_text(hash, iterator);
+      return rc_hash_arduboy(hash, iterator);
 
     case RC_CONSOLE_ATARI_7800:
       return rc_hash_7800(hash, iterator);
@@ -656,7 +655,7 @@ int rc_hash_whole_file(char hash[33], const rc_hash_iterator_t* iterator)
   return result;
 }
 
-static int rc_hash_buffered_file(char hash[33], uint32_t console_id, const rc_hash_iterator_t* iterator)
+int rc_hash_buffered_file(char hash[33], uint32_t console_id, const rc_hash_iterator_t* iterator)
 {
   uint8_t* buffer;
   int64_t size;
@@ -683,6 +682,7 @@ static int rc_hash_buffered_file(char hash[33], uint32_t console_id, const rc_ha
     rc_hash_iterator_t buffer_iterator;
     memset(&buffer_iterator, 0, sizeof(buffer_iterator));
     memcpy(&buffer_iterator.callbacks, &iterator->callbacks, sizeof(iterator->callbacks));
+    buffer_iterator.path = iterator->path;
     buffer_iterator.buffer = buffer;
     buffer_iterator.buffer_size = (size_t)size;
 
@@ -860,7 +860,6 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
 
       return rc_hash_whole_file(hash, iterator);
 
-    case RC_CONSOLE_ARDUBOY:
     case RC_CONSOLE_ATARI_7800:
     case RC_CONSOLE_ATARI_LYNX:
     case RC_CONSOLE_FAMICOM_DISK_SYSTEM:
@@ -893,6 +892,9 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
 #ifndef RC_HASH_NO_ROM
     case RC_CONSOLE_ARCADE:
       return rc_hash_arcade(hash, iterator);
+
+    case RC_CONSOLE_ARDUBOY:
+      return rc_hash_arduboy(hash, iterator);
 #endif
 
 #ifndef RC_HASH_NO_DISC
@@ -1204,6 +1206,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "a26", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_2600 },
   { "a78", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_7800 },
   { "app", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
+  { "arduboy", rc_hash_initialize_iterator_single, RC_CONSOLE_ARDUBOY },
   { "axf", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
   { "bin", rc_hash_initialize_iterator_bin, 0 },
   { "bs", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },

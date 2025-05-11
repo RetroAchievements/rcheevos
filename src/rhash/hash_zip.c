@@ -2,12 +2,6 @@
 
 #include "../rc_compat.h"
 
-struct rc_hash_ms_dos_dosz_state
-{
-  const char* path;
-  const struct rc_hash_ms_dos_dosz_state* child;
-};
-
 struct rc_hash_zip_idx
 {
   size_t length;
@@ -21,12 +15,11 @@ static int rc_hash_zip_idx_sort(const void* a, const void* b)
   return memcmp(A->data, B->data, len);
 }
 
-static int rc_hash_ms_dos_parent(md5_state_t* md5, const struct rc_hash_ms_dos_dosz_state* child, const char* parentname, uint32_t parentname_len, const rc_hash_iterator_t* iterator);
-static int rc_hash_ms_dos_dosc(md5_state_t* md5, const struct rc_hash_ms_dos_dosz_state* dosz, const rc_hash_iterator_t* iterator);
+typedef int (RC_CCONV* rc_hash_zip_filter_t)(const char* filename, uint32_t filename_len, uint64_t decomp_size, void* userdata);
 
 static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
-                            const struct rc_hash_ms_dos_dosz_state* dosz,
-                            const rc_hash_iterator_t* iterator)
+                            const rc_hash_iterator_t* iterator,
+                            rc_hash_zip_filter_t filter_func, void* filter_userdata)
 {
   uint8_t buf[2048], *alloc_buf, *cdir_start, *cdir_max, *cdir, *hashdata, eocdirhdr_size, cdirhdr_size, nparents;
   uint32_t cdir_entry_len;
@@ -217,24 +210,15 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
       return rc_hash_iterator_error(iterator, "Encountered invalid entry in ZIP central directory");
     }
 
-    /* A DOSZ file can contain a special empty <base>.dosz.parent file in its root which means a parent dosz file is used */
-    if (dosz && decomp_size == 0 && filename_len > 7 &&
-        !strncasecmp((const char*)name + filename_len - 7, ".parent", 7) &&
-        !memchr(name, '/', filename_len) && !memchr(name, '\\', filename_len)) {
-      /* A DOSZ file can only have one parent file */
-      if (nparents++) {
-        free(alloc_buf);
-        return rc_hash_iterator_error(iterator, "Invalid DOSZ file with multiple parents");
-      }
-
-      /* If there is an error with the parent DOSZ, abort now */
-      if (!rc_hash_ms_dos_parent(md5, dosz, (const char*)name, (filename_len - 7), iterator)) {
+    if (filter_func) {
+      int filtered = filter_func((const char*)name, filename_len, decomp_size, filter_userdata);
+      if (filtered < 0) {
         free(alloc_buf);
         return 0;
       }
 
-      /* We don't hash this meta file so a user is free to rename it and the parent file */
-      continue;
+      if (filtered) /* this file shouldn't be hashed */
+        continue;
     }
 
     /* Write the pointer and length of the data we record about this file */
@@ -271,10 +255,6 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
 
   free(alloc_buf);
 
-  /* If this is a .dosz file, check if an associated .dosc file exists */
-  if (dosz && !rc_hash_ms_dos_dosc(md5, dosz, iterator))
-    return 0;
-
   return 1;
 
   #undef RC_ZIP_READ_LE16
@@ -284,10 +264,22 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
   #undef RC_ZIP_WRITE_LE64
 }
 
-static int rc_hash_ms_dos_parent(md5_state_t* md5,
-                                 const struct rc_hash_ms_dos_dosz_state* child,
-                                 const char* parentname, uint32_t parentname_len,
-                                 const rc_hash_iterator_t* iterator)
+/* ===================================================== */
+
+struct rc_hash_ms_dos_dosz_state {
+  const char* path;
+  const struct rc_hash_ms_dos_dosz_state* child;
+
+  md5_state_t* md5;
+  const rc_hash_iterator_t* iterator;
+  void* file_handle;
+  uint32_t nparents;
+};
+
+static int rc_hash_dosz(struct rc_hash_ms_dos_dosz_state* dosz);
+
+static int rc_hash_ms_dos_parent(const struct rc_hash_ms_dos_dosz_state* child,
+                                 const char* parentname, uint32_t parentname_len)
 {
   const char* lastfslash = strrchr(child->path, '/');
   const char* lastbslash = strrchr(child->path, '\\');
@@ -301,7 +293,7 @@ static int rc_hash_ms_dos_parent(md5_state_t* md5,
 
   /* Build the path of the parent by combining the directory of the current file with the name */
   if (!parent_path)
-    return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
+    return rc_hash_iterator_error(child->iterator, "Could not allocate temporary buffer");
 
   memcpy(parent_path, child->path, dir_len);
   memcpy(parent_path + dir_len, parentname, parentname_len);
@@ -311,53 +303,115 @@ static int rc_hash_ms_dos_parent(md5_state_t* md5,
   for (check = child->child; check; check = check->child) {
     if (!strcmp(check->path, parent_path)) {
       free(parent_path);
-      return rc_hash_iterator_error(iterator, "Invalid DOSZ file with recursive parents");
+      return rc_hash_iterator_error(child->iterator, "Invalid DOSZ file with recursive parents");
     }
   }
 
   /* Try to open the parent DOSZ file */
-  parent_handle = rc_file_open(iterator, parent_path);
+  parent_handle = rc_file_open(child->iterator, parent_path);
   if (!parent_handle) {
-    rc_hash_iterator_error_formatted(iterator, "DOSZ parent file '%s' does not exist", parent_path);
+    rc_hash_iterator_error_formatted(child->iterator, "DOSZ parent file '%s' does not exist", parent_path);
     free(parent_path);
     return 0;
   }
 
   /* Fully hash the parent DOSZ ahead of the child */
+  memcpy(&parent, child, sizeof(parent));
   parent.path = parent_path;
   parent.child = child;
-  parent_res = rc_hash_zip_file(md5, parent_handle, &parent, iterator);
-  rc_file_close(iterator, parent_handle);
+  parent.file_handle = parent_handle;
+  parent_res = rc_hash_dosz(&parent);
+  rc_file_close(child->iterator, parent_handle);
   free(parent_path);
   return parent_res;
 }
 
-static int rc_hash_ms_dos_dosc(md5_state_t* md5,
-                               const struct rc_hash_ms_dos_dosz_state* dosz,
-                               const rc_hash_iterator_t* iterator)
+static int rc_hash_ms_dos_dosc(const struct rc_hash_ms_dos_dosz_state* dosz)
 {
   size_t path_len = strlen(dosz->path);
   if (dosz->path[path_len - 1] == 'z' || dosz->path[path_len - 1] == 'Z') {
     void* file_handle;
     char* dosc_path = strdup(dosz->path);
     if (!dosc_path)
-      return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
+      return rc_hash_iterator_error(dosz->iterator, "Could not allocate temporary buffer");
 
     /* Swap the z to c and use the same capitalization, hash the file if it exists */
     dosc_path[path_len - 1] = (dosz->path[path_len - 1] == 'z' ? 'c' : 'C');
-    file_handle = rc_file_open(iterator, dosc_path);
+    file_handle = rc_file_open(dosz->iterator, dosc_path);
     free(dosc_path);
 
     if (file_handle) {
-      /* Hash the DOSC as a plain zip file (pass NULL as dosz state) */
-      int res = rc_hash_zip_file(md5, file_handle, NULL, iterator);
-      rc_file_close(iterator, file_handle);
+      /* Hash the entire contents of the DOSC file */
+      int res = rc_hash_zip_file(dosz->md5, file_handle, dosz->iterator, NULL, NULL);
+      rc_file_close(dosz->iterator, file_handle);
       if (!res)
         return 0;
     }
   }
 
   return 1;
+}
+
+static int rc_hash_dosz_filter(const char* filename, uint32_t filename_len, uint64_t decomp_size, void* userdata)
+{
+  struct rc_hash_ms_dos_dosz_state* dosz = (struct rc_hash_ms_dos_dosz_state*)userdata;
+
+  /* A DOSZ file can contain a special empty <base>.dosz.parent file in its root which means a parent dosz file is used */
+  if (decomp_size == 0 && filename_len > 7 &&
+    !strncasecmp(&filename[filename_len - 7], ".parent", 7) &&
+    !memchr(filename, '/', filename_len) &&
+    !memchr(filename, '\\', filename_len))
+  {
+    /* A DOSZ file can only have one parent file */
+    if (dosz->nparents++)
+      return -1;
+
+    /* process the parent. if it fails, stop */
+    if (!rc_hash_ms_dos_parent(dosz, filename, (filename_len - 7)))
+      return -1;
+
+    /* We don't hash this meta file so a user is free to rename it and the parent file */
+    return 1;
+  }
+
+  return 0;
+}
+
+static int rc_hash_dosz(struct rc_hash_ms_dos_dosz_state* dosz)
+{
+  if (!rc_hash_zip_file(dosz->md5, dosz->file_handle, dosz->iterator, rc_hash_dosz_filter, dosz))
+    return 0;
+
+  /* A DOSZ file can only have one parent file */
+  if (dosz->nparents > 1)
+    return rc_hash_iterator_error(dosz->iterator, "Invalid DOSZ file with multiple parents");
+
+  /* Check if an associated .dosc file exists */
+  if (!rc_hash_ms_dos_dosc(dosz))
+    return 0;
+
+  return 1;
+}
+
+/* ===================================================== */
+
+int rc_hash_arduboy_zip(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  md5_state_t md5;
+  int res;
+
+  void* file_handle = rc_file_open(iterator, iterator->path);
+  if (!file_handle)
+    return rc_hash_iterator_error(iterator, "Could not open file");
+
+  md5_init(&md5);
+  res = rc_hash_zip_file(&md5, file_handle, iterator, NULL, NULL);
+  rc_file_close(iterator, file_handle);
+
+  if (!res)
+    return 0;
+
+  return rc_hash_finalize(iterator, &md5, hash);
 }
 
 int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator)
@@ -372,9 +426,12 @@ int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator)
 
   memset(&dosz, 0, sizeof(dosz));
   dosz.path = iterator->path;
+  dosz.file_handle = file_handle;
+  dosz.iterator = iterator;
+  dosz.md5 = &md5;
 
   md5_init(&md5);
-  res = rc_hash_zip_file(&md5, file_handle, &dosz, iterator);
+  res = rc_hash_dosz(&dosz);
   rc_file_close(iterator, file_handle);
 
   if (!res)
