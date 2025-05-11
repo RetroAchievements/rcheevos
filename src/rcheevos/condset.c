@@ -101,9 +101,9 @@ static int32_t rc_classify_conditions(rc_condset_t* self, const char* memaddr, c
     chain_length = 1;
   } while (*memaddr++ == '_');
 
-  // any combining conditions that don't actually feed into a non-combining condition
-  // need to still have space allocated for them. put them in "other" to match the
-  // logic in rc_find_next_classification
+  /* any combining conditions that don't actually feed into a non-combining condition
+   * need to still have space allocated for them. put them in "other" to match the
+   * logic in rc_find_next_classification */
   self->num_other_conditions += chain_length - 1;
 
   return index;
