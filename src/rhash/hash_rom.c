@@ -165,10 +165,14 @@ static int rc_hash_text(char hash[33], const rc_hash_iterator_t* iterator)
 
 int rc_hash_arduboy(char hash[33], const rc_hash_iterator_t* iterator)
 {
+  if (rc_path_compare_extension(iterator->path, "arduboy")) {
 #ifndef RC_HASH_NO_ZIP
-  if (rc_path_compare_extension(iterator->path, "arduboy"))
     return rc_hash_arduboyfx(hash, iterator);
+#else
+    rc_hash_iterator_verbose(iterator, ".arduboy file processing not enabled");
+    return 0;
 #endif
+  }
 
   if (!iterator->buffer)
     return rc_hash_buffered_file(hash, RC_CONSOLE_ARDUBOY, iterator);

@@ -9,8 +9,7 @@
 
 #include <stdlib.h>
 
-typedef struct mock_zip_file_t
-{
+typedef struct mock_zip_file_t {
   uint8_t* buffer;
   uint8_t* ptr;
   uint8_t* file_ptr[8];
