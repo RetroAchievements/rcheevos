@@ -167,7 +167,7 @@ int rc_hash_arduboy(char hash[33], const rc_hash_iterator_t* iterator)
 {
 #ifndef RC_HASH_NO_ZIP
   if (rc_path_compare_extension(iterator->path, "arduboy"))
-    return rc_hash_arduboy_zip(hash, iterator);
+    return rc_hash_arduboyfx(hash, iterator);
 #endif
 
   if (!iterator->buffer)

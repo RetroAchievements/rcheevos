@@ -54,9 +54,10 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
     if (rc_file_read(iterator, file_handle, buf, n) != (size_t)n)
       return rc_hash_iterator_error(iterator, "ZIP read error");
 
-    for (i = n - 4; i >= 0; --i)
-      if (RC_ZIP_READ_LE32(buf + i) == 0x06054b50) /* end of central directory header signature */
+    for (i = n - 4; i >= 0; --i) {
+      if (buf[i] == 'P' && RC_ZIP_READ_LE32(buf + i) == 0x06054b50) /* end of central directory header signature */
         break;
+    }
 
     if (i >= 0) {
       ecdh_ofs += i;
@@ -226,6 +227,8 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
     hashindex->length = filename_len + 1 + 4 + 8;
     hashindex++;
 
+    rc_hash_iterator_verbose_formatted(iterator, "File in ZIP: %.*s (%u bytes, CRC32 = %08X)", filename_len, (const char*)name, (unsigned)decomp_size, crc32);
+
     /* Convert and store the file name in the hash data buffer */
     for (name_end = name + filename_len; name != name_end; name++) {
       *(hashdata++) =
@@ -240,8 +243,6 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
     hashdata += 4;
     RC_ZIP_WRITE_LE64(hashdata, decomp_size);
     hashdata += 8;
-
-    rc_hash_iterator_verbose_formatted(iterator, "File in ZIP: %.*s (%u bytes, CRC32 = %08X)", filename_len, (const char*)(cdir + cdirhdr_size), (unsigned)decomp_size, crc32);
   }
 
   rc_hash_iterator_verbose_formatted(iterator, "Hashing %u files in ZIP archive", (unsigned)(hashindex - hashindices));
@@ -262,6 +263,45 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
   #undef RC_ZIP_READ_LE64
   #undef RC_ZIP_WRITE_LE32
   #undef RC_ZIP_WRITE_LE64
+}
+
+/* ===================================================== */
+
+static int rc_hash_arduboyfx_filter(const char* filename, uint32_t filename_len, uint64_t decomp_size, void* userdata)
+{
+  (void)decomp_size;
+  (void)userdata;
+
+  /* An .arduboy file is a zip file containing an info.json pointing at one or more bin
+   * and hex files. It can also contain a bunch of screenshots, but we don't care about
+   * those. As they're also referenced in the info.json, we have to ignore that too.
+   * Instead of ignoring the info.json and all image files, only process any bin/hex files */
+  if (filename_len > 4) {
+    const char* ext = &filename[filename_len - 4];
+    if (strncasecmp(ext, ".hex", 4) == 0 || strncasecmp(ext, ".bin", 4) == 0)
+      return 0; /* keep hex and bin */
+  }
+
+  return 1; /* filter everything else */
+}
+
+int rc_hash_arduboyfx(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  md5_state_t md5;
+  int res;
+
+  void* file_handle = rc_file_open(iterator, iterator->path);
+  if (!file_handle)
+    return rc_hash_iterator_error(iterator, "Could not open file");
+
+  md5_init(&md5);
+  res = rc_hash_zip_file(&md5, file_handle, iterator, rc_hash_arduboyfx_filter, NULL);
+  rc_file_close(iterator, file_handle);
+
+  if (!res)
+    return 0;
+
+  return rc_hash_finalize(iterator, &md5, hash);
 }
 
 /* ===================================================== */
@@ -358,7 +398,7 @@ static int rc_hash_dosz_filter(const char* filename, uint32_t filename_len, uint
 
   /* A DOSZ file can contain a special empty <base>.dosz.parent file in its root which means a parent dosz file is used */
   if (decomp_size == 0 && filename_len > 7 &&
-    !strncasecmp(&filename[filename_len - 7], ".parent", 7) &&
+    strncasecmp(&filename[filename_len - 7], ".parent", 7) == 0 &&
     !memchr(filename, '/', filename_len) &&
     !memchr(filename, '\\', filename_len))
   {
@@ -391,27 +431,6 @@ static int rc_hash_dosz(struct rc_hash_ms_dos_dosz_state* dosz)
     return 0;
 
   return 1;
-}
-
-/* ===================================================== */
-
-int rc_hash_arduboy_zip(char hash[33], const rc_hash_iterator_t* iterator)
-{
-  md5_state_t md5;
-  int res;
-
-  void* file_handle = rc_file_open(iterator, iterator->path);
-  if (!file_handle)
-    return rc_hash_iterator_error(iterator, "Could not open file");
-
-  md5_init(&md5);
-  res = rc_hash_zip_file(&md5, file_handle, iterator, NULL, NULL);
-  rc_file_close(iterator, file_handle);
-
-  if (!res)
-    return 0;
-
-  return rc_hash_finalize(iterator, &md5, hash);
 }
 
 int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator)

@@ -113,7 +113,7 @@ int rc_hash_buffered_file(char hash[33], uint32_t console_id, const rc_hash_iter
 #ifndef RC_HASH_NO_ZIP
   /* hash_zip.c */
   int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator);
-  int rc_hash_arduboy_zip(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_arduboyfx(char hash[33], const rc_hash_iterator_t* iterator);
 #endif
 
 RC_END_C_DECLS

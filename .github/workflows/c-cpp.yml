@@ -87,6 +87,12 @@ jobs:
     - name: Run tests HAVE_HASH_ROMS=0
       run: ./test
       working-directory: test
+    - name: Build HAVE_HASH_DISC=0
+      run: make ARCH=x64 BUILD=c89 clean && make ARCH=x64 BUILD=c89 HAVE_HASH_DISC=0 test
+      working-directory: test
+    - name: Run tests HAVE_HASH_DISC=0
+      run: ./test
+      working-directory: test
     - name: Build HAVE_HASH_ZIP=0
       run: make ARCH=x64 BUILD=c89 clean && make ARCH=x64 BUILD=c89 HAVE_HASH_ZIP=0 test
       working-directory: test
