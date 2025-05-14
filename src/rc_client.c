@@ -2123,9 +2123,9 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
     rc_client_process_resolved_hash(load_state);
   }
   else {
-    rc_client_subset_info_t** next_subset;
+    //rc_client_subset_info_t** next_subset;
     rc_client_subset_info_t* core_subset;
-    uint32_t subset_index;
+    //uint32_t subset_index;
 
     /* hash exists outside the load state - always update it */
     load_state->hash->game_id = fetch_game_data_response.id;
@@ -2185,25 +2185,25 @@ static void rc_client_fetch_game_data_callback(const rc_api_server_response_t* s
       }
     }
 
-    next_subset = &core_subset->next;
-    for (subset_index = 0; subset_index < fetch_game_data_response.num_subsets; ++subset_index) {
-      rc_api_subset_definition_t* api_subset = &fetch_game_data_response.subsets[subset_index];
-      rc_client_subset_info_t* subset;
+    //next_subset = &core_subset->next;
+    //for (subset_index = 0; subset_index < fetch_game_data_response.num_subsets; ++subset_index) {
+    //  rc_api_subset_definition_t* api_subset = &fetch_game_data_response.subsets[subset_index];
+    //  rc_client_subset_info_t* subset;
 
-      subset = (rc_client_subset_info_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
-      memset(subset, 0, sizeof(*subset));
-      subset->public_.id = api_subset->id;
-      subset->active = 1;
-      snprintf(subset->public_.badge_name, sizeof(subset->public_.badge_name), "%s", api_subset->image_name);
-      subset->public_.badge_url = rc_buffer_strcpy(&load_state->game->buffer, api_subset->image_url);
-      subset->public_.title = rc_buffer_strcpy(&load_state->game->buffer, api_subset->title);
+    //  subset = (rc_client_subset_info_t*)rc_buffer_alloc(&load_state->game->buffer, sizeof(rc_client_subset_info_t));
+    //  memset(subset, 0, sizeof(*subset));
+    //  subset->public_.id = api_subset->id;
+    //  subset->active = 1;
+    //  snprintf(subset->public_.badge_name, sizeof(subset->public_.badge_name), "%s", api_subset->image_name);
+    //  subset->public_.badge_url = rc_buffer_strcpy(&load_state->game->buffer, api_subset->image_url);
+    //  subset->public_.title = rc_buffer_strcpy(&load_state->game->buffer, api_subset->title);
 
-      rc_client_copy_achievements(load_state, subset, api_subset->achievements, api_subset->num_achievements);
-      rc_client_copy_leaderboards(load_state, subset, api_subset->leaderboards, api_subset->num_leaderboards);
+    //  rc_client_copy_achievements(load_state, subset, api_subset->achievements, api_subset->num_achievements);
+    //  rc_client_copy_leaderboards(load_state, subset, api_subset->leaderboards, api_subset->num_leaderboards);
 
-      *next_subset = subset;
-      next_subset = &subset->next;
-    }
+    //  *next_subset = subset;
+    //  next_subset = &subset->next;
+    //}
 
     if (load_state->client->callbacks.post_process_game_data_response) {
       load_state->client->callbacks.post_process_game_data_response(server_response,
