@@ -387,12 +387,15 @@ int rc_api_init_fetch_game_sets_request_hosted(rc_api_request_t* request,
 
   rc_api_url_build_dorequest_url(request, host);
 
-  if (!api_params->game_hash || !api_params->game_hash[0])
+  if (!api_params->game_id && (!api_params->game_hash || !api_params->game_hash[0]))
     return RC_INVALID_STATE;
 
   rc_url_builder_init(&builder, &request->buffer, 48);
   if (rc_api_url_build_dorequest(&builder, "hashdata", api_params->username, api_params->api_token)) {
-    rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
+    if (api_params->game_id)
+      rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
+    else
+      rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
 
     request->post_data = rc_url_builder_finalize(&builder);
     request->content_type = RC_CONTENT_TYPE_URLENCODED;

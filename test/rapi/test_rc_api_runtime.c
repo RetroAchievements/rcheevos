@@ -714,6 +714,41 @@ static void test_init_fetch_game_sets_request_no_hash() {
   rc_api_destroy_request(&request);
 }
 
+static void test_init_fetch_game_sets_request_by_id() {
+  rc_api_fetch_game_sets_request_t fetch_game_sets_request;
+  rc_api_request_t request;
+
+  memset(&fetch_game_sets_request, 0, sizeof(fetch_game_sets_request));
+  fetch_game_sets_request.username = "Username";
+  fetch_game_sets_request.api_token = "API_TOKEN";
+  fetch_game_sets_request.game_id = 953;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_game_sets_request(&request, &fetch_game_sets_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=hashdata&u=Username&t=API_TOKEN&g=953");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_game_sets_request_by_hash_and_id() {
+  rc_api_fetch_game_sets_request_t fetch_game_sets_request;
+  rc_api_request_t request;
+
+  memset(&fetch_game_sets_request, 0, sizeof(fetch_game_sets_request));
+  fetch_game_sets_request.username = "Username";
+  fetch_game_sets_request.api_token = "API_TOKEN";
+  fetch_game_sets_request.game_id = 953;
+  fetch_game_sets_request.game_hash = "ABCDEF0123456789";
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_game_sets_request(&request, &fetch_game_sets_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=hashdata&u=Username&t=API_TOKEN&g=953");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
 static void test_process_fetch_game_sets_response_empty() {
   rc_api_achievement_set_definition_t* set;
   rc_api_fetch_game_sets_response_t fetch_game_sets_response;
@@ -2119,6 +2154,8 @@ void test_rapi_runtime(void) {
   /* hashdata */
   TEST(test_init_fetch_game_sets_request);
   TEST(test_init_fetch_game_sets_request_no_hash);
+  TEST(test_init_fetch_game_sets_request_by_id);
+  TEST(test_init_fetch_game_data_request_by_id_and_hash);
 
   TEST(test_process_fetch_game_sets_response_empty);
   TEST(test_process_fetch_game_sets_response_invalid_credentials);

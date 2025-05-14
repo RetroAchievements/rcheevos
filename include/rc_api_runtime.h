@@ -192,7 +192,9 @@ typedef struct rc_api_fetch_game_sets_request_t {
   const char* username;
   /* The API token from the login request */
   const char* api_token;
-  /* The generated hash of the game to be identified */
+  /* The unique identifier of the game */
+  uint32_t game_id;
+  /* The generated hash of the game to be identified (ignored if game_id is not 0) */
   const char* game_hash;
 }
 rc_api_fetch_game_sets_request_t;
