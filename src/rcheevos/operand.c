@@ -307,6 +307,9 @@ void rc_operand_set_float_const(rc_operand_t* self, double value) {
 }
 
 int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right) {
+  if (left == right)
+    return 1;
+
   if (left->type != right->type)
     return 0;
 

@@ -335,6 +335,7 @@ void test_conflicting_conditions() {
   TEST_PARAMS2(test_validate_trigger, "O:0xH0000<5_0xH0000=5", ""); /* ignore combining conditions */
   TEST_PARAMS2(test_validate_trigger, "A:0xH0000<5_0xH0000=5", ""); /* ignore combining conditions */
   TEST_PARAMS2(test_validate_trigger, "N:0xH0000<5_R:0xH0001=8_T:0xH0000=0", ""); /* ignore combining conditions */
+  TEST_PARAMS2(test_validate_trigger, "T:0xH0000=8_N:d0xH0000=0_R:0xH0000=8", ""); /* ignore combining conditions - individually, third conditions is conflicting (second allowed because of delta) */
   TEST_PARAMS2(test_validate_trigger, "0xH0001=58_N:0xH0001!=58_N:0xH0001!=4_R:0xH0001!=18", ""); /* ignore combining conditions */
   TEST_PARAMS2(test_validate_trigger, "0xH0000<=5_0xH0000>=5", "");
   TEST_PARAMS2(test_validate_trigger, "0xH0000>1_0xH0000<3", "");

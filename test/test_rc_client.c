@@ -776,7 +776,7 @@ static void mock_client_load_game(const char* patchdata, const char* unlocks)
 {
   reset_mock_api_handlers();
   event_count = 0;
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlocks);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -789,7 +789,7 @@ static void mock_client_load_game_softcore(const char* patchdata, const char* un
 {
   reset_mock_api_handlers();
   event_count = 0;
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=0&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlocks);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -1126,7 +1126,7 @@ static void test_logout(void)
 
   /* attempt to load game should fail */
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_required, g_callback_userdata);
 
@@ -1193,7 +1193,7 @@ static void test_logout_during_fetch_game(void)
   rc_client_begin_load_game(g_client, "0123456789ABCDEF",
     rc_client_callback_expect_no_longer_active, g_callback_userdata);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   rc_client_logout(g_client);
 
@@ -1266,7 +1266,7 @@ static void test_get_user_game_summary_encore_mode(void)
   g_client = mock_client_logged_in();
   rc_client_set_unofficial_enabled(g_client, 1);
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_exhaustive);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_exhaustive);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlock_6_8h_and_9);
 
   rc_client_set_encore_mode_enabled(g_client, 1);
@@ -1381,7 +1381,7 @@ static void test_get_user_game_summary_unknown_game(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -1424,7 +1424,7 @@ static void test_load_game_unknown_hash(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
 
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
   ASSERT_NUM_EQUALS(rc_client_is_game_loaded(g_client), 0);
@@ -1469,7 +1469,7 @@ static void test_load_game_unknown_hash_repeated(void)
   ASSERT_PTR_NOT_NULL(handle);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1516,7 +1516,7 @@ static void test_load_game_unknown_hash_multiple(void)
   ASSERT_PTR_NOT_NULL(handle);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1535,7 +1535,7 @@ static void test_load_game_unknown_hash_multiple(void)
   ASSERT_PTR_NOT_NULL(handle);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=FEDCBA9876543210", patchdata_not_found);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=FEDCBA9876543210", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -1556,7 +1556,7 @@ static void test_load_game_not_logged_in(void)
   g_client = mock_client_not_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", "{\"Success\":true,\"GameID\":1234}");
 
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
 
@@ -1576,7 +1576,7 @@ static void test_load_game(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
@@ -1663,16 +1663,16 @@ static void test_load_game_async_load_different_game(void)
   /* start loading first game */
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_NONE);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_no_longer_active, g_callback_userdata);
-  assert_api_pending("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  assert_api_pending("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF");
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
 
   /* receive data for first game, start session for first game */
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION);
 
   /* start loading second game*/
   rc_client_begin_load_game(g_client, "ABCDEF0123456789", rc_client_callback_expect_success, g_callback_userdata);
-  assert_api_pending("r=hashdata&u=Username&t=ApiToken&m=ABCDEF0123456789");
+  assert_api_pending("r=achievementsets&u=Username&t=ApiToken&m=ABCDEF0123456789");
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
 
   /* session started for first game, should abort */
@@ -1680,7 +1680,7 @@ static void test_load_game_async_load_different_game(void)
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
 
   /* receive data for second game, start session for second game */
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=ABCDEF0123456789", patchdata_alternate);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=ABCDEF0123456789", patchdata_alternate);
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION);
 
   /* session started for second game, should succeed */
@@ -1717,15 +1717,15 @@ static void test_load_game_async_login(void)
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN);
 
   /* game load process will stop here waiting for the login to complete */
-  assert_api_not_called("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  assert_api_not_called("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   /* login completion will trigger process to continue */
   async_api_response("r=login2&u=Username&p=Pa%24%24word",
 	    "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
-  assert_api_pending("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  assert_api_pending("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF");
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION);
 
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
@@ -1760,13 +1760,13 @@ static void test_load_game_async_login_with_incorrect_password(void)
   ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN);
 
   /* game load process will stop here waiting for the login to complete */
-  assert_api_not_called("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  assert_api_not_called("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   /* login failure will trigger process to continue */
   async_api_error("r=login2&u=Username&p=Pa%24%24word",
       "{\"Success\":false,\"Error\":\"Invalid User/Password combination. Please try again\","
       "\"Status\":401,\"Code\":\"invalid_credentials\"}", 401);
-  assert_api_not_called("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  assert_api_not_called("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   ASSERT_PTR_NULL(g_client->user.username);
 
@@ -1786,13 +1786,13 @@ static void test_load_game_async_login_logout(void)
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_aborted, g_callback_userdata);
 
   /* game load process will stop here waiting for the login to complete */
-  assert_api_not_called("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  assert_api_not_called("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   /* logout will cancel login and allow game load to proceed with failure */
   rc_client_logout(g_client);
   async_api_response("r=login2&u=Username&p=Pa%24%24word",
     "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
-  assert_api_not_called("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  assert_api_not_called("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   ASSERT_PTR_NULL(g_client->user.username);
 
@@ -1814,13 +1814,13 @@ static void test_load_game_async_login_aborted(void)
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_login_aborted, g_callback_userdata);
 
   /* game load process will stop here waiting for the login to complete */
-  assert_api_not_called("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  assert_api_not_called("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   /* login abort will trigger game load process to continue */
   rc_client_abort_async(g_client, handle);
   async_api_response("r=login2&u=Username&p=Pa%24%24word",
     "{\"Success\":true,\"User\":\"Username\",\"Token\":\"ApiToken\",\"Score\":12345,\"SoftcoreScore\":123,\"Messages\":2,\"Permissions\":1,\"AccountType\":\"Registered\"}");
-  assert_api_not_called("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF");
+  assert_api_not_called("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF");
 
   ASSERT_PTR_NULL(g_client->user.username);
 
@@ -1844,7 +1844,7 @@ static void test_load_game_patch_failure(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_error("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", response_429, 429);
+  mock_api_error("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", response_429, 429);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
@@ -1861,7 +1861,7 @@ static void test_load_game_startsession_failure(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, response_429, 429);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_too_many_requests, g_callback_userdata);
@@ -1878,7 +1878,7 @@ static void test_load_game_startsession_timeout(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "", 504);
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_timeout, g_callback_userdata);
@@ -1895,7 +1895,7 @@ static void test_load_game_startsession_custom_timeout(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_error("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING,
     "Request has timed out.", RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR);
 
@@ -1922,7 +1922,7 @@ static void test_load_game_patch_aborted(void)
 
   rc_client_abort_async(g_client, handle);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   assert_api_not_called("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -1944,7 +1944,7 @@ static void test_load_game_startsession_aborted(void)
   handle = rc_client_begin_load_game(g_client, "0123456789ABCDEF",
     rc_client_callback_expect_uncalled, g_callback_userdata);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   rc_client_abort_async(g_client, handle);
 
@@ -1965,7 +1965,7 @@ static void test_load_game_while_spectating(void)
   rc_client_set_spectator_mode_enabled(g_client, 1);
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   /* spectator mode should not start a session or fetch unlocks */
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -2051,7 +2051,7 @@ static void test_load_game_process_game_sets(void)
   rc_client_callback_process_game_sets_called = 0;
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -2115,7 +2115,7 @@ static void test_load_game_destroy_while_fetching_game_data(void)
 
   rc_client_destroy(g_client);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 }
 
 static void test_load_unknown_game(void)
@@ -2247,7 +2247,7 @@ static void test_unload_game_while_fetching_game_data(void)
 
   rc_client_unload_game(g_client);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NULL(g_client->game);
@@ -2263,7 +2263,7 @@ static void test_unload_game_while_starting_session(void)
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_uncalled, g_callback_userdata);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
 
   rc_client_unload_game(g_client);
 
@@ -2308,7 +2308,7 @@ static void test_identify_and_load_game_console_specified(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
@@ -2340,7 +2340,7 @@ static void test_identify_and_load_game_console_not_specified(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.gb",
@@ -2382,17 +2382,17 @@ static void test_identify_and_load_game_multiconsole_first(void)
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   /* first hash lookup should be pending. inject a secondary console into the iterator */
-  assert_api_pending("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_pending("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
   iterator = rc_client_get_load_state_hash_iterator(g_client);
   ASSERT_NUM_EQUALS(iterator->index, 1);
   ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
   iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
   iterator->consoles[iterator->index + 1] = 0;
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
-  assert_api_not_pending("r=hashdata&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e");
+  assert_api_not_pending("r=achievementsets&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e");
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2427,17 +2427,17 @@ static void test_identify_and_load_game_multiconsole_second(void)
     image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   /* first hash lookup should be pending. inject a secondary console into the iterator */
-  assert_api_pending("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_pending("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
   iterator = rc_client_get_load_state_hash_iterator(g_client);
   ASSERT_NUM_EQUALS(iterator->index, 1);
   ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
   iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
   iterator->consoles[iterator->index + 1] = 0;
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
-  assert_api_pending("r=hashdata&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e");
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e" ,patchdata_2ach_1lbd);
+  assert_api_pending("r=achievementsets&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e");
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e" ,patchdata_2ach_1lbd);
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=64b131c5c7fec32985d9c99700babb7e&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2468,7 +2468,7 @@ static void test_identify_and_load_game_unknown_hash(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "foo.zip#foo.gb",
       image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
@@ -2507,7 +2507,7 @@ static void test_identify_and_load_game_unknown_hash_repeated(void)
   ASSERT_PTR_NOT_NULL(handle);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2557,7 +2557,7 @@ static void test_identify_and_load_game_unknown_hash_multiple(void)
   ASSERT_PTR_NOT_NULL(handle);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=88be638f4d78b4072109e55f13e8a0ac", patchdata_not_found);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=88be638f4d78b4072109e55f13e8a0ac", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2577,7 +2577,7 @@ static void test_identify_and_load_game_unknown_hash_multiple(void)
   ASSERT_PTR_NOT_NULL(handle);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=8e39c6077108cafd6193d1c649b5d695", patchdata_not_found);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=8e39c6077108cafd6193d1c649b5d695", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2611,17 +2611,17 @@ static void test_identify_and_load_game_unknown_hash_multiconsole(void)
     image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   /* first hash lookup should be pending. inject a secondary console into the iterator */
-  assert_api_pending("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_pending("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
   iterator = rc_client_get_load_state_hash_iterator(g_client);
   ASSERT_NUM_EQUALS(iterator->index, 1);
   ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
   iterator->consoles[iterator->index] = RC_CONSOLE_MEGA_DRIVE; /* full buffer hash */
   iterator->consoles[iterator->index + 1] = 0;
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
-  assert_api_pending("r=hashdata&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e");
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e", patchdata_not_found);
+  assert_api_pending("r=achievementsets&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e");
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=64b131c5c7fec32985d9c99700babb7e", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2658,12 +2658,12 @@ static void test_identify_and_load_game_unknown_hash_console_specified(void)
     image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   /* first hash lookup should be pending. iterator should not have been initialized */
-  assert_api_pending("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_pending("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
   iterator = rc_client_get_load_state_hash_iterator(g_client);
   ASSERT_NUM_EQUALS(iterator->index, 0);
   ASSERT_NUM_EQUALS(iterator->consoles[iterator->index], 0);
 
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -2704,8 +2704,8 @@ static void test_identify_and_load_game_unknown_hash_client_provided(void)
   g_client->callbacks.identify_unknown_hash = rc_client_identify_unknown_hash;
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&g=1234", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_GAMEBOY, "foo.zip#foo.gb",
@@ -2738,7 +2738,7 @@ static void test_identify_and_load_game_multihash(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_2ach_1lbd);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=6a2305a2b6675a97ff792709be1ca857&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "abc.dsk",
@@ -2770,7 +2770,7 @@ static void test_identify_and_load_game_multihash_unknown_game(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
 
   rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_UNKNOWN, "abc.dsk",
       image, image_size, rc_client_callback_expect_unknown_game, g_callback_userdata);
@@ -2788,7 +2788,7 @@ static void test_identify_and_load_game_multihash_unknown_game(void)
   }
 
   /* same hash generated for all dsk consoles - only one server call should be made */
-  assert_api_call_count("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", 1);
+  assert_api_call_count("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", 1);
 
   rc_client_destroy(g_client);
   free(image);
@@ -2811,11 +2811,11 @@ static void test_identify_and_load_game_multihash_differ(void)
   memset(&image[256], 0, 32);
 
   /* first lookup fails */
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857", patchdata_not_found);
   ASSERT_PTR_NOT_NULL(g_client->state.load);
 
   /* second lookup should succeed */
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
   async_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=4989b063a40dcfa28291ff8d675050e3&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
  
   ASSERT_PTR_NULL(g_client->state.load);
@@ -3113,7 +3113,7 @@ static void test_change_media_while_loading(void)
 
   /* media request won't occur until patch data is received */
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
@@ -3155,7 +3155,7 @@ static void test_change_media_while_loading_later(void)
       rc_client_callback_expect_success, g_callback_userdata);
 
   /* get past fetching the patch data so there's a valid console for the change media call */
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
 
   /* change_media should immediately attempt to resolve the new hash */
   rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
@@ -3224,7 +3224,7 @@ static void test_change_media_async_aborted(void)
     rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
-  assert_api_not_called("r=hashdata&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
+  assert_api_not_called("r=achievementsets&u=Username&t=ApiToken&m=6a2305a2b6675a97ff792709be1ca857");
 
   rc_client_destroy(g_client);
   free(image);
@@ -3421,7 +3421,7 @@ static void test_change_media_from_hash_while_loading(void)
 
   /* media request won't occur until patch data is received */
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
   assert_api_not_called("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
   /* finish loading game */
@@ -3452,7 +3452,7 @@ static void test_change_media_from_hash_while_loading_later(void)
     rc_client_callback_expect_success, g_callback_userdata);
 
   /* get past fetching the patch data so there's a valid console for the change media call */
-  async_api_response("r=hashdata&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
+  async_api_response("r=achievementsets&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
 
   /* change_media should immediately attempt to resolve the new hash */
   rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
@@ -3634,7 +3634,7 @@ static void test_load_subset(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_subset);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_subset);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
 
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
@@ -9138,7 +9138,7 @@ static void test_deserialize_progress_unknown_game(void)
   g_client = mock_client_logged_in();
 
   reset_mock_api_handlers();
-  mock_api_response("r=hashdata&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_not_found);
   rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_unknown_game, g_callback_userdata);
 
   ASSERT_NUM_EQUALS(rc_client_progress_size(g_client), 0);

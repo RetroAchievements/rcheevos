@@ -391,7 +391,7 @@ int rc_api_init_fetch_game_sets_request_hosted(rc_api_request_t* request,
     return RC_INVALID_STATE;
 
   rc_url_builder_init(&builder, &request->buffer, 48);
-  if (rc_api_url_build_dorequest(&builder, "hashdata", api_params->username, api_params->api_token)) {
+  if (rc_api_url_build_dorequest(&builder, "achievementsets", api_params->username, api_params->api_token)) {
     if (api_params->game_id)
       rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
     else

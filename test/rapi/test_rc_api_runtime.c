@@ -695,7 +695,7 @@ static void test_init_fetch_game_sets_request() {
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_game_sets_request(&request, &fetch_game_sets_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=hashdata&u=Username&t=API_TOKEN&m=ABCDEF0123456789");
+  ASSERT_STR_EQUALS(request.post_data, "r=achievementsets&u=Username&t=API_TOKEN&m=ABCDEF0123456789");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
@@ -725,7 +725,7 @@ static void test_init_fetch_game_sets_request_by_id() {
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_game_sets_request(&request, &fetch_game_sets_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=hashdata&u=Username&t=API_TOKEN&g=953");
+  ASSERT_STR_EQUALS(request.post_data, "r=achievementsets&u=Username&t=API_TOKEN&g=953");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
@@ -743,7 +743,7 @@ static void test_init_fetch_game_sets_request_by_hash_and_id() {
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_game_sets_request(&request, &fetch_game_sets_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=hashdata&u=Username&t=API_TOKEN&g=953");
+  ASSERT_STR_EQUALS(request.post_data, "r=achievementsets&u=Username&t=API_TOKEN&g=953");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
