@@ -9,123 +9,414 @@
 
 #include <stdlib.h>
 
-static const uint8_t data_dosz[] = {
-  'P','K',0x03,0x04, /* local file header signature */
-  0x14,0x00, 0x02,0x00, 0x08,0x00, 0x00,0xBC, 0x98,0x21, 0x00,0x00,0x00,0x00, 0x02,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, /* info */
-  0x07,0x00, 0x00,0x00, 'F','O','L','D','E','R','/', /* file name length, extra length, name data */
-  0x03, 0x00, /* compressed content */
+typedef struct mock_zip_file_t {
+  uint8_t* buffer;
+  uint8_t* ptr;
+  uint8_t* file_ptr[8];
+  uint32_t num_files;
+  uint8_t  is_zip64;
+} mock_zip_file_t;
 
-  'P','K',0x03,0x04, /* local file header signature */
-  0x14,0x00, 0x02,0x00, 0x08,0x00, 0x00,0xBC, 0x98,0x21, 0x31,0xCF,0xD0,0x4A, 0x03,0x00,0x00,0x00, 0x01,0x00,0x00,0x00, /* info */
-  0x0E,0x00, 0x00,0x00, 'F','O','L','D','E','R','/','S','U','B','.','T','X','T', /* file name length, extra length, name data */
-  0x73, 0x02, 0x00, /* compressed content */
+static void mock_zip_add_file(mock_zip_file_t* zip, const char* filename, uint32_t crc32, uint32_t size)
+{
+  const size_t filename_len = strlen(filename);
+  uint8_t* out = zip->ptr;
 
-  'P','K',0x03,0x04, /* local file header signature */
-  0x14,0x00, 0x02,0x00, 0x08,0x00, 0x00,0xBC, 0x98,0x21, 0x8B,0x9E,0xD9,0xD3, 0x03,0x00,0x00,0x00, 0x01,0x00,0x00,0x00, /* info */
-  0x08,0x00, 0x00,0x00, 'R','O','O','T','.','T','X','T', /* file name length, extra length, name data */
-  0x73, 0x04, 0x00, /* compressed content */
+  zip->file_ptr[zip->num_files++] = out;
 
-  'P', 'K',0x01,0x02, /* central directory file header signature */
-  0x00,0x00, 0x14,0x00, 0x02,0x00, 0x08,0x00, 0x00,0xBC, 0x98,0x21, 0x00,0x00,0x00,0x00, 0x02,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-  0x07,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-  'F','O','L','D','E','R','/',
+  /* local file signature */
+  *out++ = 'P';
+  *out++ = 'K';
+  *out++ = 0x03;
+  *out++ = 0x04;
 
-  'P','K',0x01,0x02, /* central directory file header signature */
-  0x00,0x00, 0x14,0x00, 0x02,0x00, 0x08,0x00, 0x00,0xBC, 0x98,0x21, 0x31,0xCF,0xD0,0x4A, 0x03,0x00,0x00,0x00, 0x01,0x00,0x00,0x00,
-  0x0E,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00,0x00,0x00, 0x27,0x00,0x00,0x00,
-  'F','O','L','D','E','R','/','S','U','B','.','T','X','T',
+  /* version needed to extract */
+  *out++ = 0x14;
+  *out++ = 0x00;
 
-  'P','K',0x01,0x02, /* central directory file header signature */
-  0x00,0x00, 0x14,0x00, 0x02,0x00, 0x08,0x00, 0x00,0xBC, 0x98,0x21, 0x8B,0x9E,0xD9,0xD3, 0x03,0x00,0x00,0x00, 0x01,0x00,0x00,0x00,
-  0x08,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00,0x00,0x00, 0x56,0x00,0x00,0x00,
-  'R','O','O','T','.','T','X','T',
+  /* general purpose bit flag*/
+  *out++ = 0x02;
+  *out++ = 0x00;
 
-  'P','K',0x05,0x06, /* end of central directory signature */
-  0x00,0x00, 0x00,0x00, /* disk number */
-  0x03,0x00, 0x03,0x00, /* number of directory entries on this disk and total */
-  0xA7,0x00,0x00,0x00, /* size of central directory (bytes) */
-  0x7F,0x00,0x00,0x00, /* offset of start of central directory */
-  0x16,0x00, 'T','O','R','R','E','N','T','Z','I','P','P','E','D','-','F','D','0','7','C','5','2','C' /* comment length and comment data */
-};
+  /* compression method */
+  *out++ = 0x08;
+  *out++ = 0x00;
 
-static const uint8_t data_dosz_zip64[] = {
-  'P','K',0x03,0x04, /* local file header signature */
-  0x14,0x00, 0x00,0x00, 0x08,0x00, 0x30,0x74, 0x0A,0x41, 0x7E,0xE7,0xFF,0x69, 0x24,0x00,0x00,0x00, 0x24,0x00,0x00,0x00,
-  0x06,0x00, 0x00,0x00, 'R','E','A','D','M','E',
-  0x0B,0xC9,0xC8,0x2C,0x56,0x28,0xCE,0x4D,0xCC,0xC9,0x51,0x48,0xCB,0xCC,0x49,0x55,0x00,0xF2,
-  0x32,0xF3,0x14,0xA2,0x3C,0x03,0xCC,0x4C,0x14,0xD2,0xF2,0x8B,0x72,0x13,0x4B,0xF4,0xB8,0x00,
+  /* file last modified time */
+  *out++ = 0x00;
+  *out++ = 0xBC;
 
-  'P','K',0x01,0x02, /* central directory file header signature */
-  0x2D,0x03, 0x2D,0x00, 0x00,0x00, 0x08,0x00, 0x30,0x74, 0x0A,0x41, 0x7E,0xE7,0xFF,0x69, 0xFF,0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,0xFF,
-  0x06,0x00, 0x14,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00,0xA4,0x81, 0x00,0x00,0x00,0x00,
-  'R','E','A','D','M','E',
-  0x01,0x00, /* Zip64 extended information extra field header id */
-  0x10,0x00, /* Size of extra field chunk */
-  0x24,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* uncompressed file size */
-  0x24,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* size of compressed data */
+  /* file list modified date */
+  *out++ = 0x98;
+  *out++ = 0x21;
 
-  'P','K',0x06,0x06, /* Zip64 End of central directory record signature */
-  0x2C,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* Size of the EOCD64 minus 12 */
-  0x2D,0x00, 0x2D,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-  0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-  0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-  0x48,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-  0x48,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  /* CRC-32 */
+  *out++ = crc32 & 0xFF;
+  *out++ = (crc32 >> 8) & 0xFF;
+  *out++ = (crc32 >> 16) & 0xFF;
+  *out++ = (crc32 >> 24) & 0xFF;
 
-  'P','K',0x06,0x07, /* end of central dir locator signature */
-  0x00,0x00,0x00,0x00, /* number of the disk with the start of the zip64 end of central directory */
-  0x90,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* relative offset of the zip64 end of central directory record */
-  0x01,0x00,0x00,0x00, /* total number of disks */
+  /* compressed size */
+  *out++ = size & 0xFF;
+  *out++ = (size >> 8) & 0xFF;
+  *out++ = (size >> 16) & 0xFF;
+  *out++ = (size >> 24) & 0xFF;
 
-  'P','K',0x05,0x06, /* end of central directory signature */
-  0x00,0x00, 0x00,0x00, /* disk number */
-  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF, /* file and size numbers are 0xFF in Zip64 */
-  0x00,0x00 /* comment length */
-};
+  /* uncompressed size */
+  *out++ = size & 0xFF;
+  *out++ = (size >> 8) & 0xFF;
+  *out++ = (size >> 16) & 0xFF;
+  *out++ = (size >> 24) & 0xFF;
 
-static const uint8_t data_child_dosz[] = {
-  'P','K',0x03,0x04, /* local file header signature */
-  0x0A,0x00, 0x00,0x00, 0x00,0x00, 0x00,0xBC, 0x98,0x21, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, /* info */
-  0x10,0x00, 0x00,0x00, 'b','a','s','e','.','d','o','s','z','.','p','a','r','e','n','t', /* file name length; extra length; name data */
-  0x73, 0x04, 0x00, /* compressed content */
+  /* file name length */
+  *out++ = filename_len & 0xFF;
+  *out++ = (filename_len >> 8) & 0xFF;
 
-  'P','K',0x03,0x04,
-  0x0A,0x00, 0x00,0x00, 0x00,0x00, 0x00,0xBC, 0x98,0x21, 0x29,0x54,0xB3,0x22, 0x05,0x00,0x00,0x00, 0x05,0x00,0x00,0x00, /* info */
-  0x09,0x00, 0x00,0x00, 'C','H','I','L','D','.','T','X','T', /* file name length; extra length; name data */
-  0x63, 0x68, 0x69, 0x6C, 0x64, /* content */
+  /* extra field length */
+  *out++ = 0;
+  *out++ = 0;
 
-  'P','K',0x01,0x02, /* central directory file header signature */
-  0x3F,0x00, 0x0A,0x00, 0x00,0x00, 0x00,0x00, 0x00,0xBC, 0x98,0x21, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-  0x10,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x20,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-  'b','a','s','e','.','d','o','s','z','.','p','a','r','e','n','t',
+  /* file name */
+  memcpy(out, filename, filename_len);
+  out += filename_len;
 
-  'P','K',0x01,0x02, /* central directory file header signature */
-  0x3F,0x00, 0x0A,0x00, 0x00,0x00, 0x00,0x00, 0x00,0xBC, 0x98,0x21, 0x29,0x54,0xB3,0x22, 0x05,0x00,0x00,0x00, 0x05,0x00,0x00,0x00,
-  0x09,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x20,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-  'C','H','I','L','D','.','T','X','T',
+  /* compressed content */
+  *out++ = 0x73;
+  *out++ = 0x02;
+  *out++ = 0x00;
 
-  'P','K',0x05,0x06, /* end of central directory signature */
-  0x00,0x00, 0x00,0x00, /* disk number */
-  0x02,0x00, 0x02,0x00, /* number of directory entries on this disk and total */
-  0x75,0x00,0x00,0x00, /* size of central directory (bytes) */
-  0x5D,0x00,0x00,0x00, /* offset of start of central directory */
-  0x00,0x00 /* comment length */
-};
+  zip->ptr = out;
+}
+
+static size_t mock_zip_finalize(mock_zip_file_t* zip, const char* comment)
+{
+  size_t comment_len = strlen(comment);
+  uint8_t* out = zip->ptr;
+  uint8_t* first_cdir_entry = zip->ptr;
+  size_t offset;
+  uint32_t filename_len;
+  uint32_t i;
+
+  for (i = 0; i < zip->num_files; i++) {
+    uint8_t* in = zip->file_ptr[i];
+
+    /* central directory file header */
+    *out++ = 'P';
+    *out++ = 'K';
+    *out++ = 0x01;
+    *out++ = 0x02;
+
+    /* version made by */
+    *out++ = 0x14;
+    *out++ = 0x00;
+
+    /* version needed to extract (2) */
+    /* general purpose bit flag (2) */
+    /* compression method (2) */
+    /* file last modified time (2) */
+    /* file list modified date (2) */
+    /* CRC-32 (4) */
+    /* compressed size (4) */
+    /* uncompressed size (4) */
+    /* file name length (2) */
+    /* extra field length (2) */
+    memcpy(out, &in[4], 2 + 2 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 2);
+    if (zip->is_zip64) {
+      /* in zip64 mode, blank out the size and the actual size will be appended in an extended field */
+      memset(&out[14], 0xFF, 8);
+      out[24] = 0x14; /* extra field length */
+    }
+    out += 2 + 2 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 2;
+
+    /* file comment length */
+    *out++ = 0;
+    *out++ = 0;
+
+    /* disk number where file starts */
+    *out++ = 0;
+    *out++ = 0;
+
+    /* internal file attributes */
+    *out++ = 0;
+    *out++ = 0;
+
+    /* external file attributes */
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    /* local file header offset */
+    offset = in - zip->buffer;
+    *out++ = offset & 0xFF;
+    *out++ = (offset >> 8) & 0xFF;
+    *out++ = (offset >> 16) & 0xFF;
+    *out++ = (offset >> 24) & 0xFF;
+
+    /* file name */
+    filename_len = (in[27] << 8) | in[26];
+    memcpy(out, &in[30], filename_len);
+    out += filename_len;
+
+    if (zip->is_zip64) {
+      /* zip64 extended information extra field header id */
+      *out++ = 0x01;
+      *out++ = 0x00;
+
+      /* size of extra field chunk */
+      *out++ = 0x10; /* only providing file sizes */
+      *out++ = 0x00;
+
+      /* uncompressed file size */
+      memset(out, 0, 28);
+      memcpy(out, &in[22], 4);
+      out += 8;
+
+      /* compressed file size */
+      memset(out, 0, 16);
+      memcpy(out, &in[18], 4);
+      out += 8;
+    }
+  }
+
+  zip->ptr = out;
+
+  if (zip->is_zip64) {
+    /* end of central directory header */
+    *out++ = 'P';
+    *out++ = 'K';
+    *out++ = 0x06;
+    *out++ = 0x06;
+
+    /* size of EOCD64 minus 12 */
+    *out++ = 0x2C;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    /* version made by */
+    *out++ = 0x2D;
+    *out++ = 0x00;
+
+    /* version needed to extract */
+    *out++ = 0x2D;
+    *out++ = 0x00;
+
+    /* disk number */
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    /* disk number of central directory */
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    /* number of central directory records on this disk */
+    *out++ = zip->num_files & 0xFF;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    /* total number of central directory records */
+    *out++ = zip->num_files & 0xFF;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    /* size of central directory */
+    offset = zip->ptr - first_cdir_entry;
+    *out++ = offset & 0xFF;
+    *out++ = (offset >> 8) & 0xFF;
+    *out++ = (offset >> 16) & 0xFF;
+    *out++ = (offset >> 24) & 0xFF;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    /* address of first central directory entry */
+    offset = first_cdir_entry - zip->buffer;
+    *out++ = offset & 0xFF;
+    *out++ = (offset >> 8) & 0xFF;
+    *out++ = (offset >> 16) & 0xFF;
+    *out++ = (offset >> 24) & 0xFF;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    /* end of central directory locator header */
+    *out++ = 'P';
+    *out++ = 'K';
+    *out++ = 0x06;
+    *out++ = 0x07;
+
+    /* disk number */
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    /* address of central directory 64 */
+    offset = zip->ptr - zip->buffer;
+    *out++ = offset & 0xFF;
+    *out++ = (offset >> 8) & 0xFF;
+    *out++ = (offset >> 16) & 0xFF;
+    *out++ = (offset >> 24) & 0xFF;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    /* total number of disks */
+    *out++ = 1;
+    *out++ = 0;
+    *out++ = 0;
+    *out++ = 0;
+
+    zip->ptr = out;
+  }
+
+  /* end of central directory header */
+  *out++ = 'P';
+  *out++ = 'K';
+  *out++ = 0x05;
+  *out++ = 0x06;
+
+  /* disk number */
+  *out++ = 0;
+  *out++ = 0;
+
+  /* central directory disk number */
+  *out++ = 0;
+  *out++ = 0;
+
+  /* number of central directory records on this disk */
+  *out++ = zip->num_files & 0xFF;
+  *out++ = 0;
+
+  /* total number of central directory records */
+  *out++ = zip->num_files & 0xFF;
+  *out++ = 0;
+
+  if (zip->is_zip64) {
+    /* size and address of central directory are -1 in zip64 */
+    memset(out, 0xFF, 8);
+    out += 8;
+  }
+  else {
+    /* size of central directory */
+    offset = zip->ptr - first_cdir_entry;
+    *out++ = offset & 0xFF;
+    *out++ = (offset >> 8) & 0xFF;
+    *out++ = (offset >> 16) & 0xFF;
+    *out++ = (offset >> 24) & 0xFF;
+
+    /* address of first central directory entry */
+    offset = first_cdir_entry - zip->buffer;
+    *out++ = offset & 0xFF;
+    *out++ = (offset >> 8) & 0xFF;
+    *out++ = (offset >> 16) & 0xFF;
+    *out++ = (offset >> 24) & 0xFF;
+  }
+
+  /* comment length */
+  *out++ = comment_len & 0xFF;
+  *out++ = (comment_len >> 8) & 0xFF;
+
+  if (comment_len) {
+    memcpy(out, comment, comment_len);
+    out += comment_len;
+  }
+
+  zip->ptr = out;
+
+  return (zip->ptr - zip->buffer);
+}
+
+/* ========================================================================= */
+
+static void test_hash_arduboy_fx()
+{
+  char hash_file[33], hash_iterator[33];
+  mock_zip_file_t zip;
+  uint8_t zip_contents[768];
+  size_t zip_size;
+  const char* expected_md5 = "e696445c353e9d6b3d60bf5d194b82cf";
+  int result_file, result_iterator;
+
+  memset(&zip, 0, sizeof(zip));
+  zip.ptr = zip.buffer = zip_contents;
+  mock_zip_add_file(&zip, "info.json", 0xA40B2541, 35);
+  mock_zip_add_file(&zip, "game.bin", 0x5AA654C0, 96);
+  mock_zip_add_file(&zip, "save.bin", 0xFF000000, 1);
+  mock_zip_add_file(&zip, "interp_s2_ArduboyFX.hex", 0x50648360, 71);
+  mock_zip_add_file(&zip, "screenshot.png", 0x30056694, 48);
+  zip_size = mock_zip_finalize(&zip, "");
+  ASSERT_NUM_LESS_EQUALS(zip_size, sizeof(zip_contents));
+
+  mock_file(0, "game.arduboy", zip_contents, zip_size);
+
+  /* test file hash */
+  result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARDUBOY, "game.arduboy");
+
+  /* test file identification from iterator */
+  struct rc_hash_iterator iterator;
+  rc_hash_initialize_iterator(&iterator, "game.arduboy", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+/* ========================================================================= */
 
 static void test_hash_msdos_dosz()
 {
   char hash_file[33], hash_iterator[33];
+  mock_zip_file_t zip;
+  uint8_t zip_contents[512];
+  size_t zip_size;
   const char* expected_md5 = "59a255662262f5ada32791b8c36e8ea7";
+  int result_file, result_iterator;
 
-  mock_file(0, "game.dosz", data_dosz, sizeof(data_dosz));
+  memset(&zip, 0, sizeof(zip));
+  zip.ptr = zip.buffer = zip_contents;
+  mock_zip_add_file(&zip, "FOLDER/", 0, 0);
+  mock_zip_add_file(&zip, "FOLDER/SUB.TXT", 0x4AD0CF31, 1);
+  mock_zip_add_file(&zip, "ROOT.TXT", 0xD3D99E8B, 1);
+  zip_size = mock_zip_finalize(&zip, "TORRENTZIPPED-FD07C52C");
+  ASSERT_NUM_LESS_EQUALS(zip_size, sizeof(zip_contents));
+
+  mock_file(0, "game.dosz", zip_contents, zip_size);
 
   /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_MS_DOS, "game.dosz");
+  result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_MS_DOS, "game.dosz");
 
   /* test file identification from iterator */
   struct rc_hash_iterator iterator;
   rc_hash_initialize_iterator(&iterator, "game.dosz", NULL, 0);
-  int result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
   rc_hash_destroy_iterator(&iterator);
 
   /* validation */
@@ -139,12 +430,23 @@ static void test_hash_msdos_dosz()
 static void test_hash_msdos_dosz_zip64()
 {
   char hash_file[33];
+  mock_zip_file_t zip;
+  uint8_t zip_contents[512];
+  size_t zip_size;
   const char* expected_md5 = "927dad0a57a2860267ab7bcdb8bc3f61";
+  int result_file;
 
-  mock_file(0, "game.dosz", data_dosz_zip64, sizeof(data_dosz_zip64));
+  memset(&zip, 0, sizeof(zip));
+  zip.ptr = zip.buffer = zip_contents;
+  zip.is_zip64 = 1;
+  mock_zip_add_file(&zip, "README", 0x69FFE77E, 36);
+  zip_size = mock_zip_finalize(&zip, "");
+  ASSERT_NUM_LESS_EQUALS(zip_size, sizeof(zip_contents));
+
+  mock_file(0, "game.dosz", zip_contents, zip_size);
 
   /* test file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_MS_DOS, "game.dosz");
+  result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_MS_DOS, "game.dosz");
 
   /* validation */
   ASSERT_NUM_EQUALS(result_file, 1);
@@ -155,13 +457,26 @@ static void test_hash_msdos_dosz_with_dosc()
 {
   char hash_dosc[33];
   const char* expected_dosc_md5 = "dd0c0b0c170c30722784e5e962764c35";
+  mock_zip_file_t zip;
+  uint8_t zip_contents[512];
+  size_t zip_size;
+  int result_dosc;
+
+  memset(&zip, 0, sizeof(zip));
+  zip.ptr = zip.buffer = zip_contents;
+  mock_zip_add_file(&zip, "FOLDER/", 0, 0);
+  mock_zip_add_file(&zip, "FOLDER/SUB.TXT", 0x4AD0CF31, 1);
+  mock_zip_add_file(&zip, "ROOT.TXT", 0xD3D99E8B, 1);
+  zip_size = mock_zip_finalize(&zip, "TORRENTZIPPED-FD07C52C");
+  ASSERT_NUM_LESS_EQUALS(zip_size, sizeof(zip_contents));
 
   /* Add main dosz file and overlay dosc file which will get hashed together */
-  mock_file(0, "game.dosz", data_dosz, sizeof(data_dosz));
-  mock_file(1, "game.dosc", data_dosz, sizeof(data_dosz));
+  /* Just use the same file for both to simplify the test */
+  mock_file(0, "game.dosz", zip_contents, zip_size);
+  mock_file(1, "game.dosc", zip_contents, zip_size);
 
   /* test file hash */
-  int result_dosc = rc_hash_generate_from_file(hash_dosc, RC_CONSOLE_MS_DOS, "game.dosz");
+  result_dosc = rc_hash_generate_from_file(hash_dosc, RC_CONSOLE_MS_DOS, "game.dosz");
 
   /* validation */
   ASSERT_NUM_EQUALS(result_dosc, 1);
@@ -174,21 +489,40 @@ static void test_hash_msdos_dosz_with_parent()
   const char* expected_dosz_md5 = "623c759476b8b5adb46362f8f0b60769";
   const char* expected_dosc_md5 = "ecd9d776cbaad63094829d7b8dbe5959";
   const char* expected_dosc2_md5 = "cb55c123936ad84479032ea6444cb1a1";
+  mock_zip_file_t dosz, dosc;
+  uint8_t dosz_contents[512], dosc_contents[512];
+  size_t dosz_size, dosc_size;
+  int result_dosz, result_dosc, result_dosc2;
+
+  memset(&dosz, 0, sizeof(dosz));
+  dosz.ptr = dosz.buffer = dosz_contents;
+  mock_zip_add_file(&dosz, "FOLDER/", 0, 0);
+  mock_zip_add_file(&dosz, "FOLDER/SUB.TXT", 0x4AD0CF31, 1);
+  mock_zip_add_file(&dosz, "ROOT.TXT", 0xD3D99E8B, 1);
+  dosz_size = mock_zip_finalize(&dosz, "TORRENTZIPPED-FD07C52C");
+  ASSERT_NUM_LESS_EQUALS(dosz_size, sizeof(dosz_contents));
+
+  memset(&dosc, 0, sizeof(dosz));
+  dosc.ptr = dosc.buffer = dosc_contents;
+  mock_zip_add_file(&dosc, "base.dosz.parent", 0, 0);
+  mock_zip_add_file(&dosc, "CHILD.TXT", 0x22B35429, 5);
+  dosc_size = mock_zip_finalize(&dosc, "");
+  ASSERT_NUM_LESS_EQUALS(dosz_size, sizeof(dosc_contents));
 
   /* Add base dosz file and child dosz file which will get hashed together */
-  mock_file(0, "base.dosz", data_dosz, sizeof(data_dosz));
-  mock_file(1, "child.dosz", data_child_dosz, sizeof(data_child_dosz));
+  mock_file(0, "base.dosz", dosz_contents, dosz_size);
+  mock_file(1, "child.dosz", dosc_contents, dosc_size);
 
   /* test file hash */
-  int result_dosz = rc_hash_generate_from_file(hash_dosz, RC_CONSOLE_MS_DOS, "child.dosz");
+  result_dosz = rc_hash_generate_from_file(hash_dosz, RC_CONSOLE_MS_DOS, "child.dosz");
 
   /* test file hash with base.dosc also existing */
-  mock_file(2, "base.dosc", data_dosz, sizeof(data_dosz));
-  int result_dosc = rc_hash_generate_from_file(hash_dosc, RC_CONSOLE_MS_DOS, "child.dosz");
+  mock_file(2, "base.dosc", dosz_contents, dosz_size);
+  result_dosc = rc_hash_generate_from_file(hash_dosc, RC_CONSOLE_MS_DOS, "child.dosz");
 
   /* test file hash with child.dosc also existing */
-  mock_file(3, "child.dosc", data_dosz, sizeof(data_dosz));
-  int result_dosc2 = rc_hash_generate_from_file(hash_dosc2, RC_CONSOLE_MS_DOS, "child.dosz");
+  mock_file(3, "child.dosc", dosz_contents, dosz_size);
+  result_dosc2 = rc_hash_generate_from_file(hash_dosc2, RC_CONSOLE_MS_DOS, "child.dosz");
 
   /* validation */
   ASSERT_NUM_EQUALS(result_dosz, 1);
@@ -203,6 +537,9 @@ static void test_hash_msdos_dosz_with_parent()
 
 void test_hash_zip(void) {
   TEST_SUITE_BEGIN();
+
+  /* Arduboy FX */
+  TEST(test_hash_arduboy_fx);
 
   /* MS DOS */
   TEST(test_hash_msdos_dosz);

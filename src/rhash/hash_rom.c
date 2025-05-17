@@ -131,7 +131,7 @@ int rc_hash_arcade(char hash[33], const rc_hash_iterator_t* iterator)
   return rc_hash_buffer(hash, (uint8_t*)filename, filename_length, iterator);
 }
 
-int rc_hash_text(char hash[33], const rc_hash_iterator_t* iterator)
+static int rc_hash_text(char hash[33], const rc_hash_iterator_t* iterator)
 {
   md5_state_t md5;
   const uint8_t* scan = iterator->buffer;
@@ -161,6 +161,24 @@ int rc_hash_text(char hash[33], const rc_hash_iterator_t* iterator)
   } while (scan < stop);
 
   return rc_hash_finalize(iterator, &md5, hash);
+}
+
+int rc_hash_arduboy(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  if (rc_path_compare_extension(iterator->path, "arduboy")) {
+#ifndef RC_HASH_NO_ZIP
+    return rc_hash_arduboyfx(hash, iterator);
+#else
+    rc_hash_iterator_verbose(iterator, ".arduboy file processing not enabled");
+    return 0;
+#endif
+  }
+
+  if (!iterator->buffer)
+    return rc_hash_buffered_file(hash, RC_CONSOLE_ARDUBOY, iterator);
+
+  /* https://en.wikipedia.org/wiki/Intel_HEX */
+  return rc_hash_text(hash, iterator);
 }
 
 int rc_hash_lynx(char hash[33], const rc_hash_iterator_t* iterator)

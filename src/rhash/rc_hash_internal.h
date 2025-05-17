@@ -69,12 +69,13 @@ typedef struct rc_hash_cdrom_track_t {
 
 
 int rc_hash_whole_file(char hash[33], const rc_hash_iterator_t* iterator);
+int rc_hash_buffered_file(char hash[33], uint32_t console_id, const rc_hash_iterator_t* iterator);
 
 #ifndef RC_HASH_NO_ROM
   /* hash_rom.c */
   int rc_hash_7800(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_arcade(char hash[33], const rc_hash_iterator_t* iterator);
-  int rc_hash_text(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_arduboy(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_lynx(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_nes(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_n64(char hash[33], const rc_hash_iterator_t* iterator);
@@ -112,6 +113,7 @@ int rc_hash_whole_file(char hash[33], const rc_hash_iterator_t* iterator);
 #ifndef RC_HASH_NO_ZIP
   /* hash_zip.c */
   int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_arduboyfx(char hash[33], const rc_hash_iterator_t* iterator);
 #endif
 
 RC_END_C_DECLS
