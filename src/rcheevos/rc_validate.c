@@ -910,12 +910,11 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
               continue;
             }
           }
-          else if (compare_condition->type == RC_CONDITION_TRIGGER || condition->type == RC_CONDITION_TRIGGER)
+          else if (condition->type == RC_CONDITION_TRIGGER && compare_condition->type != RC_CONDITION_TRIGGER)
           {
             /* Trigger is allowed to be redundant with non-trigger conditions as there may be limits that start a
-             * challenge that are furhter reduced for the completion of the challenge */
-            if (compare_condition->type != condition->type)
-              continue;
+             * challenge that are further reduced for the completion of the challenge */
+            continue;
           }
           break;
 
