@@ -1206,7 +1206,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "a26", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_2600 },
   { "a78", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_7800 },
   { "app", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
-  { "arduboy", rc_hash_initialize_iterator_single, RC_CONSOLE_ARDUBOY },
+  { "arduboy", rc_hash_initialize_iterator_single_with_path, RC_CONSOLE_ARDUBOY },
   { "axf", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
   { "bin", rc_hash_initialize_iterator_bin, 0 },
   { "bs", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },
