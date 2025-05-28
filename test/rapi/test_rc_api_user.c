@@ -802,6 +802,139 @@ static void test_init_fetch_followed_users_response_several_items()
   rc_api_destroy_fetch_followed_users_response(&fetch_followed_users_response);
 }
 
+static void test_init_fetch_all_user_progress_request()
+{
+  rc_api_fetch_all_user_progress_request_t fetch_all_user_progress_request;
+  rc_api_request_t request;
+
+  memset(&fetch_all_user_progress_request, 0, sizeof(fetch_all_user_progress_request));
+  fetch_all_user_progress_request.username = "Username";
+  fetch_all_user_progress_request.api_token = "API_TOKEN";
+  fetch_all_user_progress_request.console_id = 1;
+
+  ASSERT_NUM_EQUALS(rc_api_init_fetch_all_user_progress_request(&request, &fetch_all_user_progress_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=allprogress&u=Username&t=API_TOKEN&c=1");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_fetch_all_user_progress_response_empty_array()
+{
+  rc_api_fetch_all_user_progress_response_t fetch_all_user_progress_response;
+  rc_api_server_response_t response_obj;
+  const char* server_response = "{\"Success\":true,\"Response\":[]}";
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+  response_obj.http_status_code = 200;
+
+  memset(&fetch_all_user_progress_response, 0, sizeof(fetch_all_user_progress_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_all_user_progress_server_response(&fetch_all_user_progress_response, &response_obj), RC_OK);
+
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_all_user_progress_response.response.error_message);
+  ASSERT_PTR_NULL(fetch_all_user_progress_response.entries);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.num_entries, 0);
+
+  rc_api_destroy_fetch_all_user_progress_response(&fetch_all_user_progress_response);
+}
+
+static void test_init_fetch_all_user_progress_response_invalid_credentials()
+{
+  rc_api_fetch_all_user_progress_response_t fetch_all_user_progress_response;
+  rc_api_server_response_t response_obj;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+  memset(&fetch_all_user_progress_response, 0, sizeof(fetch_all_user_progress_response));
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+  response_obj.http_status_code = 200;
+
+  memset(&fetch_all_user_progress_response, 0, sizeof(fetch_all_user_progress_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_all_user_progress_server_response(&fetch_all_user_progress_response, &response_obj), RC_OK);
+
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(fetch_all_user_progress_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_PTR_NULL(fetch_all_user_progress_response.entries);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.num_entries, 0);
+
+  rc_api_destroy_fetch_all_user_progress_response(&fetch_all_user_progress_response);
+}
+
+static void test_init_fetch_all_user_progress_response_one_item()
+{
+  rc_api_fetch_all_user_progress_response_t fetch_all_user_progress_response;
+  rc_api_server_response_t response_obj;
+  const char* server_response = "{\"Success\":true,\"Response\":{\"10\":{\"Achievements\":11}}}";
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+  response_obj.http_status_code = 200;
+
+  memset(&fetch_all_user_progress_response, 0, sizeof(fetch_all_user_progress_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_all_user_progress_server_response(&fetch_all_user_progress_response, &response_obj), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_all_user_progress_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.num_entries, 1);
+  ASSERT_PTR_NOT_NULL(fetch_all_user_progress_response.entries);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[0].game_id, 10);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[0].num_achievements, 11);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[0].num_unlocked_achievements, 0);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[0].num_unlocked_achievements_hardcore, 0);
+
+  rc_api_destroy_fetch_all_user_progress_response(&fetch_all_user_progress_response);
+}
+
+static void test_init_fetch_all_user_progress_response_several_items()
+{
+  rc_api_fetch_all_user_progress_response_t fetch_all_user_progress_response;
+  rc_api_server_response_t response_obj;
+
+  const char* server_response = "{\"Success\":true,\"Response\":{\"10\":{\"Achievements\":11},"
+    "\"20\":{\"Achievements\":21,\"Unlocked\":22},"
+    "\"30\":{\"Achievements\":31,\"Unlocked\":32,\"UnlockedHardcore\":33},"
+    "\"40\":{\"Achievements\":41,\"UnlockedHardcore\":43}}}";
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = rc_json_get_object_string_length(server_response);
+  response_obj.http_status_code = 200;
+
+  memset(&fetch_all_user_progress_response, 0, sizeof(fetch_all_user_progress_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_all_user_progress_server_response(&fetch_all_user_progress_response, &response_obj), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_all_user_progress_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.num_entries, 4);
+  ASSERT_PTR_NOT_NULL(fetch_all_user_progress_response.entries);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[0].game_id, 10);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[0].num_achievements, 11);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[0].num_unlocked_achievements, 0);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[0].num_unlocked_achievements_hardcore, 0);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[1].game_id, 20);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[1].num_achievements, 21);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[1].num_unlocked_achievements, 22);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[1].num_unlocked_achievements_hardcore, 0);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[2].game_id, 30);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[2].num_achievements, 31);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[2].num_unlocked_achievements, 32);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[2].num_unlocked_achievements_hardcore, 33);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[3].game_id, 40);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[3].num_achievements, 41);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[3].num_unlocked_achievements, 0);
+  ASSERT_NUM_EQUALS(fetch_all_user_progress_response.entries[3].num_unlocked_achievements_hardcore, 43);
+
+  rc_api_destroy_fetch_all_user_progress_response(&fetch_all_user_progress_response);
+}
+
 void test_rapi_user(void) {
   TEST_SUITE_BEGIN();
 
@@ -852,6 +985,14 @@ void test_rapi_user(void) {
   TEST(test_init_fetch_followed_users_response_empty_array);
   TEST(test_init_fetch_followed_users_response_invalid_credentials);
   TEST(test_init_fetch_followed_users_response_several_items);
+
+  /* all user progress */
+  TEST(test_init_fetch_all_user_progress_request);
+
+  TEST(test_init_fetch_all_user_progress_response_empty_array);
+  TEST(test_init_fetch_all_user_progress_response_invalid_credentials);
+  TEST(test_init_fetch_all_user_progress_response_one_item);
+  TEST(test_init_fetch_all_user_progress_response_several_items);
 
   TEST_SUITE_END();
 }
