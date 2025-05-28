@@ -846,8 +846,11 @@ void test_hash_rom(void) {
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_ORIC, "test.tap", 18119, "953a2baa3232c63286aeae36b2172cef");
 
   /* PC Engine */
+  /* NOTE: because the data after the header doesn't match, the headered and non-headered hashes won't match
+   * but the test results ensure that we're only hashing the portion after the header when detected */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC_ENGINE, "test.pce", 524288, "68f0f13b598e0b66461bc578375c3888");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC_ENGINE, "test.pce", 524288 + 512, "258c93ebaca1c3f488ab48218e5e8d38");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_PC_ENGINE, "test.pce", 491520 + 512, "ebb565a7f964ccdfaecdce0d6ed540af");
 
   /* Pokemon Mini */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_POKEMON_MINI, "test.min", 524288, "68f0f13b598e0b66461bc578375c3888");
