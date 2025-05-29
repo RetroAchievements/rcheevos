@@ -20,7 +20,7 @@ RC_BEGIN_C_DECLS
 | Callbacks                                                                   |
 \*****************************************************************************/
 
-struct rc_api_fetch_game_data_response_t;
+struct rc_api_fetch_game_sets_response_t;
 typedef void (RC_CCONV *rc_client_post_process_game_sets_response_t)(const rc_api_server_response_t* server_response,
               struct rc_api_fetch_game_sets_response_t* game_sets_response, rc_client_t* client, void* userdata);
 typedef int (RC_CCONV *rc_client_can_submit_achievement_unlock_t)(uint32_t achievement_id, rc_client_t* client);

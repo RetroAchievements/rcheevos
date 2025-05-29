@@ -487,7 +487,6 @@ static void test_process_fetch_game_data_response_achievement_null_author()
   ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "");
   ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 4);
   ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 0);
-  //ASSERT_NUM_EQUALS(fetch_game_data_response.num_subsets, 0);
 
   ASSERT_PTR_NOT_NULL(fetch_game_data_response.achievements);
   achievement = fetch_game_data_response.achievements;
@@ -575,7 +574,6 @@ static void test_process_fetch_game_data_response_leaderboards() {
   ASSERT_STR_EQUALS(fetch_game_data_response.rich_presence_script, "");
   ASSERT_NUM_EQUALS(fetch_game_data_response.num_achievements, 0);
   ASSERT_NUM_EQUALS(fetch_game_data_response.num_leaderboards, 3);
-  //ASSERT_NUM_EQUALS(fetch_game_data_response.num_subsets, 0);
 
   ASSERT_PTR_NOT_NULL(fetch_game_data_response.leaderboards);
   leaderboard = fetch_game_data_response.leaderboards;
@@ -2150,12 +2148,13 @@ void test_rapi_runtime(void) {
   TEST(test_process_fetch_game_data_response_leaderboards);
   TEST(test_process_fetch_game_data_response_rich_presence);
   TEST(test_process_fetch_game_data_response_rich_presence_null);
+  TEST(test_process_fetch_game_data_response_rich_presence_tab);
 
   /* hashdata */
   TEST(test_init_fetch_game_sets_request);
   TEST(test_init_fetch_game_sets_request_no_hash);
   TEST(test_init_fetch_game_sets_request_by_id);
-  TEST(test_init_fetch_game_data_request_by_id_and_hash);
+  TEST(test_init_fetch_game_sets_request_by_hash_and_id);
 
   TEST(test_process_fetch_game_sets_response_empty);
   TEST(test_process_fetch_game_sets_response_invalid_credentials);

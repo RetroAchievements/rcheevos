@@ -317,6 +317,8 @@ static int rc_json_convert_error_code(const char* server_error_code)
     case 'i':
       if (strcmp(server_error_code, "invalid_credentials") == 0)
         return RC_INVALID_CREDENTIALS;
+      if (strcmp(server_error_code, "invalid_parameter") == 0)
+        return RC_INVALID_STATE;
       break;
 
     case 'm':
