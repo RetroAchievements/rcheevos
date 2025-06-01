@@ -1179,6 +1179,19 @@ static void test_builtin_macro_override() {
   assert_richpresence_output(richpresence, &memory, "3h25:45");
 }
 
+static void test_unformatted_legacy() {
+  uint8_t ram[] = { 0x39, 0x30 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Format:Unformatted\nFormatType=VALUE\n\nDisplay:\n@Unformatted(0x 0)");
+  assert_richpresence_output(richpresence, &memory, "12345");
+}
+
 static void test_asciichar() {
   uint8_t ram[] = { 'K', 'e', 'n', '\0', 'V', 'e', 'g', 'a', 1 };
   memory_t memory;
@@ -1446,6 +1459,7 @@ void test_richpresence(void) {
   TEST_PARAMS2(test_builtin_macro, "Unformatted", "12345");
   TEST(test_builtin_macro_unsigned_large);
   TEST(test_builtin_macro_override);
+  TEST(test_unformatted_legacy);
 
   /* asciichar */
   TEST(test_asciichar);
