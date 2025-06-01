@@ -164,7 +164,6 @@
     <ClCompile Include="..\src\rhash\hash_rom.c" />
     <ClCompile Include="..\src\rhash\hash_zip.c" />
     <ClCompile Include="..\src\rhash\md5.c" />
-    <ClCompile Include="..\src\rurl\url.c" />
     <ClCompile Include="rapi\test_rc_api_common.c" />
     <ClCompile Include="rapi\test_rc_api_editor.c" />
     <ClCompile Include="rapi\test_rc_api_info.c" />
@@ -191,7 +190,6 @@
     <ClCompile Include="rhash\test_hash_disc.c" />
     <ClCompile Include="rhash\test_hash_rom.c" />
     <ClCompile Include="rhash\test_hash_zip.c" />
-    <ClCompile Include="rurl\test_url.c" />
     <ClCompile Include="test.c" />
     <ClCompile Include="test_rc_client.c" />
     <ClCompile Include="test_rc_client_external.c" />
@@ -209,7 +207,6 @@
     <ClInclude Include="..\include\rc_runtime.h" />
     <ClInclude Include="..\include\rc_client.h" />
     <ClInclude Include="..\include\rc_runtime_types.h" />
-    <ClInclude Include="..\include\rc_url.h" />
     <ClInclude Include="..\include\rc_util.h" />
     <ClInclude Include="..\src\rcheevos\rc_internal.h" />
     <ClInclude Include="..\include\rc_error.h" />

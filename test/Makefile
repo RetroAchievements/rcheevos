@@ -10,7 +10,6 @@
 
 RC_SRC=../src
 RC_CHEEVOS_SRC=$(RC_SRC)/rcheevos
-RC_URL_SRC=$(RC_SRC)/rurl
 RC_HASH_SRC=$(RC_SRC)/rhash
 RC_API_SRC=$(RC_SRC)/rapi
 
@@ -59,7 +58,6 @@ OBJ=$(RC_SRC)/rc_compat.o \
     $(RC_CHEEVOS_SRC)/trigger.o \
     $(RC_CHEEVOS_SRC)/value.o \
     $(RC_HASH_SRC)/md5.o \
-    $(RC_URL_SRC)/url.o \
     $(RC_API_SRC)/rc_api_common.o \
     $(RC_API_SRC)/rc_api_editor.o \
     $(RC_API_SRC)/rc_api_info.o \
@@ -79,7 +77,6 @@ OBJ=$(RC_SRC)/rc_compat.o \
     rcheevos/test_timing.o \
     rcheevos/test_trigger.o \
     rcheevos/test_value.o \
-    rurl/test_url.o \
     rapi/test_rc_api_common.o \
     rapi/test_rc_api_editor.o \
     rapi/test_rc_api_info.o \
@@ -191,9 +188,6 @@ $(RC_CHEEVOS_SRC)/%.o: $(RC_CHEEVOS_SRC)/%.c
 	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
 
 $(RC_HASH_SRC)/%.o: $(RC_HASH_SRC)/%.c
-	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
-
-$(RC_URL_SRC)/%.o: $(RC_URL_SRC)/%.c
 	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
 
 $(RC_API_SRC)/%.o: $(RC_API_SRC)/%.c
