@@ -1764,6 +1764,9 @@ static void rc_client_dispatch_activate_game(struct rc_client_scheduled_callback
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data->data;
   free(callback_data);
 
+  (void)client;
+  (void)now;
+
   rc_client_activate_game(load_state, load_state->start_session_response);
 }
 
