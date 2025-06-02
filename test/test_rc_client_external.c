@@ -338,6 +338,20 @@ static void test_add_game_hash(void)
   rc_client_destroy(g_client);
 }
 
+static void test_set_allow_background_memory_reads(void)
+{
+  g_client = mock_client_with_external();
+  g_client->state.external_client->set_allow_background_memory_reads = rc_client_external_set_int;
+
+  rc_client_set_allow_background_memory_reads(g_client, 0);
+  ASSERT_NUM_EQUALS(g_external_int, 0);
+
+  rc_client_set_allow_background_memory_reads(g_client, 1);
+  ASSERT_NUM_EQUALS(g_external_int, 1);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- login ----- */
 
 static void test_v1_user_field_offsets(void)
@@ -1805,6 +1819,7 @@ void test_client_external(void) {
   TEST(test_get_time_millisecs);
   TEST(test_set_host);
   TEST(test_get_user_agent_clause);
+  TEST(test_set_allow_background_memory_reads);
 
   /* login */
   TEST(test_v1_user_field_offsets);

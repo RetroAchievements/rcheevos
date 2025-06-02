@@ -136,9 +136,12 @@ typedef struct rc_client_external_t
   rc_client_external_get_achievement_info_func_t get_achievement_info_v3;
   rc_client_external_create_achievement_list_func_t create_achievement_list_v3;
 
+  /* VERSION 4 */
+  rc_client_external_set_int_func_t set_allow_background_memory_reads;
+
 } rc_client_external_t;
 
-#define RC_CLIENT_EXTERNAL_VERSION 3
+#define RC_CLIENT_EXTERNAL_VERSION 4
 
 void rc_client_add_game_hash(rc_client_t* client, const char* hash, uint32_t game_id);
 void rc_client_load_unknown_game(rc_client_t* client, const char* hash);
