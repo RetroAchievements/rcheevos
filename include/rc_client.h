@@ -322,15 +322,17 @@ RC_EXPORT int RC_CCONV rc_client_game_get_image_url(const rc_client_game_t* game
 /**
  * Changes the active disc in a multi-disc game.
  */
-RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_change_media(rc_client_t* client, const char* file_path,
+RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_identify_and_change_media(rc_client_t* client, const char* file_path,
     const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata);
 #endif
 
 /**
  * Changes the active disc in a multi-disc game.
  */
-RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_change_media_from_hash(rc_client_t* client, const char* hash,
+RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_change_media(rc_client_t* client, const char* hash,
     rc_client_callback_t callback, void* callback_userdata);
+/* this function was renamed in rcheevos 12.0 */
+#define rc_client_begin_change_media_from_hash rc_client_begin_change_media
 
 /*****************************************************************************\
 | Subsets                                                                     |
