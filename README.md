@@ -37,8 +37,6 @@ A set of functions for managing an active game is provided by the library. If yo
 
 **rapi** does *not* make HTTP requests.
 
-NOTE: **rapi** is a replacement for **rurl**. **rurl** has been deprecated.
-
 NOTE: `rc_client` is the preferred way to have a client interact with the server.
 
 **rapi** headers are `rc_api_user.h`, `rc_api_runtime.h` and `rc_api_common.h`.

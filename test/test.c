@@ -36,8 +36,6 @@ extern void test_consoleinfo();
 extern void test_rc_libretro();
 extern void test_rc_validate();
 
-extern void test_url();
-
 extern void test_hash();
 #ifndef RC_HASH_NO_ROM
 extern void test_hash_rom();
@@ -78,8 +76,6 @@ int main(void) {
 
   test_consoleinfo();
   test_rc_validate();
-
-  test_url();
 
   test_rapi_common();
   test_rapi_user();
