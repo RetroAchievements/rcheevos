@@ -1678,11 +1678,11 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
          * client->state.load->game. since we've detached the load_state, this has to occur after
          * we've made the game active. */
         if (pending_media->hash) {
-          rc_client_begin_change_media_from_hash(client, pending_media->hash,
+          rc_client_begin_change_media(client, pending_media->hash,
             pending_media->callback, pending_media->callback_userdata);
         } else {
 #ifdef RC_CLIENT_SUPPORTS_HASH
-          rc_client_begin_change_media(client, pending_media->file_path,
+          rc_client_begin_identify_and_change_media(client, pending_media->file_path,
             pending_media->data, pending_media->data_size,
             pending_media->callback, pending_media->callback_userdata);
 #endif
@@ -3193,7 +3193,7 @@ static rc_client_game_info_t* rc_client_check_pending_media(rc_client_t* client,
 
 #ifdef RC_CLIENT_SUPPORTS_HASH
 
-rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, const char* file_path,
+rc_client_async_handle_t* rc_client_begin_identify_and_change_media(rc_client_t* client, const char* file_path,
     const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_pending_media_t media;
@@ -3213,9 +3213,9 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
   }
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && !client->state.external_client->begin_change_media_from_hash) {
-    if (client->state.external_client->begin_change_media)
-      return client->state.external_client->begin_change_media(client, file_path, data, data_size, callback, callback_userdata);
+  if (client->state.external_client && !client->state.external_client->begin_change_media) {
+    if (client->state.external_client->begin_identify_and_change_media)
+      return client->state.external_client->begin_identify_and_change_media(client, file_path, data, data_size, callback, callback_userdata);
   }
 #endif
 
@@ -3278,8 +3278,8 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
 
     if (!result) {
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-      if (client->state.external_client && client->state.external_client->begin_change_media_from_hash)
-        return client->state.external_client->begin_change_media_from_hash(client, game_hash->hash, callback, callback_userdata);
+      if (client->state.external_client && client->state.external_client->begin_change_media)
+        return client->state.external_client->begin_change_media(client, game_hash->hash, callback, callback_userdata);
 #endif
 
       rc_client_change_media_internal(client, game_hash, callback, callback_userdata);
@@ -3291,8 +3291,8 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
   if (client->state.external_client) {
     if (client->state.external_client->add_game_hash)
       client->state.external_client->add_game_hash(game_hash->hash, game_hash->game_id);
-    if (client->state.external_client->begin_change_media_from_hash)
-      return client->state.external_client->begin_change_media_from_hash(client, game_hash->hash, callback, callback_userdata);
+    if (client->state.external_client->begin_change_media)
+      return client->state.external_client->begin_change_media(client, game_hash->hash, callback, callback_userdata);
   }
 #endif
 
@@ -3301,7 +3301,7 @@ rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, cons
 
 #endif /* RC_CLIENT_SUPPORTS_HASH */
 
-rc_client_async_handle_t* rc_client_begin_change_media_from_hash(rc_client_t* client, const char* hash,
+rc_client_async_handle_t* rc_client_begin_change_media(rc_client_t* client, const char* hash,
     rc_client_callback_t callback, void* callback_userdata)
 {
   rc_client_pending_media_t media;
@@ -3319,8 +3319,8 @@ rc_client_async_handle_t* rc_client_begin_change_media_from_hash(rc_client_t* cl
   }
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->begin_change_media_from_hash) {
-    return client->state.external_client->begin_change_media_from_hash(client, hash, callback, callback_userdata);
+  if (client->state.external_client && client->state.external_client->begin_change_media) {
+    return client->state.external_client->begin_change_media(client, hash, callback, callback_userdata);
   }
 #endif
 

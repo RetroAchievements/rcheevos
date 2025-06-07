@@ -983,7 +983,7 @@ static void assert_change_media(rc_client_t* client, const char* file_path, cons
   ASSERT_NUM_EQUALS(data_size, 32768);
 }
 
-static rc_client_async_handle_t* rc_client_external_begin_change_media(rc_client_t* client, const char* file_path,
+static rc_client_async_handle_t* rc_client_external_begin_identify_and_change_media(rc_client_t* client, const char* file_path,
   const uint8_t* data, size_t data_size, rc_client_callback_t callback, void* callback_userdata)
 {
   assert_change_media(client, file_path, data, data_size);
@@ -1000,9 +1000,9 @@ static void test_change_media(void)
   uint8_t* image = generate_generic_file(image_size);
 
   g_client = mock_client_with_external();
-  g_client->state.external_client->begin_change_media = rc_client_external_begin_change_media;
+  g_client->state.external_client->begin_identify_and_change_media = rc_client_external_begin_identify_and_change_media;
 
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size, rc_client_callback_expect_success, g_callback_userdata);
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size, rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_external_event, "change_media");
 
@@ -1018,7 +1018,7 @@ static void assert_change_media_from_hash(rc_client_t* client, const char* hash)
   ASSERT_STR_EQUALS(hash, "6a2305a2b6675a97ff792709be1ca857");
 }
 
-static rc_client_async_handle_t* rc_client_external_begin_change_media_from_hash(rc_client_t* client, const char* hash,
+static rc_client_async_handle_t* rc_client_external_begin_change_media(rc_client_t* client, const char* hash,
     rc_client_callback_t callback, void* callback_userdata)
 {
   assert_change_media_from_hash(client, hash);
@@ -1032,9 +1032,9 @@ static rc_client_async_handle_t* rc_client_external_begin_change_media_from_hash
 static void test_change_media_from_hash(void)
 {
   g_client = mock_client_with_external();
-  g_client->state.external_client->begin_change_media_from_hash = rc_client_external_begin_change_media_from_hash;
+  g_client->state.external_client->begin_change_media = rc_client_external_begin_change_media;
 
-  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857", rc_client_callback_expect_success, g_callback_userdata);
+  rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857", rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_external_event, "change_media_from_hash");
 

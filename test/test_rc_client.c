@@ -2890,7 +2890,7 @@ static void test_change_media_required_fields(void)
 
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
-  rc_client_begin_change_media(g_client, NULL, NULL, 0,
+  rc_client_begin_identify_and_change_media(g_client, NULL, NULL, 0,
       rc_client_callback_expect_data_or_file_path_required, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2918,7 +2918,7 @@ static void test_change_media_no_game_loaded(void)
 
   g_client = mock_client_logged_in();
 
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_no_game_loaded, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2938,7 +2938,7 @@ static void test_change_media_same_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
 
   /* changing known discs within a game set is expected to succeed */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -2985,7 +2985,7 @@ static void test_change_media_known_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":5555}");
 
   /* changing to a known disc from another game is allowed */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -3022,7 +3022,7 @@ static void test_change_media_unknown_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
 
   /* changing to an unknown disc is not allowed - could be a hacked version of one of the game's discs */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_hardcore_disabled_undentified_media, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -3061,7 +3061,7 @@ static void test_change_media_unhashable(void)
   g_client->game->public_.console_id = RC_CONSOLE_NINTENDO_64;
 
   /* changing to a disc not supported by the system is allowed */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -3098,13 +3098,13 @@ static void test_change_media_back_and_forth(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
 
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
-  rc_client_begin_change_media(g_client, "foo.zip#foo2.nes", image2, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo2.nes", image2, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
-  rc_client_begin_change_media(g_client, "foo.zip#foo2.nes", image2, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo2.nes", image2, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
 
   assert_api_call_count("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", 1);
@@ -3141,7 +3141,7 @@ static void test_change_media_while_loading(void)
 
   rc_client_begin_load_game(g_client, "4989b063a40dcfa28291ff8d675050e3",
       rc_client_callback_expect_success, g_callback_userdata);
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
 
   /* media request won't occur until patch data is received */
@@ -3191,7 +3191,7 @@ static void test_change_media_while_loading_later(void)
   async_api_response("r=achievementsets&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
 
   /* change_media should immediately attempt to resolve the new hash */
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
   assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
@@ -3229,7 +3229,7 @@ static void test_change_media_async_aborted(void)
   reset_mock_api_handlers();
 
   /* changing known discs within a game set is expected to succeed */
-  handle = rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  handle = rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
     rc_client_callback_expect_uncalled, g_callback_userdata);
 
   rc_client_abort_async(g_client, handle);
@@ -3253,7 +3253,7 @@ static void test_change_media_async_aborted(void)
   /* hash should still have been captured and lookup should succeed without having to call server again */
   reset_mock_api_handlers();
 
-  rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
     rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
@@ -3272,7 +3272,7 @@ static void test_change_media_client_error(void)
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   mock_api_error("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "Internet not available.", RC_API_SERVER_RESPONSE_CLIENT_ERROR);
 
-  handle = rc_client_begin_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+  handle = rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_no_internet, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -3302,7 +3302,7 @@ static void test_change_media_from_hash_required_fields(void)
 {
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
 
-  rc_client_begin_change_media_from_hash(g_client, NULL,
+  rc_client_begin_change_media(g_client, NULL,
     rc_client_callback_expect_hash_required, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -3320,7 +3320,7 @@ static void test_change_media_from_hash_no_game_loaded(void)
 {
   g_client = mock_client_logged_in();
 
-  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_no_game_loaded, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -3336,7 +3336,7 @@ static void test_change_media_from_hash_same_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
 
   /* changing known discs within a game set is expected to succeed */
-  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -3365,7 +3365,7 @@ static void test_change_media_from_hash_known_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":5555}");
 
   /* changing to a known disc from another game is allowed */
-  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -3391,7 +3391,7 @@ static void test_change_media_from_hash_unknown_game(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":0}");
 
   /* changing to an unknown disc is not allowed - could be a hacked version of one of the game's discs */
-  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_hardcore_disabled_undentified_media, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
@@ -3418,13 +3418,13 @@ static void test_change_media_from_hash_back_and_forth(void)
   mock_api_response("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "{\"Success\":true,\"GameID\":1234}");
   mock_api_response("r=gameid&m=4989b063a40dcfa28291ff8d675050e3", "{\"Success\":true,\"GameID\":1234}");
 
-  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_success, g_callback_userdata);
-  rc_client_begin_change_media_from_hash(g_client, "4989b063a40dcfa28291ff8d675050e3",
+  rc_client_begin_change_media(g_client, "4989b063a40dcfa28291ff8d675050e3",
     rc_client_callback_expect_success, g_callback_userdata);
-  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_success, g_callback_userdata);
-  rc_client_begin_change_media_from_hash(g_client, "4989b063a40dcfa28291ff8d675050e3",
+  rc_client_begin_change_media(g_client, "4989b063a40dcfa28291ff8d675050e3",
     rc_client_callback_expect_success, g_callback_userdata);
 
   assert_api_call_count("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", 1);
@@ -3449,7 +3449,7 @@ static void test_change_media_from_hash_while_loading(void)
 
   rc_client_begin_load_game(g_client, "4989b063a40dcfa28291ff8d675050e3",
     rc_client_callback_expect_success, g_callback_userdata);
-  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_success, g_callback_userdata);
 
   /* media request won't occur until patch data is received */
@@ -3488,7 +3488,7 @@ static void test_change_media_from_hash_while_loading_later(void)
   async_api_response("r=achievementsets&u=Username&t=ApiToken&m=4989b063a40dcfa28291ff8d675050e3", patchdata_2ach_1lbd);
 
   /* change_media should immediately attempt to resolve the new hash */
-  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_success, g_callback_userdata);
   assert_api_pending("r=gameid&m=6a2305a2b6675a97ff792709be1ca857");
 
@@ -3516,7 +3516,7 @@ static void test_change_media_from_hash_async_aborted(void)
   reset_mock_api_handlers();
 
   /* changing known discs within a game set is expected to succeed */
-  handle = rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  handle = rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_uncalled, g_callback_userdata);
 
   rc_client_abort_async(g_client, handle);
@@ -3533,7 +3533,7 @@ static void test_change_media_from_hash_async_aborted(void)
   /* hash should still have been captured and lookup should succeed without having to call server again */
   reset_mock_api_handlers();
 
-  rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_STR_EQUALS(g_client->game->public_.hash, "6a2305a2b6675a97ff792709be1ca857");
@@ -3549,7 +3549,7 @@ static void test_change_media_from_hash_client_error(void)
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
   mock_api_error("r=gameid&m=6a2305a2b6675a97ff792709be1ca857", "Internet not available.", RC_API_SERVER_RESPONSE_CLIENT_ERROR);
 
-  handle = rc_client_begin_change_media_from_hash(g_client, "6a2305a2b6675a97ff792709be1ca857",
+  handle = rc_client_begin_change_media(g_client, "6a2305a2b6675a97ff792709be1ca857",
     rc_client_callback_expect_no_internet, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
