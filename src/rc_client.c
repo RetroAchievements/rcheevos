@@ -172,6 +172,7 @@ rc_client_t* rc_client_create(rc_client_read_memory_func_t read_memory_function,
 
   client->state.hardcore = 1;
   client->state.required_unpaused_frames = RC_MINIMUM_UNPAUSED_FRAMES;
+  client->state.allow_background_memory_reads = 1;
 
   client->callbacks.read_memory = read_memory_function;
   client->callbacks.server_call = server_call_function;
@@ -1623,6 +1624,11 @@ static void rc_client_free_pending_media(rc_client_pending_media_t* pending_medi
   free(pending_media);
 }
 
+/* NOTE: address validation uses the read_memory callback to make sure the client
+ *       will return data for the requested address. As such, this function must
+ *       respect the `client->state.allow_background_memory_reads setting. Use
+ *       rc_client_queue_activate_game to dispatch this function to the do_frame loop/
+ */
 static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_start_session_response_t *start_session_response)
 {
   rc_client_t* client = load_state->client;
@@ -1693,11 +1699,6 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
     /* if the game is still being loaded, make sure all the required memory addresses are accessible
      * so we can mark achievements as unsupported before loading them into the runtime. */
     if (load_state->progress != RC_CLIENT_LOAD_GAME_STATE_ABORTED) {
-      /* TODO: it is desirable to not do memory reads from a background thread. Some emulators (like Dolphin) don't
-       *       allow it. Dolphin's solution is to use a dummy read function that says all addresses are valid and
-       *       switches to the actual read function after the callback is called. latter invalid reads will
-       *       mark achievements as unsupported. */
-
       /* ASSERT: client->game must be set before calling this function so the read_memory callback can query the console_id */
       rc_client_validate_addresses(load_state->game, client);
 
@@ -1758,6 +1759,31 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
   rc_client_free_load_state(load_state);
 }
 
+static void rc_client_dispatch_activate_game(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now)
+{
+  rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data->data;
+  free(callback_data);
+
+  (void)client;
+  (void)now;
+
+  rc_client_activate_game(load_state, load_state->start_session_response);
+}
+
+static void rc_client_queue_activate_game(rc_client_load_state_t* load_state)
+{
+  rc_client_scheduled_callback_data_t* scheduled_callback_data = calloc(1, sizeof(rc_client_scheduled_callback_data_t));
+  if (!scheduled_callback_data) {
+    rc_client_load_error(load_state, RC_OUT_OF_MEMORY, rc_error_str(RC_OUT_OF_MEMORY));
+    return;
+  }
+
+  scheduled_callback_data->callback = rc_client_dispatch_activate_game;
+  scheduled_callback_data->data = load_state;
+
+  rc_client_schedule_callback(load_state->client, scheduled_callback_data);
+}
+
 static void rc_client_start_session_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_load_state_t* load_state = (rc_client_load_state_t*)callback_data;
@@ -1788,7 +1814,7 @@ static void rc_client_start_session_callback(const rc_api_server_response_t* ser
   else if (outstanding_requests < 0) {
     /* previous load state was aborted, load_state was free'd */
   }
-  else if (outstanding_requests == 0) {
+  else if (outstanding_requests == 0 && load_state->client->state.allow_background_memory_reads) {
     rc_client_activate_game(load_state, &start_session_response);
   }
   else {
@@ -1802,6 +1828,9 @@ static void rc_client_start_session_callback(const rc_api_server_response_t* ser
       /* safer to parse the response again than to try to copy it */
       rc_api_process_start_session_response(load_state->start_session_response, server_response->body);
     }
+
+    if (outstanding_requests == 0)
+      rc_client_queue_activate_game(load_state);
   }
 
   rc_api_destroy_start_session_response(&start_session_response);
@@ -2213,9 +2242,11 @@ static void rc_client_fetch_game_sets_callback(const rc_api_server_response_t* s
     if (outstanding_requests < 0) {
       /* previous load state was aborted, load_state was free'd */
     }
-    else {
-      if (outstanding_requests == 0)
+    else if (outstanding_requests == 0) {
+      if (load_state->client->state.allow_background_memory_reads)
         rc_client_activate_game(load_state, load_state->start_session_response);
+      else
+        rc_client_queue_activate_game(load_state);
     }
   }
 
@@ -2486,6 +2517,8 @@ static void rc_client_begin_fetch_game_sets(rc_client_load_state_t* load_state)
   result = client->state.user;
   if (result == RC_CLIENT_USER_STATE_LOGIN_REQUESTED)
     load_state->progress = RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN;
+  else
+    load_state->progress = RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA;
   rc_mutex_unlock(&client->state.mutex);
 
   switch (result) {
@@ -5147,6 +5180,19 @@ void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memo
 #endif
 
   client->callbacks.read_memory = handler;
+}
+
+void rc_client_set_allow_background_memory_reads(rc_client_t* client, int allowed)
+{
+  if (!client)
+    return;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->set_allow_background_memory_reads)
+    client->state.external_client->set_allow_background_memory_reads(allowed);
+#endif
+
+  client->state.allow_background_memory_reads = allowed;
 }
 
 static void rc_client_invalidate_processing_memref(rc_client_t* client)

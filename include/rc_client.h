@@ -735,6 +735,11 @@ RC_EXPORT void RC_CCONV rc_client_set_event_handler(rc_client_t* client, rc_clie
 RC_EXPORT void RC_CCONV rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memory_func_t handler);
 
 /**
+ * Specifies whether rc_client is allowed to read memory outside of rc_client_do_frame/rc_client_idle.
+ */
+RC_EXPORT void RC_CCONV rc_client_set_allow_background_memory_reads(rc_client_t* client, int allowed);
+
+/**
  * Determines if there are any active achievements/leaderboards/rich presence that need processing.
  */
 RC_EXPORT int RC_CCONV rc_client_is_processing_required(rc_client_t* client);

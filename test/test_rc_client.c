@@ -2172,6 +2172,39 @@ static void test_load_unknown_game_multihash(void)
   rc_client_destroy(g_client);
 }
 
+static void test_load_game_dispatched_read_memory(void)
+{
+  g_client = mock_client_logged_in();
+  rc_client_set_allow_background_memory_reads(g_client, 0);
+
+  reset_mock_api_handlers();
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_2ach_1lbd);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+
+  rc_client_begin_load_game(g_client, "0123456789ABCDEF", rc_client_callback_expect_success, g_callback_userdata);
+  ASSERT_NUM_EQUALS(rc_client_get_load_game_state(g_client), RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION);
+  ASSERT_PTR_NOT_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_idle(g_client);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "0123456789ABCDEF");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+  }
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- unload game ----- */
 
 static void test_unload_game(void)
@@ -9643,6 +9676,7 @@ void test_client(void) {
   TEST(test_load_game_destroy_while_fetching_game_data);
   TEST(test_load_unknown_game);
   TEST(test_load_unknown_game_multihash);
+  TEST(test_load_game_dispatched_read_memory);
 
   /* unload game */
   TEST(test_unload_game);
