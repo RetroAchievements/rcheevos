@@ -1219,16 +1219,13 @@ static int rc_hash_wii_disc(md5_state_t* md5, const rc_hash_iterator_t* iterator
       }
     }
     else { /* Decrypted */
-      success = rc_hash_nintendo_disc_partition(md5, iterator, file_handle, (uint32_t)part_offset, 2);
+      if (rc_hash_nintendo_disc_partition(md5, iterator, file_handle, part_offset, 2) == 0) {
+        return rc_hash_iterator_error(iterator, "Failed to hash Wii partition");
+      }
     }
   }
   free(partition_table);
   free(buffer);
-  rc_file_close(iterator, file_handle);
-
-  if (!success)
-    return rc_hash_iterator_error(iterator, "Failed to hash Wii partition");
-
   return 1;
 }
 
