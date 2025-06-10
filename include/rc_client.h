@@ -264,6 +264,12 @@ RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_identify_and_load_g
     uint32_t console_id, const char* file_path,
     const uint8_t* data, size_t data_size,
     rc_client_callback_t callback, void* callback_userdata);
+
+struct rc_hash_callbacks;
+/**
+ * Provide callback functions for interacting with the file system and processing disc-based files when generating hashes.
+ */
+RC_EXPORT void rc_client_set_hash_callbacks(rc_client_t* client, const struct rc_hash_callbacks* callbacks);
 #endif
 
 /**
@@ -278,9 +284,9 @@ RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_load_game(rc_client
 RC_EXPORT int RC_CCONV rc_client_get_load_game_state(const rc_client_t* client);
 enum {
   RC_CLIENT_LOAD_GAME_STATE_NONE,
-  RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME,
   RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN,
-  RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA,
+  RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME,
+  RC_CLIENT_LOAD_GAME_STATE_FETCHING_GAME_DATA, /* [deprecated] - game data is now returned by identify call */
   RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION,
   RC_CLIENT_LOAD_GAME_STATE_DONE,
   RC_CLIENT_LOAD_GAME_STATE_ABORTED

@@ -8,12 +8,6 @@ RC_BEGIN_C_DECLS
 
 /* hash.c */
 
-void rc_hash_verbose(const rc_hash_callbacks_t* callbacks, const char* message);
-void rc_hash_verbose_formatted(const rc_hash_callbacks_t* callbacks, const char* format, ...);
-
-int rc_hash_error(const rc_hash_callbacks_t*, const char* message);
-int rc_hash_error_formatted(const rc_hash_callbacks_t* callbacks, const char* format, ...);
-
 void* rc_file_open(const rc_hash_iterator_t* iterator, const char* path);
 void rc_file_seek(const rc_hash_iterator_t* iterator, void* file_handle, int64_t offset, int origin);
 int64_t rc_file_tell(const rc_hash_iterator_t* iterator, void* file_handle);
@@ -31,6 +25,7 @@ int rc_hash_iterator_error_formatted(const rc_hash_iterator_t* iterator, const c
 /* arbitrary limit to prevent allocating and hashing large files */
 #define MAX_BUFFER_SIZE 64 * 1024 * 1024
 
+void rc_hash_merge_callbacks(rc_hash_iterator_t* iterator, const rc_hash_callbacks_t* callbacks);
 int rc_hash_finalize(const rc_hash_iterator_t* iterator, md5_state_t* md5, char hash[33]);
 
 int rc_hash_buffer(char hash[33], const uint8_t* buffer, size_t buffer_size, const rc_hash_iterator_t* iterator);

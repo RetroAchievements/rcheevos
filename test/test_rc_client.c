@@ -13,6 +13,7 @@
 #ifdef RC_CLIENT_SUPPORTS_HASH
 #include "rc_hash.h"
 #include "rhash/data.h"
+#include "rhash/mock_filereader.h"
 #endif
 
 #if defined(_WIN32)
@@ -2492,6 +2493,56 @@ static void test_identify_and_load_game_multiconsole_second(void)
 }
 
 #endif /* RC_HASH_NO_ROM */
+
+#ifndef RC_HASH_NO_DISC
+
+static void test_identify_and_load_game_from_disc(void)
+{
+  rc_hash_callbacks_t hash_callbacks;
+
+  size_t image_size;
+  uint8_t* image = generate_psx_bin("SLUS_007.45", 0x07D800, &image_size);
+  const char cue_single_track[] =
+    "FILE \"game.bin\" BINARY\n"
+    "  TRACK 01 MODE2/2352\n"
+    "    INDEX 01 00:00:00\n";
+
+  g_client = mock_client_logged_in();
+
+  memset(&hash_callbacks, 0, sizeof(hash_callbacks));
+  get_mock_filereader(&hash_callbacks.filereader);
+  rc_client_set_hash_callbacks(g_client, &hash_callbacks);
+
+  mock_file(0, "game.bin", image, image_size);
+  mock_file(1, "game.cue", (uint8_t*)cue_single_track, sizeof(cue_single_track));
+
+  reset_mock_api_handlers();
+  mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=db433fb038cde4fb15c144e8c7dea6e3", patchdata_2ach_1lbd);
+  mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=db433fb038cde4fb15c144e8c7dea6e3&l=" RCHEEVOS_VERSION_STRING, "{\"Success\":true}");
+
+  rc_client_begin_identify_and_load_game(g_client, RC_CONSOLE_PLAYSTATION, "game.cue",
+    NULL, 0, rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_NUM_EQUALS(g_client->game->public_.console_id, 17);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "db433fb038cde4fb15c144e8c7dea6e3");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+  }
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+#endif
 
 static void test_identify_and_load_game_unknown_hash(void)
 {
@@ -9692,6 +9743,9 @@ void test_client(void) {
  #ifndef RC_HASH_NO_ROM
   TEST(test_identify_and_load_game_multiconsole_first);
   TEST(test_identify_and_load_game_multiconsole_second);
+ #endif
+ #ifndef RC_HASH_NO_DISC
+  TEST(test_identify_and_load_game_from_disc);
  #endif
   TEST(test_identify_and_load_game_unknown_hash);
   TEST(test_identify_and_load_game_unknown_hash_repeated);

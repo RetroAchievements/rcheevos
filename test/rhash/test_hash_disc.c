@@ -58,8 +58,6 @@ static void test_hash_3do_bin()
 
   mock_file_size(0, 45678901); /* must be > 32MB for iterator to consider CD formats for bin */
   rc_hash_initialize_iterator(&iterator, "game.bin", NULL, 0);
-  mock_file_size(0, image_size); /* change it back before doing the hashing */
-
   result_iterator = rc_hash_iterate(hash_iterator, &iterator);
   rc_hash_destroy_iterator(&iterator);
 

@@ -18,10 +18,23 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
 
 /* ===================================================== */
 
-static rc_hash_message_callback g_error_message_callback = NULL;
-rc_hash_message_callback g_verbose_message_callback = NULL;
+static rc_hash_message_callback_deprecated g_error_message_callback = NULL;
+static rc_hash_message_callback_deprecated g_verbose_message_callback = NULL;
 
-static void rc_hash_dispatch_message_va(const rc_hash_message_callback callback, const char* format, va_list args)
+static void rc_hash_call_g_error_message_callback(const char* message, const rc_hash_iterator_t* iterator)
+{
+  (void)iterator;
+  g_error_message_callback(message);
+}
+
+static void rc_hash_call_g_verbose_message_callback(const char* message, const rc_hash_iterator_t* iterator)
+{
+  (void)iterator;
+  g_verbose_message_callback(message);
+}
+
+static void rc_hash_dispatch_message_va(const rc_hash_message_callback_func callback,
+  const rc_hash_iterator_t* iterator, const char* format, va_list args)
 {
   char buffer[1024];
 
@@ -33,111 +46,66 @@ static void rc_hash_dispatch_message_va(const rc_hash_message_callback callback,
   vsprintf(buffer, format, args);
 #endif
 
-  callback(buffer);
+  callback(buffer, iterator);
 }
 
-void rc_hash_init_error_message_callback(rc_hash_message_callback callback)
+void rc_hash_init_error_message_callback(rc_hash_message_callback_deprecated callback)
 {
   g_error_message_callback = callback;
 }
 
-static rc_hash_message_callback rc_hash_get_error_message_callback(const rc_hash_callbacks_t* callbacks)
+static rc_hash_message_callback_func rc_hash_get_error_message_callback(const rc_hash_callbacks_t* callbacks)
 {
   if (callbacks && callbacks->error_message)
     return callbacks->error_message;
 
   if (g_error_message_callback)
-    return g_error_message_callback;
+    return rc_hash_call_g_error_message_callback;
 
   if (callbacks && callbacks->verbose_message)
     return callbacks->verbose_message;
 
   if (g_verbose_message_callback)
-    return g_verbose_message_callback;
+    return rc_hash_call_g_verbose_message_callback;
 
   return NULL;
 }
 
-int rc_hash_error(const rc_hash_callbacks_t* callbacks, const char* message)
-{
-  rc_hash_message_callback message_callback = rc_hash_get_error_message_callback(callbacks);
-
-  if (message_callback)
-    message_callback(message);
-
-  return 0;
-}
-
-int rc_hash_error_formatted(const rc_hash_callbacks_t* callbacks, const char* format, ...)
-{
-  rc_hash_message_callback message_callback = rc_hash_get_error_message_callback(callbacks);
-
-  if (message_callback) {
-    va_list args;
-    va_start(args, format);
-    rc_hash_dispatch_message_va(message_callback, format, args);
-    va_end(args);
-  }
-
-  return 0;
-}
-
 int rc_hash_iterator_error(const rc_hash_iterator_t* iterator, const char* message)
 {
-  rc_hash_message_callback message_callback = rc_hash_get_error_message_callback(&iterator->callbacks);
+  rc_hash_message_callback_func message_callback = rc_hash_get_error_message_callback(&iterator->callbacks);
 
   if (message_callback)
-    message_callback(message);
+    message_callback(message, iterator);
 
   return 0;
 }
 
 int rc_hash_iterator_error_formatted(const rc_hash_iterator_t* iterator, const char* format, ...)
 {
-  rc_hash_message_callback message_callback = rc_hash_get_error_message_callback(&iterator->callbacks);
+  rc_hash_message_callback_func message_callback = rc_hash_get_error_message_callback(&iterator->callbacks);
 
   if (message_callback) {
     va_list args;
     va_start(args, format);
-    rc_hash_dispatch_message_va(message_callback, format, args);
+    rc_hash_dispatch_message_va(message_callback, iterator, format, args);
     va_end(args);
   }
 
   return 0;
 }
 
-void rc_hash_init_verbose_message_callback(rc_hash_message_callback callback)
+void rc_hash_init_verbose_message_callback(rc_hash_message_callback_deprecated callback)
 {
   g_verbose_message_callback = callback;
 }
 
-void rc_hash_verbose(const rc_hash_callbacks_t* callbacks, const char* message)
-{
-  if (callbacks->verbose_message)
-    callbacks->verbose_message(message);
-  else if (g_verbose_message_callback)
-    g_verbose_message_callback(message);
-}
-
-void rc_hash_verbose_formatted(const rc_hash_callbacks_t* callbacks, const char* format, ...)
-{
-  if (callbacks && callbacks->verbose_message) {
-    va_list args;
-    va_start(args, format);
-    rc_hash_dispatch_message_va(callbacks->verbose_message, format, args);
-    va_end(args);
-  }
-  else if (g_verbose_message_callback) {
-    va_list args;
-    va_start(args, format);
-    rc_hash_dispatch_message_va(g_verbose_message_callback, format, args);
-    va_end(args);
-  }
-}
-
 void rc_hash_iterator_verbose(const rc_hash_iterator_t* iterator, const char* message)
 {
-  rc_hash_verbose(&iterator->callbacks, message);
+  if (iterator->callbacks.verbose_message)
+    iterator->callbacks.verbose_message(message, iterator);
+  else if (g_verbose_message_callback)
+    g_verbose_message_callback(message);
 }
 
 void rc_hash_iterator_verbose_formatted(const rc_hash_iterator_t* iterator, const char* format, ...)
@@ -145,13 +113,13 @@ void rc_hash_iterator_verbose_formatted(const rc_hash_iterator_t* iterator, cons
   if (iterator->callbacks.verbose_message) {
     va_list args;
     va_start(args, format);
-    rc_hash_dispatch_message_va(iterator->callbacks.verbose_message, format, args);
+    rc_hash_dispatch_message_va(iterator->callbacks.verbose_message, iterator, format, args);
     va_end(args);
   }
   else if (g_verbose_message_callback) {
     va_list args;
     va_start(args, format);
-    rc_hash_dispatch_message_va(g_verbose_message_callback, format, args);
+    rc_hash_dispatch_message_va(rc_hash_call_g_verbose_message_callback, iterator, format, args);
     va_end(args);
   }
 }
@@ -995,11 +963,38 @@ static void rc_hash_iterator_append_console(struct rc_hash_iterator* iterator, u
   iterator->consoles[i] = console_id;
 }
 
+void rc_hash_merge_callbacks(rc_hash_iterator_t* iterator, const rc_hash_callbacks_t* callbacks)
+{
+  if (callbacks->verbose_message)
+    iterator->callbacks.verbose_message = callbacks->verbose_message;
+  if (callbacks->error_message)
+    iterator->callbacks.verbose_message = callbacks->error_message;
+
+  if (callbacks->filereader.open)
+    memcpy(&iterator->callbacks.filereader, &callbacks->filereader, sizeof(callbacks->filereader));
+
+#ifndef RC_HASH_NO_DISC
+  if (callbacks->cdreader.open_track)
+    memcpy(&iterator->callbacks.cdreader, &callbacks->cdreader, sizeof(callbacks->cdreader));
+#endif
+
+#ifndef RC_HASH_NO_ENCRYPTED
+  if (callbacks->encryption.get_3ds_cia_normal_key)
+    iterator->callbacks.encryption.get_3ds_cia_normal_key = callbacks->encryption.get_3ds_cia_normal_key;
+  if (callbacks->encryption.get_3ds_ncch_normal_keys)
+    iterator->callbacks.encryption.get_3ds_ncch_normal_keys = callbacks->encryption.get_3ds_ncch_normal_keys;
+#endif
+}
+
+
 static void rc_hash_reset_iterator(rc_hash_iterator_t* iterator) {
   memset(iterator, 0, sizeof(*iterator));
+  iterator->index = -1;
 
-  iterator->callbacks.verbose_message = g_verbose_message_callback;
-  iterator->callbacks.error_message = g_error_message_callback;
+  if (g_verbose_message_callback)
+    iterator->callbacks.verbose_message = rc_hash_call_g_verbose_message_callback;
+  if (g_error_message_callback)
+    iterator->callbacks.error_message = rc_hash_call_g_error_message_callback;
 
   if (g_filereader) {
     memcpy(&iterator->callbacks.filereader, g_filereader, sizeof(*g_filereader));
@@ -1330,19 +1325,7 @@ void rc_hash_initialize_iterator(rc_hash_iterator_t* iterator, const char* path,
   iterator->buffer = buffer;
   iterator->buffer_size = buffer_size;
 
-  rc_hash_initialize_iterator_from_path(iterator, path);
-
-  if (iterator->callbacks.verbose_message) {
-    char message[256];
-    int count = 0;
-    while (iterator->consoles[count])
-      ++count;
-
-    snprintf(message, sizeof(message), "Found %d potential consoles for %s file extension", count, rc_path_get_extension(path));
-    iterator->callbacks.verbose_message(message);
-  }
-
-  if (!iterator->buffer && !iterator->path)
+  if (path)
     iterator->path = strdup(path);
 }
 
@@ -1356,6 +1339,20 @@ void rc_hash_destroy_iterator(rc_hash_iterator_t* iterator) {
 int rc_hash_iterate(char hash[33], rc_hash_iterator_t* iterator) {
   int next_console;
   int result = 0;
+
+  if (iterator->index == -1) {
+    rc_hash_initialize_iterator_from_path(iterator, iterator->path);
+
+    if (iterator->callbacks.verbose_message) {
+      int count = 0;
+      while (iterator->consoles[count])
+        ++count;
+
+      rc_hash_iterator_verbose_formatted(iterator, "Found %d potential consoles for %s file extension", count, rc_path_get_extension(iterator->path));
+    }
+
+    iterator->index = 0;
+  }
 
   do {
     next_console = iterator->consoles[iterator->index];
@@ -1378,7 +1375,7 @@ int rc_hash_generate(char hash[33], uint32_t console_id, const rc_hash_iterator_
   if (iterator->buffer)
     return rc_hash_from_buffer(hash, console_id, iterator);
 
-  return rc_hash_generate_from_file(hash, console_id, iterator->path);
+  return rc_hash_from_file(hash, console_id, iterator);
 }
 
 int rc_hash_generate_from_buffer(char hash[33], uint32_t console_id, const uint8_t* buffer, size_t buffer_size) {
