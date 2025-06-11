@@ -1120,7 +1120,6 @@ static int rc_hash_wii_disc(md5_state_t* md5, const rc_hash_iterator_t* iterator
 
   uint32_t ix, jx, kx;
   uint8_t encrypted;
-  int success = 1;
 
   /* Check encryption byte - if 0x61 is 0, disc is encrypted */
   rc_file_seek(iterator, file_handle, 0x61, SEEK_SET);
