@@ -38,7 +38,7 @@ const char* rc_path_get_extension(const char* path);
 int rc_path_compare_extension(const char* path, const char* ext);
 
 
-typedef void (RC_CCONV* rc_hash_iterator_ext_handler_t)(rc_hash_iterator_t* iterator, const char* path, int data);
+typedef void (RC_CCONV* rc_hash_iterator_ext_handler_t)(rc_hash_iterator_t* iterator, int data);
 typedef struct rc_hash_iterator_ext_handler_entry_t {
   char ext[8];
   rc_hash_iterator_ext_handler_t handler;

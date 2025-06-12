@@ -1015,24 +1015,16 @@ static void rc_hash_reset_iterator(rc_hash_iterator_t* iterator) {
 #endif
 }
 
-static void rc_hash_initialize_iterator_single(rc_hash_iterator_t* iterator, const char* path, int data) {
-  (void)path;
+static void rc_hash_initialize_iterator_single(rc_hash_iterator_t* iterator, int data) {
   iterator->consoles[0] = (uint8_t)data;
 }
 
-static void rc_hash_initialize_iterator_single_with_path(rc_hash_iterator_t* iterator, const char* path, int data) {
-  iterator->consoles[0] = (uint8_t)data;
-
-  if (!iterator->path)
-    iterator->path = strdup(path);
-}
-
-static void rc_hash_initialize_iterator_bin(rc_hash_iterator_t* iterator, const char* path, int data) {
+static void rc_hash_initialize_iterator_bin(rc_hash_iterator_t* iterator, int data) {
   (void)data;
 
   if (iterator->buffer_size == 0) {
     /* raw bin file may be a CD track. if it's more than 32MB, try a CD hash. */
-    const int64_t size = rc_file_size(iterator, path);
+    const int64_t size = rc_file_size(iterator, iterator->path);
     if (size > 32 * 1024 * 1024) {
       iterator->consoles[0] = RC_CONSOLE_3DO; /* 4DO supports directly opening the bin file */
       iterator->consoles[1] = RC_CONSOLE_PLAYSTATION; /* PCSX ReARMed supports directly opening the bin file*/
@@ -1051,7 +1043,7 @@ static void rc_hash_initialize_iterator_bin(rc_hash_iterator_t* iterator, const 
   iterator->consoles[0] = RC_CONSOLE_MEGA_DRIVE;
 }
 
-static void rc_hash_initialize_iterator_chd(rc_hash_iterator_t* iterator, const char* path, int data) {
+static void rc_hash_initialize_iterator_chd(rc_hash_iterator_t* iterator, int data) {
   (void)data;
 
   iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
@@ -1063,12 +1055,9 @@ static void rc_hash_initialize_iterator_chd(rc_hash_iterator_t* iterator, const 
   iterator->consoles[6] = RC_CONSOLE_3DO;
   iterator->consoles[7] = RC_CONSOLE_NEO_GEO_CD;
   iterator->consoles[8] = RC_CONSOLE_PCFX;
-
-  if (!iterator->path)
-    iterator->path = strdup(path);
 }
 
-static void rc_hash_initialize_iterator_cue(rc_hash_iterator_t* iterator, const char* path, int data) {
+static void rc_hash_initialize_iterator_cue(rc_hash_iterator_t* iterator, int data) {
   (void)data;
 
   iterator->consoles[0] = RC_CONSOLE_PLAYSTATION;
@@ -1080,23 +1069,19 @@ static void rc_hash_initialize_iterator_cue(rc_hash_iterator_t* iterator, const 
   iterator->consoles[6] = RC_CONSOLE_PCFX;
   iterator->consoles[7] = RC_CONSOLE_NEO_GEO_CD;
   iterator->consoles[8] = RC_CONSOLE_ATARI_JAGUAR_CD;
-
-  if (!iterator->path)
-    iterator->path = strdup(path);
 }
 
-static void rc_hash_initialize_iterator_d88(rc_hash_iterator_t* iterator, const char* path, int data) {
-  (void)path;
+static void rc_hash_initialize_iterator_d88(rc_hash_iterator_t* iterator, int data) {
   (void)data;
 
   iterator->consoles[0] = RC_CONSOLE_PC8800;
   iterator->consoles[1] = RC_CONSOLE_SHARPX1;
 }
 
-static void rc_hash_initialize_iterator_dsk(rc_hash_iterator_t* iterator, const char* path, int data) {
+static void rc_hash_initialize_iterator_dsk(rc_hash_iterator_t* iterator, int data) {
   size_t size = iterator->buffer_size;
   if (size == 0)
-    size = (size_t)rc_file_size(iterator, path);
+    size = (size_t)rc_file_size(iterator, iterator->path);
 
   (void)data;
 
@@ -1134,7 +1119,7 @@ static void rc_hash_initialize_iterator_dsk(rc_hash_iterator_t* iterator, const 
   rc_hash_iterator_append_console(iterator, RC_CONSOLE_APPLE_II);
 }
 
-static void rc_hash_initialize_iterator_iso(rc_hash_iterator_t* iterator, const char* path, int data) {
+static void rc_hash_initialize_iterator_iso(rc_hash_iterator_t* iterator, int data) {
   (void)data;
 
   iterator->consoles[0] = RC_CONSOLE_PLAYSTATION_2;
@@ -1143,12 +1128,11 @@ static void rc_hash_initialize_iterator_iso(rc_hash_iterator_t* iterator, const 
   iterator->consoles[3] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
   iterator->consoles[4] = RC_CONSOLE_GAMECUBE;
   iterator->consoles[5] = RC_CONSOLE_WII;
-
-  if (!iterator->path)
-    iterator->path = strdup(path);
 }
 
-static void rc_hash_initialize_iterator_m3u(rc_hash_iterator_t* iterator, const char* path, int data) {
+static void rc_hash_initialize_iterator_m3u(rc_hash_iterator_t* iterator, int data) {
+  const char* first_file_path;
+
   (void)data;
 
   /* temporarily set the iterator path to the m3u file so we can extract the
@@ -1156,26 +1140,27 @@ static void rc_hash_initialize_iterator_m3u(rc_hash_iterator_t* iterator, const 
    * an allocated string or NULL, so rc_hash_destroy_iterator won't get tripped
    * up by the non-allocted value we're about to assign.
    */
-  iterator->path = path;
-  iterator->path = rc_hash_get_first_item_from_playlist(iterator);
-  if (!iterator->path) /* did not find a disc */
+  first_file_path = rc_hash_get_first_item_from_playlist(iterator);
+  if (!first_file_path) /* did not find a disc */
     return;
+
+  /* release the m3u path and replace with the first file path */
+  free((void*)iterator->path);
+  iterator->path = first_file_path; /* assert: already malloc'd; don't need to strdup */
 
   iterator->buffer = NULL; /* ignore buffer; assume it's the m3u contents */
 
   rc_hash_initialize_iterator_from_path(iterator, iterator->path);
 }
 
-static void rc_hash_initialize_iterator_nib(rc_hash_iterator_t* iterator, const char* path, int data) {
-  (void)path;
+static void rc_hash_initialize_iterator_nib(rc_hash_iterator_t* iterator, int data) {
   (void)data;
 
   iterator->consoles[0] = RC_CONSOLE_APPLE_II;
   iterator->consoles[1] = RC_CONSOLE_COMMODORE_64;
 }
 
-static void rc_hash_initialize_iterator_rom(rc_hash_iterator_t* iterator, const char* path, int data) {
-  (void)path;
+static void rc_hash_initialize_iterator_rom(rc_hash_iterator_t* iterator, int data) {
   (void)data;
 
   /* rom is associated with MSX, Thomson TO-8, and Fairchild Channel F.
@@ -1183,8 +1168,7 @@ static void rc_hash_initialize_iterator_rom(rc_hash_iterator_t* iterator, const 
   iterator->consoles[0] = RC_CONSOLE_MSX;
 }
 
-static void rc_hash_initialize_iterator_tap(rc_hash_iterator_t* iterator, const char* path, int data) {
-  (void)path;
+static void rc_hash_initialize_iterator_tap(rc_hash_iterator_t* iterator, int data) {
   (void)data;
 
   /* also Oric and ZX Spectrum, but all are full file hashes */
@@ -1195,13 +1179,13 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "2d", rc_hash_initialize_iterator_single, RC_CONSOLE_SHARPX1 },
   { "3ds", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
   { "3dsx", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
-  { "7z", rc_hash_initialize_iterator_single_with_path, RC_CONSOLE_ARCADE },
+  { "7z", rc_hash_initialize_iterator_single, RC_CONSOLE_ARCADE },
   { "83g", rc_hash_initialize_iterator_single, RC_CONSOLE_TI83 }, /* http://tibasicdev.wikidot.com/file-extensions */
   { "83p", rc_hash_initialize_iterator_single, RC_CONSOLE_TI83 },
   { "a26", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_2600 },
   { "a78", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_7800 },
   { "app", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
-  { "arduboy", rc_hash_initialize_iterator_single_with_path, RC_CONSOLE_ARDUBOY },
+  { "arduboy", rc_hash_initialize_iterator_single, RC_CONSOLE_ARDUBOY },
   { "axf", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
   { "bin", rc_hash_initialize_iterator_bin, 0 },
   { "bs", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },
@@ -1273,7 +1257,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "woz", rc_hash_initialize_iterator_single, RC_CONSOLE_APPLE_II },
   { "wsc", rc_hash_initialize_iterator_single, RC_CONSOLE_WONDERSWAN },
   { "z64", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_64 },
-  { "zip", rc_hash_initialize_iterator_single_with_path, RC_CONSOLE_ARCADE }
+  { "zip", rc_hash_initialize_iterator_single, RC_CONSOLE_ARCADE }
 };
 
 const rc_hash_iterator_ext_handler_entry_t* rc_hash_get_iterator_ext_handlers(size_t* num_handlers) {
@@ -1311,7 +1295,7 @@ static void rc_hash_initialize_iterator_from_path(rc_hash_iterator_t* iterator, 
   /* find the handler for the extension */
   handler = bsearch(&search, handlers, num_handlers, sizeof(*handler), rc_hash_iterator_find_handler);
   if (handler) {
-    handler->handler(iterator, path, handler->data);
+    handler->handler(iterator, handler->data);
   } else {
     /* if we didn't match the extension, default to something that does a whole file hash */
     if (!iterator->consoles[0])
@@ -1334,6 +1318,8 @@ void rc_hash_destroy_iterator(rc_hash_iterator_t* iterator) {
     free((void*)iterator->path);
     iterator->path = NULL;
   }
+
+  iterator->buffer = NULL;
 }
 
 int rc_hash_iterate(char hash[33], rc_hash_iterator_t* iterator) {

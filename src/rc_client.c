@@ -1106,6 +1106,10 @@ static void rc_client_free_load_state(rc_client_load_state_t* load_state)
     free(load_state->start_session_response);
   }
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
+  rc_hash_destroy_iterator(&load_state->hash_iterator);
+#endif
+
   free(load_state);
 }
 
@@ -2418,6 +2422,8 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
         }
       }
     }
+
+    rc_hash_destroy_iterator(&load_state->hash_iterator); /* done with this now */
 #else
     load_state->game->public_.console_id = RC_CONSOLE_UNKNOWN;
     load_state->game->public_.hash = load_state->hash->hash;
