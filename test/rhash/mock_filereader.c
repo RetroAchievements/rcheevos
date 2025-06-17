@@ -94,7 +94,7 @@ static void reset_mock_files()
   mock_cd_tracks = 0;
 }
 
-void get_mock_filereader(rc_hash_filereader_t* reader)
+void get_mock_filereader(struct rc_hash_filereader* reader)
 {
   reader->open = _mock_file_open;
   reader->seek = _mock_file_seek;

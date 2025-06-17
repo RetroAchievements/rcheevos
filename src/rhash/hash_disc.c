@@ -32,8 +32,8 @@ void rc_hash_init_custom_cdreader(struct rc_hash_cdreader* reader)
 
 static void* rc_cd_open_track(const rc_hash_iterator_t* iterator, uint32_t track)
 {
-  if (iterator->callbacks.cdreader.open_track_filereader)
-    return iterator->callbacks.cdreader.open_track_filereader(iterator->path, track, &iterator->callbacks.filereader);
+  if (iterator->callbacks.cdreader.open_track_iterator)
+    return iterator->callbacks.cdreader.open_track_iterator(iterator->path, track, iterator);
 
   if (iterator->callbacks.cdreader.open_track)
     return iterator->callbacks.cdreader.open_track(iterator->path, track);
@@ -365,14 +365,12 @@ int rc_hash_dreamcast(char hash[33], const rc_hash_iterator_t* iterator)
   md5_append(&md5, (md5_byte_t*)buffer, 256);
 
   if (iterator->callbacks.verbose_message) {
-    char message[256];
     uint8_t* ptr = &buffer[0xFF];
     while (ptr > &buffer[0x80] && ptr[-1] == ' ')
       --ptr;
     *ptr = '\0';
 
-    snprintf(message, sizeof(message), "Found Dreamcast CD: %.128s (%.16s)", (const char*)&buffer[0x80], (const char*)&buffer[0x40]);
-    iterator->callbacks.verbose_message(message);
+    rc_hash_iterator_verbose_formatted(iterator, "Found Dreamcast CD: %.128s (%.16s)", (const char*)&buffer[0x80], (const char*)&buffer[0x40]);
   }
 
   /* the boot filename is 96 bytes into the meta information (https://mc.pp.se/dc/ip0000.bin.html) */

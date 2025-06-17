@@ -228,14 +228,6 @@ void rc_client_destroy(rc_client_t* client)
 
 /* ===== Logging ===== */
 
-static rc_client_t* g_hash_client = NULL;
-
-#ifdef RC_CLIENT_SUPPORTS_HASH
-static void rc_client_log_hash_message(const char* message) {
-  rc_client_log_message(g_hash_client, message);
-}
-#endif
-
 void rc_client_log_message(const rc_client_t* client, const char* message)
 {
   if (client->callbacks.log_call)
@@ -1114,6 +1106,10 @@ static void rc_client_free_load_state(rc_client_load_state_t* load_state)
     free(load_state->start_session_response);
   }
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
+  rc_hash_destroy_iterator(&load_state->hash_iterator);
+#endif
+
   free(load_state);
 }
 
@@ -1829,8 +1825,12 @@ static void rc_client_start_session_callback(const rc_api_server_response_t* ser
       rc_api_process_start_session_response(load_state->start_session_response, server_response->body);
     }
 
-    if (outstanding_requests == 0)
-      rc_client_queue_activate_game(load_state);
+    if (outstanding_requests == 0) {
+      if (load_state->client->state.allow_background_memory_reads)
+        rc_client_activate_game(load_state, load_state->start_session_response);
+      else
+        rc_client_queue_activate_game(load_state);
+    }
   }
 
   rc_api_destroy_start_session_response(&start_session_response);
@@ -2422,6 +2422,8 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
         }
       }
     }
+
+    rc_hash_destroy_iterator(&load_state->hash_iterator); /* done with this now */
 #else
     load_state->game->public_.console_id = RC_CONSOLE_UNKNOWN;
     load_state->game->public_.hash = load_state->hash->hash;
@@ -2462,9 +2464,6 @@ static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state)
     load_state->game->public_.id = load_state->hash->game_id;
     load_state->game->public_.hash = load_state->hash->hash;
   }
-
-  /* done with the hashing code, release the global pointer */
-  g_hash_client = NULL;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client) {
@@ -2795,6 +2794,32 @@ rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client)
   return NULL;
 }
 
+static void rc_client_log_hash_message_verbose(const char* message, const rc_hash_iterator_t* iterator)
+{
+  rc_client_load_state_t unused;
+  rc_client_load_state_t* load_state = (rc_client_load_state_t*)(((uint8_t*)iterator) - RC_OFFSETOF(unused, hash_iterator));
+  if (load_state->client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO)
+    rc_client_log_message(load_state->client, message);
+}
+
+static void rc_client_log_hash_message_error(const char* message, const rc_hash_iterator_t* iterator)
+{
+  rc_client_load_state_t unused;
+  rc_client_load_state_t* load_state = (rc_client_load_state_t*)(((uint8_t*)iterator) - RC_OFFSETOF(unused, hash_iterator));
+  if (load_state->client->state.log_level >= RC_CLIENT_LOG_LEVEL_ERROR)
+    rc_client_log_message(load_state->client, message);
+}
+
+void rc_client_set_hash_callbacks(rc_client_t* client, const struct rc_hash_callbacks* callbacks)
+{
+  memcpy(&client->callbacks.hash, callbacks, sizeof(*callbacks));
+
+  if (!callbacks->verbose_message)
+    client->callbacks.hash.verbose_message = rc_client_log_hash_message_verbose;
+  if (!callbacks->error_message)
+    client->callbacks.hash.error_message = rc_client_log_hash_message_error;
+}
+
 rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* client,
     uint32_t console_id, const char* file_path,
     const uint8_t* data, size_t data_size,
@@ -2835,12 +2860,6 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
     return NULL;
   }
 
-  if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO) {
-    g_hash_client = client;
-    rc_hash_init_error_message_callback(rc_client_log_hash_message);
-    rc_hash_init_verbose_message_callback(rc_client_log_hash_message);
-  }
-
   if (!file_path)
     file_path = "?";
 
@@ -2853,9 +2872,17 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
   load_state->callback = callback;
   load_state->callback_userdata = callback_userdata;
 
-  if (console_id == RC_CONSOLE_UNKNOWN) {
-    rc_hash_initialize_iterator(&load_state->hash_iterator, file_path, data, data_size);
+  /* initialize the iterator */
+  rc_hash_initialize_iterator(&load_state->hash_iterator, file_path, data, data_size);
+  rc_hash_merge_callbacks(&load_state->hash_iterator, &client->callbacks.hash);
 
+  if (!load_state->hash_iterator.callbacks.verbose_message)
+    load_state->hash_iterator.callbacks.verbose_message = rc_client_log_hash_message_verbose;
+  if (!load_state->hash_iterator.callbacks.error_message)
+    load_state->hash_iterator.callbacks.error_message = rc_client_log_hash_message_error;
+
+  /* calculate the hash */
+  if (console_id == RC_CONSOLE_UNKNOWN) {
     if (!rc_hash_iterate(hash, &load_state->hash_iterator)) {
       rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
       return NULL;
@@ -2867,17 +2894,12 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
     /* ASSERT: hash_iterator->index and hash_iterator->consoles[0] will be 0 from calloc */
     load_state->hash_console_id = console_id;
 
-    if (data != NULL) {
-      if (!rc_hash_generate_from_buffer(hash, console_id, data, data_size)) {
-        rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
-        return NULL;
-      }
-    }
-    else {
-      if (!rc_hash_generate_from_file(hash, console_id, file_path)) {
-        rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
-        return NULL;
-      }
+    /* prevent initializing the iterator so it won't try other consoles in rc_client_process_resolved_hash */
+    load_state->hash_iterator.index = 0;
+
+    if (!rc_hash_generate(hash, console_id, &load_state->hash_iterator)) {
+      rc_client_load_error(load_state, RC_INVALID_STATE, "hash generation failed");
+      return NULL;
     }
   }
 
@@ -3245,18 +3267,10 @@ rc_client_async_handle_t* rc_client_begin_identify_and_change_media(rc_client_t*
     char hash[33];
     int result;
 
-    if (client->state.log_level >= RC_CLIENT_LOG_LEVEL_INFO) {
-      g_hash_client = client;
-      rc_hash_init_error_message_callback(rc_client_log_hash_message);
-      rc_hash_init_verbose_message_callback(rc_client_log_hash_message);
-    }
-
     if (data != NULL)
       result = rc_hash_generate_from_buffer(hash, game->public_.console_id, data, data_size);
     else
       result = rc_hash_generate_from_file(hash, game->public_.console_id, file_path);
-
-    g_hash_client = NULL;
 
     if (!result) {
       /* when changing discs, if the disc is not supported by the system, allow it. this is

@@ -9,6 +9,9 @@
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
  #include "rc_client_external.h"
 #endif
+#ifdef RC_CLIENT_SUPPORTS_HASH
+ #include "rhash/rc_hash_internal.h"
+#endif
 
 #include "rc_compat.h"
 #include "rc_runtime.h"
@@ -40,6 +43,10 @@ typedef struct rc_client_callbacks_t {
   rc_client_can_submit_achievement_unlock_t can_submit_achievement_unlock;
   rc_client_can_submit_leaderboard_entry_t can_submit_leaderboard_entry;
   rc_client_rich_presence_override_t rich_presence_override;
+
+#ifdef RC_CLIENT_SUPPORTS_HASH
+  rc_hash_callbacks_t hash;
+#endif
 
   void* client_data;
 } rc_client_callbacks_t;
