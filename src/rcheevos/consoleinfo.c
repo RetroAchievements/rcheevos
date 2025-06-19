@@ -759,6 +759,29 @@ static const rc_memory_region_t _rc_memory_regions_nintendo_dsi[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_nintendo_dsi = { _rc_memory_regions_nintendo_dsi, 2 };
 
+/* ===== Nintendo 3DS ===== */
+/* https://www.3dbrew.org/wiki/Memory_layout#ARM11_User-land_memory_regions */
+static const rc_memory_region_t _rc_memory_regions_nintendo_3ds[] = {
+    { 0x00000000U, 0x000FFFFFU, 0x00000000U, RC_MEMORY_TYPE_UNUSED, "" },
+    { 0x00100000U, 0x03FFFFFFU, 0x00100000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Code Binary" }, /* Usual place where ExeFS .code is loaded */
+    { 0x04000000U, 0x07FFFFFFU, 0x04000000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "IPC Buffers" },
+    { 0x08000000U, 0x0FFFFFFFU, 0x08000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Regular Heap and Stack" },
+    { 0x10000000U, 0x13FFFFFFU, 0x10000000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Shared Memory" },
+    { 0x14000000U, 0x1BFFFFFFU, 0x14000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Linear Heap" }, /* Sometimes ExeFS .code is actually loaded here */
+    { 0x1C000000U, 0x1E7FFFFFU, 0x1C000000U, RC_MEMORY_TYPE_UNUSED, "" },
+    { 0x1E800000U, 0x1EBFFFFFU, 0x1E800000U, RC_MEMORY_TYPE_SYSTEM_RAM, "New 3DS Memory" },
+    { 0x1EC00000U, 0x1EFFFFFFU, 0x1EC00000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "I/O Registers" },
+    { 0x1F000000U, 0x1F5FFFFFU, 0x1F000000U, RC_MEMORY_TYPE_VIDEO_RAM, "VRAM" },
+    { 0x1F600000U, 0x1FEFFFFFU, 0x1F600000U, RC_MEMORY_TYPE_UNUSED, "" },
+    { 0x1FF00000U, 0x1FF7FFFFU, 0x1FF00000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "DSP Memory" },
+    { 0x1FF80000U, 0x1FF81FFFU, 0x1FF80000U, RC_MEMORY_TYPE_READONLY, "Configuration Memory" },
+    { 0x1FF82000U, 0x1FFFFFFFU, 0x1FF82000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Thread Local Storage" }, /* Most of this is actually unused in practice */
+    { 0x20000000U, 0x2FFFFFFFU, 0x20000000U, RC_MEMORY_TYPE_UNUSED, "" },
+    { 0x30000000U, 0x37FFFFFFU, 0x30000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "New Linear Heap" }, /* Newer games use this as the linear heap base instead */
+    { 0x38000000U, 0x3FFFFFFFU, 0x38000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "New Linear Heap (New 3DS Exclusive)" } /* New 3DS exclusive space for the newer linear heap */
+};
+static const rc_memory_regions_t rc_memory_regions_nintendo_3ds = { _rc_memory_regions_nintendo_3ds, 17 };
+
 /* ===== Oric ===== */
 static const rc_memory_region_t _rc_memory_regions_oric[] = {
     /* actual size depends on machine type - up to 64KB */
@@ -1132,6 +1155,9 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
 
     case RC_CONSOLE_NINTENDO_DSI:
       return &rc_memory_regions_nintendo_dsi;
+
+    case RC_CONSOLE_NINTENDO_3DS:
+      return &rc_memory_regions_nintendo_3ds;
 
     case RC_CONSOLE_ORIC:
       return &rc_memory_regions_oric;
