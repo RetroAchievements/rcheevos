@@ -384,12 +384,18 @@ void test_redundant_conditions() {
   TEST_PARAMS2(test_validate_trigger, "0xH0000<5_0xH0000<3", "Condition 1: Redundant with Condition 2");
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1S0xH0000=1", "Alt1 Condition 1: Redundant with Core Condition 1");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1_0xH0000!=1", "Condition 2: Redundant with Condition 1");
-  TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=1_0xH0000!=0", "Condition 2: Redundant with Condition 1"); /* condition 1 effectively 0xH0000=1 */
-  TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1_0xH0000=2", "");
-  TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1_T:0xH0000=2", "");
-  TEST_PARAMS2(test_validate_trigger, "0xH0000=1_R:0xH0000!=1", "Condition 1: Redundant with Condition 2");
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=1_0xH0000!=0", "Condition 2: Redundant with Condition 1"); /* condition 1 effectively 0xH0000=1, which is more restrictive */
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1_0xH0000=0", "Condition 1: Redundant with Condition 2"); /* condition 1 effectively 0xH0000!=1, which is less restrictive, so irrelevant without a hit target to clear */
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1_0xH0000=0_0xH0000=5.1.", ""); /* less restrictive reset still acceptible if there's a hit target to clear */
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1_0xH0000=2", "Condition 1: Redundant with Condition 2");
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1_T:0xH0000=2", "Condition 1: Redundant with Condition 2");
+  TEST_PARAMS2(test_validate_trigger, "0x 0000>=300_R:0x 0000<2", "Condition 1: Redundant with Condition 2"); /* condition 2 effective 0x 0000>=2, which is less restrictive */
+  TEST_PARAMS2(test_validate_trigger, "0x 0001=50.1._0x 0000>=300_R:0x 0000<2", ""); /* ResetIf not redundant if hit target available */
+  TEST_PARAMS2(test_validate_trigger, "0x 0001=50.1._R:0x 0000>=300_R:0x 0000<2", "");
+  TEST_PARAMS2(test_validate_trigger, "0x 0001=50.1._R:0x 0000<300_R:0x 0000<2", "Condition 2: Redundant with Condition 3");
+  TEST_PARAMS2(test_validate_trigger, "0xH0000=1_R:0xH0000!=1", "Condition 2: Redundant with Condition 1");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000=1S0xH0000!=1", "Alt1 Condition 1: Redundant with Core Condition 1");
-  TEST_PARAMS2(test_validate_trigger, "0xH0000=1SR:0xH0000!=1", "Core Condition 1: Redundant with Alt1 Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "0xH0000=1SR:0xH0000!=1", "Alt1 Condition 1: Redundant with Core Condition 1");
   TEST_PARAMS2(test_validate_trigger, "P:0xH0000=1SP:0xH0000=1", ""); /* same pauseif can appear in different groups */
   TEST_PARAMS2(test_validate_trigger, "0xH0000=4.1._0xH0000=5_P:0xH0000<4", "");
   TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=5_Q:0xH0000!=255", "Condition 2: Redundant with Condition 1");
