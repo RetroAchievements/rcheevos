@@ -747,6 +747,8 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_disallowed_setting, "FCEUmm", "fceumm_region", "pal"); /* case insensitive */
   TEST_PARAMS3(test_disallowed_setting, "FCEUmm", "fceumm_region", "Dendy");
   TEST_PARAMS3(test_allowed_setting,    "FCEUmm", "fceumm_palette", "default"); /* setting we don't care about */
+  TEST_PARAMS3(test_allowed_setting,    "FCEUmm", "fceumm_game_genie", "disabled");
+  TEST_PARAMS3(test_disallowed_setting, "FCEUmm", "fceumm_game_genie", "enabled");
 
   TEST_PARAMS3(test_allowed_setting,    "Flycast", "reicast_sh4clock", "500");
   TEST_PARAMS3(test_allowed_setting,    "Flycast", "reicast_sh4clock", "200");
