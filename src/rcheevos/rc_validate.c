@@ -955,10 +955,10 @@ static int rc_validate_trigger_internal(const rc_trigger_t* trigger, char result
 {
   const rc_condset_t* alt;
   int index;
-  int has_hits = (trigger->requirement->num_hittarget_conditions > 0);
+  int has_hits = (trigger->requirement && trigger->requirement->num_hittarget_conditions > 0);
   if (!has_hits) {
     for (alt = trigger->alternative; alt; alt = alt->next) {
-      if (trigger->requirement->num_hittarget_conditions) {
+      if (alt->num_hittarget_conditions > 0) {
         has_hits = 1;
         break;
       }

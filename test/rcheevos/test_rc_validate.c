@@ -453,6 +453,7 @@ void test_rc_validate(void) {
   /* positive baseline test cases */
   TEST_PARAMS2(test_validate_trigger, "", "");
   TEST_PARAMS2(test_validate_trigger, "0xH1234=1_0xH2345=2S0xH3456=1S0xH3456=2", "");
+  TEST_PARAMS2(test_validate_trigger, "S0xH3456=1S0xH3456=2", ""); /* empty core */
 
   test_combining_conditions_at_end_of_definition();
   test_addhits_chain_without_target();
