@@ -2810,6 +2810,65 @@ static void test_addsource_unfinished() {
   ASSERT_NUM_EQUALS(condset->num_indirect_conditions, 1);
 }
 
+static void test_addsource_float_division()
+{
+  uint8_t ram[] = { 0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0x80, 0x40 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(0) / remember(float(4)) > 0.5 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:0xH0000/f4.0_f0.0>f1.4");
+
+  /* 0 / 4.0 > 1.4 = false (0.00) */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 6 / 4.0 > 1.4 = true (1.50) */
+  ram[0] = 6;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 5 / 4.0 > 1.4 = false (1.25) */
+  ram[0] = 5;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 7 / 4.0 > 1.4 = true (1.75) */
+  ram[0] = 7;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
+static void test_addsource_recall_float_division() {
+  uint8_t ram[] = {0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0x80, 0x40}; /* fF0004 = 4.0 */
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(0) / remember(float(4)) > 0.5 */
+  assert_parse_condset(&condset, &memrefs, buffer, "K:fF0004_A:0xH0000/{recall}_f0.0>f1.4");
+
+  /* 0 / 4.0 > 1.4 = false (0.00) */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 6 / 4.0 > 1.4 = true (1.50) */
+  ram[0] = 6;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+
+  /* 5 / 4.0 > 1.4 = false (1.25) */
+  ram[0] = 5;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* 7 / 4.0 > 1.4 = true (1.75) */
+  ram[0] = 7;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_addhits() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -4942,6 +5001,8 @@ void test_condset(void) {
   TEST(test_subsource_mem_delta);
   TEST(test_subsource_mem_prior);
   TEST(test_addsource_unfinished);
+  TEST(test_addsource_float_division);
+  TEST(test_addsource_recall_float_division);
 
   /* addhits/subhits */
   TEST(test_addhits);
