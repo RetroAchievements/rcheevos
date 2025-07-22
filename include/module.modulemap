@@ -62,10 +62,4 @@ module rcheevos {
     
     export *
     module * { export * }
-    
-    //rurl is deprecated
-    explicit module rc_url {
-        header "rc_url.h"
-        export *
-    }
 }

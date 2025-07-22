@@ -22,11 +22,12 @@ let package = Package(
             name: "rcheevos",
             dependencies: [],
             path: ".",
-            exclude: ["src/rcheevos/rc_libretro.c"],
-            sources: ["include", "src/rcheevos", "src/rapi", "src/rhash"],
+			exclude: ["src/rc_libretro.c", "src/rc_client_external.c"],
+			sources: ["include", "src", "src/rcheevos", "src/rapi", "src/rhash"],
             publicHeadersPath: "include",
             cSettings: [
-                .define("RC_DISABLE_LUA")
+                .define("RC_DISABLE_LUA"),
+				.define("RC_CLIENT_SUPPORTS_HASH")
             ]),
     ]
 )
