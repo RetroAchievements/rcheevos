@@ -286,9 +286,9 @@ void test_nonsized_pointers() {
   TEST_PARAMS2(test_validate_trigger, "I:0xH1234*f1.5_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
   TEST_PARAMS2(test_validate_trigger, "I:b0xH1234_0xH0000=1", "Condition 1: Using transformed value in AddAddress calcuation");
   TEST_PARAMS2(test_validate_trigger, "I:~0xH1234_0xH0000=1", "Condition 1: Using transformed value in AddAddress calcuation");
-  TEST_PARAMS2(test_validate_trigger, "I:~0xH1234*1_0xH0000=1", ""); // don't report scaled values - assume indexed array
-  TEST_PARAMS2(test_validate_trigger, "I:~0xM1234*4096_0xH0000=1", ""); // don't report scaled values - assume indexed array
-  TEST_PARAMS2(test_validate_trigger, "I:b0x 1234*8_0xH0000=1", ""); // don't report scaled values - assume indexed array
+  TEST_PARAMS2(test_validate_trigger, "I:~0xH1234*1_0xH0000=1", ""); /* don't report scaled values - assume indexed array */
+  TEST_PARAMS2(test_validate_trigger, "I:~0xM1234*4096_0xH0000=1", ""); /* don't report scaled values - assume indexed array */
+  TEST_PARAMS2(test_validate_trigger, "I:b0x 1234*8_0xH0000=1", ""); /* don't report scaled values - assume indexed array */
 }
 
 void test_float_comparisons() {
