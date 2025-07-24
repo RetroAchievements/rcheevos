@@ -351,11 +351,11 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, char result
           snprintf(result, result_size, "Condition %d: Using pointer from previous frame", index);
           return 0;
         }
-        if (rc_operand_is_float(&cond->operand1) || rc_operand_is_float(&cond->operand2)) {
+        if (rc_operand_is_float(operand1) || rc_operand_is_float(&cond->operand2)) {
           snprintf(result, result_size, "Condition %d: Using non-integer value in AddAddress calcuation", index);
           return 0;
         }
-        if (rc_operand_type_is_transform(cond->operand1.type)) {
+        if (rc_operand_type_is_transform(operand1->type) && cond->oper != RC_OPERATOR_MULT) {
           snprintf(result, result_size, "Condition %d: Using transformed value in AddAddress calcuation", index);
           return 0;
         }
