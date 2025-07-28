@@ -35,6 +35,11 @@ module rcheevos {
         export *
     }
     
+    explicit module rc_client_raintegration {
+        header "rc_client_raintegration.h"
+        export *
+    }
+    
     module rc_consoles {
         header "rc_consoles.h"
         export *
@@ -62,10 +67,4 @@ module rcheevos {
     
     export *
     module * { export * }
-    
-    //rurl is deprecated
-    explicit module rc_url {
-        header "rc_url.h"
-        export *
-    }
 }
