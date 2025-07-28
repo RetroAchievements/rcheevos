@@ -174,8 +174,8 @@ static uint32_t rc_scale_value(uint32_t value, uint8_t oper, const rc_operand_t*
 
     case RC_OPERATOR_SUB:
     {
-      const uint32_t op_max = (operand->type == RC_OPERAND_CONST) ? operand->value.num : rc_max_value(operand);
-      if (value > op_max)
+      const uint32_t op_max = (operand->type == RC_OPERAND_CONST) ? operand->value.num : 0;
+      if (value >= op_max)
         return value - op_max;
 
       return 0xFFFFFFFF;
