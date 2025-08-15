@@ -317,6 +317,9 @@
     <ClInclude Include="..\src\rhash\rc_hash_internal.h">
       <Filter>src\rhash</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\rc_export.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\src\rcheevos\rc_runtime_types.natvis">
