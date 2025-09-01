@@ -203,6 +203,7 @@
     <ClInclude Include="..\include\rc_api_user.h" />
     <ClInclude Include="..\include\rc_client_raintegration.h" />
     <ClInclude Include="..\include\rc_consoles.h" />
+    <ClInclude Include="..\include\rc_export.h" />
     <ClInclude Include="..\include\rc_hash.h" />
     <ClInclude Include="..\include\rc_runtime.h" />
     <ClInclude Include="..\include\rc_client.h" />
