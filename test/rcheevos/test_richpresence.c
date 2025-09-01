@@ -540,6 +540,28 @@ static void test_macro_value_invalid() {
   ASSERT_NUM_EQUALS(rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x0x0001) Points"), RC_INVALID_MEMORY_OPERAND);
 }
 
+static void test_macro_value_measured_if() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(Q:0xH000=0_M:0x 0001) Points");
+  assert_richpresence_output(richpresence, &memory, "13,330 Points");
+
+  ram[0] = 1;
+  assert_richpresence_output(richpresence, &memory, "0 Points");
+
+  ram[1] = 20;
+  assert_richpresence_output(richpresence, &memory, "0 Points");
+
+  ram[0] = 0;
+  assert_richpresence_output(richpresence, &memory, "13,332 Points");
+}
+
 static void test_macro_hundreds() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -1391,6 +1413,7 @@ void test_richpresence(void) {
   TEST(test_macro_value_divide_by_self);
   TEST(test_macro_value_remember_recall);
   TEST(test_macro_value_invalid);
+  TEST(test_macro_value_measured_if);
 
   /* hundreds macro */
   TEST(test_macro_hundreds);
