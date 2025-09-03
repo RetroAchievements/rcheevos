@@ -1236,6 +1236,9 @@ static void test_get_user_game_summary(void)
   ASSERT_NUM_EQUALS(summary.points_core, 35);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 5);
 
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
+
   rc_client_destroy(g_client);
 }
 
@@ -1256,6 +1259,9 @@ static void test_get_user_game_summary_softcore(void)
 
   ASSERT_NUM_EQUALS(summary.points_core, 35);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 15);
+
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
 
   rc_client_destroy(g_client);
 }
@@ -1282,6 +1288,9 @@ static void test_get_user_game_summary_encore_mode(void)
   ASSERT_NUM_EQUALS(summary.points_core, 35);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 5);
 
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
+
   rc_client_destroy(g_client);
 }
 
@@ -1301,6 +1310,9 @@ static void test_get_user_game_summary_with_unsupported_and_unofficial(void)
 
   ASSERT_NUM_EQUALS(summary.points_core, 7);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
+
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
 
   rc_client_destroy(g_client);
 }
@@ -1323,6 +1335,9 @@ static void test_get_user_game_summary_with_unsupported_unlocks(void)
   ASSERT_NUM_EQUALS(summary.points_core, 7);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 7);
 
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 1234567999);
+
   rc_client_destroy(g_client);
 }
 
@@ -1344,6 +1359,9 @@ static void test_get_user_game_summary_with_unofficial_off(void)
   ASSERT_NUM_EQUALS(summary.points_core, 7);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
 
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
+
   rc_client_destroy(g_client);
 }
 
@@ -1363,6 +1381,9 @@ static void test_get_user_game_summary_no_achievements(void)
 
   ASSERT_NUM_EQUALS(summary.points_core, 0);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
+
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
 
   rc_client_destroy(g_client);
 }
@@ -1393,6 +1414,148 @@ static void test_get_user_game_summary_unknown_game(void)
 
   ASSERT_NUM_EQUALS(summary.points_core, 0);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_progress_incomplete(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_unofficial_enabled(g_client, 1);
+  mock_client_load_game(patchdata_exhaustive_typed, unlock_8);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 7);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 1);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 35);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 5);
+
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_progress_progression_no_win(void)
+{
+  rc_client_user_game_summary_t summary;
+  /* 6 and 8 are progression, 9 is win condition */
+  const char* unlock_5_6_and_8 = "{\"Success\":true,\"HardcoreUnlocks\":["
+      "{\"ID\":5,\"When\":1234568890},"
+      "{\"ID\":6,\"When\":1234567999},"
+      "{\"ID\":8,\"When\":1234567895}"
+    "]}";
+
+  g_client = mock_client_logged_in();
+  rc_client_set_unofficial_enabled(g_client, 1);
+  mock_client_load_game(patchdata_exhaustive_typed, unlock_5_6_and_8);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 7);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 3);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 35);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 15);
+
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_progress_win_only(void)
+{
+  rc_client_user_game_summary_t summary;
+  /* 6 and 8 are progression, 9 is win condition */
+  const char* unlock_5_and_9 = "{\"Success\":true,\"HardcoreUnlocks\":["
+      "{\"ID\":5,\"When\":1234568890},"
+      "{\"ID\":9,\"When\":1234567999}"
+    "]}";
+
+  g_client = mock_client_logged_in();
+  rc_client_set_unofficial_enabled(g_client, 1);
+  mock_client_load_game(patchdata_exhaustive_typed, unlock_5_and_9);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 7);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 2);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 35);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 10);
+
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_beat(void)
+{
+  rc_client_user_game_summary_t summary;
+  /* 6 and 8 are progression, 9 is win condition */
+  const char* unlocks = "{\"Success\":true,\"HardcoreUnlocks\":["
+      "{\"ID\":5,\"When\":1234568890},"
+      "{\"ID\":6,\"When\":1234567999},"
+      "{\"ID\":8,\"When\":1234567890},"
+      "{\"ID\":9,\"When\":1234568765}"
+    "]}";
+
+  g_client = mock_client_logged_in();
+  rc_client_set_unofficial_enabled(g_client, 1);
+  mock_client_load_game(patchdata_exhaustive_typed, unlocks);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 7);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 4);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 35);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 20);
+
+  ASSERT_NUM_EQUALS(summary.beaten_time, 1234568765);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_mastery(void)
+{
+  rc_client_user_game_summary_t summary;
+  const char* unlocks = "{\"Success\":true,\"HardcoreUnlocks\":["
+    "{\"ID\":5,\"When\":1234568890},"
+    "{\"ID\":6,\"When\":1234567999},"
+    "{\"ID\":7,\"When\":1234569123},"
+    "{\"ID\":8,\"When\":1234567890},"
+    "{\"ID\":9,\"When\":1234568765},"
+    "{\"ID\":70,\"When\":1234568901},"
+    "{\"ID\":71,\"When\":1234566789}"
+    "]}";
+
+  g_client = mock_client_logged_in();
+  rc_client_set_unofficial_enabled(g_client, 1);
+  mock_client_load_game(patchdata_exhaustive_typed, unlocks);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 7);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 7);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 35);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 35);
+
+  ASSERT_NUM_EQUALS(summary.beaten_time, 1234568765);
+  ASSERT_NUM_EQUALS(summary.completed_time, 1234569123);
 
   rc_client_destroy(g_client);
 }
@@ -9703,6 +9866,11 @@ void test_client(void) {
   TEST(test_get_user_game_summary_with_unofficial_off);
   TEST(test_get_user_game_summary_no_achievements);
   TEST(test_get_user_game_summary_unknown_game);
+  TEST(test_get_user_game_summary_progress_incomplete);
+  TEST(test_get_user_game_summary_progress_progression_no_win);
+  TEST(test_get_user_game_summary_progress_win_only);
+  TEST(test_get_user_game_summary_beat);
+  TEST(test_get_user_game_summary_mastery);
 
   /* load game */
   TEST(test_load_game_required_fields);
