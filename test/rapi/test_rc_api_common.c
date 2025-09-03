@@ -114,6 +114,40 @@ static void test_json_parse_response_non_json_bounded() {
   ASSERT_NUM_EQUALS(response.succeeded, 0);
 }
 
+static void test_json_parse_response_451() {
+  int result;
+  rc_api_server_response_t server_response;
+  rc_api_response_t response;
+  const char* error_message = "<html>"
+    "<head><title>Unavailable For Legal Reasons</title></head>"
+    "<body>"
+    "<h1>Unavailable For Legal Reasons</h1>"
+    "<p>This request may not be serviced in the Roman Province"
+    "of Judea due to the Lex Julia Majestatis, which disallows"
+    "access to resources hosted on servers deemed to be"
+    "operated by the People's Front of Judea.</p>"
+    "</body>"
+    "</html>";
+  rc_json_field_t fields[] = {
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Test")
+  };
+  rc_buffer_init(&response.buffer);
+
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = error_message;
+  server_response.body_length = strlen(error_message);
+  server_response.http_status_code = 451;
+
+  result = rc_json_parse_server_response(&response, &server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  ASSERT_NUM_EQUALS(result, RC_INVALID_JSON);
+
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "Unavailable For Legal Reasons");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
 static void test_json_parse_response_error_from_server() {
   int result;
   rc_api_server_response_t server_response;
@@ -794,6 +828,7 @@ void test_rapi_common(void) {
   TEST_PARAMS2(test_json_parse_response_field, "{ \"Test\" : 1, \"Other\" : 2 }", "1"); /* trailing field */
   TEST(test_json_parse_response_non_json);
   TEST(test_json_parse_response_non_json_bounded);
+  TEST(test_json_parse_response_451);
   TEST(test_json_parse_response_error_from_server);
   TEST(test_json_parse_response_incorrect_size);
 
