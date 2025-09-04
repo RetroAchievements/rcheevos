@@ -845,6 +845,28 @@ static void test_get_game_info_v1_no_game_loaded(void)
   rc_client_destroy(g_client);
 }
 
+static void test_v1_user_game_summary_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v1_rc_client_user_game_summary_t, num_core_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v1_rc_client_user_game_summary_t, num_unofficial_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v1_rc_client_user_game_summary_t, num_unlocked_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v1_rc_client_user_game_summary_t, num_unsupported_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v1_rc_client_user_game_summary_t, points_core);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v1_rc_client_user_game_summary_t, points_unlocked);
+}
+
+static void test_v5_user_game_summary_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v5_rc_client_user_game_summary_t, num_core_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v5_rc_client_user_game_summary_t, num_unofficial_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v5_rc_client_user_game_summary_t, num_unlocked_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v5_rc_client_user_game_summary_t, num_unsupported_achievements);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v5_rc_client_user_game_summary_t, points_core);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v5_rc_client_user_game_summary_t, points_unlocked);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v5_rc_client_user_game_summary_t, beaten_time);
+  ASSERT_FIELD_OFFSET(rc_client_user_game_summary_t, v5_rc_client_user_game_summary_t, completed_time);
+}
+
 static void rc_client_external_get_user_game_summary(rc_client_user_game_summary_t* summary)
 {
   summary->num_core_achievements = 20;
@@ -853,6 +875,18 @@ static void rc_client_external_get_user_game_summary(rc_client_user_game_summary
   summary->num_unsupported_achievements = 1;
   summary->points_core = 100;
   summary->points_unlocked = 23;
+}
+
+static void rc_client_external_get_user_game_summary_v5(rc_client_user_game_summary_t* summary)
+{
+  summary->num_core_achievements = 20;
+  summary->num_unlocked_achievements = 6;
+  summary->num_unofficial_achievements = 3;
+  summary->num_unsupported_achievements = 1;
+  summary->points_core = 100;
+  summary->points_unlocked = 23;
+  summary->beaten_time = 1234567890;
+  summary->completed_time = 1234598760;
 }
 
 static void test_get_user_game_summary(void)
@@ -870,6 +904,75 @@ static void test_get_user_game_summary(void)
   ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 1);
   ASSERT_NUM_EQUALS(summary.points_core, 100);
   ASSERT_NUM_EQUALS(summary.points_unlocked, 23);
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void rc_client_external_get_user_subset_summary(uint32_t subset_id, rc_client_user_game_summary_t* summary)
+{
+  if (subset_id == 6) {
+    summary->num_core_achievements = 20;
+    summary->num_unlocked_achievements = 6;
+    summary->num_unofficial_achievements = 3;
+    summary->num_unsupported_achievements = 1;
+    summary->points_core = 100;
+    summary->points_unlocked = 23;
+    summary->beaten_time = 1234567890;
+    summary->completed_time = 1234598760;
+  }
+}
+
+static void test_get_user_subset_summary(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_user_subset_summary = rc_client_external_get_user_subset_summary;
+
+  rc_client_get_user_subset_summary(g_client, 1, &summary);
+
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.points_core, 0);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
+
+  rc_client_get_user_subset_summary(g_client, 6, &summary);
+
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 20);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 6);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 3);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 1);
+  ASSERT_NUM_EQUALS(summary.points_core, 100);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 23);
+  ASSERT_NUM_EQUALS(summary.beaten_time, 1234567890);
+  ASSERT_NUM_EQUALS(summary.completed_time, 1234598760);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_user_game_summary_v5(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_user_game_summary_v5 = rc_client_external_get_user_game_summary_v5;
+
+  rc_client_get_user_game_summary(g_client, &summary);
+
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 20);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 6);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 3);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 1);
+  ASSERT_NUM_EQUALS(summary.points_core, 100);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 23);
+  ASSERT_NUM_EQUALS(summary.beaten_time, 1234567890);
+  ASSERT_NUM_EQUALS(summary.completed_time, 1234598760);
 
   rc_client_destroy(g_client);
 }
@@ -1842,7 +1945,10 @@ void test_client_external(void) {
   TEST(test_load_game_v1);
   TEST(test_load_game);
   TEST(test_get_game_info_v1_no_game_loaded);
+  TEST(test_v1_user_game_summary_field_offsets);
+  TEST(test_v5_user_game_summary_field_offsets);
   TEST(test_get_user_game_summary);
+  TEST(test_get_user_subset_summary);
 #ifdef RC_CLIENT_SUPPORTS_HASH
   TEST(test_identify_and_load_game_external_hash);
   TEST(test_identify_and_reload_game_external_hash);
