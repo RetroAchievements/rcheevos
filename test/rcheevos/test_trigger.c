@@ -2227,6 +2227,116 @@ static void test_remember_recall_in_addaddress()
 
 /* ======================================================== */
 
+static void test_trailing_andnext() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /*             byte(0x0002)=1
+   * AndNext     byte(0x0001)=1   -- ignored as compound condition is incomplete
+   */
+  assert_parse_trigger(&trigger, buffer, "0xH0002=1_N:0xH0001=1");
+  ASSERT_PTR_NOT_NULL(trigger->requirement->conditions);
+  ASSERT_PTR_NOT_NULL(trigger->requirement->conditions->next);
+  ASSERT_PTR_NULL(trigger->requirement->conditions->next->next);
+
+  /* both conditions false */
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* second condition true */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* second condition not true */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* second condition true */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* first condition true */
+  ram[2] = 1;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* first condition not true */
+  ram[2] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* second condition not true */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* first condition true */
+  ram[2] = 1;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* first condition not true */
+  ram[2] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+}
+
+static void test_trailing_andnext_with_alt() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /*             byte(0x0002)=1
+   * AndNext     byte(0x0001)=1   -- ignored as compound condition is incomplete
+   */
+  assert_parse_trigger(&trigger, buffer, "0xH0002=1_N:0xH0001=1SR:0xH0003=1");
+  ASSERT_PTR_NOT_NULL(trigger->requirement->conditions);
+  ASSERT_PTR_NOT_NULL(trigger->requirement->conditions->next);
+  ASSERT_PTR_NULL(trigger->requirement->conditions->next->next);
+  ASSERT_PTR_NOT_NULL(trigger->alternative->conditions);
+  ASSERT_PTR_NULL(trigger->alternative->conditions->next);
+
+  /* both conditions false */
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* second condition true */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* second condition not true */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* second condition true */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* first condition true */
+  ram[2] = 1;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* first condition not true */
+  ram[2] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* second condition not true */
+  ram[1] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* first condition true */
+  ram[2] = 1;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* first condition not true */
+  ram[2] = 2;
+  assert_evaluate_trigger(trigger, &memory, 0);
+}
+
+/* ======================================================== */
+
 void test_trigger(void) {
   TEST_SUITE_BEGIN();
 
@@ -2297,6 +2407,10 @@ void test_trigger(void) {
   TEST(test_remember_recall_in_pause_and_main);
   TEST(test_remember_recall_in_pause_with_chain);
   TEST(test_remember_recall_in_addaddress);
+
+  /* incomplete logic */
+  TEST(test_trailing_andnext);
+  TEST(test_trailing_andnext_with_alt);
 
   TEST_SUITE_END();
 }
