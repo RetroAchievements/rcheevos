@@ -582,7 +582,7 @@ enum {
 RC_EXPORT rc_client_leaderboard_list_t* RC_CCONV rc_client_create_leaderboard_list(rc_client_t* client, int grouping);
 
 /**
- * Destroys a list allocated by rc_client_get_leaderboard_list.
+ * Destroys a list allocated by rc_client_create_leaderboard_list.
  */
 RC_EXPORT void RC_CCONV rc_client_destroy_leaderboard_list(rc_client_leaderboard_list_t* list);
 
