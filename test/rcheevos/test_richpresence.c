@@ -577,7 +577,7 @@ static void test_multiple_macros() {
   ram[2] = 0x05;
   assert_richpresence_output(richpresence, &memory, "1,298 Points | 262 Items");
 
-  // both should map to memrefs, so no helper values will be created
+  /* both should map to memrefs, so no helper values will be created */
   ASSERT_PTR_NULL(richpresence->values);
 }
 
