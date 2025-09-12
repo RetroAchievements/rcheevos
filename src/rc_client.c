@@ -3183,7 +3183,8 @@ static rc_client_async_handle_t* rc_client_begin_change_media_internal(rc_client
   rc_api_request_t request;
   int result;
 
-  if (game_hash->game_id != RC_CLIENT_UNKNOWN_GAME_ID) {
+  if (game_hash->game_id != RC_CLIENT_UNKNOWN_GAME_ID || /* previously looked up */
+      game_hash->hash[0] == '[') { /* internal use - don't try to look up */
     rc_client_change_media_internal(client, game_hash, callback, callback_userdata);
     return NULL;
   }
