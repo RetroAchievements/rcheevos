@@ -583,6 +583,109 @@ static void test_init_update_leaderboard_response_invalid_perms()
   rc_api_destroy_update_leaderboard_response(&update_leaderboard_response);
 }
 
+static void test_init_update_rich_presence_request()
+{
+  rc_api_update_rich_presence_request_t update_rich_presence_request;
+  rc_api_request_t request;
+
+  memset(&update_rich_presence_request, 0, sizeof(update_rich_presence_request));
+  update_rich_presence_request.username = "Dev";
+  update_rich_presence_request.api_token = "API_TOKEN";
+  update_rich_presence_request.game_id = 1234;
+  update_rich_presence_request.script = "Display:\nThis is a test.";
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_rich_presence_request(&request, &update_rich_presence_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=submitrichpresence&u=Dev&t=API_TOKEN&g=1234&d=Display%3a%0aThis+is+a+test.");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_rich_presence_request_no_game_id()
+{
+  rc_api_update_rich_presence_request_t update_rich_presence_request;
+  rc_api_request_t request;
+
+  memset(&update_rich_presence_request, 0, sizeof(update_rich_presence_request));
+  update_rich_presence_request.username = "Dev";
+  update_rich_presence_request.api_token = "API_TOKEN";
+  update_rich_presence_request.script = "Display:\nThis is a test.";
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_rich_presence_request(&request, &update_rich_presence_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_rich_presence_request_no_script()
+{
+  rc_api_update_rich_presence_request_t update_rich_presence_request;
+  rc_api_request_t request;
+
+  memset(&update_rich_presence_request, 0, sizeof(update_rich_presence_request));
+  update_rich_presence_request.username = "Dev";
+  update_rich_presence_request.api_token = "API_TOKEN";
+  update_rich_presence_request.game_id = 1234;
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_rich_presence_request(&request, &update_rich_presence_request), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_rich_presence_response()
+{
+  rc_api_server_response_t response_obj;
+  rc_api_update_rich_presence_response_t update_rich_presence_response;
+  const char* server_response = "{\"Success\":true}";
+  memset(&update_rich_presence_response, 0, sizeof(update_rich_presence_response));
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = strlen(server_response);
+
+  ASSERT_NUM_EQUALS(rc_api_process_update_rich_presence_server_response(&update_rich_presence_response, &response_obj), RC_OK);
+  ASSERT_NUM_EQUALS(update_rich_presence_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(update_rich_presence_response.response.error_message);
+
+  rc_api_destroy_update_rich_presence_response(&update_rich_presence_response);
+}
+
+static void test_init_update_rich_presence_response_invalid_credentials()
+{
+  rc_api_server_response_t response_obj;
+  rc_api_update_rich_presence_response_t update_rich_presence_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Invalid user/token combination.\",\"Code\":\"invalid_credentials\",\"Status\":401}";
+  memset(&update_rich_presence_response, 0, sizeof(update_rich_presence_response));
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = strlen(server_response);
+
+  ASSERT_NUM_EQUALS(rc_api_process_update_rich_presence_server_response(&update_rich_presence_response, &response_obj), RC_INVALID_CREDENTIALS);
+  ASSERT_NUM_EQUALS(update_rich_presence_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(update_rich_presence_response.response.error_message, "Invalid user/token combination.");
+
+  rc_api_destroy_update_rich_presence_response(&update_rich_presence_response);
+}
+
+static void test_init_update_rich_presence_response_invalid_perms()
+{
+  rc_api_server_response_t response_obj;
+  rc_api_update_rich_presence_response_t update_rich_presence_response;
+  const char* server_response = "{\"Success\":false,\"Error\":\"Access denied.\",\"Code\":\"access_denied\",\"Status\":400}";
+  memset(&update_rich_presence_response, 0, sizeof(update_rich_presence_response));
+
+  memset(&response_obj, 0, sizeof(response_obj));
+  response_obj.body = server_response;
+  response_obj.body_length = strlen(server_response);
+
+  ASSERT_NUM_EQUALS(rc_api_process_update_rich_presence_server_response(&update_rich_presence_response, &response_obj), RC_ACCESS_DENIED);
+  ASSERT_NUM_EQUALS(update_rich_presence_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(update_rich_presence_response.response.error_message, "Access denied.");
+
+  rc_api_destroy_update_rich_presence_response(&update_rich_presence_response);
+}
+
 static void test_init_fetch_badge_range_request()
 {
   rc_api_fetch_badge_range_request_t fetch_badge_range_request;
@@ -798,6 +901,15 @@ void test_rapi_editor(void) {
   TEST(test_init_update_leaderboard_response);
   TEST(test_init_update_leaderboard_response_invalid_credentials);
   TEST(test_init_update_leaderboard_response_invalid_perms);
+
+  /* update rich presence */
+  TEST(test_init_update_rich_presence_request);
+  TEST(test_init_update_rich_presence_request_no_game_id);
+  TEST(test_init_update_rich_presence_request_no_script);
+
+  TEST(test_init_update_rich_presence_response);
+  TEST(test_init_update_rich_presence_response_invalid_credentials);
+  TEST(test_init_update_rich_presence_response_invalid_perms);
 
   /* fetch badge range */
   TEST(test_init_fetch_badge_range_request);
