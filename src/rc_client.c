@@ -3183,7 +3183,8 @@ static rc_client_async_handle_t* rc_client_begin_change_media_internal(rc_client
   rc_api_request_t request;
   int result;
 
-  if (game_hash->game_id != RC_CLIENT_UNKNOWN_GAME_ID) {
+  if (game_hash->game_id != RC_CLIENT_UNKNOWN_GAME_ID || /* previously looked up */
+      game_hash->hash[0] == '[') { /* internal use - don't try to look up */
     rc_client_change_media_internal(client, game_hash, callback, callback_userdata);
     return NULL;
   }
@@ -4437,7 +4438,7 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
   };
 
   if (!client)
-    return (rc_client_leaderboard_list_t*)calloc(1, sizeof(rc_client_leaderboard_list_t));
+    return (rc_client_leaderboard_list_t*)calloc(1, list_size);
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->create_leaderboard_list)
@@ -4445,7 +4446,7 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
 #endif
 
   if (!client->game)
-    return (rc_client_leaderboard_list_t*)calloc(1, sizeof(rc_client_leaderboard_list_t));
+    return (rc_client_leaderboard_list_t*)calloc(1, list_size);
 
   memset(&bucket_counts, 0, sizeof(bucket_counts));
 

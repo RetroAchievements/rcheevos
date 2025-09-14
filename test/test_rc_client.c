@@ -3266,10 +3266,12 @@ static void test_change_media_unknown_game(void)
 
 static void test_change_media_unhashable(void)
 {
+  const char* original_hash = NULL;
   const size_t image_size = 32768;
   uint8_t* image = generate_generic_file(image_size);
 
   g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
+  original_hash = g_client->game->public_.hash;
 
   /* N64 hash will fail with Not a Nintendo 64 ROM */
   g_client->game->public_.console_id = RC_CONSOLE_NINTENDO_64;
@@ -3277,6 +3279,62 @@ static void test_change_media_unhashable(void)
   /* changing to a disc not supported by the system is allowed */
   rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
       rc_client_callback_expect_success, g_callback_userdata);
+
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+    rc_client_callback_expect_success, g_callback_userdata);
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "[NO HASH]");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+  }
+
+  /* switch back to the original media so we can detect a switch back to the unhashable media */
+  rc_client_begin_change_media(g_client, original_hash, rc_client_callback_expect_success, g_callback_userdata);
+
+  /* re-entrant call won't try to regenerate the hash */
+  rc_client_begin_identify_and_change_media(g_client, "foo.zip#foo.gb", image, image_size,
+      rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    ASSERT_PTR_EQUALS(rc_client_get_game_info(g_client), &g_client->game->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->public_.id, 1234);
+    ASSERT_STR_EQUALS(g_client->game->public_.title, "Sample Game");
+    ASSERT_STR_EQUALS(g_client->game->public_.hash, "[NO HASH]");
+    ASSERT_STR_EQUALS(g_client->game->public_.badge_name, "112233");
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_achievements, 2);
+    ASSERT_NUM_EQUALS(g_client->game->subsets->public_.num_leaderboards, 1);
+  }
+
+
+  /* resetting with a disc not from the current game will disable the client */
+  rc_client_reset(g_client);
+  ASSERT_PTR_NULL(g_client->state.load);
+  ASSERT_PTR_NULL(g_client->game);
+
+  rc_client_destroy(g_client);
+  free(image);
+}
+
+static void test_change_media_unhashable_without_generation(void)
+{
+  const size_t image_size = 32768;
+  uint8_t* image = generate_generic_file(image_size);
+
+  g_client = mock_client_game_loaded(patchdata_2ach_1lbd, no_unlocks);
+
+  /* changing to a disc not supported by the system is allowed */
+  rc_client_begin_change_media(g_client, "[NO HASH]",
+    rc_client_callback_expect_success, g_callback_userdata);
 
   ASSERT_PTR_NULL(g_client->state.load);
   ASSERT_PTR_NOT_NULL(g_client->game);
@@ -9934,6 +9992,7 @@ void test_client(void) {
   TEST(test_change_media_known_game);
   TEST(test_change_media_unknown_game);
   TEST(test_change_media_unhashable);
+  TEST(test_change_media_unhashable_without_generation);
   TEST(test_change_media_back_and_forth);
   TEST(test_change_media_while_loading);
   TEST(test_change_media_while_loading_later);
