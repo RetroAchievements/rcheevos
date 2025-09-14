@@ -100,7 +100,7 @@ int rc_api_process_fetch_code_notes_server_response(rc_api_fetch_code_notes_resp
 
       if (!rc_json_get_required_string(&address_str, &response->response, &note_fields[0], "Address"))
         return RC_MISSING_VALUE;
-      note->address = (unsigned)strtol(address_str, NULL, 16);
+      note->address = (uint32_t)strtoul(address_str, NULL, 16);
       if (!rc_json_get_required_string(&note->note, &response->response, &note_fields[2], "Note"))
         return RC_MISSING_VALUE;
 
