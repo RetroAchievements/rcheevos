@@ -330,6 +330,13 @@ void test_float_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "f255.1<=0xH1234", "Condition 1: Comparison is never true"); /* 255 cannot be >= 255.1 */
 }
 
+void test_dependent_conditions() {
+  TEST_PARAMS2(test_validate_trigger, "M:0xH1234=30_Q:0xH2345!=0", "");
+  TEST_PARAMS2(test_validate_trigger, "G:0xH1234=30_Q:0xH2345!=0", "");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=30_Q:0xH2345!=0", "Condition 2: MeasuredIf without Measured");
+  TEST_PARAMS2(test_validate_trigger, "M:0xH1234=30SQ:0xH2345!=0", "Alt1 Condition 1: MeasuredIf without Measured");
+}
+
 void test_conflicting_conditions() {
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1_0xH0000=2", "Condition 2: Conflicts with Condition 1");
   TEST_PARAMS2(test_validate_trigger, "0xH0000<5_0xH0000>5", "Condition 2: Conflicts with Condition 1");
@@ -356,9 +363,9 @@ void test_conflicting_conditions() {
   TEST_PARAMS2(test_validate_trigger, "P:0xH0000=1_R:0xH0000=1", "Condition 2: Conflicts with Condition 1");
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1SP:0xH0000=5", "");
   TEST_PARAMS2(test_validate_trigger, "M:0xH0000=5_Q:0xH0000=255", "Condition 2: Conflicts with Condition 1");
-  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1_Q:0xH0000=2", "Condition 2: Conflicts with Condition 1");
-  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1_0xH0000=2", "Condition 2: Conflicts with Condition 1");
-  TEST_PARAMS2(test_validate_trigger, "0xH0000=1_Q:0xH0000=2", "Condition 2: Conflicts with Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1_Q:0xH0000=2_M:0xH0001=1", "Condition 2: Conflicts with Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1_0xH0000=2_M:0xH0001=1", "Condition 2: Conflicts with Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "0xH0000=1_Q:0xH0000=2_M:0xH0001=1", "Condition 2: Conflicts with Condition 1");
   TEST_PARAMS2(test_validate_trigger, "A:0xX0004_0xH0000<5_A:0xX0004_0xH0000>5", "Condition 4: Conflicts with Condition 2");
 
   /* PauseIf prevents hits from incrementing. ResetIf clears all hits. If both exist and are conflicting, the group
@@ -404,24 +411,24 @@ void test_redundant_conditions() {
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1SR:0xH0000!=1", "Alt1 Condition 1: Redundant with Core Condition 1");
   TEST_PARAMS2(test_validate_trigger, "P:0xH0000=1SP:0xH0000=1", ""); /* same pauseif can appear in different groups */
   TEST_PARAMS2(test_validate_trigger, "0xH0000=4.1._0xH0000=5_P:0xH0000<4", "");
-  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=5_Q:0xH0000!=255", "Condition 2: Redundant with Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=5_Q:0xH0000!=255_M:0xH0001=1", "Condition 2: Redundant with Condition 1");
   TEST_PARAMS2(test_validate_trigger, "M:0xH0000=5_Q:0xH0000!=255", ""); /* measuredif not redundant measured */
-  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1_0xH0000=1", "Condition 2: Redundant with Condition 1");
-  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1_Q:0xH0000=1", "Condition 2: Redundant with Condition 1");
-  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0004_Q:0xH0000=1", "Condition 4: Redundant with Condition 2");
-  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0004_0xH0000=1", "Condition 4: Redundant with Condition 2");
-  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_0xH0000=1_A:0xX0004_Q:0xH0000=1", "Condition 2: Redundant with Condition 4");
-  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0005_Q:0xH0000=1", ""); /* different chains */
-  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0x 0004_Q:0xH0000=1", ""); /* different sizes */
-  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0004_Q:0xH0000=1", "Condition 4: Redundant with Condition 2");
-  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_A:0xX0008_Q:0xH0000=1_A:0xX0004_Q:0xH0000=1", ""); /* longer first chain */
-  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0004_A:0xX0008_Q:0xH0000=1", ""); /* longer second chain */
-  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1SQ:0xH0000=1", ""); /* same measuredif can appear in different groups */
+  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1_0xH0000=1_M:0xH0001=1", "Condition 2: Redundant with Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1_Q:0xH0000=1_M:0xH0001=1", "Condition 2: Redundant with Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0004_Q:0xH0000=1_M:0xH0001=1", "Condition 4: Redundant with Condition 2");
+  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0004_0xH0000=1_M:0xH0001=1", "Condition 4: Redundant with Condition 2");
+  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_0xH0000=1_A:0xX0004_Q:0xH0000=1_M:0xH0001=1", "Condition 2: Redundant with Condition 4");
+  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0005_Q:0xH0000=1_M:0xH0001=1", ""); /* different chains */
+  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0x 0004_Q:0xH0000=1_M:0xH0001=1", ""); /* different sizes */
+  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0004_Q:0xH0000=1_M:0xH0001=1", "Condition 4: Redundant with Condition 2");
+  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_A:0xX0008_Q:0xH0000=1_A:0xX0004_Q:0xH0000=1_M:0xH0001=1", ""); /* longer first chain */
+  TEST_PARAMS2(test_validate_trigger, "A:0xX0004_Q:0xH0000=1_A:0xX0004_A:0xX0008_Q:0xH0000=1_M:0xH0001=1", ""); /* longer second chain */
+  TEST_PARAMS2(test_validate_trigger, "Q:0xH0000=1_M:0xH0001=1SQ:0xH0000=1_M:0xH0002=1", ""); /* same measuredif can appear in different groups */
   TEST_PARAMS2(test_validate_trigger, "T:0xH0000!=0_T:0xH0000=6", "Condition 1: Redundant with Condition 2");
   TEST_PARAMS2(test_validate_trigger, "0xH0000!=0_T:0xH0000=6", ""); /* trigger more restrictive than non-trigger */
   TEST_PARAMS2(test_validate_trigger, "T:0xH0000!=0_0xH0000=6", "Condition 1: Redundant with Condition 2"); /* trigger less restrictive than non-trigger */
   TEST_PARAMS2(test_validate_trigger, "0xH0000=6_T:0xH0000=6", "Condition 2: Redundant with Condition 1"); /* trigger same as non-trigger */
-  TEST_PARAMS2(test_validate_trigger, "0xH0000=1_Q:0xH0000=1", "Condition 1: Redundant with Condition 2");
+  TEST_PARAMS2(test_validate_trigger, "0xH0000=1_Q:0xH0000=1_M:0xH0001=1", "Condition 1: Redundant with Condition 2");
   TEST_PARAMS2(test_validate_trigger, "0xH0000=1S0xH0000!=0S0xH0001=2", "Alt1 Condition 1: Redundant with Core Condition 1");
   TEST_PARAMS2(test_validate_trigger, "0xH0000!=0S0xH0000=1S0xH0001=2", ""); /* more restrictive alt 1 is not redundant with core */
   TEST_PARAMS2(test_validate_trigger, "0xH0000!=0S0xH0000!=0S0xH0001=2", "Alt1 Condition 1: Redundant with Core Condition 1");
@@ -469,6 +476,7 @@ void test_rc_validate(void) {
   test_delta_pointers();
   test_nonsized_pointers();
   test_float_comparisons();
+  test_dependent_conditions();
   test_conflicting_conditions();
   test_redundant_conditions();
   test_redundant_hitcounts();
