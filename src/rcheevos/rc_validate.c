@@ -299,6 +299,8 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, char result
   int in_add_hits = 0;
   int in_add_address = 0;
   int is_combining = 0;
+  int has_measured = 0;
+  int measuredif_index = -1;
 
   if (!condset) {
     *result = '\0';
@@ -398,6 +400,10 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, char result
           in_add_hits = 0;
         }
 
+        has_measured |= (cond->type == RC_CONDITION_MEASURED);
+        if (cond->type == RC_CONDITION_MEASURED_IF && measuredif_index == -1)
+          measuredif_index = index;
+
         is_combining = 0;
         break;
     }
@@ -484,6 +490,11 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, char result
 
   if (is_combining) {
     snprintf(result, result_size, "Final condition type expects another condition to follow");
+    return 0;
+  }
+
+  if (measuredif_index != -1 && !has_measured) {
+    snprintf(result, result_size, "Condition %d: MeasuredIf without Measured", measuredif_index);
     return 0;
   }
 
