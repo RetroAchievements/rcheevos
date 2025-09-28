@@ -291,7 +291,7 @@ static int rc_validate_range(uint32_t min_val, uint32_t max_val, char oper, uint
   return 1;
 }
 
-static int rc_validate_condset_internal(const rc_condset_t* condset, char result[], const size_t result_size, uint32_t console_id, uint32_t max_address)
+static int rc_validate_condset_internal(const rc_condset_t* condset, char result[], const size_t result_size, uint32_t console_id, uint32_t max_address, int has_hits)
 {
   const rc_condition_t* cond;
   char buffer[128];
@@ -384,6 +384,10 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, char result
           in_add_hits = 0;
           is_combining = 0;
           break;
+        }
+        if (!has_hits) {
+          snprintf(result, result_size, "Condition %d: No captured hits to reset", index);
+          return 0;
         }
         if (cond->required_hits == 1) {
           snprintf(result, result_size, "Condition %d: Hit target of 1 is redundant on ResetIf", index);
@@ -502,15 +506,35 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, char result
   return 1;
 }
 
+static int rc_condset_has_hittargets(const rc_condset_t* condset)
+{
+  if (condset->num_hittarget_conditions > 0)
+    return 1;
+
+  /* pause and reset conditions may have hittargets and won't be classified as hittarget conditions */
+  if (condset->num_pause_conditions || condset->num_reset_conditions) {
+    const rc_condition_t* condition = rc_condset_get_conditions((rc_condset_t*)condset);
+    const rc_condition_t* stop = condition + condset->num_pause_conditions + condset->num_reset_conditions;
+    for (; condition < stop; ++condition) {
+      if (condition->required_hits)
+        return 1;
+    }
+  }
+
+  return 0;
+}
+
 int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t result_size, uint32_t max_address)
 {
-  return rc_validate_condset_internal(condset, result, result_size, 0, max_address);
+  int has_hits = rc_condset_has_hittargets(condset);
+  return rc_validate_condset_internal(condset, result, result_size, 0, max_address, has_hits);
 }
 
 int rc_validate_condset_for_console(const rc_condset_t* condset, char result[], const size_t result_size, uint32_t console_id)
 {
   const uint32_t max_address = rc_console_max_address(console_id);
-  return rc_validate_condset_internal(condset, result, result_size, console_id, max_address);
+  int has_hits = rc_condset_has_hittargets(condset);
+  return rc_validate_condset_internal(condset, result, result_size, console_id, max_address, has_hits);
 }
 
 static int rc_validate_is_combining_condition(const rc_condition_t* condition)
@@ -856,7 +880,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
       switch (compare_condition->type)
       {
         case RC_CONDITION_PAUSE_IF:
-          if (conditions != compare_conditions)
+          if (conditions != compare_conditions) /* PauseIf only affects conditions in same group */
             break;
           /* fallthrough */
         case RC_CONDITION_RESET_IF:
@@ -966,10 +990,10 @@ static int rc_validate_trigger_internal(const rc_trigger_t* trigger, char result
 {
   const rc_condset_t* alt;
   int index;
-  int has_hits = (trigger->requirement && trigger->requirement->num_hittarget_conditions > 0);
+  int has_hits = trigger->requirement && rc_condset_has_hittargets(trigger->requirement);
   if (!has_hits) {
     for (alt = trigger->alternative; alt; alt = alt->next) {
-      if (alt->num_hittarget_conditions > 0) {
+      if (rc_condset_has_hittargets(alt)) {
         has_hits = 1;
         break;
       }
@@ -977,14 +1001,14 @@ static int rc_validate_trigger_internal(const rc_trigger_t* trigger, char result
   }
 
   if (!trigger->alternative) {
-    if (!rc_validate_condset_internal(trigger->requirement, result, result_size, console_id, max_address))
+    if (!rc_validate_condset_internal(trigger->requirement, result, result_size, console_id, max_address, has_hits))
       return 0;
 
     return rc_validate_conflicting_conditions(trigger->requirement, trigger->requirement, has_hits, "", "", result, result_size);
   }
 
   snprintf(result, result_size, "Core ");
-  if (!rc_validate_condset_internal(trigger->requirement, result + 5, result_size - 5, console_id, max_address))
+  if (!rc_validate_condset_internal(trigger->requirement, result + 5, result_size - 5, console_id, max_address, has_hits))
     return 0;
 
   /* compare core to itself */
@@ -995,7 +1019,7 @@ static int rc_validate_trigger_internal(const rc_trigger_t* trigger, char result
   for (alt = trigger->alternative; alt; alt = alt->next, ++index) {
     char altname[16];
     const size_t prefix_length = snprintf(result, result_size, "Alt%d ", index);
-    if (!rc_validate_condset_internal(alt, result + prefix_length, result_size - prefix_length, console_id, max_address))
+    if (!rc_validate_condset_internal(alt, result + prefix_length, result_size - prefix_length, console_id, max_address, has_hits))
       return 0;
 
     /* compare alt to itself */
