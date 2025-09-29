@@ -311,6 +311,7 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse);
 int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state);
 void rc_reset_condset(rc_condset_t* self);
 rc_condition_t* rc_condset_get_conditions(rc_condset_t* self);
+void rc_test_condset_internal(rc_condition_t* condition, uint32_t num_conditions, rc_eval_state_t* eval_state, int can_short_circuit);
 
 enum {
   RC_PROCESSING_COMPARE_DEFAULT = 0,
