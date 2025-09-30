@@ -511,10 +511,14 @@ static int rc_condset_has_hittargets(const rc_condset_t* condset)
   if (condset->num_hittarget_conditions > 0)
     return 1;
 
-  /* pause and reset conditions may have hittargets and won't be classified as hittarget conditions */
-  if (condset->num_pause_conditions || condset->num_reset_conditions) {
+  /* pause and reset conditions may have hittargets and won't be classified as hittarget conditions.
+   * measured conditions may also have hittargets.
+   */
+  if (condset->num_pause_conditions || condset->num_reset_conditions || condset->num_measured_conditions) {
     const rc_condition_t* condition = rc_condset_get_conditions((rc_condset_t*)condset);
-    const rc_condition_t* stop = condition + condset->num_pause_conditions + condset->num_reset_conditions;
+    /* ASSERT: don't need to add num_hittarget_conditions because it must be 0 per earlier check */
+    const rc_condition_t* stop = condition + condset->num_pause_conditions
+        + condset->num_reset_conditions + condset->num_measured_conditions;
     for (; condition < stop; ++condition) {
       if (condition->required_hits)
         return 1;
