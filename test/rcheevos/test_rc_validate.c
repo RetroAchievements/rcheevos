@@ -211,6 +211,9 @@ static void test_range_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "A:255_B:d0xH1234_0xH1234>255", "");
 
   TEST_PARAMS2(test_validate_trigger, "I:0xG1234&536870911_R:0xG0000=4294967294_0xH2222=1.1.", "");
+
+  TEST_PARAMS2(test_validate_trigger, "B:0xH1241/0xH1241_B:0xH124c/0xH124c_M:2=2", "");
+  TEST_PARAMS2(test_validate_trigger, "B:0xH1241/0xH1241_B:0xH124c/0xH124c_M:2>2", "Condition 3: Comparison is never true");
 }
 
 void test_size_comparisons() {
