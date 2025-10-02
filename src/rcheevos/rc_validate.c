@@ -204,7 +204,7 @@ static void rc_chain_get_value_range(const rc_operand_t* operand, uint32_t* min_
       if (modified_memref->modifier_type == RC_OPERATOR_DIV &&
           rc_operand_is_memref(&modified_memref->modifier) &&
           rc_operands_are_equal(&modified_memref->modifier, &modified_memref->parent)) {
-        // division by self can only return 0 or 1.
+        /* division by self can only return 0 or 1. */
         *min_val = 0;
         *max_val = 1;
       }
