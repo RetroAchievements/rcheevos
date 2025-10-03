@@ -433,6 +433,7 @@ void test_redundant_conditions() {
 void test_redundant_hitcounts() {
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0", "Condition 1: No captured hits to reset");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0_0xH0001=1.1.", "");
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0_M:0xH0001=1.1.", "");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0.1._0xH0001=1.1.", "Condition 1: Hit target of 1 is redundant on ResetIf");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0.2._0xH0001=1.1.", "");
 }
