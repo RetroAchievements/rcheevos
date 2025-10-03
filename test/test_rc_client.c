@@ -8640,6 +8640,36 @@ static void test_do_frame_multiple_automatic_retry(void)
   rc_client_destroy(g_client);
 }
 
+static void test_do_frame_rich_presence_hitcount(void)
+{
+  char buffer[8];
+  const char* patchdata_rich_presence_hit_count = "{\"Success\":true,"
+    "\"GameId\":1234,\"Title\":\"Sample Game\",\"ConsoleId\":17,"
+    "\"ImageIconUrl\":\"http://server/Images/112233.png\","
+    "\"RichPresenceGameId\":1234,\"RichPresencePatch\":\"Display:\\r\\n@Number(M:1=1)\","
+    "\"Sets\":[{"
+      "\"AchievementSetId\":1111,\"GameId\":1234,\"Title\":null,\"Type\":\"core\","
+      "\"ImageIconUrl\":\"http://server/Images/112233.png\","
+      "\"Achievements\":[],"
+      "\"Leaderboards\":[]"
+    "}]}";
+  g_client = mock_client_game_loaded(patchdata_rich_presence_hit_count, no_unlocks);
+  ASSERT_PTR_NOT_NULL(g_client->game);
+
+  ASSERT_NUM_EQUALS(rc_client_get_rich_presence_message(g_client, buffer, sizeof(buffer)), 1);
+  ASSERT_STR_EQUALS(buffer, "0");
+
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(rc_client_get_rich_presence_message(g_client, buffer, sizeof(buffer)), 1);
+  ASSERT_STR_EQUALS(buffer, "1");
+
+  rc_client_do_frame(g_client);
+  ASSERT_NUM_EQUALS(rc_client_get_rich_presence_message(g_client, buffer, sizeof(buffer)), 1);
+  ASSERT_STR_EQUALS(buffer, "2");
+
+  rc_client_destroy(g_client);
+}
+
 static void test_clock_get_now_millisecs(void)
 {
   rc_client_t* client = rc_client_create(rc_client_read_memory, rc_client_server_call);
@@ -10094,6 +10124,7 @@ void test_client(void) {
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
   TEST(test_do_frame_leaderboard_submit_automatic_retry);
   TEST(test_do_frame_multiple_automatic_retry);
+  TEST(test_do_frame_rich_presence_hitcount);
 
   TEST(test_clock_get_now_millisecs);
 

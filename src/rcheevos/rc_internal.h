@@ -380,6 +380,7 @@ int rc_lboard_state_active(int state);
 void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script, rc_parse_state_t* parse);
 rc_memrefs_t* rc_richpresence_get_memrefs(rc_richpresence_t* self);
 void rc_reset_richpresence_triggers(rc_richpresence_t* self);
+void rc_update_richpresence_internal(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud);
 
 int rc_validate_memrefs(const rc_memrefs_t* memrefs, char result[], const size_t result_size, uint32_t max_address);
 int rc_validate_memrefs_for_console(const rc_memrefs_t* memrefs, char result[], const size_t result_size, uint32_t console_id);
