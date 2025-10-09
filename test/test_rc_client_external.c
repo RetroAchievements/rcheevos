@@ -505,6 +505,107 @@ static void test_login_with_token_v1(void)
   rc_client_destroy(g_client);
 }
 
+static const rc_client_user_t* rc_client_external_get_user_info_v1_long_name(void)
+{
+  v1_rc_client_user_t* user = (v1_rc_client_user_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_user_t));
+
+  memset(user, 0, sizeof(*user));
+  user->display_name = "TwentyCharUserNameXX";
+  user->username = "TwentyCharUserNameXX";
+  user->token = "ApiToken";
+  user->score = 12345;
+  user->score_softcore = 123;
+  user->num_unread_messages = 2;
+
+  return (rc_client_user_t*)user;
+}
+
+static rc_client_async_handle_t* rc_client_external_login_with_token_long_name(rc_client_t* client,
+  const char* username, const char* token, rc_client_callback_t callback, void* callback_userdata)
+{
+  g_external_event = "login";
+
+  callback(RC_OK, NULL, client, callback_userdata);
+  return NULL;
+}
+
+static void test_login_with_token_v1_long_username(void)
+{
+  const rc_client_user_t* user;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_login_with_token = rc_client_external_login_with_token_long_name;
+  g_client->state.external_client->get_user_info = rc_client_external_get_user_info_v1_long_name;
+
+  rc_client_begin_login_with_token(g_client, "TwentyCharUserNameXX", "ApiToken", rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "login");
+
+  /* user data should come from external client. validate structure */
+  user = rc_client_get_user_info(g_client);
+  ASSERT_PTR_NOT_NULL(user);
+  ASSERT_STR_EQUALS(user->username, "TwentyCharUserNameXX");
+  ASSERT_STR_EQUALS(user->display_name, "TwentyCharUserNameXX");
+  ASSERT_STR_EQUALS(user->token, "ApiToken");
+  ASSERT_NUM_EQUALS(user->score, 12345);
+  ASSERT_NUM_EQUALS(user->score_softcore, 123);
+  ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
+  ASSERT_STR_EQUALS(user->avatar_url, "https://media.retroachievements.org/UserPic/TwentyCharUserNameXX.png");
+
+  /* ensure non-external client user was not initialized */
+  ASSERT_PTR_NULL(g_client->user.username);
+
+  rc_client_destroy(g_client);
+}
+
+static const rc_client_user_t* rc_client_external_get_user_info_v1_too_long_name(void)
+{
+  v1_rc_client_user_t* user = (v1_rc_client_user_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_user_t));
+
+  memset(user, 0, sizeof(*user));
+  user->display_name = "ThisUserNameIsTooLongToFitIntoTheUserAvatarBufferWithoutOverflowing";
+  user->username = "ThisUserNameIsTooLongToFitIntoTheUserAvatarBufferWithoutOverflowing";
+  user->token = "ApiToken";
+  user->score = 12345;
+  user->score_softcore = 123;
+  user->num_unread_messages = 2;
+
+  return (rc_client_user_t*)user;
+}
+
+static void test_login_with_token_v1_too_long_username(void)
+{
+  const rc_client_user_t* user;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->begin_login_with_token = rc_client_external_login_with_token_long_name;
+  g_client->state.external_client->get_user_info = rc_client_external_get_user_info_v1_too_long_name;
+
+  rc_client_begin_login_with_token(g_client, "ThisUserNameIsTooLongToFitIntoTheUserAvatarBufferWithoutOverflowing", "ApiToken", rc_client_callback_expect_success, g_callback_userdata);
+
+  ASSERT_STR_EQUALS(g_external_event, "login");
+
+  /* user data should come from external client. validate structure */
+  user = rc_client_get_user_info(g_client);
+  ASSERT_PTR_NOT_NULL(user);
+  ASSERT_STR_EQUALS(user->username, "ThisUserNameIsTooLongToFitIntoTheUserAvatarBufferWithoutOverflowing");
+  ASSERT_STR_EQUALS(user->display_name, "ThisUserNameIsTooLongToFitIntoTheUserAvatarBufferWithoutOverflowing");
+  ASSERT_STR_EQUALS(user->token, "ApiToken");
+  ASSERT_NUM_EQUALS(user->score, 12345);
+  ASSERT_NUM_EQUALS(user->score_softcore, 123);
+  ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
+  /* overly long URL will be truncated, but should not cause an exception.
+   * test_login_with_token_v1_long_username validates the longest allowed username, so this shouldn't occur anyway */
+  ASSERT_STR_EQUALS(user->avatar_url, "https://media.retroachievements.org/UserPic/ThisUserNameIsTooLongToFitIntoTheUs");
+
+  /* ensure non-external client user was not initialized */
+  ASSERT_PTR_NULL(g_client->user.username);
+
+  rc_client_destroy(g_client);
+}
+
 static void test_login_with_token(void)
 {
   const rc_client_user_t* user;
@@ -1929,6 +2030,8 @@ void test_client_external(void) {
   TEST(test_v3_user_field_offsets);
   TEST(test_login_with_password);
   TEST(test_login_with_token_v1);
+  TEST(test_login_with_token_v1_long_username);
+  TEST(test_login_with_token_v1_too_long_username);
   TEST(test_login_with_token);
 
   TEST(test_logout);
