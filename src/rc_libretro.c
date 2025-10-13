@@ -650,6 +650,21 @@ static void rc_libretro_memory_init_from_unmapped_memory(rc_libretro_memory_regi
   rc_libretro_core_memory_info_t info;
   size_t offset;
 
+  if (console_regions->region[console_regions->num_regions - 1].end_address > 0x01000000) {
+    /* assume anything exposing more than 16MB of regions with at least one UNUSED region
+     * is padding so things align with real addresses and cannot support unmapped memory */
+    for (i = 0; i < console_regions->num_regions; ++i) {
+      const rc_memory_region_t* console_region = &console_regions->region[i];
+      if (console_region->type == RC_MEMORY_TYPE_UNUSED) {
+        const size_t console_region_size = console_region->end_address - console_region->start_address + 1;
+        if (console_region_size >= 0x10000) {
+          rc_libretro_memory_register_region(regions, RC_MEMORY_TYPE_READONLY, NULL, console_regions->region[console_regions->num_regions - 1].end_address + 1, "null filler");
+          return;
+        }
+      }
+    }
+  }
+
   for (i = 0; i < console_regions->num_regions; ++i) {
     const rc_memory_region_t* console_region = &console_regions->region[i];
     const size_t console_region_size = console_region->end_address - console_region->start_address + 1;

@@ -245,6 +245,23 @@ static void test_memory_init_from_unmapped_memory_no_ram() {
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x20002));
 }
 
+static void test_memory_init_from_unmapped_memory_wii() {
+  rc_libretro_memory_regions_t regions;
+  retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = NULL;
+  retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = 0;
+  retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
+  retro_memory_size[RETRO_MEMORY_SAVE_RAM] = 0;
+
+  /* init returns true */
+  ASSERT_FALSE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_WII));
+
+  /* but one null-filled region is still generated */
+  ASSERT_NUM_EQUALS(regions.count, 1);
+  ASSERT_NUM_EQUALS(regions.total_size, 0x14000000);
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x00000002));
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x14000002));
+}
+
 static void test_memory_init_from_memory_map() {
   rc_libretro_memory_regions_t regions;
   uint8_t buffer1[8], buffer2[8];
@@ -882,6 +899,7 @@ void test_rc_libretro(void) {
   TEST(test_memory_init_from_unmapped_memory_no_save_ram);
   TEST(test_memory_init_from_unmapped_memory_merge_neighbors);
   TEST(test_memory_init_from_unmapped_memory_no_ram);
+  TEST(test_memory_init_from_unmapped_memory_wii);
 
   TEST(test_memory_init_from_memory_map);
   TEST(test_memory_init_from_memory_map_null_filler);
