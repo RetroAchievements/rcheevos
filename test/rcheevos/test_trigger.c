@@ -948,6 +948,43 @@ static void test_measured_while_paused_reset_non_hitcount() {
   ASSERT_NUM_EQUALS(trigger->measured_value, 60U);
 }
 
+static void test_measured_while_paused_extra_alts() {
+  uint8_t ram[] = { 0x00, 0x00, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[512];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* (measured(byte(2) == 99) && unless(byte(1) == 1)) || (byte(3) == 1) */
+  assert_parse_trigger(&trigger, buffer, "SM:0xH0002=99_P:0xH0001=1S0xH0003=1");
+
+  /* alt1 will capture measured value */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 52U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 99U);
+
+  /* first alt paused - expect last measured value to be kept */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 52U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 99U);
+
+  /* measured value changed but alt still paused - expect last measured value to be kept */
+  ram[2] = 61;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 52U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 99U);
+
+  /* first alt unpaused - it will update, measured will use the active value */
+  ram[1] = 0;
+  ram[2] = 63;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  ASSERT_NUM_EQUALS(trigger->measured_value, 63U);
+  ASSERT_NUM_EQUALS(trigger->measured_target, 99U);
+}
+
 static void test_measured_reset_hitcount() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -2368,6 +2405,7 @@ void test_trigger(void) {
   TEST(test_measured_while_paused_reset_alt);
   TEST(test_measured_while_paused_reset_core);
   TEST(test_measured_while_paused_reset_non_hitcount);
+  TEST(test_measured_while_paused_extra_alts);
   TEST(test_measured_reset_hitcount);
   TEST(test_measured_reset_comparison);
   TEST(test_measured_if);
