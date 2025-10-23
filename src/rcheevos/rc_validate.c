@@ -898,8 +898,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
         continue;
 
       operand2 = rc_validate_get_comparison(compare_condition, &comparison2, &value2);
-      if (!operand2 || operand2->value.memref->address != operand1->value.memref->address ||
-          operand2->size != operand1->size || operand2->type != operand1->type)
+      if (!operand2 || !rc_operands_are_equal(operand1, operand2))
         continue;
 
       switch (compare_condition->type)
