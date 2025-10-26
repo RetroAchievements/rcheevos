@@ -460,6 +460,13 @@ void test_remember_recall_errors() {
   TEST_PARAMS2(test_validate_trigger, "K:0xH1234*2_{recall}=5_P:{recall}>6", "Condition 3: Recall used before Remember"); /* Pause happens before remembered value. */
 }
 
+void test_error_priorities() {
+  TEST_PARAMS2(test_validate_trigger, "R:0xH1234=1_0xH2345=500", "Condition 2: Comparison is never true (max 255)"); /* impossible condition more important than unnecessary reset */
+  TEST_PARAMS2(test_validate_trigger, "0xH1234>5_0xH1234!=0_A:0xH2345", "Condition 3: AddSource condition type expects another condition to follow"); /* impotent condition more important than redundant */
+  TEST_PARAMS2(test_validate_trigger, "0xH1234!=d0x 1234_I:d0x2345_0=6", "Condition 2: Using pointer from previous frame"); /* pointer math more important that potential logic errors */
+  TEST_PARAMS2(test_validate_trigger, "R:0xH1234=1.1.S0xH2345=500", "Alt1 Condition 1: Comparison is never true (max 255)"); /* impossible condition in alt more important than redundant condition in core */
+}
+
 void test_rc_validate(void) {
   TEST_SUITE_BEGIN();
 
@@ -482,6 +489,7 @@ void test_rc_validate(void) {
   test_redundant_hitcounts();
   test_variable_operand_errors();
   test_remember_recall_errors();
+  test_error_priorities();
 
   TEST_SUITE_END();
 }

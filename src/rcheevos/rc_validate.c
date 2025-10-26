@@ -81,12 +81,20 @@ typedef struct rc_validation_state_t
 
 static const rc_validation_error_t* rc_validate_find_most_severe_error(const rc_validation_state_t* state)
 {
-  const rc_validation_error_t* most_severe_error = &state->errors[0];
-  uint32_t index;
+  const rc_validation_error_t* error = &state->errors[0];
+  const rc_validation_error_t* most_severe_error = error;
+  const rc_validation_error_t* stop = &state->errors[state->error_count];
 
-  for (index = 1; index < state->error_count; ++index) {
-    if (state->errors[index].err < most_severe_error->err)
-      most_severe_error = &state->errors[index];
+  while (++error < stop) {
+    if (error->err < most_severe_error->err) {
+      most_severe_error = error;
+    }
+    else if (error->err == most_severe_error->err) {
+      if (error->group_index < most_severe_error->group_index)
+        most_severe_error = error;
+      else if (error->group_index == most_severe_error->group_index && error->cond_index < most_severe_error->cond_index)
+        most_severe_error = error;
+    }
   }
 
   return most_severe_error;
@@ -94,12 +102,20 @@ static const rc_validation_error_t* rc_validate_find_most_severe_error(const rc_
 
 static rc_validation_error_t* rc_validate_find_least_severe_error(rc_validation_state_t* state)
 {
-  rc_validation_error_t* least_severe_error = &state->errors[0];
-  uint32_t index;
+  rc_validation_error_t* error = &state->errors[0];
+  rc_validation_error_t* least_severe_error = error;
+  rc_validation_error_t* stop = &state->errors[state->error_count];
 
-  for (index = 1; index < state->error_count; ++index) {
-    if (state->errors[index].err > least_severe_error->err)
-      least_severe_error = &state->errors[index];
+  while (++error < stop) {
+    if (error->err > least_severe_error->err) {
+      least_severe_error = error;
+    }
+    else if (error->err == least_severe_error->err) {
+      if (error->group_index > least_severe_error->group_index)
+        least_severe_error = error;
+      else if (error->group_index == least_severe_error->group_index && error->cond_index > least_severe_error->cond_index)
+        least_severe_error = error;
+    }
   }
 
   return least_severe_error;
@@ -601,14 +617,16 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
       in_add_address = 0;
     }
 
-    if (rc_operand_is_recall(operand1)) {
-      if (rc_operand_type_is_memref(operand1->memref_access_type) && !operand1->value.memref)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_RECALL_BEFORE_REMEMBER, 0, 0);
+    /* if operand is {recall}, but memref is null, that means the Remember wasn't found */
+    if (rc_operand_is_recall(operand1) &&
+        rc_operand_type_is_memref(operand1->memref_access_type) &&
+        !operand1->value.memref) {
+      rc_validate_add_error(state, RC_VALIDATION_ERR_RECALL_BEFORE_REMEMBER, 0, 0);
     }
-
-    if (rc_operand_is_recall(&cond->operand2)) {
-      if (rc_operand_type_is_memref(cond->operand2.memref_access_type) && !cond->operand2.value.memref)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_RECALL_BEFORE_REMEMBER, 0, 0);
+    if (rc_operand_is_recall(&cond->operand2) &&
+        rc_operand_type_is_memref(cond->operand2.memref_access_type) &&
+        !cond->operand2.value.memref) {
+      rc_validate_add_error(state, RC_VALIDATION_ERR_RECALL_BEFORE_REMEMBER, 0, 0);
     }
 
     switch (cond->type) {
@@ -620,11 +638,11 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
 
       case RC_CONDITION_ADD_ADDRESS:
         if (operand1->type == RC_OPERAND_DELTA || operand1->type == RC_OPERAND_PRIOR)
-          return rc_validate_add_error(state, RC_VALIDATION_ERR_POINTER_FROM_PREVIOUS_FRAME, 0, 0);
-        if (rc_operand_is_float(operand1) || rc_operand_is_float(&cond->operand2))
-          return rc_validate_add_error(state, RC_VALIDATION_ERR_POINTER_NON_INTEGER_OFFSET, 0, 0);
-        if (rc_operand_type_is_transform(operand1->type) && cond->oper != RC_OPERATOR_MULT)
-          return rc_validate_add_error(state, RC_VALIDATION_ERR_POINTER_TRANSFORMED_OFFSET, 0, 0);
+          rc_validate_add_error(state, RC_VALIDATION_ERR_POINTER_FROM_PREVIOUS_FRAME, 0, 0);
+        else if (rc_operand_is_float(operand1) || rc_operand_is_float(&cond->operand2))
+          rc_validate_add_error(state, RC_VALIDATION_ERR_POINTER_NON_INTEGER_OFFSET, 0, 0);
+        else if (rc_operand_type_is_transform(operand1->type) && cond->oper != RC_OPERATOR_MULT)
+          rc_validate_add_error(state, RC_VALIDATION_ERR_POINTER_TRANSFORMED_OFFSET, 0, 0);
 
         in_add_address = 1;
         is_combining = 1;
@@ -651,14 +669,14 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
           break;
         }
         if (!state->has_hit_targets)
-          return rc_validate_add_error(state, RC_VALIDATION_ERR_NO_HITS_TO_RESET, 0, 0);
-        if (cond->required_hits == 1)
-          return rc_validate_add_error(state, RC_VALIDATION_ERR_RESET_HIT_TARGET_OF_ONE, 0, 0);
+          rc_validate_add_error(state, RC_VALIDATION_ERR_NO_HITS_TO_RESET, 0, 0);
+        else if (cond->required_hits == 1)
+          rc_validate_add_error(state, RC_VALIDATION_ERR_RESET_HIT_TARGET_OF_ONE, 0, 0);
         /* fallthrough */ /* to default */
       default:
         if (in_add_hits) {
           if (cond->required_hits == 0)
-            return rc_validate_add_error(state, RC_VALIDATION_ERR_ADDHITS_WITHOUT_TARGET, 0, 0);
+            rc_validate_add_error(state, RC_VALIDATION_ERR_ADDHITS_WITHOUT_TARGET, 0, 0);
 
           in_add_hits = 0;
         }
@@ -681,7 +699,7 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
         operand1->value.memref->value.memref_type == RC_MEMREF_TYPE_MEMREF &&
         cond->operand2.value.memref->value.memref_type == RC_MEMREF_TYPE_MEMREF &&
         rc_max_value(operand1) != rc_max_value(&cond->operand2)) {
-      return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARING_DIFFERENT_MEMORY_SIZES, 0, 0);
+      rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARING_DIFFERENT_MEMORY_SIZES, 0, 0);
     }
 
     if (is_memref1 && rc_operand_is_float(operand1)) {
@@ -730,11 +748,13 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
             switch (oper) {
               case RC_OPERATOR_EQ:
                 typed_value.value.f32 = (float)operand2->value.dbl;
-                return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE_INTEGER_TO_FLOAT, typed_value.value.u32, 0);
+                rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE_INTEGER_TO_FLOAT, typed_value.value.u32, 0);
+                break;
 
               case RC_OPERATOR_NE:
                 typed_value.value.f32 = (float)operand2->value.dbl;
-                return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_INTEGER_TO_FLOAT, typed_value.value.u32, 0);
+                rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_INTEGER_TO_FLOAT, typed_value.value.u32, 0);
+                break;
 
               case RC_OPERATOR_GT: /* value could be greater than floor(float) */
               case RC_OPERATOR_LE: /* value could be less than or equal to floor(float) */
@@ -755,8 +775,7 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
       }
 
       /* min_val and max_val are the range allowed by operand2. max is the upper value from operand1. */
-      if (!rc_validate_range(min_val, max_val, oper, max, state))
-        return 0;
+      rc_validate_range(min_val, max_val, oper, max, state);
     }
   }
 
@@ -767,15 +786,15 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
     while (cond->next)
       cond = cond->next;
 
-    return rc_validate_add_error(state, RC_VALIDATION_ERR_TRAILING_CHAINING_CONDITION, cond->type, 0);
+    rc_validate_add_error(state, RC_VALIDATION_ERR_TRAILING_CHAINING_CONDITION, cond->type, 0);
   }
 
   if (measuredif_index != -1 && !has_measured) {
     state->cond_index = measuredif_index;
-    return rc_validate_add_error(state, RC_VALIDATION_ERR_MEASUREDIF_WITHOUT_MEASURED, 0, 0);
+    rc_validate_add_error(state, RC_VALIDATION_ERR_MEASUREDIF_WITHOUT_MEASURED, 0, 0);
   }
 
-  return 1;
+  return (state->error_count == 0);
 }
 
 static int rc_condset_has_hittargets(const rc_condset_t* condset)
@@ -1261,13 +1280,32 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
           continue;
       }
 
-      return rc_validate_add_error(state, (overlap == RC_OVERLAP_REDUNDANT) ?
+      /* if condition A conflicts with condition B, condition B will also conflict with
+       * condition A. don't report both. */
+      {
+        int already_reported = 0;
+        const rc_validation_error_t* error = state->errors;
+        const rc_validation_error_t* stop = state->errors + state->error_count;
+        for (; error < stop; ++error) {
+          if (error->data2 == state->cond_index && error->data1 == state->group_index) {
+            if (error->err == RC_VALIDATION_ERR_REDUNDANT_CONDITION ||
+                error->err == RC_VALIDATION_ERR_CONFLICTING_CONDITION) {
+              already_reported = 1;
+            }
+          }
+        }
+
+        if (already_reported)
+          continue;
+      }
+
+      rc_validate_add_error(state, (overlap == RC_OVERLAP_REDUNDANT) ?
           RC_VALIDATION_ERR_REDUNDANT_CONDITION : RC_VALIDATION_ERR_CONFLICTING_CONDITION,
           group_index, rc_validate_get_condition_index(conditions, condition));
     }
   }
 
-  return 1;
+  return (state->error_count == 0);
 }
 
 static int rc_validate_trigger_internal(const rc_trigger_t* trigger, rc_validation_state_t* state)
@@ -1288,34 +1326,31 @@ static int rc_validate_trigger_internal(const rc_trigger_t* trigger, rc_validati
   }
 
   state->group_index = 0;
-  if (!rc_validate_condset_internal(trigger->requirement, state))
-    return 0;
-
-  /* compare core to itself */
-  if (!rc_validate_conflicting_conditions(trigger->requirement, trigger->requirement, 0, state))
-    return 0;
+  if (rc_validate_condset_internal(trigger->requirement, state)) {
+    /* compare core to itself */
+    rc_validate_conflicting_conditions(trigger->requirement, trigger->requirement, 0, state);
+  }
 
   index = 1;
   for (alt = trigger->alternative; alt; alt = alt->next, ++index) {
     state->group_index = index;
-    if (!rc_validate_condset_internal(alt, state))
-      return 0;
+    if (rc_validate_condset_internal(alt, state)) {
+      /* compare alt to itself */
+      if (!rc_validate_conflicting_conditions(alt, alt, index, state))
+        continue;
 
-    /* compare alt to itself */
-    if (!rc_validate_conflicting_conditions(alt, alt, index, state))
-      return 0;
+      /* compare alt to core */
+      if (!rc_validate_conflicting_conditions(trigger->requirement, alt, 0, state))
+        continue;
 
-    /* compare alt to core */
-    if (!rc_validate_conflicting_conditions(trigger->requirement, alt, 0, state))
-      return 0;
-
-    /* compare core to alt */
-    state->group_index = 0;
-    if (!rc_validate_conflicting_conditions(alt, trigger->requirement, index, state))
-      return 0;
+      /* compare core to alt */
+      state->group_index = 0;
+      if (!rc_validate_conflicting_conditions(alt, trigger->requirement, index, state))
+        continue;
+    }
   }
 
-  return 1;
+  return (state->error_count == 0);
 }
 
 int rc_validate_trigger(const rc_trigger_t* trigger, char result[], const size_t result_size, uint32_t max_address)
