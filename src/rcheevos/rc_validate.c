@@ -293,7 +293,7 @@ static int rc_validate_format_error(char buffer[], size_t buffer_size, const rc_
   return 0;
 }
 
-static int rc_validate_add_error(rc_validation_state_t* state, uint32_t error_code, uint32_t data1, uint32_t data2)
+static void rc_validate_add_error(rc_validation_state_t* state, uint32_t error_code, uint32_t data1, uint32_t data2)
 {
   rc_validation_error_t* error;
   if (state->error_count == sizeof(state->errors) / sizeof(state->errors[0]))
@@ -306,35 +306,33 @@ static int rc_validate_add_error(rc_validation_state_t* state, uint32_t error_co
   error->cond_index = state->cond_index;
   error->data1 = data1;
   error->data2 = data2;
-
-  return 0;
 }
 
-static int rc_validate_memref(const rc_memref_t* memref, rc_validation_state_t* state)
+static void rc_validate_memref(const rc_memref_t* memref, rc_validation_state_t* state)
 {
-  if (memref->address > state->max_address)
-    return rc_validate_add_error(state, RC_VALIDATION_ERR_ADDRESS_OUT_OF_RANGE, memref->address, state->max_address);
+  if (memref->address > state->max_address) {
+    rc_validate_add_error(state, RC_VALIDATION_ERR_ADDRESS_OUT_OF_RANGE, memref->address, state->max_address);
+    return;
+  }
 
   switch (state->console_id) {
     case RC_CONSOLE_NINTENDO:
     case RC_CONSOLE_FAMICOM_DISK_SYSTEM:
       if (memref->address >= 0x0800 && memref->address <= 0x1FFF)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_VIRTUAL_RAM_MAY_NOT_BE_EXPOSED, memref->address, RC_VALIDATION_VIRTUAL_RAM_MIRROR);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_VIRTUAL_RAM_MAY_NOT_BE_EXPOSED, memref->address, RC_VALIDATION_VIRTUAL_RAM_MIRROR);
       break;
 
     case RC_CONSOLE_GAMEBOY:
     case RC_CONSOLE_GAMEBOY_COLOR:
       if (memref->address >= 0xE000 && memref->address <= 0xFDFF)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_VIRTUAL_RAM_MAY_NOT_BE_EXPOSED, memref->address, RC_VALIDATION_VIRTUAL_RAM_ECHO);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_VIRTUAL_RAM_MAY_NOT_BE_EXPOSED, memref->address, RC_VALIDATION_VIRTUAL_RAM_ECHO);
       break;
 
     case RC_CONSOLE_PLAYSTATION:
       if (memref->address <= 0xFFFF)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_KERNAL_RAM_REQUIRES_BIOS, memref->address, 0);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_KERNAL_RAM_REQUIRES_BIOS, memref->address, 0);
       break;
   }
-
-  return 1;
 }
 
 static uint32_t rc_console_max_address(uint32_t console_id)
@@ -363,7 +361,8 @@ int rc_validate_memrefs_for_console(const rc_memrefs_t* memrefs, char result[], 
     const rc_memref_t* memref_stop = memref + memref_list->count;
     for (; memref < memref_stop; ++memref)
     {
-      if (!rc_validate_memref(memref, &state)) {
+      rc_validate_memref(memref, &state);
+      if (state.error_count) {
         rc_validate_format_error(result, result_size, &state, &state.errors[0]);
         return 0;
       }
@@ -522,52 +521,50 @@ static int rc_validate_get_condition_index(const rc_condset_t* condset, const rc
    return 0;
 }
 
-static int rc_validate_range(uint32_t min_val, uint32_t max_val, char oper, uint32_t max, rc_validation_state_t* state)
+static void rc_validate_range(uint32_t min_val, uint32_t max_val, char oper, uint32_t max, rc_validation_state_t* state)
 {
   switch (oper) {
     case RC_OPERATOR_AND:
       if (min_val > max)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_MASK_TOO_LARGE, 0, 0);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_MASK_TOO_LARGE, 0, 0);
       else if (min_val == 0 && max_val == 0)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_MASK_RESULT_ALWAYS_ZERO, 0, 0);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_MASK_RESULT_ALWAYS_ZERO, 0, 0);
       break;
 
     case RC_OPERATOR_EQ:
       if (min_val > max)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE_WITH_MAX, max, 0);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE_WITH_MAX, max, 0);
       break;
 
     case RC_OPERATOR_NE:
       if (min_val > max)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_WITH_MAX, max, 0);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_WITH_MAX, max, 0);
       break;
 
     case RC_OPERATOR_GE:
       if (min_val > max)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE_WITH_MAX, max, 0);
-      if (max_val == 0)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_WITH_MAX, max, 0);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE_WITH_MAX, max, 0);
+      else if (max_val == 0)
+        rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_WITH_MAX, max, 0);
       break;
 
     case RC_OPERATOR_GT:
       if (min_val >= max)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE_WITH_MAX, max, 0);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE_WITH_MAX, max, 0);
       break;
 
     case RC_OPERATOR_LE:
       if (min_val >= max)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_WITH_MAX, max, 0);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_WITH_MAX, max, 0);
       break;
 
     case RC_OPERATOR_LT:
       if (min_val > max)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_WITH_MAX, max, 0);
-      if (max_val == 0)
-        return rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE, 0, 0);
+        rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_WITH_MAX, max, 0);
+      else if (max_val == 0)
+        rc_validate_add_error(state, RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE, 0, 0);
       break;
   }
-
-  return 1;
 }
 
 static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validation_state_t* state)
@@ -578,6 +575,7 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
   int is_combining = 0;
   int has_measured = 0;
   int measuredif_index = -1;
+  uint32_t errors_before = state->error_count;
 
   if (!condset)
     return 1;
@@ -591,10 +589,10 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
     const int is_memref2 = rc_operand_is_memref(&cond->operand2);
 
     if (!in_add_address) {
-      if (is_memref1 && !rc_validate_memref(operand1->value.memref, state))
-        return 0;
-      if (is_memref2 && !rc_validate_memref(cond->operand2.value.memref, state))
-        return 0;
+      if (is_memref1)
+        rc_validate_memref(operand1->value.memref, state);
+      if (is_memref2)
+        rc_validate_memref(cond->operand2.value.memref, state);
     }
     else {
       in_add_address = 0;
@@ -777,7 +775,7 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
     rc_validate_add_error(state, RC_VALIDATION_ERR_MEASUREDIF_WITHOUT_MEASURED, 0, 0);
   }
 
-  return (state->error_count == 0);
+  return (state->error_count == errors_before);
 }
 
 static int rc_condset_has_hittargets(const rc_condset_t* condset)
@@ -810,7 +808,7 @@ int rc_validate_condset(const rc_condset_t* condset, char result[], const size_t
   state.max_address = max_address;
 
   result[0] = '\0';
-  if (!rc_validate_condset_internal(condset, &state)) {
+  if (rc_validate_condset_internal(condset, &state)) {
     const rc_validation_error_t* most_severe_error = rc_validate_find_most_severe_error(&state);
     return rc_validate_format_error(result, result_size, &state, most_severe_error);
   }
@@ -827,7 +825,7 @@ int rc_validate_condset_for_console(const rc_condset_t* condset, char result[], 
   state.has_hit_targets = rc_condset_has_hittargets(condset);
 
   result[0] = '\0';
-  if (!rc_validate_condset_internal(condset, &state)) {
+  if (rc_validate_condset_internal(condset, &state)) {
     const rc_validation_error_t* most_severe_error = rc_validate_find_most_severe_error(&state);
     return rc_validate_format_error(result, result_size, &state, most_severe_error);
   }
@@ -1064,6 +1062,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
   const rc_condition_t* compare_condition;
   const rc_condition_t* condition;
   const rc_condition_t* condition_chain_start;
+  uint32_t errors_before = state->error_count;
   uint32_t condition_index;
   int overlap;
   int chain_matches;
@@ -1288,7 +1287,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
     }
   }
 
-  return (state->error_count == 0);
+  return (state->error_count == errors_before);
 }
 
 static int rc_validate_trigger_internal(const rc_trigger_t* trigger, rc_validation_state_t* state)
