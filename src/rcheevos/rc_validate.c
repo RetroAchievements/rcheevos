@@ -79,6 +79,24 @@ typedef struct rc_validation_state_t
   uint8_t has_hit_targets;
 } rc_validation_state_t;
 
+/* this returns a negative value if err1 is more severe than err2, or
+ * a positive value is err2 is more severe than err1. */
+static int rc_validation_compare_severity(const rc_validation_error_t* err1, const rc_validation_error_t* err2)
+{
+  /* lower err value is more severe */
+  int diff = (err1->err - err2->err);
+  if (diff != 0)
+    return diff;
+
+  /* lower group index is more severe */
+  diff = (err1->group_index - err2->group_index);
+  if (diff != 0)
+    return diff;
+
+  /* lower condition value is more severe */
+  return (err1->cond_index - err2->cond_index);
+}
+
 static const rc_validation_error_t* rc_validate_find_most_severe_error(const rc_validation_state_t* state)
 {
   const rc_validation_error_t* error = &state->errors[0];
@@ -86,15 +104,8 @@ static const rc_validation_error_t* rc_validate_find_most_severe_error(const rc_
   const rc_validation_error_t* stop = &state->errors[state->error_count];
 
   while (++error < stop) {
-    if (error->err < most_severe_error->err) {
+    if (rc_validation_compare_severity(error, most_severe_error) < 0)
       most_severe_error = error;
-    }
-    else if (error->err == most_severe_error->err) {
-      if (error->group_index < most_severe_error->group_index)
-        most_severe_error = error;
-      else if (error->group_index == most_severe_error->group_index && error->cond_index < most_severe_error->cond_index)
-        most_severe_error = error;
-    }
   }
 
   return most_severe_error;
@@ -107,15 +118,8 @@ static rc_validation_error_t* rc_validate_find_least_severe_error(rc_validation_
   rc_validation_error_t* stop = &state->errors[state->error_count];
 
   while (++error < stop) {
-    if (error->err > least_severe_error->err) {
+    if (rc_validation_compare_severity(error, least_severe_error) > 0)
       least_severe_error = error;
-    }
-    else if (error->err == least_severe_error->err) {
-      if (error->group_index > least_severe_error->group_index)
-        least_severe_error = error;
-      else if (error->group_index == least_severe_error->group_index && error->cond_index > least_severe_error->cond_index)
-        least_severe_error = error;
-    }
   }
 
   return least_severe_error;
