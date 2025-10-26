@@ -113,16 +113,16 @@ static void test_validate_trigger_console(const char* trigger, const char* expec
 }
 
 static void test_combining_conditions_at_end_of_definition() {
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_A:0xH2345=2", "Final condition type expects another condition to follow");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_B:0xH2345=2", "Final condition type expects another condition to follow");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_C:0xH2345=2", "Final condition type expects another condition to follow");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_D:0xH2345=2", "Final condition type expects another condition to follow");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_N:0xH2345=2", "Final condition type expects another condition to follow");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_O:0xH2345=2", "Final condition type expects another condition to follow");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_Z:0xH2345=2", "Final condition type expects another condition to follow");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_A:0xH2345=2", "Condition 2: AddSource condition type expects another condition to follow");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_B:0xH2345=2", "Condition 2: SubSource condition type expects another condition to follow");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_C:0xH2345=2", "Condition 2: AddHits condition type expects another condition to follow");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_D:0xH2345=2", "Condition 2: SubHits condition type expects another condition to follow");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_N:0xH2345=2", "Condition 2: AndNext condition type expects another condition to follow");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_O:0xH2345=2", "Condition 2: OrNext condition type expects another condition to follow");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_Z:0xH2345=2", "Condition 2: ResetNextIf condition type expects another condition to follow");
 
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_A:0xH2345=2S0x3456=1", "Core Final condition type expects another condition to follow");
-  TEST_PARAMS2(test_validate_trigger, "0x3456=1S0xH1234=1_A:0xH2345=2", "Alt1 Final condition type expects another condition to follow");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=1_A:0xH2345=2S0x3456=1", "Core Condition 2: AddSource condition type expects another condition to follow");
+  TEST_PARAMS2(test_validate_trigger, "0x3456=1S0xH1234=1_A:0xH2345=2", "Alt1 Condition 2: AddSource condition type expects another condition to follow");
 
   /* combining conditions not at end of definition */
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234=1_0xH2345=2", "");
@@ -149,59 +149,59 @@ static void test_range_comparisons() {
 
   TEST_PARAMS2(test_validate_trigger, "0xH1234=255", "");
   TEST_PARAMS2(test_validate_trigger, "0xH1234!=255", "");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234>255", "Condition 1: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234>255", "Condition 1: Comparison is never true (max 255)");
   TEST_PARAMS2(test_validate_trigger, "0xH1234>=255", "");
   TEST_PARAMS2(test_validate_trigger, "0xH1234<255", "");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234<=255", "Condition 1: Comparison is always true");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234<=255", "Condition 1: Comparison is always true (max 255)");
 
   /* while a BCD value shouldn't exceed 99, it can reach 165: 0xFF => 15*10+15 */
   TEST_PARAMS2(test_validate_trigger, "b0xH1234<165", "");
-  TEST_PARAMS2(test_validate_trigger, "b0xH1234<=165", "Condition 1: Comparison is always true");
+  TEST_PARAMS2(test_validate_trigger, "b0xH1234<=165", "Condition 1: Comparison is always true (max 165)");
 
   TEST_PARAMS2(test_validate_trigger, "R:0xH1234<255_0xH0000=1.1.", "");
-  TEST_PARAMS2(test_validate_trigger, "R:0xH1234<=255_0xH0000=1.1.", "Condition 1: Comparison is always true");
+  TEST_PARAMS2(test_validate_trigger, "R:0xH1234<=255_0xH0000=1.1.", "Condition 1: Comparison is always true (max 255)");
 
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=256", "Condition 1: Comparison is never true");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234!=256", "Condition 1: Comparison is always true");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234>256", "Condition 1: Comparison is never true");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234>=256", "Condition 1: Comparison is never true");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234<256", "Condition 1: Comparison is always true");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234<=256", "Condition 1: Comparison is always true");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=256", "Condition 1: Comparison is never true (max 255)");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234!=256", "Condition 1: Comparison is always true (max 255)");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234>256", "Condition 1: Comparison is never true (max 255)");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234>=256", "Condition 1: Comparison is never true (max 255)");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234<256", "Condition 1: Comparison is always true (max 255)");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234<=256", "Condition 1: Comparison is always true (max 255)");
 
   TEST_PARAMS2(test_validate_trigger, "0x 1234>=65535", "");
-  TEST_PARAMS2(test_validate_trigger, "0x 1234>=65536", "Condition 1: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "0x 1234>=65536", "Condition 1: Comparison is never true (max 65535)");
 
   TEST_PARAMS2(test_validate_trigger, "b0x 1234>=16665", "");
-  TEST_PARAMS2(test_validate_trigger, "b0x 1234>=16666", "Condition 1: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "b0x 1234>=16666", "Condition 1: Comparison is never true (max 16665)");
 
   TEST_PARAMS2(test_validate_trigger, "0xW1234>=16777215", "");
-  TEST_PARAMS2(test_validate_trigger, "0xW1234>=16777216", "Condition 1: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "0xW1234>=16777216", "Condition 1: Comparison is never true (max 16777215)");
 
   TEST_PARAMS2(test_validate_trigger, "b0xW1234>=1666665", "");
-  TEST_PARAMS2(test_validate_trigger, "b0xW1234>=1666666", "Condition 1: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "b0xW1234>=1666666", "Condition 1: Comparison is never true (max 1666665)");
 
   TEST_PARAMS2(test_validate_trigger, "0xX1234>=4294967295", "");
-  TEST_PARAMS2(test_validate_trigger, "0xX1234>4294967295", "Condition 1: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "0xX1234>4294967295", "Condition 1: Comparison is never true (max 4294967295)");
 
   TEST_PARAMS2(test_validate_trigger, "b0xX1234>=166666665", "");
-  TEST_PARAMS2(test_validate_trigger, "b0xX1234>=166666666", "Condition 1: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "b0xX1234>=166666666", "Condition 1: Comparison is never true (max 166666665)");
 
   TEST_PARAMS2(test_validate_trigger, "0xT1234>=1", "");
-  TEST_PARAMS2(test_validate_trigger, "0xT1234>1", "Condition 1: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "0xT1234>1", "Condition 1: Comparison is never true (max 1)");
 
   /* max for AddSource is the sum of all parts (255+255=510) */
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234_0<255", "");
-  TEST_PARAMS2(test_validate_trigger, "A:0xH1234_0<=255", "Condition 2: Comparison is always true");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234_0<=255", "Condition 2: Comparison is always true (max 255)");
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234_0xH1235<510", "");
-  TEST_PARAMS2(test_validate_trigger, "A:0xH1234_0xH1235<=510", "Condition 2: Comparison is always true");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234_0xH1235<=510", "Condition 2: Comparison is always true (max 510)");
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234*10_0xH1235>=2805", "");
-  TEST_PARAMS2(test_validate_trigger, "A:0xH1234*10_0xH1235>2805", "Condition 2: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234*10_0xH1235>2805", "Condition 2: Comparison is never true (max 2805)");
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234/10_0xH1235>=280", "");
-  TEST_PARAMS2(test_validate_trigger, "A:0xH1234/10_0xH1235>280", "Condition 2: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234/10_0xH1235>280", "Condition 2: Comparison is never true (max 280)");
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234&10_0xH1235>=265", "");
-  TEST_PARAMS2(test_validate_trigger, "A:0xH1234&10_0xH1235>265", "Condition 2: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234&10_0xH1235>265", "Condition 2: Comparison is never true (max 265)");
   TEST_PARAMS2(test_validate_trigger, "A:b0xH1234*100_b0xH1235>=16665", "");
-  TEST_PARAMS2(test_validate_trigger, "A:b0xH1234*100_b0xH1235>16665", "Condition 2: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "A:b0xH1234*100_b0xH1235>16665", "Condition 2: Comparison is never true (max 16665)");
 
   /* max for SubSource is always 0xFFFFFFFF */
   TEST_PARAMS2(test_validate_trigger, "B:0xH1234_0xH1235<510", "");
@@ -213,7 +213,7 @@ static void test_range_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "I:0xG1234&536870911_R:0xG0000=4294967294_0xH2222=1.1.", "");
 
   TEST_PARAMS2(test_validate_trigger, "B:0xH1241/0xH1241_B:0xH124c/0xH124c_M:2=2", "");
-  TEST_PARAMS2(test_validate_trigger, "B:0xH1241/0xH1241_B:0xH124c/0xH124c_M:2>2", "Condition 3: Comparison is never true");
+  TEST_PARAMS2(test_validate_trigger, "B:0xH1241/0xH1241_B:0xH124c/0xH124c_M:2>2", "Condition 3: Comparison is never true (max 2)");
 }
 
 void test_size_comparisons() {
@@ -285,13 +285,13 @@ void test_delta_pointers() {
 }
 
 void test_nonsized_pointers() {
-  TEST_PARAMS2(test_validate_trigger, "I:Ff1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
-  TEST_PARAMS2(test_validate_trigger, "I:Fb1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
-  TEST_PARAMS2(test_validate_trigger, "I:Fm1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
-  TEST_PARAMS2(test_validate_trigger, "I:Fh1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
-  TEST_PARAMS2(test_validate_trigger, "I:0xH1234*f1.5_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calcuation");
-  TEST_PARAMS2(test_validate_trigger, "I:b0xH1234_0xH0000=1", "Condition 1: Using transformed value in AddAddress calcuation");
-  TEST_PARAMS2(test_validate_trigger, "I:~0xH1234_0xH0000=1", "Condition 1: Using transformed value in AddAddress calcuation");
+  TEST_PARAMS2(test_validate_trigger, "I:Ff1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calculation");
+  TEST_PARAMS2(test_validate_trigger, "I:Fb1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calculation");
+  TEST_PARAMS2(test_validate_trigger, "I:Fm1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calculation");
+  TEST_PARAMS2(test_validate_trigger, "I:Fh1234_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calculation");
+  TEST_PARAMS2(test_validate_trigger, "I:0xH1234*f1.5_0xH0000=1", "Condition 1: Using non-integer value in AddAddress calculation");
+  TEST_PARAMS2(test_validate_trigger, "I:b0xH1234_0xH0000=1", "Condition 1: Using transformed value in AddAddress calculation");
+  TEST_PARAMS2(test_validate_trigger, "I:~0xH1234_0xH0000=1", "Condition 1: Using transformed value in AddAddress calculation");
   TEST_PARAMS2(test_validate_trigger, "I:~0xH1234*1_0xH0000=1", ""); /* don't report scaled values - assume indexed array */
   TEST_PARAMS2(test_validate_trigger, "I:~0xM1234*4096_0xH0000=1", ""); /* don't report scaled values - assume indexed array */
   TEST_PARAMS2(test_validate_trigger, "I:b0x 1234*8_0xH0000=1", ""); /* don't report scaled values - assume indexed array */
@@ -302,21 +302,21 @@ void test_float_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "fM1234=f2.3", "");
   TEST_PARAMS2(test_validate_trigger, "fF1234=2", "");
   TEST_PARAMS2(test_validate_trigger, "0xX1234=2", "");
-  TEST_PARAMS2(test_validate_trigger, "0xX1234=f2.3", "Condition 1: Comparison is never true"); /* non integral comparison */
-  TEST_PARAMS2(test_validate_trigger, "0xX1234!=f2.3", "Condition 1: Comparison is always true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234=f2.3", "Condition 1: Comparison is never true (integer can never be 2.3)"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "0xX1234!=f2.3", "Condition 1: Comparison is always true (integer can never be 2.3)"); /* non integral comparison */
   TEST_PARAMS2(test_validate_trigger, "0xX1234<f2.3", ""); /* will be converted to < 3 */
   TEST_PARAMS2(test_validate_trigger, "0xX1234<=f2.3", ""); /* will be converted to <= 2 */
   TEST_PARAMS2(test_validate_trigger, "0xX1234>f2.3", ""); /* will be converted to > 2 */
   TEST_PARAMS2(test_validate_trigger, "0xX1234>=f2.3", ""); /* will be converted to >= 3 */
   TEST_PARAMS2(test_validate_trigger, "0xX1234=f2.0", ""); /* float can be converted to int without loss of data*/
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=f2.3", "Condition 1: Comparison is never true");
-  TEST_PARAMS2(test_validate_trigger, "0xH1234=f300.0", "Condition 1: Comparison is never true"); /* value out of range */
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=f2.3", "Condition 1: Comparison is never true (integer can never be 2.3)");
+  TEST_PARAMS2(test_validate_trigger, "0xH1234=f300.0", "Condition 1: Comparison is never true (max 255)"); /* value out of range */
   TEST_PARAMS2(test_validate_trigger, "f2.3=fF1234", "");
-  TEST_PARAMS2(test_validate_trigger, "f2.3=0xX1234", "Condition 1: Comparison is never true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "f2.3=0xX1234", "Condition 1: Comparison is never true (integer can never be 2.3)"); /* non integral comparison */
   TEST_PARAMS2(test_validate_trigger, "f2.0=0xX1234", "");
   TEST_PARAMS2(test_validate_trigger, "A:Ff2345_fF1234=f2.3", "");
   TEST_PARAMS2(test_validate_trigger, "A:0xX2345_fF1234=f2.3", "");
-  TEST_PARAMS2(test_validate_trigger, "A:Ff2345_0x1234=f2.3", "Condition 2: Comparison is never true"); /* non integral comparison */
+  TEST_PARAMS2(test_validate_trigger, "A:Ff2345_0x1234=f2.3", "Condition 2: Comparison is never true (integer can never be 2.3)"); /* non integral comparison */
   TEST_PARAMS2(test_validate_trigger, "fM1234>f2.3", "");
   TEST_PARAMS2(test_validate_trigger, "fM1234>f-2.3", "");
   TEST_PARAMS2(test_validate_trigger, "I:0xX2345_fM1234>f1.0", "");
@@ -328,9 +328,9 @@ void test_float_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "fM1234>=0", "");
   TEST_PARAMS2(test_validate_trigger, "fB1234>=0", "");
   TEST_PARAMS2(test_validate_trigger, "0xH1234>=f0.1", ""); /* 0 can be less than 0.1 */
-  TEST_PARAMS2(test_validate_trigger, "0xH1234>=f255.1", "Condition 1: Comparison is never true"); /* 255 cannot be >= 255.1 */
+  TEST_PARAMS2(test_validate_trigger, "0xH1234>=f255.1", "Condition 1: Comparison is never true (max 255)"); /* 255 cannot be >= 255.1 */
   TEST_PARAMS2(test_validate_trigger, "f0.1<=0xH1234", ""); /* 0 can be less than 0.1 */
-  TEST_PARAMS2(test_validate_trigger, "f255.1<=0xH1234", "Condition 1: Comparison is never true"); /* 255 cannot be >= 255.1 */
+  TEST_PARAMS2(test_validate_trigger, "f255.1<=0xH1234", "Condition 1: Comparison is never true (max 255)"); /* 255 cannot be >= 255.1 */
 }
 
 void test_dependent_conditions() {

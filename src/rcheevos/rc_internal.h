@@ -382,7 +382,6 @@ rc_memrefs_t* rc_richpresence_get_memrefs(rc_richpresence_t* self);
 void rc_reset_richpresence_triggers(rc_richpresence_t* self);
 void rc_update_richpresence_internal(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud);
 
-int rc_validate_memrefs(const rc_memrefs_t* memrefs, char result[], const size_t result_size, uint32_t max_address);
 int rc_validate_memrefs_for_console(const rc_memrefs_t* memrefs, char result[], const size_t result_size, uint32_t console_id);
 
 RC_END_C_DECLS
