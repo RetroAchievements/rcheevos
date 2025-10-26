@@ -16,11 +16,11 @@ enum
 
   /* errors that prevent the achievement from functioning */
   RC_VALIDATION_ERR_ADDRESS_OUT_OF_RANGE,
+  RC_VALIDATION_ERR_RECALL_BEFORE_REMEMBER,
   RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE_WITH_MAX,
   RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE_INTEGER_TO_FLOAT,
   RC_VALIDATION_ERR_COMPARISON_NEVER_TRUE,
   RC_VALIDATION_ERR_CONFLICTING_CONDITION,
-  RC_VALIDATION_ERR_RECALL_BEFORE_REMEMBER,
 
   /* warnings about logic that does nothing */
   RC_VALIDATION_ERR_COMPARISON_ALWAYS_TRUE_INTEGER_TO_FLOAT,
@@ -55,7 +55,7 @@ enum
 {
   RC_VALIDATION_VIRTUAL_RAM_OTHER,
   RC_VALIDATION_VIRTUAL_RAM_MIRROR,
-  RC_VALIDATION_VIRTUAL_RAM_ECHO,
+  RC_VALIDATION_VIRTUAL_RAM_ECHO
 };
 
 typedef struct rc_validation_error_t
@@ -333,23 +333,6 @@ static int rc_validate_memref(const rc_memref_t* memref, rc_validation_state_t* 
         return rc_validate_add_error(state, RC_VALIDATION_ERR_KERNAL_RAM_REQUIRES_BIOS, memref->address, 0);
       break;
   }
-
-  return 1;
-}
-
-static int rc_validate_memrefs(const rc_memrefs_t* memrefs, rc_validation_state_t* state, uint32_t max_address)
-{
-  const rc_memref_list_t* memref_list = &memrefs->memrefs;
-  do {
-    const rc_memref_t* memref = memref_list->items;
-    const rc_memref_t* memref_stop = memref + memref_list->count;
-    for (; memref < memref_stop; ++memref) {
-      if (!rc_validate_memref(memref, state))
-        return 0;
-    }
-
-    memref_list = memref_list->next;
-  } while (memref_list);
 
   return 1;
 }
