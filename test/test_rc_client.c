@@ -8733,7 +8733,10 @@ static void test_idle_ping(void)
 
     mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&h=1&x=0123456789ABCDEF", "{\"Success\":true}");
 
+    g_client->state.frames_processed++; /* ping won't get called if no frames have been processed */
     rc_client_idle(g_client);
+
+    assert_api_called("r=ping&u=Username&t=ApiToken&g=1234&h=1&x=0123456789ABCDEF");
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
     ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 120 * 1000);
@@ -8770,7 +8773,10 @@ static void test_do_frame_ping_rich_presence(void)
     /* before rc_client_do_frame, memory will not have been read. all values will be 0 */
     mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a0&h=1&x=0123456789ABCDEF", "{\"Success\":true}");
 
+    g_client->state.frames_processed++; /* ping won't get called if no frames have been processed */
     rc_client_idle(g_client);
+
+    assert_api_called("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a0&h=1&x=0123456789ABCDEF");
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
     ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
@@ -8849,19 +8855,16 @@ static void test_do_frame_ping_rich_presence_override_allowed(void)
 
     mock_memory(memory, sizeof(memory));
     memory[0x03] = 25;
+    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25&h=1&x=0123456789ABCDEF", "{\"Success\":true}");
 
-    /* before rc_client_do_frame, memory will not have been read. all values will be 0 */
-    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a0&h=1&x=0123456789ABCDEF", "{\"Success\":true}");
+    /* ping won't get called if no frames have been processed. do_frame will increment frames_processed */
+    rc_client_do_frame(g_client);
 
-    rc_client_idle(g_client);
+    assert_api_called("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25&h=1&x=0123456789ABCDEF");
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
     ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
     ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 120 * 1000);
-    g_now += 120 * 1000;
-
-    /* rc_client_do_frame will update the memory, so the message will contain appropriate data */
-    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25&h=1&x=0123456789ABCDEF", "{\"Success\":true}");
   }
 
   rc_client_destroy(g_client);
@@ -8892,7 +8895,10 @@ static void test_do_frame_ping_rich_presence_override_replaced(void)
     /* before rc_client_do_frame, can_submit only ignores the m parameter. ping still occurs */
     mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Custom&h=1&x=0123456789ABCDEF", "{\"Success\":true}");
 
-    rc_client_idle(g_client);
+    /* ping won't get called if no frames have been processed. do_frame will increment frames_processed */
+    rc_client_do_frame(g_client);
+
+    assert_api_called("r=ping&u=Username&t=ApiToken&g=1234&m=Custom&h=1&x=0123456789ABCDEF");
 
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
     ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
@@ -8905,6 +8911,69 @@ static void test_do_frame_ping_rich_presence_override_replaced(void)
 
   rc_client_destroy(g_client);
 }
+
+static void test_idle_ping_while_not_running(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    rc_client_scheduled_callback_t ping_callback;
+    memory[0x03] = 25;
+    mock_memory(memory, sizeof(memory));
+
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+    ping_callback = g_client->state.scheduled_callbacks->callback;
+
+    ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 30 * 1000);
+    g_now += 30 * 1000;
+
+    mock_api_response("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25&h=1&x=0123456789ABCDEF", "{\"Success\":true}");
+
+    /* if no frames have been processed since the last ping, a ping shouldn't be sent */
+    g_client->state.frames_processed = g_client->state.frames_at_last_ping;
+    rc_client_idle(g_client);
+
+    assert_api_not_called("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25&h=1&x=0123456789ABCDEF");
+
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+    ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 120 * 1000);
+    ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
+    g_now += 120 * 1000;
+
+    /* do_frame will increment frames_processed, and ping will get called */
+
+    rc_client_do_frame(g_client);
+
+    assert_api_called("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25&h=1&x=0123456789ABCDEF");
+
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+    ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
+    ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 120 * 1000);
+    g_now += 120 * 1000;
+
+    /* no frames processed. ping shouldn't be sent, but still rescheduled */
+
+    rc_client_idle(g_client);
+
+    assert_api_call_count("r=ping&u=Username&t=ApiToken&g=1234&m=Points%3a25&h=1&x=0123456789ABCDEF", 1);
+
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+    ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 120 * 1000);
+    ASSERT_PTR_EQUALS(g_client->state.scheduled_callbacks->callback, ping_callback);
+  }
+
+  /* unloading game should unschedule ping */
+  rc_client_unload_game(g_client);
+  ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+
+  rc_client_destroy(g_client);
+}
+
+/* ----- reset ----- */
 
 static void test_reset_hides_widgets(void)
 {
@@ -10133,6 +10202,7 @@ void test_client(void) {
   TEST(test_do_frame_ping_rich_presence);
   TEST(test_do_frame_ping_rich_presence_override_allowed);
   TEST(test_do_frame_ping_rich_presence_override_replaced);
+  TEST(test_idle_ping_while_not_running);
 
   /* reset */
   TEST(test_reset_hides_widgets);
