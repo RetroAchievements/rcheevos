@@ -202,6 +202,7 @@ static void test_range_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "A:0xH1234&10_0xH1235>265", "Condition 2: Comparison is never true (max 265)");
   TEST_PARAMS2(test_validate_trigger, "A:b0xH1234*100_b0xH1235>=16665", "");
   TEST_PARAMS2(test_validate_trigger, "A:b0xH1234*100_b0xH1235>16665", "Condition 2: Comparison is never true (max 16665)");
+  TEST_PARAMS2(test_validate_trigger, "A:0xX1234_0x 1245=123456", ""); /* sum of 32-bit and 16-bit is still 32-bit */
 
   /* max for SubSource is always 0xFFFFFFFF */
   TEST_PARAMS2(test_validate_trigger, "B:0xH1234_0xH1235<510", "");
@@ -210,8 +211,7 @@ static void test_range_comparisons() {
   /* A - da + 255 > 255 */
   TEST_PARAMS2(test_validate_trigger, "A:255_B:d0xH1234_0xH1234>255", "");
 
-  TEST_PARAMS2(test_validate_trigger, "I:0xG1234&536870911_R:0xG0000=4294967294_0xH2222=1.1.", "");
-
+  /* division by self results in a 0 or 1 */
   TEST_PARAMS2(test_validate_trigger, "B:0xH1241/0xH1241_B:0xH124c/0xH124c_M:2=2", "");
   TEST_PARAMS2(test_validate_trigger, "B:0xH1241/0xH1241_B:0xH124c/0xH124c_M:2>2", "Condition 3: Comparison is never true (max 2)");
 }
@@ -441,6 +441,8 @@ void test_redundant_hitcounts() {
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0_M:0xH0001=1.1.", "");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0.1._0xH0001=1.1.", "Condition 1: Hit target of 1 is redundant on ResetIf");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0.2._0xH0001=1.1.", "");
+
+  TEST_PARAMS2(test_validate_trigger, "I:0xG1234&536870911_R:0xG0000=4294967294_0xH2222=1.1.", "");
 }
 
 void test_variable_operand_errors() {

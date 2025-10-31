@@ -459,7 +459,7 @@ static void rc_combine_ranges(uint32_t* min_val, uint32_t* max_val, uint8_t oper
         *max_val += oper_max_val;
       }
       else {
-        unsigned long scaled = ((unsigned long)*max_val) + oper_max_val;
+        unsigned long long scaled = ((unsigned long long)*max_val) + oper_max_val;
         *max_val = (scaled > 0xFFFFFFFF) ? 0xFFFFFFFF : (uint32_t)scaled;
       }
 
