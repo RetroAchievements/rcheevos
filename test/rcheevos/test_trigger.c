@@ -2262,6 +2262,43 @@ static void test_remember_recall_in_addaddress()
   assert_evaluate_trigger(trigger, &memory, 1);
 }
 
+static void test_remember_recall_self_in_addaddress()
+{
+  uint8_t ram[] = { 0x02, 0x03, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* byte(byte(0x0000) + 1) == 60 */
+  assert_parse_trigger(&trigger, buffer, "K:0xH0000_K:{recall}_I:{recall}_0xH0001=60");
+
+  /* byte(2 + 1) => byte(3) == 60 */
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* condition is true */
+  ram[3] = 60;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* byte(3 + 1) => byte(4) == 60 */
+  ram[0] = 3;
+  assert_evaluate_trigger(trigger, &memory, 0);
+
+  /* condition is true */
+  ram[4] = 60;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* byte(2 + 1) => byte(3) == 60 */
+  ram[0] = 2;
+  assert_evaluate_trigger(trigger, &memory, 1);
+
+  /* condition is false */
+  ram[3] = 9;
+  assert_evaluate_trigger(trigger, &memory, 0);
+}
+
 /* ======================================================== */
 
 static void test_trailing_andnext() {
@@ -2445,6 +2482,7 @@ void test_trigger(void) {
   TEST(test_remember_recall_in_pause_and_main);
   TEST(test_remember_recall_in_pause_with_chain);
   TEST(test_remember_recall_in_addaddress);
+  TEST(test_remember_recall_self_in_addaddress);
 
   /* incomplete logic */
   TEST(test_trailing_andnext);

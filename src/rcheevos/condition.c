@@ -427,6 +427,14 @@ void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t
       break;
 
     case RC_CONDITION_REMEMBER:
+      if (condition->operand1.type == RC_OPERAND_RECALL &&
+          condition->oper == RC_OPERATOR_NONE &&
+          parse->addsource_parent.type == RC_OPERAND_NONE &&
+          parse->indirect_parent.type == RC_OPERAND_NONE) {
+        /* Remembering {recall} without any modifications is a no-op */
+        break;
+      }
+
       rc_condition_convert_to_operand(condition, &condition->operand1, parse);
 
       if (parse->addsource_parent.type != RC_OPERAND_NONE) {
