@@ -67,6 +67,7 @@ static void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_par
   next_clause = &self->conditions;
   do {
     /* count the number of joiners and add one to determine the number of clauses.  */
+    buffer[0] = 'A'; /* reset to AddSource */
     done = 0;
     num_measured_conditions = 1;
     buffer_ptr = *memaddr;
