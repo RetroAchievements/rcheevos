@@ -3125,6 +3125,34 @@ static void test_addhits_unfinished() {
   ASSERT_NUM_EQUALS(condset->num_other_conditions, 2);
 }
 
+static void test_addhits_float_coercion() {
+  uint8_t ram[] = { 0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0xC0, 0x3F }; /* fF0004 = 1.5 */
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* 0 + float(4) * 10 - prev(float(4)) * 10 + 0 + 0 = 1 */
+  assert_parse_condset(&condset, &memrefs, buffer, "A:0_A:fF0004*10_B:dfF0004*10_A:0_0=1");
+
+  /* float(4) = 1.5, prev(float(4)) = 0.0. 0+15-0+0+0=1 = false */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* float(4) = 2.0, prev(float(4)) = 1.5. 0+20-15+0+0=1 = false */
+  ram[6] = 0x00;
+  ram[7] = 0x40;
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* float(4) = 2.1, prev(float(4)) = 2.0. 0+21-20+0+0=1 = true */
+  ram[6] = 0x06;
+  ram[5] = 0x66;
+  ram[4] = 0x66;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_andnext() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -5012,6 +5040,7 @@ void test_condset(void) {
   TEST(test_subhits);
   TEST(test_subhits_below_zero);
   TEST(test_addhits_unfinished);
+  TEST(test_addhits_float_coercion)
 
   /* andnext */
   TEST(test_andnext);

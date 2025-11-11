@@ -608,6 +608,82 @@ static void test_typed_value_negation() {
   TEST_PARAMS6(test_typed_value_negate, RC_VALUE_TYPE_FLOAT, 0, -2.7, RC_VALUE_TYPE_FLOAT, 0, 2.7);
 }
 
+static void test_addhits_float_coercion() {
+  rc_value_t* self;
+  uint8_t ram[] = { 0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0xC0, 0x3F }; /* fF0004 = 1.5 */
+  memory_t memory;
+  char buffer[2048];
+  /* measured(tally(0, (0 + float(4) * 10 - prev(float(4)) * 10) == 1)) */
+  const char* memaddr = "A:0_A:fF0004*10_B:dfF0004*10_C:0=1_M:0=1";
+  int ret;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  ret = rc_value_size(memaddr);
+  ASSERT_NUM_GREATER_EQUALS(ret, 0);
+
+  self = rc_parse_value(buffer, memaddr, NULL, 0);
+  ASSERT_PTR_NOT_NULL(self);
+
+  /* The 0+ at the start of the expression changes the accumulator to an integer,
+   * so when float(4)*10 is added and prev(float(4))*10 is subtracted, they'll also
+   * be converted to integers before they're combined.
+   */
+
+  /* float(4) = 1.5, prev(float(4)) = 0.0. 0+15-0=1 is false => 0 */
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+
+  /* float(4) = 1.75, prev(float(4)) = 1.5. 0+17-15 => 2 => 2=1 is false => 0 */
+  ram[7] = 0x3f; ram[6] = 0xe0;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+
+  /* float(4) = 1.82, prev(float(4)) = 1.75. 0+18-17 => 1 => 1=1 is true => 1 */
+  ram[6] = 0xe8; ram[5] = 0xf5; ram[4] = 0xc3;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+
+  /* float(4) = 2.06, prev(float(4)) = 1.82. 0+20-18 => 2 => 2=1 is false => 1 */
+  ram[7] = 0x40; ram[6] = 0x03; ram[5] = 0xd7; ram[4] = 0x0a;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+}
+
+static void test_addhits_float_coercion_remembered() {
+  rc_value_t* self;
+  uint8_t ram[] = { 0x00, 0x06, 0x34, 0xAB, 0x00, 0x00, 0xC0, 0x3F }; /* fF0004 = 1.5 */
+  memory_t memory;
+  char buffer[2048];
+  /* measured(tally(0, remembered(0 - prev(float(4)) * 10) + (0 + float(4) * 10) == 1)) */
+  const char* memaddr = "A:0_B:dfF0004*10_K:0_A:0_A:fF0004*10_C:{recall}=1_M:0=1";
+  int ret;
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  ret = rc_value_size(memaddr);
+  ASSERT_NUM_GREATER_EQUALS(ret, 0);
+
+  self = rc_parse_value(buffer, memaddr, NULL, 0);
+  ASSERT_PTR_NOT_NULL(self);
+
+  /* using remember allows for both sides to explicitly be cast to integer before
+   * performing the subtraction. */
+
+  /* float(4) = 1.5, prev(float(4)) = 0.0. 15-0 => 15=1 is false => 0 */
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+
+  /* float(4) = 1.75, prev(float(4)) = 1.5. 17-15 => 2=1 is false => 0 */
+  ram[7] = 0x3f; ram[6] = 0xe0;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+
+  /* float(4) = 1.82, prev(float(4)) = 1.75. 18-17 => 1=1 is true => 1 */
+  ram[6] = 0xe8; ram[5] = 0xf5; ram[4] = 0xc3;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+
+  /* float(4) = 2.06, prev(float(4)) = 1.82. 20-18 => 2=1 is false => 1 */
+  ram[7] = 0x40; ram[6] = 0x03; ram[5] = 0xd7; ram[4] = 0x0a;
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+}
+
 void test_value(void) {
   TEST_SUITE_BEGIN();
 
@@ -784,6 +860,9 @@ void test_value(void) {
   test_typed_value_division();
   test_typed_value_modulus();
   test_typed_value_negation();
+
+  test_addhits_float_coercion();
+  test_addhits_float_coercion_remembered();
 
   TEST_SUITE_END();
 }
