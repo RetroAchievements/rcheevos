@@ -2878,17 +2878,18 @@ static void test_addsource_long_chain() {
    */
   const size_t cond_count = 1500;
   const size_t buffer_size = 384 * cond_count;
-  char* buffer = (char*)malloc(buffer_size);
-  char* ptr = buffer;
-  const char* memaddr = buffer;
+  char* buffer;
+  char* ptr;
+  const char* memaddr;
   rc_condset_t* condset;
   rc_memrefs_t memrefs;
   rc_parse_state_t parse;
   clock_t start, end;
   size_t i;
 
-  printf("0\n");
+  printf("[%u]\n", (uint32_t)buffer_size);
 
+  memaddr = ptr = buffer = (char*)malloc(buffer_size);
   ASSERT_PTR_NOT_NULL(buffer);
 
   for (i = 0; i < cond_count; i++)
