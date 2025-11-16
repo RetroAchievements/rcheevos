@@ -2885,26 +2885,42 @@ static void test_addsource_long_chain() {
   rc_memrefs_t memrefs;
   rc_parse_state_t parse;
   clock_t start, end;
-  size_t i;
+  size_t i, len, remaining;
 
   printf("[%u]\n", (uint32_t)buffer_size);
   fflush(stdout);
 
   memaddr = ptr = buffer = (char*)malloc(buffer_size);
+
+  printf("a\n");
+  fflush(stdout);
+
   ASSERT_PTR_NOT_NULL(buffer);
 
-  for (i = 0; i < cond_count; i++)
-    ptr += snprintf(ptr, buffer_size, "A:0xH%04x_", (uint32_t)i);
-  ptr += snprintf(ptr, buffer_size, "0=500");
-  for (i = 0; i < cond_count; i++)
-    ptr += snprintf(ptr, buffer_size, "_A:d0xH%04x", (uint32_t)i);
-  ptr += snprintf(ptr, buffer_size, "=499");
+  printf("b\n");
+  fflush(stdout);
+
+  remaining = buffer_size;
+  for (i = 0; i < cond_count; i++) {
+    len = snprintf(ptr, remaining, "A:0xH%04x_", (uint32_t)i);
+    remaining -= len;
+    ptr += len;
+  }
+  len = snprintf(ptr, remaining, "0=500");
+  remaining -= len;
+  ptr += len;
+  for (i = 0; i < cond_count; i++) {
+    len = snprintf(ptr, remaining, "_A:d0xH%04x", (uint32_t)i);
+    remaining -= len;
+    ptr += len;
+  }
+  ptr += snprintf(ptr, remaining, "=499");
 
   printf("1\n");
   fflush(stdout);
 
   ptr = (char*)RC_ALIGN((size_t)ptr);
-  i = ptr - buffer;
+  remaining = buffer_size - (ptr - buffer);
 
   printf("2\n");
   fflush(stdout);
@@ -2928,7 +2944,7 @@ static void test_addsource_long_chain() {
   fflush(stdout);
 
   ASSERT_NUM_GREATER(parse.offset, 0);
-  ASSERT_NUM_LESS(parse.offset, buffer_size - i);
+  ASSERT_NUM_LESS(parse.offset, remaining);
   ASSERT_PTR_NOT_NULL(condset);
 
   printf("6\n");
