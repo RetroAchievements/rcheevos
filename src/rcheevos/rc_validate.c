@@ -1067,7 +1067,6 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
   const rc_condition_t* condition;
   const rc_condition_t* condition_chain_start;
   uint32_t errors_before = state->error_count;
-  uint32_t condition_index;
   int overlap;
   int chain_matches;
 
@@ -1076,11 +1075,9 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
     return 1;
 
   /* outer loop is the source conditions */
-  condition_index = 1;
   for (condition = conditions->conditions; condition != NULL; condition = condition->next, ++state->cond_index) {
     condition_chain_start = condition;
     while (condition && rc_condition_is_combining(condition)) {
-      ++condition_index;
       condition = condition->next;
     }
     if (!condition)
