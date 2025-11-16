@@ -2888,6 +2888,7 @@ static void test_addsource_long_chain() {
   size_t i;
 
   printf("[%u]\n", (uint32_t)buffer_size);
+  fflush(stdout);
 
   memaddr = ptr = buffer = (char*)malloc(buffer_size);
   ASSERT_PTR_NOT_NULL(buffer);
@@ -2900,32 +2901,38 @@ static void test_addsource_long_chain() {
   ptr += snprintf(ptr, buffer_size, "=499");
 
   printf("1\n");
+  fflush(stdout);
 
   ptr = (char*)RC_ALIGN((size_t)ptr);
   i = ptr - buffer;
 
   printf("2\n");
+  fflush(stdout);
 
   rc_init_parse_state(&parse, ptr);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   printf("3\n");
+  fflush(stdout);
 
   start = clock();
   condset = rc_parse_condset(&memaddr, &parse);
   end = clock();
 
   printf("4\n");
+  fflush(stdout);
 
   rc_destroy_parse_state(&parse);
 
   printf("5\n");
+  fflush(stdout);
 
   ASSERT_NUM_GREATER(parse.offset, 0);
   ASSERT_NUM_LESS(parse.offset, buffer_size - i);
   ASSERT_PTR_NOT_NULL(condset);
 
   printf("6\n");
+  fflush(stdout);
 
   double elapsed = (double)(end - start) * 1000 / CLOCKS_PER_SEC;
   /* this shouldn't take more than 20-40ms (depending on the machine its running on).
@@ -2933,6 +2940,7 @@ static void test_addsource_long_chain() {
   ASSERT_NUM_LESS(elapsed, 1000);
 
   printf("7\n");
+  fflush(stdout);
 
   /* each condition and its delta should share a memref */
   ASSERT_NUM_EQUALS(rc_memrefs_count_memrefs(&memrefs), cond_count);
@@ -2941,10 +2949,12 @@ static void test_addsource_long_chain() {
   ASSERT_NUM_EQUALS(rc_memrefs_count_modified_memrefs(&memrefs), cond_count);
 
   printf("8\n");
+  fflush(stdout);
 
   free(buffer);
 
   printf("9\n");
+  fflush(stdout);
 }
 
 static void test_addhits() {
