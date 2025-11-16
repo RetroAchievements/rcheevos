@@ -154,7 +154,13 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
   memcpy(&modified_memref->parent, parent, sizeof(modified_memref->parent));
   memcpy(&modified_memref->modifier, modifier, sizeof(modified_memref->modifier));
   modified_memref->modifier_type = modifier_type;
+  modified_memref->depth = 0;
   modified_memref->memref.address = rc_operand_is_memref(modifier) ? modifier->value.memref->address : modifier->value.num;
+
+  if (rc_operand_is_memref(parent) && parent->value.memref->value.memref_type == RC_MEMREF_TYPE_MODIFIED_MEMREF) {
+    const rc_modified_memref_t* parent_modified_memref = (rc_modified_memref_t*)parent->value.memref;
+    modified_memref->depth = parent_modified_memref->depth + 1;
+  }
 
   return modified_memref;
 }

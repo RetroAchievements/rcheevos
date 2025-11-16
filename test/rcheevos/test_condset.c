@@ -3,6 +3,8 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
+#include <stdlib.h>
+
 static void _assert_parse_condset(rc_condset_t** condset, rc_memrefs_t* memrefs, void* buffer, const char* memaddr)
 {
   rc_parse_state_t parse;
@@ -2869,6 +2871,59 @@ static void test_addsource_recall_float_division() {
   assert_evaluate_condset(condset, memrefs, &memory, 1);
 }
 
+static void test_addsource_long_chain() {
+  /* assume 22 bytes per cond (10 for base, 11 for delta, 1 for separator)
+   * and approximately 320 bytes per cond when convered to data structures.
+   * 320+22 = 342. Round that up to 384 just to be safe.
+   */
+  const size_t cond_count = 1500;
+  const size_t buffer_size = 384 * cond_count;
+  char* buffer = (char*)malloc(buffer_size);
+  char* ptr = buffer;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  rc_parse_state_t parse;
+  clock_t start, end;
+  size_t i;
+
+  for (i = 0; i < cond_count; i++)
+    ptr += snprintf(ptr, buffer_size, "A:0xH%04x_", (uint32_t)i);
+  ptr += snprintf(ptr, buffer_size, "0=500");
+  for (i = 0; i < cond_count; i++)
+    ptr += snprintf(ptr, buffer_size, "_A:d0xH%04x", (uint32_t)i);
+  ptr += snprintf(ptr, buffer_size, "=499");
+
+  ptr = (char*)RC_ALIGN((size_t)ptr);
+  i = ptr - buffer;
+
+  rc_init_parse_state(&parse, ptr);
+  rc_init_parse_state_memrefs(&parse, &memrefs);
+
+  start = clock();
+  ptr = buffer;
+  condset = rc_parse_condset(&ptr, &parse);
+  end = clock();
+
+  rc_destroy_parse_state(&parse);
+
+  ASSERT_NUM_GREATER(parse.offset, 0);
+  ASSERT_NUM_LESS(parse.offset, buffer_size - i);
+  ASSERT_PTR_NOT_NULL(condset);
+
+  double elapsed = (double)(end - start) * 1000 / CLOCKS_PER_SEC;
+  /* this shouldn't take more than 20-40ms (depending on the machine its running on).
+   * allow up to 1 full second before this errors. it was taking over 10s when reported */
+  ASSERT_NUM_LESS(elapsed, 1000);
+
+  /* each condition and its delta should share a memref */
+  ASSERT_NUM_EQUALS(rc_memrefs_count_memrefs(&memrefs), cond_count);
+  /* one modified memref should be generated for each condition past the first
+   * plus one for the final condition: cond_count - 1 + 1 */
+  ASSERT_NUM_EQUALS(rc_memrefs_count_modified_memrefs(&memrefs), cond_count);
+
+  free(buffer);
+}
+
 static void test_addhits() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -5003,6 +5058,7 @@ void test_condset(void) {
   TEST(test_addsource_unfinished);
   TEST(test_addsource_float_division);
   TEST(test_addsource_recall_float_division);
+  TEST(test_addsource_long_chain);
 
   /* addhits/subhits */
   TEST(test_addhits);

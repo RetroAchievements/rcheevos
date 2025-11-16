@@ -14,10 +14,11 @@ typedef struct rc_scratch_string {
 rc_scratch_string_t;
 
 typedef struct rc_modified_memref_t {
-  rc_memref_t memref;              /* for compatibility with rc_operand_t.value.memref */
+  rc_memref_t memref;              /* For compatibility with rc_operand_t.value.memref */
   rc_operand_t parent;             /* The parent memref this memref is derived from (type will always be a memref type) */
   rc_operand_t modifier;           /* The modifier to apply to the parent. */
   uint8_t modifier_type;           /* How to apply the modifier to the parent. (RC_OPERATOR_*) */
+  uint16_t depth;                  /* The number of parents this memref has. */
 }
 rc_modified_memref_t;
 
