@@ -2887,6 +2887,10 @@ static void test_addsource_long_chain() {
   clock_t start, end;
   size_t i;
 
+  printf("0\n");
+
+  ASSERT_NOT_NULL(buffer);
+
   for (i = 0; i < cond_count; i++)
     ptr += snprintf(ptr, buffer_size, "A:0xH%04x_", (uint32_t)i);
   ptr += snprintf(ptr, buffer_size, "0=500");
@@ -2894,26 +2898,40 @@ static void test_addsource_long_chain() {
     ptr += snprintf(ptr, buffer_size, "_A:d0xH%04x", (uint32_t)i);
   ptr += snprintf(ptr, buffer_size, "=499");
 
+  printf("1\n");
+
   ptr = (char*)RC_ALIGN((size_t)ptr);
   i = ptr - buffer;
 
+  printf("2\n");
+
   rc_init_parse_state(&parse, ptr);
   rc_init_parse_state_memrefs(&parse, &memrefs);
+
+  printf("3\n");
 
   start = clock();
   condset = rc_parse_condset(&memaddr, &parse);
   end = clock();
 
+  printf("4\n");
+
   rc_destroy_parse_state(&parse);
+
+  printf("5\n");
 
   ASSERT_NUM_GREATER(parse.offset, 0);
   ASSERT_NUM_LESS(parse.offset, buffer_size - i);
   ASSERT_PTR_NOT_NULL(condset);
 
+  printf("6\n");
+
   double elapsed = (double)(end - start) * 1000 / CLOCKS_PER_SEC;
   /* this shouldn't take more than 20-40ms (depending on the machine its running on).
    * allow up to 1 full second before this errors. it was taking over 10s when reported */
   ASSERT_NUM_LESS(elapsed, 1000);
+
+  printf("7\n");
 
   /* each condition and its delta should share a memref */
   ASSERT_NUM_EQUALS(rc_memrefs_count_memrefs(&memrefs), cond_count);
@@ -2921,7 +2939,11 @@ static void test_addsource_long_chain() {
    * plus one for the final condition: cond_count - 1 + 1 */
   ASSERT_NUM_EQUALS(rc_memrefs_count_modified_memrefs(&memrefs), cond_count);
 
+  printf("8\n");
+
   free(buffer);
+
+  printf("9\n");
 }
 
 static void test_addhits() {
