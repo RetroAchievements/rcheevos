@@ -2878,27 +2878,16 @@ static void test_addsource_long_chain() {
    */
   const size_t cond_count = 1500;
   const size_t buffer_size = 384 * cond_count;
-  char* buffer;
-  char* ptr;
-  const char* memaddr;
+  char* buffer = (char*)malloc(buffer_size);
+  char* ptr = buffer;
+  const char* memaddr = buffer;
   rc_condset_t* condset;
   rc_memrefs_t memrefs;
   rc_parse_state_t parse;
   clock_t start, end;
   size_t i, len, remaining;
 
-  printf("[%u]\n", (uint32_t)buffer_size);
-  fflush(stdout);
-
-  memaddr = ptr = buffer = (char*)malloc(buffer_size);
-
-  printf("a\n");
-  fflush(stdout);
-
   ASSERT_PTR_NOT_NULL(buffer);
-
-  printf("b\n");
-  fflush(stdout);
 
   remaining = buffer_size;
   for (i = 0; i < cond_count; i++) {
@@ -2916,47 +2905,26 @@ static void test_addsource_long_chain() {
   }
   ptr += snprintf(ptr, remaining, "=499");
 
-  printf("1\n");
-  fflush(stdout);
-
   ptr = (char*)RC_ALIGN((size_t)ptr);
   remaining = buffer_size - (ptr - buffer);
 
-  printf("2\n");
-  fflush(stdout);
-
   rc_init_parse_state(&parse, ptr);
   rc_init_parse_state_memrefs(&parse, &memrefs);
-
-  printf("3\n");
-  fflush(stdout);
 
   start = clock();
   condset = rc_parse_condset(&memaddr, &parse);
   end = clock();
 
-  printf("4\n");
-  fflush(stdout);
-
   rc_destroy_parse_state(&parse);
-
-  printf("5\n");
-  fflush(stdout);
 
   ASSERT_NUM_GREATER(parse.offset, 0);
   ASSERT_NUM_LESS(parse.offset, remaining);
   ASSERT_PTR_NOT_NULL(condset);
 
-  printf("6\n");
-  fflush(stdout);
-
   double elapsed = (double)(end - start) * 1000 / CLOCKS_PER_SEC;
   /* this shouldn't take more than 20-40ms (depending on the machine its running on).
    * allow up to 1 full second before this errors. it was taking over 10s when reported */
   ASSERT_NUM_LESS(elapsed, 1000);
-
-  printf("7\n");
-  fflush(stdout);
 
   /* each condition and its delta should share a memref */
   ASSERT_NUM_EQUALS(rc_memrefs_count_memrefs(&memrefs), cond_count);
@@ -2964,13 +2932,7 @@ static void test_addsource_long_chain() {
    * plus one for the final condition: cond_count - 1 + 1 */
   ASSERT_NUM_EQUALS(rc_memrefs_count_modified_memrefs(&memrefs), cond_count);
 
-  printf("8\n");
-  fflush(stdout);
-
   free(buffer);
-
-  printf("9\n");
-  fflush(stdout);
 }
 
 static void test_addhits() {
