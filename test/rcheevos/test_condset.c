@@ -2889,7 +2889,7 @@ static void test_addsource_long_chain() {
 
   printf("0\n");
 
-  ASSERT_NOT_NULL(buffer);
+  ASSERT_PTR_NOT_NULL(buffer);
 
   for (i = 0; i < cond_count; i++)
     ptr += snprintf(ptr, buffer_size, "A:0xH%04x_", (uint32_t)i);
