@@ -3,7 +3,7 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-#include <stdlib.h>
+#include "../src/rc_compat.h"
 
 static void _assert_parse_condset(rc_condset_t** condset, rc_memrefs_t* memrefs, void* buffer, const char* memaddr)
 {
@@ -2880,6 +2880,7 @@ static void test_addsource_long_chain() {
   const size_t buffer_size = 384 * cond_count;
   char* buffer = (char*)malloc(buffer_size);
   char* ptr = buffer;
+  const char* memaddr = buffer;
   rc_condset_t* condset;
   rc_memrefs_t memrefs;
   rc_parse_state_t parse;
@@ -2900,8 +2901,7 @@ static void test_addsource_long_chain() {
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   start = clock();
-  ptr = buffer;
-  condset = rc_parse_condset(&ptr, &parse);
+  condset = rc_parse_condset(&memaddr, &parse);
   end = clock();
 
   rc_destroy_parse_state(&parse);
