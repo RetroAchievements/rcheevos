@@ -789,12 +789,15 @@ static int rc_condset_has_hittargets(const rc_condset_t* condset)
 
   /* pause and reset conditions may have hittargets and won't be classified as hittarget conditions.
    * measured conditions may also have hittargets.
+   * other conditions may have hittarget conditions in an AndNext/OrNext chain.
+   * basically, check everything other than hittarget (explicitly known) and indirect (cannot have).
    */
-  if (condset->num_pause_conditions || condset->num_reset_conditions || condset->num_measured_conditions) {
+  if (condset->num_pause_conditions || condset->num_reset_conditions || condset->num_measured_conditions || condset->num_other_conditions) {
     const rc_condition_t* condition = rc_condset_get_conditions((rc_condset_t*)condset);
     /* ASSERT: don't need to add num_hittarget_conditions because it must be 0 per earlier check */
     const rc_condition_t* stop = condition + condset->num_pause_conditions
-        + condset->num_reset_conditions + condset->num_measured_conditions;
+        + condset->num_reset_conditions + condset->num_measured_conditions
+        + condset->num_other_conditions;
     for (; condition < stop; ++condition) {
       if (condition->required_hits)
         return 1;

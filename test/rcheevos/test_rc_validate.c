@@ -435,14 +435,15 @@ void test_redundant_conditions() {
   TEST_PARAMS2(test_validate_trigger, "0xH0001=7.1._R:0xH0000=0_T:0xH0000=1", "");
 }
 
-void test_redundant_hitcounts() {
+void test_resetif_hittargets() {
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0", "Condition 1: No captured hits to reset");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0_0xH0001=1.1.", "");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0_M:0xH0001=1.1.", "");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0.1._0xH0001=1.1.", "Condition 1: Hit target of 1 is redundant on ResetIf");
   TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0.2._0xH0001=1.1.", "");
-
   TEST_PARAMS2(test_validate_trigger, "I:0xG1234&536870911_R:0xG0000=4294967294_0xH2222=1.1.", "");
+  TEST_PARAMS2(test_validate_trigger, "N:0xH0001=4.1._T:0xH0001=5_R:0xH0001<2", "");
+  TEST_PARAMS2(test_validate_trigger, "R:0xH0000!=0S0xH0001=1.1.S0xH0002=1", "");
 }
 
 void test_variable_operand_errors() {
@@ -490,7 +491,7 @@ void test_rc_validate(void) {
   test_dependent_conditions();
   test_conflicting_conditions();
   test_redundant_conditions();
-  test_redundant_hitcounts();
+  test_resetif_hittargets();
   test_variable_operand_errors();
   test_remember_recall_errors();
   test_error_priorities();
