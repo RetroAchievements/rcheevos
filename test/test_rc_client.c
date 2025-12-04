@@ -3884,6 +3884,45 @@ static void test_fetch_hash_library(void)
   rc_client_destroy(g_client);
 }
 
+/* ----- fetch game titles ----- */
+
+static void test_fetch_game_titles_response(int result, const char* error_message,
+  rc_client_game_title_list_t* list, rc_client_t* client, void* callback_userdata)
+{
+  rc_client_callback_expect_success(result, error_message, client, callback_userdata);
+  if (result != RC_OK)
+    return;
+
+  ASSERT_NUM_EQUALS(list->num_entries, 3);
+  ASSERT_NUM_EQUALS(list->entries[0].game_id, 3);
+  ASSERT_STR_EQUALS(list->entries[0].title, "Game Name 3");
+  ASSERT_STR_EQUALS(list->entries[0].badge_name, "010003");
+  ASSERT_NUM_EQUALS(list->entries[1].game_id, 4);
+  ASSERT_STR_EQUALS(list->entries[1].title, "Game Name 4");
+  ASSERT_STR_EQUALS(list->entries[1].badge_name, "010004");
+  ASSERT_NUM_EQUALS(list->entries[2].game_id, 7);
+  ASSERT_STR_EQUALS(list->entries[2].title, "Game Name 7");
+  ASSERT_STR_EQUALS(list->entries[2].badge_name, "010007");
+
+  rc_client_destroy_game_title_list(list);
+}
+
+static void test_fetch_game_titles(void)
+{
+  const uint32_t game_ids[] = { 3, 4, 7 };
+  g_client = mock_client_not_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=gameinfolist&g=3,4,7", "{\"Success\":true,\"Response\":["
+    "{\"ID\": 3, \"Title\":\"Game Name 3\", \"ImageIcon\": \"/Images/010003.png\"},"
+    "{\"ID\": 4, \"Title\":\"Game Name 4\", \"ImageIcon\": \"/Images/010004.png\"},"
+    "{\"ID\": 7, \"Title\":\"Game Name 7\", \"ImageIcon\": \"/Images/010007.png\"}"
+    "]}");
+
+  rc_client_begin_fetch_game_titles(g_client, game_ids, 3, test_fetch_game_titles_response, g_callback_userdata);
+  rc_client_destroy(g_client);
+}
+
 /* ----- all user progress ----- */
 
 static void test_fetch_all_user_progress_response(int result, const char* error_message,
@@ -10115,6 +10154,9 @@ void test_client(void) {
 
   /* hash library */
   TEST(test_fetch_hash_library);
+
+  /* game titles */
+  TEST(test_fetch_game_titles);
 
   /* all user progress */
   TEST(test_fetch_all_user_progress);
