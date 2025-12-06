@@ -245,6 +245,28 @@ static void test_memory_init_from_unmapped_memory_no_ram() {
   ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x20002));
 }
 
+static void test_memory_init_from_unmapped_memory_ds() {
+  rc_libretro_memory_regions_t regions;
+  uint8_t* buffer1 = (uint8_t*)malloc(0x02000000); /* have to malloc to prevent array-bounds compiler warnings */
+  retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = buffer1;
+  retro_memory_size[RETRO_MEMORY_SYSTEM_RAM] = 0x02000000;
+  retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
+  retro_memory_size[RETRO_MEMORY_SAVE_RAM] = 0;
+
+  /* init returns true */
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_NINTENDO_DS));
+
+  /* primary region should be generated, but TCM won't be available */
+  ASSERT_NUM_EQUALS(regions.count, 2);
+  ASSERT_NUM_EQUALS(regions.total_size, 0x1004000);
+  ASSERT_PTR_NOT_NULL(rc_libretro_memory_find(&regions, 0x00000002));
+  ASSERT_PTR_NOT_NULL(rc_libretro_memory_find(&regions, 0x003FFFFF));
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x00400000));
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x01000002));
+
+  free(buffer1);
+}
+
 static void test_memory_init_from_unmapped_memory_wii() {
   rc_libretro_memory_regions_t regions;
   retro_memory_data[RETRO_MEMORY_SYSTEM_RAM] = NULL;
@@ -252,7 +274,7 @@ static void test_memory_init_from_unmapped_memory_wii() {
   retro_memory_data[RETRO_MEMORY_SAVE_RAM] = NULL;
   retro_memory_size[RETRO_MEMORY_SAVE_RAM] = 0;
 
-  /* init returns true */
+  /* init returns false */
   ASSERT_FALSE(rc_libretro_memory_init(&regions, NULL, libretro_get_core_memory_info, RC_CONSOLE_WII));
 
   /* but one null-filled region is still generated */
@@ -899,6 +921,7 @@ void test_rc_libretro(void) {
   TEST(test_memory_init_from_unmapped_memory_no_save_ram);
   TEST(test_memory_init_from_unmapped_memory_merge_neighbors);
   TEST(test_memory_init_from_unmapped_memory_no_ram);
+  TEST(test_memory_init_from_unmapped_memory_ds);
   TEST(test_memory_init_from_unmapped_memory_wii);
 
   TEST(test_memory_init_from_memory_map);
