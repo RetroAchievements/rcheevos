@@ -657,13 +657,13 @@ static void rc_libretro_memory_init_from_unmapped_memory(rc_libretro_memory_regi
     const uint32_t type = rc_libretro_memory_console_region_to_ram_type(console_region->type);
     uint32_t base_address = 0;
 
-    if (console_region->type == RC_MEMORY_TYPE_UNUSED && !found_aligning_padding) {
+    if (console_region->type == RC_MEMORY_TYPE_UNUSED && console_region_size >= 0x10000 && !found_aligning_padding) {
       if (console_regions->region[console_regions->num_regions - 1].end_address > 0x01000000) {
-        /* assume anything exposing more than 16MB of regions with at least one UNUSED region
-         * is padding so things align with real addresses and cannot support unmapped memory */
-        const size_t console_region_size = console_region->end_address - console_region->start_address + 1;
-        if (console_region_size >= 0x10000)
-          found_aligning_padding = 1;
+        /* assume anything exposing more than 16MB of regions with at least one 64KB+ UNUSED region
+         * is padding so things align with real addresses. this indicates the memory is disjoint
+         * in the system, so we cannot expect it to be contiguous in the RETRO_SYSTEM_RAM.
+         * stop processing regions now, and just fill the remaining memory map with null filler. */
+        found_aligning_padding = 1;
       }
     }
 
