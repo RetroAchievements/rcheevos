@@ -586,20 +586,24 @@ static int rc_client_should_retry(const rc_api_server_response_t* server_respons
       /* too many unlocks occurred at the same time */
       return 1;
 
+    case 520: /* 520 Unknown Error */
+      /* origin server returned an empty, unknown, or unexpected response to Cloudflare */
+      return 1;
+
     case 521: /* 521 Web Server is Down */
-      /* cloudfare could not find the server */
+      /* cloudflare could not find the server */
       return 1;
 
     case 522: /* 522 Connection Timed Out */
-      /* timeout connecting to server from cloudfare */
+      /* timeout connecting to server from cloudflare */
       return 1;
 
     case 523: /* 523 Origin is Unreachable */
-      /* cloudfare cannot find server */
+      /* cloudflare cannot find server */
       return 1;
 
     case 524: /* 524 A Timeout Occurred */
-      /* connection to server from cloudfare was dropped before request was completed */
+      /* connection to server from cloudflare was dropped before request was completed */
       return 1;
 
     case 525: /* 525 SSL Handshake Failed */

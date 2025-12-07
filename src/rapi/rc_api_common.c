@@ -375,6 +375,10 @@ int rc_json_parse_server_response(rc_api_response_t* response, const rc_api_serv
         response->error_message = "Request has timed out.";
         break;
 
+      case 520: /* 520 Unknown Error */
+        response->error_message = "Unknown server error occurred.";
+        break;
+
       case 521: /* 521 Web Server is Down */
       case 523: /* 523 Origin is Unreachable */
         response->error_message = "Could not connect to server.";
