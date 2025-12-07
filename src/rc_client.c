@@ -3490,8 +3490,8 @@ const rc_client_subset_t* rc_client_get_subset_info(rc_client_t* client, uint32_
 rc_client_subset_list_t* rc_client_create_subset_list(rc_client_t* client)
 {
   rc_client_subset_list_info_t* list;
-  rc_client_subset_info_t* subset;
-  rc_client_subset_t** subset_ptr;
+  const rc_client_subset_info_t* subset;
+  const rc_client_subset_t** subset_ptr;
   const uint32_t list_size = RC_ALIGN(sizeof(*list));
   uint32_t num_subsets = 0;
 
@@ -3515,7 +3515,7 @@ rc_client_subset_list_t* rc_client_create_subset_list(rc_client_t* client)
   }
 
   list = (rc_client_subset_list_info_t*)malloc(list_size + num_subsets * sizeof(rc_client_subset_t*));
-  list->public_.subsets = subset_ptr = (rc_client_subset_t**)((uint8_t*)list + list_size);
+  list->public_.subsets = subset_ptr = (const rc_client_subset_t**)((uint8_t*)list + list_size);
 
   subset = client->game->subsets;
   for (; subset; subset = subset->next) {
