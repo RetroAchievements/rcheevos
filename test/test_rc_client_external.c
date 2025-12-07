@@ -1350,7 +1350,7 @@ static rc_client_subset_list_info_t* rc_client_external_create_subset_list_v6()
     const rc_client_subset_t** subset;
     rc_client_subset_t* mutable_subset;
     list->public_.num_subsets = 2;
-    list->public_.subsets = subset = (rc_client_subset_t**)((uint8_t*)list + sizeof(*list));
+    list->public_.subsets = subset = (const rc_client_subset_t**)((uint8_t*)list + sizeof(*list));
     *subset++ = rc_client_external_get_subset_info_v3(1111);
     *subset = rc_client_external_get_subset_info_v3(2345);
     mutable_subset = (rc_client_subset_t*)*subset;
