@@ -364,6 +364,22 @@ RC_EXPORT const rc_client_subset_t* RC_CCONV rc_client_get_subset_info(rc_client
 
 RC_EXPORT void RC_CCONV rc_client_get_user_subset_summary(const rc_client_t* client, uint32_t subset_id, rc_client_user_game_summary_t* summary);
 
+typedef struct rc_client_subset_list_t {
+  const rc_client_subset_t** subsets;
+  uint32_t num_subsets;
+} rc_client_subset_list_t;
+
+/**
+ * Creates a list of subsets for the currently loaded game.
+ * Returns an allocated list that must be free'd by calling rc_client_destroy_subset_list.
+ */
+RC_EXPORT rc_client_subset_list_t* RC_CCONV rc_client_create_subset_list(rc_client_t* client);
+
+/**
+ * Destroys a list allocated by rc_client_create_subset_list_list.
+ */
+RC_EXPORT void RC_CCONV rc_client_destroy_subset_list(rc_client_subset_list_t* list);
+
 /*****************************************************************************\
 | Fetch Game Hashes                                                           |
 \*****************************************************************************/
@@ -503,7 +519,7 @@ enum {
 RC_EXPORT rc_client_achievement_list_t* RC_CCONV rc_client_create_achievement_list(rc_client_t* client, int category, int grouping);
 
 /**
- * Destroys a list allocated by rc_client_get_achievement_list.
+ * Destroys a list allocated by rc_client_create_achievement_list.
  */
 RC_EXPORT void RC_CCONV rc_client_destroy_achievement_list(rc_client_achievement_list_t* list);
 

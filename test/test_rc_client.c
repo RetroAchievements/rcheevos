@@ -4033,6 +4033,50 @@ static void test_load_subset(void)
   rc_client_destroy(g_client);
 }
 
+static void test_subset_list(void)
+{
+  rc_client_subset_list_t* list;
+  const rc_client_subset_t* subset;
+
+  g_client = mock_client_game_loaded(patchdata_subset, no_unlocks);
+
+  list = rc_client_create_subset_list(g_client);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_subsets, 2);
+
+    subset = list->subsets[0];
+    ASSERT_NUM_EQUALS(subset->id, 1111);
+    ASSERT_STR_EQUALS(subset->title, "Sample Game");
+    ASSERT_STR_EQUALS(subset->badge_name, "112233");
+    ASSERT_NUM_EQUALS(subset->num_achievements, 7);
+    ASSERT_NUM_EQUALS(subset->num_leaderboards, 7);
+    ASSERT_STR_EQUALS(subset->badge_url, "http://server/Images/112233.png");
+
+    subset = list->subsets[1];
+    ASSERT_NUM_EQUALS(subset->id, 2345);
+    ASSERT_STR_EQUALS(subset->title, "Bonus");
+    ASSERT_STR_EQUALS(subset->badge_name, "112234");
+    ASSERT_NUM_EQUALS(subset->num_achievements, 3);
+    ASSERT_NUM_EQUALS(subset->num_leaderboards, 2);
+    ASSERT_STR_EQUALS(subset->badge_url, "http://server/Images/112234.png");
+
+    rc_client_destroy_subset_list(list);
+  }
+
+  rc_client_unload_game(g_client);
+  ASSERT_PTR_NULL(g_client->game);
+
+  list = rc_client_create_subset_list(g_client);
+  ASSERT_PTR_NOT_NULL(list);
+  if (list) {
+    ASSERT_NUM_EQUALS(list->num_subsets, 0);
+    rc_client_destroy_subset_list(list);
+  }
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- achievement list ----- */
 
 static void test_achievement_list_simple(void)
@@ -10121,6 +10165,7 @@ void test_client(void) {
 
   /* subset */
   TEST(test_load_subset);
+  TEST(test_subset_list);
 
   /* achievements */
   TEST(test_achievement_list_simple);

@@ -1335,6 +1335,66 @@ static void test_get_subset_info(void)
   rc_client_destroy(g_client);
 }
 
+static void rc_client_external_destroy_subset_list(rc_client_subset_list_info_t* list)
+{
+  g_external_event = "destroyed";
+  free(list);
+}
+
+static rc_client_subset_list_info_t* rc_client_external_create_subset_list_v6()
+{
+  rc_client_subset_list_info_t* list;
+
+  list = (rc_client_subset_list_info_t*)calloc(1, sizeof(*list) + sizeof(rc_client_subset_t*) * 2);
+  if (list) {
+    const rc_client_subset_t** subset;
+    rc_client_subset_t* mutable_subset;
+    list->public_.num_subsets = 2;
+    list->public_.subsets = subset = (rc_client_subset_t**)((uint8_t*)list + sizeof(*list));
+    *subset++ = rc_client_external_get_subset_info_v3(1111);
+    *subset = rc_client_external_get_subset_info_v3(2345);
+    mutable_subset = (rc_client_subset_t*)*subset;
+    mutable_subset->title = "Bonus";
+    mutable_subset->num_achievements = 1;
+    mutable_subset->num_leaderboards = 0;
+
+    list->destroy_func = rc_client_external_destroy_subset_list;
+  }
+
+  return list;
+}
+
+static void test_create_subset_list(void)
+{
+  rc_client_subset_list_t* list;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->create_subset_list = rc_client_external_create_subset_list_v6;
+
+  list = rc_client_create_subset_list(g_client);
+  ASSERT_PTR_NOT_NULL(list);
+  ASSERT_NUM_EQUALS(list->num_subsets, 2);
+  ASSERT_PTR_NOT_NULL(list->subsets);
+  ASSERT_NUM_EQUALS(list->subsets[0]->id, 1111);
+  ASSERT_STR_EQUALS(list->subsets[0]->title, "Subset Title");
+  ASSERT_STR_EQUALS(list->subsets[0]->badge_name, "BDG001");
+  ASSERT_NUM_EQUALS(list->subsets[0]->num_achievements, 2);
+  ASSERT_NUM_EQUALS(list->subsets[0]->num_leaderboards, 1);
+  ASSERT_STR_EQUALS(list->subsets[0]->badge_url, "/Badge/BDG001.png");
+  ASSERT_NUM_EQUALS(list->subsets[1]->id, 2345);
+  ASSERT_STR_EQUALS(list->subsets[1]->title, "Bonus");
+  ASSERT_STR_EQUALS(list->subsets[1]->badge_name, "BDG001");
+  ASSERT_NUM_EQUALS(list->subsets[1]->num_achievements, 1);
+  ASSERT_NUM_EQUALS(list->subsets[1]->num_leaderboards, 0);
+  ASSERT_STR_EQUALS(list->subsets[1]->badge_url, "/Badge/BDG001.png");
+
+  rc_client_destroy_subset_list(list);
+
+  ASSERT_STR_EQUALS(g_external_event, "destroyed");
+
+  rc_client_destroy(g_client);
+}
+
 static void test_unload_game(void)
 {
   g_client = mock_client_with_external();
@@ -2068,6 +2128,7 @@ void test_client_external(void) {
   TEST(test_v3_subset_field_offsets);
   TEST(test_get_subset_info_v1);
   TEST(test_get_subset_info);
+  TEST(test_create_subset_list);
 
   /* achievements */
   TEST(test_v1_achievement_field_offsets);

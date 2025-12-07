@@ -3487,6 +3487,58 @@ const rc_client_subset_t* rc_client_get_subset_info(rc_client_t* client, uint32_
   return NULL;
 }
 
+rc_client_subset_list_t* rc_client_create_subset_list(rc_client_t* client)
+{
+  rc_client_subset_list_info_t* list;
+  rc_client_subset_info_t* subset;
+  rc_client_subset_t** subset_ptr;
+  const uint32_t list_size = RC_ALIGN(sizeof(*list));
+  uint32_t num_subsets = 0;
+
+  if (!client)
+    return (rc_client_subset_list_t*)calloc(1, list_size);
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->create_subset_list)
+    return (rc_client_subset_list_t*)client->state.external_client->create_subset_list();
+#endif
+
+  if (!client->game)
+    return (rc_client_subset_list_t*)calloc(1, list_size);
+
+  rc_mutex_lock(&client->state.mutex);
+
+  subset = client->game->subsets;
+  for (; subset; subset = subset->next) {
+    if (subset->active)
+      num_subsets++;
+  }
+
+  list = (rc_client_subset_list_info_t*)malloc(list_size + num_subsets * sizeof(rc_client_subset_t*));
+  list->public_.subsets = subset_ptr = (rc_client_subset_t**)((uint8_t*)list + list_size);
+
+  subset = client->game->subsets;
+  for (; subset; subset = subset->next) {
+    if (subset->active)
+      *subset_ptr++ = &subset->public_;
+  }
+
+  rc_mutex_unlock(&client->state.mutex);
+
+  list->destroy_func = NULL;
+  list->public_.num_subsets = (uint32_t)(subset_ptr - list->public_.subsets);
+  return &list->public_;
+}
+
+void rc_client_destroy_subset_list(rc_client_subset_list_t* list)
+{
+  rc_client_subset_list_info_t* info = (rc_client_subset_list_info_t*)list;
+  if (info->destroy_func)
+    info->destroy_func(info);
+  else
+    free(list);
+}
+
 /* ===== Fetch Game Hashes ===== */
 
 typedef struct rc_client_fetch_hash_library_callback_data_t {
