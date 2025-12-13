@@ -422,6 +422,7 @@ typedef struct rc_client_game_title_entry_t {
   uint32_t game_id;
   const char* title;
   char badge_name[16];
+  const char* badge_url;
 } rc_client_game_title_entry_t;
 
 typedef struct rc_client_game_title_list_t {

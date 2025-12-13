@@ -3897,12 +3897,15 @@ static void test_fetch_game_titles_response(int result, const char* error_messag
   ASSERT_NUM_EQUALS(list->entries[0].game_id, 3);
   ASSERT_STR_EQUALS(list->entries[0].title, "Game Name 3");
   ASSERT_STR_EQUALS(list->entries[0].badge_name, "010003");
+  ASSERT_STR_EQUALS(list->entries[0].badge_url, "https://media.retroachievements.org/Images/010003.png"); /* default media host */
   ASSERT_NUM_EQUALS(list->entries[1].game_id, 4);
   ASSERT_STR_EQUALS(list->entries[1].title, "Game Name 4");
   ASSERT_STR_EQUALS(list->entries[1].badge_name, "010004");
+  ASSERT_STR_EQUALS(list->entries[1].badge_url, "http://media.retroachievements.org/Images/010004.png");
   ASSERT_NUM_EQUALS(list->entries[2].game_id, 7);
   ASSERT_STR_EQUALS(list->entries[2].title, "Game Name 7");
   ASSERT_STR_EQUALS(list->entries[2].badge_name, "010007");
+  ASSERT_STR_EQUALS(list->entries[2].badge_url, "localhost/Images/010007.png");
 
   rc_client_destroy_game_title_list(list);
 }
@@ -3914,9 +3917,9 @@ static void test_fetch_game_titles(void)
 
   reset_mock_api_handlers();
   mock_api_response("r=gameinfolist&g=3,4,7", "{\"Success\":true,\"Response\":["
-    "{\"ID\": 3, \"Title\":\"Game Name 3\", \"ImageIcon\": \"/Images/010003.png\"},"
-    "{\"ID\": 4, \"Title\":\"Game Name 4\", \"ImageIcon\": \"/Images/010004.png\"},"
-    "{\"ID\": 7, \"Title\":\"Game Name 7\", \"ImageIcon\": \"/Images/010007.png\"}"
+    "{\"ID\": 3, \"Title\":\"Game Name 3\", \"ImageIcon\": \"/Images/010003.png\"}," /* ImageUrl explicitly not returned to test auto-populating logic */
+    "{\"ID\": 4, \"Title\":\"Game Name 4\", \"ImageIcon\": \"/Images/010004.png\", \"ImageUrl\": \"http:\\/\\/media.retroachievements.org\\/Images\\/010004.png\"},"
+    "{\"ID\": 7, \"Title\":\"Game Name 7\", \"ImageIcon\": \"/Images/010007.png\", \"ImageUrl\": \"localhost\\/Images\\/010007.png\"}"
     "]}");
 
   rc_client_begin_fetch_game_titles(g_client, game_ids, 3, test_fetch_game_titles_response, g_callback_userdata);

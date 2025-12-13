@@ -393,10 +393,13 @@ static void test_process_fetch_game_titles_response() {
   rc_api_server_response_t fetch_game_titles_server_response;
   rc_api_game_title_entry_t* entry;
   const char* server_response = "{\"Success\":true,\"Response\":["
-    "{\"ID\": 3, \"Title\":\"Game Name 3\", \"ImageIcon\": \"/Images/010003.png\"},"
-    "{\"ID\": 4, \"Title\":\"Game Name 4\", \"ImageIcon\": \"/Images/010004.png\"},"
-    "{\"ID\": 7, \"Title\":\"Game Name 7\", \"ImageIcon\": \"/Images/010007.png\"}"
+    "{\"ID\": 3, \"Title\":\"Game Name 3\", \"ImageIcon\": \"/Images/010003.png\"}," /* ImageUrl explicitly not returned to test auto-populating logic */
+    "{\"ID\": 4, \"Title\":\"Game Name 4\", \"ImageIcon\": \"/Images/010004.png\", \"ImageUrl\": \"http:\\/\\/media.retroachievements.org\\/Images\\/010004.png\"},"
+    "{\"ID\": 7, \"Title\":\"Game Name 7\", \"ImageIcon\": \"/Images/010007.png\", \"ImageUrl\": \"localhost\\/Images\\/010007.png\"}"
     "]}";
+
+  rc_api_set_host("http://retroachievements.org");
+  rc_api_set_image_host("http://i.retroachievements.org");
 
   memset(&fetch_game_titles_response, 0, sizeof(fetch_game_titles_response));
   memset(&fetch_game_titles_server_response, 0, sizeof(fetch_game_titles_server_response));
@@ -413,16 +416,21 @@ static void test_process_fetch_game_titles_response() {
   ASSERT_NUM_EQUALS(entry->id, 3);
   ASSERT_STR_EQUALS(entry->title, "Game Name 3");
   ASSERT_STR_EQUALS(entry->image_name, "010003");
+  ASSERT_STR_EQUALS(entry->image_url, "http://i.retroachievements.org/Images/010003.png");
   entry = &fetch_game_titles_response.entries[1];
   ASSERT_NUM_EQUALS(entry->id, 4);
   ASSERT_STR_EQUALS(entry->title, "Game Name 4");
   ASSERT_STR_EQUALS(entry->image_name, "010004");
+  ASSERT_STR_EQUALS(entry->image_url, "http://media.retroachievements.org/Images/010004.png");
   entry = &fetch_game_titles_response.entries[2];
   ASSERT_NUM_EQUALS(entry->id, 7);
   ASSERT_STR_EQUALS(entry->title, "Game Name 7");
   ASSERT_STR_EQUALS(entry->image_name, "010007");
+  ASSERT_STR_EQUALS(entry->image_url, "localhost/Images/010007.png");
 
   rc_api_destroy_fetch_game_titles_response(&fetch_game_titles_response);
+  rc_api_set_image_host(NULL);
+  rc_api_set_host(NULL);
 }
 
 static void test_init_fetch_hash_library_request() {

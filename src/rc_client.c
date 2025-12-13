@@ -3695,6 +3695,8 @@ static void rc_client_fetch_game_titles_callback(const rc_api_server_response_t*
     for (src = titles_response.entries, stop = src + titles_response.num_entries; src < stop; ++src) {
       if (src->title)
         strings_size += strlen(src->title) + 1;
+      if (src->image_url)
+        strings_size += strlen(src->image_url) + 1;
     }
 
     list_size = sizeof(*list) + sizeof(rc_client_game_title_entry_t) * titles_response.num_entries + strings_size;
@@ -3724,6 +3726,16 @@ static void rc_client_fetch_game_titles_callback(const rc_api_server_response_t*
           snprintf(entry->badge_name, sizeof(entry->badge_name), "%s", src->image_name);
         else
           entry->badge_name[0] = '\0';
+
+        if (src->image_url) {
+          const size_t len = strlen(src->image_url) + 1;
+          entry->badge_url = strings;
+          memcpy(strings, src->image_url, len);
+          strings += len;
+        }
+        else {
+          entry->badge_url = NULL;
+        }
       }
 
       list->num_entries = titles_response.num_entries;
