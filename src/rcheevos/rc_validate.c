@@ -633,7 +633,6 @@ static int rc_validate_condset_internal(const rc_condset_t* condset, rc_validati
   int in_add_address = 0;
   int is_combining = 0;
   int has_measured = 0;
-  int has_remember = 0;
   int measuredif_index = -1;
   uint32_t errors_before = state->error_count;
 
