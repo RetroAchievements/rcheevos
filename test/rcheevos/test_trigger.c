@@ -2299,6 +2299,34 @@ static void test_remember_recall_self_in_addaddress()
   assert_evaluate_trigger(trigger, &memory, 0);
 }
 
+static void test_remember_in_main_recall_in_pause()
+{
+  uint8_t ram[] = { 0x02, 0x03, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18 };
+  memory_t memory;
+  rc_trigger_t* trigger;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* remember(byte(0) & 15) && always_true() && pauseif({recall} != 0 && byte(1) == 1) */
+  assert_parse_trigger(&trigger, buffer, "K:0xH0000&15_1=1.6._N:{recall}!=2_P:0xH0001=1");
+
+  /* because the remember gets associated to the always_true(), the {recall} in the
+   * pauseif will always recall 0 */
+
+  /* always_true is true; {recall} != 2 && 3 == 1; remembered value is 2; 3 != 1 => not paused */
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1);
+
+  /* always_true is true; {recall} != 2 && 1 == 1; remembered value is 2,
+   * but it's remembered AFTER the pause is processed, so {recall} != 2 is actually
+   * 0 != 2, which is true, so the trigger is paused. */
+  ram[1] = 1;
+  assert_evaluate_trigger(trigger, &memory, 0);
+  assert_hit_count(trigger, 0, 1, 1);
+}
+
 /* ======================================================== */
 
 static void test_trailing_andnext() {
@@ -2483,6 +2511,7 @@ void test_trigger(void) {
   TEST(test_remember_recall_in_pause_with_chain);
   TEST(test_remember_recall_in_addaddress);
   TEST(test_remember_recall_self_in_addaddress);
+  TEST(test_remember_in_main_recall_in_pause);
 
   /* incomplete logic */
   TEST(test_trailing_andnext);

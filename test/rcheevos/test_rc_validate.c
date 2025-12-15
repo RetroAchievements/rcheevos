@@ -458,11 +458,11 @@ void test_variable_operand_errors() {
 }
 
 void test_remember_recall_errors() {
-  TEST_PARAMS2(test_validate_trigger, "{recall}=5", "Condition 1: Recall used before Remember"); /* No value ever remembered */
+  TEST_PARAMS2(test_validate_trigger, "{recall}=5", "Condition 1: Recall used without Remember"); /* No value ever remembered */
   TEST_PARAMS2(test_validate_trigger, "{recall}=5_K:0xH1234&1023_K:{recall}*8_{recall}=100", "Condition 1: Recall used before Remember"); /* First remember is after first recall. */
   TEST_PARAMS2(test_validate_trigger, "K:0xH1234&1023_K:{recall}*8_{recall}=100", ""); /* Recall used after Remember */
   TEST_PARAMS2(test_validate_trigger, "{recall}=5_K:0xH1234*2_P:{recall}>6", ""); /* Remember sets recall in pause - no warning */
-  TEST_PARAMS2(test_validate_trigger, "K:0xH1234*2_{recall}=5_P:{recall}>6", "Condition 3: Recall used before Remember"); /* Pause happens before remembered value. */
+  TEST_PARAMS2(test_validate_trigger, "K:0xH1234*2_{recall}=5_P:{recall}>6", "Condition 3: PauseIf cannot use Remembered value not associated to PauseIf chain"); /* Pause evaluated before value is remembered. */
 }
 
 void test_error_priorities() {
