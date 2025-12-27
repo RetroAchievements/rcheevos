@@ -212,6 +212,8 @@ static void test_range_comparisons() {
   TEST_PARAMS2(test_validate_trigger, "A:255_B:d0xH1234_0xH1234>255", "");
 
   /* division by self results in a 0 or 1 */
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234/0xH1234_A:0xH1235/0xH1235_0=2", "");
+  TEST_PARAMS2(test_validate_trigger, "A:0xH1234/0xH1234_A:0xH1235/0xH1235_0=3", "Condition 3: Comparison is never true (max 2)");
   TEST_PARAMS2(test_validate_trigger, "B:0xH1241/0xH1241_B:0xH124c/0xH124c_M:2=2", "");
   TEST_PARAMS2(test_validate_trigger, "B:0xH1241/0xH1241_B:0xH124c/0xH124c_M:2>2", "Condition 3: Comparison is never true (max 2)");
 }
