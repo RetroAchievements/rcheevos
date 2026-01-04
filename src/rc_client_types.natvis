@@ -20,9 +20,9 @@
     </Type>
     <Type Name="__rc_client_achievement_category_enum_t">
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_NONE">{RC_CLIENT_ACHIEVEMENT_CATEGORY_NONE}</DisplayString>
-        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE">{RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE}</DisplayString>
-        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL">{RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL}</DisplayString>
-        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL">{RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_PUBLISHED">{RC_CLIENT_ACHIEVEMENT_CATEGORY_PUBLISHED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPUBLISHED">{RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPUBLISHED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_PUBLISHED_AND_UNPUBLISHED">{RC_CLIENT_ACHIEVEMENT_CATEGORY_PUBLISHED_AND_UNPUBLISHED}</DisplayString>
         <DisplayString>unknown ({value})</DisplayString>
     </Type>
     <Type Name="__rc_client_achievement_type_enum_t">

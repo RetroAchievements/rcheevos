@@ -923,9 +923,9 @@ static void rc_client_subset_get_user_game_summary(const rc_client_t* client,
 
   for (; achievement < stop; ++achievement) {
     switch (achievement->public_.category) {
-      case RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE:
-        ++summary->num_core_achievements;
-        summary->points_core += achievement->public_.points;
+      case RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED:
+        ++summary->num_promoted_achievements;
+        summary->points_available += achievement->public_.points;
 
         if (achievement->public_.unlocked & unlock_bit) {
           ++summary->num_unlocked_achievements;
@@ -955,8 +955,8 @@ static void rc_client_subset_get_user_game_summary(const rc_client_t* client,
 
         break;
 
-      case RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL:
-        ++summary->num_unofficial_achievements;
+      case RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPROMOTED:
+        ++summary->num_unpromoted_achievements;
         break;
 
       default:
@@ -966,7 +966,7 @@ static void rc_client_subset_get_user_game_summary(const rc_client_t* client,
 
   rc_mutex_unlock((rc_mutex_t*)&client->state.mutex); /* remove const cast for mutex access */
 
-  if (summary->num_unlocked_achievements == summary->num_core_achievements)
+  if (summary->num_unlocked_achievements == summary->num_promoted_achievements)
     summary->completed_time = last_unlock_time;
 
   if ((first_win_time || num_win_achievements == 0) && num_unlocked_progression_achievements == num_progression_achievements)
@@ -1709,7 +1709,7 @@ static void rc_client_log_active_assets(rc_client_t* client)
     ach = subset->achievements;
     ach_stop = ach + subset->public_.num_achievements;
     for (; ach < ach_stop; ++ach) {
-      if (ach->public_.category == RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE) {
+      if (ach->public_.category == RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED) {
         ++num_achievements;
         if (ach->public_.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE)
           ++num_active_achievements;
@@ -2024,10 +2024,10 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
 
   stop = achievement_definitions + num_achievements;
 
-  /* if not testing unofficial, filter them out */
-  if (!load_state->client->state.unofficial_enabled) {
+  /* if not testing unpromoted, filter them out */
+  if (!load_state->client->state.unpromoted_enabled) {
     for (read = achievement_definitions; read < stop; ++read) {
-      if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE)
+      if (read->category != RC_ACHIEVEMENT_CATEGORY_PROMOTED)
         --num_achievements;
     }
 
@@ -2053,7 +2053,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
 
   /* copy the achievement data */
   for (read = achievement_definitions; read < stop; ++read) {
-    if (read->category != RC_ACHIEVEMENT_CATEGORY_CORE && !load_state->client->state.unofficial_enabled)
+    if (read->category != RC_ACHIEVEMENT_CATEGORY_PROMOTED && !load_state->client->state.unpromoted_enabled)
       continue;
 
     achievement->public_.title = rc_buffer_strcpy(buffer, read->title);
@@ -2061,8 +2061,8 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     snprintf(achievement->public_.badge_name, sizeof(achievement->public_.badge_name), "%s", read->badge_name);
     achievement->public_.id = read->id;
     achievement->public_.points = read->points;
-    achievement->public_.category = (read->category != RC_ACHIEVEMENT_CATEGORY_CORE) ?
-      RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL : RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE;
+    achievement->public_.category = (read->category != RC_ACHIEVEMENT_CATEGORY_PROMOTED) ?
+      RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPROMOTED : RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED;
     achievement->public_.rarity = read->rarity;
     achievement->public_.rarity_hardcore = read->rarity_hardcore;
     achievement->public_.type = read->type; /* assert: mapping is 1:1 */
@@ -3892,8 +3892,8 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
   }
   else {
     /* active achievement */
-    new_bucket = (achievement->public_.category == RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL) ?
-        RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL : RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
+    new_bucket = (achievement->public_.category == RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPROMOTED) ?
+        RC_CLIENT_ACHIEVEMENT_BUCKET_UNPROMOTED : RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED;
 
     if (achievement->trigger) {
       if (achievement->trigger->measured_target) {
@@ -3941,7 +3941,7 @@ static const char* rc_client_get_achievement_bucket_label(uint8_t bucket_type)
     case RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED: return "Locked";
     case RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED: return "Unlocked";
     case RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED: return "Unsupported";
-    case RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL: return "Unofficial";
+    case RC_CLIENT_ACHIEVEMENT_BUCKET_UNPROMOTED: return "Unpromoted";
     case RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED: return "Recently Unlocked";
     case RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE: return "Active Challenges";
     case RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE: return "Almost There";
@@ -3961,7 +3961,7 @@ static const char* rc_client_get_subset_achievement_bucket_label(uint8_t bucket_
     case RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED: ptr = &subset->locked_label; break;
     case RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED: ptr = &subset->unlocked_label; break;
     case RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED: ptr = &subset->unsupported_label; break;
-    case RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL: ptr = &subset->unofficial_label; break;
+    case RC_CLIENT_ACHIEVEMENT_BUCKET_UNPROMOTED: ptr = &subset->unpromoted_label; break;
     default: return rc_client_get_achievement_bucket_label(bucket_type);
   }
 
@@ -4043,7 +4043,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   };
   const uint8_t subset_bucket_order[] = {
     RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED,
-    RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL,
+    RC_CLIENT_ACHIEVEMENT_BUCKET_UNPROMOTED,
     RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED,
     RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED
   };
@@ -4534,9 +4534,9 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
     return;
   }
 
-  /* can't unlock unofficial achievements on the server */
-  if (achievement->public_.category != RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE) {
-    RC_CLIENT_LOG_INFO_FORMATTED(client, "Unlocked unofficial achievement %u: %s", achievement->public_.id, achievement->public_.title);
+  /* can't unlock unpromoted achievements on the server */
+  if (achievement->public_.category != RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED) {
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Unlocked unpromoted achievement %u: %s", achievement->public_.id, achievement->public_.title);
     return;
   }
 
@@ -6698,31 +6698,41 @@ int rc_client_get_hardcore_enabled(const rc_client_t* client)
 
 void rc_client_set_unofficial_enabled(rc_client_t* client, int enabled)
 {
+  rc_client_set_unpromoted_enabled(client, enabled);
+}
+
+void rc_client_set_unpromoted_enabled(rc_client_t* client, int enabled)
+{
   if (!client)
     return;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->set_unofficial_enabled) {
-    client->state.external_client->set_unofficial_enabled(enabled);
+  if (client->state.external_client && client->state.external_client->set_unpromoted_enabled) {
+    client->state.external_client->set_unpromoted_enabled(enabled);
     return;
   }
 #endif
 
-  RC_CLIENT_LOG_INFO_FORMATTED(client, "Unofficial %s", enabled ? "enabled" : "disabled");
-  client->state.unofficial_enabled = enabled ? 1 : 0;
+  RC_CLIENT_LOG_INFO_FORMATTED(client, "Unpromoted %s", enabled ? "enabled" : "disabled");
+  client->state.unpromoted_enabled = enabled ? 1 : 0;
 }
 
 int rc_client_get_unofficial_enabled(const rc_client_t* client)
+{
+  return rc_client_get_unpromoted_enabled(client);
+}
+
+int rc_client_get_unpromoted_enabled(const rc_client_t* client)
 {
   if (!client)
     return 0;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->get_unofficial_enabled)
-    return client->state.external_client->get_unofficial_enabled();
+  if (client->state.external_client && client->state.external_client->get_unpromoted_enabled)
+    return client->state.external_client->get_unpromoted_enabled();
 #endif
 
-  return client->state.unofficial_enabled;
+  return client->state.unpromoted_enabled;
 }
 
 void rc_client_set_encore_mode_enabled(rc_client_t* client, int enabled)

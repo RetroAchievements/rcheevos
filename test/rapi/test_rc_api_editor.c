@@ -304,7 +304,7 @@ static void test_init_update_achievement_request()
   update_achievement_request.badge = "123456";
   update_achievement_request.trigger = "0xH1234=1";
   update_achievement_request.points = 5;
-  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_CORE;
+  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_PROMOTED;
 
   ASSERT_NUM_EQUALS(rc_api_init_update_achievement_request(&request, &update_achievement_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
@@ -328,7 +328,7 @@ static void test_init_update_achievement_request_new()
   update_achievement_request.badge = "123456";
   update_achievement_request.trigger = "0xH1234=1";
   update_achievement_request.points = 5;
-  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_UNOFFICIAL;
+  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_UNPROMOTED;
 
   ASSERT_NUM_EQUALS(rc_api_init_update_achievement_request(&request, &update_achievement_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
@@ -352,7 +352,7 @@ static void test_init_update_achievement_request_no_game_id()
   update_achievement_request.badge = "123456";
   update_achievement_request.trigger = "0xH1234=1";
   update_achievement_request.points = 5;
-  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_CORE;
+  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_PROMOTED;
 
   ASSERT_NUM_EQUALS(rc_api_init_update_achievement_request(&request, &update_achievement_request), RC_INVALID_STATE);
 
@@ -374,7 +374,7 @@ static void test_init_update_achievement_request_type()
   update_achievement_request.badge = "123456";
   update_achievement_request.trigger = "0xH1234=1";
   update_achievement_request.points = 5;
-  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_CORE;
+  update_achievement_request.category = RC_ACHIEVEMENT_CATEGORY_PROMOTED;
   update_achievement_request.type = RC_ACHIEVEMENT_TYPE_MISSABLE;
 
   ASSERT_NUM_EQUALS(rc_api_init_update_achievement_request(&request, &update_achievement_request), RC_OK);
