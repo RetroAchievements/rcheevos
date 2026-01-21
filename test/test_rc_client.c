@@ -8998,6 +8998,48 @@ static void test_do_frame_ping_rich_presence_override_replaced(void)
   rc_client_destroy(g_client);
 }
 
+static int rc_client_callback_rich_presence_override_change_game(rc_client_t* client, char buffer[], size_t buffersize)
+{
+  client->game->public_.id++; /* simulate game change */
+  memcpy(buffer, "Custom", 7);
+  return 6;
+}
+
+static void test_do_frame_ping_rich_presence_game_changed(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_exhaustive, no_unlocks);
+  g_client->callbacks.rich_presence_override = rc_client_callback_rich_presence_override_change_game;
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    rc_client_scheduled_callback_t ping_callback;
+
+    ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
+    ping_callback = g_client->state.scheduled_callbacks->callback;
+
+    /* ping won't get called if no frames have been processed. do_frame will increment frames_processed */
+    rc_client_do_frame(g_client);
+
+    ASSERT_NUM_EQUALS(g_client->state.scheduled_callbacks->when, g_now + 30 * 1000);
+    g_now += 30 * 1000;
+
+    rc_client_idle(g_client);
+
+    /* make sure the API didn't get called for the old game id or the new game id */
+    assert_api_not_called("r=ping&u=Username&t=ApiToken&g=1234&m=Custom&h=1&x=0123456789ABCDEF");
+    assert_api_not_called("r=ping&u=Username&t=ApiToken&g=1235&m=Custom&h=1&x=0123456789ABCDEF");
+
+    /* ping should not be rescheduled - expect new ping scheduled from alternate game */
+    ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
+  }
+
+  rc_client_destroy(g_client);
+}
+
 static void test_idle_ping_while_not_running(void)
 {
   uint8_t memory[64];
@@ -10292,6 +10334,7 @@ void test_client(void) {
   TEST(test_do_frame_ping_rich_presence);
   TEST(test_do_frame_ping_rich_presence_override_allowed);
   TEST(test_do_frame_ping_rich_presence_override_replaced);
+  TEST(test_do_frame_ping_rich_presence_game_changed);
   TEST(test_idle_ping_while_not_running);
 
   /* reset */

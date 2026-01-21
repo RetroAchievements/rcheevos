@@ -5438,6 +5438,14 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
   if (client->state.frames_processed != client->state.frames_at_last_ping) {
     client->state.frames_at_last_ping = client->state.frames_processed;
 
+    memset(&api_params, 0, sizeof(api_params));
+    api_params.username = client->user.username;
+    api_params.api_token = client->user.token;
+    api_params.game_id = client->game->public_.id;
+    api_params.rich_presence = buffer;
+    api_params.game_hash = client->game->public_.hash;
+    api_params.hardcore = client->state.hardcore;
+
     if (!client->callbacks.rich_presence_override ||
         !client->callbacks.rich_presence_override(client, buffer, sizeof(buffer))) {
       rc_mutex_lock(&client->state.mutex);
@@ -5448,13 +5456,12 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
       rc_mutex_unlock(&client->state.mutex);
     }
 
-    memset(&api_params, 0, sizeof(api_params));
-    api_params.username = client->user.username;
-    api_params.api_token = client->user.token;
-    api_params.game_id = client->game->public_.id;
-    api_params.rich_presence = buffer;
-    api_params.game_hash = client->game->public_.hash;
-    api_params.hardcore = client->state.hardcore;
+    /* there's a miniscule chance the game will be changed out while we're waiting for the lock.
+     * if that happens, discard this ping. the new game will have scheduled its own ping.
+     * don't reschedule this one. */
+    if (!client->game || client->game->public_.id != api_params.game_id) {
+      return;
+    }
 
     result = rc_api_init_ping_request_hosted(&request, &api_params, &client->state.host);
     if (result != RC_OK) {
