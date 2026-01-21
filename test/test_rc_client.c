@@ -9016,10 +9016,7 @@ static void test_do_frame_ping_rich_presence_game_changed(void)
   ASSERT_PTR_NOT_NULL(g_client->game);
   if (g_client->game)
   {
-    rc_client_scheduled_callback_t ping_callback;
-
     ASSERT_PTR_NOT_NULL(g_client->state.scheduled_callbacks);
-    ping_callback = g_client->state.scheduled_callbacks->callback;
 
     /* ping won't get called if no frames have been processed. do_frame will increment frames_processed */
     rc_client_do_frame(g_client);
