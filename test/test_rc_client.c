@@ -6106,6 +6106,60 @@ static void test_fetch_leaderboard_entries_client_error(void)
   rc_client_destroy(g_client);
 }
 
+static void test_has_leaderboards(void)
+{
+  g_client = mock_client_logged_in();
+  mock_client_load_game(patchdata_leaderboard_only, no_unlocks);
+
+  ASSERT_NUM_EQUALS(rc_client_has_leaderboards(g_client), 1);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_has_leaderboards_none(void)
+{
+  g_client = mock_client_logged_in();
+  mock_client_load_game(patchdata_2ach_0lbd, no_unlocks);
+
+  ASSERT_NUM_EQUALS(rc_client_has_leaderboards(g_client), 0);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_has_leaderboards_with_hidden(void)
+{
+  g_client = mock_client_logged_in();
+  mock_client_load_game(patchdata_leaderboards_hidden, no_unlocks);
+
+  ASSERT_NUM_EQUALS(rc_client_has_leaderboards(g_client), 1);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_has_leaderboards_only_hidden(void)
+{
+  const char* patchdata_leaderboards_only_hidden = "{\"Success\":true,"
+    "\"GameId\":1234,\"Title\":\"Sample Game\",\"ConsoleId\":17,"
+    "\"ImageIconUrl\":\"http://server/Images/112233.png\","
+    "\"RichPresenceGameId\":1234,\"RichPresencePatch\":\"Display:\\r\\nPoints:@Number(0xH0003)\\r\\n\","
+    "\"Sets\":[{"
+      "\"AchievementSetId\":1111,\"GameId\":1234,\"Title\":null,\"Type\":\"core\","
+      "\"ImageIconUrl\":\"http://server/Images/112233.png\","
+      "\"Achievements\":[],"
+      "\"Leaderboards\":["
+        HIDDEN_LEADERBOARD_JSON("45", "STA:0xH000A=1::CAN:0xH000C=2::SUB:0xH000D=1::VAL:0xH000E", "SCORE") ","
+        HIDDEN_LEADERBOARD_JSON("48", "STA:0xH000A=2::CAN:0xH000C=5::SUB:0xH000D=1::VAL:0x 000E", "SCORE")
+      "]"
+    "}]}";
+
+  g_client = mock_client_logged_in();
+  mock_client_load_game(patchdata_leaderboards_only_hidden, no_unlocks);
+
+  ASSERT_NUM_EQUALS(rc_client_has_leaderboards(g_client), 0);
+
+  rc_client_destroy(g_client);
+}
+
 static void test_map_leaderboard_format(void)
 {
   int i;
@@ -10241,6 +10295,11 @@ void test_client(void) {
   TEST(test_fetch_leaderboard_entries_around_user_not_logged_in);
   TEST(test_fetch_leaderboard_entries_async_aborted);
   TEST(test_fetch_leaderboard_entries_client_error);
+
+  TEST(test_has_leaderboards);
+  TEST(test_has_leaderboards_none);
+  TEST(test_has_leaderboards_with_hidden);
+  TEST(test_has_leaderboards_only_hidden);
 
   TEST(test_map_leaderboard_format);
 

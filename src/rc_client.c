@@ -4870,6 +4870,7 @@ int rc_client_has_leaderboards(rc_client_t* client)
 {
   rc_client_subset_info_t* subset;
   int result;
+  uint32_t i;
 
   if (!client)
     return 0;
@@ -4884,17 +4885,21 @@ int rc_client_has_leaderboards(rc_client_t* client)
 
   rc_mutex_lock(&client->state.mutex);
 
-  subset = client->game->subsets;
   result = 0;
-  for (; subset; subset = subset->next)
+  for (subset = client->game->subsets; subset; subset = subset->next)
   {
     if (!subset->active)
       continue;
 
-    if (subset->public_.num_leaderboards > 0) {
-      result = 1;
-      break;
+    for (i = 0; i < subset->public_.num_leaderboards; ++i) {
+      if (!subset->leaderboards[i].hidden) {
+        result = 1;
+        break;
+      }
     }
+
+    if (result)
+      break;
   }
 
   rc_mutex_unlock(&client->state.mutex);
