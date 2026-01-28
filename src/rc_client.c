@@ -4307,6 +4307,62 @@ const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* clien
   return NULL;
 }
 
+const rc_client_achievement_t* rc_client_get_next_achievement_info(rc_client_t* client,
+    const rc_client_achievement_t* achievement, int bucket)
+{
+  const rc_client_achievement_info_t* after = (const rc_client_achievement_info_t*)achievement;
+  rc_client_achievement_info_t* achievement_info;
+  time_t recent_unlock_time;
+  rc_client_subset_info_t* subset;
+
+  if (!client)
+    return NULL;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_next_achievement_info)
+    return client->state.external_client->get_next_achievement_info(achievement ? achievement->id : 0, bucket);
+#endif
+
+  if (!client->game)
+    return NULL;
+
+  recent_unlock_time = time(NULL) - RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS;
+  for (subset = client->game->subsets; subset; subset = subset->next) {
+    if (subset->active && subset->public_.num_achievements > 0) {
+      const rc_client_achievement_info_t* start = subset->achievements;
+      const rc_client_achievement_info_t* stop = start + subset->public_.num_achievements;
+      if (after == NULL || (after >= start && after <= stop)) {
+        /* found a subset containing the provided achievement. look for the next
+         * achievement matching the requested bucket */
+        uint32_t index = after ? (uint32_t)(after - start) + 1 : 0;
+        do {
+          if (index >= subset->public_.num_achievements) {
+            /* done with this subset. find the next active subset with achievements */
+            do {
+              subset = subset->next;
+              if (!subset)
+                return NULL;
+            } while (!subset->active || subset->public_.num_achievements == 0);
+
+            index = 0;
+          }
+
+          /* found an achievement. check to see if it matches the requested bucket. */
+          achievement_info = &subset->achievements[index];
+          rc_client_update_achievement_display_information(client, achievement_info, recent_unlock_time);
+          if (achievement_info->public_.bucket == bucket)
+            return &achievement_info->public_;
+
+          ++index;
+        } while (1);
+      }
+    }
+  }
+
+  return NULL;
+}
+
+
 int rc_client_achievement_get_image_url(const rc_client_achievement_t* achievement, int state, char buffer[], size_t buffer_size)
 {
   const int image_type = (state == RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED) ?
