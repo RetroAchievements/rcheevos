@@ -1,4 +1,5 @@
 #include "rc_client_internal.h"
+#include "rc_client_offline.h"
 
 #include "rc_api_info.h"
 #include "rc_api_runtime.h"
@@ -91,6 +92,7 @@ static void rc_client_reschedule_callback(rc_client_t* client, rc_client_schedul
 static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
 static int rc_client_is_award_achievement_pending(const rc_client_t* client, uint32_t achievement_id);
 static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
+static void rc_client_flush_offline_queue(rc_client_t* client);
 
 /* ===== natvis extensions ===== */
 
@@ -208,6 +210,7 @@ void rc_client_destroy(rc_client_t* client)
   }
   rc_mutex_unlock(&client->state.mutex);
 
+  rc_client_offline_queue_save_pending(client);
   rc_client_unload_game(client);
 
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
@@ -682,17 +685,41 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
   result = rc_api_process_login_server_response(&login_response, server_response);
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &login_response.response);
   if (error_message) {
-    rc_mutex_lock(&client->state.mutex);
-    client->state.user = RC_CLIENT_USER_STATE_NONE;
-    load_state = client->state.load;
-    rc_mutex_unlock(&client->state.mutex);
+    /* try offline fallback if server is unreachable and we have cached credentials */
+    if (rc_client_should_retry(server_response) && client->user.username &&
+        rc_client_offline_load_credentials(client, client->user.username)) {
+      RC_CLIENT_LOG_INFO(client, "Server unreachable, entering offline mode with cached credentials");
 
-    RC_CLIENT_LOG_ERR_FORMATTED(client, "Login failed: %s", error_message);
-    if (login_callback_data->callback)
-      login_callback_data->callback(result, error_message, client, login_callback_data->callback_userdata);
+      rc_mutex_lock(&client->state.mutex);
+      load_state = client->state.load;
+      rc_mutex_unlock(&client->state.mutex);
 
-    if (load_state && load_state->progress == RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN)
-      rc_client_begin_fetch_game_sets(load_state);
+      if (client->callbacks.event_handler) {
+        rc_client_event_t event;
+        memset(&event, 0, sizeof(event));
+        event.type = RC_CLIENT_EVENT_OFFLINE_MODE_CHANGED;
+        client->callbacks.event_handler(&event, client);
+      }
+
+      if (load_state && load_state->progress == RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN)
+        rc_client_begin_fetch_game_sets(load_state);
+
+      if (login_callback_data->callback)
+        login_callback_data->callback(RC_OK, NULL, client, login_callback_data->callback_userdata);
+    }
+    else {
+      rc_mutex_lock(&client->state.mutex);
+      client->state.user = RC_CLIENT_USER_STATE_NONE;
+      load_state = client->state.load;
+      rc_mutex_unlock(&client->state.mutex);
+
+      RC_CLIENT_LOG_ERR_FORMATTED(client, "Login failed: %s", error_message);
+      if (login_callback_data->callback)
+        login_callback_data->callback(result, error_message, client, login_callback_data->callback_userdata);
+
+      if (load_state && load_state->progress == RC_CLIENT_LOAD_GAME_STATE_AWAIT_LOGIN)
+        rc_client_begin_fetch_game_sets(load_state);
+    }
   }
   else {
     client->user.username = rc_buffer_strcpy(&client->state.buffer, login_response.username);
@@ -710,8 +737,18 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
 
     rc_mutex_lock(&client->state.mutex);
     client->state.user = RC_CLIENT_USER_STATE_LOGGED_IN;
+    client->state.offline = 0;
     load_state = client->state.load;
     rc_mutex_unlock(&client->state.mutex);
+
+    /* cache credentials for offline mode */
+    rc_client_offline_cache_credentials(client, login_response.username,
+        login_response.api_token, login_response.display_name,
+        login_response.score, login_response.score_softcore,
+        login_response.avatar_url);
+
+    /* flush any queued offline unlocks */
+    rc_client_flush_offline_queue(client);
 
     RC_CLIENT_LOG_INFO_FORMATTED(client, "%s logged in successfully", login_response.display_name);
 
@@ -742,6 +779,10 @@ static rc_client_async_handle_t* rc_client_begin_login(rc_client_t* client,
       result = RC_INVALID_STATE;
     }
     client->state.user = RC_CLIENT_USER_STATE_LOGIN_REQUESTED;
+
+    /* store username early so it's available for offline fallback in the callback */
+    if (login_request->username)
+      client->user.username = rc_buffer_strcpy(&client->state.buffer, login_request->username);
 
     rc_mutex_unlock(&client->state.mutex);
   }
@@ -1949,6 +1990,13 @@ static void rc_client_start_session_callback(const rc_api_server_response_t* ser
 
   result = rc_api_process_start_session_server_response(&start_session_response, server_response);
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &start_session_response.response);
+
+  /* cache unlock data on success for offline use */
+  if (!error_message) {
+    rc_client_offline_cache_unlocks(load_state->client, load_state->client->user.username,
+        load_state->hash->hash, &start_session_response);
+  }
+
   outstanding_requests = rc_client_end_load_state(load_state);
 
   if (error_message) {
@@ -1996,6 +2044,99 @@ static void rc_client_begin_start_session(rc_client_load_state_t* load_state)
   start_session_params.game_id = load_state->hash->game_id;
   start_session_params.game_hash = load_state->hash->hash;
   start_session_params.hardcore = client->state.hardcore;
+
+  /* if offline, load cached unlocks and synthesize a start session response */
+  if (client->state.offline) {
+    rc_api_start_session_response_t cached_session;
+    uint8_t* cache_buffer;
+    int payload_size = 0;
+
+    memset(&cached_session, 0, sizeof(cached_session));
+    cached_session.response.succeeded = 1;
+    cached_session.server_now = time(NULL);
+
+    cache_buffer = (uint8_t*)malloc(256 * 1024);
+    if (cache_buffer)
+      payload_size = rc_client_offline_load_unlocks(client, client->user.username,
+          load_state->hash->hash, cache_buffer, 256 * 1024);
+
+    if (payload_size > 0) {
+      const uint8_t* ptr = cache_buffer + sizeof(rc_offline_cache_header_t);
+      uint32_t i;
+      uint32_t num_entries = (uint32_t)payload_size / RC_OFFLINE_UNLOCK_ENTRY_SIZE;
+      uint32_t num_hardcore = 0, num_softcore = 0;
+
+      /* first pass: count hardcore vs softcore */
+      for (i = 0; i < num_entries; i++) {
+        if (ptr[i * RC_OFFLINE_UNLOCK_ENTRY_SIZE + 12])
+          num_hardcore++;
+        else
+          num_softcore++;
+      }
+
+      if (num_hardcore > 0)
+        cached_session.hardcore_unlocks = (rc_api_unlock_entry_t*)calloc(num_hardcore, sizeof(rc_api_unlock_entry_t));
+      if (num_softcore > 0)
+        cached_session.unlocks = (rc_api_unlock_entry_t*)calloc(num_softcore, sizeof(rc_api_unlock_entry_t));
+
+      for (i = 0; i < num_entries; i++) {
+        const uint8_t* entry_ptr = ptr + i * RC_OFFLINE_UNLOCK_ENTRY_SIZE;
+        uint32_t id;
+        uint64_t when;
+        uint8_t is_hardcore;
+
+        memcpy(&id, entry_ptr, 4);
+        memcpy(&when, entry_ptr + 4, 8);
+        is_hardcore = entry_ptr[12];
+
+        if (is_hardcore && cached_session.hardcore_unlocks) {
+          cached_session.hardcore_unlocks[cached_session.num_hardcore_unlocks].achievement_id = id;
+          cached_session.hardcore_unlocks[cached_session.num_hardcore_unlocks].when = (time_t)when;
+          cached_session.num_hardcore_unlocks++;
+        }
+        else if (!is_hardcore && cached_session.unlocks) {
+          cached_session.unlocks[cached_session.num_unlocks].achievement_id = id;
+          cached_session.unlocks[cached_session.num_unlocks].when = (time_t)when;
+          cached_session.num_unlocks++;
+        }
+      }
+
+      RC_CLIENT_LOG_INFO_FORMATTED(client, "Loaded %u cached unlocks for offline session", num_entries);
+    }
+    else {
+      RC_CLIENT_LOG_INFO(client, "No cached unlock data, proceeding with empty unlock list");
+    }
+
+    /* directly activate the game with cached unlock data, bypassing server callback */
+    rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_GAME_STATE_STARTING_SESSION, 1);
+    {
+      int outstanding = rc_client_end_load_state(load_state);
+      if (outstanding == 0) {
+        if (client->state.allow_background_memory_reads)
+          rc_client_activate_game(load_state, &cached_session);
+        else
+          rc_client_queue_activate_game(load_state);
+      }
+      /* if outstanding > 0, game data fetch is still in progress; it will call activate_game when done.
+       * Transfer ownership of the unlock arrays into start_session_response so they are freed exactly once
+       * by rc_client_free_load_state -> rc_api_destroy_start_session_response. */
+      else {
+        load_state->start_session_response =
+            (rc_api_start_session_response_t*)malloc(sizeof(rc_api_start_session_response_t));
+        if (load_state->start_session_response) {
+          memcpy(load_state->start_session_response, &cached_session, sizeof(cached_session));
+          /* Ownership transferred — prevent double-free below */
+          cached_session.hardcore_unlocks = NULL;
+          cached_session.unlocks = NULL;
+        }
+      }
+    }
+
+    free(cached_session.hardcore_unlocks);
+    free(cached_session.unlocks);
+    free(cache_buffer);
+    return;
+  }
 
   result = rc_api_init_start_session_request_hosted(&start_session_request, &start_session_params, &client->state.host);
   if (result != RC_OK) {
@@ -2285,6 +2426,12 @@ static void rc_client_fetch_game_sets_callback(const rc_api_server_response_t* s
 
   result = rc_api_process_fetch_game_sets_server_response(&fetch_game_sets_response, server_response);
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &fetch_game_sets_response.response);
+
+  /* cache raw game data on success for offline use */
+  if (!error_message && server_response->body && server_response->body_length > 0) {
+    rc_client_offline_cache_game_data(load_state->client, load_state->client->user.username,
+        load_state->hash->hash, (const uint8_t*)server_response->body, (uint32_t)server_response->body_length);
+  }
 
   outstanding_requests = rc_client_end_load_state(load_state);
 
@@ -2697,6 +2844,39 @@ static void rc_client_begin_fetch_game_sets(rc_client_load_state_t* load_state)
   }
 
   rc_client_begin_load_state(load_state, RC_CLIENT_LOAD_GAME_STATE_IDENTIFYING_GAME, 1);
+
+  /* if offline, try to load cached game data instead of calling the server */
+  if (client->state.offline) {
+    uint8_t* cache_buffer = (uint8_t*)malloc(512 * 1024); /* 512KB max for cached game data */
+    int payload_size = 0;
+
+    if (cache_buffer)
+      payload_size = rc_client_offline_load_game_data(client, client->user.username,
+          load_state->hash->hash, cache_buffer, 512 * 1024);
+
+    if (payload_size > 0) {
+      rc_api_server_response_t cached_response;
+      RC_CLIENT_LOG_INFO(client, "Loading game data from offline cache");
+
+      memset(&cached_response, 0, sizeof(cached_response));
+      cached_response.body = (const char*)(cache_buffer + sizeof(rc_offline_cache_header_t));
+      cached_response.body_length = (size_t)payload_size;
+      cached_response.http_status_code = 200;
+
+      rc_client_begin_async(client, &load_state->async_handle);
+      rc_client_fetch_game_sets_callback(&cached_response, load_state);
+    }
+    else {
+      RC_CLIENT_LOG_WARN(client, "No cached game data available for offline play");
+      rc_client_load_error(load_state, RC_NOT_FOUND,
+          "No cached achievement data - connect online to load this game for the first time");
+    }
+
+    free(cache_buffer);
+    rc_api_destroy_request(&request);
+    return;
+  }
+
   RC_CLIENT_LOG_VERBOSE_FORMATTED(client, "Fetching data for hash %s", fetch_game_sets_request.game_hash);
 
   rc_client_begin_async(client, &load_state->async_handle);
@@ -3120,6 +3300,9 @@ void rc_client_unload_game(rc_client_t* client)
 
   if (!client)
     return;
+
+  /* save any pending retries to disk before unloading */
+  rc_client_offline_queue_save_pending(client);
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client && client->state.external_client->unload_game) {
@@ -4624,6 +4807,22 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
     return;
   }
 
+  /* if offline, queue the unlock to persistent storage instead of calling the server */
+  if (client->state.offline) {
+    rc_offline_queue_entry_t entry;
+    memset(&entry, 0, sizeof(entry));
+    entry.achievement_id = achievement->public_.id;
+    entry.unlock_unix_time = (uint32_t)time(NULL);
+    entry.hardcore = 0; /* force softcore for offline unlocks */
+    entry.entry_type = 0;
+    if (client->game)
+      strncpy(entry.game_hash, client->game->public_.hash, sizeof(entry.game_hash) - 1);
+
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Queueing offline unlock for achievement %u: %s (softcore)", achievement->public_.id, achievement->public_.title);
+    rc_client_offline_queue_append(client, &entry);
+    return;
+  }
+
   callback_data = (rc_client_award_achievement_callback_data_t*)calloc(1, sizeof(*callback_data));
   if (!callback_data) {
     RC_CLIENT_LOG_ERR_FORMATTED(client, "Failed to allocate callback data for unlocking achievement %u", achievement->public_.id);
@@ -4633,14 +4832,109 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
   callback_data->client = client;
   callback_data->id = achievement->public_.id;
   callback_data->hardcore = client->state.hardcore;
-  callback_data->game_hash = client->game->public_.hash;
+  /* game may be NULL if called while unloading from another thread; guard here */
+  callback_data->game_hash = client->game ? client->game->public_.hash : NULL;
   callback_data->unlock_time = client->callbacks.get_time_millisecs(client);
-
-  if (client->game) /* may be NULL if this gets called while unloading the game (from another thread - events are raised outside the lock) */
-    callback_data->game_hash = client->game->public_.hash;
 
   RC_CLIENT_LOG_INFO_FORMATTED(client, "Awarding achievement %u: %s", achievement->public_.id, achievement->public_.title);
   rc_client_award_achievement_server_call(callback_data);
+}
+
+void rc_client_offline_queue_save_pending(rc_client_t* client)
+{
+  rc_client_scheduled_callback_data_t* scheduled;
+  rc_offline_queue_entry_t entries[RC_OFFLINE_QUEUE_MAX_ENTRIES];
+  rc_offline_queue_header_t header;
+  uint8_t* buffer;
+  uint32_t total_size;
+  char filename[128];
+  uint16_t count = 0;
+
+  if (!client->callbacks.write_storage)
+    return;
+
+  /* Walk only achievement-retry callbacks so we save exactly what we need to retry. */
+  rc_mutex_lock(&client->state.mutex);
+  scheduled = client->state.scheduled_callbacks;
+  while (scheduled && count < RC_OFFLINE_QUEUE_MAX_ENTRIES) {
+    if (scheduled->callback == rc_client_award_achievement_retry) {
+      rc_client_award_achievement_callback_data_t* ach_data =
+          (rc_client_award_achievement_callback_data_t*)scheduled->data;
+      memset(&entries[count], 0, sizeof(rc_offline_queue_entry_t));
+      entries[count].achievement_id = ach_data->id;
+      entries[count].hardcore = ach_data->hardcore;
+      entries[count].unlock_unix_time = (uint32_t)(ach_data->unlock_time / 1000);
+      entries[count].entry_type = 0;
+      if (ach_data->game_hash)
+        strncpy(entries[count].game_hash, ach_data->game_hash, sizeof(entries[count].game_hash) - 1);
+      count++;
+    }
+    scheduled = scheduled->next;
+  }
+  rc_mutex_unlock(&client->state.mutex);
+
+  if (count == 0)
+    return;
+
+  total_size = (uint32_t)sizeof(header) + count * (uint32_t)sizeof(rc_offline_queue_entry_t);
+  buffer = (uint8_t*)malloc(total_size);
+  if (!buffer)
+    return;
+
+  memset(&header, 0, sizeof(header));
+  header.magic = RC_OFFLINE_QUEUE_MAGIC;
+  header.version = RC_OFFLINE_QUEUE_VERSION;
+  header.entry_count = count;
+  header.crc32 = rc_offline_crc32((const uint8_t*)entries,
+      count * (uint32_t)sizeof(rc_offline_queue_entry_t));
+
+  memcpy(buffer, &header, sizeof(header));
+  memcpy(buffer + sizeof(header), entries, count * sizeof(rc_offline_queue_entry_t));
+
+  snprintf(filename, sizeof(filename), "%s_queue.bin", client->user.username);
+  client->callbacks.write_storage(filename, buffer, total_size, client);
+  free(buffer);
+
+  RC_CLIENT_LOG_INFO_FORMATTED(client, "Saved %u pending unlocks to offline queue", (unsigned)count);
+}
+
+static void rc_client_flush_offline_queue(rc_client_t* client)
+{
+  rc_offline_queue_entry_t entries[RC_OFFLINE_QUEUE_MAX_ENTRIES];
+  int num_entries = rc_client_offline_queue_load(client, entries, RC_OFFLINE_QUEUE_MAX_ENTRIES);
+
+  if (num_entries > 0) {
+    int i;
+    time_t now_time = time(NULL);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Flushing %d queued offline unlocks", num_entries);
+
+    for (i = 0; i < num_entries; i++) {
+      int32_t age_seconds = (int32_t)(now_time - (time_t)entries[i].unlock_unix_time);
+      rc_client_award_achievement_callback_data_t* ach_data;
+
+      if (age_seconds > 14 * 24 * 60 * 60) {
+        RC_CLIENT_LOG_WARN_FORMATTED(client, "Discarding queued unlock for achievement %u - older than 14 days",
+            entries[i].achievement_id);
+        continue;
+      }
+
+      if (age_seconds < 0)
+        age_seconds = 0;
+
+      ach_data = (rc_client_award_achievement_callback_data_t*)calloc(1, sizeof(*ach_data));
+      if (ach_data) {
+        ach_data->client = client;
+        ach_data->id = entries[i].achievement_id;
+        ach_data->hardcore = entries[i].hardcore;
+        ach_data->game_hash = entries[i].game_hash;
+        ach_data->retry_count = 1; /* forces seconds_since_unlock to be set */
+        ach_data->unlock_time = client->callbacks.get_time_millisecs(client) - (rc_clock_t)age_seconds * 1000;
+        rc_client_award_achievement_server_call(ach_data);
+      }
+    }
+
+    rc_client_offline_queue_clear(client);
+  }
 }
 
 static void rc_client_subset_reset_achievements(rc_client_subset_info_t* subset)
@@ -5633,6 +5927,28 @@ void rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memo
 #endif
 
   client->callbacks.read_memory = handler;
+}
+
+void rc_client_set_storage_callbacks(rc_client_t* client,
+    rc_client_read_storage_func_t read_func, rc_client_write_storage_func_t write_func)
+{
+  if (!client)
+    return;
+
+  /* Pre-initialize the CRC table here, before any concurrent activity, so
+   * rc_offline_crc32 is safe to call from any thread later without a mutex. */
+  rc_offline_crc32_init_table();
+
+  client->callbacks.read_storage = read_func;
+  client->callbacks.write_storage = write_func;
+}
+
+int rc_client_get_offline(const rc_client_t* client)
+{
+  if (!client)
+    return 0;
+
+  return client->state.offline;
 }
 
 void rc_client_set_allow_background_memory_reads(rc_client_t* client, int allowed)

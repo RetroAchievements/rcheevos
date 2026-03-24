@@ -44,6 +44,9 @@ typedef struct rc_client_callbacks_t {
   rc_client_can_submit_leaderboard_entry_t can_submit_leaderboard_entry;
   rc_client_rich_presence_override_t rich_presence_override;
 
+  rc_client_read_storage_func_t read_storage;
+  rc_client_write_storage_func_t write_storage;
+
 #ifdef RC_CLIENT_SUPPORTS_HASH
   rc_hash_callbacks_t hash;
 #endif
@@ -336,6 +339,7 @@ typedef struct rc_client_state_t {
   uint8_t log_level;
   uint8_t user;
   uint8_t disconnect;
+  uint8_t offline;
   uint8_t allow_leaderboards_in_softcore;
   uint8_t allow_background_memory_reads;
 

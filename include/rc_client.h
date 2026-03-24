@@ -44,6 +44,18 @@ typedef void (RC_CCONV *rc_client_callback_t)(int result, const char* error_mess
  */
 typedef void (RC_CCONV *rc_client_message_callback_t)(const char* message, const rc_client_t* client);
 
+/**
+ * Callback used to write data to persistent storage.
+ * Returns bytes written, or -1 on error.
+ */
+typedef int (RC_CCONV *rc_client_write_storage_func_t)(const char* filename, const uint8_t* data, uint32_t data_size, rc_client_t* client);
+
+/**
+ * Callback used to read data from persistent storage.
+ * Returns bytes read into buffer, or -1 on error. 0 indicates file not found.
+ */
+typedef int (RC_CCONV *rc_client_read_storage_func_t)(const char* filename, uint8_t* buffer, uint32_t buffer_size, rc_client_t* client);
+
 /*****************************************************************************\
 | Runtime                                                                     |
 \*****************************************************************************/
@@ -768,7 +780,8 @@ enum {
   RC_CLIENT_EVENT_SERVER_ERROR = 16, /* an API response returned a [server_error] and will not be retried */
   RC_CLIENT_EVENT_DISCONNECTED = 17, /* an unlock request could not be completed and is pending */
   RC_CLIENT_EVENT_RECONNECTED = 18, /* all pending unlocks have been completed */
-  RC_CLIENT_EVENT_SUBSET_COMPLETED = 19 /* all achievements for the subset have been earned */
+  RC_CLIENT_EVENT_SUBSET_COMPLETED = 19, /* all achievements for the subset have been earned */
+  RC_CLIENT_EVENT_OFFLINE_MODE_CHANGED = 20 /* offline mode state has changed (check rc_client_get_offline) */
 };
 
 typedef struct rc_client_server_error_t {
@@ -804,6 +817,17 @@ RC_EXPORT void RC_CCONV rc_client_set_event_handler(rc_client_t* client, rc_clie
  * Provides a callback for reading memory.
  */
 RC_EXPORT void RC_CCONV rc_client_set_read_memory_function(rc_client_t* client, rc_client_read_memory_func_t handler);
+
+/**
+ * Provides callbacks for persistent storage (enables offline mode).
+ */
+RC_EXPORT void RC_CCONV rc_client_set_storage_callbacks(rc_client_t* client,
+    rc_client_read_storage_func_t read_func, rc_client_write_storage_func_t write_func);
+
+/**
+ * Returns non-zero if the client is currently in offline mode.
+ */
+RC_EXPORT int RC_CCONV rc_client_get_offline(const rc_client_t* client);
 
 /**
  * Specifies whether rc_client is allowed to read memory outside of rc_client_do_frame/rc_client_idle.
