@@ -749,11 +749,142 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track, const rc_
   return cdrom;
 }
 
+#ifdef HAVE_CHD
+#include "libchdr/chd.h"
+#include "libchdr/cdrom.h"
+typedef struct rc_chd_reader_t {
+  chd_file* chd;
+  uint32_t hunkbytes;
+  uint8_t* hunk_buffer;
+  uint32_t buffered_hunk;
+  int64_t current_pos;
+  int64_t total_bytes;
+} rc_chd_reader_t;
+#endif /* HAVE_CHD */
+
+#ifdef HAVE_CHD
+static void chd_filereader_seek(void* h, int64_t o, int origin) {
+  rc_chd_reader_t* r = (rc_chd_reader_t*)h;
+  if (origin == SEEK_SET) r->current_pos = o;
+  else if (origin == SEEK_CUR) r->current_pos += o;
+  else r->current_pos = r->total_bytes + o;
+  if (r->current_pos < 0) r->current_pos = 0;
+  if (r->current_pos > r->total_bytes) r->current_pos = r->total_bytes;
+}
+static int64_t chd_filereader_tell(void* h) { return ((rc_chd_reader_t*)h)->current_pos; }
+static size_t chd_filereader_read(void* h, void* buf, size_t n) {
+  rc_chd_reader_t* r = (rc_chd_reader_t*)h;
+  uint8_t* out = (uint8_t*)buf;
+  size_t total = 0;
+  while (n > 0 && r->current_pos < r->total_bytes) {
+    uint32_t hi = (uint32_t)(r->current_pos / r->hunkbytes);
+    uint32_t off = (uint32_t)(r->current_pos % r->hunkbytes);
+    size_t avail = (size_t)(r->hunkbytes - off);
+    size_t copy = avail < n ? avail : n;
+    if (r->current_pos + (int64_t)copy > r->total_bytes)
+      copy = (size_t)(r->total_bytes - r->current_pos);
+    if (!copy) break;
+    if (hi != r->buffered_hunk) {
+      if (chd_read(r->chd, hi, r->hunk_buffer) != CHDERR_NONE) break;
+      r->buffered_hunk = hi;
+    }
+    memcpy(out, r->hunk_buffer + off, copy);
+    out += copy; r->current_pos += copy; total += copy; n -= copy;
+  }
+  return total;
+}
+static void chd_filereader_close(void* h) {
+  rc_chd_reader_t* r = (rc_chd_reader_t*)h;
+  if (r) { if (r->hunk_buffer) free(r->hunk_buffer); if (r->chd) chd_close(r->chd); free(r); }
+}
+static const rc_hash_filereader_t s_chd_filereader = {
+  NULL, chd_filereader_seek, chd_filereader_tell, chd_filereader_read, chd_filereader_close
+};
+#endif /* HAVE_CHD */
+
+#ifdef HAVE_CHD
+static void cdreader_get_chd_sector_info(const char* t, int* ss, int* hs, int* rds) {
+  if (strncmp(t,"AUDIO",5)==0) { *ss=CD_FRAME_SIZE; *hs=0; *rds=CD_MAX_SECTOR_DATA; }
+  else if (strncmp(t,"MODE2",5)==0) { *ss=CD_FRAME_SIZE; *hs=24; *rds=2048; }
+  else { *ss=CD_FRAME_SIZE; *hs=16; *rds=2048; }
+}
+static rc_chd_reader_t* cdreader_alloc_chd_reader(chd_file* chd) {
+  const chd_header* h = chd_get_header(chd);
+  rc_chd_reader_t* r = (rc_chd_reader_t*)calloc(1, sizeof(*r));
+  if (!r) { chd_close(chd); return NULL; }
+  r->chd = chd; r->hunkbytes = h->hunkbytes;
+  r->total_bytes = (int64_t)h->logicalbytes;
+  r->hunk_buffer = (uint8_t*)malloc(h->hunkbytes);
+  r->buffered_hunk = (uint32_t)-1;
+  if (!r->hunk_buffer) { chd_filereader_close(r); return NULL; }
+  return r;
+}
+static void* cdreader_open_chd_track(const char* path, uint32_t track, const rc_hash_iterator_t* iterator) {
+  chd_file* chd = NULL;
+  const chd_header* header;
+  rc_chd_reader_t* rdr;
+  rc_hash_cdrom_track_t* cdrom;
+  chd_error err;
+  char meta[256]; uint32_t mlen;
+  char ttype[16], tsub[16], pgtype[16], pgsub[16];
+  uint32_t tnum, frames, pregap, postgap;
+  uint32_t cum, idx, rb, rp, lf; int rs, rh, rrd, found;
+  int ss, hs, rds;
+  err = chd_open(path, CHD_OPEN_READ, NULL, &chd);
+  if (err != CHDERR_NONE) { rc_hash_iterator_error_formatted(iterator,"Could not open CHD: %s",chd_error_string(err)); return NULL; }
+  header = chd_get_header(chd);
+  rdr = cdreader_alloc_chd_reader(chd);
+  if (!rdr) return NULL;
+  cdrom = (rc_hash_cdrom_track_t*)calloc(1, sizeof(*cdrom));
+  if (!cdrom) { chd_filereader_close(rdr); return NULL; }
+  cdrom->file_reader = &s_chd_filereader;
+  cdrom->file_handle = rdr;
+  cdrom->raw_data_size = 2048;
+  if (track == 0) track = RC_HASH_CDTRACK_LARGEST;
+  found=0; cum=0; rb=0; rp=0; rs=0; rh=0; rrd=2048; lf=0;
+  for (idx=0; ; ++idx) {
+    err = chd_get_metadata(chd,CDROM_TRACK_METADATA2_TAG,idx,meta,sizeof(meta),&mlen,NULL,NULL);
+    if (err==CHDERR_NONE) sscanf(meta,CDROM_TRACK_METADATA2_FORMAT,&tnum,ttype,tsub,&frames,&pregap,pgtype,pgsub,&postgap);
+    else { err=chd_get_metadata(chd,CDROM_TRACK_METADATA_TAG,idx,meta,sizeof(meta),&mlen,NULL,NULL);
+      if (err==CHDERR_NONE) { sscanf(meta,CDROM_TRACK_METADATA_FORMAT,&tnum,ttype,tsub,&frames); pregap=0; postgap=0; }
+      else break; }
+    cdreader_get_chd_sector_info(ttype,&ss,&hs,&rds);
+    if (track==tnum) { rb=cum; rp=pregap; rs=ss; rh=hs; rrd=rds; found=1; break; }
+    if (track==RC_HASH_CDTRACK_FIRST_DATA && strncmp(ttype,"MODE",4)==0) { rb=cum; rp=pregap; rs=ss; rh=hs; rrd=rds; found=1; break; }
+    if (track==RC_HASH_CDTRACK_LARGEST && strncmp(ttype,"MODE",4)==0) { uint32_t df=(frames>pregap)?(frames-pregap):0; if(df>lf){lf=df;rb=cum;rp=pregap;rs=ss;rh=hs;rrd=rds;} }
+    if (track==RC_HASH_CDTRACK_LAST) { rb=cum; rp=pregap; rs=ss; rh=hs; rrd=rds; }
+    cum+=frames;
+  }
+  if (!found && (track==RC_HASH_CDTRACK_LARGEST||track==RC_HASH_CDTRACK_LAST) && rs>0) found=1;
+  if (found) {
+    cdrom->track_first_sector=rb; cdrom->track_pregap_sectors=rp;
+    cdrom->sector_size=rs; cdrom->sector_header_size=rh; cdrom->raw_data_size=rrd;
+    cdrom->file_track_offset=(int64_t)rb*rs;
+    rc_hash_iterator_verbose_formatted(iterator,"Opened CHD CD track (sector size %d, first sector %u, pregap %u)",rs,rb,rp);
+    return cdrom;
+  }
+  if (header->unitbytes==2048 && (track==1||track==RC_HASH_CDTRACK_FIRST_DATA||track==RC_HASH_CDTRACK_LARGEST)) {
+    cdrom->track_first_sector=0; cdrom->track_pregap_sectors=0;
+    cdrom->sector_size=2048; cdrom->sector_header_size=0; cdrom->raw_data_size=2048;
+    cdrom->file_track_offset=0;
+    rc_hash_iterator_verbose_formatted(iterator,"Opened CHD as DVD track (2048-byte sectors, %u total sectors)",(uint32_t)(header->logicalbytes/2048));
+    return cdrom;
+  }
+  rc_hash_iterator_error(iterator,"Could not open track");
+  free(cdrom); chd_filereader_close(rdr); return NULL;
+}
+#endif /* HAVE_CHD */
+
 static void* cdreader_open_track_iterator(const char* path, uint32_t track, const rc_hash_iterator_t* iterator)
 {
   /* backwards compatibility - 0 used to mean largest */
   if (track == 0)
     track = RC_HASH_CDTRACK_LARGEST;
+
+#ifdef HAVE_CHD
+  if (rc_path_compare_extension(path, "chd"))
+    return cdreader_open_chd_track(path, track, iterator);
+#endif
 
   if (rc_path_compare_extension(path, "cue"))
     return cdreader_open_cue_track(path, track, iterator);

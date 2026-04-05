@@ -157,6 +157,33 @@ else
                $(RC_HASH_SRC)/hash_disc.o \
                rhash/test_cdreader.o \
                rhash/test_hash_disc.o
+        ifeq ($(HAVE_CHD), 1)
+            CHD_SRC=../deps/libchdr
+            CFLAGS += -DHAVE_CHD -I$(CHD_SRC)/include
+            OBJ += $(CHD_SRC)/src/libchdr_bitstream.o \
+                   $(CHD_SRC)/src/libchdr_cdrom.o \
+                   $(CHD_SRC)/src/libchdr_chd.o \
+                   $(CHD_SRC)/src/libchdr_codec_cdfl.o \
+                   $(CHD_SRC)/src/libchdr_codec_cdlz.o \
+                   $(CHD_SRC)/src/libchdr_codec_cdzl.o \
+                   $(CHD_SRC)/src/libchdr_codec_cdzs.o \
+                   $(CHD_SRC)/src/libchdr_codec_flac.o \
+                   $(CHD_SRC)/src/libchdr_codec_huff.o \
+                   $(CHD_SRC)/src/libchdr_codec_lzma.o \
+                   $(CHD_SRC)/src/libchdr_codec_zlib.o \
+                   $(CHD_SRC)/src/libchdr_codec_zstd.o \
+                   $(CHD_SRC)/src/libchdr_flac.o \
+                   $(CHD_SRC)/src/libchdr_huffman.o
+            LZMA_SRC=$(CHD_SRC)/deps/lzma-25.01
+            CFLAGS += -I$(LZMA_SRC)/include
+            OBJ += $(LZMA_SRC)/src/LzmaDec.o
+            MINIZ_SRC=$(CHD_SRC)/deps/miniz-3.1.1
+            OBJ += $(MINIZ_SRC)/miniz.o
+            ZSTD_SRC=$(CHD_SRC)/deps/zstd-1.5.7
+            CFLAGS += -I$(ZSTD_SRC)
+            OBJ += $(ZSTD_SRC)/zstddeclib.o
+            CFLAGS += -DWANT_RAW_DATA_SECTOR=1 -DWANT_SUBCODE=1 -DVERIFY_BLOCK_CRC=1
+        endif
     endif
 
     ifeq ($(HAVE_HASH_ZIP), 0)
@@ -192,6 +219,9 @@ $(RC_HASH_SRC)/%.o: $(RC_HASH_SRC)/%.c
 
 $(RC_API_SRC)/%.o: $(RC_API_SRC)/%.c
 	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+
+../deps/%.o: ../deps/%.c
+	$(CC) $(filter-out -std=c89 -std=c99 -pedantic -Wextra -Wshadow, $(CFLAGS)) -std=c99 -Wno-unused-function $(INCLUDES) -c $< -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
