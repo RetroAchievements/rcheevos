@@ -226,6 +226,13 @@ static void test_conditional_display_invalid_condition_logic() {
   ASSERT_NUM_EQUALS(lines, 2);
 }
 
+static void test_conditional_display_extra_characters_after_logic() {
+  int lines;
+  int result = rc_richpresence_size_lines("Display:\n?0xH1234=6)?Zero\nDefault", &lines);
+  ASSERT_NUM_EQUALS(result, RC_INVALID_OPERATOR);
+  ASSERT_NUM_EQUALS(lines, 2);
+}
+
 static void test_conditional_display_shared_lookup() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -400,7 +407,7 @@ static void test_conditional_display_invalid() {
   ASSERT_NUM_EQUALS(lines_read, 2);
 }
 
-static void test_conditional_display_training_addaddress() {
+static void test_conditional_display_trailing_addaddress() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
   rc_richpresence_t* richpresence;
@@ -559,6 +566,11 @@ static void test_macro_value_remember_recall() {
 
 static void test_macro_value_invalid() {
   ASSERT_NUM_EQUALS(rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x0x0001) Points"), RC_INVALID_MEMORY_OPERAND);
+}
+
+static void test_macro_value_invalid_extralong_legacy() {
+  /* The parameter to the Points function exceeds the 64-character buffer used to convert from legacy to new format */
+  ASSERT_NUM_EQUALS(rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0xXc25edd2eS0xX2a7d7aa8S0xX3e1b11fdSOxX0fc93b37S0xXfdc63bc7S0xX03d3ce95S0xX548352c8S0xX3b154129) Points"), RC_INVALID_VALUE);
 }
 
 static void test_macro_value_measured_if() {
@@ -1433,13 +1445,14 @@ void test_richpresence(void) {
   TEST(test_conditional_display_common_condition);
   TEST(test_conditional_display_duplicated_condition);
   TEST(test_conditional_display_invalid_condition_logic);
+  TEST(test_conditional_display_extra_characters_after_logic);
   TEST(test_conditional_display_shared_lookup);
   TEST(test_conditional_display_whitespace_text);
   TEST(test_conditional_display_indirect);
   TEST(test_conditional_display_unnecessary_measured);
   TEST(test_conditional_display_unnecessary_measured_indirect);
   TEST(test_conditional_display_invalid);
-  TEST(test_conditional_display_training_addaddress);
+  TEST(test_conditional_display_trailing_addaddress);
 
   /* value macros */
   TEST(test_macro_value);
@@ -1454,6 +1467,7 @@ void test_richpresence(void) {
   TEST(test_macro_value_divide_by_self);
   TEST(test_macro_value_remember_recall);
   TEST(test_macro_value_invalid);
+  TEST(test_macro_value_invalid_extralong_legacy);
   TEST(test_macro_value_measured_if);
   TEST(test_multiple_macros);
 

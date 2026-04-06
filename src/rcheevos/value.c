@@ -120,6 +120,12 @@ static void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_par
 
       /* extract the next clause */
       for (;; ++(*memaddr)) {
+        if (ptr == &buffer[sizeof(buffer)]) {
+          /* ran out of local buffer space for converting the condition */
+          parse->offset = RC_INVALID_VALUE;
+          return;
+        }
+
         switch (**memaddr) {
           case '_': /* add next */
             *ptr = '\0';
@@ -176,7 +182,7 @@ static void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_par
 
       if (*buffer_ptr) {
         /* whatever we copied as a single condition was not fully consumed */
-        parse->offset = RC_INVALID_COMPARISON;
+        parse->offset = RC_INVALID_VALUE;
         return;
       }
 

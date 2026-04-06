@@ -194,6 +194,7 @@ const char* rc_error_str(int ret)
     case RC_INVALID_VARIABLE_NAME: return "Invalid variable name";
     case RC_UNKNOWN_VARIABLE_NAME: return "Unknown variable name";
     case RC_NOT_FOUND: return "Not found";
+    case RC_INVALID_VALUE: return "Invalid value expression";
     default: return "Unknown error";
   }
 }
