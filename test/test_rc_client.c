@@ -291,6 +291,26 @@ static const char* patchdata_unofficial_unsupported = "{\"Success\":true,"
       "]"
     "}]}";
 
+static const char* patchdata_warning = "{\"Success\":true,"
+    "\"GameId\":1234,\"Title\":\"Sample Game\",\"ConsoleId\":17,"
+    "\"ImageIconUrl\":\"http://server/Images/112233.png\","
+    "\"RichPresenceGameId\":1234,\"RichPresencePatch\":\"\",\"Sets\":[{"
+      "\"AchievementSetId\":1111,\"GameId\":1234,\"Title\":null,\"Type\":\"core\","
+      "\"ImageIconUrl\":\"http://server/Images/112233.png\","
+      "\"Achievements\":["
+       "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+        "\"MemAddr\":\"0xH0001=3_0xH0002=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+        "\"Created\":1367266583,\"Modified\":1376929305},"
+       "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
+        "\"MemAddr\":\"0xH0001=2_0x0002=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
+        "\"Created\":1376970283,\"Modified\":1376970283},"
+       "{\"ID\":101000001,\"Title\":\"Warning: Unsupported Emulator\",\"Description\":\"Hardcore unlocks cannot be earned using this emulator.\",\"Flags\":3,\"Points\":0,"
+        "\"MemAddr\":\"1=1.300.\",\"Author\":\"\",\"BadgeName\":\"00000\","
+        "\"Created\":1376970283,\"Modified\":1376970283}"
+      "],"
+      "\"Leaderboards\":[]"
+    "}]}";
+
 static const char* patchdata_subset = "{\"Success\":true,"
     "\"GameId\":1234,\"Title\":\"Sample Game\",\"ConsoleId\":17,"
     "\"ImageIconUrl\":\"http://server/Images/112233.png\","
@@ -1565,26 +1585,6 @@ static void test_get_user_game_summary_mastery(void)
 static void test_get_user_game_summary_warning(void)
 {
   rc_client_user_game_summary_t summary;
-
-  const char* patchdata_warning = "{\"Success\":true,"
-    "\"GameId\":1234,\"Title\":\"Sample Game\",\"ConsoleId\":17,"
-    "\"ImageIconUrl\":\"http://server/Images/112233.png\","
-    "\"RichPresenceGameId\":1234,\"RichPresencePatch\":\"\",\"Sets\":[{"
-      "\"AchievementSetId\":1111,\"GameId\":1234,\"Title\":null,\"Type\":\"core\","
-      "\"ImageIconUrl\":\"http://server/Images/112233.png\","
-      "\"Achievements\":["
-       "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
-        "\"MemAddr\":\"0xH0001=3_0xH0002=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
-        "\"Created\":1367266583,\"Modified\":1376929305},"
-       "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
-        "\"MemAddr\":\"0xH0001=2_0x0002=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
-        "\"Created\":1376970283,\"Modified\":1376970283},"
-       "{\"ID\":101000001,\"Title\":\"Warning: Unsupported Emulator\",\"Description\":\"Hardcore unlocks cannot be earned using this emulator.\",\"Flags\":3,\"Points\":0,"
-        "\"MemAddr\":\"1=1.300.\",\"Author\":\"\",\"BadgeName\":\"00000\","
-        "\"Created\":1376970283,\"Modified\":1376970283}"
-      "],"
-      "\"Leaderboards\":[]"
-    "}]}";
 
   g_client = mock_client_logged_in();
   mock_client_load_game(patchdata_warning, no_unlocks);
@@ -6672,6 +6672,47 @@ static void test_do_frame_achievement_trigger_blocked(void)
   rc_client_destroy(g_client);
 }
 
+static void test_do_frame_achievement_trigger_warning(void)
+{
+  rc_client_event_t* event;
+
+  g_client = mock_client_game_loaded(patchdata_warning, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game) {
+    const uint32_t num_active = g_client->game->runtime.trigger_count;
+    rc_client_achievement_info_t* ach = (rc_client_achievement_info_t*)rc_client_get_achievement_info(g_client, 101000001);
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+
+    ach->trigger->requirement->conditions->current_hits = 299; /* will trigger at 300 */
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 1);
+
+    event = find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 101000001);
+    ASSERT_PTR_NOT_NULL(event);
+    ASSERT_NUM_EQUALS(event->achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+    ASSERT_NUM_EQUALS(event->achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
+    ASSERT_NUM_NOT_EQUALS(event->achievement->unlock_time, 0);
+    ASSERT_NUM_EQUALS(event->achievement->bucket, RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED);
+    ASSERT_PTR_EQUALS(event->achievement, &ach->public_);
+
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
+    ASSERT_NUM_EQUALS(g_client->user.score, 12345);
+    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 0);
+
+    assert_api_not_called("r=awardachievement&u=Username&t=ApiToken&a=101000001&h=1&m=0123456789ABCDEF&v=589baefac51bd5931234fa9ade42460f");
+
+    event_count = 0;
+    rc_client_do_frame(g_client);
+    ASSERT_NUM_EQUALS(event_count, 0);
+  }
+
+  rc_client_destroy(g_client);
+}
+
 static void test_do_frame_achievement_trigger_automatic_retry(const char* response, int status_code)
 {
   const char* unlock_request_params = "r=awardachievement&u=Username&t=ApiToken&a=5501&h=1&m=0123456789ABCDEF&v=9b9bdf5501eb6289a6655affbcc695e6";
@@ -10471,6 +10512,7 @@ void test_client(void) {
   TEST(test_do_frame_achievement_trigger_server_error);
   TEST(test_do_frame_achievement_trigger_while_spectating);
   TEST(test_do_frame_achievement_trigger_blocked);
+  TEST(test_do_frame_achievement_trigger_warning);
   TEST(test_do_frame_achievement_trigger_automatic_retry_empty);
   TEST(test_do_frame_achievement_trigger_automatic_retry_429);
   TEST(test_do_frame_achievement_trigger_automatic_retry_502);

@@ -23,6 +23,7 @@
 
 #define RC_CLIENT_UNKNOWN_GAME_ID (uint32_t)-1
 #define RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS (10 * 60) /* ten minutes */
+#define RC_CLIENT_ACHIEVEMENT_WARNING_ID 101000001
 
 #define RC_MINIMUM_UNPAUSED_FRAMES 20
 #define RC_PAUSE_DECAY_MULTIPLIER 4
@@ -934,7 +935,7 @@ static void rc_client_subset_get_user_game_summary(const rc_client_t* client,
   for (; achievement < stop; ++achievement) {
     switch (achievement->public_.category) {
       case RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE:
-        if (achievement->public_.id >= 101000001) {
+        if (achievement->public_.id >= RC_CLIENT_ACHIEVEMENT_WARNING_ID) {
           /* ignore warning achievements */
           continue;
         }
@@ -4610,6 +4611,11 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
     RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH : RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE;
 
   rc_mutex_unlock(&client->state.mutex);
+
+  if (achievement->public_.id >= RC_CLIENT_ACHIEVEMENT_WARNING_ID) {
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Unlocked warning achievement %u: %s", achievement->public_.id, achievement->public_.title);
+    return;
+  }
 
   if (client->callbacks.can_submit_achievement_unlock &&
       !client->callbacks.can_submit_achievement_unlock(achievement->public_.id, client)) {
