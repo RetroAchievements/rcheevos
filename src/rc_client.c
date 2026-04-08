@@ -5810,9 +5810,6 @@ static void rc_client_update_memref_values(rc_client_t* client) {
     } while (modified_memref_list);
   }
 
-  if (client->game->runtime.richpresence && client->game->runtime.richpresence->richpresence)
-    rc_update_values(client->game->runtime.richpresence->richpresence->values, client->state.legacy_peek, client);
-
   if (invalidated_memref)
     rc_client_update_active_achievements(client->game);
 }
