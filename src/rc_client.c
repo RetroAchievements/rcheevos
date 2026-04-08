@@ -934,6 +934,11 @@ static void rc_client_subset_get_user_game_summary(const rc_client_t* client,
   for (; achievement < stop; ++achievement) {
     switch (achievement->public_.category) {
       case RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE:
+        if (achievement->public_.id >= 101000001) {
+          /* ignore warning achievements */
+          continue;
+        }
+
         ++summary->num_core_achievements;
         summary->points_core += achievement->public_.points;
 

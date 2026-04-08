@@ -1562,6 +1562,48 @@ static void test_get_user_game_summary_mastery(void)
   rc_client_destroy(g_client);
 }
 
+static void test_get_user_game_summary_warning(void)
+{
+  rc_client_user_game_summary_t summary;
+
+  const char* patchdata_warning = "{\"Success\":true,"
+    "\"GameId\":1234,\"Title\":\"Sample Game\",\"ConsoleId\":17,"
+    "\"ImageIconUrl\":\"http://server/Images/112233.png\","
+    "\"RichPresenceGameId\":1234,\"RichPresencePatch\":\"\",\"Sets\":[{"
+      "\"AchievementSetId\":1111,\"GameId\":1234,\"Title\":null,\"Type\":\"core\","
+      "\"ImageIconUrl\":\"http://server/Images/112233.png\","
+      "\"Achievements\":["
+       "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+        "\"MemAddr\":\"0xH0001=3_0xH0002=7\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+        "\"Created\":1367266583,\"Modified\":1376929305},"
+       "{\"ID\":5502,\"Title\":\"Ach2\",\"Description\":\"Desc2\",\"Flags\":3,\"Points\":2,"
+        "\"MemAddr\":\"0xH0001=2_0x0002=9\",\"Author\":\"User1\",\"BadgeName\":\"00235\","
+        "\"Created\":1376970283,\"Modified\":1376970283},"
+       "{\"ID\":101000001,\"Title\":\"Warning: Unsupported Emulator\",\"Description\":\"Hardcore unlocks cannot be earned using this emulator.\",\"Flags\":3,\"Points\":0,"
+        "\"MemAddr\":\"1=1.300.\",\"Author\":\"\",\"BadgeName\":\"00000\","
+        "\"Created\":1376970283,\"Modified\":1376970283}"
+      "],"
+      "\"Leaderboards\":[]"
+    "}]}";
+
+  g_client = mock_client_logged_in();
+  mock_client_load_game(patchdata_warning, no_unlocks);
+
+  rc_client_get_user_game_summary(g_client, &summary);
+  ASSERT_NUM_EQUALS(summary.num_core_achievements, 2);
+  ASSERT_NUM_EQUALS(summary.num_unofficial_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unsupported_achievements, 0);
+  ASSERT_NUM_EQUALS(summary.num_unlocked_achievements, 0);
+
+  ASSERT_NUM_EQUALS(summary.points_core, 7);
+  ASSERT_NUM_EQUALS(summary.points_unlocked, 0);
+
+  ASSERT_NUM_EQUALS(summary.beaten_time, 0);
+  ASSERT_NUM_EQUALS(summary.completed_time, 0);
+
+  rc_client_destroy(g_client);
+}
+
 /* ----- load game ----- */
 
 static void rc_client_callback_expect_hash_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
@@ -10282,6 +10324,7 @@ void test_client(void) {
   TEST(test_get_user_game_summary_progress_win_only);
   TEST(test_get_user_game_summary_beat);
   TEST(test_get_user_game_summary_mastery);
+  TEST(test_get_user_game_summary_warning);
 
   /* load game */
   TEST(test_load_game_required_fields);
