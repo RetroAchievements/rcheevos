@@ -1100,6 +1100,27 @@ static void test_login_with_password_client_error(void)
   rc_client_destroy(g_client);
 }
 
+static void test_login_with_password_client_error_substring(void)
+{
+  const rc_client_user_t* user;
+  rc_client_async_handle_t* handle;
+
+  g_client = mock_client_not_logged_in();
+
+  mock_api_error("r=login2&u=User&p=Pa%24%24word", "Internet not available. Please try again.", RC_API_SERVER_RESPONSE_CLIENT_ERROR);
+  g_mock_api_responses[g_num_mock_api_responses - 1].server_response.body_length = strlen("Internet not available.");
+
+  handle = rc_client_begin_login_with_password(g_client, "User", "Pa$$word",
+    rc_client_callback_expect_no_internet, g_callback_userdata);
+
+  user = rc_client_get_user_info(g_client);
+  ASSERT_PTR_NULL(user);
+
+  ASSERT_PTR_NULL(handle);
+
+  rc_client_destroy(g_client);
+}
+
 static void rc_client_callback_expect_login_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
   ASSERT_NUM_EQUALS(result, RC_LOGIN_REQUIRED);
@@ -10259,6 +10280,7 @@ void test_client(void) {
   TEST(test_login_with_password_async_aborted);
   TEST(test_login_with_password_async_destroyed);
   TEST(test_login_with_password_client_error);
+  TEST(test_login_with_password_client_error_substring);
 
   /* logout */
   TEST(test_logout);

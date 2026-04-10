@@ -360,7 +360,7 @@ int rc_json_parse_server_response(rc_api_response_t* response, const rc_api_serv
   if (server_response->http_status_code == RC_API_SERVER_RESPONSE_CLIENT_ERROR ||
       server_response->http_status_code == RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR) {
     /* client provided error message is passed as the response body */
-    response->error_message = server_response->body;
+    response->error_message = rc_buffer_strncpy(&response->buffer, server_response->body, server_response->body_length);
     response->succeeded = 0;
     return RC_NO_RESPONSE;
   }
