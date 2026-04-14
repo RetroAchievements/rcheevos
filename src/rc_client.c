@@ -5834,12 +5834,14 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
     rc_trigger_t* trigger = achievement->trigger;
     int old_state, new_state;
     uint32_t old_measured_value;
+    uint8_t old_can_measure;
 
     if (!trigger || achievement->public_.state != RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE)
       continue;
 
     old_measured_value = trigger->measured_value;
     old_state = trigger->state;
+    old_can_measure = trigger->can_measure;
     new_state = rc_evaluate_trigger(trigger, client->state.legacy_peek, client, NULL);
 
     /* trigger->state doesn't actually change to RESET - RESET just serves as a notification.
@@ -5872,8 +5874,8 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
       }
     }
 
-    /* if the state hasn't changed, there won't be any events raised */
-    if (new_state == old_state)
+    /* if the state hasn't changed or it just became measurable, there won't be any events raised */
+    if (new_state == old_state || !old_can_measure)
       continue;
 
     /* raise a CHALLENGE_INDICATOR_HIDE event when changing from PRIMED to anything else */
