@@ -234,6 +234,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, void* unus
     /* if the core is not paused, all alts must be paused to count as a paused trigger */
     is_paused |= sub_paused;
   }
+  self->can_measure = eval_state.can_measure;
 
   if (is_paused) {
     /* if the trigger is fully paused, ignore any updates to the measured value */
