@@ -520,6 +520,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     rc_trigger_t* trigger = self->triggers[i].trigger;
     int old_state, new_state;
     uint32_t old_measured_value;
+    uint8_t old_can_measure = 0;
 
     if (!trigger)
       continue;
@@ -540,6 +541,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 
     old_measured_value = trigger->measured_value;
     old_state = trigger->state;
+    old_can_measure = trigger->can_measure;
     new_state = rc_evaluate_trigger(trigger, peek, ud, unused_L);
 
     /* trigger->state doesn't actually change to RESET, RESET just serves as a notification.
@@ -578,8 +580,8 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
       runtime_event.value = 0; /* achievement loop expects this to stay at 0 */
     }
 
-    /* if the state hasn't changed, there won't be any events raised */
-    if (new_state == old_state)
+    /* if the state hasn't changed or it just became measurable, there won't be any events raised */
+    if (new_state == old_state || !old_can_measure)
       continue;
 
     /* raise an UNPRIMED event when changing from PRIMED to anything else */
