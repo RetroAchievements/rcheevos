@@ -289,6 +289,9 @@ struct rc_trigger_t {
   /* True if the measured value should be displayed as a percentage */
   uint8_t measured_as_percent;
 
+  /* True if all MeasuredIf conditions are true */
+  uint8_t can_measure;
+
   /* True if the trigger has its own rc_memrefs_t */
   uint8_t has_memrefs;
 };
