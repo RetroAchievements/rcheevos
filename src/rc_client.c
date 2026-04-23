@@ -14,11 +14,10 @@
 #include <stdarg.h>
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <profileapi.h>
+ #define WIN32_LEAN_AND_MEAN
+ #include <windows.h>
 #else
-#include <time.h>
+ #include <time.h>
 #endif
 
 #define RC_CLIENT_UNKNOWN_GAME_ID (uint32_t)-1
@@ -321,6 +320,22 @@ void rc_client_enable_logging(rc_client_t* client, int level, rc_client_message_
 
 static rc_clock_t rc_client_clock_get_now_millisecs(const rc_client_t* client)
 {
+#if defined(__APPLE__) && defined(__MACH__)
+ #ifdef CLOCK_MONOTONIC
+  /* clock_gettime() was added to Darwin in iOS 10.0 and macOS 10.12.
+   * On earlier deployment targets (like Leopard 10.5), the symbol doesn't exist
+   * in libSystem causing an "undefined reference to clock_gettime" linker error.
+   * To get the code to use the #else block below, forcibly undefine CLOCK_MONOTONIC
+   * when targeting earlier versions. */
+  #include <AvailabilityMacros.h>
+  #if (defined(MAC_OS_X_VERSION_MIN_REQUIRED) && MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
+   #undef CLOCK_MONOTONIC
+  #elif (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000)
+   #undef CLOCK_MONOTONIC
+  #endif
+ #endif
+#endif
+
 #if defined(CLOCK_MONOTONIC)
   struct timespec now;
   (void)client;
