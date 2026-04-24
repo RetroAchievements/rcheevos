@@ -503,6 +503,57 @@ int rc_json_get_required_unum_array(uint32_t** entries, uint32_t* num_entries, r
   return RC_OK;
 }
 
+static int rc_json_get_string_array(const char*** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* array, const char* field_name) {
+  if (*num_entries) {
+    rc_json_iterator_t iterator;
+    rc_json_field_t value;
+    const char** entry;
+
+    *entries = (const char**)rc_buffer_alloc(&response->buffer, *num_entries * sizeof(const char*));
+    if (!*entries)
+      return RC_OUT_OF_MEMORY;
+
+    value.name = field_name;
+
+    memset(&iterator, 0, sizeof(iterator));
+    iterator.json = array->value_start;
+    iterator.end = array->value_end;
+
+    entry = *entries;
+    while (rc_json_get_array_entry_value(&value, &iterator)) {
+      if (!rc_json_get_string(entry, &response->buffer, &value, field_name))
+        return RC_MISSING_VALUE;
+
+      ++entry;
+    }
+  }
+  else {
+    *entries = NULL;
+  }
+
+  return RC_OK;
+}
+
+int rc_json_get_required_string_array(const char*** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+  rc_json_field_t array;
+
+  memset(&array, 0, sizeof(array));
+  if (!rc_json_get_required_array(num_entries, &array, response, field, field_name))
+    return RC_MISSING_VALUE;
+
+  return rc_json_get_string_array(entries, num_entries, response, &array, field_name);
+}
+
+int rc_json_get_optional_string_array(const char*** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+  rc_json_field_t array;
+
+  memset(&array, 0, sizeof(array));
+  if (!rc_json_get_optional_array(num_entries, &array, field, field_name))
+    *num_entries = 0;
+
+  return rc_json_get_string_array(entries, num_entries, response, &array, field_name);
+}
+
 int rc_json_get_required_array(uint32_t* num_entries, rc_json_field_t* array_field, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
 #ifndef NDEBUG
   if (strcmp(field->name, field_name) != 0)
