@@ -818,12 +818,14 @@ static const rc_memory_region_t _rc_memory_regions_playstation2[] = {
 static const rc_memory_regions_t rc_memory_regions_playstation2 = { _rc_memory_regions_playstation2, 3 };
 
 /* ===== PlayStation Portable ===== */
-/* https://github.com/uofw/upspd/wiki/Memory-map */
+/* https://github.com/uofw/upspd/wiki/Memory-map
+ * the RAM is extended at loadtime if the game has a MEMSIZE flag in its PARAM.SFO */
 static const rc_memory_region_t _rc_memory_regions_psp[] = {
     { 0x00000000U, 0x007FFFFFU, 0x08000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Kernel RAM" },
     { 0x00800000U, 0x01FFFFFFU, 0x08800000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x02000000U, 0x03FFFFFFU, 0x0A000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Extended RAM" },
 };
-static const rc_memory_regions_t rc_memory_regions_psp = { _rc_memory_regions_psp, 2 };
+static const rc_memory_regions_t rc_memory_regions_psp = { _rc_memory_regions_psp, 3 };
 
 /* ===== Pokemon Mini ===== */
 /* https://www.pokemon-mini.net/documentation/memory-map/ */
