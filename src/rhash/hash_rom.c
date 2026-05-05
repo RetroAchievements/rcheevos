@@ -424,3 +424,27 @@ int rc_hash_snes(char hash[33], const rc_hash_iterator_t* iterator)
 
   return rc_hash_iterator_buffer(hash, iterator);
 }
+
+int rc_hash_wiiu(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  uint8_t buffer[52];
+  void* file_handle;
+
+  file_handle = rc_file_open(iterator, iterator->path);
+  if (!file_handle)
+    return rc_hash_iterator_error(iterator, "Could not open file");
+
+  if (rc_file_read(iterator, file_handle, buffer, sizeof(buffer)) != sizeof(buffer)) {
+    rc_file_close(iterator, file_handle);
+    return rc_hash_iterator_error(iterator, "Could not read header");
+  }
+
+  rc_file_close(iterator, file_handle);
+
+  if (buffer[0] != 0x7F || buffer[1] != 'E' || buffer[2] != 'L' || buffer[3] != 'F' ||
+      buffer[5] != 0x02 || buffer[18] != 0x14) {
+    return rc_hash_iterator_error(iterator, "Not a valid Wii U RPX file");
+  }
+
+  return rc_hash_whole_file(hash, iterator);
+}
