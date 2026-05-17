@@ -657,6 +657,9 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track, const rc_
 
           if (ptr >= end)
           {
+            if (iterator->callbacks.filereader.close)
+              iterator->callbacks.filereader.close(file_handle);
+
             rc_hash_iterator_error(iterator, "Quoted string without closing quote");
             return NULL;
           }
@@ -675,6 +678,9 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track, const rc_
 
       if (num_read >= sizeof(file))
       {
+        if (iterator->callbacks.filereader.close)
+          iterator->callbacks.filereader.close(file_handle);
+
         rc_hash_iterator_error_formatted(iterator, "Cannot copy %u byte filename into %u byte buffer", (unsigned)num_read, (unsigned)sizeof(file));
         return NULL;
       }
