@@ -897,7 +897,7 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
       return rc_hash_n64(hash, iterator);
 
     case RC_CONSOLE_WII_U:
-      return rc_hash_wiiu(hash, iterator);
+      return rc_hash_wiiu_rpx(hash, iterator);
 #endif
 
 #ifndef RC_HASH_NO_ENCRYPTED

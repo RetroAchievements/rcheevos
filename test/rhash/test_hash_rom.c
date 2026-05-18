@@ -740,7 +740,7 @@ static void test_hash_wiiu_rpx()
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
-static void test_hash_wiiu_invalid()
+static void test_hash_wiiu_rpx_invalid()
 {
   size_t image_size = 1024;
   uint8_t* image = generate_generic_file(image_size);
@@ -957,7 +957,7 @@ void test_hash_rom(void) {
 
   /* Wii U */
   TEST(test_hash_wiiu_rpx);
-  TEST(test_hash_wiiu_invalid);
+  TEST(test_hash_wiiu_rpx_invalid);
 
   /* WonderSwan */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.ws", 524288, "68f0f13b598e0b66461bc578375c3888");

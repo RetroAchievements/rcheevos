@@ -425,7 +425,7 @@ int rc_hash_snes(char hash[33], const rc_hash_iterator_t* iterator)
   return rc_hash_iterator_buffer(hash, iterator);
 }
 
-int rc_hash_wiiu(char hash[33], const rc_hash_iterator_t* iterator)
+int rc_hash_wiiu_rpx(char hash[33], const rc_hash_iterator_t* iterator)
 {
   uint8_t buffer[52];
   void* file_handle;
@@ -441,8 +441,18 @@ int rc_hash_wiiu(char hash[33], const rc_hash_iterator_t* iterator)
 
   rc_file_close(iterator, file_handle);
 
-  if (buffer[0] != 0x7F || buffer[1] != 'E' || buffer[2] != 'L' || buffer[3] != 'F' ||
-      buffer[5] != 0x02 || buffer[18] != 0x14) {
+  /* Magic Number: 0x7F 'E' 'L' 'F' */
+  if (buffer[0] != 0x7F || buffer[1] != 'E' || buffer[2] != 'L' || buffer[3] != 'F') {
+    return rc_hash_iterator_error(iterator, "Not a valid Wii U RPX file");
+  }
+
+  /* Endianness: 0x02 = Big Endian */
+  if (buffer[5] != 0x02) {
+    return rc_hash_iterator_error(iterator, "Not a valid Wii U RPX file");
+  }
+
+  /* Machine Architecture: 0x14 = PowerPC */
+  if (buffer[18] != 0x14) {
     return rc_hash_iterator_error(iterator, "Not a valid Wii U RPX file");
   }
 
