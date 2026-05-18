@@ -458,6 +458,57 @@ static void test_process_fetch_game_titles_response() {
   rc_api_set_host(NULL);
 }
 
+static void test_process_fetch_game_titles_response_invalid_image_icons() {
+  rc_api_fetch_game_titles_response_t fetch_game_titles_response;
+  rc_api_server_response_t fetch_game_titles_server_response;
+  rc_api_game_title_entry_t* entry;
+  const char* server_response = "{\"Success\":true,\"Response\":["
+    "{\"ID\": 3, \"Title\":\"Game Name 3\", \"ImageIcon\": null},"
+    "{\"ID\": 4, \"Title\":\"Game Name 4\", \"ImageIcon\": \"\"},"
+    "{\"ID\": 5, \"Title\":\"Game Name 5\", \"ImageIcon\": \"/Images/\"},"
+    "{\"ID\": 7, \"Title\":\"Game Name 7\", \"ImageIcon\": \"/Images/010007\"}"
+    "]}";
+
+  rc_api_set_host("http://retroachievements.org");
+  rc_api_set_image_host("http://i.retroachievements.org");
+
+  memset(&fetch_game_titles_response, 0, sizeof(fetch_game_titles_response));
+  memset(&fetch_game_titles_server_response, 0, sizeof(fetch_game_titles_server_response));
+  fetch_game_titles_server_response.body = server_response;
+  fetch_game_titles_server_response.body_length = strlen(server_response);
+  fetch_game_titles_server_response.http_status_code = 200;
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_titles_server_response(&fetch_game_titles_response, &fetch_game_titles_server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_titles_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_titles_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_game_titles_response.num_entries, 4);
+
+  entry = &fetch_game_titles_response.entries[0];
+  ASSERT_NUM_EQUALS(entry->id, 3);
+  ASSERT_STR_EQUALS(entry->title, "Game Name 3");
+  ASSERT_PTR_NULL(entry->image_name);
+  ASSERT_PTR_NULL(entry->image_url);
+  entry = &fetch_game_titles_response.entries[1];
+  ASSERT_NUM_EQUALS(entry->id, 4);
+  ASSERT_STR_EQUALS(entry->title, "Game Name 4");
+  ASSERT_STR_EQUALS(entry->image_name, "");
+  ASSERT_PTR_NULL(entry->image_url);
+  entry = &fetch_game_titles_response.entries[2];
+  ASSERT_NUM_EQUALS(entry->id, 5);
+  ASSERT_STR_EQUALS(entry->title, "Game Name 5");
+  ASSERT_STR_EQUALS(entry->image_name, "");
+  ASSERT_PTR_NULL(entry->image_url);
+  entry = &fetch_game_titles_response.entries[3];
+  ASSERT_NUM_EQUALS(entry->id, 7);
+  ASSERT_STR_EQUALS(entry->title, "Game Name 7");
+  ASSERT_STR_EQUALS(entry->image_name, "010007");
+  ASSERT_STR_EQUALS(entry->image_url, "http://i.retroachievements.org/Images/010007.png");
+
+  rc_api_destroy_fetch_game_titles_response(&fetch_game_titles_response);
+  rc_api_set_image_host(NULL);
+  rc_api_set_host(NULL);
+}
+
 static void test_init_fetch_hash_library_request() {
   rc_api_fetch_hash_library_request_t fetch_hash_library_request;
   rc_api_request_t request;
@@ -559,6 +610,7 @@ void test_rapi_info(void) {
   TEST(test_init_fetch_game_titles_request);
 
   TEST(test_process_fetch_game_titles_response);
+  TEST(test_process_fetch_game_titles_response_invalid_image_icons);
 
   /* hash library */
   TEST(test_init_fetch_hash_library_request);

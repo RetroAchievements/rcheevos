@@ -674,6 +674,12 @@ int rc_json_get_string(const char** out, rc_buffer_t* buffer, const rc_json_fiel
     return 0;
   }
 
+  if (len == 0) {
+    /* simple optimization for empty string - don't allocate space */
+    *out = "";
+    return 1;
+  }
+
   if (len == 4 && memcmp(field->value_start, "null", 4) == 0) {
     *out = NULL;
     return 1;
@@ -1055,23 +1061,25 @@ int rc_json_get_required_bool(int* out, rc_api_response_t* response, const rc_js
 }
 
 void rc_json_extract_filename(rc_json_field_t* field) {
-  if (field->value_end) {
+  if (field->value_end && field->value_end > field->value_start) {
     const char* str = field->value_end;
+    if (str[-1] == '"') {
+      /* ignore trailing quote */
+      field->value_end = --str;
 
-    /* remove the extension */
-    while (str > field->value_start && str[-1] != '/') {
-      --str;
-      if (*str == '.') {
-        field->value_end = str;
-        break;
+      while (str > field->value_start) {
+        const char c = *(--str);
+        if (c == '.') {
+          /* found an extension. remove it */
+          field->value_end = str;
+        }
+        else if (c == '/' || c == '"') {
+          /* found path separator or opening quote. stop */
+          field->value_start = str + 1;
+          break;
+        }
       }
     }
-
-    /* find the path separator */
-    while (str > field->value_start && str[-1] != '/')
-      --str;
-
-    field->value_start = str;
   }
 }
 
@@ -1346,6 +1354,9 @@ int rc_api_init_fetch_image_request(rc_api_request_t* request, const rc_api_fetc
 
 int rc_api_init_fetch_image_request_hosted(rc_api_request_t* request, const rc_api_fetch_image_request_t* api_params, const rc_api_host_t* host) {
   rc_api_url_builder_t builder;
+
+  if (!api_params->image_name || !api_params->image_name[0])
+    return RC_INVALID_STATE;
 
   rc_buffer_init(&request->buffer);
   rc_url_builder_init(&builder, &request->buffer, 64);
