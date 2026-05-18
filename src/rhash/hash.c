@@ -1230,6 +1230,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "n64", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_64 },
   { "ndd", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_64 },
   { "nds", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_DS }, /* handles both DS and DSi */
+  { "neo", rc_hash_initialize_iterator_single, RC_CONSOLE_ARCADE }, /* Geolith Neo Geo cart format */
   { "nes", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO },
   { "ngc", rc_hash_initialize_iterator_single, RC_CONSOLE_NEOGEO_POCKET },
   { "nib", rc_hash_initialize_iterator_nib, 0 },
