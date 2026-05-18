@@ -513,7 +513,7 @@ int rc_api_process_fetch_game_titles_server_response(rc_api_fetch_game_titles_re
         return RC_MISSING_VALUE;
 
       rc_json_get_optional_string(&entry->image_url, &response->response, &entry_fields[3], "ImageUrl", "");
-      if (!entry->image_url[0])
+      if (!entry->image_url || !entry->image_url[0])
         entry->image_url = rc_api_build_avatar_url(&response->response.buffer, RC_IMAGE_TYPE_GAME, entry->image_name);
 
       ++entry;

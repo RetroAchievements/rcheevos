@@ -767,7 +767,7 @@ int rc_json_get_string(const char** out, rc_buffer_t* buffer, const rc_json_fiel
 int rc_json_field_string_matches(const rc_json_field_t* field, const char* text) {
   int is_quoted = 0;
   const char* ptr = field->value_start;
-  if (!ptr)
+  if (!ptr || !text)
     return 0;
 
   if (*ptr == '"') {
@@ -981,7 +981,7 @@ int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* 
   (void)field_name;
 #endif
 
-  if (*field->value_start == '\"') {
+  if (field->value_start && *field->value_start == '\"') {
     memset(&tm, 0, sizeof(tm));
     if (sscanf_s(field->value_start + 1, "%d-%d-%d %d:%d:%d", /* DB format "2013-10-20 22:12:21" */
                  &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6 ||
@@ -1363,7 +1363,7 @@ int rc_api_init_fetch_image_request_hosted(rc_api_request_t* request, const rc_a
 
   if (host && host->media_host) {
     /* custom media host provided */
-    if (!strstr(host->host, "://"))
+    if (!strstr(host->media_host, "://"))
       rc_url_builder_append(&builder, "http://", 7);
     rc_url_builder_append(&builder, host->media_host, strlen(host->media_host));
   }
@@ -1420,6 +1420,7 @@ int rc_api_init_fetch_image_request_hosted(rc_api_request_t* request, const rc_a
 
   request->url = rc_url_builder_finalize(&builder);
   request->post_data = NULL;
+  request->content_type = NULL;
 
   return builder.result;
 }
