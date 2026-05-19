@@ -708,6 +708,7 @@ void test_hash_rom(void) {
   /* Arcade */
   TEST_PARAMS2(test_hash_arcade, "game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "game.7z", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade, "game.neo", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "roms\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
