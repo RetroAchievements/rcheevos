@@ -21,7 +21,7 @@ static int rc_hash_iterator_buffer(char hash[33], const rc_hash_iterator_t* iter
 int rc_hash_7800(char hash[33], const rc_hash_iterator_t* iterator)
 {
   /* if the file contains a header, ignore it */
-  if (memcmp(&iterator->buffer[1], "ATARI7800", 9) == 0) {
+  if (iterator->buffer_size >= 10 && memcmp(&iterator->buffer[1], "ATARI7800", 9) == 0) {
     rc_hash_iterator_verbose(iterator, "Ignoring 7800 header");
     return rc_hash_unheadered_iterator_buffer(hash, iterator, 128);
   }
@@ -184,7 +184,7 @@ int rc_hash_arduboy(char hash[33], const rc_hash_iterator_t* iterator)
 int rc_hash_lynx(char hash[33], const rc_hash_iterator_t* iterator)
 {
   /* if the file contains a header, ignore it */
-  if (memcmp(&iterator->buffer[0], "LYNX", 5) == 0) {
+  if (iterator->buffer_size >= 5 && memcmp(&iterator->buffer[0], "LYNX", 5) == 0) {
     rc_hash_iterator_verbose(iterator, "Ignoring LYNX header");
     return rc_hash_unheadered_iterator_buffer(hash, iterator, 64);
   }
@@ -195,12 +195,12 @@ int rc_hash_lynx(char hash[33], const rc_hash_iterator_t* iterator)
 int rc_hash_nes(char hash[33], const rc_hash_iterator_t* iterator)
 {
   /* if the file contains a header, ignore it */
-  if (memcmp(&iterator->buffer[0], "NES\x1a", 4) == 0) {
+  if (iterator->buffer_size >= 4 && memcmp(&iterator->buffer[0], "NES\x1a", 4) == 0) {
     rc_hash_iterator_verbose(iterator, "Ignoring NES header");
     return rc_hash_unheadered_iterator_buffer(hash, iterator, 16);
   }
 
-  if (memcmp(&iterator->buffer[0], "FDS\x1a", 4) == 0) {
+  if (iterator->buffer_size >= 4 && memcmp(&iterator->buffer[0], "FDS\x1a", 4) == 0) {
     rc_hash_iterator_verbose(iterator, "Ignoring FDS header");
     return rc_hash_unheadered_iterator_buffer(hash, iterator, 16);
   }
@@ -405,7 +405,7 @@ int rc_hash_scv(char hash[33], const rc_hash_iterator_t* iterator)
 {
   /* if the file contains a header, ignore it */
   /* https://gitlab.com/MaaaX-EmuSCV/libretro-emuscv/-/blob/master/readme.txt#L211 */
-  if (memcmp(iterator->buffer, "EmuSCV", 6) == 0) {
+  if (iterator->buffer_size >= 6 && memcmp(iterator->buffer, "EmuSCV", 6) == 0) {
     rc_hash_iterator_verbose(iterator, "Ignoring SCV header");
     return rc_hash_unheadered_iterator_buffer(hash, iterator, 32);
   }

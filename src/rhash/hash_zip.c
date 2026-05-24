@@ -151,7 +151,7 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
 
     /* Ignore records describing a directory (we only hash file records) */
     name = (cdir + cdirhdr_size);
-    if (name[filename_len - 1] == '/' || name[filename_len - 1] == '\\' || (external_attr & 0x10))
+    if (filename_len == 0 || name[filename_len - 1] == '/' || name[filename_len - 1] == '\\' || (external_attr & 0x10))
       continue;
 
     /* Handle Zip64 fields */

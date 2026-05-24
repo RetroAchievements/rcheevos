@@ -709,6 +709,9 @@ int rc_json_get_string(const char** out, rc_buffer_t* buffer, const rc_json_fiel
 
         if (*src == 'u') {
           /* unicode character */
+          if (src + 5 >= field->value_end) /* incomplete unicode character */
+            return 0;
+
           uint32_t ucs32_char = rc_json_decode_hex4(src + 1);
           src += 5;
 

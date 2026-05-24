@@ -2130,9 +2130,9 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
       else {
         rc_buffer_consume(buffer, (const uint8_t*)preparse.parse.buffer, (uint8_t*)preparse.parse.buffer + preparse.parse.offset);
       }
-
-      rc_destroy_preparse_state(&preparse);
     }
+
+    rc_destroy_preparse_state(&preparse);
 
     achievement->created_time = read->created;
     achievement->updated_time = read->updated;
@@ -3949,7 +3949,7 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
           if (!achievement->trigger->measured_as_percent) {
             char* ptr = achievement->public_.measured_progress;
             const int buffer_size = (int)sizeof(achievement->public_.measured_progress);
-            const int chars = rc_format_value(ptr, buffer_size, (int32_t)new_measured_value, RC_FORMAT_UNSIGNED_VALUE);
+            const int chars = rc_format_value(ptr, buffer_size - 1, (int32_t)new_measured_value, RC_FORMAT_UNSIGNED_VALUE);
             ptr[chars] = '/';
             rc_format_value(ptr + chars + 1, buffer_size - chars - 1, (int32_t)achievement->trigger->measured_target, RC_FORMAT_UNSIGNED_VALUE);
           }
@@ -4659,7 +4659,6 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
   callback_data->client = client;
   callback_data->id = achievement->public_.id;
   callback_data->hardcore = client->state.hardcore;
-  callback_data->game_hash = client->game->public_.hash;
   callback_data->unlock_time = client->callbacks.get_time_millisecs(client);
 
   if (client->game) /* may be NULL if this gets called while unloading the game (from another thread - events are raised outside the lock) */
@@ -5865,6 +5864,7 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
     /* if the measured value changed and the achievement hasn't triggered, show a progress indicator */
     if (trigger->measured_value != old_measured_value && old_measured_value != RC_MEASURED_UNKNOWN &&
         trigger->measured_value <= trigger->measured_target &&
+        trigger->measured_target != 0 &&
         rc_trigger_state_active(new_state) && new_state != RC_TRIGGER_STATE_WAITING) {
 
       /* only show a popup for the achievement closest to triggering */

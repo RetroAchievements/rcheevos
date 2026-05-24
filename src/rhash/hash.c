@@ -494,7 +494,7 @@ static int rc_hash_file_from_buffer(char hash[33], uint32_t console_id, const rc
 
   result = rc_hash_from_file(hash, console_id, &buffered_file_iterator);
 
-  buffered_file_iterator.path = NULL;
+  buffered_file_iterator.path = NULL; /* prevent attempt to free static "memory stream" string */
   rc_hash_destroy_iterator(&buffered_file_iterator);
   return result;
 }
@@ -971,7 +971,7 @@ void rc_hash_merge_callbacks(rc_hash_iterator_t* iterator, const rc_hash_callbac
   if (callbacks->verbose_message)
     iterator->callbacks.verbose_message = callbacks->verbose_message;
   if (callbacks->error_message)
-    iterator->callbacks.verbose_message = callbacks->error_message;
+    iterator->callbacks.error_message = callbacks->error_message;
 
   if (callbacks->filereader.open)
     memcpy(&iterator->callbacks.filereader, &callbacks->filereader, sizeof(callbacks->filereader));
