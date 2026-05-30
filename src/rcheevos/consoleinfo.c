@@ -976,13 +976,6 @@ static const rc_memory_region_t _rc_memory_regions_wii[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_wii = { _rc_memory_regions_wii, 3 };
 
-/* ===== Xbox ===== */
-static const rc_memory_region_t _rc_memory_regions_xbox[] = {
-  /* Retail Xbox memory map: https://xboxdevwiki.net/Memory */
-  { 0x00000000U, 0x03FFFFFFU, 0x00000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
-};
-static const rc_memory_regions_t rc_memory_regions_xbox = { _rc_memory_regions_xbox, 1 };
-
 /* ===== WonderSwan ===== */
 /* http://daifukkat.su/docs/wsman/#ovr_memmap */
 static const rc_memory_region_t _rc_memory_regions_wonderswan[] = {
@@ -999,6 +992,13 @@ static const rc_memory_region_t _rc_memory_regions_wonderswan[] = {
     { 0x010000U, 0x08FFFFU, 0x010000U, RC_MEMORY_TYPE_SAVE_RAM, "Cartridge RAM" }
 };
 static const rc_memory_regions_t rc_memory_regions_wonderswan = { _rc_memory_regions_wonderswan, 2 };
+
+/* ===== Xbox ===== */
+static const rc_memory_region_t _rc_memory_regions_xbox[] = {
+    /* Retail Xbox memory map: https://xboxdevwiki.net/Memory */
+    { 0x00000000U, 0x03FFFFFFU, 0x00000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_xbox = { _rc_memory_regions_xbox, 1 };
 
 /* ===== ZX Spectrum ===== */
 /* https://github.com/TASEmulators/BizHawk/blob/3a3b22c/src/BizHawk.Emulation.Cores/Computers/SinclairSpectrum/Machine/ZXSpectrum16K/ZX16.cs
@@ -1210,11 +1210,11 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
     case RC_CONSOLE_WII:
       return &rc_memory_regions_wii;
 
-    case RC_CONSOLE_XBOX:
-      return &rc_memory_regions_xbox;
-
     case RC_CONSOLE_WONDERSWAN:
       return &rc_memory_regions_wonderswan;
+
+    case RC_CONSOLE_XBOX:
+      return &rc_memory_regions_xbox;
 
     case RC_CONSOLE_ZX_SPECTRUM:
       return &rc_memory_regions_zx_spectrum;
