@@ -1292,7 +1292,7 @@ static int rc_hash_wiiware(md5_state_t* md5, const rc_hash_iterator_t* iterator,
     /* Hash content */
     buffer = (uint8_t*)malloc(buffer_size);
     if (!buffer)
-      return rc_hash_iterator_error(iterator, "Could not allocated content buffer");
+      return rc_hash_iterator_error(iterator, "Could not allocate content buffer");
 
     rc_file_seek(iterator, file_handle, content_addr, SEEK_SET);
     rc_file_read(iterator, file_handle, buffer, buffer_size);
