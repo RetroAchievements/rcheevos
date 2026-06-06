@@ -862,6 +862,11 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
 
 #ifndef RC_HASH_NO_ROM
     case RC_CONSOLE_ARCADE:
+      /* .neo files (Geolith Neo Geo cart format) contain the actual ROM data,
+       * so are content-hashed. Everything else (.zip/.7z) hashes by filename. */
+      if (rc_path_compare_extension(path, "neo"))
+        return rc_hash_neogeo_cart(hash, iterator);
+
       return rc_hash_arcade(hash, iterator);
 
     case RC_CONSOLE_ARDUBOY:
