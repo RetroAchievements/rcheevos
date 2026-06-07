@@ -182,6 +182,7 @@ extern const char* test_framework_basename(const char* path);
 #define ASSERT_TRUE(value)                         ASSERT_NUM_NOT_EQUALS(value, 0)
 #define ASSERT_FALSE(value)                        ASSERT_NUM_EQUALS(value, 0)
 
+#define ASSERT_TIMET_EQUALS(value, expected)       ASSERT_NUM64_EQUALS(value, expected)
 #define ASSERT_UNUM_EQUALS(value, expected)        ASSERT_COMPARE(value, ==, expected, unsigned, "%u")
 #define ASSERT_DBL_EQUALS(value, expected)         ASSERT_COMPARE(value, ==, expected, double, "%g")
 #define ASSERT_PTR_EQUALS(value, expected)         ASSERT_COMPARE(value, ==, expected, void*, "%p")

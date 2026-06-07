@@ -113,7 +113,6 @@ static int rc_api_process_fetch_game_data_achievements(rc_api_response_t* respon
   const char* last_author = "";
   const char* last_author_field = "";
   size_t last_author_len = 0;
-  uint32_t timet;
   size_t len;
 
   rc_json_field_t achievement_fields[] = {
@@ -181,12 +180,10 @@ static int rc_api_process_fetch_game_data_achievements(rc_api_response_t* respon
       }
     }
 
-    if (!rc_json_get_required_unum(&timet, response, &achievement_fields[8], "Created"))
+    if (!rc_json_get_required_timet(&achievement->created, response, &achievement_fields[8], "Created"))
       return RC_MISSING_VALUE;
-    achievement->created = (time_t)timet;
-    if (!rc_json_get_required_unum(&timet, response, &achievement_fields[9], "Modified"))
+    if (!rc_json_get_required_timet(&achievement->updated, response, &achievement_fields[9], "Modified"))
       return RC_MISSING_VALUE;
-    achievement->updated = (time_t)timet;
 
     if (rc_json_field_string_matches(&achievement_fields[10], ""))
       achievement->type = RC_ACHIEVEMENT_TYPE_STANDARD;

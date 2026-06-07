@@ -1024,6 +1024,61 @@ int rc_json_get_required_datetime(time_t* out, rc_api_response_t* response, cons
   return rc_json_missing_field(response, field);
 }
 
+int rc_json_get_timet(time_t* out, const rc_json_field_t* field, const char* field_name)
+{
+  const char* src = field->value_start;
+  int64_t value = 0;
+  int negative = 0;
+
+#ifndef NDEBUG
+  if (strcmp(field->name, field_name) != 0)
+    return 0;
+#else
+  (void)field_name;
+#endif
+
+  if (!src) {
+    *out = 0;
+    return 0;
+  }
+
+  /* assert: string contains only numerals and an optional sign per rc_json_parse_field */
+  if (*src == '-') {
+    negative = 1;
+    ++src;
+  } else if (*src == '+') {
+    ++src;
+  } else if (*src < '0' || *src > '9') {
+    *out = 0;
+    return 0;
+  }
+
+  while (src < field->value_end && *src != '.') {
+    value *= 10;
+    value += *src - '0';
+    ++src;
+  }
+
+  if (negative)
+    *out = (time_t)-value;
+  else
+    *out = (time_t)value;
+
+  return 1;
+}
+
+void rc_json_get_optional_timet(time_t* out, const rc_json_field_t* field, const char* field_name, time_t default_value) {
+  if (!rc_json_get_timet(out, field, field_name))
+    *out = default_value;
+}
+
+int rc_json_get_required_timet(time_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+  if (rc_json_get_timet(out, field, field_name))
+    return 1;
+
+  return rc_json_missing_field(response, field);
+}
+
 int rc_json_get_bool(int* out, const rc_json_field_t* field, const char* field_name) {
   const char* src = field->value_start;
 

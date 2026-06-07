@@ -103,11 +103,11 @@ static void test_process_fetch_achievement_info_response() {
 
   entry = &fetch_achievement_info_response.recently_awarded[0];
   ASSERT_STR_EQUALS(entry->username, "Player1");
-  ASSERT_NUM_EQUALS(entry->awarded, 1615654895);
+  ASSERT_TIMET_EQUALS(entry->awarded, 1615654895);
   ASSERT_STR_EQUALS(entry->avatar_url, "http://host/UserPic/PLAYER1.png");
   entry = &fetch_achievement_info_response.recently_awarded[1];
   ASSERT_STR_EQUALS(entry->username, "Player2");
-  ASSERT_NUM_EQUALS(entry->awarded, 1600604303);
+  ASSERT_TIMET_EQUALS(entry->awarded, 1600604303);
   ASSERT_STR_EQUALS(entry->avatar_url, "https://media.retroachievements.org/UserPic/Player2.png");
 
   rc_api_destroy_fetch_achievement_info_response(&fetch_achievement_info_response);
@@ -214,14 +214,14 @@ static void test_process_fetch_leaderboard_info_response() {
   ASSERT_NUM_EQUALS(entry->index, 5);
   ASSERT_STR_EQUALS(entry->username, "Player1");
   ASSERT_NUM_EQUALS(entry->score, 8765);
-  ASSERT_NUM_EQUALS(entry->submitted, 1615654895);
+  ASSERT_TIMET_EQUALS(entry->submitted, 1615654895);
   ASSERT_STR_EQUALS(entry->avatar_url, "http://host/UserPic/PLAYER1.png");
   entry = &fetch_leaderboard_info_response.entries[1];
   ASSERT_NUM_EQUALS(entry->rank, 2);
   ASSERT_NUM_EQUALS(entry->index, 6);
   ASSERT_STR_EQUALS(entry->username, "Player2");
   ASSERT_NUM_EQUALS(entry->score, 7654);
-  ASSERT_NUM_EQUALS(entry->submitted, 1600604303);
+  ASSERT_TIMET_EQUALS(entry->submitted, 1600604303);
   ASSERT_STR_EQUALS(entry->avatar_url, "https://media.retroachievements.org/UserPic/Player2.png");
 
   rc_api_destroy_fetch_leaderboard_info_response(&fetch_leaderboard_info_response);
@@ -260,13 +260,13 @@ static void test_process_fetch_leaderboard_info_response2() {
   ASSERT_NUM_EQUALS(entry->index, 5);
   ASSERT_STR_EQUALS(entry->username, "Player1");
   ASSERT_NUM_EQUALS(entry->score, 1013580);
-  ASSERT_NUM_EQUALS(entry->submitted, 1624055310);
+  ASSERT_TIMET_EQUALS(entry->submitted, 1624055310);
   entry = &fetch_leaderboard_info_response.entries[1];
   ASSERT_NUM_EQUALS(entry->rank, 1);
   ASSERT_NUM_EQUALS(entry->index, 6);
   ASSERT_STR_EQUALS(entry->username, "Player2");
   ASSERT_NUM_EQUALS(entry->score, 133340);
-  ASSERT_NUM_EQUALS(entry->submitted, 1624166772);
+  ASSERT_TIMET_EQUALS(entry->submitted, 1624166772);
 
   rc_api_destroy_fetch_leaderboard_info_response(&fetch_leaderboard_info_response);
 }
@@ -304,13 +304,13 @@ static void test_process_fetch_leaderboard_info_response_iso8601() {
   ASSERT_NUM_EQUALS(entry->index, 5);
   ASSERT_STR_EQUALS(entry->username, "Player1");
   ASSERT_NUM_EQUALS(entry->score, 8765);
-  ASSERT_NUM_EQUALS(entry->submitted, 1615654895);
+  ASSERT_TIMET_EQUALS(entry->submitted, 1615654895);
   entry = &fetch_leaderboard_info_response.entries[1];
   ASSERT_NUM_EQUALS(entry->rank, 2);
   ASSERT_NUM_EQUALS(entry->index, 6);
   ASSERT_STR_EQUALS(entry->username, "Player2");
   ASSERT_NUM_EQUALS(entry->score, 7654);
-  ASSERT_NUM_EQUALS(entry->submitted, 1600604303);
+  ASSERT_TIMET_EQUALS(entry->submitted, 1600604303);
 
   rc_api_destroy_fetch_leaderboard_info_response(&fetch_leaderboard_info_response);
 }

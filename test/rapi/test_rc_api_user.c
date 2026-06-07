@@ -116,15 +116,15 @@ static void test_process_start_session_response()
   ASSERT_PTR_NULL(start_session_response.response.error_message);
   ASSERT_NUM_EQUALS(start_session_response.num_unlocks, 1);
   ASSERT_NUM_EQUALS(start_session_response.unlocks[0].achievement_id, 114);
-  ASSERT_NUM_EQUALS(start_session_response.unlocks[0].when, 1234567840);
+  ASSERT_TIMET_EQUALS(start_session_response.unlocks[0].when, 1234567840);
   ASSERT_NUM_EQUALS(start_session_response.num_hardcore_unlocks, 3);
   ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[0].achievement_id, 111);
-  ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[0].when, 1234567890);
+  ASSERT_TIMET_EQUALS(start_session_response.hardcore_unlocks[0].when, 1234567890);
   ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[1].achievement_id, 112);
-  ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[1].when, 1234567891);
+  ASSERT_TIMET_EQUALS(start_session_response.hardcore_unlocks[1].when, 1234567891);
   ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[2].achievement_id, 113);
-  ASSERT_NUM_EQUALS(start_session_response.hardcore_unlocks[2].when, 1234567860);
-  ASSERT_NUM_EQUALS(start_session_response.server_now, 1234577777);
+  ASSERT_TIMET_EQUALS(start_session_response.hardcore_unlocks[2].when, 1234567860);
+  ASSERT_TIMET_EQUALS(start_session_response.server_now, 1234577777);
 
   rc_api_destroy_start_session_response(&start_session_response);
 }
@@ -779,7 +779,7 @@ static void test_init_fetch_followed_users_response_several_items()
   ASSERT_PTR_NULL(fetch_followed_users_response.users[0].recent_activity.context);
   ASSERT_PTR_NULL(fetch_followed_users_response.users[0].recent_activity.context_image_url);
   ASSERT_NUM_EQUALS(fetch_followed_users_response.users[0].recent_activity.context_id, 0);
-  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[0].recent_activity.when, 0);
+  ASSERT_TIMET_EQUALS(fetch_followed_users_response.users[0].recent_activity.when, 0);
 
   ASSERT_STR_EQUALS(fetch_followed_users_response.users[1].display_name, "Jane");
   ASSERT_STR_EQUALS(fetch_followed_users_response.users[1].avatar_url, "/User/Jane.png");
@@ -788,7 +788,7 @@ static void test_init_fetch_followed_users_response_several_items()
   ASSERT_STR_EQUALS(fetch_followed_users_response.users[1].recent_activity.context, "The Game");
   ASSERT_STR_EQUALS(fetch_followed_users_response.users[1].recent_activity.context_image_url, "/Badges/000006.png");
   ASSERT_NUM_EQUALS(fetch_followed_users_response.users[1].recent_activity.context_id, 6);
-  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[1].recent_activity.when, 1234567890);
+  ASSERT_TIMET_EQUALS(fetch_followed_users_response.users[1].recent_activity.when, 1234567890);
 
   ASSERT_STR_EQUALS(fetch_followed_users_response.users[2].display_name, "Bill");
   ASSERT_STR_EQUALS(fetch_followed_users_response.users[2].avatar_url, "/User/Bill.png");
@@ -797,7 +797,7 @@ static void test_init_fetch_followed_users_response_several_items()
   ASSERT_PTR_NULL(fetch_followed_users_response.users[2].recent_activity.context);
   ASSERT_PTR_NULL(fetch_followed_users_response.users[2].recent_activity.context_image_url);
   ASSERT_NUM_EQUALS(fetch_followed_users_response.users[2].recent_activity.context_id, 0);
-  ASSERT_NUM_EQUALS(fetch_followed_users_response.users[2].recent_activity.when, 1234567800);
+  ASSERT_TIMET_EQUALS(fetch_followed_users_response.users[2].recent_activity.when, 1234567800);
 
   rc_api_destroy_fetch_followed_users_response(&fetch_followed_users_response);
 }

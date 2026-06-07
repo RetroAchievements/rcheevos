@@ -56,7 +56,6 @@ int rc_api_process_fetch_achievement_info_server_response(rc_api_fetch_achieveme
   rc_api_achievement_awarded_entry_t* entry;
   rc_json_field_t array_field;
   rc_json_iterator_t iterator;
-  uint32_t timet;
   int result;
 
   rc_json_field_t fields[] = {
@@ -120,9 +119,8 @@ int rc_api_process_fetch_achievement_info_server_response(rc_api_fetch_achieveme
       if (!rc_json_get_required_string(&entry->username, &response->response, &entry_fields[0], "User"))
         return RC_MISSING_VALUE;
 
-      if (!rc_json_get_required_unum(&timet, &response->response, &entry_fields[1], "DateAwarded"))
+      if (!rc_json_get_required_timet(&entry->awarded, &response->response, &entry_fields[1], "DateAwarded"))
         return RC_MISSING_VALUE;
-      entry->awarded = (time_t)timet;
 
       rc_json_get_optional_string(&entry->avatar_url, &response->response, &entry_fields[2], "AvatarUrl", NULL);
       if (!entry->avatar_url)
@@ -185,7 +183,6 @@ int rc_api_process_fetch_leaderboard_info_server_response(rc_api_fetch_leaderboa
   rc_api_lboard_info_entry_t* entry;
   rc_json_field_t array_field;
   rc_json_iterator_t iterator;
-  uint32_t timet;
   int result;
   size_t len;
   char format[16];
@@ -289,9 +286,8 @@ int rc_api_process_fetch_leaderboard_info_server_response(rc_api_fetch_leaderboa
       if (!rc_json_get_required_num(&entry->score, &response->response, &entry_fields[3], "Score"))
         return RC_MISSING_VALUE;
 
-      if (!rc_json_get_required_unum(&timet, &response->response, &entry_fields[4], "DateSubmitted"))
+      if (!rc_json_get_required_timet(&entry->submitted, &response->response, &entry_fields[4], "DateSubmitted"))
         return RC_MISSING_VALUE;
-      entry->submitted = (time_t)timet;
 
       rc_json_get_optional_string(&entry->avatar_url, &response->response, &entry_fields[5], "AvatarUrl", NULL);
       if (!entry->avatar_url)

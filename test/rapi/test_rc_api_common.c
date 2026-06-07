@@ -492,7 +492,68 @@ static void test_json_get_required_bool() {
   ASSERT_NUM_EQUALS(response.succeeded, 0);
 }
 
-static void test_json_get_datetime(const char* input, int expected) {
+static void test_json_get_timet(const char* input, time_t expected, int expected_result) {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  char buffer[64];
+  time_t value = 2;
+  snprintf(buffer, sizeof(buffer), "{\"Test\":%s}", input);
+
+  assert_json_parse_response(&response, &field, buffer, RC_OK);
+
+  if (expected_result) {
+    ASSERT_TRUE(rc_json_get_timet(&value, &field, "Test"));
+    ASSERT_TIMET_EQUALS(value, expected);
+  }
+  else {
+    ASSERT_FALSE(rc_json_get_timet(&value, &field, "Test"));
+    ASSERT_TIMET_EQUALS(value, 0);
+  }
+}
+
+static void test_json_get_optional_timet() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  const time_t expected_value = (time_t)2147483648LL;
+  const time_t default_value = (time_t)4294967296LL;
+  time_t value = 3;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":2147483648}", RC_OK);
+
+  rc_json_get_optional_timet(&value, &field, "Test", default_value);
+  ASSERT_TIMET_EQUALS(value, expected_value);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":2147483648}", RC_OK);
+
+  rc_json_get_optional_timet(&value, &field, "Test", default_value);
+  ASSERT_TIMET_EQUALS(value, default_value);
+}
+
+static void test_json_get_required_timet() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  const time_t expected_value = (time_t)2147483648LL;
+  time_t value = 3;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":2147483648}", RC_OK);
+
+  ASSERT_TRUE(rc_json_get_required_timet(&value, &response, &field, "Test"));
+  ASSERT_TIMET_EQUALS(value, expected_value);
+
+  ASSERT_PTR_NULL(response.error_message);
+  ASSERT_NUM_EQUALS(response.succeeded, 1);
+
+  assert_json_parse_response(&response, &field, "{\"Test2\":2147483648}", RC_OK);
+
+  ASSERT_FALSE(rc_json_get_required_timet(&value, &response, &field, "Test"));
+  ASSERT_TIMET_EQUALS(value, 0);
+
+  ASSERT_PTR_NOT_NULL(response.error_message);
+  ASSERT_STR_EQUALS(response.error_message, "Test not found in response");
+  ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
+static void test_json_get_datetime(const char* input, time_t expected) {
   rc_api_response_t response;
   rc_json_field_t field;
   char buffer[64];
@@ -503,11 +564,11 @@ static void test_json_get_datetime(const char* input, int expected) {
 
   if (expected != -1) {
     ASSERT_TRUE(rc_json_get_datetime(&value, &field, "Test"));
-    ASSERT_NUM_EQUALS(value, (time_t)expected);
+    ASSERT_TIMET_EQUALS(value, (time_t)expected);
   }
   else {
     ASSERT_FALSE(rc_json_get_datetime(&value, &field, "Test"));
-    ASSERT_NUM_EQUALS(value, 0);
+    ASSERT_TIMET_EQUALS(value, 0);
   }
 }
 
@@ -889,10 +950,22 @@ void test_rapi_common(void) {
   TEST(test_json_get_optional_bool);
   TEST(test_json_get_required_bool);
 
+  /* rc_json_get_timet */
+  TEST_PARAMS3(test_json_get_timet, "Banana", 0, 0);
+  TEST_PARAMS3(test_json_get_timet, "0", 0, 1);
+  TEST_PARAMS3(test_json_get_timet, "12345678", 12345678, 1);
+  TEST_PARAMS3(test_json_get_timet, "1780824318", (time_t)1780824318LL, 1);
+  TEST_PARAMS3(test_json_get_timet, "2147483648", (time_t)2147483648LL, 1);
+  TEST_PARAMS3(test_json_get_timet, "+55", 55, 1);
+  TEST_PARAMS3(test_json_get_timet, "-16", -16, 1);
+  TEST_PARAMS3(test_json_get_timet, "3.14159", 3, 1);
+  TEST(test_json_get_optional_timet);
+  TEST(test_json_get_required_timet);
+
   /* rc_json_get_datetime */
   TEST_PARAMS2(test_json_get_datetime, "", -1);
-  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:00", 1420100100);
-  TEST_PARAMS2(test_json_get_datetime, "2016-02-29 20:01:47", 1456776107);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:00", (time_t)1420100100LL);
+  TEST_PARAMS2(test_json_get_datetime, "2016-02-29 20:01:47", (time_t)1456776107LL);
 
   /* rc_json_get_unum_array */
   TEST_PARAMS3(test_json_get_unum_array, "[]", 0, RC_OK);
