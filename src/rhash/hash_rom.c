@@ -359,22 +359,25 @@ int rc_hash_neogeo_cart(char hash[33], const rc_hash_iterator_t* iterator)
   md5_init(&md5);
 
   buffer = (uint8_t*)malloc(chunk_size);
-  if (buffer) {
-    rc_file_seek(iterator, file_handle, (int64_t)header_size, SEEK_SET);
-    while (remaining >= chunk_size) {
-      rc_file_read(iterator, file_handle, buffer, (int)chunk_size);
-      md5_append(&md5, buffer, (int)chunk_size);
-      remaining -= chunk_size;
-    }
-
-    if (remaining > 0) {
-      rc_file_read(iterator, file_handle, buffer, (int)remaining);
-      md5_append(&md5, buffer, (int)remaining);
-    }
-
-    free(buffer);
-    result = rc_hash_finalize(iterator, &md5, hash);
+  if (!buffer) {
+    rc_file_close(iterator, file_handle);
+    return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
   }
+
+  rc_file_seek(iterator, file_handle, (int64_t)header_size, SEEK_SET);
+  while (remaining >= chunk_size) {
+    rc_file_read(iterator, file_handle, buffer, (int)chunk_size);
+    md5_append(&md5, buffer, (int)chunk_size);
+    remaining -= chunk_size;
+  }
+
+  if (remaining > 0) {
+    rc_file_read(iterator, file_handle, buffer, (int)remaining);
+    md5_append(&md5, buffer, (int)remaining);
+  }
+
+  free(buffer);
+  result = rc_hash_finalize(iterator, &md5, hash);
 
   rc_file_close(iterator, file_handle);
   return result;

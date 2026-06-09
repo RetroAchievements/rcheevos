@@ -543,6 +543,11 @@ static int rc_hash_from_buffer(char hash[33], uint32_t console_id, const rc_hash
       return rc_hash_buffer(hash, iterator->buffer, iterator->buffer_size, iterator);
 
 #ifndef RC_HASH_NO_ROM
+    case RC_CONSOLE_ARCADE:
+      /* .neo (Geolith Neo Geo cart) files carry the ROM data; other arcade
+       * formats are archives, which aren't hashed from a buffer. */
+      return rc_hash_neogeo_cart(hash, iterator);
+
     case RC_CONSOLE_ARDUBOY:
       return rc_hash_arduboy(hash, iterator);
 
