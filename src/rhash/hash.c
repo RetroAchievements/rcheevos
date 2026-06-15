@@ -1256,6 +1256,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "sg", rc_hash_initialize_iterator_single, RC_CONSOLE_SG1000 },
   { "sgx", rc_hash_initialize_iterator_single, RC_CONSOLE_PC_ENGINE },
   { "smc", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },
+  { "sms", rc_hash_initialize_iterator_single, RC_CONSOLE_MASTER_SYSTEM },
   { "sv", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPERVISION },
   { "swc", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },
   { "tap", rc_hash_initialize_iterator_tap, 0 },

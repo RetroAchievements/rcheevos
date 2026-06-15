@@ -289,6 +289,156 @@ static void test_init_update_code_note_response_invalid_credentials()
   rc_api_destroy_update_code_note_response(&update_code_note_response);
 }
 
+/* ----- update code notes ----- */
+
+static void test_init_update_code_notes_request()
+{
+  rc_api_update_code_notes_request_t update_code_notes_request;
+  rc_api_update_code_note_entry_t update_code_note_entries[2];
+  rc_api_request_t request;
+
+  memset(&update_code_notes_request, 0, sizeof(update_code_notes_request));
+  update_code_notes_request.username = "Dev";
+  update_code_notes_request.api_token = "API_TOKEN";
+  update_code_notes_request.game_id = 1234;
+
+  memset(&update_code_note_entries, 0, sizeof(update_code_note_entries));
+  update_code_note_entries[0].address = 7168;
+  update_code_note_entries[0].note = "flags\n1=first\n2=second";
+  update_code_note_entries[1].address = 4433;
+  update_code_note_entries[1].note = "\\/ down";
+  update_code_notes_request.entries = update_code_note_entries;
+  update_code_notes_request.num_entries = 2;
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_code_notes_request_hosted(&request, &update_code_notes_request, NULL), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=submitcodenotes&u=Dev&t=API_TOKEN&g=1234&n=7168:flags%5cr%5cn1%3dfirst%5cr%5cn2%3dsecond%0a4433:%5c%5c%2f+down%0a");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_code_notes_request_no_game_id()
+{
+  rc_api_update_code_notes_request_t update_code_notes_request;
+  rc_api_update_code_note_entry_t update_code_note_entries[2];
+  rc_api_request_t request;
+
+  memset(&update_code_notes_request, 0, sizeof(update_code_notes_request));
+  update_code_notes_request.username = "Dev";
+  update_code_notes_request.api_token = "API_TOKEN";
+
+  memset(&update_code_note_entries, 0, sizeof(update_code_note_entries));
+  update_code_note_entries[0].address = 7168;
+  update_code_note_entries[0].note = "flags\n1=first\n2=second";
+  update_code_note_entries[1].address = 4433;
+  update_code_note_entries[1].note = "\\/ down";
+  update_code_notes_request.entries = update_code_note_entries;
+  update_code_notes_request.num_entries = 2;
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_code_notes_request_hosted(&request, &update_code_notes_request, NULL), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_code_notes_request_no_note()
+{
+  rc_api_update_code_notes_request_t update_code_notes_request;
+  rc_api_request_t request;
+
+  memset(&update_code_notes_request, 0, sizeof(update_code_notes_request));
+  update_code_notes_request.username = "Dev";
+  update_code_notes_request.api_token = "API_TOKEN";
+  update_code_notes_request.game_id = 1234;
+
+  update_code_notes_request.entries = NULL;
+  update_code_notes_request.num_entries = 0;
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_code_notes_request_hosted(&request, &update_code_notes_request, NULL), RC_INVALID_STATE);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_code_notes_request_empty_note()
+{
+  rc_api_update_code_notes_request_t update_code_notes_request;
+  rc_api_update_code_note_entry_t update_code_note_entries[2];
+  rc_api_request_t request;
+
+  memset(&update_code_notes_request, 0, sizeof(update_code_notes_request));
+  update_code_notes_request.username = "Dev";
+  update_code_notes_request.api_token = "API_TOKEN";
+  update_code_notes_request.game_id = 1234;
+
+  memset(&update_code_note_entries, 0, sizeof(update_code_note_entries));
+  update_code_note_entries[0].address = 7168;
+  update_code_note_entries[0].note = NULL;
+  update_code_note_entries[1].address = 4433;
+  update_code_note_entries[1].note = "\\/ down";
+  update_code_notes_request.entries = update_code_note_entries;
+  update_code_notes_request.num_entries = 2;
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_code_notes_request_hosted(&request, &update_code_notes_request, NULL), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=submitcodenotes&u=Dev&t=API_TOKEN&g=1234&n=7168:%0a4433:%5c%5c%2f+down%0a");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_code_notes_response()
+{
+  rc_api_update_code_notes_response_t update_code_notes_response;
+  rc_api_server_response_t server_response;
+  const char* api_response = "{\"Success\":true,\"SuccessfulAddresses\":[1234,1238]}";
+
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = api_response;
+  server_response.body_length = strlen(api_response);
+  server_response.http_status_code = 200;
+
+  memset(&update_code_notes_response, 0, sizeof(update_code_notes_response));
+  ASSERT_NUM_EQUALS(rc_api_process_update_code_notes_server_response(&update_code_notes_response, &server_response), RC_OK);
+  ASSERT_NUM_EQUALS(update_code_notes_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(update_code_notes_response.response.error_message);
+
+  ASSERT_NUM_EQUALS(update_code_notes_response.num_updated_addresses, 2);
+  ASSERT_NUM_EQUALS(update_code_notes_response.updated_addresses[0], 1234);
+  ASSERT_NUM_EQUALS(update_code_notes_response.updated_addresses[1], 1238);
+
+  ASSERT_NUM_EQUALS(update_code_notes_response.num_access_denied_addresses, 0);
+
+  rc_api_destroy_update_code_notes_response(&update_code_notes_response);
+}
+
+static void test_init_update_code_notes_response_access_denied()
+{
+  rc_api_update_code_notes_response_t update_code_notes_response;
+  rc_api_server_response_t server_response;
+  const char* api_response = "{\"Success\":false,\"Status\":403,\"Code\":\"access_denied\",\"Error\":\"Access denied.\",\"SuccessfulAddresses\":[1234],\"AccessDeniedAddresses\":[1404,1602]}";
+
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = api_response;
+  server_response.body_length = strlen(api_response);
+  server_response.http_status_code = 403;
+
+  memset(&update_code_notes_response, 0, sizeof(update_code_notes_response));
+  ASSERT_NUM_EQUALS(rc_api_process_update_code_notes_server_response(&update_code_notes_response, &server_response), RC_ACCESS_DENIED);
+  ASSERT_NUM_EQUALS(update_code_notes_response.response.succeeded, 0);
+  ASSERT_STR_EQUALS(update_code_notes_response.response.error_message, "Access denied.");
+
+  ASSERT_NUM_EQUALS(update_code_notes_response.num_updated_addresses, 1);
+  ASSERT_NUM_EQUALS(update_code_notes_response.updated_addresses[0], 1234);
+
+  ASSERT_NUM_EQUALS(update_code_notes_response.num_access_denied_addresses, 2);
+  ASSERT_NUM_EQUALS(update_code_notes_response.access_denied_addresses[0], 1404);
+  ASSERT_NUM_EQUALS(update_code_notes_response.access_denied_addresses[1], 1602);
+
+  rc_api_destroy_update_code_notes_response(&update_code_notes_response);
+}
+
+/* ----- update achievement ----- */
+
 static void test_init_update_achievement_request()
 {
   rc_api_update_achievement_request_t update_achievement_request;
@@ -881,6 +1031,14 @@ void test_rapi_editor(void) {
 
   TEST(test_init_update_code_note_response);
   TEST(test_init_update_code_note_response_invalid_credentials);
+
+  TEST(test_init_update_code_notes_request);
+  TEST(test_init_update_code_notes_request_no_game_id);
+  TEST(test_init_update_code_notes_request_no_note);
+  TEST(test_init_update_code_notes_request_empty_note);
+
+  TEST(test_init_update_code_notes_response);
+  TEST(test_init_update_code_notes_response_access_denied);
 
   /* update achievement */
   TEST(test_init_update_achievement_request);
