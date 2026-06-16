@@ -3993,6 +3993,65 @@ static void test_fetch_game_titles(void)
   rc_client_destroy(g_client);
 }
 
+/* ----- fetch game list ----- */
+
+static void test_fetch_game_list_response(int result, const char* error_message,
+  rc_client_game_list_t* list, rc_client_t* client, void* callback_userdata)
+{
+  rc_client_callback_expect_success(result, error_message, client, callback_userdata);
+  if (result != RC_OK)
+    return;
+
+  ASSERT_NUM_EQUALS(list->num_entries, 2);
+  ASSERT_NUM_EQUALS(list->entries[0].id, 3);
+  ASSERT_STR_EQUALS(list->entries[0].name, "Game Name 3");
+  ASSERT_STR_EQUALS(list->entries[0].image_name, "010003");
+  ASSERT_STR_EQUALS(list->entries[0].image_url, "https://media.retroachievements.org/Images/010003.png");
+  ASSERT_NUM_EQUALS(list->entries[0].num_achievements, 10);
+  ASSERT_NUM_EQUALS(list->entries[0].num_leaderboards, 2);
+  ASSERT_NUM_EQUALS(list->entries[0].points, 50);
+  ASSERT_NUM_EQUALS(list->entries[0].num_supported_hashes, 2);
+  ASSERT_STR_EQUALS(list->entries[0].supported_hashes[0], "00112233445566778899aabbccddeeff");
+  ASSERT_STR_EQUALS(list->entries[0].supported_hashes[1], "112233445566778899aabbccddeeff00");
+  ASSERT_NUM_EQUALS(list->entries[0].num_unsupported_hashes, 1);
+  ASSERT_STR_EQUALS(list->entries[0].unsupported_hashes[0], "2233445566778899aabbccddeeff0011");
+
+  ASSERT_NUM_EQUALS(list->entries[1].id, 4);
+  ASSERT_STR_EQUALS(list->entries[1].name, "Game Name 4");
+  ASSERT_STR_EQUALS(list->entries[1].image_name, "010004");
+  ASSERT_STR_EQUALS(list->entries[1].image_url, "http://media.retroachievements.org/Images/010004.png");
+  ASSERT_NUM_EQUALS(list->entries[1].num_achievements, 20);
+  ASSERT_NUM_EQUALS(list->entries[1].num_leaderboards, 0);
+  ASSERT_NUM_EQUALS(list->entries[1].points, 100);
+  ASSERT_NUM_EQUALS(list->entries[1].num_supported_hashes, 1);
+  ASSERT_STR_EQUALS(list->entries[1].supported_hashes[0], "33445566778899aabbccddeeff001122");
+  ASSERT_NUM_EQUALS(list->entries[1].num_unsupported_hashes, 0);
+  ASSERT_PTR_NULL(list->entries[1].unsupported_hashes);
+
+  rc_client_destroy_game_list(list);
+}
+
+static void test_fetch_game_list(void)
+{
+  g_client = mock_client_not_logged_in();
+
+  reset_mock_api_handlers();
+  mock_api_response("r=systemgames&s=17", "{\"Success\":true,\"Response\":["
+    "{\"ID\": 3, \"Title\":\"Game Name 3\", \"ImageIcon\": \"\\/Images\\/010003.png\","
+      "\"ImageUrl\": \"https:\\/\\/media.retroachievements.org\\/Images\\/010003.png\","
+      "\"NumAchievements\":10,\"NumLeaderboards\":2,\"Points\":50,"
+      "\"SupportedHashes\":[\"00112233445566778899aabbccddeeff\",\"112233445566778899aabbccddeeff00\"],"
+      "\"UnsupportedHashes\":[\"2233445566778899aabbccddeeff0011\"]},"
+    "{\"ID\": 4, \"Title\":\"Game Name 4\", \"ImageIcon\": \"\\/Images\\/010004.png\","
+      "\"ImageUrl\": \"http:\\/\\/media.retroachievements.org\\/Images\\/010004.png\","
+      "\"NumAchievements\":20,\"NumLeaderboards\":0,\"Points\":100,"
+      "\"SupportedHashes\":[\"33445566778899aabbccddeeff001122\"]}"
+    "]}");
+
+  rc_client_begin_fetch_game_list(g_client, 17, test_fetch_game_list_response, g_callback_userdata);
+  rc_client_destroy(g_client);
+}
+
 /* ----- all user progress ----- */
 
 static void test_fetch_all_user_progress_response(int result, const char* error_message,
@@ -10529,6 +10588,9 @@ void test_client(void) {
 
   /* game titles */
   TEST(test_fetch_game_titles);
+
+  /* game list */
+  TEST(test_fetch_game_list);
 
   /* all user progress */
   TEST(test_fetch_all_user_progress);
