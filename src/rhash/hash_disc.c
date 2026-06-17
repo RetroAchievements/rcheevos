@@ -227,9 +227,8 @@ int rc_hash_3do(char hash[33], const rc_hash_iterator_t* iterator)
   /* the Opera filesystem stores the volume information in the first 132 bytes of sector 0
    * https://github.com/barbeque/3dodump/blob/master/OperaFS-Format.md
    */
-  rc_cd_read_sector(iterator, track_handle, 0, buffer, 132);
-
-  if (memcmp(buffer, operafs_identifier, sizeof(operafs_identifier)) == 0) {
+  if (rc_cd_read_sector(iterator, track_handle, 0, buffer, 132) >= 132 &&
+      memcmp(buffer, operafs_identifier, sizeof(operafs_identifier)) == 0) {
     rc_hash_iterator_verbose_formatted(iterator, "Found 3DO CD, title=%.32s", &buffer[0x28]);
 
     /* include the volume header in the hash */

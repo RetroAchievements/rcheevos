@@ -229,9 +229,9 @@ int rc_api_init_update_code_notes_request_hosted(rc_api_request_t* request,
     if (entry->note) {
       const char* src = entry->note;
       char* dst = buffer;
-      const char* stop = buffer + sizeof(buffer) - 8;
+      const char* dst_stop = buffer + sizeof(buffer) - 8;
       do {
-        while (*src && dst < stop) {
+        while (*src && dst < dst_stop) {
           switch (*src) {
             case '\n': /* escape newline as newlines separate notes. normalize to windows style line endings */
               *dst++ = '\\';

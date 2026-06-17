@@ -838,6 +838,7 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "A:4_K:0xH01_K:{recall}*2_M:{recall}", 44); /* Chain Addsource into Remember (4 + 18) * 2 = 44 */
   TEST_PARAMS2(test_evaluate_value, "A:4_K:2*8_M:{recall}", 20); /* Chain Addsource into Remember 4 + (2 * 8) = 20 */
   TEST_PARAMS2(test_evaluate_value, "A:4_K:2*8_A:{recall}*2_M:4*{recall}", 120); /* Use remembered value multiple times */
+  TEST_PARAMS2(test_evaluate_value, "K:0xH01_A:{recall}*2_K:0xH02_M:{recall}*3", 264); /* Chain Addsource into Remember (18 * 2) + 52 = 88 * 3 = 264 */
   TEST_PARAMS2(test_evaluate_value, "K:0xH01*2_Q:{recall}<40_P:{recall}=36_M:{recall}", 36); /* Pause happens before recall accumulator is set because remember not part of pause chain. */
   TEST_PARAMS2(test_evaluate_value, "K:0xH01*2_P:{recall}=18_M:{recall}", 36); /* Measures the accumulated value, which was set in the pause pass. */
   TEST_PARAMS2(test_evaluate_value, "K:1_I:{recall}_M:0x02", 0x56AB); /* using recall accumulator as pointer */
