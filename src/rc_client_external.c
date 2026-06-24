@@ -5,6 +5,8 @@
 
 #include "rc_api_runtime.h"
 
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+
 #define RC_CONVERSION_FILL(obj, obj_type, src_type) memset((uint8_t*)obj + sizeof(src_type), 0, sizeof(obj_type) - sizeof(src_type))
 
 /* https://media.retroachievements.org/Badge/123456_lock.png is 58 with null terminator */
@@ -41,6 +43,7 @@ static const char* rc_client_external_build_avatar_url(char buffer[], size_t buf
     return NULL;
 
   snprintf(buffer, buffer_size, "%s", request.url);
+  rc_api_destroy_request(&request);
   return buffer;
 }
 
@@ -275,3 +278,5 @@ rc_client_achievement_list_t* rc_client_external_convert_v1_achievement_list(con
 
   return (rc_client_achievement_list_t*)new_list;
 }
+
+#endif /* RC_CLIENT_SUPPORTS_EXTERNAL */

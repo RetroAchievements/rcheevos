@@ -714,6 +714,8 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "0xH01*0xT02", 0); /* multiply by bit */
   TEST_PARAMS2(test_evaluate_value, "0xH01*~0xT02", 0x12); /* multiply by inverse bit */
   TEST_PARAMS2(test_evaluate_value, "0xH01*~0xH02", 0x12 * (0x34 ^ 0xff)); /* multiply by inverse byte */
+  TEST_PARAMS2(test_evaluate_value, "0xH0002=0", 0x34); /* legacy format should ignore =0 */
+  TEST_PARAMS2(test_evaluate_value, "0xH0000=1_0xH0001=99_0xH0002>200", 0x00 + 0x12 + 0x34); /* legacy format should ignore all comparisons */
 
   TEST_PARAMS2(test_evaluate_value, "B0xH01", 12);
   TEST_PARAMS2(test_evaluate_value, "B0x00001", 3412);

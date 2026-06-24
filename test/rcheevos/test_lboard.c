@@ -708,7 +708,7 @@ static void test_unparsable_strings() {
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=10xH01=1::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02", RC_INVALID_LBOARD_FIELD);
 
   /* Garbage following value field (legacy format conversion will return invalid comparison) */
-  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=1::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02=1=2", RC_INVALID_COMPARISON);
+  TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=1::CAN:0xH00=2::SUB:0xH00=3::VAL:0xH02=1=2", RC_INVALID_VALUE);
   TEST_PARAMS2(test_unparsable_lboard, "STA:0xH00=1::CAN:0xH00=2::SUB:0xH00=3::VAL:M:0xH02=1=2", RC_INVALID_LBOARD_FIELD);
 }
 

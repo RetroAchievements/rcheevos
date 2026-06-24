@@ -40,6 +40,112 @@ static void test_hash_arcade(const char* path, const char* expected_md5)
 
 /* ========================================================================= */
 
+/* Builds a synthetic .neo file: 4096-byte header (magic, P ROM size, and
+ * tool-variant text fields) followed by payload_size bytes of ROM data.
+ * fill_image seeds from size, so the payload is byte-identical to
+ * generate_generic_file(payload_size) - tests use that for cross-checking. */
+static uint8_t* generate_neo_file(size_t payload_size, const char* name, const char* manufacturer, size_t* image_size)
+{
+  const size_t header_size = 4096;
+  uint8_t* image;
+
+  *image_size = header_size + payload_size;
+  image = (uint8_t*)calloc(*image_size, 1);
+  if (image) {
+    image[0] = 'N'; image[1] = 'E'; image[2] = 'O'; image[3] = 1;
+    /* P ROM size (little endian) - whole payload for simplicity */
+    image[4] = (uint8_t)(payload_size & 0xFF);
+    image[5] = (uint8_t)((payload_size >> 8) & 0xFF);
+    image[6] = (uint8_t)((payload_size >> 16) & 0xFF);
+    image[7] = (uint8_t)((payload_size >> 24) & 0xFF);
+    /* tool-variant metadata text fields */
+    snprintf((char*)&image[44], 33, "%s", name);
+    snprintf((char*)&image[77], 17, "%s", manufacturer);
+
+    fill_image(&image[header_size], payload_size);
+  }
+
+  return image;
+}
+
+static void test_hash_neo()
+{
+  /* the hash of a .neo file is the hash of its ROM data (everything after
+   * the 4096-byte header), so must match a plain full-buffer hash of the
+   * payload alone */
+  const size_t payload_size = 131072;
+  size_t image_size;
+  uint8_t* image = generate_neo_file(payload_size, "Test Game", "TestCorp", &image_size);
+  uint8_t* payload = generate_generic_file(payload_size);
+  char hash_file[33], hash_iterator[33], hash_payload[33];
+  int result_file, result_iterator, result_payload;
+  struct rc_hash_iterator iterator;
+
+  result_payload = rc_hash_generate_from_buffer(hash_payload, RC_CONSOLE_MEGA_DRIVE, payload, payload_size);
+  free(payload);
+
+  mock_file(0, "game.neo", image, image_size);
+
+  result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARCADE, "game.neo");
+
+  rc_hash_initialize_iterator(&iterator, "game.neo", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+  free(image);
+
+  ASSERT_NUM_EQUALS(result_payload, 1);
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, hash_payload);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, hash_payload);
+}
+
+static void test_hash_neo_header_variants()
+{
+  /* conversion tools fill the header text fields differently - two .neo
+   * files with the same ROM data but different headers must hash the same */
+  const size_t payload_size = 131072;
+  size_t image_size;
+  uint8_t* image1 = generate_neo_file(payload_size, "Test Game", "TestCorp", &image_size);
+  uint8_t* image2 = generate_neo_file(payload_size, "test game (alt name)", "OtherTool", &image_size);
+  char hash1[33], hash2[33];
+  int result1, result2;
+
+  mock_file(0, "game1.neo", image1, image_size);
+  mock_file(1, "game2.neo", image2, image_size);
+
+  result1 = rc_hash_generate_from_file(hash1, RC_CONSOLE_ARCADE, "game1.neo");
+  result2 = rc_hash_generate_from_file(hash2, RC_CONSOLE_ARCADE, "game2.neo");
+
+  free(image2);
+  free(image1);
+
+  ASSERT_NUM_EQUALS(result1, 1);
+  ASSERT_NUM_EQUALS(result2, 1);
+  ASSERT_STR_EQUALS(hash1, hash2);
+}
+
+static void test_hash_neo_bad_magic()
+{
+  /* a .neo file without the NEO\1 magic must not hash */
+  const size_t payload_size = 131072;
+  size_t image_size;
+  uint8_t* image = generate_neo_file(payload_size, "Test Game", "TestCorp", &image_size);
+  char hash_file[33];
+  int result_file;
+
+  image[3] = 2; /* unsupported version */
+  mock_file(0, "game.neo", image, image_size);
+
+  result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ARCADE, "game.neo");
+  free(image);
+
+  ASSERT_NUM_EQUALS(result_file, 0);
+}
+
+/* ========================================================================= */
+
 static void test_hash_arduboy()
 {
   char hash_file[33], hash_iterator[33];
@@ -747,6 +853,11 @@ void test_hash_rom(void) {
   TEST_PARAMS2(test_hash_arcade, "/home/user/sg1000/game.zip", "e8f6c711c4371f09537b4f2a7a304d6c");
   TEST_PARAMS2(test_hash_arcade, "/home/user/spectrum/game.zip", "a5f62157b2617bd728c4b1bc885c29e9");
   TEST_PARAMS2(test_hash_arcade, "/home/user/ngp/game.zip", "d4133b74c4e57274ca514e27a370dcb6");
+
+  /* Arcade .neo (Geolith Neo Geo cart) - content hash, not filename hash */
+  TEST(test_hash_neo);
+  TEST(test_hash_neo_header_variants);
+  TEST(test_hash_neo_bad_magic);
 
   /* Arduboy */
   TEST(test_hash_arduboy);

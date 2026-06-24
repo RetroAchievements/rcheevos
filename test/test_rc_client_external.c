@@ -1585,6 +1585,32 @@ static void test_get_achievement_info(void)
   rc_client_destroy(g_client);
 }
 
+static const rc_client_achievement_t* rc_client_external_get_next_achievement_info(uint32_t id, int grouping)
+{
+  if (grouping != RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED)
+    return NULL;
+
+  return rc_client_external_get_achievement_info_v3((id + 1) * 4);
+}
+
+static void test_get_next_achievement_info(void)
+{
+  const rc_client_achievement_t* achievement;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_next_achievement_info = rc_client_external_get_next_achievement_info;
+
+  achievement = rc_client_get_next_achievement_info(g_client, NULL, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->id, 4);
+
+  achievement = rc_client_get_next_achievement_info(g_client, achievement, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
+  ASSERT_PTR_NOT_NULL(achievement);
+  ASSERT_NUM_EQUALS(achievement->id, 20);
+
+  rc_client_destroy(g_client);
+}
+
 static void test_v1_achievement_list_field_offsets(void)
 {
   ASSERT_FIELD_OFFSET(rc_client_achievement_list_info_t, v1_rc_client_achievement_list_info_t, public_);
@@ -2137,6 +2163,7 @@ void test_client_external(void) {
   TEST(test_get_achievement_info_v1);
   TEST(test_get_achievement_info_v1_not_found);
   TEST(test_get_achievement_info);
+  TEST(test_get_next_achievement_info);
 
   TEST(test_v1_achievement_list_field_offsets);
   TEST(test_v3_achievement_list_field_offsets);

@@ -226,6 +226,13 @@ static void test_conditional_display_invalid_condition_logic() {
   ASSERT_NUM_EQUALS(lines, 2);
 }
 
+static void test_conditional_display_extra_characters_after_logic() {
+  int lines;
+  int result = rc_richpresence_size_lines("Display:\n?0xH1234=6)?Zero\nDefault", &lines);
+  ASSERT_NUM_EQUALS(result, RC_INVALID_OPERATOR);
+  ASSERT_NUM_EQUALS(lines, 2);
+}
+
 static void test_conditional_display_shared_lookup() {
   uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
   memory_t memory;
@@ -398,6 +405,30 @@ static void test_conditional_display_invalid() {
 
   ASSERT_NUM_EQUALS(rc_richpresence_size_lines("Display:\n?0x0000=1 0x0001=2?True\nFalse\n", &lines_read), RC_INVALID_OPERATOR);
   ASSERT_NUM_EQUALS(lines_read, 2);
+
+  ASSERT_NUM_EQUALS(rc_richpresence_size_lines("Display:\n?0x0000=1)?True\nFalse\n", &lines_read), RC_INVALID_OPERATOR);
+  ASSERT_NUM_EQUALS(lines_read, 2);
+}
+
+static void test_conditional_display_trailing_addaddress() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_richpresence_t* richpresence;
+  char buffer[1024];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  assert_parse_richpresence(&richpresence, buffer, "Display:\n?I:0xH0000_M:0xH0002=h01_I:0xH0000*2?True\n@Number(I:0xH0001_M:0xH0000_Q:0xH0004=8)\n");
+  /* $($0 + 2) == 1 ? True : $4 == 8 ? $($1) : 0 */
+  assert_richpresence_output(richpresence, &memory, "0");
+
+  ram[1] = 3;
+  ram[4] = 8;
+  assert_richpresence_output(richpresence, &memory, "171"); /* $($1) = > $3 => 0xAB */
+
+  ram[2] = 1;
+  assert_richpresence_output(richpresence, &memory, "True"); /* $($0) => $2 => 1 */
 }
 
 static void test_macro_value_adjusted_negative() {
@@ -538,6 +569,11 @@ static void test_macro_value_remember_recall() {
 
 static void test_macro_value_invalid() {
   ASSERT_NUM_EQUALS(rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x0x0001) Points"), RC_INVALID_MEMORY_OPERAND);
+}
+
+static void test_macro_value_invalid_extralong_legacy() {
+  /* The parameter to the Points function exceeds the 64-character buffer used to convert from legacy to new format */
+  ASSERT_NUM_EQUALS(rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0xXc25edd2eS0xX2a7d7aa8S0xX3e1b11fdSOxX0fc93b37S0xXfdc63bc7S0xX03d3ce95S0xX548352c8S0xX3b154129) Points"), RC_INVALID_VALUE);
 }
 
 static void test_macro_value_measured_if() {
@@ -1169,6 +1205,13 @@ static void test_macro_mathematic_chain() {
   ASSERT_NUM_EQUALS(lines, 5);
 }
 
+static void test_macro_invalid_recall_chain() {
+  int lines;
+  int result = rc_richpresence_size_lines("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(K:{recall}+6_A:{recall}_M:0) Points", &lines);
+  ASSERT_NUM_EQUALS(result, RC_INVALID_MEMORY_OPERAND);
+  ASSERT_NUM_EQUALS(lines, 5);
+}
+
 static void test_builtin_macro(const char* macro, const char* expected) {
   uint8_t ram[] = { 0x39, 0x30 };
   memory_t memory;
@@ -1405,19 +1448,21 @@ void test_richpresence(void) {
   /* buffer boundary */
   test_buffer_boundary();
 
-  /* condition display */
+  /* conditional display */
   TEST(test_conditional_display_simple);
   TEST(test_conditional_display_after_default);
   TEST(test_conditional_display_no_default);
   TEST(test_conditional_display_common_condition);
   TEST(test_conditional_display_duplicated_condition);
   TEST(test_conditional_display_invalid_condition_logic);
+  TEST(test_conditional_display_extra_characters_after_logic);
   TEST(test_conditional_display_shared_lookup);
   TEST(test_conditional_display_whitespace_text);
   TEST(test_conditional_display_indirect);
   TEST(test_conditional_display_unnecessary_measured);
   TEST(test_conditional_display_unnecessary_measured_indirect);
   TEST(test_conditional_display_invalid);
+  TEST(test_conditional_display_trailing_addaddress);
 
   /* value macros */
   TEST(test_macro_value);
@@ -1432,6 +1477,7 @@ void test_richpresence(void) {
   TEST(test_macro_value_divide_by_self);
   TEST(test_macro_value_remember_recall);
   TEST(test_macro_value_invalid);
+  TEST(test_macro_value_invalid_extralong_legacy);
   TEST(test_macro_value_measured_if);
   TEST(test_multiple_macros);
 
@@ -1487,6 +1533,7 @@ void test_richpresence(void) {
   TEST(test_macro_without_parameter_conditional_display);
   TEST(test_macro_non_numeric_parameter);
   TEST(test_macro_mathematic_chain);
+  TEST(test_macro_invalid_recall_chain);
 
   /* builtin macros */
   TEST_PARAMS2(test_builtin_macro, "Number", "12,345");

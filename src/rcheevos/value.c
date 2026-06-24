@@ -120,6 +120,12 @@ static void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_par
 
       /* extract the next clause */
       for (;; ++(*memaddr)) {
+        if (ptr == &buffer[sizeof(buffer)]) {
+          /* ran out of local buffer space for converting the condition */
+          parse->offset = RC_INVALID_VALUE;
+          return;
+        }
+
         switch (**memaddr) {
           case '_': /* add next */
             *ptr = '\0';
@@ -176,13 +182,15 @@ static void rc_parse_legacy_value(rc_value_t* self, const char** memaddr, rc_par
 
       if (*buffer_ptr) {
         /* whatever we copied as a single condition was not fully consumed */
-        parse->offset = RC_INVALID_COMPARISON;
+        parse->offset = RC_INVALID_VALUE;
         return;
       }
 
-      if (!rc_operator_is_modifying(cond->oper)) {
-        parse->offset = RC_INVALID_OPERATOR;
-        return;
+      if (cond->type == RC_CONDITION_MEASURED && !rc_operator_is_modifying(cond->oper)) {
+        /* ignore non-modifying operator on measured clause. if it were parsed as an AddSource
+         * or SubSource, that would have already happened in rc_parse_condition_internal, and
+         * legacy formatted values are essentially a series of AddSources. */
+        cond->oper = RC_OPERATOR_NONE;
       }
 
       rc_condition_update_parse_state(cond, parse);
@@ -427,7 +435,7 @@ rc_value_t* rc_alloc_variable(const char* memaddr, size_t memaddr_len, rc_parse_
 
   /* no match found, create a new entry */
   value = RC_ALLOC_SCRATCH(rc_value_t, parse);
-  memset(value, 0, sizeof(value->value));
+  memset(value, 0, sizeof(*value));
   value->value.size = RC_MEMSIZE_VARIABLE;
   value->next = NULL;
 

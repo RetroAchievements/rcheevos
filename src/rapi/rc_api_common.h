@@ -64,6 +64,8 @@ int rc_json_get_required_bool(int* out, rc_api_response_t* response, const rc_js
 int rc_json_get_required_datetime(time_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_object(rc_json_field_t* fields, size_t field_count, rc_api_response_t* response, rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_unum_array(uint32_t** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
+int rc_json_get_required_string_array(const char*** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
+int rc_json_get_optional_string_array(const char*** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_required_array(uint32_t* num_entries, rc_json_field_t* array_field, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name);
 int rc_json_get_array_entry_object(rc_json_field_t* fields, size_t field_count, rc_json_iterator_t* iterator);
 int rc_json_get_next_object_field(rc_json_iterator_t* iterator, rc_json_field_t* field);

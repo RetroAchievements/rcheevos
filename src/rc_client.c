@@ -14,15 +14,15 @@
 #include <stdarg.h>
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <profileapi.h>
+ #define WIN32_LEAN_AND_MEAN
+ #include <windows.h>
 #else
-#include <time.h>
+ #include <time.h>
 #endif
 
 #define RC_CLIENT_UNKNOWN_GAME_ID (uint32_t)-1
 #define RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS (10 * 60) /* ten minutes */
+#define RC_CLIENT_ACHIEVEMENT_WARNING_ID 101000001
 
 #define RC_MINIMUM_UNPAUSED_FRAMES 20
 #define RC_PAUSE_DECAY_MULTIPLIER 4
@@ -240,7 +240,7 @@ static void rc_client_log_message_va(const rc_client_t* client, const char* form
     char buffer[2048];
 
 #ifdef __STDC_SECURE_LIB__
-    vsprintf_s(buffer, sizeof(buffer), format, args);
+    vsnprintf_s(buffer, sizeof(buffer), _TRUNCATE, format, args);
 #elif __STDC_VERSION__ >= 199901L /* vsnprintf requires c99 */
     vsnprintf(buffer, sizeof(buffer), format, args);
 #else /* c89 doesn't have a size-limited vsprintf function - assume the buffer is large enough */
@@ -320,6 +320,22 @@ void rc_client_enable_logging(rc_client_t* client, int level, rc_client_message_
 
 static rc_clock_t rc_client_clock_get_now_millisecs(const rc_client_t* client)
 {
+#if defined(__APPLE__) && defined(__MACH__)
+ #ifdef CLOCK_MONOTONIC
+  /* clock_gettime() was added to Darwin in iOS 10.0 and macOS 10.12.
+   * On earlier deployment targets (like Leopard 10.5), the symbol doesn't exist
+   * in libSystem causing an "undefined reference to clock_gettime" linker error.
+   * To get the code to use the #else block below, forcibly undefine CLOCK_MONOTONIC
+   * when targeting earlier versions. */
+  #include <AvailabilityMacros.h>
+  #if (defined(MAC_OS_X_VERSION_MIN_REQUIRED) && MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
+   #undef CLOCK_MONOTONIC
+  #elif (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000)
+   #undef CLOCK_MONOTONIC
+  #endif
+ #endif
+#endif
+
 #if defined(CLOCK_MONOTONIC)
   struct timespec now;
   (void)client;
@@ -637,7 +653,13 @@ static int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_
   image_request.image_name = image_name;
   result = rc_api_init_fetch_image_request_hosted(&request, &image_request, NULL);
   if (result == RC_OK)
-    snprintf(buffer, buffer_size, "%s", request.url);
+  {
+    const size_t len = strlen(request.url);
+    if (len >= buffer_size)
+      result = RC_INSUFFICIENT_BUFFER;
+    else
+      memcpy(buffer, request.url, len + 1);
+  }
 
   rc_api_destroy_request(&request);
   return result;
@@ -898,7 +920,11 @@ int rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], si
     return RC_INVALID_STATE;
 
   if (user->avatar_url) {
-    snprintf(buffer, buffer_size, "%s", user->avatar_url);
+    const size_t len = strlen(user->avatar_url);
+    if (len >= buffer_size)
+      return RC_INSUFFICIENT_BUFFER;
+
+    memcpy(buffer, user->avatar_url, len + 1);
     return RC_OK;
   }
 
@@ -924,6 +950,11 @@ static void rc_client_subset_get_user_game_summary(const rc_client_t* client,
   for (; achievement < stop; ++achievement) {
     switch (achievement->public_.category) {
       case RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED:
+        if (achievement->public_.id >= RC_CLIENT_ACHIEVEMENT_WARNING_ID) {
+          /* ignore warning achievements */
+          continue;
+        }
+
         ++summary->num_promoted_achievements;
         summary->points_available += achievement->public_.points;
 
@@ -2099,9 +2130,9 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
       else {
         rc_buffer_consume(buffer, (const uint8_t*)preparse.parse.buffer, (uint8_t*)preparse.parse.buffer + preparse.parse.offset);
       }
-
-      rc_destroy_preparse_state(&preparse);
     }
+
+    rc_destroy_preparse_state(&preparse);
 
     achievement->created_time = read->created;
     achievement->updated_time = read->updated;
@@ -3514,7 +3545,11 @@ int rc_client_game_get_image_url(const rc_client_game_t* game, char buffer[], si
     return RC_INVALID_STATE;
 
   if (game->badge_url) {
-    snprintf(buffer, buffer_size, "%s", game->badge_url);
+    const size_t len = strlen(game->badge_url);
+    if (len >= buffer_size)
+      return RC_INSUFFICIENT_BUFFER;
+
+    memcpy(buffer, game->badge_url, len + 1);
     return RC_OK;
   }
 
@@ -3914,7 +3949,7 @@ static void rc_client_update_achievement_display_information(rc_client_t* client
           if (!achievement->trigger->measured_as_percent) {
             char* ptr = achievement->public_.measured_progress;
             const int buffer_size = (int)sizeof(achievement->public_.measured_progress);
-            const int chars = rc_format_value(ptr, buffer_size, (int32_t)new_measured_value, RC_FORMAT_UNSIGNED_VALUE);
+            const int chars = rc_format_value(ptr, buffer_size - 1, (int32_t)new_measured_value, RC_FORMAT_UNSIGNED_VALUE);
             ptr[chars] = '/';
             rc_format_value(ptr + chars + 1, buffer_size - chars - 1, (int32_t)achievement->trigger->measured_target, RC_FORMAT_UNSIGNED_VALUE);
           }
@@ -4307,6 +4342,62 @@ const rc_client_achievement_t* rc_client_get_achievement_info(rc_client_t* clien
   return NULL;
 }
 
+const rc_client_achievement_t* rc_client_get_next_achievement_info(rc_client_t* client,
+    const rc_client_achievement_t* achievement, int bucket)
+{
+  const rc_client_achievement_info_t* after = (const rc_client_achievement_info_t*)achievement;
+  rc_client_achievement_info_t* achievement_info;
+  time_t recent_unlock_time;
+  rc_client_subset_info_t* subset;
+
+  if (!client)
+    return NULL;
+
+#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
+  if (client->state.external_client && client->state.external_client->get_next_achievement_info)
+    return client->state.external_client->get_next_achievement_info(achievement ? achievement->id : 0, bucket);
+#endif
+
+  if (!client->game)
+    return NULL;
+
+  recent_unlock_time = time(NULL) - RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS;
+  for (subset = client->game->subsets; subset; subset = subset->next) {
+    if (subset->active && subset->public_.num_achievements > 0) {
+      const rc_client_achievement_info_t* start = subset->achievements;
+      const rc_client_achievement_info_t* stop = start + subset->public_.num_achievements;
+      if (after == NULL || (after >= start && after <= stop)) {
+        /* found a subset containing the provided achievement. look for the next
+         * achievement matching the requested bucket */
+        uint32_t index = after ? (uint32_t)(after - start) + 1 : 0;
+        do {
+          if (index >= subset->public_.num_achievements) {
+            /* done with this subset. find the next active subset with achievements */
+            do {
+              subset = subset->next;
+              if (!subset)
+                return NULL;
+            } while (!subset->active || subset->public_.num_achievements == 0);
+
+            index = 0;
+          }
+
+          /* found an achievement. check to see if it matches the requested bucket. */
+          achievement_info = &subset->achievements[index];
+          rc_client_update_achievement_display_information(client, achievement_info, recent_unlock_time);
+          if (achievement_info->public_.bucket == bucket)
+            return &achievement_info->public_;
+
+          ++index;
+        } while (1);
+      }
+    }
+  }
+
+  return NULL;
+}
+
+
 int rc_client_achievement_get_image_url(const rc_client_achievement_t* achievement, int state, char buffer[], size_t buffer_size)
 {
   const int image_type = (state == RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED) ?
@@ -4316,12 +4407,20 @@ int rc_client_achievement_get_image_url(const rc_client_achievement_t* achieveme
     return rc_client_get_image_url(buffer, buffer_size, image_type, "00000");
 
   if (image_type == RC_IMAGE_TYPE_ACHIEVEMENT && achievement->badge_url) {
-    snprintf(buffer, buffer_size, "%s", achievement->badge_url);
+    const size_t len = strlen(achievement->badge_url);
+    if (len >= buffer_size)
+      return RC_INSUFFICIENT_BUFFER;
+
+    memcpy(buffer, achievement->badge_url, len + 1);
     return RC_OK;
   }
 
   if (image_type == RC_IMAGE_TYPE_ACHIEVEMENT_LOCKED && achievement->badge_locked_url) {
-    snprintf(buffer, buffer_size, "%s", achievement->badge_locked_url);
+    const size_t len = strlen(achievement->badge_locked_url);
+    if (len >= buffer_size)
+      return RC_INSUFFICIENT_BUFFER;
+
+    memcpy(buffer, achievement->badge_locked_url, len + 1);
     return RC_OK;
   }
 
@@ -4528,6 +4627,11 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
 
   rc_mutex_unlock(&client->state.mutex);
 
+  if (achievement->public_.id >= RC_CLIENT_ACHIEVEMENT_WARNING_ID) {
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Unlocked warning achievement %u: %s", achievement->public_.id, achievement->public_.title);
+    return;
+  }
+
   if (client->callbacks.can_submit_achievement_unlock &&
       !client->callbacks.can_submit_achievement_unlock(achievement->public_.id, client)) {
     RC_CLIENT_LOG_INFO_FORMATTED(client, "Achievement %u unlock blocked by client", achievement->public_.id);
@@ -4555,7 +4659,6 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
   callback_data->client = client;
   callback_data->id = achievement->public_.id;
   callback_data->hardcore = client->state.hardcore;
-  callback_data->game_hash = client->game->public_.hash;
   callback_data->unlock_time = client->callbacks.get_time_millisecs(client);
 
   if (client->game) /* may be NULL if this gets called while unloading the game (from another thread - events are raised outside the lock) */
@@ -4870,6 +4973,7 @@ int rc_client_has_leaderboards(rc_client_t* client)
 {
   rc_client_subset_info_t* subset;
   int result;
+  uint32_t i;
 
   if (!client)
     return 0;
@@ -4884,17 +4988,21 @@ int rc_client_has_leaderboards(rc_client_t* client)
 
   rc_mutex_lock(&client->state.mutex);
 
-  subset = client->game->subsets;
   result = 0;
-  for (; subset; subset = subset->next)
+  for (subset = client->game->subsets; subset; subset = subset->next)
   {
     if (!subset->active)
       continue;
 
-    if (subset->public_.num_leaderboards > 0) {
-      result = 1;
-      break;
+    for (i = 0; i < subset->public_.num_leaderboards; ++i) {
+      if (!subset->leaderboards[i].hidden) {
+        result = 1;
+        break;
+      }
     }
+
+    if (result)
+      break;
   }
 
   rc_mutex_unlock(&client->state.mutex);
@@ -5438,6 +5546,14 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
   if (client->state.frames_processed != client->state.frames_at_last_ping) {
     client->state.frames_at_last_ping = client->state.frames_processed;
 
+    memset(&api_params, 0, sizeof(api_params));
+    api_params.username = client->user.username;
+    api_params.api_token = client->user.token;
+    api_params.game_id = client->game->public_.id;
+    api_params.rich_presence = buffer;
+    api_params.game_hash = client->game->public_.hash;
+    api_params.hardcore = client->state.hardcore;
+
     if (!client->callbacks.rich_presence_override ||
         !client->callbacks.rich_presence_override(client, buffer, sizeof(buffer))) {
       rc_mutex_lock(&client->state.mutex);
@@ -5448,13 +5564,12 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
       rc_mutex_unlock(&client->state.mutex);
     }
 
-    memset(&api_params, 0, sizeof(api_params));
-    api_params.username = client->user.username;
-    api_params.api_token = client->user.token;
-    api_params.game_id = client->game->public_.id;
-    api_params.rich_presence = buffer;
-    api_params.game_hash = client->game->public_.hash;
-    api_params.hardcore = client->state.hardcore;
+    /* there's a miniscule chance the game will be changed out while we're waiting for the lock.
+     * if that happens, discard this ping. the new game will have scheduled its own ping.
+     * don't reschedule this one. */
+    if (!client->game || client->game->public_.id != api_params.game_id) {
+      return;
+    }
 
     result = rc_api_init_ping_request_hosted(&request, &api_params, &client->state.host);
     if (result != RC_OK) {
@@ -5720,9 +5835,6 @@ static void rc_client_update_memref_values(rc_client_t* client) {
     } while (modified_memref_list);
   }
 
-  if (client->game->runtime.richpresence && client->game->runtime.richpresence->richpresence)
-    rc_update_values(client->game->runtime.richpresence->richpresence->values, client->state.legacy_peek, client);
-
   if (invalidated_memref)
     rc_client_update_active_achievements(client->game);
 }
@@ -5752,6 +5864,7 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
     /* if the measured value changed and the achievement hasn't triggered, show a progress indicator */
     if (trigger->measured_value != old_measured_value && old_measured_value != RC_MEASURED_UNKNOWN &&
         trigger->measured_value <= trigger->measured_target &&
+        trigger->measured_target != 0 &&
         rc_trigger_state_active(new_state) && new_state != RC_TRIGGER_STATE_WAITING) {
 
       /* only show a popup for the achievement closest to triggering */
