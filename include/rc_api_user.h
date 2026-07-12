@@ -42,6 +42,8 @@ typedef struct rc_api_login_response_t {
   const char* display_name;
   /* A URL to the user's avatar image */
   const char* avatar_url;
+  /* When the avatar was last updated */
+  time_t avatar_last_updated;
 
   /* Common server-provided response information */
   rc_api_response_t response;
@@ -191,6 +193,8 @@ typedef struct rc_api_followed_user_t {
   rc_api_followed_user_activity_t recent_activity;
   /* The current score of the player */
   uint32_t score;
+  /* minimum version: 12.6 */
+  time_t avatar_last_updated;
 }
 rc_api_followed_user_t;
 
