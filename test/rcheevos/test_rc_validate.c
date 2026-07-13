@@ -474,6 +474,13 @@ void test_error_priorities() {
   TEST_PARAMS2(test_validate_trigger, "R:0xH1234=1.1.S0xH2345=500", "Alt1 Condition 1: Comparison is never true (max 255)"); /* impossible condition in alt more important than redundant condition in core */
 }
 
+void test_potential_logic_warnings() {
+  TEST_PARAMS2(test_validate_trigger, "0xH0000=5_d0xH0001=5", "");
+  TEST_PARAMS2(test_validate_trigger, "0xH0000=5_d0xH0000=5", "Condition 2: Same comparison across frames as Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "0xH0000=5_p0xH0000=5", "Condition 2: Same comparison across frames as Condition 1");
+  TEST_PARAMS2(test_validate_trigger, "I:0xH0002_0xH0000=5_I:0xH0002_d0xH0000=5", "Condition 4: Same comparison across frames as Condition 2");
+}
+
 void test_rc_validate(void) {
   TEST_SUITE_BEGIN();
 
@@ -497,6 +504,7 @@ void test_rc_validate(void) {
   test_variable_operand_errors();
   test_remember_recall_errors();
   test_error_priorities();
+  test_potential_logic_warnings();
 
   TEST_SUITE_END();
 }
