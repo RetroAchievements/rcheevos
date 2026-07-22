@@ -2935,6 +2935,27 @@ static void test_addsource_long_chain() {
   free(buffer);
 }
 
+static void test_subsource_constant() {
+  uint8_t ram[] = { 0x00, 0x12, 0x34, 0xAB, 0x56 };
+  memory_t memory;
+  rc_condset_t* condset;
+  rc_memrefs_t memrefs;
+  char buffer[2048];
+
+  memory.ram = ram;
+  memory.size = sizeof(ram);
+
+  /* -1 - byte(0) + byte(1) = 10 */
+  assert_parse_condset(&condset, &memrefs, buffer, "B:1_B:0xH0000_0xH0001=10");
+
+  /* -1 - 0 + 18 = 10 */
+  assert_evaluate_condset(condset, memrefs, &memory, 0);
+
+  /* -1 - 7 + 18 = 10 */
+  ram[0] = 7;
+  assert_evaluate_condset(condset, memrefs, &memory, 1);
+}
+
 static void test_addhits() {
   uint8_t ram[] = {0x00, 0x12, 0x34, 0xAB, 0x56};
   memory_t memory;
@@ -5098,6 +5119,7 @@ void test_condset(void) {
   TEST(test_addsource_float_division);
   TEST(test_addsource_recall_float_division);
   TEST(test_addsource_long_chain);
+  TEST(test_subsource_constant);
 
   /* addhits/subhits */
   TEST(test_addhits);
