@@ -190,7 +190,7 @@ typedef struct rc_client_user_t {
   uint32_t num_unread_messages;
   /* minimum version: 12.0 */
   const char* avatar_url;
-  /* minimum version: 12.6 */
+  /* minimum version: 12.4 */
   time_t avatar_last_updated;
 } rc_client_user_t;
 
