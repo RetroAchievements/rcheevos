@@ -412,8 +412,14 @@ void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t
           parse->addsource_parent.value.memref = (rc_memref_t*)negate;
           parse->addsource_parent.size = zero.size;
 
-          if (parse->addsource_parent.type == RC_OPERAND_CONST)
+          if (parse->addsource_parent.type == RC_OPERAND_CONST) {
             parse->addsource_parent.value.num = rc_get_modified_memref_value(negate, NULL, NULL);
+          }
+          else if (parse->addsource_parent.type == RC_OPERAND_FP) {
+            rc_typed_value_t typed_value;
+            typed_value.value.u32 = rc_get_modified_memref_value(negate, NULL, NULL);
+            parse->addsource_parent.value.dbl = (double)typed_value.value.f32;
+          }
         }
 
         /* subtract the condition from the chain */
