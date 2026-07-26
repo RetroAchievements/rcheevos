@@ -31,7 +31,7 @@ static void* g_callback_userdata = &g_client; /* dummy object to use for callbac
       "\"Description\":\"Desc " id "\",\"Flags\":3,\"Points\":5,\"MemAddr\":\"" memaddr "\"," \
       "\"Author\":\"User1\",\"BadgeName\":\"00" id "\",\"Created\":1367266583,\"Modified\":1376929305}"
 
-#define UNOFFICIAL_ACHIEVEMENT_JSON(id, memaddr) "{\"ID\":" id ",\"Title\":\"Achievement " id "\"," \
+#define UNPROMOTED_ACHIEVEMENT_JSON(id, memaddr) "{\"ID\":" id ",\"Title\":\"Achievement " id "\"," \
       "\"Description\":\"Desc " id "\",\"Flags\":5,\"Points\":5,\"MemAddr\":\"" memaddr "\"," \
       "\"Author\":\"User1\",\"BadgeName\":\"00" id "\",\"Created\":1367266583,\"Modified\":1376929305}"
 
@@ -267,7 +267,7 @@ static const char* patchdata_leaderboards_hidden = "{\"Success\":true,"
       "]"
     "}]}";
 
-static const char* patchdata_unofficial_unsupported = "{\"Success\":true,"
+static const char* patchdata_unpromoted_unsupported = "{\"Success\":true,"
     "\"GameId\":1234,\"Title\":\"Sample Game\",\"ConsoleId\":17,"
     "\"ImageIconUrl\":\"http://server/Images/112233.png\","
     "\"RichPresenceGameId\":1234,\"RichPresencePatch\":\"Display:\\r\\nPoints:@Number(0xH0003)\\r\\n\","
@@ -350,7 +350,7 @@ static const char* patchdata_subset = "{\"Success\":true,"
       "]"
     "}]}";
 
-static const char* patchdata_subset_unofficial_unsupported = "{\"Success\":true,"
+static const char* patchdata_subset_unpromoted_unsupported = "{\"Success\":true,"
     "\"GameId\":1234,\"Title\":\"Sample Game\",\"ConsoleId\":17,"
     "\"ImageIconUrl\":\"http://server/Images/112233.png\","
     "\"RichPresenceGameId\":1234,\"RichPresencePatch\":\"Display:\\r\\nPoints:@Number(0xH0003)\\r\\n\","
@@ -361,7 +361,7 @@ static const char* patchdata_subset_unofficial_unsupported = "{\"Success\":true,
         GENERIC_ACHIEVEMENT_JSON("5", "0xH0005=5") ","
         GENERIC_ACHIEVEMENT_JSON("6", "M:0xH0006=6") ","
         GENERIC_ACHIEVEMENT_JSON("7", "T:0xH0007=7_0xH0001=1") ","
-        UNOFFICIAL_ACHIEVEMENT_JSON("8", "0xH0008=8") ","
+        UNPROMOTED_ACHIEVEMENT_JSON("8", "0xH0008=8") ","
         GENERIC_ACHIEVEMENT_JSON("9", "0xH0009=9") ","
         GENERIC_ACHIEVEMENT_JSON("70", "M:0xX0010=100000") ","
         GENERIC_ACHIEVEMENT_JSON("71", "G:0xX0010=100000")
@@ -380,7 +380,7 @@ static const char* patchdata_subset_unofficial_unsupported = "{\"Success\":true,
       "\"ImageIconUrl\":\"http://server/Images/112234.png\","
       "\"Achievements\":["
         GENERIC_ACHIEVEMENT_JSON("5501", "0xH0017=7") ","
-        UNOFFICIAL_ACHIEVEMENT_JSON("5502", "0xH0018=8") ","
+        UNPROMOTED_ACHIEVEMENT_JSON("5502", "0xH0018=8") ","
         GENERIC_ACHIEVEMENT_JSON("5503", "0xHFEFEFEFE=9")
       "],"
       "\"Leaderboards\":["
@@ -1267,7 +1267,7 @@ static void test_get_user_game_summary(void)
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
+  rc_client_set_unpromoted_enabled(g_client, 1);
   mock_client_load_game(patchdata_exhaustive, unlock_6_8h_and_9);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -1290,7 +1290,7 @@ static void test_get_user_game_summary_softcore(void)
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
+  rc_client_set_unpromoted_enabled(g_client, 1);
   mock_client_load_game(patchdata_exhaustive, unlock_6_8h_and_9);
   rc_client_set_hardcore_enabled(g_client, 0);
 
@@ -1314,7 +1314,7 @@ static void test_get_user_game_summary_encore_mode(void)
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
+  rc_client_set_unpromoted_enabled(g_client, 1);
   reset_mock_api_handlers();
   mock_api_response("r=achievementsets&u=Username&t=ApiToken&m=0123456789ABCDEF", patchdata_exhaustive);
   mock_api_response("r=startsession&u=Username&t=ApiToken&g=1234&h=1&m=0123456789ABCDEF&l=" RCHEEVOS_VERSION_STRING, unlock_6_8h_and_9);
@@ -1337,13 +1337,13 @@ static void test_get_user_game_summary_encore_mode(void)
   rc_client_destroy(g_client);
 }
 
-static void test_get_user_game_summary_with_unsupported_and_unofficial(void)
+static void test_get_user_game_summary_with_unsupported_and_unpromoted(void)
 {
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
-  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks);
+  rc_client_set_unpromoted_enabled(g_client, 1);
+  mock_client_load_game(patchdata_unpromoted_unsupported, no_unlocks);
 
   rc_client_get_user_game_summary(g_client, &summary);
   ASSERT_NUM_EQUALS(summary.num_promoted_achievements, 2);
@@ -1365,8 +1365,8 @@ static void test_get_user_game_summary_with_unsupported_unlocks(void)
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
-  mock_client_load_game(patchdata_unofficial_unsupported, unlock_5501_5502_and_5503);
+  rc_client_set_unpromoted_enabled(g_client, 1);
+  mock_client_load_game(patchdata_unpromoted_unsupported, unlock_5501_5502_and_5503);
 
   /* unlocked unsupported achievement should be counted in both unlocked and unsuppored buckets */
   rc_client_get_user_game_summary(g_client, &summary);
@@ -1384,15 +1384,15 @@ static void test_get_user_game_summary_with_unsupported_unlocks(void)
   rc_client_destroy(g_client);
 }
 
-static void test_get_user_game_summary_with_unofficial_off(void)
+static void test_get_user_game_summary_with_unpromoted_off(void)
 {
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 0);
-  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks);
+  rc_client_set_unpromoted_enabled(g_client, 0);
+  mock_client_load_game(patchdata_unpromoted_unsupported, no_unlocks);
 
-  /* unofficial achievements are not copied from the patch data to the runtime if unofficial is off */
+  /* unpromoted achievements are not copied from the patch data to the runtime if unpromoted is off */
   rc_client_get_user_game_summary(g_client, &summary);
   ASSERT_NUM_EQUALS(summary.num_promoted_achievements, 2);
   ASSERT_NUM_EQUALS(summary.num_unpromoted_achievements, 0);
@@ -1413,7 +1413,7 @@ static void test_get_user_game_summary_no_achievements(void)
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
+  rc_client_set_unpromoted_enabled(g_client, 1);
   mock_client_load_game(patchdata_empty, no_unlocks);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -1466,7 +1466,7 @@ static void test_get_user_game_summary_progress_incomplete(void)
   rc_client_user_game_summary_t summary;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
+  rc_client_set_unpromoted_enabled(g_client, 1);
   mock_client_load_game(patchdata_exhaustive_typed, unlock_8);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -1495,7 +1495,7 @@ static void test_get_user_game_summary_progress_progression_no_win(void)
     "]}";
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
+  rc_client_set_unpromoted_enabled(g_client, 1);
   mock_client_load_game(patchdata_exhaustive_typed, unlock_5_6_and_8);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -1523,7 +1523,7 @@ static void test_get_user_game_summary_progress_win_only(void)
     "]}";
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
+  rc_client_set_unpromoted_enabled(g_client, 1);
   mock_client_load_game(patchdata_exhaustive_typed, unlock_5_and_9);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -1553,7 +1553,7 @@ static void test_get_user_game_summary_beat(void)
     "]}";
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
+  rc_client_set_unpromoted_enabled(g_client, 1);
   mock_client_load_game(patchdata_exhaustive_typed, unlocks);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -1585,7 +1585,7 @@ static void test_get_user_game_summary_mastery(void)
     "]}";
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
+  rc_client_set_unpromoted_enabled(g_client, 1);
   mock_client_load_game(patchdata_exhaustive_typed, unlocks);
 
   rc_client_get_user_game_summary(g_client, &summary);
@@ -4467,13 +4467,13 @@ static void test_achievement_list_simple_with_unlocks_encore_mode(void)
   rc_client_destroy(g_client);
 }
 
-static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
+static void test_achievement_list_simple_with_unpromoted_and_unsupported(void)
 {
   rc_client_achievement_list_t* list;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
-  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks);
+  rc_client_set_unpromoted_enabled(g_client, 1);
+  mock_client_load_game(patchdata_unpromoted_unsupported, no_unlocks);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -4532,13 +4532,13 @@ static void test_achievement_list_simple_with_unofficial_and_unsupported(void)
   rc_client_destroy(g_client);
 }
 
-static void test_achievement_list_simple_with_unofficial_off(void)
+static void test_achievement_list_simple_with_unpromoted_off(void)
 {
   rc_client_achievement_list_t* list;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 0);
-  mock_client_load_game(patchdata_unofficial_unsupported, no_unlocks);
+  rc_client_set_unpromoted_enabled(g_client, 0);
+  mock_client_load_game(patchdata_unpromoted_unsupported, no_unlocks);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -5042,13 +5042,13 @@ static void test_achievement_list_buckets_with_unsynced(void)
   rc_client_destroy(g_client);
 }
 
-static void test_achievement_list_subset_with_unofficial_and_unsupported(void)
+static void test_achievement_list_subset_with_unpromoted_and_unsupported(void)
 {
   rc_client_achievement_list_t* list;
 
   g_client = mock_client_logged_in();
-  rc_client_set_unofficial_enabled(g_client, 1);
-  mock_client_load_game(patchdata_subset_unofficial_unsupported, no_unlocks);
+  rc_client_set_unpromoted_enabled(g_client, 1);
+  mock_client_load_game(patchdata_subset_unpromoted_unsupported, no_unlocks);
 
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
@@ -10487,9 +10487,9 @@ void test_client(void) {
   TEST(test_get_user_game_summary);
   TEST(test_get_user_game_summary_softcore);
   TEST(test_get_user_game_summary_encore_mode);
-  TEST(test_get_user_game_summary_with_unsupported_and_unofficial);
+  TEST(test_get_user_game_summary_with_unsupported_and_unpromoted);
   TEST(test_get_user_game_summary_with_unsupported_unlocks);
-  TEST(test_get_user_game_summary_with_unofficial_off);
+  TEST(test_get_user_game_summary_with_unpromoted_off);
   TEST(test_get_user_game_summary_no_achievements);
   TEST(test_get_user_game_summary_unknown_game);
   TEST(test_get_user_game_summary_progress_incomplete);
@@ -10603,13 +10603,13 @@ void test_client(void) {
   TEST(test_achievement_list_simple);
   TEST(test_achievement_list_simple_with_unlocks);
   TEST(test_achievement_list_simple_with_unlocks_encore_mode);
-  TEST(test_achievement_list_simple_with_unofficial_and_unsupported);
-  TEST(test_achievement_list_simple_with_unofficial_off);
+  TEST(test_achievement_list_simple_with_unpromoted_and_unsupported);
+  TEST(test_achievement_list_simple_with_unpromoted_off);
   TEST(test_achievement_list_buckets);
   TEST(test_achievement_list_buckets_progress_sort);
   TEST(test_achievement_list_buckets_progress_sort_big_ids);
   TEST(test_achievement_list_buckets_with_unsynced);
-  TEST(test_achievement_list_subset_with_unofficial_and_unsupported);
+  TEST(test_achievement_list_subset_with_unpromoted_and_unsupported);
   TEST(test_achievement_list_subset_buckets);
 
   TEST(test_get_next_achievement_first);

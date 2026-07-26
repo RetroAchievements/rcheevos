@@ -106,7 +106,7 @@ typedef struct rc_api_achievement_definition_t {
   uint32_t id;
   /* The number of points the achievement is worth */
   uint32_t points;
-  /* The achievement category (core, unofficial) */
+  /* The achievement category (promoted, unpromoted) */
   uint32_t category;
   /* The title of the achievement */
   const char* title;
@@ -137,8 +137,6 @@ rc_api_achievement_definition_t;
 
 #define RC_ACHIEVEMENT_CATEGORY_PROMOTED 3
 #define RC_ACHIEVEMENT_CATEGORY_UNPROMOTED 5
-#define RC_ACHIEVEMENT_CATEGORY_CORE RC_ACHIEVEMENT_CATEGORY_PROMOTED /* [deprecated] - use RC_ACHIEVEMENT_CATEGORY_PROMOTED instead */
-#define RC_ACHIEVEMENT_CATEGORY_UNOFFICIAL RC_ACHIEVEMENT_CATEGORY_UNPROMOTED /* [deprecated] - use RC_ACHIEVEMENT_CATEGORY_UNPROMOTED instead */
 
 #define RC_ACHIEVEMENT_TYPE_STANDARD 0
 #define RC_ACHIEVEMENT_TYPE_MISSABLE 1

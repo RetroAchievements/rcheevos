@@ -95,19 +95,6 @@ RC_EXPORT void RC_CCONV rc_client_set_unpromoted_enabled(rc_client_t* client, in
 RC_EXPORT int RC_CCONV rc_client_get_unpromoted_enabled(const rc_client_t* client);
 
 /**
- * Sets whether unpromoted achievements should be loaded.
- * Evaluated when loading a game. Has no effect while a game is loaded.
- * [deprecated] use rc_client_set_unpromoted_enabled instead.
- */
-RC_EXPORT void RC_CCONV rc_client_set_unofficial_enabled(rc_client_t* client, int enabled);
-
-/**
- * Gets whether unpromoted achievements should be loaded.
- * [deprecated] use rc_client_get_unpromoted_enabled instead.
- */
-RC_EXPORT int RC_CCONV rc_client_get_unofficial_enabled(const rc_client_t* client);
-
-/**
  * Sets whether spectator mode is enabled (off by default).
  * If enabled, events for achievement unlocks and leaderboard submissions will be
  * raised, but server calls to actually perform the unlock/submit will not occur.
@@ -538,9 +525,6 @@ enum {
   RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPROMOTED = (1 << 1),
   RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED_AND_UNPROMOTED = RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED | RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPROMOTED
 };
-#define RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED /* [deprecated] - use RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED instead */
-#define RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPROMOTED /* [deprecated] - use RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPROMOTED instead */
-#define RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED_AND_UNPROMOTED /* [deprecated] - use RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED_AND_UNPROMOTED instead */
 
 enum {
   RC_CLIENT_ACHIEVEMENT_TYPE_STANDARD = 0,

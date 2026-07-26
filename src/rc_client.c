@@ -6997,11 +6997,6 @@ int rc_client_get_hardcore_enabled(const rc_client_t* client)
   return client->state.hardcore;
 }
 
-void rc_client_set_unofficial_enabled(rc_client_t* client, int enabled)
-{
-  rc_client_set_unpromoted_enabled(client, enabled);
-}
-
 void rc_client_set_unpromoted_enabled(rc_client_t* client, int enabled)
 {
   if (!client)
@@ -7016,11 +7011,6 @@ void rc_client_set_unpromoted_enabled(rc_client_t* client, int enabled)
 
   RC_CLIENT_LOG_INFO_FORMATTED(client, "Unpromoted %s", enabled ? "enabled" : "disabled");
   client->state.unpromoted_enabled = enabled ? 1 : 0;
-}
-
-int rc_client_get_unofficial_enabled(const rc_client_t* client)
-{
-  return rc_client_get_unpromoted_enabled(client);
 }
 
 int rc_client_get_unpromoted_enabled(const rc_client_t* client)
