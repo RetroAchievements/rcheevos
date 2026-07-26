@@ -467,17 +467,12 @@ static int rc_json_get_array_entry_value(rc_json_field_t* field, rc_json_iterato
   return 1;
 }
 
-int rc_json_get_required_unum_array(uint32_t** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
-  rc_json_iterator_t iterator;
-  rc_json_field_t array;
-  rc_json_field_t value;
-  uint32_t* entry;
-
-  memset(&array, 0, sizeof(array));
-  if (!rc_json_get_required_array(num_entries, &array, response, field, field_name))
-    return RC_MISSING_VALUE;
-
+static int rc_json_get_unum_array(uint32_t** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* array, const char* field_name) {
   if (*num_entries) {
+    rc_json_iterator_t iterator;
+    rc_json_field_t value;
+    uint32_t* entry;
+
     *entries = (uint32_t*)rc_buffer_alloc(&response->buffer, *num_entries * sizeof(uint32_t));
     if (!*entries)
       return RC_OUT_OF_MEMORY;
@@ -485,8 +480,8 @@ int rc_json_get_required_unum_array(uint32_t** entries, uint32_t* num_entries, r
     value.name = field_name;
 
     memset(&iterator, 0, sizeof(iterator));
-    iterator.json = array.value_start;
-    iterator.end = array.value_end;
+    iterator.json = array->value_start;
+    iterator.end = array->value_end;
 
     entry = *entries;
     while (rc_json_get_array_entry_value(&value, &iterator)) {
@@ -501,6 +496,26 @@ int rc_json_get_required_unum_array(uint32_t** entries, uint32_t* num_entries, r
   }
 
   return RC_OK;
+}
+
+int rc_json_get_required_unum_array(uint32_t** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+  rc_json_field_t array;
+  memset(&array, 0, sizeof(array));
+
+  if (!rc_json_get_required_array(num_entries, &array, response, field, field_name))
+    return RC_MISSING_VALUE;
+
+  return rc_json_get_unum_array(entries, num_entries, response, &array, field_name);
+}
+
+int rc_json_get_optional_unum_array(uint32_t** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+  rc_json_field_t array;
+  memset(&array, 0, sizeof(array));
+
+  if (!rc_json_get_optional_array(num_entries, &array, field, field_name))
+    *num_entries = 0;
+
+  return rc_json_get_unum_array(entries, num_entries, response, &array, field_name);
 }
 
 static int rc_json_get_string_array(const char*** entries, uint32_t* num_entries, rc_api_response_t* response, const rc_json_field_t* array, const char* field_name) {
@@ -1019,6 +1034,61 @@ int rc_json_get_datetime(time_t* out, const rc_json_field_t* field, const char* 
 
 int rc_json_get_required_datetime(time_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
   if (rc_json_get_datetime(out, field, field_name))
+    return 1;
+
+  return rc_json_missing_field(response, field);
+}
+
+int rc_json_get_timet(time_t* out, const rc_json_field_t* field, const char* field_name)
+{
+  const char* src = field->value_start;
+  int64_t value = 0;
+  int negative = 0;
+
+#ifndef NDEBUG
+  if (strcmp(field->name, field_name) != 0)
+    return 0;
+#else
+  (void)field_name;
+#endif
+
+  if (!src) {
+    *out = 0;
+    return 0;
+  }
+
+  /* assert: string contains only numerals and an optional sign per rc_json_parse_field */
+  if (*src == '-') {
+    negative = 1;
+    ++src;
+  } else if (*src == '+') {
+    ++src;
+  } else if (*src < '0' || *src > '9') {
+    *out = 0;
+    return 0;
+  }
+
+  while (src < field->value_end && *src != '.') {
+    value *= 10;
+    value += *src - '0';
+    ++src;
+  }
+
+  if (negative)
+    *out = (time_t)-value;
+  else
+    *out = (time_t)value;
+
+  return 1;
+}
+
+void rc_json_get_optional_timet(time_t* out, const rc_json_field_t* field, const char* field_name, time_t default_value) {
+  if (!rc_json_get_timet(out, field, field_name))
+    *out = default_value;
+}
+
+int rc_json_get_required_timet(time_t* out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
+  if (rc_json_get_timet(out, field, field_name))
     return 1;
 
   return rc_json_missing_field(response, field);
