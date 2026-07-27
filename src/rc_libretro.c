@@ -25,6 +25,7 @@ typedef struct rc_disallowed_core_settings_t
 {
   const char* library_name;
   const rc_disallowed_setting_t* disallowed_settings;
+  uint32_t system_id;
 } rc_disallowed_core_settings_t;
 
 
@@ -100,6 +101,11 @@ static const rc_disallowed_setting_t _rc_disallowed_gpgx_wide_settings[] = {
   { NULL, NULL }
 };
 
+static const rc_disallowed_setting_t _rc_disallowed_melonds_ds_settings[] = {
+  { "melonds_console_mode", "dsi" },
+  { NULL, NULL }
+};
+
 static const rc_disallowed_setting_t _rc_disallowed_mesen_settings[] = {
   { "mesen_region", ",PAL,Dendy" },
   { NULL, NULL }
@@ -166,31 +172,32 @@ static const rc_disallowed_setting_t _rc_disallowed_virtual_jaguar_settings[] = 
 };
 
 static const rc_disallowed_core_settings_t rc_disallowed_core_settings[] = {
-  { "Beetle PSX", _rc_disallowed_beetle_psx_settings },
-  { "Beetle PSX HW", _rc_disallowed_beetle_psx_hw_settings },
-  { "bsnes-mercury", _rc_disallowed_bsnes_settings },
-  { "cap32", _rc_disallowed_cap32_settings },
-  { "dolphin-emu", _rc_disallowed_dolphin_settings },
-  { "DOSBox-pure", _rc_disallowed_dosbox_pure_settings },
-  { "DuckStation", _rc_disallowed_duckstation_settings },
-  { "ecwolf", _rc_disallowed_ecwolf_settings },
-  { "FCEUmm", _rc_disallowed_fceumm_settings },
-  { "FinalBurn Neo", _rc_disallowed_fbneo_settings },
-  { "Flycast", _rc_disallowed_flycast_settings },
-  { "Genesis Plus GX", _rc_disallowed_gpgx_settings },
-  { "Genesis Plus GX Wide", _rc_disallowed_gpgx_wide_settings },
-  { "Mesen", _rc_disallowed_mesen_settings },
-  { "Mesen-S", _rc_disallowed_mesen_s_settings },
-  { "NeoCD", _rc_disallowed_neocd_settings },
-  { "PPSSPP", _rc_disallowed_ppsspp_settings },
-  { "PCSX-ReARMed", _rc_disallowed_pcsx_rearmed_settings },
-  { "PicoDrive", _rc_disallowed_picodrive_settings },
-  { "QUASI88", _rc_disallowed_quasi88_settings },
-  { "SMS Plus GX", _rc_disallowed_smsplus_settings },
-  { "Snes9x", _rc_disallowed_snes9x_settings },
-  { "SwanStation", _rc_disallowed_swanstation_settings },
-  { "VICE x64", _rc_disallowed_vice_settings },
-  { "Virtual Jaguar", _rc_disallowed_virtual_jaguar_settings },
+  { "Beetle PSX", _rc_disallowed_beetle_psx_settings, 0 },
+  { "Beetle PSX HW", _rc_disallowed_beetle_psx_hw_settings, 0 },
+  { "bsnes-mercury", _rc_disallowed_bsnes_settings, 0 },
+  { "cap32", _rc_disallowed_cap32_settings, 0 },
+  { "dolphin-emu", _rc_disallowed_dolphin_settings, 0 },
+  { "DOSBox-pure", _rc_disallowed_dosbox_pure_settings, 0 },
+  { "DuckStation", _rc_disallowed_duckstation_settings, 0 },
+  { "ecwolf", _rc_disallowed_ecwolf_settings, 0 },
+  { "FCEUmm", _rc_disallowed_fceumm_settings, 0 },
+  { "FinalBurn Neo", _rc_disallowed_fbneo_settings, 0 },
+  { "Flycast", _rc_disallowed_flycast_settings, 0 },
+  { "Genesis Plus GX", _rc_disallowed_gpgx_settings, 0 },
+  { "Genesis Plus GX Wide", _rc_disallowed_gpgx_wide_settings, 0 },
+  { "MelonDS", _rc_disallowed_melonds_ds_settings, RC_CONSOLE_NINTENDO_DS },
+  { "Mesen", _rc_disallowed_mesen_settings, 0 },
+  { "Mesen-S", _rc_disallowed_mesen_s_settings, 0 },
+  { "NeoCD", _rc_disallowed_neocd_settings, 0 },
+  { "PPSSPP", _rc_disallowed_ppsspp_settings, 0 },
+  { "PCSX-ReARMed", _rc_disallowed_pcsx_rearmed_settings, 0 },
+  { "PicoDrive", _rc_disallowed_picodrive_settings, 0 },
+  { "QUASI88", _rc_disallowed_quasi88_settings, 0 },
+  { "SMS Plus GX", _rc_disallowed_smsplus_settings, 0 },
+  { "Snes9x", _rc_disallowed_snes9x_settings, 0 },
+  { "SwanStation", _rc_disallowed_swanstation_settings, 0 },
+  { "VICE x64", _rc_disallowed_vice_settings, 0 },
+  { "Virtual Jaguar", _rc_disallowed_virtual_jaguar_settings, 0 },
   { NULL, NULL }
 };
 
@@ -308,7 +315,7 @@ int rc_libretro_is_setting_allowed(const rc_disallowed_setting_t* disallowed_set
   return 1;
 }
 
-const rc_disallowed_setting_t* rc_libretro_get_disallowed_settings(const char* library_name) {
+const rc_disallowed_setting_t* rc_libretro_get_disallowed_settings_for_system(const char* library_name, uint32_t system_id) {
   const rc_disallowed_core_settings_t* core_filter = rc_disallowed_core_settings;
   size_t library_name_length;
 
@@ -317,13 +324,17 @@ const rc_disallowed_setting_t* rc_libretro_get_disallowed_settings(const char* l
 
   library_name_length = strlen(library_name) + 1;
   while (core_filter->library_name) {
-    if (memcmp(core_filter->library_name, library_name, library_name_length) == 0)
+    if (core_filter->system_id == system_id && memcmp(core_filter->library_name, library_name, library_name_length) == 0)
       return core_filter->disallowed_settings;
 
     ++core_filter;
   }
 
   return NULL;
+}
+
+const rc_disallowed_setting_t* rc_libretro_get_disallowed_settings(const char* library_name) {
+  return rc_libretro_get_disallowed_settings_for_system(library_name, 0);
 }
 
 typedef struct rc_disallowed_core_systems_t

@@ -38,6 +38,20 @@ static void test_disallowed_setting(const char* library_name, const char* settin
   ASSERT_FALSE(rc_libretro_is_setting_allowed(settings, setting, value));
 }
 
+static void test_system_allowed_setting(const char* library_name, uint32_t system_id, const char* setting, const char* value) {
+  const rc_disallowed_setting_t* settings = rc_libretro_get_disallowed_settings_for_system(library_name, system_id);
+  if (!settings)
+    return;
+
+  ASSERT_TRUE(rc_libretro_is_setting_allowed(settings, setting, value));
+}
+
+static void test_system_disallowed_setting(const char* library_name, uint32_t system_id, const char* setting, const char* value) {
+  const rc_disallowed_setting_t* settings = rc_libretro_get_disallowed_settings_for_system(library_name, system_id);
+  ASSERT_PTR_NOT_NULL(settings);
+  ASSERT_FALSE(rc_libretro_is_setting_allowed(settings, setting, value));
+}
+
 static void test_allowed_system(const char* library_name, uint32_t console_id) {
   ASSERT_TRUE(rc_libretro_is_system_allowed(library_name, console_id));
 }
@@ -832,6 +846,10 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "Genesis Plus GX Wide", "genesis_plus_gx_wide_region_detect", "NTSC-U");
   TEST_PARAMS3(test_disallowed_setting, "Genesis Plus GX Wide", "genesis_plus_gx_wide_region_detect", "PAL");
   TEST_PARAMS3(test_allowed_setting,    "Genesis Plus GX Wide", "genesis_plus_gx_wide_region_detect", "NTSC-J");
+
+  TEST_PARAMS4(test_system_allowed_setting, "MelonDS", RC_CONSOLE_NINTENDO_DS, "melonds_console_mode", "ds");
+  TEST_PARAMS4(test_system_disallowed_setting, "MelonDS", RC_CONSOLE_NINTENDO_DS, "melonds_console_mode", "dsi");
+  TEST_PARAMS4(test_system_allowed_setting, "MelonDS", RC_CONSOLE_NINTENDO_DSI, "melonds_console_mode", "dsi");
 
   TEST_PARAMS3(test_allowed_setting,    "Mesen", "mesen_region", "Auto");
   TEST_PARAMS3(test_allowed_setting,    "Mesen", "mesen_region", "NTSC");
