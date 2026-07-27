@@ -198,7 +198,7 @@ static const rc_disallowed_core_settings_t rc_disallowed_core_settings[] = {
   { "SwanStation", _rc_disallowed_swanstation_settings, 0 },
   { "VICE x64", _rc_disallowed_vice_settings, 0 },
   { "Virtual Jaguar", _rc_disallowed_virtual_jaguar_settings, 0 },
-  { NULL, NULL }
+  { NULL, NULL, 0 }
 };
 
 static int rc_libretro_string_equal_nocase_wildcard(const char* test, const char* match) {
