@@ -185,7 +185,7 @@ static const rc_disallowed_core_settings_t rc_disallowed_core_settings[] = {
   { "Flycast", _rc_disallowed_flycast_settings, 0 },
   { "Genesis Plus GX", _rc_disallowed_gpgx_settings, 0 },
   { "Genesis Plus GX Wide", _rc_disallowed_gpgx_wide_settings, 0 },
-  { "MelonDS", _rc_disallowed_melonds_ds_settings, RC_CONSOLE_NINTENDO_DS },
+  { "melonDS", _rc_disallowed_melonds_ds_settings, RC_CONSOLE_NINTENDO_DS },
   { "Mesen", _rc_disallowed_mesen_settings, 0 },
   { "Mesen-S", _rc_disallowed_mesen_s_settings, 0 },
   { "NeoCD", _rc_disallowed_neocd_settings, 0 },

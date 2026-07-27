@@ -847,9 +847,9 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_disallowed_setting, "Genesis Plus GX Wide", "genesis_plus_gx_wide_region_detect", "PAL");
   TEST_PARAMS3(test_allowed_setting,    "Genesis Plus GX Wide", "genesis_plus_gx_wide_region_detect", "NTSC-J");
 
-  TEST_PARAMS4(test_system_allowed_setting, "MelonDS", RC_CONSOLE_NINTENDO_DS, "melonds_console_mode", "ds");
-  TEST_PARAMS4(test_system_disallowed_setting, "MelonDS", RC_CONSOLE_NINTENDO_DS, "melonds_console_mode", "dsi");
-  TEST_PARAMS4(test_system_allowed_setting, "MelonDS", RC_CONSOLE_NINTENDO_DSI, "melonds_console_mode", "dsi");
+  TEST_PARAMS4(test_system_allowed_setting, "melonDS", RC_CONSOLE_NINTENDO_DS, "melonds_console_mode", "DS");
+  TEST_PARAMS4(test_system_disallowed_setting, "melonDS", RC_CONSOLE_NINTENDO_DS, "melonds_console_mode", "DSi");
+  TEST_PARAMS4(test_system_allowed_setting, "melonDS", RC_CONSOLE_NINTENDO_DSI, "melonds_console_mode", "DSi");
 
   TEST_PARAMS3(test_allowed_setting,    "Mesen", "mesen_region", "Auto");
   TEST_PARAMS3(test_allowed_setting,    "Mesen", "mesen_region", "NTSC");
