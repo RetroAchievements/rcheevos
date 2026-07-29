@@ -35,7 +35,7 @@ int rc_hash_arcade(char hash[33], const rc_hash_iterator_t* iterator)
   const char* filename = rc_path_get_filename(iterator->path);
   const char* ext = rc_path_get_extension(filename);
   char buffer[128]; /* realistically, this should never need more than ~32 characters */
-  size_t filename_length = ext - filename - 1;
+  size_t filename_length = (*ext) ? (size_t)(ext - filename - 1) : strlen(filename);
 
   /* fbneo supports loading subsystems by using specific folder names.
    * if one is found, include it in the hash.

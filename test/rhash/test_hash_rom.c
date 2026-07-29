@@ -825,10 +825,15 @@ void test_hash_rom(void) {
   TEST_PARAMS2(test_hash_arcade, "/home/user/nes_game.zip", "9b7aad36b365712fc93728088de4c209");
   TEST_PARAMS2(test_hash_arcade, "/home/user/nes/game.zip", "9b7aad36b365712fc93728088de4c209");
   TEST_PARAMS2(test_hash_arcade, "C:\\roms\\nes\\game.zip", "9b7aad36b365712fc93728088de4c209");
+  TEST_PARAMS2(test_hash_arcade, "C:\\roms\\nes\\game", "9b7aad36b365712fc93728088de4c209");
   TEST_PARAMS2(test_hash_arcade, "C:\\roms\\NES\\game.zip", "9b7aad36b365712fc93728088de4c209");
+  TEST_PARAMS2(test_hash_arcade, "C:\\roms\\NES\\game", "9b7aad36b365712fc93728088de4c209");
   TEST_PARAMS2(test_hash_arcade, "nes\\game.zip", "9b7aad36b365712fc93728088de4c209");
+  TEST_PARAMS2(test_hash_arcade, "nes\\game", "9b7aad36b365712fc93728088de4c209");
   TEST_PARAMS2(test_hash_arcade, "/home/user/snes/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade, "/home/user/snes/game", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "/home/user/nes2/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade, "/home/user/nes2/game", "c8d46d341bea4fd5bff866a65ff8aea9");
 
   /* we don't care that multiple aliases for the same system generate different hashes - the point is
    * that they don't generate the same hash as an actual arcade ROM with the same filename. */
