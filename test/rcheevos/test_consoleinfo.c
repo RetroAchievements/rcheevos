@@ -127,7 +127,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 79, "TI-83");
   TEST_PARAMS2(test_name, 80, "Uzebox");
   TEST_PARAMS2(test_name, 81, "Famicom Disk System");
-  TEST_PARAMS2(test_name, 82, "Unknown");
+  TEST_PARAMS2(test_name, 82, "PlayStation 3");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
@@ -179,6 +179,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS3(test_memory, RC_CONSOLE_PCFX, 0x210000, 0x210000);
   TEST_PARAMS3(test_memory, RC_CONSOLE_PLAYSTATION, 0x200400, 0x200400);
   TEST_PARAMS3(test_memory, RC_CONSOLE_PLAYSTATION_2, 0x02004000, 0x02004000);
+  TEST_PARAMS3(test_memory, RC_CONSOLE_PLAYSTATION_3, 0, 0);
   TEST_PARAMS3(test_memory, RC_CONSOLE_PSP, 0x04000000, 0x04000000);
   TEST_PARAMS3(test_memory, RC_CONSOLE_POKEMON_MINI, 0x002000, 0x002000);
   TEST_PARAMS3(test_memory, RC_CONSOLE_SATURN, 0x200000, 0x200000);
