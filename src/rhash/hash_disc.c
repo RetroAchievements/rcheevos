@@ -1068,6 +1068,47 @@ int rc_hash_psp(char hash[33], const rc_hash_iterator_t* iterator)
   return rc_hash_finalize(iterator, &md5, hash);
 }
 
+int rc_hash_ps3(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  void* track_handle;
+  uint32_t sector;
+  uint32_t size;
+  md5_state_t md5;
+
+  track_handle = rc_cd_open_track(iterator, 1);
+  if (!track_handle)
+    return rc_hash_iterator_error(iterator, "Could not open track");
+
+  /* PS3_GAME/PARAM.SFO contains key/value pairs identifying the game for the system (i.e. serial number,
+   * name, version). PS3_GAME/USRDIR/EBOOT.BIN is the encrypted primary executable.
+   */
+  sector = rc_cd_find_file_sector(iterator, track_handle, "PS3_GAME\\PARAM.SFO", &size);
+  if (!sector) {
+    rc_cd_close_track(iterator, track_handle);
+    return rc_hash_iterator_error(iterator, "Not a PS3 game disc");
+  }
+
+  md5_init(&md5);
+  if (!rc_hash_cd_file(&md5, iterator, track_handle, sector, NULL, size, "PS3_GAME\\PARAM.SFO")) {
+    rc_cd_close_track(iterator, track_handle);
+    return 0;
+  }
+
+  sector = rc_cd_find_file_sector(iterator, track_handle, "PS3_GAME\\USRDIR\\EBOOT.BIN", &size);
+  if (!sector) {
+    rc_cd_close_track(iterator, track_handle);
+    return rc_hash_iterator_error(iterator, "Could not find primary executable");
+  }
+
+  if (!rc_hash_cd_file(&md5, iterator, track_handle, sector, NULL, size, "PS3_GAME\\USRDIR\\EBOOT.BIN")) {
+    rc_cd_close_track(iterator, track_handle);
+    return 0;
+  }
+
+  rc_cd_close_track(iterator, track_handle);
+  return rc_hash_finalize(iterator, &md5, hash);
+}
+
 int rc_hash_sega_cd(char hash[33], const rc_hash_iterator_t* iterator)
 {
   uint8_t buffer[512];
