@@ -128,6 +128,7 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 80, "Uzebox");
   TEST_PARAMS2(test_name, 81, "Famicom Disk System");
   TEST_PARAMS2(test_name, 82, "PlayStation 3");
+  TEST_PARAMS2(test_name, 83, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
