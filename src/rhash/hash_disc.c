@@ -1079,7 +1079,8 @@ int rc_hash_ps3(char hash[33], const rc_hash_iterator_t* iterator)
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track");
 
-  /* PS3_GAME/PARAM.SFO contains key/value pairs identifying the game for the system (i.e. serial number,
+  /* https://www.psdevwiki.com/ps3/PARAM.SFO
+   * PS3_GAME/PARAM.SFO contains key/value pairs identifying the game for the system (i.e. serial number,
    * name, version). PS3_GAME/USRDIR/EBOOT.BIN is the encrypted primary executable.
    */
   sector = rc_cd_find_file_sector(iterator, track_handle, "PS3_GAME\\PARAM.SFO", &size);
