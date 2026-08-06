@@ -992,6 +992,7 @@ void test_rapi_common(void) {
   TEST_PARAMS2(test_json_get_string, "A \\\"Quoted\\\" String", "A \"Quoted\" String");
   TEST_PARAMS2(test_json_get_string, "This\\r\\nThat", "This\r\nThat");
   TEST_PARAMS2(test_json_get_string, "This\\/That", "This/That");
+  TEST_PARAMS2(test_json_get_string, "Before\\u0000After", "Before");
   TEST_PARAMS2(test_json_get_string, "\\u0065", "e");
   TEST_PARAMS2(test_json_get_string, "\\u00a9", "\xc2\xa9");
   TEST_PARAMS2(test_json_get_string, "\\u2260", "\xe2\x89\xa0");
