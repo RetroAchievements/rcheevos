@@ -549,6 +549,21 @@ static void test_process_fetch_game_data_response_achievement_null_author()
   rc_api_destroy_fetch_game_data_response(&fetch_game_data_response);
 }
 
+static void test_process_fetch_game_data_response_achievement_null_title() {
+  rc_api_fetch_game_data_response_t response;
+  const char* server_response = "{\"Success\":true,\"PatchData\":{"
+    "\"ID\":20,\"Title\":\"Game\",\"ConsoleID\":19,\"ImageIcon\":\"/Images/112233.png\","
+    "\"Achievements\":[{\"ID\":1,\"Title\":null,\"Description\":\"Desc\",\"Flags\":3,\"Points\":5,"
+    "\"MemAddr\":\"0=1\",\"Author\":\"User\",\"BadgeName\":\"00234\","
+    "\"Created\":1367266583,\"Modified\":1376929305}],\"Leaderboards\":[]}}";
+
+  memset(&response, 0, sizeof(response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_data_response(&response, server_response), RC_MISSING_VALUE);
+
+  rc_api_destroy_fetch_game_data_response(&response);
+}
+
 static void test_process_fetch_game_data_response_leaderboards() {
   rc_api_fetch_game_data_response_t fetch_game_data_response;
   const char* server_response = "{\"Success\":true,\"PatchData\":{"
@@ -2145,6 +2160,7 @@ void test_rapi_runtime(void) {
   TEST(test_process_fetch_game_data_response_achievement_types);
   TEST(test_process_fetch_game_data_response_achievement_rarity);
   TEST(test_process_fetch_game_data_response_achievement_null_author);
+  TEST(test_process_fetch_game_data_response_achievement_null_title);
   TEST(test_process_fetch_game_data_response_leaderboards);
   TEST(test_process_fetch_game_data_response_rich_presence);
   TEST(test_process_fetch_game_data_response_rich_presence_null);

@@ -140,7 +140,7 @@ static int rc_api_process_fetch_game_data_achievements(rc_api_response_t* respon
   while (rc_json_get_array_entry_object(achievement_fields, sizeof(achievement_fields) / sizeof(achievement_fields[0]), &iterator)) {
     if (!rc_json_get_required_unum(&achievement->id, response, &achievement_fields[0], "ID"))
       return RC_MISSING_VALUE;
-    if (!rc_json_get_required_string(&achievement->title, response, &achievement_fields[1], "Title"))
+    if (!rc_json_get_required_string(&achievement->title, response, &achievement_fields[1], "Title") || !achievement->title)
       return RC_MISSING_VALUE;
     if (!rc_json_get_required_string(&achievement->description, response, &achievement_fields[2], "Description"))
       return RC_MISSING_VALUE;
