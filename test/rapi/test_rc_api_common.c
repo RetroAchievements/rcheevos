@@ -213,6 +213,17 @@ static void test_json_get_string(const char* escaped, const char* expected) {
   ASSERT_STR_EQUALS(value, expected);
 }
 
+static void test_json_get_string_truncated_surrogate_pair() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  const char* value = NULL;
+
+  /* the JSON scanner accepts the escape, but the string decoder must reject the incomplete tail */
+  assert_json_parse_response(&response, &field, "{\"Test\":\"\\ud83d\\u\"}", RC_OK);
+
+  ASSERT_FALSE(rc_json_get_string(&value, &response.buffer, &field, "Test"));
+}
+
 static void test_json_get_optional_string() {
   rc_api_response_t response;
   rc_json_field_t field;
@@ -985,8 +996,10 @@ void test_rapi_common(void) {
   TEST_PARAMS2(test_json_get_string, "\\u00a9", "\xc2\xa9");
   TEST_PARAMS2(test_json_get_string, "\\u2260", "\xe2\x89\xa0");
   TEST_PARAMS2(test_json_get_string, "\\ud83d\\udeb6", "\xf0\x9f\x9a\xb6"); /* surrogate pair */
+  TEST_PARAMS2(test_json_get_string, "\\ud83d\\udeb6After", "\xf0\x9f\x9a\xb6" "After"); /* surrogate pair followed by text */
   TEST_PARAMS2(test_json_get_string, "\\ud83d", "\xef\xbf\xbd"); /* surrogate lead with no tail */
   TEST_PARAMS2(test_json_get_string, "\\udeb6", "\xef\xbf\xbd"); /* surrogate tail with no lead */
+  TEST(test_json_get_string_truncated_surrogate_pair);
   TEST(test_json_get_optional_string);
   TEST(test_json_get_required_string);
 
