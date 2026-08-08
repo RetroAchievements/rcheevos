@@ -671,7 +671,7 @@ static void test_hash_dreamcast_cue_buffered()
   int result_iterator;
   struct rc_hash_iterator iterator;
 
-  rc_hash_initialize_iterator(&iterator, "game.cue", dreamcast_cue_file, strlen(dreamcast_cue_file));
+  rc_hash_initialize_iterator(&iterator, "game.cue", (uint8_t*)dreamcast_cue_file, strlen(dreamcast_cue_file));
   result_iterator = rc_hash_iterate(hash_iterator, &iterator);
   rc_hash_destroy_iterator(&iterator);
 
