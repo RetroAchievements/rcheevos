@@ -503,6 +503,19 @@ static int rc_hash_from_buffer(char hash[33], uint32_t console_id, const rc_hash
 {
   switch (console_id) {
     default:
+      if (iterator->path) {
+        const char* ext = rc_path_get_extension(iterator->path);
+        if (strcasecmp(ext, "cue") == 0 ||
+          strcasecmp(ext, "m3u") == 0 ||
+          strcasecmp(ext, "iso") == 0 ||
+          strcasecmp(ext, "chd") == 0) {
+          /* These extensions are associated to CD media. If buffered data
+           * was provided, ignore it and try to open the media directly. */
+          if (rc_hash_from_file(hash, console_id, iterator))
+            return 1;
+        }
+      }
+
       return rc_hash_iterator_error_formatted(iterator, "Unsupported console for buffer hash: %d", console_id);
 
     case RC_CONSOLE_AMSTRAD_PC:
