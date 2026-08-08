@@ -830,6 +830,16 @@ static const rc_memory_region_t _rc_memory_regions_psp[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_psp = { _rc_memory_regions_psp, 3 };
 
+/* ===== PlayStation 3 ===== */
+/* https://github.com/RPCS3/rpcs3/blob/master/rpcs3/Emu/Memory/vm.cpp */
+static const rc_memory_region_t _rc_memory_regions_playstation3[] = {
+    { 0x00000000U, 0x0FFFFFFFU, 0x00000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Main RAM" },
+    { 0x10000000U, 0x1FFFFFFFU, 0x10000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "User RAM (64K pages)" },
+    { 0x20000000U, 0x2FFFFFFFU, 0x00000000U, RC_MEMORY_TYPE_UNUSED,    "" },
+    { 0x30000000U, 0x3FFFFFFFU, 0x30000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "User RAM (1M pages)" },
+};
+static const rc_memory_regions_t rc_memory_regions_playstation3 = { _rc_memory_regions_playstation3, 4 };
+
 /* ===== Pokemon Mini ===== */
 /* https://www.pokemon-mini.net/documentation/memory-map/ */
 static const rc_memory_region_t _rc_memory_regions_pokemini[] = {
@@ -1169,6 +1179,9 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
 
     case RC_CONSOLE_PSP:
       return &rc_memory_regions_psp;
+
+    case RC_CONSOLE_PLAYSTATION_3:
+      return &rc_memory_regions_playstation3;
 
     case RC_CONSOLE_POKEMON_MINI:
       return &rc_memory_regions_pokemini;
