@@ -1429,6 +1429,69 @@ static void test_hash_ps3_m3u()
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
+static void test_hash_ps3_extracted_disc()
+{
+  const size_t param_sfo_size = 690;
+  uint8_t* param_sfo = generate_generic_file(param_sfo_size);
+  const size_t eboot_bin_size = 273470;
+  uint8_t* eboot_bin = generate_generic_file(eboot_bin_size);
+  char hash_file[33];
+  const char* expected_md5 = "27ec2f9b7238b2ef29af31ddd254f201";
+
+  mock_file(0, "PS3_GAME/PARAM.SFO", param_sfo, param_sfo_size);
+  mock_file(1, "PS3_GAME/USRDIR/EBOOT.BIN", eboot_bin, eboot_bin_size);
+
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PLAYSTATION_3, "PS3_GAME/USRDIR/EBOOT.BIN");
+
+  free(eboot_bin);
+  free(param_sfo);
+
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+}
+
+static void test_hash_ps3_installed_pkg()
+{
+  const size_t param_sfo_size = 690;
+  uint8_t* param_sfo = generate_generic_file(param_sfo_size);
+  const size_t eboot_bin_size = 273470;
+  uint8_t* eboot_bin = generate_generic_file(eboot_bin_size);
+  char hash_file[33];
+  const char* expected_md5 = "27ec2f9b7238b2ef29af31ddd254f201";
+
+  mock_file(0, "PARAM.SFO", param_sfo, param_sfo_size);
+  mock_file(1, "USRDIR/EBOOT.BIN", eboot_bin, eboot_bin_size);
+
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PLAYSTATION_3, "USRDIR/EBOOT.BIN");
+
+  free(eboot_bin);
+  free(param_sfo);
+
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+}
+
+static void test_hash_ps3_flat_elf()
+{
+  const size_t param_sfo_size = 690;
+  uint8_t* param_sfo = generate_generic_file(param_sfo_size);
+  const size_t eboot_bin_size = 273470;
+  uint8_t* eboot_bin = generate_generic_file(eboot_bin_size);
+  char hash_file[33];
+  const char* expected_md5 = "27ec2f9b7238b2ef29af31ddd254f201";
+
+  mock_file(0, "PARAM.SFO", param_sfo, param_sfo_size);
+  mock_file(1, "EBOOT.BIN", eboot_bin, eboot_bin_size);
+
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_PLAYSTATION_3, "EBOOT.BIN");
+
+  free(eboot_bin);
+  free(param_sfo);
+
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+}
+
 static void test_hash_sega_cd()
 {
   /* the first 512 bytes of sector 0 are a volume header and ROM header. 
@@ -1649,6 +1712,9 @@ void test_hash_disc(void) {
   TEST(test_hash_ps3_no_param_sfo);
   TEST(test_hash_ps3_no_eboot);
   TEST(test_hash_ps3_m3u);
+  TEST(test_hash_ps3_extracted_disc);
+  TEST(test_hash_ps3_installed_pkg);
+  TEST(test_hash_ps3_flat_elf);
 
   /* Sega CD */
   TEST(test_hash_sega_cd);
