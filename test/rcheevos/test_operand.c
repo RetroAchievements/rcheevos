@@ -80,10 +80,10 @@ static uint32_t evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memrefs_
   rc_typed_value_t value;
 
   memset(&eval_state, 0, sizeof(eval_state));
-  eval_state.peek = peek;
-  eval_state.peek_userdata = memory;
+  eval_state.read_memory = read_memory;
+  eval_state.read_memory_userdata = memory;
 
-  rc_update_memref_values(memrefs, peek, memory);
+  rc_update_memref_values(memrefs, read_memory, memory);
   rc_evaluate_operand(&value, op, &eval_state);
   return value.value.u32;
 }
@@ -109,10 +109,10 @@ static float evaluate_operand_float(rc_operand_t* op, memory_t* memory, rc_memre
   rc_typed_value_t value;
 
   memset(&eval_state, 0, sizeof(eval_state));
-  eval_state.peek = peek;
-  eval_state.peek_userdata = memory;
+  eval_state.read_memory = read_memory;
+  eval_state.read_memory_userdata = memory;
 
-  rc_update_memref_values(memrefs, peek, memory);
+  rc_update_memref_values(memrefs, read_memory, memory);
   rc_evaluate_operand(&value, op, &eval_state);
   return value.value.f32;
 }

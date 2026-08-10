@@ -27,11 +27,9 @@ typedef struct rc_value_t rc_value_t;
 \*****************************************************************************/
 
 /**
- * Callback used to read num_bytes bytes from memory starting at address. If
- * num_bytes is greater than 1, the value is read in little-endian from
- * memory.
+ * Callback used to read num_bytes bytes from memory into buffer starting at address.
  */
-typedef uint32_t(RC_CCONV *rc_runtime_peek_t)(uint32_t address, uint32_t num_bytes, void* ud);
+typedef uint32_t(RC_CCONV *rc_runtime_read_memory_func_t)(uint32_t address, uint8_t* buffer, uint32_t num_bytes, void* ud);
 
 /*****************************************************************************\
 | Runtime                                                                     |
@@ -99,7 +97,7 @@ RC_EXPORT int RC_CCONV rc_runtime_format_lboard_value(char* buffer, int size, in
 
 
 RC_EXPORT int RC_CCONV rc_runtime_activate_richpresence(rc_runtime_t* runtime, const char* script, void* unused_L, int unused_funcs_idx);
-RC_EXPORT int RC_CCONV rc_runtime_get_richpresence(const rc_runtime_t* runtime, char* buffer, size_t buffersize, rc_runtime_peek_t peek, void* peek_ud, void* unused_L);
+RC_EXPORT int RC_CCONV rc_runtime_get_richpresence(const rc_runtime_t* runtime, char* buffer, size_t buffersize, rc_runtime_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L);
 
 enum {
   RC_RUNTIME_EVENT_ACHIEVEMENT_ACTIVATED, /* from WAITING, PAUSED, or PRIMED to ACTIVE */
@@ -126,7 +124,7 @@ rc_runtime_event_t;
 
 typedef void (RC_CCONV *rc_runtime_event_handler_t)(const rc_runtime_event_t* runtime_event);
 
-RC_EXPORT void RC_CCONV rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_peek_t peek, void* ud, void* unused_L);
+RC_EXPORT void RC_CCONV rc_runtime_do_frame(rc_runtime_t* runtime, rc_runtime_event_handler_t event_handler, rc_runtime_read_memory_func_t read_memory, void* ud, void* unused_L);
 RC_EXPORT void RC_CCONV rc_runtime_reset(rc_runtime_t* runtime);
 
 typedef int (RC_CCONV *rc_runtime_validate_address_t)(uint32_t address);

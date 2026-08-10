@@ -50,14 +50,14 @@ static void _assert_activate_richpresence(rc_runtime_t* runtime, const char* scr
 static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)
 {
   event_count = 0;
-  rc_runtime_do_frame(runtime, event_handler, peek, memory, NULL);
+  rc_runtime_do_frame(runtime, event_handler, read_memory, memory, NULL);
 }
 
 static void _assert_richpresence_display_string(rc_runtime_t* runtime, memory_t* memory, const char* expected)
 {
   char buffer[512];
   const int expected_len = (int)strlen(expected);
-  const int result = rc_runtime_get_richpresence(runtime, buffer, sizeof(buffer), peek, memory, NULL);
+  const int result = rc_runtime_get_richpresence(runtime, buffer, sizeof(buffer), read_memory, memory, NULL);
   ASSERT_STR_EQUALS(buffer, expected);
   ASSERT_NUM_EQUALS(result, expected_len);
 }
@@ -591,7 +591,7 @@ static void test_trigger_deactivation(void)
   ram[1] = 10;
   event_count = 0;
   discarding_event_handler_runtime = &runtime;
-  rc_runtime_do_frame(&runtime, discarding_event_handler, peek, &memory, NULL);
+  rc_runtime_do_frame(&runtime, discarding_event_handler, read_memory, &memory, NULL);
   discarding_event_handler_runtime = NULL;
 
   ASSERT_NUM_EQUALS(event_count, 3);
@@ -1429,11 +1429,11 @@ typedef struct {
 }
 memory_invalid_t;
 
-static uint32_t peek_invalid(uint32_t address, uint32_t num_bytes, void* ud)
+static uint32_t read_memory_invalid(uint32_t address, uint8_t* buffer, uint32_t num_bytes, void* ud)
 {
   memory_invalid_t* memory = (memory_invalid_t*)ud;
   if (memory->invalid_address != address)
-    return peek(address, num_bytes, &memory->memory);
+    return read_memory(address, buffer, num_bytes, &memory->memory);
 
   rc_runtime_invalidate_address(memory->runtime, address);
   return 0;
@@ -1444,7 +1444,7 @@ static void assert_do_frame_invalid(rc_runtime_t* runtime, memory_invalid_t* mem
   event_count = 0;
   memory->runtime = runtime;
   memory->invalid_address = invalid_address;
-  rc_runtime_do_frame(runtime, event_handler, peek_invalid, memory, NULL);
+  rc_runtime_do_frame(runtime, event_handler, read_memory_invalid, memory, NULL);
 }
 
 static void test_invalidate_address(void)

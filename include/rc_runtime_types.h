@@ -23,11 +23,9 @@ typedef struct rc_value_t rc_value_t;
 \*****************************************************************************/
 
 /**
- * Callback used to read num_bytes bytes from memory starting at address. If
- * num_bytes is greater than 1, the value is read in little-endian from
- * memory.
+ * Callback used to read num_bytes bytes from memory into buffer starting at address.
  */
-typedef uint32_t(RC_CCONV* rc_peek_t)(uint32_t address, uint32_t num_bytes, void* ud);
+typedef uint32_t(RC_CCONV* rc_read_memory_func_t)(uint32_t address, uint8_t* buffer, uint32_t num_bytes, void* ud);
 
 /*****************************************************************************\
 | Memory References                                                           |
@@ -295,8 +293,8 @@ struct rc_trigger_t {
 
 RC_EXPORT int RC_CCONV rc_trigger_size(const char* memaddr);
 RC_EXPORT rc_trigger_t* RC_CCONV rc_parse_trigger(void* buffer, const char* memaddr, void* unused_L, int unused_funcs_idx);
-RC_EXPORT int RC_CCONV rc_evaluate_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, void* unused_L);
-RC_EXPORT int RC_CCONV rc_test_trigger(rc_trigger_t* trigger, rc_peek_t peek, void* ud, void* unused_L);
+RC_EXPORT int RC_CCONV rc_evaluate_trigger(rc_trigger_t* trigger, rc_read_memory_func_t read_memory, void* ud, void* unused_L);
+RC_EXPORT int RC_CCONV rc_test_trigger(rc_trigger_t* trigger, rc_read_memory_func_t read_memory, void* ud, void* unused_L);
 RC_EXPORT void RC_CCONV rc_reset_trigger(rc_trigger_t* self);
 
 /*****************************************************************************\
@@ -324,7 +322,7 @@ struct rc_value_t {
 
 RC_EXPORT int RC_CCONV rc_value_size(const char* memaddr);
 RC_EXPORT rc_value_t* RC_CCONV rc_parse_value(void* buffer, const char* memaddr, void* unused_L, int unused_funcs_idx);
-RC_EXPORT int32_t RC_CCONV rc_evaluate_value(rc_value_t* value, rc_peek_t peek, void* ud, void* unused_L);
+RC_EXPORT int32_t RC_CCONV rc_evaluate_value(rc_value_t* value, rc_read_memory_func_t read_memory, void* ud, void* unused_L);
 
 /*****************************************************************************\
 | Leaderboards                                                                |
@@ -354,7 +352,7 @@ struct rc_lboard_t {
 
 RC_EXPORT int RC_CCONV rc_lboard_size(const char* memaddr);
 RC_EXPORT rc_lboard_t* RC_CCONV rc_parse_lboard(void* buffer, const char* memaddr, void* unused_L, int unused_funcs_idx);
-RC_EXPORT int RC_CCONV rc_evaluate_lboard(rc_lboard_t* lboard, int32_t* value, rc_peek_t peek, void* peek_ud, void* unused_L);
+RC_EXPORT int RC_CCONV rc_evaluate_lboard(rc_lboard_t* lboard, int32_t* value, rc_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L);
 RC_EXPORT void RC_CCONV rc_reset_lboard(rc_lboard_t* lboard);
 
 /*****************************************************************************\
@@ -442,9 +440,9 @@ struct rc_richpresence_t {
 RC_EXPORT int RC_CCONV rc_richpresence_size(const char* script);
 RC_EXPORT int RC_CCONV rc_richpresence_size_lines(const char* script, int* lines_read);
 RC_EXPORT rc_richpresence_t* RC_CCONV rc_parse_richpresence(void* buffer, const char* script, void* unused_L, int unused_funcs_idx);
-RC_EXPORT int RC_CCONV rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, void* unused_L);
-RC_EXPORT void RC_CCONV rc_update_richpresence(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud, void* unused_L);
-RC_EXPORT int RC_CCONV rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_peek_t peek, void* peek_ud, void* unused_L);
+RC_EXPORT int RC_CCONV rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L);
+RC_EXPORT void RC_CCONV rc_update_richpresence(rc_richpresence_t* richpresence, rc_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L);
+RC_EXPORT int RC_CCONV rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L);
 RC_EXPORT void RC_CCONV rc_reset_richpresence(rc_richpresence_t* self);
 
 RC_END_C_DECLS

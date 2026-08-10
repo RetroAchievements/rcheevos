@@ -193,6 +193,7 @@ typedef struct {
     uint32_t u32;
     int32_t i32;
     float f32;
+    uint8_t u8[4];
   } value;
 
   char type;
@@ -210,8 +211,8 @@ enum {
 
 typedef struct {
   /* memory accessors */
-  rc_peek_t peek;
-  void* peek_userdata;
+  rc_read_memory_func_t read_memory;
+  void* read_memory_userdata;
 
   /* processing state */
   rc_typed_value_t measured_value;     /* captured Measured value */
@@ -284,14 +285,15 @@ rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t 
 rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t size, const rc_operand_t* parent,
                                                uint8_t modifier_type, const rc_operand_t* modifier);
 int rc_parse_memref(const char** memaddr, uint8_t* size, uint32_t* address);
-void rc_update_memref_values(rc_memrefs_t* memrefs, rc_peek_t peek, void* ud);
+void rc_update_memref_values(rc_memrefs_t* memrefs, rc_read_memory_func_t read_memory, void* ud);
 void rc_update_memref_value(rc_memref_value_t* memref, uint32_t value);
 void rc_get_memref_value(rc_typed_value_t* value, rc_memref_t* memref, int operand_type);
-uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_peek_t peek, void* ud);
+uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_read_memory_func_t read_memory, void* ud);
 uint8_t rc_memref_shared_size(uint8_t size);
 uint32_t rc_memref_mask(uint8_t size);
+uint32_t rc_memref_bytes(uint8_t size);
 void rc_transform_memref_value(rc_typed_value_t* value, uint8_t size);
-uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud);
+uint32_t rc_read_memory(uint32_t address, uint8_t size, rc_read_memory_func_t read_memory, void* ud);
 
 void rc_memrefs_init(rc_memrefs_t* memrefs);
 void rc_memrefs_destroy(rc_memrefs_t* memrefs);
@@ -355,12 +357,12 @@ void rc_operand_set_float_const(rc_operand_t* self, double value);
 
 int rc_is_valid_variable_character(char ch, int is_first);
 void rc_parse_value_internal(rc_value_t* self, const char** memaddr, rc_parse_state_t* parse);
-int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t peek, void* ud);
+int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_read_memory_func_t read_memory, void* ud);
 void rc_reset_value(rc_value_t* self);
 int rc_value_from_hits(rc_value_t* self);
 rc_value_t* rc_alloc_variable(const char* memaddr, size_t memaddr_len, rc_parse_state_t* parse);
 uint32_t rc_count_values(const rc_value_t* values);
-void rc_update_values(rc_value_t* values, rc_peek_t peek, void* ud);
+void rc_update_values(rc_value_t* values, rc_read_memory_func_t read_memory, void* ud);
 void rc_reset_values(rc_value_t* values);
 
 void rc_typed_value_convert(rc_typed_value_t* value, char new_type);
@@ -381,7 +383,7 @@ int rc_lboard_state_active(int state);
 void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script, rc_parse_state_t* parse);
 rc_memrefs_t* rc_richpresence_get_memrefs(rc_richpresence_t* self);
 void rc_reset_richpresence_triggers(rc_richpresence_t* self);
-void rc_update_richpresence_internal(rc_richpresence_t* richpresence, rc_peek_t peek, void* peek_ud);
+void rc_update_richpresence_internal(rc_richpresence_t* richpresence, rc_read_memory_func_t read_memory, void* read_memory_ud);
 
 int rc_validate_memrefs_for_console(const rc_memrefs_t* memrefs, char result[], const size_t result_size, uint32_t console_id);
 

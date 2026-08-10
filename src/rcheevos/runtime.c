@@ -500,21 +500,21 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, voi
   return RC_OK;
 }
 
-int rc_runtime_get_richpresence(const rc_runtime_t* self, char* buffer, size_t buffersize, rc_runtime_peek_t peek, void* peek_ud, void* unused_L) {
+int rc_runtime_get_richpresence(const rc_runtime_t* self, char* buffer, size_t buffersize, rc_runtime_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L) {
   if (self->richpresence && self->richpresence->richpresence)
-    return rc_get_richpresence_display_string(self->richpresence->richpresence, buffer, buffersize, peek, peek_ud, unused_L);
+    return rc_get_richpresence_display_string(self->richpresence->richpresence, buffer, buffersize, read_memory, read_memory_ud, unused_L);
 
   *buffer = '\0';
   return 0;
 }
 
-void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_handler, rc_runtime_peek_t peek, void* ud, void* unused_L) {
+void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_handler, rc_runtime_read_memory_func_t read_memory, void* ud, void* unused_L) {
   rc_runtime_event_t runtime_event;
   int32_t i;
 
   runtime_event.value = 0;
 
-  rc_update_memref_values(self->memrefs, peek, ud);
+  rc_update_memref_values(self->memrefs, read_memory, ud);
 
   for (i = self->trigger_count - 1; i >= 0; --i) {
     rc_trigger_t* trigger = self->triggers[i].trigger;
@@ -540,7 +540,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 
     old_measured_value = trigger->measured_value;
     old_state = trigger->state;
-    new_state = rc_evaluate_trigger(trigger, peek, ud, unused_L);
+    new_state = rc_evaluate_trigger(trigger, read_memory, ud, unused_L);
 
     /* trigger->state doesn't actually change to RESET, RESET just serves as a notification.
      * handle the notification, then look at the actual state */
@@ -642,7 +642,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     }
 
     lboard_state = lboard->state;
-    switch (rc_evaluate_lboard(lboard, &runtime_event.value, peek, ud, unused_L))
+    switch (rc_evaluate_lboard(lboard, &runtime_event.value, read_memory, ud, unused_L))
     {
       case RC_LBOARD_STATE_STARTED: /* leaderboard is running */
         if (lboard_state != RC_LBOARD_STATE_STARTED) {
@@ -680,7 +680,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
   }
 
   if (self->richpresence && self->richpresence->richpresence)
-    rc_update_richpresence(self->richpresence->richpresence, peek, ud, unused_L);
+    rc_update_richpresence(self->richpresence->richpresence, read_memory, ud, unused_L);
 }
 
 void rc_runtime_reset(rc_runtime_t* self) {

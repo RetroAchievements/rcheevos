@@ -312,27 +312,27 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, void* unused_L, in
   return (preparse.parse.offset >= 0) ? &value->value : NULL;
 }
 
-static void rc_update_value_memrefs(rc_value_t* self, rc_peek_t peek, void* ud) {
+static void rc_update_value_memrefs(rc_value_t* self, rc_read_memory_func_t read_memory, void* ud) {
   if (self->has_memrefs) {
     rc_value_with_memrefs_t* value = (rc_value_with_memrefs_t*)self;
-    rc_update_memref_values(&value->memrefs, peek, ud);
+    rc_update_memref_values(&value->memrefs, read_memory, ud);
   }
 }
 
-int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t peek, void* ud) {
+int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_read_memory_func_t read_memory, void* ud) {
   rc_eval_state_t eval_state;
   rc_condset_t* condset;
   int valid = 0;
 
-  rc_update_value_memrefs(self, peek, ud);
+  rc_update_value_memrefs(self, read_memory, ud);
 
   value->value.i32 = 0;
   value->type = RC_VALUE_TYPE_SIGNED;
 
   for (condset = self->conditions; condset != NULL; condset = condset->next) {
     memset(&eval_state, 0, sizeof(eval_state));
-    eval_state.peek = peek;
-    eval_state.peek_userdata = ud;
+    eval_state.read_memory = read_memory;
+    eval_state.read_memory_userdata = ud;
 
     rc_test_condset(condset, &eval_state);
 
@@ -365,9 +365,9 @@ int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* value, rc_peek_t
   return valid;
 }
 
-int32_t rc_evaluate_value(rc_value_t* self, rc_peek_t peek, void* ud, void* unused_L) {
+int32_t rc_evaluate_value(rc_value_t* self, rc_read_memory_func_t read_memory, void* ud, void* unused_L) {
   rc_typed_value_t result;
-  int valid = rc_evaluate_value_typed(self, &result, peek, ud);
+  int valid = rc_evaluate_value_typed(self, &result, read_memory, ud);
 
   (void)unused_L;
 
@@ -462,12 +462,12 @@ uint32_t rc_count_values(const rc_value_t* values) {
   return count;
 }
 
-void rc_update_values(rc_value_t* values, rc_peek_t peek, void* ud) {
+void rc_update_values(rc_value_t* values, rc_read_memory_func_t read_memory, void* ud) {
   rc_typed_value_t result;
 
   rc_value_t* value = values;
   for (; value; value = value->next) {
-    if (rc_evaluate_value_typed(value, &result, peek, ud)) {
+    if (rc_evaluate_value_typed(value, &result, read_memory, ud)) {
       /* store the raw bytes and type to be restored by rc_typed_value_from_memref_value  */
       rc_update_memref_value(&value->value, result.value.u32);
       value->value.type = result.type;

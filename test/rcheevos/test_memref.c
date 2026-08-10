@@ -458,7 +458,7 @@ static void test_update_memref_values() {
   memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
   memref2 = rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS);
 
-  rc_update_memref_values(&memrefs, peek, &memory);
+  rc_update_memref_values(&memrefs, read_memory, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 0x12);
   ASSERT_NUM_EQUALS(memref1->value.changed, 1);
@@ -468,7 +468,7 @@ static void test_update_memref_values() {
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[1] = 3;
-  rc_update_memref_values(&memrefs, peek, &memory);
+  rc_update_memref_values(&memrefs, read_memory, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 3);
   ASSERT_NUM_EQUALS(memref1->value.changed, 1);
@@ -478,7 +478,7 @@ static void test_update_memref_values() {
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[1] = 5;
-  rc_update_memref_values(&memrefs, peek, &memory);
+  rc_update_memref_values(&memrefs, read_memory, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 5);
   ASSERT_NUM_EQUALS(memref1->value.changed, 1);
@@ -488,7 +488,7 @@ static void test_update_memref_values() {
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[2] = 7;
-  rc_update_memref_values(&memrefs, peek, &memory);
+  rc_update_memref_values(&memrefs, read_memory, &memory);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 5);
   ASSERT_NUM_EQUALS(memref1->value.changed, 0);

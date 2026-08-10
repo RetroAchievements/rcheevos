@@ -166,25 +166,25 @@ rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, void* unused_L, 
   return (preparse.parse.offset >= 0) ? &lboard->lboard : NULL;
 }
 
-static void rc_update_lboard_memrefs(rc_lboard_t* self, rc_peek_t peek, void* ud) {
+static void rc_update_lboard_memrefs(rc_lboard_t* self, rc_read_memory_func_t read_memory, void* ud) {
   if (self->has_memrefs) {
     rc_lboard_with_memrefs_t* lboard = (rc_lboard_with_memrefs_t*)self;
-    rc_update_memref_values(&lboard->memrefs, peek, ud);
+    rc_update_memref_values(&lboard->memrefs, read_memory, ud);
   }
 }
 
-int rc_evaluate_lboard(rc_lboard_t* self, int32_t* value, rc_peek_t peek, void* peek_ud, void* unused_L) {
+int rc_evaluate_lboard(rc_lboard_t* self, int32_t* value, rc_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L) {
   int start_ok, cancel_ok, submit_ok;
 
-  rc_update_lboard_memrefs(self, peek, peek_ud);
+  rc_update_lboard_memrefs(self, read_memory, read_memory_ud);
 
   if (self->state == RC_LBOARD_STATE_INACTIVE || self->state == RC_LBOARD_STATE_DISABLED)
     return RC_LBOARD_STATE_INACTIVE;
 
   /* these are always tested once every frame, to ensure hit counts work properly */
-  start_ok = rc_test_trigger(&self->start, peek, peek_ud, unused_L);
-  cancel_ok = rc_test_trigger(&self->cancel, peek, peek_ud, unused_L);
-  submit_ok = rc_test_trigger(&self->submit, peek, peek_ud, unused_L);
+  start_ok = rc_test_trigger(&self->start, read_memory, read_memory_ud, unused_L);
+  cancel_ok = rc_test_trigger(&self->cancel, read_memory, read_memory_ud, unused_L);
+  submit_ok = rc_test_trigger(&self->submit, read_memory, read_memory_ud, unused_L);
 
   switch (self->state)
   {
@@ -241,13 +241,13 @@ int rc_evaluate_lboard(rc_lboard_t* self, int32_t* value, rc_peek_t peek, void* 
   switch (self->state) {
     case RC_LBOARD_STATE_STARTED:
       if (self->progress) {
-        *value = rc_evaluate_value(self->progress, peek, peek_ud, unused_L);
+        *value = rc_evaluate_value(self->progress, read_memory, read_memory_ud, unused_L);
         break;
       }
       /* fallthrough */ /* to RC_LBOARD_STATE_TRIGGERED */
 
     case RC_LBOARD_STATE_TRIGGERED:
-      *value = rc_evaluate_value(&self->value, peek, peek_ud, unused_L);
+      *value = rc_evaluate_value(&self->value, read_memory, read_memory_ud, unused_L);
       break;
 
     default:

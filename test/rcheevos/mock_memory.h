@@ -1,6 +1,8 @@
 #ifndef MOCK_MEMORY_H
 #define MOCK_MEMORY_H
 
+#include <string.h>
+
 typedef struct {
   uint8_t* ram;
   uint32_t size;
@@ -11,22 +13,18 @@ static uint32_t peekb(uint32_t address, memory_t* memory) {
   return address < memory->size ? memory->ram[address] : 0;
 }
 
-static uint32_t peek(uint32_t address, uint32_t num_bytes, void* ud) {
+static uint32_t read_memory(uint32_t address, uint8_t* buffer, uint32_t num_bytes, void* ud) {
   memory_t* memory = (memory_t*)ud;
 
-  switch (num_bytes) {
-    case 1: return peekb(address, memory);
+  if (address >= memory->size)
+    return 0;
 
-    case 2: return peekb(address, memory) |
-      peekb(address + 1, memory) << 8;
+  uint32_t available = memory->size - address;
+  if (available < num_bytes)
+    num_bytes = available;
 
-    case 4: return peekb(address, memory) |
-      peekb(address + 1, memory) << 8 |
-      peekb(address + 2, memory) << 16 |
-      peekb(address + 3, memory) << 24;
-  }
-
-  return 0;
+  memcpy(buffer, &memory->ram[address], num_bytes);
+  return num_bytes;
 }
 
 #endif /* MOCK_MEMORY_H */

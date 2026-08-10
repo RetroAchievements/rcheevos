@@ -30,7 +30,7 @@ static void _assert_richpresence_output(rc_richpresence_t* richpresence, memory_
   char output[256];
   int result;
 
-  result = rc_evaluate_richpresence(richpresence, output, sizeof(output), peek, memory, NULL);
+  result = rc_evaluate_richpresence(richpresence, output, sizeof(output), read_memory, memory, NULL);
   ASSERT_STR_EQUALS(output, expected_display_string);
   ASSERT_NUM_EQUALS(result, strlen(expected_display_string));
 }
@@ -62,7 +62,7 @@ static void assert_buffer_boundary(rc_richpresence_t* richpresence, memory_t* me
   unsigned* overflow = (unsigned*)(&output[buffersize]);
   *overflow = 0xCDCDCDCD;
 
-  result = rc_evaluate_richpresence(richpresence, output, buffersize, peek, memory, NULL);
+  result = rc_evaluate_richpresence(richpresence, output, buffersize, read_memory, memory, NULL);
   ASSERT_NUM_EQUALS(result, expected_result);
 
   if (*overflow != 0xCDCDCDCD) {

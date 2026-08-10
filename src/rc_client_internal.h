@@ -342,8 +342,6 @@ typedef struct rc_client_state_t {
   struct rc_client_load_state_t* load;
   struct rc_client_async_handle_t* async_handles[4];
   rc_memref_t* processing_memref;
-
-  rc_peek_t legacy_peek;
 } rc_client_state_t;
 
 struct rc_client_t {
@@ -392,14 +390,6 @@ struct rc_hash_iterator;
 struct rc_hash_iterator* rc_client_get_load_state_hash_iterator(rc_client_t* client);
 #endif
 /* end helper functions for unit tests */
-
-enum {
-  RC_CLIENT_LEGACY_PEEK_AUTO,
-  RC_CLIENT_LEGACY_PEEK_CONSTRUCTED,
-  RC_CLIENT_LEGACY_PEEK_LITTLE_ENDIAN_READS
-};
-
-void rc_client_set_legacy_peek(rc_client_t* client, int method);
 
 void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
