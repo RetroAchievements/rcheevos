@@ -1,6 +1,7 @@
 #ifndef MOCK_MEMORY_H
 #define MOCK_MEMORY_H
 
+#include <stdint.h>
 #include <string.h>
 
 typedef struct {
@@ -8,10 +9,6 @@ typedef struct {
   uint32_t size;
 }
 memory_t;
-
-static uint32_t peekb(uint32_t address, memory_t* memory) {
-  return address < memory->size ? memory->ram[address] : 0;
-}
 
 static uint32_t read_memory(uint32_t address, uint8_t* buffer, uint32_t num_bytes, void* ud) {
   memory_t* memory = (memory_t*)ud;
