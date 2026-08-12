@@ -193,7 +193,6 @@ typedef struct {
     uint32_t u32;
     int32_t i32;
     float f32;
-    uint8_t u8[4];
   } value;
 
   char type;
