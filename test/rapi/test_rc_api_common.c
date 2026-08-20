@@ -572,6 +572,88 @@ static void test_json_get_datetime(const char* input, time_t expected) {
   }
 }
 
+static void test_json_get_datetime_truncated() {
+  const char* datetime = "2013-10-20T22:12:21";
+  rc_json_field_t field = RC_JSON_NEW_FIELD("Test");
+  char buffer[21];
+  size_t length;
+  time_t value;
+
+  buffer[0] = '"';
+  for (length = 0; length < 19; ++length) {
+    memcpy(&buffer[1], datetime, length);
+    buffer[length + 1] = '"';
+    field.value_start = buffer;
+    field.value_end = &buffer[length + 2];
+    value = 2;
+
+    ASSERT_FALSE(rc_json_get_datetime(&value, &field, "Test"));
+    ASSERT_TIMET_EQUALS(value, 0);
+  }
+}
+
+static void test_json_get_datetime_non_digits() {
+  rc_json_field_t field = RC_JSON_NEW_FIELD("Test");
+  char datetime[] = "\"2013-10-20T22:12:21\"";
+  size_t index;
+  time_t value;
+
+  field.value_start = datetime;
+  field.value_end = datetime + sizeof(datetime) - 1;
+
+  for (index = 1; index < sizeof(datetime) - 2; ++index) {
+    char digit = datetime[index];
+    if (digit < '0' || digit > '9')
+      continue;
+
+    datetime[index] = 'x';
+    value = 2;
+    ASSERT_FALSE(rc_json_get_datetime(&value, &field, "Test"));
+    ASSERT_TIMET_EQUALS(value, 0);
+    datetime[index] = digit;
+  }
+}
+
+static void test_json_get_datetime_invalid_field() {
+  rc_json_field_t field = RC_JSON_NEW_FIELD("Test");
+  const char non_string[] = "2013-10-20T22:12:21";
+  const char missing_quote[] = "\"2013-10-20T22:12:21";
+  time_t value = 2;
+
+  ASSERT_FALSE(rc_json_get_datetime(&value, &field, "Test"));
+  ASSERT_TIMET_EQUALS(value, 0);
+
+  field.value_start = non_string;
+  field.value_end = non_string + sizeof(non_string) - 1;
+  value = 2;
+  ASSERT_FALSE(rc_json_get_datetime(&value, &field, "Test"));
+  ASSERT_TIMET_EQUALS(value, 0);
+
+  field.value_start = missing_quote;
+  field.value_end = missing_quote + sizeof(missing_quote) - 1;
+  value = 2;
+  ASSERT_FALSE(rc_json_get_datetime(&value, &field, "Test"));
+  ASSERT_TIMET_EQUALS(value, 0);
+}
+
+static void test_json_get_datetime_exact_buffer(const char* datetime) {
+  rc_json_field_t field = RC_JSON_NEW_FIELD("Test");
+  const size_t datetime_length = strlen(datetime);
+  char* buffer = (char*)malloc(datetime_length + 2);
+  time_t value = 2;
+
+  ASSERT_PTR_NOT_NULL(buffer);
+  buffer[0] = '"';
+  memcpy(&buffer[1], datetime, datetime_length);
+  buffer[datetime_length + 1] = '"';
+  field.value_start = buffer;
+  field.value_end = buffer + datetime_length + 2;
+
+  ASSERT_TRUE(rc_json_get_datetime(&value, &field, "Test"));
+  ASSERT_TIMET_EQUALS(value, (time_t)1382307141LL);
+  free(buffer);
+}
+
 static void test_json_get_unum_array(const char* input, uint32_t expected_count, int expected_result) {
   rc_api_response_t response;
   rc_json_field_t field;
@@ -964,8 +1046,35 @@ void test_rapi_common(void) {
 
   /* rc_json_get_datetime */
   TEST_PARAMS2(test_json_get_datetime, "", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2013-10-20 22:12:21", (time_t)1382307141LL);
+  TEST_PARAMS2(test_json_get_datetime, "2013-10-20T22:12:21", (time_t)1382307141LL);
+  TEST_PARAMS2(test_json_get_datetime, "2013-10-20T22:12:21Z", (time_t)1382307141LL);
+  TEST_PARAMS2(test_json_get_datetime, "2013-10-20T22:12:21.000000Z", (time_t)1382307141LL);
+  TEST_PARAMS2(test_json_get_datetime, "2013-10-20T22:12:21+00:00", (time_t)1382307141LL);
+  TEST_PARAMS2(test_json_get_datetime, "2013-10-20T22:12:21-04:00", (time_t)1382307141LL);
   TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:00", (time_t)1420100100LL);
   TEST_PARAMS2(test_json_get_datetime, "2016-02-29 20:01:47", (time_t)1456776107LL);
+  TEST_PARAMS2(test_json_get_datetime, "2015-02-29 20:01:47", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-00-01 08:15:00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-13-01 08:15:00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-00 08:15:00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-32 08:15:00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 24:15:00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:60:00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:60", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015/01/01 08:15:00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01X08:15:00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08-15:00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15-00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:00.", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:00Zextra", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:00+24:00", -1);
+  TEST_PARAMS2(test_json_get_datetime, "2015-01-01 08:15:00+00:60", -1);
+  TEST(test_json_get_datetime_truncated);
+  TEST(test_json_get_datetime_non_digits);
+  TEST(test_json_get_datetime_invalid_field);
+  TEST_PARAMS1(test_json_get_datetime_exact_buffer, "2013-10-20 22:12:21");
+  TEST_PARAMS1(test_json_get_datetime_exact_buffer, "2013-10-20T22:12:21");
 
   /* rc_json_get_unum_array */
   TEST_PARAMS3(test_json_get_unum_array, "[]", 0, RC_OK);
