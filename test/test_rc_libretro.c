@@ -928,6 +928,12 @@ void test_rc_libretro(void) {
   TEST_PARAMS2(test_disallowed_system,  "Mesen-S", RC_CONSOLE_GAMEBOY);
   TEST_PARAMS2(test_disallowed_system,  "Mesen-S", RC_CONSOLE_GAMEBOY_COLOR);
 
+  /* boundary cases, loaded library/setting name may contain a prefix */
+  TEST_PARAMS3(test_allowed_setting,    "Beetle PSX", "x", "50%");
+  TEST_PARAMS3(test_allowed_setting,    "Beetle PSX Unknown", "beetle_psx_cpu_freq_scale", "50%");
+  TEST_PARAMS3(test_allowed_setting,    "cap32", "cap32_autorun", "x");
+  TEST_PARAMS2(test_allowed_system,     "Mesen-S Unknown", RC_CONSOLE_GAMEBOY);
+
   /* rc_libretro_memory_init */
   TEST(test_memory_init_without_regions);
   TEST(test_memory_init_without_regions_system_ram_only);
