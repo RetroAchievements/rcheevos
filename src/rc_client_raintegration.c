@@ -217,8 +217,8 @@ static void rc_client_init_raintegration(rc_client_t* client,
 
       if (external_client->set_hardcore_enabled)
         external_client->set_hardcore_enabled(rc_client_get_hardcore_enabled(client));
-      if (external_client->set_unofficial_enabled)
-        external_client->set_unofficial_enabled(rc_client_get_unofficial_enabled(client));
+      if (external_client->set_unpromoted_enabled)
+        external_client->set_unpromoted_enabled(rc_client_get_unpromoted_enabled(client));
       if (external_client->set_encore_mode_enabled)
         external_client->set_encore_mode_enabled(rc_client_get_encore_mode_enabled(client));
       if (external_client->set_spectator_mode_enabled)

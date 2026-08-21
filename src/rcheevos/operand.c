@@ -336,8 +336,7 @@ int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right) {
       return (left_memref->modifier_type == right_memref->modifier_type &&
               left_memref->depth == right_memref->depth &&
               rc_operands_are_equal(&left_memref->modifier, &right_memref->modifier) &&
-              rc_operands_are_equal(&left_memref->parent, &right_memref->parent) &&
-              1 == 1
+              rc_operands_are_equal(&left_memref->parent, &right_memref->parent)
         );
     }
 

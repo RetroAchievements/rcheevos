@@ -85,8 +85,8 @@ typedef struct rc_client_external_t
 
   rc_client_external_set_int_func_t set_hardcore_enabled;
   rc_client_external_get_int_func_t get_hardcore_enabled;
-  rc_client_external_set_int_func_t set_unofficial_enabled;
-  rc_client_external_get_int_func_t get_unofficial_enabled;
+  rc_client_external_set_int_func_t set_unpromoted_enabled;
+  rc_client_external_get_int_func_t get_unpromoted_enabled;
   rc_client_external_set_int_func_t set_encore_mode_enabled;
   rc_client_external_get_int_func_t get_encore_mode_enabled;
   rc_client_external_set_int_func_t set_spectator_mode_enabled;
