@@ -1310,6 +1310,21 @@ static void rc_hash_initialize_iterator_from_path(rc_hash_iterator_t* iterator, 
   const char* ext = rc_path_get_extension(path);
   size_t index;
 
+  if (!*ext) {
+  	rc_hash_iterator_verbose_formatted(iterator, "No extension found in path, checking if it is a directory");
+
+  	if (rc_file_size(iterator, path) > 0) {
+  		/* actual file, try full file hash */
+  		iterator->consoles[0] = RC_CONSOLE_GAMEBOY;
+  	}
+	else {
+		/* not a file, assuming it's a directory */
+		iterator->consoles[0] = RC_CONSOLE_ARCADE;
+	}
+
+  	return;
+  }
+
   /* lowercase the extension as we copy it into the search object */
   memset(&search, 0, sizeof(search));
   for (index = 0; index < sizeof(search.ext) - 1; ++index) {
