@@ -816,12 +816,19 @@ void test_hash_rom(void) {
   TEST_PARAMS2(test_hash_arcade, "game.7z", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "game", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade, "/game", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade, "\\game", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "roms\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade, "roms\\game", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "C:\\roms\\game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade, "C:\\roms\\game", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "/home/user/roms/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade, "/home/user/roms/game", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "/home/user/games/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade, "/home/user/games/game", "c8d46d341bea4fd5bff866a65ff8aea9");
   TEST_PARAMS2(test_hash_arcade, "/home/user/roms/game.7z", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade, "/home/user/roms/game", "c8d46d341bea4fd5bff866a65ff8aea9");
 
   TEST_PARAMS2(test_hash_arcade, "/home/user/nes_game.zip", "9b7aad36b365712fc93728088de4c209");
   TEST_PARAMS2(test_hash_arcade, "/home/user/nes/game.zip", "9b7aad36b365712fc93728088de4c209");
