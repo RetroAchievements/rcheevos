@@ -38,7 +38,7 @@ static void test_hash_arcade(const char* path, const char* expected_md5)
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
-static void test_hash_arcade_no_system_match(const char* path, const char* expected_md5)
+static void test_hash_arcade_from_directory(const char* path, const char* expected_md5)
 {
   char hash_file[33], hash_iterator[33];
 
@@ -56,7 +56,7 @@ static void test_hash_arcade_no_system_match(const char* path, const char* expec
   /* validation */
   ASSERT_NUM_EQUALS(result_file, 1);
   ASSERT_STR_EQUALS(hash_file, expected_md5);
-
+  /* file identification using iterator is not supported for directories */
   ASSERT_NUM_EQUALS(result_iterator, 0);	
 }
 
@@ -851,14 +851,14 @@ void test_hash_rom(void) {
   TEST_PARAMS2(test_hash_arcade, "/home/user/nes2/game.zip", "c8d46d341bea4fd5bff866a65ff8aea9");
 
   /* we don't support automatic system discovery for ROMs without extensions. */
-  TEST_PARAMS2(test_hash_arcade_no_system_match, "game", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS2(test_hash_arcade_no_system_match, "/game", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS2(test_hash_arcade_no_system_match, "\\game", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS2(test_hash_arcade_no_system_match, "roms\\game", "c8d46d341bea4fd5bff866a65ff8aea9");  
-  TEST_PARAMS2(test_hash_arcade_no_system_match, "C:\\roms\\game", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS2(test_hash_arcade_no_system_match, "/home/user/roms/game", "c8d46d341bea4fd5bff866a65ff8aea9");
-  TEST_PARAMS2(test_hash_arcade_no_system_match, "/home/user/games/game", "c8d46d341bea4fd5bff866a65ff8aea9");  
-  TEST_PARAMS2(test_hash_arcade_no_system_match, "/home/user/roms/game", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade_from_directory, "game", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade_from_directory, "/game", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade_from_directory, "\\game", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade_from_directory, "roms\\game", "c8d46d341bea4fd5bff866a65ff8aea9");  
+  TEST_PARAMS2(test_hash_arcade_from_directory, "C:\\roms\\game", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade_from_directory, "/home/user/roms/game", "c8d46d341bea4fd5bff866a65ff8aea9");
+  TEST_PARAMS2(test_hash_arcade_from_directory, "/home/user/games/game", "c8d46d341bea4fd5bff866a65ff8aea9");  
+  TEST_PARAMS2(test_hash_arcade_from_directory, "/home/user/roms/game", "c8d46d341bea4fd5bff866a65ff8aea9");
 
   /* we don't care that multiple aliases for the same system generate different hashes - the point is
    * that they don't generate the same hash as an actual arcade ROM with the same filename. */
