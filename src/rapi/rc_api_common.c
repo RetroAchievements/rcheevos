@@ -710,6 +710,8 @@ int rc_json_get_string(const char** out, rc_buffer_t* buffer, const rc_json_fiel
     }
 
     *out = dst = (char*)rc_buffer_reserve(buffer, len - 1); /* -2 for quotes, +1 for null terminator */
+    if (!dst)
+      return 0;
 
     while (src < field->value_end && *src != '\"') {
       if (*src == '\\') {
@@ -780,6 +782,9 @@ int rc_json_get_string(const char** out, rc_buffer_t* buffer, const rc_json_fiel
 
   } else {
     *out = dst = (char*)rc_buffer_reserve(buffer, len + 1); /* +1 for null terminator */
+    if (!dst)
+      return 0;
+
     memcpy(dst, src, len);
     dst += len;
   }
