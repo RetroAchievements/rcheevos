@@ -374,6 +374,7 @@ void test_conflicting_conditions() {
   TEST_PARAMS2(test_validate_trigger, "A:0xX0004_0xH0000<5_A:0xX0004_0xH0000>5", "Condition 4: Conflicts with Condition 2");
   TEST_PARAMS2(test_validate_trigger, "A:d0xX0004_d0xH0000<5_A:0xX0004_0xH0000>5", "");
   TEST_PARAMS2(test_validate_trigger, "A:0xX0004_d0xH0000<5_A:0xX0004_0xH0000>5", "");
+  TEST_PARAMS2(test_validate_trigger, "O:0xX100002=0_0xX100002=2_0xX100004!=0_0xX100004=16", "Condition 3: Redundant with Condition 4");
 
   /* PauseIf prevents hits from incrementing. ResetIf clears all hits. If both exist and are conflicting, the group
    * will only ever be paused or reset, and therefore will never be true */
