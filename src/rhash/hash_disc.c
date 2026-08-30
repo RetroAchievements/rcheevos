@@ -1068,6 +1068,126 @@ int rc_hash_psp(char hash[33], const rc_hash_iterator_t* iterator)
   return rc_hash_finalize(iterator, &md5, hash);
 }
 
+static int rc_hash_ps3_disc(md5_state_t* md5, const rc_hash_iterator_t* iterator, void* track_handle)
+{
+  uint32_t sector;
+  uint32_t size;
+
+  /* https://www.psdevwiki.com/ps3/PARAM.SFO
+   * PS3_GAME/PARAM.SFO contains key/value pairs identifying the game for the system (i.e. serial number,
+   * name, version). PS3_GAME/USRDIR/EBOOT.BIN is the encrypted primary executable.
+   */
+  sector = rc_cd_find_file_sector(iterator, track_handle, "PS3_GAME\\PARAM.SFO", &size);
+  if (!sector)
+    return rc_hash_iterator_error(iterator, "Not a PS3 game disc");
+
+  if (!rc_hash_cd_file(md5, iterator, track_handle, sector, NULL, size, "PS3_GAME\\PARAM.SFO"))
+    return 0;
+
+  sector = rc_cd_find_file_sector(iterator, track_handle, "PS3_GAME\\USRDIR\\EBOOT.BIN", &size);
+  if (!sector)
+    return rc_hash_iterator_error(iterator, "Could not find primary executable");
+
+  if (!rc_hash_cd_file(md5, iterator, track_handle, sector, NULL, size, "PS3_GAME\\USRDIR\\EBOOT.BIN"))
+    return 0;
+
+  return 1;
+}
+
+static int rc_hash_ps3_file(md5_state_t* md5, const rc_hash_iterator_t* iterator)
+{
+  const char* path = iterator->path;
+  const char* match;
+  char* sfo_path;
+  size_t dir_len;
+  void* file_handle;
+  uint8_t buffer[4096];
+  size_t num_read;
+
+  /* Determine PARAM.SFO location based on directory layout:
+   *   Retail extracted: .../PS3_GAME/USRDIR/EBOOT.BIN -> .../PS3_GAME/PARAM.SFO
+   *   PKG installed:    .../TITLE_ID/USRDIR/EBOOT.BIN -> .../TITLE_ID/PARAM.SFO
+   *   ELF flat:         .../EBOOT.BIN                 -> .../PARAM.SFO
+   */
+  if ((match = strstr(path, "PS3_GAME/USRDIR/")) != NULL ||
+      (match = strstr(path, "PS3_GAME\\USRDIR\\")) != NULL)
+  {
+    dir_len = (size_t)(match - path) + 9; /* strlen("PS3_GAME/") == strlen("PS3_GAME\\") == 9 */
+  }
+  else if ((match = strstr(path, "USRDIR/")) != NULL ||
+           (match = strstr(path, "USRDIR\\")) != NULL)
+  {
+    dir_len = (size_t)(match - path);
+  }
+  else
+  {
+    dir_len = (size_t)(rc_path_get_filename(path) - path);
+  }
+
+  sfo_path = (char*)malloc(dir_len + 10); /* strlen("PARAM.SFO") + 1 */
+  if (!sfo_path)
+    return rc_hash_iterator_error(iterator, "Could not allocate PARAM.SFO path");
+
+  memcpy(sfo_path, path, dir_len);
+  memcpy(&sfo_path[dir_len], "PARAM.SFO", 10);
+
+  file_handle = rc_file_open(iterator, sfo_path);
+  free(sfo_path);
+
+  if (!file_handle)
+    return rc_hash_iterator_error(iterator, "Not a PS3 game folder");
+
+  do {
+    num_read = rc_file_read(iterator, file_handle, buffer, sizeof(buffer));
+    if (num_read)
+      md5_append(md5, buffer, (int)num_read);
+  } while (num_read == sizeof(buffer));
+
+  rc_file_close(iterator, file_handle);
+
+  file_handle = rc_file_open(iterator, path);
+  if (!file_handle)
+    return rc_hash_iterator_error(iterator, "Could not open primary executable");
+
+  do {
+    num_read = rc_file_read(iterator, file_handle, buffer, sizeof(buffer));
+    if (num_read)
+      md5_append(md5, buffer, (int)num_read);
+  } while (num_read == sizeof(buffer));
+
+  rc_file_close(iterator, file_handle);
+  return 1;
+}
+
+int rc_hash_ps3(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  md5_state_t md5;
+  void* track_handle;
+  int result;
+
+  md5_init(&md5);
+
+  if (rc_path_compare_extension(iterator->path, "iso") ||
+      rc_path_compare_extension(iterator->path, "chd"))
+  {
+    track_handle = rc_cd_open_track(iterator, 1);
+    if (!track_handle)
+      return rc_hash_iterator_error(iterator, "Could not open track");
+
+    result = rc_hash_ps3_disc(&md5, iterator, track_handle);
+    rc_cd_close_track(iterator, track_handle);
+  }
+  else
+  {
+    result = rc_hash_ps3_file(&md5, iterator);
+  }
+
+  if (result)
+    return rc_hash_finalize(iterator, &md5, hash);
+
+  return result;
+}
+
 int rc_hash_sega_cd(char hash[33], const rc_hash_iterator_t* iterator)
 {
   uint8_t buffer[512];
