@@ -35,7 +35,18 @@ int rc_hash_arcade(char hash[33], const rc_hash_iterator_t* iterator)
   const char* filename = rc_path_get_filename(iterator->path);
   const char* ext = rc_path_get_extension(filename);
   char buffer[128]; /* realistically, this should never need more than ~32 characters */
-  size_t filename_length = ext - filename - 1;
+  size_t filename_length;
+
+  if (!*ext) {
+    /* some emulators will receive a path to the extracted romset instead of a compressed romset.
+     * for those emulators, `iterator->path` will be a folder, and therefore won't have an extension to ignore.
+     * we can assume the folder name is the same as the romset archive name and try to hash it.
+     * since we're not actually hashing the contents of the archive, this is safe to do.
+     * */
+    return rc_hash_buffer(hash, (uint8_t*)filename, strlen(filename), iterator);
+  }
+
+  filename_length = ext - filename - 1;
 
   /* fbneo supports loading subsystems by using specific folder names.
    * if one is found, include it in the hash.
