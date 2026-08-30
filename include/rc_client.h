@@ -645,6 +645,13 @@ enum {
   NUM_RC_CLIENT_LEADERBOARD_FORMATS = 3
 };
 
+enum {
+  RC_CLIENT_LEADERBOARD_CATEGORY_NONE = 0,
+  RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED = (1 << 0),
+  RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED = (1 << 1),
+  RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED_AND_UNPROMOTED = RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED | RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED
+};
+
 #define RC_CLIENT_LEADERBOARD_DISPLAY_SIZE 24
 
 typedef struct rc_client_leaderboard_t {
@@ -655,6 +662,7 @@ typedef struct rc_client_leaderboard_t {
   uint8_t state;
   uint8_t format;
   uint8_t lower_is_better;
+  uint8_t category;
 } rc_client_leaderboard_t;
 
 /**

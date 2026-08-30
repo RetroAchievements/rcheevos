@@ -583,7 +583,7 @@ static void rc_client_raise_disconnect_events(rc_client_t* client)
   client->callbacks.event_handler(&client_event, client);
 }
 
-static int rc_client_should_retry(const rc_api_server_response_t* server_response)
+int rc_client_should_retry(const rc_api_server_response_t* server_response)
 {
   switch (server_response->http_status_code) {
     case 502: /* 502 Bad Gateway */
@@ -2234,6 +2234,8 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
     leaderboard->public_.id = read->id;
     leaderboard->public_.format = rc_client_map_leaderboard_format(read->format);
     leaderboard->public_.lower_is_better = read->lower_is_better;
+    leaderboard->public_.category = (read->state == RC_LEADERBOARD_STATE_ACTIVE)
+        ? RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED : RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED;
     leaderboard->format = (uint8_t)read->format;
     leaderboard->hidden = (uint8_t)read->hidden;
 
@@ -5024,7 +5026,7 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
     leaderboard = subset->leaderboards;
     stop = leaderboard + subset->public_.num_leaderboards;
     for (; leaderboard < stop; ++leaderboard) {
-      if (leaderboard->hidden)
+      if (leaderboard->hidden || leaderboard->public_.category == RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED)
         continue;
 
       leaderboard->bucket = rc_client_get_leaderboard_bucket(leaderboard, grouping);

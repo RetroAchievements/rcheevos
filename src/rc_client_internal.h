@@ -357,6 +357,8 @@ struct rc_client_t {
   rc_client_state_t state;
 };
 
+int rc_client_should_retry(const rc_api_server_response_t* server_response);
+
 /*****************************************************************************\
 | Helpers                                                                     |
 \*****************************************************************************/
