@@ -981,6 +981,17 @@ static const rc_memory_region_t _rc_memory_regions_wii[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_wii = { _rc_memory_regions_wii, 3 };
 
+/* ===== Wii U ===== */
+/* https://wiiubrew.org/wiki/Memory_map */
+static const rc_memory_region_t _rc_memory_regions_wii_u[] = {
+    { 0x00000000U, 0x00FFFFFFU, 0x00000000U, RC_MEMORY_TYPE_UNUSED, "Unused" },
+    { 0x01000000U, 0x0FFFFFFFU, 0x01000000U, RC_MEMORY_TYPE_READONLY, "Code / Heap" },
+    { 0x10000000U, 0x8FFFFFFFU, 0x10000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "MEM2" },
+    { 0x90000000U, 0xF3FFFFFFU, 0x90000000U, RC_MEMORY_TYPE_UNUSED, "Unused" },
+    { 0xF4000000U, 0xF5FFFFFFU, 0xF4000000U, RC_MEMORY_TYPE_VIRTUAL_RAM, "MEM1" }
+};
+static const rc_memory_regions_t rc_memory_regions_wii_u = { _rc_memory_regions_wii_u, 5 };
+
 /* ===== WonderSwan ===== */
 /* http://daifukkat.su/docs/wsman/#ovr_memmap */
 static const rc_memory_region_t _rc_memory_regions_wonderswan[] = {
@@ -1214,6 +1225,9 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
 
     case RC_CONSOLE_WII:
       return &rc_memory_regions_wii;
+
+    case RC_CONSOLE_WII_U:
+      return &rc_memory_regions_wii_u;
 
     case RC_CONSOLE_WONDERSWAN:
       return &rc_memory_regions_wonderswan;

@@ -79,6 +79,7 @@ int rc_hash_buffered_file(char hash[33], uint32_t console_id, const rc_hash_iter
   int rc_hash_pce(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_scv(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_snes(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_wiiu_rpx(char hash[33], const rc_hash_iterator_t* iterator);
 #endif
 
 #ifndef RC_HASH_NO_DISC

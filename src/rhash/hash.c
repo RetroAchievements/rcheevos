@@ -918,6 +918,9 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
 #ifndef RC_HASH_NO_ROM
     case RC_CONSOLE_NINTENDO_64:
       return rc_hash_n64(hash, iterator);
+
+    case RC_CONSOLE_WII_U:
+      return rc_hash_wiiu_rpx(hash, iterator);
 #endif
 
 #ifndef RC_HASH_NO_ENCRYPTED
@@ -1271,6 +1274,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "pzx", rc_hash_initialize_iterator_single, RC_CONSOLE_ZX_SPECTRUM },
   { "ri", rc_hash_initialize_iterator_single, RC_CONSOLE_MSX },
   { "rom", rc_hash_initialize_iterator_rom, 0 },
+  { "rpx", rc_hash_initialize_iterator_single, RC_CONSOLE_WII_U },
   { "sap", rc_hash_initialize_iterator_single, RC_CONSOLE_THOMSONTO8 }, /* disk */
   { "scl", rc_hash_initialize_iterator_single, RC_CONSOLE_ZX_SPECTRUM },
   { "sfc", rc_hash_initialize_iterator_single, RC_CONSOLE_SUPER_NINTENDO },

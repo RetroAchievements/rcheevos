@@ -828,6 +828,70 @@ static void test_hash_scv_cart()
 
 /* ========================================================================= */
 
+static void test_hash_wiiu_rpx()
+{
+  size_t image_size = 1024 * 1024;
+  uint8_t* image = generate_generic_file(image_size);
+  char hash_file[33], hash_iterator[33];
+
+  /* Found with TDD */
+  const char* expected_md5 = "2c0b393597ad45952138f79c7180fc88";
+
+  image[0] = 0x7F;
+  image[1] = 'E';
+  image[2] = 'L';
+  image[3] = 'F';
+  image[5] = 0x02;  /* Big Endian */
+  image[18] = 0x14; /* PowerPC */
+
+  mock_file(0, "game.rpx", image, image_size);
+
+  /* Test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_WII_U, "game.rpx");
+
+  /* Test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.rpx", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* Cleanup */
+  free(image);
+
+  /* Validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+static void test_hash_wiiu_rpx_invalid()
+{
+  size_t image_size = 1024;
+  uint8_t* image = generate_generic_file(image_size);
+  char hash_file[33];
+
+  /* "Corrupted" header */
+  image[0] = 0x7F;
+  image[1] = 'E';
+  image[2] = 'L';
+  image[3] = 'X';
+  image[5] = 0x02;
+  image[18] = 0x14;
+
+  mock_file(0, "bad.rpx", image, image_size);
+
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_WII_U, "bad.rpx");
+  free(image);
+
+  ASSERT_NUM_EQUALS(result_file, 0);
+}
+
+/* ========================================================================= */
+
 void test_hash_rom(void) {
   TEST_SUITE_BEGIN();
 
@@ -1031,6 +1095,10 @@ void test_hash_rom(void) {
 
   /* WASM-4 */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WASM4, "test.wasm", 33454, "bce38bb5f05622fc7e0e56757059d180");
+
+  /* Wii U */
+  TEST(test_hash_wiiu_rpx);
+  TEST(test_hash_wiiu_rpx_invalid);
 
   /* WonderSwan */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.ws", 524288, "68f0f13b598e0b66461bc578375c3888");
