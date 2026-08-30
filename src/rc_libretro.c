@@ -237,7 +237,7 @@ static int rc_libretro_match_token(const char* val, const char* token, size_t si
     }
   }
 
-  if (memcmp(token, val, size) == 0 && val[size] == 0) {
+  if (strncmp(token, val, size) == 0 && val[size] == '\0') {
     /* exact match, match with result = true */
     *result = 1;
     return 1;
@@ -299,13 +299,13 @@ int rc_libretro_is_setting_allowed(const rc_disallowed_setting_t* disallowed_set
     key_len = strlen(key);
 
     if (key[key_len - 1] == '*') {
-      if (memcmp(setting, key, key_len - 1) == 0) {
+      if (strncmp(setting, key, key_len - 1) == 0) {
         if (rc_libretro_match_value(value, disallowed_settings->value))
           return 0;
       }
     }
     else {
-      if (memcmp(setting, key, key_len + 1) == 0) {
+      if (strcmp(setting, key) == 0) {
         if (rc_libretro_match_value(value, disallowed_settings->value))
           return 0;
       }
@@ -317,14 +317,12 @@ int rc_libretro_is_setting_allowed(const rc_disallowed_setting_t* disallowed_set
 
 const rc_disallowed_setting_t* rc_libretro_get_disallowed_settings_for_system(const char* library_name, uint32_t system_id) {
   const rc_disallowed_core_settings_t* core_filter = rc_disallowed_core_settings;
-  size_t library_name_length;
 
   if (!library_name || !library_name[0])
     return NULL;
 
-  library_name_length = strlen(library_name) + 1;
   while (core_filter->library_name) {
-    if (core_filter->system_id == system_id && memcmp(core_filter->library_name, library_name, library_name_length) == 0)
+    if (core_filter->system_id == system_id && strcmp(core_filter->library_name, library_name) == 0)
       return core_filter->disallowed_settings;
 
     ++core_filter;
@@ -351,15 +349,13 @@ static const rc_disallowed_core_systems_t rc_disallowed_core_systems[] = {
 
 int rc_libretro_is_system_allowed(const char* library_name, uint32_t console_id) {
   const rc_disallowed_core_systems_t* core_filter = rc_disallowed_core_systems;
-  size_t library_name_length;
   size_t i;
 
   if (!library_name || !library_name[0])
     return 1;
 
-  library_name_length = strlen(library_name) + 1;
   while (core_filter->library_name) {
-    if (memcmp(core_filter->library_name, library_name, library_name_length) == 0) {
+    if (strcmp(core_filter->library_name, library_name) == 0) {
       for (i = 0; i < sizeof(core_filter->disallowed_consoles) / sizeof(core_filter->disallowed_consoles[0]); ++i) {
         if (core_filter->disallowed_consoles[i] == console_id)
           return 0;
