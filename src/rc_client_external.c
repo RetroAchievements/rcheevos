@@ -19,6 +19,7 @@ typedef struct rc_client_external_conversions_t {
   rc_client_game_t game;
   rc_client_subset_t subsets[4];
   rc_client_achievement_t achievements[16];
+  rc_client_leaderboard_t leaderboards[16];
   char user_avatar_url[RC_CLIENT_USER_IMAGE_URL_BUFFER_SIZE];
   char game_badge_url[RC_CLIENT_IMAGE_URL_BUFFER_SIZE];
   char subset_badge_url[4][RC_CLIENT_IMAGE_URL_BUFFER_SIZE];
@@ -26,6 +27,7 @@ typedef struct rc_client_external_conversions_t {
   char achievement_badge_locked_url[16][RC_CLIENT_IMAGE_URL_BUFFER_SIZE];
   uint32_t next_subset_index;
   uint32_t next_achievement_index;
+  uint32_t next_leaderboard_index;
 } rc_client_external_conversions_t;
 
 static const char* rc_client_external_build_avatar_url(char buffer[], size_t buffer_size, uint32_t image_type, const char* image_name)
@@ -277,6 +279,126 @@ rc_client_achievement_list_t* rc_client_external_convert_v1_achievement_list(con
   }
 
   return (rc_client_achievement_list_t*)new_list;
+}
+
+const rc_client_leaderboard_t* rc_client_external_convert_v1_leaderboard(const rc_client_t* client, const rc_client_leaderboard_t* v1_leaderboard)
+{
+  rc_client_leaderboard_t* converted = NULL;
+  char* badge_url = NULL;
+  char* badge_locked_url = NULL;
+  const uint32_t num_leaderboards = sizeof(client->state.external_client_conversions->leaderboards) / sizeof(client->state.external_client_conversions->leaderboards[0]);
+  uint32_t index;
+
+  if (!v1_leaderboard)
+    return NULL;
+
+  rc_client_external_conversions_init(client);
+
+  for (index = 0; index < num_leaderboards; ++index) {
+    if (client->state.external_client_conversions->leaderboards[index].id == v1_leaderboard->id) {
+      converted = &client->state.external_client_conversions->leaderboards[index];
+      break;
+    }
+  }
+
+  if (!converted) {
+    index = client->state.external_client_conversions->next_leaderboard_index;
+    converted = &client->state.external_client_conversions->leaderboards[index];
+    client->state.external_client_conversions->next_leaderboard_index = (index + 1) % num_leaderboards;
+  }
+
+  memcpy(converted, v1_leaderboard, sizeof(v1_rc_client_leaderboard_t));
+  RC_CONVERSION_FILL(converted, rc_client_leaderboard_t, v1_rc_client_leaderboard_t);
+
+  converted->category = RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED;
+
+  return converted;
+}
+
+typedef struct rc_client_leaderboard_list_wrapper_t {
+  rc_client_leaderboard_list_info_t info;
+  rc_client_leaderboard_list_t* source_list;
+  rc_client_leaderboard_t* leaderboards;
+  rc_client_leaderboard_t** leaderboards_pointers;
+} rc_client_leaderboard_list_wrapper_t;
+
+static void rc_client_destroy_leaderboard_list_wrapper(rc_client_leaderboard_list_info_t* info)
+{
+  rc_client_leaderboard_list_wrapper_t* wrapper = (rc_client_leaderboard_list_wrapper_t*)info;
+
+  if (wrapper->leaderboards)
+    free(wrapper->leaderboards);
+  if (wrapper->leaderboards_pointers)
+    free(wrapper->leaderboards_pointers);
+  if (wrapper->info.public_.buckets)
+    free((void*)wrapper->info.public_.buckets);
+
+  rc_client_destroy_leaderboard_list(wrapper->source_list);
+
+  free(wrapper);
+}
+
+rc_client_leaderboard_list_t* rc_client_external_convert_v1_leaderboard_list(const rc_client_t* client, rc_client_leaderboard_list_t* v1_leaderboard_list)
+{
+  rc_client_leaderboard_list_wrapper_t* new_list;
+  (void)client;
+
+  if (!v1_leaderboard_list)
+    return NULL;
+
+  new_list = (rc_client_leaderboard_list_wrapper_t*)calloc(1, sizeof(*new_list));
+  if (!new_list)
+    return NULL;
+
+  new_list->source_list = v1_leaderboard_list;
+  new_list->info.destroy_func = rc_client_destroy_leaderboard_list_wrapper;
+
+  if (v1_leaderboard_list->num_buckets) {
+    const v1_rc_client_leaderboard_bucket_t* src_bucket = (const v1_rc_client_leaderboard_bucket_t*)&v1_leaderboard_list->buckets[0];
+    const v1_rc_client_leaderboard_bucket_t* stop_bucket = src_bucket + v1_leaderboard_list->num_buckets;
+    rc_client_leaderboard_bucket_t* bucket;
+    uint32_t num_leaderboards = 0;
+    char* badge_url = NULL;
+
+    new_list->info.public_.buckets = bucket = (rc_client_leaderboard_bucket_t*)calloc(v1_leaderboard_list->num_buckets, sizeof(*new_list->info.public_.buckets));
+    if (!new_list->info.public_.buckets)
+      return (rc_client_leaderboard_list_t*)new_list;
+
+    for (; src_bucket < stop_bucket; src_bucket++)
+      num_leaderboards += src_bucket->num_leaderboards;
+
+    if (num_leaderboards) {
+      new_list->leaderboards = (rc_client_leaderboard_t*)calloc(num_leaderboards, sizeof(*new_list->leaderboards));
+      new_list->leaderboards_pointers = (rc_client_leaderboard_t**)malloc(num_leaderboards * sizeof(rc_client_leaderboard_t*));
+      if (!new_list->leaderboards || !new_list->leaderboards_pointers)
+        return (rc_client_leaderboard_list_t*)new_list;
+    }
+
+    num_leaderboards = 0;
+    src_bucket = (const v1_rc_client_leaderboard_bucket_t*)&v1_leaderboard_list->buckets[0];
+    for (; src_bucket < stop_bucket; src_bucket++, bucket++) {
+      memcpy(bucket, src_bucket, sizeof(*src_bucket));
+
+      if (src_bucket->num_leaderboards) {
+        const v1_rc_client_leaderboard_t** src_leaderboard = (const v1_rc_client_leaderboard_t**)src_bucket->leaderboards;
+        const v1_rc_client_leaderboard_t** stop_leaderboard = src_leaderboard + src_bucket->num_leaderboards;
+        rc_client_leaderboard_t** leaderboard = &new_list->leaderboards_pointers[num_leaderboards];
+
+        bucket->leaderboards = (const rc_client_leaderboard_t**)leaderboard;
+
+        for (; src_leaderboard < stop_leaderboard; ++src_leaderboard, ++leaderboard) {
+          *leaderboard = &new_list->leaderboards[num_leaderboards++];
+          memcpy(*leaderboard, *src_leaderboard, sizeof(**src_leaderboard));
+
+          (*leaderboard)->category = RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED;
+        }
+      }
+    }
+
+    new_list->info.public_.num_buckets = v1_leaderboard_list->num_buckets;
+  }
+
+  return (rc_client_leaderboard_list_t*)new_list;
 }
 
 #endif /* RC_CLIENT_SUPPORTS_EXTERNAL */

@@ -392,6 +392,8 @@ int rc_value_contains_memref(const rc_value_t* value, const rc_memref_t* memref)
 #ifdef RC_CLIENT_SUPPORTS_HASH
 struct rc_hash_iterator;
 struct rc_hash_iterator* rc_client_get_load_state_hash_iterator(rc_client_t* client);
+void rc_client_add_game_hash(rc_client_t* client, const char* hash, uint32_t game_id);
+void rc_client_load_unknown_game(rc_client_t* client, const char* hash);
 #endif
 /* end helper functions for unit tests */
 

@@ -695,7 +695,8 @@ enum {
   RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE = 2,
   RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED = 3,
   RC_CLIENT_LEADERBOARD_BUCKET_ALL = 4,
-  NUM_RC_CLIENT_LEADERBOARD_BUCKETS = 5
+  RC_CLIENT_LEADERBOARD_BUCKET_UNPROMOTED = 5,
+  NUM_RC_CLIENT_LEADERBOARD_BUCKETS = 6
 };
 
 enum {
@@ -708,6 +709,18 @@ enum {
  * Returns an allocated list that must be free'd by calling rc_client_destroy_leaderboard_list.
  */
 RC_EXPORT rc_client_leaderboard_list_t* RC_CCONV rc_client_create_leaderboard_list(rc_client_t* client, int grouping);
+
+typedef struct rc_client_leaderboard_list_params_t {
+  uint32_t subset_id;
+  uint32_t grouping;
+  uint32_t category;
+} rc_client_leaderboard_list_params_t;
+
+/**
+ * Creates a list of leaderboards matching the specified parameters.
+ * Returns an allocated list that must be free'd by calling rc_client_destroy_leaderboard_list.
+ */
+RC_EXPORT rc_client_leaderboard_list_t* RC_CCONV rc_client_create_subset_leaderboard_list(rc_client_t* client, const rc_client_leaderboard_list_params_t* params);
 
 /**
  * Destroys a list allocated by rc_client_create_leaderboard_list.
