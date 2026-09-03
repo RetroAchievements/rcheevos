@@ -616,6 +616,18 @@ enum {
  */
 RC_EXPORT rc_client_achievement_list_t* RC_CCONV rc_client_create_achievement_list(rc_client_t* client, int category, int grouping);
 
+typedef struct rc_client_achievement_list_params_t {
+  uint32_t subset_id;
+  uint32_t grouping;
+  uint32_t category;
+} rc_client_achievement_list_params_t;
+
+/**
+ * Creates a list of achievements matching the specified category and grouping.
+ * Returns an allocated list that must be free'd by calling rc_client_destroy_achievement_list.
+ */
+RC_EXPORT rc_client_achievement_list_t* RC_CCONV rc_client_create_subset_achievement_list(rc_client_t* client, const rc_client_achievement_list_params_t* params);
+
 /**
  * Destroys a list allocated by rc_client_create_achievement_list.
  */

@@ -4245,7 +4245,30 @@ static uint8_t rc_client_map_bucket(uint8_t bucket, int grouping)
   return bucket;
 }
 
+static int rc_client_is_subset_visible_in_achievement_list(const rc_client_subset_info_t* subset, const rc_client_achievement_list_params_t* params)
+{
+  if (!subset->active)
+    return 0;
+
+  return (params->subset_id == 0 || params->subset_id == subset->public_.id);
+}
+
+static int rc_client_is_achievement_visible_in_list(const rc_client_achievement_info_t* achievement, const rc_client_achievement_list_params_t* params)
+{
+  return (achievement->public_.category & params->category) != 0;
+}
+
 rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* client, int category, int grouping)
+{
+  rc_client_achievement_list_params_t params;
+  params.subset_id = 0;
+  params.grouping = grouping;
+  params.category = category;
+
+  return rc_client_create_subset_achievement_list(client, &params);
+}
+
+rc_client_achievement_list_t* rc_client_create_subset_achievement_list(rc_client_t* client, const rc_client_achievement_list_params_t* params)
 {
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* stop;
@@ -4281,12 +4304,15 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client) {
+    if (client->state.external_client->create_subset_achievement_list)
+      return (rc_client_achievement_list_t*)client->state.external_client->create_subset_achievement_list(params);
+
     if (client->state.external_client->create_achievement_list_v3)
-      return (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list_v3(category, grouping);
+      return (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list_v3(params->category, params->grouping);
 
     if (client->state.external_client->create_achievement_list)
       return rc_client_external_convert_v1_achievement_list(client,
-        (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list(category, grouping));
+        (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list(params->category, params->grouping));
   }
 #endif
 
@@ -4299,16 +4325,16 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
   subset = client->game->subsets;
   for (; subset; subset = subset->next) {
-    if (!subset->active)
+    if (!rc_client_is_subset_visible_in_achievement_list(subset, params))
       continue;
 
     num_subsets++;
     achievement = subset->achievements;
     stop = achievement + subset->public_.num_achievements;
     for (; achievement < stop; ++achievement) {
-      if (achievement->public_.category & category) {
+      if (rc_client_is_achievement_visible_in_list(achievement, params)) {
         rc_client_update_achievement_display_information(client, achievement, recent_unlock_time);
-        bucket_counts[rc_client_map_bucket(achievement->public_.bucket, grouping)]++;
+        bucket_counts[rc_client_map_bucket(achievement->public_.bucket, params->grouping)]++;
       }
     }
   }
@@ -4337,14 +4363,14 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
       subset = client->game->subsets;
       for (; subset; subset = subset->next) {
-        if (!subset->active)
+        if (!rc_client_is_subset_visible_in_achievement_list(subset, params))
           continue;
 
         achievement = subset->achievements;
         stop = achievement + subset->public_.num_achievements;
         for (; achievement < stop; ++achievement) {
-          if (achievement->public_.category & category) {
-            if (rc_client_map_bucket(achievement->public_.bucket, grouping) == i) {
+          if (rc_client_is_achievement_visible_in_list(achievement, params)) {
+            if (rc_client_map_bucket(achievement->public_.bucket, params->grouping) == i) {
               ++num_buckets;
               break;
             }
@@ -4360,7 +4386,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   list->public_.buckets = bucket_ptr = (rc_client_achievement_bucket_t*)((uint8_t*)list + list_size);
   achievement_ptr = (const rc_client_achievement_t**)((uint8_t*)bucket_ptr + buckets_size);
 
-  if (grouping == RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS) {
+  if (params->grouping == RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS) {
     for (i = 0; i < sizeof(shared_bucket_order) / sizeof(shared_bucket_order[0]); ++i) {
       bucket_type = shared_bucket_order[i];
       if (!bucket_counts[bucket_type])
@@ -4368,14 +4394,14 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
       bucket_achievements = achievement_ptr;
       for (subset = client->game->subsets; subset; subset = subset->next) {
-        if (!subset->active)
+        if (!rc_client_is_subset_visible_in_achievement_list(subset, params))
           continue;
 
         achievement = subset->achievements;
         stop = achievement + subset->public_.num_achievements;
         for (; achievement < stop; ++achievement) {
-          if (achievement->public_.category & category &&
-              rc_client_map_bucket(achievement->public_.bucket, grouping) == bucket_type) {
+          if (rc_client_is_achievement_visible_in_list(achievement, params) &&
+              rc_client_map_bucket(achievement->public_.bucket, params->grouping) == bucket_type) {
             *achievement_ptr++ = &achievement->public_;
           }
         }
@@ -4399,7 +4425,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   }
 
   for (subset = client->game->subsets; subset; subset = subset->next) {
-    if (!subset->active)
+    if (!rc_client_is_subset_visible_in_achievement_list(subset, params))
       continue;
 
     for (i = 0; i < sizeof(subset_bucket_order) / sizeof(subset_bucket_order[0]); ++i) {
@@ -4412,8 +4438,8 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
       achievement = subset->achievements;
       stop = achievement + subset->public_.num_achievements;
       for (; achievement < stop; ++achievement) {
-        if (achievement->public_.category & category &&
-            rc_client_map_bucket(achievement->public_.bucket, grouping) == bucket_type) {
+        if (rc_client_is_achievement_visible_in_list(achievement, params) &&
+            rc_client_map_bucket(achievement->public_.bucket, params->grouping) == bucket_type) {
           *achievement_ptr++ = &achievement->public_;
         }
       }
