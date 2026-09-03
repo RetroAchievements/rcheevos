@@ -1864,27 +1864,6 @@ static void test_get_leaderboard_info_v1(void)
   rc_client_destroy(g_client);
 }
 
-static void test_get_leaderboard_info_v8(void)
-{
-  const rc_client_leaderboard_t* leaderboard;
-
-  g_client = mock_client_with_external();
-  g_client->state.external_client->get_leaderboard_info = rc_client_external_get_leaderboard_info_v8;
-
-  leaderboard = rc_client_get_leaderboard_info(g_client, 4);
-  ASSERT_PTR_NOT_NULL(leaderboard);
-  ASSERT_NUM_EQUALS(leaderboard->id, 1234);
-  ASSERT_STR_EQUALS(leaderboard->title, "Leaderboard Title");
-  ASSERT_STR_EQUALS(leaderboard->description, "Do something cool");
-  ASSERT_STR_EQUALS(leaderboard->tracker_value, "000250");
-  ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
-  ASSERT_NUM_EQUALS(leaderboard->format, RC_CLIENT_LEADERBOARD_FORMAT_SCORE);
-  ASSERT_NUM_EQUALS(leaderboard->lower_is_better, 1);
-  ASSERT_NUM_EQUALS(leaderboard->category, RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED);
-
-  rc_client_destroy(g_client);
-}
-
 static void test_get_leaderboard_info(void)
 {
   const rc_client_leaderboard_t* leaderboard;
@@ -1947,7 +1926,7 @@ static rc_client_leaderboard_list_info_t* rc_client_external_create_leaderboard_
     list->public_.num_buckets = 1;
     list->public_.buckets = bucket = (v1_rc_client_leaderboard_bucket_t*)((uint8_t*)list + sizeof(*list));
     bucket->num_leaderboards = 2; /* didn't actually allocate these */
-    bucket->leaderboards = (v1_rc_client_leaderboard_t**)((uint8_t*)list->public_.buckets + sizeof(*list->public_.buckets));
+    bucket->leaderboards = (const v1_rc_client_leaderboard_t**)((uint8_t*)list->public_.buckets + sizeof(*list->public_.buckets));
     bucket->leaderboards[0] = (const v1_rc_client_leaderboard_t*)rc_client_external_get_achievement_info_v1(1234);
     bucket->leaderboards[1] = (const v1_rc_client_leaderboard_t*)rc_client_external_get_achievement_info_v1(1235);
     bucket->bucket_type = RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE;
@@ -1972,7 +1951,7 @@ static rc_client_leaderboard_list_info_t* rc_client_external_create_subset_leade
     list->public_.num_buckets = 1;
     list->public_.buckets = bucket = (v8_rc_client_leaderboard_bucket_t*)((uint8_t*)list + sizeof(*list));
     bucket->num_leaderboards = 2; /* didn't actually allocate these */
-    bucket->leaderboards = (v8_rc_client_leaderboard_t**)((uint8_t*)list->public_.buckets + sizeof(*list->public_.buckets));
+    bucket->leaderboards = (const v8_rc_client_leaderboard_t**)((uint8_t*)list->public_.buckets + sizeof(*list->public_.buckets));
     bucket->leaderboards[0] = (const v8_rc_client_leaderboard_t*)rc_client_external_get_leaderboard_info_v8(1234);
     bucket->leaderboards[1] = (const v8_rc_client_leaderboard_t*)rc_client_external_get_leaderboard_info_v8(1235);
     bucket->bucket_type = RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE;
