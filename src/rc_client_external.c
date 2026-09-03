@@ -284,8 +284,6 @@ rc_client_achievement_list_t* rc_client_external_convert_v1_achievement_list(con
 const rc_client_leaderboard_t* rc_client_external_convert_v1_leaderboard(const rc_client_t* client, const rc_client_leaderboard_t* v1_leaderboard)
 {
   rc_client_leaderboard_t* converted = NULL;
-  char* badge_url = NULL;
-  char* badge_locked_url = NULL;
   const uint32_t num_leaderboards = sizeof(client->state.external_client_conversions->leaderboards) / sizeof(client->state.external_client_conversions->leaderboards[0]);
   uint32_t index;
 
@@ -358,7 +356,6 @@ rc_client_leaderboard_list_t* rc_client_external_convert_v1_leaderboard_list(con
     const v1_rc_client_leaderboard_bucket_t* stop_bucket = src_bucket + v1_leaderboard_list->num_buckets;
     rc_client_leaderboard_bucket_t* bucket;
     uint32_t num_leaderboards = 0;
-    char* badge_url = NULL;
 
     new_list->info.public_.buckets = bucket = (rc_client_leaderboard_bucket_t*)calloc(v1_leaderboard_list->num_buckets, sizeof(*new_list->info.public_.buckets));
     if (!new_list->info.public_.buckets)
