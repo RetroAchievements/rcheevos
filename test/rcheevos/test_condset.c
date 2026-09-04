@@ -3,7 +3,7 @@
 #include "../test_framework.h"
 #include "mock_memory.h"
 
-#include "../src/rc_compat.h"
+#include "../src/util/rc_compat.h"
 
 static void _assert_parse_condset(rc_condset_t** condset, rc_memrefs_t* memrefs, void* buffer, const char* memaddr)
 {

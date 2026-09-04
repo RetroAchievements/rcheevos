@@ -2,7 +2,7 @@
 #include "rc_internal.h"
 
 #include "rc_util.h"
-#include "../rhash/md5.h"
+#include "../util/md5.h"
 
 #include <assert.h>
 #include <stdlib.h>

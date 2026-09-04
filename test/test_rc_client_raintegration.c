@@ -6,7 +6,7 @@
 #include "rc_api_runtime.h"
 
 #include "../src/rc_client_internal.h"
-#include "../src/rc_version.h"
+#include "../src/util/rc_version.h"
 
 #include "rhash/data.h"
 #include "test_framework.h"

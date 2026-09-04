@@ -3,7 +3,7 @@
 #include "rc_api_runtime.h"
 #include "rc_consoles.h"
 
-#include "../rc_version.h"
+#include "../util/rc_version.h"
 
 #include <stdlib.h>
 #include <string.h>

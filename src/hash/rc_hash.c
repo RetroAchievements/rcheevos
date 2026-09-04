@@ -2,7 +2,7 @@
 
 #include "rc_hash_internal.h"
 
-#include "../rc_compat.h"
+#include "../util/rc_compat.h"
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -1325,7 +1325,7 @@ static void rc_hash_initialize_iterator_from_path(rc_hash_iterator_t* iterator, 
     if (!c)
       break;
 
-    search.ext[index] = tolower(c);
+    search.ext[index] = (char)tolower(c);
   }
 
   /* find the handler for the extension */

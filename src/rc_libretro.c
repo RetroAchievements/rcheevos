@@ -9,8 +9,8 @@
 #include "rc_libretro.h"
 
 #include "rc_consoles.h"
-#include "rc_compat.h"
-#include "rhash/rc_hash_internal.h"
+#include "util/rc_compat.h"
+#include "hash/rc_hash_internal.h"
 
 #include <ctype.h>
 #include <string.h>

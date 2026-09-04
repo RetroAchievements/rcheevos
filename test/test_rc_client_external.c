@@ -2,7 +2,7 @@
 
 #include "../src/rc_client_external_versions.h"
 #include "../src/rc_client_internal.h"
-#include "../src/rc_version.h"
+#include "../src/util/rc_version.h"
 #include "rc_consoles.h"
 #include "rhash/data.h"
 

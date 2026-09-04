@@ -6,7 +6,7 @@
 
 #include "../src/rc_client_internal.h"
 #include "../src/rc_client_external.h"
-#include "../src/rc_version.h"
+#include "../src/util/rc_version.h"
 
 #include "test_framework.h"
 

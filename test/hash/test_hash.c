@@ -1,8 +1,7 @@
 #include "rc_hash.h"
 
-#include "../rhash/rc_hash_internal.h"
-
-#include "../rc_compat.h"
+#include "../../src/hash/rc_hash_internal.h"
+#include "../../src/util/rc_compat.h"
 #include "../test_framework.h"
 #include "data.h"
 #include "mock_filereader.h"

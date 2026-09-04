@@ -5,7 +5,7 @@
 #include "rc_api_user.h"
 #include "rc_consoles.h"
 #include "rc_hash.h"
-#include "rc_version.h"
+#include "util/rc_version.h"
 
 #include "rapi/rc_api_common.h"
 

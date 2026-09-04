@@ -1,8 +1,8 @@
 #include "rc_runtime.h"
 #include "rc_internal.h"
 
-#include "../rc_compat.h"
-#include "../rhash/md5.h"
+#include "../util/md5.h"
+#include "../util/rc_compat.h"
 
 #include <stdlib.h>
 #include <string.h>

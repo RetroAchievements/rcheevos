@@ -1,6 +1,6 @@
 #include "rc_hash_internal.h"
 
-#include "../rc_compat.h"
+#include "../util/rc_compat.h"
 
 #include <ctype.h>
 #include <string.h>

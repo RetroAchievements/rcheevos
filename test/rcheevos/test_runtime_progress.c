@@ -2,7 +2,7 @@
 #include "rc_internal.h"
 
 #include "../test_framework.h"
-#include "../rhash/md5.h"
+#include "../src/util/md5.h"
 #include "mock_memory.h"
 
 static void _assert_activate_achievement(rc_runtime_t* runtime, uint32_t id, const char* memaddr)

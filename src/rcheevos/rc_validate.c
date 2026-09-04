@@ -3,7 +3,7 @@
 #include "rc_consoles.h"
 #include "rc_internal.h"
 
-#include "../rc_compat.h"
+#include "../util/rc_compat.h"
 
 #include <stddef.h>
 #include <stdlib.h>

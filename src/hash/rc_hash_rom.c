@@ -1,6 +1,6 @@
 #include "rc_hash_internal.h"
 
-#include "../rc_compat.h"
+#include "../util/rc_compat.h"
 
 #include <ctype.h>
 
@@ -68,7 +68,7 @@ int rc_hash_arcade(char hash[33], const rc_hash_iterator_t* iterator)
     if (parent_folder_length < 16) {
       char* ptr = buffer;
       while (folder < filename - 1)
-        *ptr++ = tolower(*folder++);
+        *ptr++ = (char)tolower(*folder++);
       *ptr = '\0';
 
       folder = buffer;

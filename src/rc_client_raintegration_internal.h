@@ -6,7 +6,7 @@
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
 
 #include "rc_client_external.h"
-#include "rc_compat.h"
+#include "util/rc_compat.h"
 
 RC_BEGIN_C_DECLS
 

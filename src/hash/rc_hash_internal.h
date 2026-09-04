@@ -2,7 +2,7 @@
 #define RC_HASH_INTERNAL_H
 
 #include "rc_hash.h"
-#include "md5.h"
+#include "../util/md5.h"
 
 RC_BEGIN_C_DECLS
 

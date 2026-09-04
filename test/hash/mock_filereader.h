@@ -2,6 +2,7 @@
 #define RHASH_MOCK_FILEREADER_H
 
 #include "rc_export.h"
+#include "rc_hash.h"
 
 #include <stdint.h>
 #include <stddef.h>

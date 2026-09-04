@@ -1,8 +1,8 @@
-#include "../rapi/rc_api_common.h"
+#include "../src/rapi/rc_api_common.h"
 
 #include "rc_api_runtime.h" /* for rc_fetch_image */
 
-#include "../rc_compat.h"
+#include "../src/util/rc_compat.h"
 
 #include "../test_framework.h"
 
@@ -894,7 +894,7 @@ static void test_init_fetch_image_request_unknown() {
 
   memset(&fetch_image_request, 0, sizeof(fetch_image_request));
   fetch_image_request.image_name = "12345";
-  fetch_image_request.image_type = -1;
+  fetch_image_request.image_type = (uint32_t) - 1;
 
   ASSERT_NUM_EQUALS(rc_api_init_fetch_image_request(&request, &fetch_image_request), RC_INVALID_STATE);
 

@@ -4,7 +4,7 @@
 
 #include "rc_runtime_types.h"
 
-#include "../rc_compat.h"
+#include "../util/rc_compat.h"
 
 #include <stdlib.h>
 #include <string.h>

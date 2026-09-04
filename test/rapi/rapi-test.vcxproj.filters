@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <None Include="..\..\src\base.props" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{97c8ab6d-6af4-4683-8d24-06acea533dc5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="test_rc_api_common.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_api_editor.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_api_info.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_api_runtime.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_api_user.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rapi.c">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="test_rapi.h">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

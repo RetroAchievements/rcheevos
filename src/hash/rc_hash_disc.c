@@ -2,7 +2,7 @@
 
 #include "rc_hash_internal.h"
 
-#include "../rc_compat.h"
+#include "../util/rc_compat.h"
 
 #include <ctype.h>
 
@@ -514,7 +514,7 @@ int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator)
   void* file_handle;
 
   uint8_t quad_buffer[4];
-  uint8_t success;
+  int success;
 
   file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle)
@@ -1430,7 +1430,7 @@ int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator)
   void* file_handle;
 
   uint8_t quad_buffer[4];
-  uint8_t success;
+  int success;
 
   file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle)

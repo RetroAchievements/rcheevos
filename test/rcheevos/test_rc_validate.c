@@ -2,7 +2,7 @@
 
 #include "rc_consoles.h"
 
-#include "../rc_compat.h"
+#include "../util/rc_compat.h"
 #include "../test_framework.h"
 
 #include <stdlib.h>

@@ -130,6 +130,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\hash\aes.c" />
+    <ClCompile Include="..\src\hash\rc_cdreader.c" />
+    <ClCompile Include="..\src\hash\rc_hash.c" />
+    <ClCompile Include="..\src\hash\rc_hash_disc.c" />
+    <ClCompile Include="..\src\hash\rc_hash_encrypted.c" />
+    <ClCompile Include="..\src\hash\rc_hash_rom.c" />
+    <ClCompile Include="..\src\hash\rc_hash_zip.c" />
     <ClCompile Include="..\src\rapi\rc_api_common.c" />
     <ClCompile Include="..\src\rapi\rc_api_editor.c" />
     <ClCompile Include="..\src\rapi\rc_api_info.c" />
@@ -152,18 +159,11 @@
     <ClCompile Include="..\src\rc_client.c" />
     <ClCompile Include="..\src\rc_client_external.c" />
     <ClCompile Include="..\src\rc_client_raintegration.c" />
-    <ClCompile Include="..\src\rc_compat.c" />
     <ClCompile Include="..\src\rc_libretro.c" />
-    <ClCompile Include="..\src\rc_util.c" />
-    <ClCompile Include="..\src\rc_version.c" />
-    <ClCompile Include="..\src\rhash\aes.c" />
-    <ClCompile Include="..\src\rhash\cdreader.c" />
-    <ClCompile Include="..\src\rhash\hash.c" />
-    <ClCompile Include="..\src\rhash\hash_disc.c" />
-    <ClCompile Include="..\src\rhash\hash_encrypted.c" />
-    <ClCompile Include="..\src\rhash\hash_rom.c" />
-    <ClCompile Include="..\src\rhash\hash_zip.c" />
-    <ClCompile Include="..\src\rhash\md5.c" />
+    <ClCompile Include="..\src\util\md5.c" />
+    <ClCompile Include="..\src\util\rc_compat.c" />
+    <ClCompile Include="..\src\util\rc_util.c" />
+    <ClCompile Include="..\src\util\rc_version.c" />
     <ClCompile Include="rapi\test_rc_api_common.c" />
     <ClCompile Include="rapi\test_rc_api_editor.c" />
     <ClCompile Include="rapi\test_rc_api_info.c" />
@@ -204,11 +204,11 @@
     <ClInclude Include="..\include\rc_client_raintegration.h" />
     <ClInclude Include="..\include\rc_consoles.h" />
     <ClInclude Include="..\include\rc_export.h" />
-    <ClInclude Include="..\include\rc_hash.h" />
     <ClInclude Include="..\include\rc_runtime.h" />
     <ClInclude Include="..\include\rc_client.h" />
     <ClInclude Include="..\include\rc_runtime_types.h" />
-    <ClInclude Include="..\include\rc_util.h" />
+    <ClInclude Include="..\src\hash\aes.h" />
+    <ClInclude Include="..\src\hash\rc_hash_internal.h" />
     <ClInclude Include="..\src\rcheevos\rc_internal.h" />
     <ClInclude Include="..\include\rc_error.h" />
     <ClInclude Include="..\src\rapi\rc_api_common.h" />
@@ -216,12 +216,10 @@
     <ClInclude Include="..\src\rc_client_external.h" />
     <ClInclude Include="..\src\rc_client_external_versions.h" />
     <ClInclude Include="..\src\rc_client_internal.h" />
-    <ClInclude Include="..\src\rc_compat.h" />
     <ClInclude Include="..\src\rc_libretro.h" />
-    <ClInclude Include="..\src\rc_version.h" />
-    <ClInclude Include="..\src\rhash\aes.h" />
-    <ClInclude Include="..\src\rhash\md5.h" />
-    <ClInclude Include="..\src\rhash\rc_hash_internal.h" />
+    <ClInclude Include="..\src\util\md5.h" />
+    <ClInclude Include="..\src\util\rc_compat.h" />
+    <ClInclude Include="..\src\util\rc_version.h" />
     <ClInclude Include="libretro.h" />
     <ClInclude Include="rcheevos\mock_memory.h" />
     <ClInclude Include="rhash\data.h" />

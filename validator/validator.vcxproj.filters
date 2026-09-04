@@ -7,11 +7,11 @@
     <Filter Include="src\rcheevos">
       <UniqueIdentifier>{DD82F9EB-1066-40C6-9568-D5C7EEB2A49B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\rhash">
-      <UniqueIdentifier>{efdc689a-471b-432e-8ecb-dde3a3202949}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\rapi">
       <UniqueIdentifier>{8570c19e-e882-409f-84d8-b87887371c26}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\util">
+      <UniqueIdentifier>{a2dbf1cd-827e-4d50-be76-37ce8303e9fb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -49,12 +49,6 @@
       <Filter>src\rcheevos</Filter>
     </ClCompile>
     <ClCompile Include="validator.c" />
-    <ClCompile Include="..\src\rhash\md5.c">
-      <Filter>src\rhash</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\rapi\rc_api_runtime.c">
-      <Filter>src\rapi</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\rapi\rc_api_common.c">
       <Filter>src\rapi</Filter>
     </ClCompile>
@@ -64,11 +58,14 @@
     <ClCompile Include="..\src\rcheevos\rc_validate.c">
       <Filter>src\rcheevos</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\rc_compat.c">
-      <Filter>src</Filter>
+    <ClCompile Include="..\src\rapi\rc_api_runtime.c">
+      <Filter>src\rapi</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\rc_util.c">
-      <Filter>src</Filter>
+    <ClCompile Include="..\src\util\md5.c">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\util\rc_util.c">
+      <Filter>src\util</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

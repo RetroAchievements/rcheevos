@@ -1,6 +1,6 @@
 #include "../rc_libretro.h"
 
-#include "../rc_compat.h"
+#include "../util/rc_compat.h"
 #include "rc_consoles.h"
 
 #include "test_framework.h"

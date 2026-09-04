@@ -1,6 +1,6 @@
 #include "data.h"
 
-#include "../src/rc_compat.h"
+#include "../../src/util/rc_compat.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -107,7 +107,7 @@ uint8_t* generate_gamecube_iso(size_t mb, size_t* image_size)
     for (ix = 0; ix < 18 * 4; ix++)
     {
       /* offsets start at 0x00003100 and increment */
-      image[dol_sizes_addr + ix] = (ix % 4 == 2) ? (0x30 + 1 + ix / 4) : 0; 
+      image[dol_sizes_addr + ix] = (ix % 4 == 2) ? (uint8_t)(0x30 + 1 + ix / 4) : 0; 
       /* 0x000000ff for every other size */
       image[dol_sizes_addr + 0x90 + ix] = (ix % 8 == 3) ? 0xff : 0; 
     }
@@ -529,9 +529,9 @@ uint8_t* generate_jaguarcd_bin(uint32_t header_offset, uint32_t binary_size, int
       memcpy(&image[header_offset + i], "ATRI", 4);
   memcpy(&image[header_offset + 64], "ATARI APPROVED DATA HEADER ATRI ", 32);
   image[header_offset + 64 + 32 + 2] = 0xA0;
-  image[header_offset + 64 + 32 + 4 + 1] = (binary_size >> 16);
-  image[header_offset + 64 + 32 + 4 + 2] = (binary_size >> 8) & 0xFF;
-  image[header_offset + 64 + 32 + 4 + 3] = (binary_size & 0xFF);
+  image[header_offset + 64 + 32 + 4 + 1] = (uint8_t)(binary_size >> 16);
+  image[header_offset + 64 + 32 + 4 + 2] = (uint8_t)(binary_size >> 8) & 0xFF;
+  image[header_offset + 64 + 32 + 4 + 3] = (uint8_t)(binary_size & 0xFF);
 
   /* binary data */
   fill_image(&image[header_offset + 64 + 32 + 8], size_needed - (header_offset + 64 + 32 + 8));
@@ -618,10 +618,10 @@ uint8_t* convert_to_2352(uint8_t* input, size_t* size, uint32_t first_sector)
     uint32_t i;
 
     first_sector += 150;
-    frames = (first_sector % 75);
+    frames = (uint8_t)(first_sector % 75);
     first_sector /= 75;
-    seconds = (first_sector % 60);
-    minutes = first_sector / 60;
+    seconds = (uint8_t)(first_sector % 60);
+    minutes = (uint8_t)(first_sector / 60);
 
     for (i = 0; i < num_sectors; i++)
     {
