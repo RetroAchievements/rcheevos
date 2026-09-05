@@ -236,7 +236,8 @@ static int rc_api_process_fetch_game_data_leaderboards(rc_api_response_t* respon
     RC_JSON_NEW_FIELD("Mem"),
     RC_JSON_NEW_FIELD("Format"),
     RC_JSON_NEW_FIELD("LowerIsBetter"),
-    RC_JSON_NEW_FIELD("Hidden")
+    RC_JSON_NEW_FIELD("Hidden"),
+    RC_JSON_NEW_FIELD("State")
   };
 
   memset(&iterator, 0, sizeof(iterator));
@@ -267,6 +268,13 @@ static int rc_api_process_fetch_game_data_leaderboards(rc_api_response_t* respon
     }
     else {
       leaderboard->format = RC_FORMAT_VALUE;
+    }
+
+    leaderboard->state = RC_LEADERBOARD_STATE_ACTIVE;
+    if (leaderboard_fields[7].value_start &&
+        leaderboard_fields[7].value_end - leaderboard_fields[7].value_start == 12 &&
+        memcmp(leaderboard_fields[7].value_start + 1, "unpromoted", 10) == 0) {
+      leaderboard->state = RC_LEADERBOARD_STATE_UNPROMOTED;
     }
 
     ++leaderboard;
@@ -395,6 +403,8 @@ int rc_api_init_fetch_game_sets_request_hosted(rc_api_request_t* request,
       rc_url_builder_append_unum_param(&builder, "g", api_params->game_id);
     else
       rc_url_builder_append_str_param(&builder, "m", api_params->game_hash);
+
+    rc_url_builder_append_unum_param(&builder, "v", 2); /* indicate we want unpromoted leaderboards */
 
     request->post_data = rc_url_builder_finalize(&builder);
     request->content_type = RC_CONTENT_TYPE_URLENCODED;

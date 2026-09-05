@@ -144,6 +144,69 @@ typedef struct v3_rc_client_achievement_list_info_t {
   rc_client_destroy_achievement_list_func_t destroy_func;
 } v3_rc_client_achievement_list_info_t;
 
+/* leaderboard */
+
+typedef struct v1_rc_client_leaderboard_t {
+  const char* title;
+  const char* description;
+  const char* tracker_value;
+  uint32_t id;
+  uint8_t state;
+  uint8_t format;
+  uint8_t lower_is_better;
+} v1_rc_client_leaderboard_t;
+
+typedef struct v8_rc_client_leaderboard_t {
+  const char* title;
+  const char* description;
+  const char* tracker_value;
+  uint32_t id;
+  uint8_t state;
+  uint8_t format;
+  uint8_t lower_is_better;
+  uint8_t category;
+} v8_rc_client_leaderboard_t;
+
+/* leaderboard list */
+
+typedef struct v1_rc_client_leaderboard_bucket_t {
+  const v1_rc_client_leaderboard_t** leaderboards;
+  uint32_t num_leaderboards;
+
+  const char* label;
+  uint32_t subset_id;
+  uint8_t bucket_type;
+} v1_rc_client_leaderboard_bucket_t;
+
+typedef struct v1_rc_client_leaderboard_list_t {
+  const v1_rc_client_leaderboard_bucket_t* buckets;
+  uint32_t num_buckets;
+} v1_rc_client_leaderboard_list_t;
+
+typedef struct v1_rc_client_leaderboard_list_info_t {
+  v1_rc_client_leaderboard_list_t public_;
+  rc_client_destroy_leaderboard_list_func_t destroy_func;
+} v1_rc_client_leaderboard_list_info_t;
+
+typedef struct v8_rc_client_leaderboard_bucket_t {
+  const v8_rc_client_leaderboard_t** leaderboards;
+  uint32_t num_leaderboards;
+
+  const char* label;
+  uint32_t subset_id;
+  uint8_t bucket_type;
+} v8_rc_client_leaderboard_bucket_t;
+
+typedef struct v8_rc_client_leaderboard_list_t {
+  const v8_rc_client_leaderboard_bucket_t* buckets;
+  uint32_t num_buckets;
+} v8_rc_client_leaderboard_list_t;
+
+typedef struct v8_rc_client_leaderboard_list_info_t {
+  v8_rc_client_leaderboard_list_t public_;
+  rc_client_destroy_leaderboard_list_func_t destroy_func;
+} v8_rc_client_leaderboard_list_info_t;
+
 /* user_game_summary */
 
 typedef struct v1_rc_client_user_game_summary_t {
