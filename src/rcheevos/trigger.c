@@ -133,10 +133,10 @@ static void rc_reset_trigger_hitcounts(rc_trigger_t* self) {
   }
 }
 
-static void rc_update_trigger_memrefs(rc_trigger_t* self, rc_peek_t peek, void* ud) {
+static void rc_update_trigger_memrefs(rc_trigger_t* self, rc_read_memory_func_t read_memory, void* ud) {
   if (self->has_memrefs) {
     rc_trigger_with_memrefs_t* trigger = (rc_trigger_with_memrefs_t*)self;
-    rc_update_memref_values(&trigger->memrefs, peek, ud);
+    rc_update_memref_values(&trigger->memrefs, read_memory, ud);
   }
 }
 
@@ -149,7 +149,7 @@ rc_memrefs_t* rc_trigger_get_memrefs(rc_trigger_t* self) {
   return NULL;
 }
 
-int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, void* unused_L) {
+int rc_evaluate_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, void* ud, void* unused_L) {
   rc_eval_state_t eval_state;
   rc_condset_t* condset;
   rc_typed_value_t measured_value;
@@ -172,7 +172,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, void* unus
 
     case RC_TRIGGER_STATE_INACTIVE:
       /* not yet active. update the memrefs so deltas are correct when it becomes active, then return INACTIVE */
-      rc_update_trigger_memrefs(self, peek, ud);
+      rc_update_trigger_memrefs(self, read_memory, ud);
       return RC_TRIGGER_STATE_INACTIVE;
 
     default:
@@ -180,12 +180,12 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, void* unus
   }
 
   /* update the memory references */
-  rc_update_trigger_memrefs(self, peek, ud);
+  rc_update_trigger_memrefs(self, read_memory, ud);
 
   /* process the trigger */
   memset(&eval_state, 0, sizeof(eval_state));
-  eval_state.peek = peek;
-  eval_state.peek_userdata = ud;
+  eval_state.read_memory = read_memory;
+  eval_state.read_memory_userdata = ud;
 
   measured_value.type = RC_VALUE_TYPE_NONE;
 
@@ -322,11 +322,11 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, void* unus
   return self->state;
 }
 
-int rc_test_trigger(rc_trigger_t* self, rc_peek_t peek, void* ud, void* unused_L) {
+int rc_test_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, void* ud, void* unused_L) {
   /* for backwards compatibilty, rc_test_trigger always assumes the achievement is active */
   self->state = RC_TRIGGER_STATE_ACTIVE;
 
-  return (rc_evaluate_trigger(self, peek, ud, unused_L) == RC_TRIGGER_STATE_TRIGGERED);
+  return (rc_evaluate_trigger(self, read_memory, ud, unused_L) == RC_TRIGGER_STATE_TRIGGERED);
 }
 
 void rc_reset_trigger(rc_trigger_t* self) {

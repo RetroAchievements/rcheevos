@@ -91,6 +91,7 @@ static void rc_client_reschedule_callback(rc_client_t* client, rc_client_schedul
 static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
 static int rc_client_is_award_achievement_pending(const rc_client_t* client, uint32_t achievement_id);
 static void rc_client_submit_leaderboard_entry_retry(rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
+static uint32_t rc_client_read_modified_memory_helper(uint32_t address, uint8_t* buffer, uint32_t num_bytes, void* ud);
 
 /* ===== natvis extensions ===== */
 
@@ -178,7 +179,6 @@ rc_client_t* rc_client_create(rc_client_read_memory_func_t read_memory_function,
   client->callbacks.server_call = server_call_function;
   client->callbacks.event_handler = rc_client_natvis_helper;
   client->callbacks.event_handler = rc_client_dummy_event_handler;
-  rc_client_set_legacy_peek(client, RC_CLIENT_LEGACY_PEEK_AUTO);
   rc_client_set_get_time_millisecs_function(client, NULL);
 
   rc_mutex_init(&client->state.mutex);
@@ -5747,7 +5747,7 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
       rc_mutex_lock(&client->state.mutex);
 
       rc_runtime_get_richpresence(&client->game->runtime, buffer, sizeof(buffer),
-          client->state.legacy_peek, client, NULL);
+          rc_client_read_modified_memory_helper, client, NULL);
 
       rc_mutex_unlock(&client->state.mutex);
     }
@@ -5806,7 +5806,7 @@ size_t rc_client_get_rich_presence_message(rc_client_t* client, char buffer[], s
   rc_mutex_lock(&client->state.mutex);
 
   result = rc_runtime_get_richpresence(&client->game->runtime, buffer, (unsigned)buffer_size,
-      client->state.legacy_peek, client, NULL);
+      rc_client_read_modified_memory_helper, client, NULL);
 
   rc_mutex_unlock(&client->state.mutex);
 
@@ -5875,85 +5875,26 @@ static void rc_client_invalidate_processing_memref(rc_client_t* client)
   client->state.processing_memref = NULL;
 }
 
-static uint32_t rc_client_peek_le(uint32_t address, uint32_t num_bytes, void* ud)
+static uint32_t RC_CCONV rc_client_read_memory_validator(uint32_t address, uint8_t* buffer, uint32_t num_bytes, void* ud)
 {
   rc_client_t* client = (rc_client_t*)ud;
-  uint32_t value = 0;
-  uint32_t num_read = 0;
 
-  /* if we know the address is out of range, and it's part of a pointer chain
-   * (processing_memref is null), don't bother processing it. */
-  if (address > client->game->max_valid_address && !client->state.processing_memref)
-    return 0;
-
-  if (num_bytes <= sizeof(value)) {
-    num_read = client->callbacks.read_memory(address, (uint8_t*)&value, num_bytes, client);
-    if (num_read == num_bytes)
-      return value;
-  }
-
+  uint32_t num_read = client->callbacks.read_memory(address, buffer, num_bytes, client);
   if (num_read < num_bytes)
     rc_client_invalidate_processing_memref(client);
 
-  return 0;
+  return num_read;
 }
 
-static uint32_t rc_client_peek(uint32_t address, uint32_t num_bytes, void* ud)
+static uint32_t RC_CCONV rc_client_read_modified_memory_helper(uint32_t address, uint8_t* buffer, uint32_t num_bytes, void* ud)
 {
   rc_client_t* client = (rc_client_t*)ud;
-  uint8_t buffer[4];
-  uint32_t num_read = 0;
 
-  /* if we know the address is out of range, and it's part of a pointer chain
-   * (processing_memref is null), don't bother processing it. */
-  if (address > client->game->max_valid_address && !client->state.processing_memref)
+  /* if the address is out of range, don't bother processing it. */
+  if (address > client->game->max_valid_address)
     return 0;
 
-  switch (num_bytes) {
-    case 1:
-      num_read = client->callbacks.read_memory(address, buffer, 1, client);
-      if (num_read == 1)
-        return buffer[0];
-      break;
-    case 2:
-      num_read = client->callbacks.read_memory(address, buffer, 2, client);
-      if (num_read == 2)
-        return buffer[0] | (buffer[1] << 8);
-      break;
-    case 3:
-      num_read = client->callbacks.read_memory(address, buffer, 3, client);
-      if (num_read == 3)
-        return buffer[0] | (buffer[1] << 8) | (buffer[2] << 16);
-      break;
-    case 4:
-      num_read = client->callbacks.read_memory(address, buffer, 4, client);
-      if (num_read == 4)
-        return buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
-      break;
-    default:
-      break;
-  }
-
-  if (num_read < num_bytes)
-    rc_client_invalidate_processing_memref(client);
-
-  return 0;
-}
-
-void rc_client_set_legacy_peek(rc_client_t* client, int method)
-{
-  if (method == RC_CLIENT_LEGACY_PEEK_AUTO) {
-    union {
-      uint32_t whole;
-      uint8_t parts[4];
-    } u;
-    u.whole = 1;
-    method = (u.parts[0] == 1) ?
-        RC_CLIENT_LEGACY_PEEK_LITTLE_ENDIAN_READS : RC_CLIENT_LEGACY_PEEK_CONSTRUCTED;
-  }
-
-  client->state.legacy_peek = (method == RC_CLIENT_LEGACY_PEEK_LITTLE_ENDIAN_READS) ?
-      rc_client_peek_le : rc_client_peek;
+  return client->callbacks.read_memory(address, buffer, num_bytes, client);
 }
 
 int rc_client_is_processing_required(rc_client_t* client)
@@ -5994,7 +5935,7 @@ static void rc_client_update_memref_values(rc_client_t* client) {
       /* if processing_memref is set, and the memory read fails, all dependent achievements will be disabled */
       client->state.processing_memref = memref;
 
-      value = rc_peek_value(memref->address, memref->value.size, client->state.legacy_peek, client);
+      value = rc_read_memory(memref->address, memref->value.size, rc_client_read_memory_validator, client);
 
       if (client->state.processing_memref) {
         rc_update_memref_value(&memref->value, value);
@@ -6016,8 +5957,10 @@ static void rc_client_update_memref_values(rc_client_t* client) {
       rc_modified_memref_t* modified_memref = modified_memref_list->items;
       const rc_modified_memref_t* modified_memref_stop = modified_memref + modified_memref_list->count;
 
-      for (; modified_memref < modified_memref_stop; ++modified_memref)
-        rc_update_memref_value(&modified_memref->memref.value, rc_get_modified_memref_value(modified_memref, client->state.legacy_peek, client));
+      for (; modified_memref < modified_memref_stop; ++modified_memref) {
+        rc_update_memref_value(&modified_memref->memref.value,
+            rc_get_modified_memref_value(modified_memref, rc_client_read_modified_memory_helper, client));
+      }
 
       modified_memref_list = modified_memref_list->next;
     } while (modified_memref_list);
@@ -6042,7 +5985,7 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
 
     old_measured_value = trigger->measured_value;
     old_state = trigger->state;
-    new_state = rc_evaluate_trigger(trigger, client->state.legacy_peek, client, NULL);
+    new_state = rc_evaluate_trigger(trigger, rc_client_read_modified_memory_helper, client, NULL);
 
     /* trigger->state doesn't actually change to RESET - RESET just serves as a notification.
      * we don't care about that particular notification, so look at the actual state. */
@@ -6253,7 +6196,7 @@ static void rc_client_do_frame_process_leaderboards(rc_client_t* client, rc_clie
     }
 
     old_state = lboard->state;
-    new_state = rc_evaluate_lboard(lboard, &leaderboard->value, client->state.legacy_peek, client, NULL);
+    new_state = rc_evaluate_lboard(lboard, &leaderboard->value, rc_client_read_modified_memory_helper, client, NULL);
 
     switch (new_state) {
       case RC_LBOARD_STATE_STARTED: /* leaderboard is running */
@@ -6460,7 +6403,7 @@ void rc_client_do_frame(rc_client_t* client)
 
     richpresence = client->game->runtime.richpresence;
     if (richpresence && richpresence->richpresence)
-      rc_update_richpresence_internal(richpresence->richpresence, client->state.legacy_peek, client);
+      rc_update_richpresence_internal(richpresence->richpresence, rc_client_read_modified_memory_helper, client);
 
     rc_mutex_unlock(&client->state.mutex);
 

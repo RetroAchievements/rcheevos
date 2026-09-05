@@ -27,7 +27,7 @@ static void test_evaluate_value(const char* memaddr, int expected_value) {
     ASSERT_FAIL("write past end of buffer");
   }
 
-  ret = rc_evaluate_value(self, peek, &memory, NULL);
+  ret = rc_evaluate_value(self, read_memory, &memory, NULL);
   ASSERT_NUM_EQUALS(ret, expected_value);
 }
 
@@ -75,35 +75,35 @@ static void test_evaluate_measured_value_with_pause() {
   ASSERT_PTR_NOT_NULL(self);
 
   /* should initially be paused, no hits captured */
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* pause should prevent hitcount */
   ram[2]++;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* unpause should not report the change that occurred while paused */
   ram[3] = 0;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* hitcount should be captured */
   ram[2]++;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 1);
 
   /* pause should return current hitcount */
   ram[3] = 0xAB;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 1);
 
   /* pause should prevent hitcount */
   ram[2]++;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 1);
 
   /* unpause should not report the change that occurred while paused */
   ram[3] = 0;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 1);
 
   /* additional hitcount should be captured */
   ram[2]++;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 2);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 2);
 }
 
 static void test_evaluated_and_next_measured_if_value() {
@@ -129,49 +129,49 @@ static void test_evaluated_and_next_measured_if_value() {
   cond4 = cond2->next->next;
 
   /* measured if cannot be true */
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
   ASSERT_NUM_EQUALS(cond2->current_hits, 0);
   ASSERT_NUM_EQUALS(cond4->current_hits, 0);
 
   /* capture first hit, measured_if still not true */
   ram[0] = 1;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
   ASSERT_NUM_EQUALS(cond2->current_hits, 1);
   ASSERT_NUM_EQUALS(cond4->current_hits, 0);
 
   /* reset */
   ram[4] = 1;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
   ASSERT_NUM_EQUALS(cond2->current_hits, 0);
   ASSERT_NUM_EQUALS(cond4->current_hits, 0);
 
   /* clear reset */
   ram[4] = 0;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
   ASSERT_NUM_EQUALS(cond2->current_hits, 1);
   ASSERT_NUM_EQUALS(cond4->current_hits, 0);
 
   /* prime measured_if */
   ram[0] = 9;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
   ASSERT_NUM_EQUALS(cond2->current_hits, 1);
   ASSERT_NUM_EQUALS(cond4->current_hits, 0);
 
   /* trigger measured if */
   ram[0] = 0;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 100);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 100);
   ASSERT_NUM_EQUALS(cond2->current_hits, 1);
   ASSERT_NUM_EQUALS(cond4->current_hits, 1);
 
   /* measured if should remain triggered */
   ram[0] = 1;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 100);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 100);
   ASSERT_NUM_EQUALS(cond2->current_hits, 1);
   ASSERT_NUM_EQUALS(cond4->current_hits, 1);
 
   /* reset */
   ram[4] = 1;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
   ASSERT_NUM_EQUALS(cond2->current_hits, 0);
   ASSERT_NUM_EQUALS(cond4->current_hits, 0);
 }
@@ -194,35 +194,35 @@ static void test_evaluate_measured_value_with_reset() {
   ASSERT_PTR_NOT_NULL(self);
 
   /* reset should initially be true, no hits captured */
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* reset should prevent hitcount */
   ram[2]++;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* reset no longer true, change while reset shouldn't be captured */
   ram[3] = 0;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* additional hitcount should be captured */
   ram[2]++;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 1);
 
   /* reset should clear hit count */
   ram[3] = 0xAB;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* reset should prevent hitcount */
   ram[2]++;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* reset no longer true, change while reset shouldn't be captured */
   ram[3] = 0;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* additional hitcount should be captured */
   ram[2]++;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 1);
 }
 
 static void init_typed_value(rc_typed_value_t* value, uint8_t type, uint32_t u32, double f32) {
@@ -632,19 +632,19 @@ static void test_addhits_float_coercion() {
    */
 
   /* float(4) = 1.5, prev(float(4)) = 0.0. 0+15-0=1 is false => 0 */
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* float(4) = 1.75, prev(float(4)) = 1.5. 0+17-15 => 2 => 2=1 is false => 0 */
   ram[7] = 0x3f; ram[6] = 0xe0;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* float(4) = 1.82, prev(float(4)) = 1.75. 0+18-17 => 1 => 1=1 is true => 1 */
   ram[6] = 0xe8; ram[5] = 0xf5; ram[4] = 0xc3;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 1);
 
   /* float(4) = 2.06, prev(float(4)) = 1.82. 0+20-18 => 2 => 2=1 is false => 1 */
   ram[7] = 0x40; ram[6] = 0x03; ram[5] = 0xd7; ram[4] = 0x0a;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 1);
 }
 
 static void test_addhits_float_coercion_remembered() {
@@ -669,19 +669,19 @@ static void test_addhits_float_coercion_remembered() {
    * performing the subtraction. */
 
   /* float(4) = 1.5, prev(float(4)) = 0.0. 15-0 => 15=1 is false => 0 */
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* float(4) = 1.75, prev(float(4)) = 1.5. 17-15 => 2=1 is false => 0 */
   ram[7] = 0x3f; ram[6] = 0xe0;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 0);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 0);
 
   /* float(4) = 1.82, prev(float(4)) = 1.75. 18-17 => 1=1 is true => 1 */
   ram[6] = 0xe8; ram[5] = 0xf5; ram[4] = 0xc3;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 1);
 
   /* float(4) = 2.06, prev(float(4)) = 1.82. 20-18 => 2=1 is false => 1 */
   ram[7] = 0x40; ram[6] = 0x03; ram[5] = 0xd7; ram[4] = 0x0a;
-  ASSERT_NUM_EQUALS(rc_evaluate_value(self, peek, &memory, NULL), 1);
+  ASSERT_NUM_EQUALS(rc_evaluate_value(self, read_memory, &memory, NULL), 1);
 }
 
 void test_value(void) {

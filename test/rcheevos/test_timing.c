@@ -122,7 +122,7 @@ static void do_timing(void)
     ram[0x8C] = (i % 10) + '0';
 
     start = clock();
-    rc_runtime_do_frame(&runtime, event_handler, peek, &memory, NULL);
+    rc_runtime_do_frame(&runtime, event_handler, read_memory, &memory, NULL);
     end = clock();
 
     total_clocks += (end - start);

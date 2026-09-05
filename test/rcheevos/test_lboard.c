@@ -24,7 +24,7 @@ static void _assert_parse_lboard(rc_lboard_t** lboard, void* buffer, const char*
 #define assert_parse_lboard(lboard, buffer, memaddr) ASSERT_HELPER(_assert_parse_lboard(lboard, buffer, memaddr), "assert_parse_lboard")
 
 static int evaluate_lboard(rc_lboard_t* lboard, memory_t* memory, int* value) {
-  return rc_evaluate_lboard(lboard, value, peek, memory, NULL);
+  return rc_evaluate_lboard(lboard, value, read_memory, memory, NULL);
 }
 
 static void test_simple_leaderboard() {

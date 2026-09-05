@@ -6,6 +6,13 @@
 
 #define MEMREF_PLACEHOLDER_ADDRESS 0xFFFFFFFF
 
+union rc_bigendian_check_t {
+    uint32_t u32;
+    uint8_t u8[4];
+};
+static const union rc_bigendian_check_t host_bigendian_check = { 0x01000000 };
+static uint8_t rc_is_host_bigendian() { return host_bigendian_check.u8[0]; }
+
 rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t size) {
   rc_memref_list_t* memref_list = NULL;
   rc_memref_t* memref = NULL;
@@ -570,6 +577,42 @@ void rc_transform_memref_value(rc_typed_value_t* value, uint8_t size) {
   }
 }
 
+static const uint32_t rc_memref_size_bytes[] = {
+  1, /* RC_MEMSIZE_8_BITS     */
+  2, /* RC_MEMSIZE_16_BITS    */
+  3, /* RC_MEMSIZE_24_BITS    */
+  4, /* RC_MEMSIZE_32_BITS    */
+  1, /* RC_MEMSIZE_LOW        */
+  1, /* RC_MEMSIZE_HIGH       */
+  1, /* RC_MEMSIZE_BIT_0      */
+  1, /* RC_MEMSIZE_BIT_1      */
+  1, /* RC_MEMSIZE_BIT_2      */
+  1, /* RC_MEMSIZE_BIT_3      */
+  1, /* RC_MEMSIZE_BIT_4      */
+  1, /* RC_MEMSIZE_BIT_5      */
+  1, /* RC_MEMSIZE_BIT_6      */
+  1, /* RC_MEMSIZE_BIT_7      */
+  1, /* RC_MEMSIZE_BITCOUNT   */
+  2, /* RC_MEMSIZE_16_BITS_BE */
+  3, /* RC_MEMSIZE_24_BITS_BE */
+  4, /* RC_MEMSIZE_32_BITS_BE */
+  4, /* RC_MEMSIZE_FLOAT      */
+  4, /* RC_MEMSIZE_MBF32      */
+  4, /* RC_MEMSIZE_MBF32_LE   */
+  4, /* RC_MEMSIZE_FLOAT_BE   */
+  4, /* RC_MEMSIZE_DOUBLE32   */
+  4, /* RC_MEMSIZE_DOUBLE32_BE*/
+  0, /* RC_MEMSIZE_VARIABLE   */
+};
+
+uint32_t rc_memref_bytes(uint8_t size) {
+  const size_t index = (size_t)size;
+  if (index >= sizeof(rc_memref_size_bytes) / sizeof(rc_memref_size_bytes[0]))
+    return 0;
+
+  return rc_memref_size_bytes[index];
+}
+
 static const uint32_t rc_memref_masks[] = {
   0x000000ff, /* RC_MEMSIZE_8_BITS     */
   0x0000ffff, /* RC_MEMSIZE_16_BITS    */
@@ -645,35 +688,30 @@ uint8_t rc_memref_shared_size(uint8_t size) {
   return rc_memref_shared_sizes[index];
 }
 
-uint32_t rc_peek_value(uint32_t address, uint8_t size, rc_peek_t peek, void* ud) {
-  if (!peek)
+uint32_t rc_read_memory(uint32_t address, uint8_t size, rc_read_memory_func_t read_memory, void* ud) {
+  union buffered_u32 {
+    uint32_t u32;
+    uint8_t u8[4];
+  } value = { 0 };
+
+  uint32_t num_bytes = rc_memref_bytes(size);
+  if (num_bytes == 0) /* abort if size is unknown */
     return 0;
 
-  switch (size)
-  {
-    case RC_MEMSIZE_8_BITS:
-      return peek(address, 1, ud);
+  if (!read_memory)
+    return 0;
 
-    case RC_MEMSIZE_16_BITS:
-      return peek(address, 2, ud);
+  read_memory(address, value.u8, num_bytes, ud);
 
-    case RC_MEMSIZE_32_BITS:
-      return peek(address, 4, ud);
-
-    default:
-    {
-      uint32_t value;
-      const size_t index = (size_t)size;
-      if (index >= sizeof(rc_memref_shared_sizes) / sizeof(rc_memref_shared_sizes[0]))
-        return 0;
-
-      /* fetch the larger value and mask off the bits associated to the specified size
-       * for correct deduction of prior value. non-prior memrefs should already be using
-       * shared size memrefs to minimize the total number of memory reads required. */
-      value = rc_peek_value(address, rc_memref_shared_sizes[index], peek, ud);
-      return value & rc_memref_masks[index];
-    }
+  if (rc_is_host_bigendian()) {
+    value.u32 = value.u8[0] << 24 |
+                value.u8[1] << 16 |
+                value.u8[2] << 8 |
+                value.u8[3];
   }
+
+  value.u32 &= rc_memref_masks[size]; /* rc_memref_bytes ensures this index exists */
+  return value.u32;
 }
 
 void rc_update_memref_value(rc_memref_value_t* memref, uint32_t new_value) {
@@ -720,7 +758,7 @@ void rc_get_memref_value(rc_typed_value_t* value, rc_memref_t* memref, int opera
   value->value.u32 = rc_get_memref_value_value(&memref->value, operand_type);
 }
 
-uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_peek_t peek, void* ud) {
+uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_read_memory_func_t read_memory, void* ud) {
   rc_typed_value_t value, modifier;
 
   rc_evaluate_operand(&value, &memref->parent, NULL);
@@ -730,7 +768,7 @@ uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_pee
     case RC_OPERATOR_INDIRECT_READ:
       rc_typed_value_add(&value, &modifier);
       rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
-      value.value.u32 = rc_peek_value(value.value.u32, memref->memref.value.size, peek, ud);
+      value.value.u32 = rc_read_memory(value.value.u32, memref->memref.value.size, read_memory, ud);
       value.type = memref->memref.value.type;
       break;
 
@@ -773,7 +811,7 @@ uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_pee
   return value.value.u32;
 }
 
-void rc_update_memref_values(rc_memrefs_t* memrefs, rc_peek_t peek, void* ud) {
+void rc_update_memref_values(rc_memrefs_t* memrefs, rc_read_memory_func_t read_memory, void* ud) {
   rc_memref_list_t* memref_list;
   rc_modified_memref_list_t* modified_memref_list;
 
@@ -785,7 +823,7 @@ void rc_update_memref_values(rc_memrefs_t* memrefs, rc_peek_t peek, void* ud) {
 
     for (; memref < memref_stop; ++memref) {
       if (memref->value.type != RC_VALUE_TYPE_NONE)
-        rc_update_memref_value(&memref->value, rc_peek_value(memref->address, memref->value.size, peek, ud));
+        rc_update_memref_value(&memref->value, rc_read_memory(memref->address, memref->value.size, read_memory, ud));
     }
 
     memref_list = memref_list->next;
@@ -798,7 +836,7 @@ void rc_update_memref_values(rc_memrefs_t* memrefs, rc_peek_t peek, void* ud) {
       const rc_modified_memref_t* modified_memref_stop = modified_memref + modified_memref_list->count;
 
       for (; modified_memref < modified_memref_stop; ++modified_memref)
-        rc_update_memref_value(&modified_memref->memref.value, rc_get_modified_memref_value(modified_memref, peek, ud));
+        rc_update_memref_value(&modified_memref->memref.value, rc_get_modified_memref_value(modified_memref, read_memory, ud));
 
       modified_memref_list = modified_memref_list->next;
     } while (modified_memref_list);

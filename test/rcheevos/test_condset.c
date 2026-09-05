@@ -26,11 +26,11 @@ static void _assert_evaluate_condset(rc_condset_t* condset, rc_memrefs_t* memref
   int result;
   rc_eval_state_t eval_state;
 
-  rc_update_memref_values(memrefs, peek, memory);
+  rc_update_memref_values(memrefs, read_memory, memory);
 
   memset(&eval_state, 0, sizeof(eval_state));
-  eval_state.peek = peek;
-  eval_state.peek_userdata = memory;
+  eval_state.read_memory = read_memory;
+  eval_state.read_memory_userdata = memory;
 
   result = rc_test_condset(condset, &eval_state);
 

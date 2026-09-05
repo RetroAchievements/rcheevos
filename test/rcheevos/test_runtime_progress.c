@@ -30,7 +30,7 @@ static void _assert_richpresence_output(rc_runtime_t* runtime, memory_t* memory,
   char output[256];
   int result;
 
-  result = rc_runtime_get_richpresence(runtime, output, sizeof(output), peek, memory, NULL);
+  result = rc_runtime_get_richpresence(runtime, output, sizeof(output), read_memory, memory, NULL);
   ASSERT_STR_EQUALS(output, expected_display_string);
   ASSERT_NUM_EQUALS(result, strlen(expected_display_string));
 }
@@ -43,7 +43,7 @@ static void event_handler(const rc_runtime_event_t* e)
 
 static void assert_do_frame(rc_runtime_t* runtime, memory_t* memory)
 {
-  rc_runtime_do_frame(runtime, event_handler, peek, memory, NULL);
+  rc_runtime_do_frame(runtime, event_handler, read_memory, memory, NULL);
 }
 
 static void _assert_serialize(rc_runtime_t* runtime, uint8_t* buffer, size_t buffer_size)
