@@ -765,6 +765,9 @@ void test_value(void) {
   TEST_PARAMS2(test_invalid_value, "A:0xH0002_0xH0003>10.99.", RC_INVALID_VALUE_FLAG); /* no flag on condition 2 */
   TEST_PARAMS2(test_invalid_value, "A:0xH0002_A:0xH0003", RC_MISSING_VALUE_MEASURED);
 
+  /* test the internal legacy conversion buffer length */
+  TEST_PARAMS2(test_invalid_value, "0000000000000000000000000000000000000000000000000000000000000*0.5", RC_INVALID_VALUE);
+
   /* measured value with float data */
   TEST_PARAMS2(test_evaluate_value, "M:fF0005", 3);               /* 3.141592 -> 3 */
   TEST_PARAMS2(test_evaluate_value, "A:fF0005*10_M:0", 31);       /* 3.141592 x 10 -> 31.415 -> 31 */
