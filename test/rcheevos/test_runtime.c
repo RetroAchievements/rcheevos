@@ -1422,7 +1422,7 @@ static void test_richpresence_addsource_chain(void)
   rc_runtime_destroy(&runtime);
 }
 
-typedef struct {
+typedef struct memory_invalid_t {
   memory_t memory;
   rc_runtime_t* runtime;
   uint32_t invalid_address;
