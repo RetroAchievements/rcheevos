@@ -564,12 +564,12 @@ static void test_init_update_achievement_response()
 static void test_init_update_achievement_response_invalid_credentials()
 {
   rc_api_update_achievement_response_t update_achievement_response;
-  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+  const char* server_response = "{\"Success\":false,\"Error\":\"Invalid user/token combination\",\"Code\":\"invalid_credentials\",\"Status\":401}";
   memset(&update_achievement_response, 0, sizeof(update_achievement_response));
 
-  ASSERT_NUM_EQUALS(rc_api_process_update_achievement_response(&update_achievement_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(rc_api_process_update_achievement_response(&update_achievement_response, server_response), RC_INVALID_CREDENTIALS);
   ASSERT_NUM_EQUALS(update_achievement_response.response.succeeded, 0);
-  ASSERT_STR_EQUALS(update_achievement_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_STR_EQUALS(update_achievement_response.response.error_message, "Invalid user/token combination");
   ASSERT_UNUM_EQUALS(update_achievement_response.achievement_id, 0);
 
   rc_api_destroy_update_achievement_response(&update_achievement_response);
@@ -578,10 +578,10 @@ static void test_init_update_achievement_response_invalid_credentials()
 static void test_init_update_achievement_response_invalid_perms()
 {
   rc_api_update_achievement_response_t update_achievement_response;
-  const char* server_response = "{\"Success\":false,\"Error\":\"You must be a developer to perform this action! Please drop a message in the forums to apply.\"}";
+  const char* server_response = "{\"Success\":false,\"Error\":\"You must be a developer to perform this action! Please drop a message in the forums to apply.\",\"Code\":\"access_denied\",\"Status\":403}";
   memset(&update_achievement_response, 0, sizeof(update_achievement_response));
 
-  ASSERT_NUM_EQUALS(rc_api_process_update_achievement_response(&update_achievement_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(rc_api_process_update_achievement_response(&update_achievement_response, server_response), RC_ACCESS_DENIED);
   ASSERT_NUM_EQUALS(update_achievement_response.response.succeeded, 0);
   ASSERT_STR_EQUALS(update_achievement_response.response.error_message, "You must be a developer to perform this action! Please drop a message in the forums to apply.");
   ASSERT_UNUM_EQUALS(update_achievement_response.achievement_id, 0);
@@ -610,7 +610,7 @@ static void test_init_update_leaderboard_request()
 
   ASSERT_NUM_EQUALS(rc_api_init_update_leaderboard_request(&request, &update_leaderboard_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&i=5555&g=1234&n=Title&d=Description&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&h=bbdb85cb1eb82773d5740c2d5d515ec0");
+  ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&i=5555&g=1234&n=Title&d=Description&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&m=active&h=bbdb85cb1eb82773d5740c2d5d515ec0");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
@@ -633,10 +633,11 @@ static void test_init_update_leaderboard_request_new()
   update_leaderboard_request.value_definition = "0xH2345";
   update_leaderboard_request.lower_is_better = 1;
   update_leaderboard_request.format = "SCORE";
+  update_leaderboard_request.state = RC_LEADERBOARD_STATE_ACTIVE;
 
   ASSERT_NUM_EQUALS(rc_api_init_update_leaderboard_request(&request, &update_leaderboard_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&g=1234&n=Title&d=Description&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&h=739e28608a9e93d7351103d2f43fc6dc");
+  ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&g=1234&n=Title&d=Description&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&m=active&h=739e28608a9e93d7351103d2f43fc6dc");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
@@ -685,7 +686,34 @@ static void test_init_update_leaderboard_request_no_description()
 
   ASSERT_NUM_EQUALS(rc_api_init_update_leaderboard_request(&request, &update_leaderboard_request), RC_OK);
   ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
-  ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&i=5555&g=1234&n=Title&d=&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&h=bbdb85cb1eb82773d5740c2d5d515ec0");
+  ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&i=5555&g=1234&n=Title&d=&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&m=active&h=bbdb85cb1eb82773d5740c2d5d515ec0");
+  ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
+
+  rc_api_destroy_request(&request);
+}
+
+static void test_init_update_leaderboard_request_unpromoted()
+{
+  rc_api_update_leaderboard_request_t update_leaderboard_request;
+  rc_api_request_t request;
+
+  memset(&update_leaderboard_request, 0, sizeof(update_leaderboard_request));
+  update_leaderboard_request.username = "Dev";
+  update_leaderboard_request.api_token = "API_TOKEN";
+  update_leaderboard_request.game_id = 1234;
+  update_leaderboard_request.title = "Title";
+  update_leaderboard_request.description = "Description";
+  update_leaderboard_request.start_trigger = "0xH1234=1";
+  update_leaderboard_request.submit_trigger = "0xH1234=2";
+  update_leaderboard_request.cancel_trigger = "0xH1234=3";
+  update_leaderboard_request.value_definition = "0xH2345";
+  update_leaderboard_request.lower_is_better = 1;
+  update_leaderboard_request.format = "SCORE";
+  update_leaderboard_request.state = RC_LEADERBOARD_STATE_UNPROMOTED;
+
+  ASSERT_NUM_EQUALS(rc_api_init_update_leaderboard_request(&request, &update_leaderboard_request), RC_OK);
+  ASSERT_STR_EQUALS(request.url, DOREQUEST_URL);
+  ASSERT_STR_EQUALS(request.post_data, "r=uploadleaderboard&u=Dev&t=API_TOKEN&g=1234&n=Title&d=Description&s=0xH1234%3d1&b=0xH1234%3d2&c=0xH1234%3d3&l=0xH2345&w=1&f=SCORE&m=unpromoted&h=739e28608a9e93d7351103d2f43fc6dc");
   ASSERT_STR_EQUALS(request.content_type, RC_CONTENT_TYPE_URLENCODED);
 
   rc_api_destroy_request(&request);
@@ -708,12 +736,12 @@ static void test_init_update_leaderboard_response()
 static void test_init_update_leaderboard_response_invalid_credentials()
 {
   rc_api_update_leaderboard_response_t update_leaderboard_response;
-  const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
+  const char* server_response = "{\"Success\":false,\"Error\":\"Invalid user/token combination\",\"Code\":\"invalid_credentials\",\"Status\":401}";
   memset(&update_leaderboard_response, 0, sizeof(update_leaderboard_response));
 
-  ASSERT_NUM_EQUALS(rc_api_process_update_leaderboard_response(&update_leaderboard_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(rc_api_process_update_leaderboard_response(&update_leaderboard_response, server_response), RC_INVALID_CREDENTIALS);
   ASSERT_NUM_EQUALS(update_leaderboard_response.response.succeeded, 0);
-  ASSERT_STR_EQUALS(update_leaderboard_response.response.error_message, "Credentials invalid (0)");
+  ASSERT_STR_EQUALS(update_leaderboard_response.response.error_message, "Invalid user/token combination");
   ASSERT_UNUM_EQUALS(update_leaderboard_response.leaderboard_id, 0);
 
   rc_api_destroy_update_leaderboard_response(&update_leaderboard_response);
@@ -722,10 +750,10 @@ static void test_init_update_leaderboard_response_invalid_credentials()
 static void test_init_update_leaderboard_response_invalid_perms()
 {
   rc_api_update_leaderboard_response_t update_leaderboard_response;
-  const char* server_response = "{\"Success\":false,\"Error\":\"You must be a developer to perform this action! Please drop a message in the forums to apply.\"}";
+  const char* server_response = "{\"Success\":false,\"Error\":\"You must be a developer to perform this action! Please drop a message in the forums to apply.\",\"Code\":\"access_denied\",\"Status\":403}";
   memset(&update_leaderboard_response, 0, sizeof(update_leaderboard_response));
 
-  ASSERT_NUM_EQUALS(rc_api_process_update_leaderboard_response(&update_leaderboard_response, server_response), RC_OK);
+  ASSERT_NUM_EQUALS(rc_api_process_update_leaderboard_response(&update_leaderboard_response, server_response), RC_ACCESS_DENIED);
   ASSERT_NUM_EQUALS(update_leaderboard_response.response.succeeded, 0);
   ASSERT_STR_EQUALS(update_leaderboard_response.response.error_message, "You must be a developer to perform this action! Please drop a message in the forums to apply.");
   ASSERT_UNUM_EQUALS(update_leaderboard_response.leaderboard_id, 0);
@@ -1055,6 +1083,7 @@ void test_rapi_editor(void) {
   TEST(test_init_update_leaderboard_request_new);
   TEST(test_init_update_leaderboard_request_no_game_id);
   TEST(test_init_update_leaderboard_request_no_description);
+  TEST(test_init_update_leaderboard_request_unpromoted);
 
   TEST(test_init_update_leaderboard_response);
   TEST(test_init_update_leaderboard_response_invalid_credentials);

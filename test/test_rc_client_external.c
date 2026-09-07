@@ -1411,7 +1411,6 @@ static void test_unload_game(void)
 
 static void test_v1_achievement_field_offsets(void)
 {
-  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, id);
   ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, description);
   ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, badge_name);
   ASSERT_FIELD_OFFSET(rc_client_achievement_t, v1_rc_client_achievement_t, measured_progress);
@@ -1430,7 +1429,6 @@ static void test_v1_achievement_field_offsets(void)
 
 static void test_v3_achievement_field_offsets(void)
 {
-  ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, id);
   ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, description);
   ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, badge_name);
   ASSERT_FIELD_OFFSET(rc_client_achievement_t, v3_rc_client_achievement_t, measured_progress);
@@ -1762,17 +1760,31 @@ static void test_create_achievement_list(void)
 
 /* ----- leaderboards ----- */
 
-typedef struct v1_rc_client_leaderboard_t {
-  const char* title;
-  const char* description;
-  const char* tracker_value;
-  uint32_t id;
-  uint8_t state;
-  uint8_t format;
-  uint8_t lower_is_better;
-} v1_rc_client_leaderboard_t;
 
-static const rc_client_leaderboard_t* rc_client_external_get_leaderboard_info(uint32_t id)
+static void test_v1_leaderboard_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v1_rc_client_leaderboard_t, title);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v1_rc_client_leaderboard_t, description);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v1_rc_client_leaderboard_t, tracker_value);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v1_rc_client_leaderboard_t, id);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v1_rc_client_leaderboard_t, state);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v1_rc_client_leaderboard_t, format);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v1_rc_client_leaderboard_t, lower_is_better);
+}
+
+static void test_v8_leaderboard_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v8_rc_client_leaderboard_t, title);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v8_rc_client_leaderboard_t, description);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v8_rc_client_leaderboard_t, tracker_value);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v8_rc_client_leaderboard_t, id);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v8_rc_client_leaderboard_t, state);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v8_rc_client_leaderboard_t, format);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v8_rc_client_leaderboard_t, lower_is_better);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_t, v8_rc_client_leaderboard_t, category);
+}
+
+static const rc_client_leaderboard_t* rc_client_external_get_leaderboard_info_v1(uint32_t id)
 {
   v1_rc_client_leaderboard_t* leaderboard = (v1_rc_client_leaderboard_t*)
     rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_leaderboard_t));
@@ -1789,24 +1801,23 @@ static const rc_client_leaderboard_t* rc_client_external_get_leaderboard_info(ui
   return (const rc_client_leaderboard_t*)leaderboard;
 }
 
-typedef struct v1_rc_client_leaderboard_bucket_t {
-  rc_client_leaderboard_t** leaderboards;
-  uint32_t num_leaderboards;
+static const rc_client_leaderboard_t* rc_client_external_get_leaderboard_info_v8(uint32_t id)
+{
+  v8_rc_client_leaderboard_t* leaderboard = (v8_rc_client_leaderboard_t*)
+    rc_buffer_alloc(&g_client->state.buffer, sizeof(v8_rc_client_leaderboard_t));
 
-  const char* label;
-  uint32_t subset_id;
-  uint8_t bucket_type;
-} v1_rc_client_leaderboard_bucket_t;
+  memset(leaderboard, 0, sizeof(*leaderboard));
+  leaderboard->id = 1234;
+  leaderboard->title = "Leaderboard Title";
+  leaderboard->description = "Do something cool";
+  leaderboard->tracker_value = "000250";
+  leaderboard->state = RC_CLIENT_LEADERBOARD_STATE_ACTIVE;
+  leaderboard->format = RC_CLIENT_LEADERBOARD_FORMAT_SCORE;
+  leaderboard->lower_is_better = 1;
+  leaderboard->category = RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED;
 
-typedef struct v1_rc_client_leaderboard_list_t {
-  v1_rc_client_leaderboard_bucket_t* buckets;
-  uint32_t num_buckets;
-} v1_rc_client_leaderboard_list_t;
-
-typedef struct v1_rc_client_leaderboard_list_info_t {
-  v1_rc_client_leaderboard_list_t public_;
-  rc_client_destroy_leaderboard_list_func_t destroy_func;
-} v1_rc_client_leaderboard_list_info_t;
+  return (const rc_client_leaderboard_t*)leaderboard;
+}
 
 static void assert_leaderboard_list_grouping(int grouping)
 {
@@ -1817,48 +1828,6 @@ static void rc_client_external_destroy_leaderboard_list(rc_client_leaderboard_li
 {
   g_external_event = "destroyed";
   free(list);
-}
-
-static rc_client_leaderboard_list_info_t* rc_client_external_create_leaderboard_list(int grouping)
-{
-  v1_rc_client_leaderboard_list_info_t* list;
-
-  assert_leaderboard_list_grouping(grouping);
-
-  list = (v1_rc_client_leaderboard_list_info_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_leaderboard_bucket_t));
-  if (list) {
-    list->public_.num_buckets = 1;
-    list->public_.buckets = (v1_rc_client_leaderboard_bucket_t*)((uint8_t*)list + sizeof(*list));
-    list->public_.buckets[0].num_leaderboards = 2; /* didn't actually allocate these */
-    list->public_.buckets[0].bucket_type = RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE;
-    list->public_.buckets[0].label = "Inactive";
-    list->public_.buckets[0].subset_id = 1234;
-
-    list->destroy_func = rc_client_external_destroy_leaderboard_list;
-  }
-
-  return (rc_client_leaderboard_list_info_t*)list;
-}
-
-static void test_create_leaderboard_list(void)
-{
-  rc_client_leaderboard_list_t* list;
-
-  g_client = mock_client_with_external();
-  g_client->state.external_client->create_leaderboard_list = rc_client_external_create_leaderboard_list;
-
-  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
-  ASSERT_PTR_NOT_NULL(list);
-  ASSERT_NUM_EQUALS(list->num_buckets, 1);
-  ASSERT_PTR_NOT_NULL(list->buckets);
-  ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 2);
-  ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
-  ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
-  ASSERT_STR_EQUALS(list->buckets[0].label, "Inactive");
-
-  rc_client_destroy_leaderboard_list(list);
-
-  rc_client_destroy(g_client);
 }
 
 static void test_has_leaderboards(void)
@@ -1875,12 +1844,12 @@ static void test_has_leaderboards(void)
   rc_client_destroy(g_client);
 }
 
-static void test_get_leaderboard_info(void)
+static void test_get_leaderboard_info_v1(void)
 {
   const rc_client_leaderboard_t* leaderboard;
 
   g_client = mock_client_with_external();
-  g_client->state.external_client->get_leaderboard_info = rc_client_external_get_leaderboard_info;
+  g_client->state.external_client->get_leaderboard_info = rc_client_external_get_leaderboard_info_v1;
 
   leaderboard = rc_client_get_leaderboard_info(g_client, 4);
   ASSERT_PTR_NOT_NULL(leaderboard);
@@ -1891,6 +1860,151 @@ static void test_get_leaderboard_info(void)
   ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(leaderboard->format, RC_CLIENT_LEADERBOARD_FORMAT_SCORE);
   ASSERT_NUM_EQUALS(leaderboard->lower_is_better, 1);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_get_leaderboard_info(void)
+{
+  const rc_client_leaderboard_t* leaderboard;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->get_leaderboard_info = rc_client_external_get_leaderboard_info_v8;
+
+  leaderboard = rc_client_get_leaderboard_info(g_client, 4);
+  ASSERT_PTR_NOT_NULL(leaderboard);
+  ASSERT_NUM_EQUALS(leaderboard->id, 1234);
+  ASSERT_STR_EQUALS(leaderboard->title, "Leaderboard Title");
+  ASSERT_STR_EQUALS(leaderboard->description, "Do something cool");
+  ASSERT_STR_EQUALS(leaderboard->tracker_value, "000250");
+  ASSERT_NUM_EQUALS(leaderboard->state, RC_CLIENT_LEADERBOARD_STATE_ACTIVE);
+  ASSERT_NUM_EQUALS(leaderboard->format, RC_CLIENT_LEADERBOARD_FORMAT_SCORE);
+  ASSERT_NUM_EQUALS(leaderboard->lower_is_better, 1);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_v1_leaderboard_list_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_list_info_t, v1_rc_client_leaderboard_list_info_t, public_);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_list_info_t, v1_rc_client_leaderboard_list_info_t, destroy_func);
+
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_list_t, v1_rc_client_leaderboard_list_t, buckets);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_list_t, v1_rc_client_leaderboard_list_t, num_buckets);
+
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_bucket_t, v1_rc_client_leaderboard_bucket_t, leaderboards);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_bucket_t, v1_rc_client_leaderboard_bucket_t, num_leaderboards);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_bucket_t, v1_rc_client_leaderboard_bucket_t, label);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_bucket_t, v1_rc_client_leaderboard_bucket_t, subset_id);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_bucket_t, v1_rc_client_leaderboard_bucket_t, bucket_type);
+}
+
+static void test_v8_leaderboard_list_field_offsets(void)
+{
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_list_info_t, v8_rc_client_leaderboard_list_info_t, public_);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_list_info_t, v8_rc_client_leaderboard_list_info_t, destroy_func);
+
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_list_t, v8_rc_client_leaderboard_list_t, buckets);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_list_t, v8_rc_client_leaderboard_list_t, num_buckets);
+
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_bucket_t, v8_rc_client_leaderboard_bucket_t, leaderboards);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_bucket_t, v8_rc_client_leaderboard_bucket_t, num_leaderboards);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_bucket_t, v8_rc_client_leaderboard_bucket_t, label);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_bucket_t, v8_rc_client_leaderboard_bucket_t, subset_id);
+  ASSERT_FIELD_OFFSET(rc_client_leaderboard_bucket_t, v8_rc_client_leaderboard_bucket_t, bucket_type);
+}
+
+static rc_client_leaderboard_list_info_t* rc_client_external_create_leaderboard_list_v1(int grouping)
+{
+  v1_rc_client_leaderboard_list_info_t* list;
+  v1_rc_client_leaderboard_bucket_t* bucket;
+
+  assert_leaderboard_list_grouping(grouping);
+
+  list = (v1_rc_client_leaderboard_list_info_t*)calloc(1, sizeof(*list) + sizeof(v1_rc_client_leaderboard_bucket_t) + sizeof(v1_rc_client_leaderboard_t*) * 2);
+  if (list) {
+    list->public_.num_buckets = 1;
+    list->public_.buckets = bucket = (v1_rc_client_leaderboard_bucket_t*)((uint8_t*)list + sizeof(*list));
+    bucket->num_leaderboards = 2; /* didn't actually allocate these */
+    bucket->leaderboards = (const v1_rc_client_leaderboard_t**)((uint8_t*)list->public_.buckets + sizeof(*list->public_.buckets));
+    bucket->leaderboards[0] = (const v1_rc_client_leaderboard_t*)rc_client_external_get_achievement_info_v1(1234);
+    bucket->leaderboards[1] = (const v1_rc_client_leaderboard_t*)rc_client_external_get_achievement_info_v1(1235);
+    bucket->bucket_type = RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE;
+    bucket->label = "Inactive";
+    bucket->subset_id = 1234;
+
+    list->destroy_func = rc_client_external_destroy_leaderboard_list;
+  }
+
+  return (rc_client_leaderboard_list_info_t*)list;
+}
+
+static rc_client_leaderboard_list_info_t* rc_client_external_create_subset_leaderboard_list(const rc_client_leaderboard_list_params_t* params)
+{
+  v8_rc_client_leaderboard_list_info_t* list;
+  v8_rc_client_leaderboard_bucket_t* bucket;
+
+  assert_leaderboard_list_grouping(params->grouping);
+
+  list = (v8_rc_client_leaderboard_list_info_t*)calloc(1, sizeof(*list) + sizeof(v8_rc_client_leaderboard_bucket_t) + sizeof(v8_rc_client_leaderboard_t*) * 2);
+  if (list) {
+    list->public_.num_buckets = 1;
+    list->public_.buckets = bucket = (v8_rc_client_leaderboard_bucket_t*)((uint8_t*)list + sizeof(*list));
+    bucket->num_leaderboards = 2; /* didn't actually allocate these */
+    bucket->leaderboards = (const v8_rc_client_leaderboard_t**)((uint8_t*)list->public_.buckets + sizeof(*list->public_.buckets));
+    bucket->leaderboards[0] = (const v8_rc_client_leaderboard_t*)rc_client_external_get_leaderboard_info_v8(1234);
+    bucket->leaderboards[1] = (const v8_rc_client_leaderboard_t*)rc_client_external_get_leaderboard_info_v8(1235);
+    bucket->bucket_type = RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE;
+    bucket->label = "Inactive";
+    bucket->subset_id = 1234;
+
+    list->destroy_func = rc_client_external_destroy_leaderboard_list;
+  }
+
+  return (rc_client_leaderboard_list_info_t*)list;
+}
+
+static void test_create_leaderboard_list(void)
+{
+  rc_client_leaderboard_list_t* list;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->create_leaderboard_list = rc_client_external_create_leaderboard_list_v1;
+  g_client->state.external_client->create_subset_leaderboard_list = rc_client_external_create_subset_leaderboard_list;
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
+  ASSERT_PTR_NOT_NULL(list);
+  ASSERT_NUM_EQUALS(list->num_buckets, 1);
+  ASSERT_PTR_NOT_NULL(list->buckets);
+  ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 2);
+  ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+  ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
+  ASSERT_STR_EQUALS(list->buckets[0].label, "Inactive");
+  ASSERT_NUM_EQUALS(list->buckets[0].leaderboards[0]->category, RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED);
+
+  rc_client_destroy_leaderboard_list(list);
+
+  rc_client_destroy(g_client);
+}
+
+static void test_create_leaderboard_list_v1(void)
+{
+  rc_client_leaderboard_list_t* list;
+
+  g_client = mock_client_with_external();
+  g_client->state.external_client->create_leaderboard_list = rc_client_external_create_leaderboard_list_v1;
+
+  list = rc_client_create_leaderboard_list(g_client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING);
+  ASSERT_PTR_NOT_NULL(list);
+  ASSERT_NUM_EQUALS(list->num_buckets, 1);
+  ASSERT_PTR_NOT_NULL(list->buckets);
+  ASSERT_NUM_EQUALS(list->buckets[0].num_leaderboards, 2);
+  ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE);
+  ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 1234);
+  ASSERT_STR_EQUALS(list->buckets[0].label, "Inactive");
+  ASSERT_NUM_EQUALS(list->buckets[0].leaderboards[0]->category, RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED);
+
+  rc_client_destroy_leaderboard_list(list);
 
   rc_client_destroy(g_client);
 }
@@ -2171,9 +2285,16 @@ void test_client_external(void) {
   TEST(test_create_achievement_list);
 
   /* leaderboards */
-  TEST(test_create_leaderboard_list);
+  TEST(test_v1_leaderboard_field_offsets);
+  TEST(test_v8_leaderboard_field_offsets);
   TEST(test_has_leaderboards);
+  TEST(test_get_leaderboard_info_v1);
   TEST(test_get_leaderboard_info);
+
+  TEST(test_v1_leaderboard_list_field_offsets);
+  TEST(test_v8_leaderboard_list_field_offsets);
+  TEST(test_create_leaderboard_list_v1);
+  TEST(test_create_leaderboard_list);
 
   /* rich presence */
   TEST(test_get_rich_presence_message);
