@@ -84,15 +84,15 @@ RC_EXPORT void RC_CCONV rc_client_set_encore_mode_enabled(rc_client_t* client, i
 RC_EXPORT int RC_CCONV rc_client_get_encore_mode_enabled(const rc_client_t* client);
 
 /**
- * Sets whether unofficial achievements should be loaded.
+ * Sets whether unpromoted achievements should be loaded.
  * Evaluated when loading a game. Has no effect while a game is loaded.
  */
-RC_EXPORT void RC_CCONV rc_client_set_unofficial_enabled(rc_client_t* client, int enabled);
+RC_EXPORT void RC_CCONV rc_client_set_unpromoted_enabled(rc_client_t* client, int enabled);
 
 /**
- * Gets whether unofficial achievements should be loaded.
+ * Gets whether unpromoted achievements should be loaded.
  */
-RC_EXPORT int RC_CCONV rc_client_get_unofficial_enabled(const rc_client_t* client);
+RC_EXPORT int RC_CCONV rc_client_get_unpromoted_enabled(const rc_client_t* client);
 
 /**
  * Sets whether spectator mode is enabled (off by default).
@@ -206,12 +206,12 @@ RC_EXPORT const rc_client_user_t* RC_CCONV rc_client_get_user_info(const rc_clie
 RC_EXPORT int RC_CCONV rc_client_user_get_image_url(const rc_client_user_t* user, char buffer[], size_t buffer_size);
 
 typedef struct rc_client_user_game_summary_t {
-  uint32_t num_core_achievements;
-  uint32_t num_unofficial_achievements;
+  uint32_t num_promoted_achievements;
+  uint32_t num_unpromoted_achievements;
   uint32_t num_unlocked_achievements;
   uint32_t num_unsupported_achievements;
 
-  uint32_t points_core;
+  uint32_t points_available;
   uint32_t points_unlocked;
 
   /* minimum version: 12.1 */
@@ -521,9 +521,9 @@ enum {
 
 enum {
   RC_CLIENT_ACHIEVEMENT_CATEGORY_NONE = 0,
-  RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE = (1 << 0),
-  RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL = (1 << 1),
-  RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL = RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE | RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL
+  RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED = (1 << 0),
+  RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPROMOTED = (1 << 1),
+  RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED_AND_UNPROMOTED = RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED | RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPROMOTED
 };
 
 enum {
@@ -538,13 +538,14 @@ enum {
   RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED = 1,
   RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED = 2,
   RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED = 3,
-  RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL = 4,
+  RC_CLIENT_ACHIEVEMENT_BUCKET_UNPROMOTED = 4,
   RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED = 5,
   RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE = 6,
   RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE = 7,
   RC_CLIENT_ACHIEVEMENT_BUCKET_UNSYNCED = 8,
   NUM_RC_CLIENT_ACHIEVEMENT_BUCKETS = 9
 };
+#define RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL RC_CLIENT_ACHIEVEMENT_BUCKET_UNPROMOTED /* [deprecated] - use RC_CLIENT_ACHIEVEMENT_BUCKET_UNPROMOTED instead */
 
 enum {
   RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE = 0,

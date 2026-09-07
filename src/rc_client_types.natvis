@@ -20,9 +20,9 @@
     </Type>
     <Type Name="__rc_client_achievement_category_enum_t">
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_NONE">{RC_CLIENT_ACHIEVEMENT_CATEGORY_NONE}</DisplayString>
-        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE">{RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE}</DisplayString>
-        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL">{RC_CLIENT_ACHIEVEMENT_CATEGORY_UNOFFICIAL}</DisplayString>
-        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL">{RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE_AND_UNOFFICIAL}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_PUBLISHED">{RC_CLIENT_ACHIEVEMENT_CATEGORY_PUBLISHED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPUBLISHED">{RC_CLIENT_ACHIEVEMENT_CATEGORY_UNPUBLISHED}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_CATEGORY_PUBLISHED_AND_UNPUBLISHED">{RC_CLIENT_ACHIEVEMENT_CATEGORY_PUBLISHED_AND_UNPUBLISHED}</DisplayString>
         <DisplayString>unknown ({value})</DisplayString>
     </Type>
     <Type Name="__rc_client_achievement_type_enum_t">
@@ -37,10 +37,10 @@
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED">{RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED}</DisplayString>
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED">{RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED}</DisplayString>
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED">{RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED}</DisplayString>
-        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL">{RC_CLIENT_ACHIEVEMENT_BUCKET_UNOFFICIAL}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNPROMOTED">{RC_CLIENT_ACHIEVEMENT_BUCKET_UNPROMOTED}</DisplayString>
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED">{RC_CLIENT_ACHIEVEMENT_BUCKET_RECENTLY_UNLOCKED}</DisplayString>
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE">{RC_CLIENT_ACHIEVEMENT_BUCKET_ACTIVE_CHALLENGE}</DisplayString>
-        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED">{RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE">{RC_CLIENT_ACHIEVEMENT_BUCKET_ALMOST_THERE}</DisplayString>
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_BUCKET_UNSYNCED">{RC_CLIENT_ACHIEVEMENT_BUCKET_UNSYNCED}</DisplayString>
         <DisplayString>unknown ({value})</DisplayString>
     </Type>
@@ -349,7 +349,7 @@
     <Type Name="rc_client_state_t">
         <Expand>
             <Item Name="hardcore">*((__rc_bool_enum_t*)&amp;hardcore)</Item>
-            <Item Name="unofficial_enabled">*((__rc_bool_enum_t*)&amp;unofficial_enabled)</Item>
+            <Item Name="unpromoted_enabled">*((__rc_bool_enum_t*)&amp;unpromoted_enabled)</Item>
             <Item Name="encore_mode">*((__rc_bool_enum_t*)&amp;encore_mode)</Item>
             <Item Name="spectator_mode">*((__rc_client_spectator_mode_enum_t*)&amp;spectator_mode)</Item>
             <Item Name="disconnect">*((__rc_client_disconnect_enum_t*)&amp;disconnect)</Item>

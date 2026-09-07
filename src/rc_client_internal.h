@@ -214,7 +214,7 @@ typedef struct rc_client_subset_info_t {
   const char* inactive_label;
   const char* locked_label;
   const char* unlocked_label;
-  const char* unofficial_label;
+  const char* unpromoted_label;
   const char* unsupported_label;
 
   uint8_t active;
@@ -332,7 +332,7 @@ typedef struct rc_client_state_t {
   uint8_t hardcore;
   uint8_t encore_mode;
   uint8_t spectator_mode;
-  uint8_t unofficial_enabled;
+  uint8_t unpromoted_enabled;
   uint8_t log_level;
   uint8_t user;
   uint8_t disconnect;

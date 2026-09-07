@@ -511,7 +511,7 @@ static int validate_patchdata_file(const char* patchdata_file, const char* filen
       }
 
       printf(" achievement %d%s: %s\n", fetch_game_data_response.achievements[i].id,
-          (fetch_game_data_response.achievements[i].category == 3) ? "" : " (Unofficial)", buffer);
+          (fetch_game_data_response.achievements[i].category == 3) ? "" : " (Unpromoted)", buffer);
     }
   }
 
