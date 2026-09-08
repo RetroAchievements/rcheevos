@@ -330,10 +330,10 @@ rc_api_award_achievement_request_t;
 typedef struct rc_api_award_achievement_response_t {
   /* The unique identifier of the achievement that was awarded */
   uint32_t awarded_achievement_id;
-  /* The updated player score */
+  /* The updated player hardcore score */
   uint32_t new_player_score;
-  /* The updated player softcore score */
-  uint32_t new_player_score_softcore;
+  /* The updated player casual score */
+  uint32_t new_player_score_casual;
   /* The number of achievements the user has not yet unlocked for this game
    * (in hardcore/non-hardcore per hardcore flag in request) */
   uint32_t achievements_remaining;

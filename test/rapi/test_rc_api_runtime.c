@@ -1557,7 +1557,7 @@ static void test_init_ping_request_rich_presence_empty() {
   rc_api_destroy_request(&request);
 }
 
-static void test_init_ping_request_game_hash_softcore() {
+static void test_init_ping_request_game_hash_casual() {
   rc_api_ping_request_t ping_request;
   rc_api_request_t request;
 
@@ -1710,7 +1710,7 @@ static void test_process_award_achievement_response_success() {
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 1);
   ASSERT_PTR_NULL(award_achievement_response.response.error_message);
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 119102);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 777);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 777);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 56481);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 11);
 
@@ -1727,7 +1727,7 @@ static void test_process_award_achievement_response_hardcore_already_unlocked() 
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 1);
   ASSERT_STR_EQUALS(award_achievement_response.response.error_message, "User already has hardcore and regular achievements awarded.");
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 119210);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 777);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 777);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 56494);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 17);
 
@@ -1744,7 +1744,7 @@ static void test_process_award_achievement_response_non_hardcore_already_unlocke
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 1);
   ASSERT_STR_EQUALS(award_achievement_response.response.error_message, "User already has this achievement awarded.");
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 119210);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 777);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 777);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 56494);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0xFFFFFFFF);
 
@@ -1761,7 +1761,7 @@ static void test_process_award_achievement_response_generic_failure() {
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
   ASSERT_PTR_NULL(award_achievement_response.response.error_message);
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0);
 
@@ -1778,7 +1778,7 @@ static void test_process_award_achievement_response_empty() {
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
   ASSERT_PTR_NULL(award_achievement_response.response.error_message);
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0);
 
@@ -1795,7 +1795,7 @@ static void test_process_award_achievement_response_invalid_credentials() {
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
   ASSERT_STR_EQUALS(award_achievement_response.response.error_message, "Credentials invalid (0)");
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0);
 
@@ -1812,7 +1812,7 @@ static void test_process_award_achievement_response_text() {
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
   ASSERT_STR_EQUALS(award_achievement_response.response.error_message, "You do not have access to that resource");
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0);
 
@@ -1829,7 +1829,7 @@ static void test_process_award_achievement_response_no_fields() {
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 1);
   ASSERT_PTR_NULL(award_achievement_response.response.error_message);
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0xFFFFFFFF);
 
@@ -1853,7 +1853,7 @@ static void test_process_award_achievement_response_429() {
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
   ASSERT_STR_EQUALS(award_achievement_response.response.error_message, "429 Too Many Requests");
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0);
 
@@ -1928,7 +1928,7 @@ static void test_process_award_achievement_response_503_fancy() {
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
   ASSERT_STR_EQUALS(award_achievement_response.response.error_message, "503 Service Temporarily Unavailable");
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0);
 
@@ -1945,7 +1945,7 @@ static void test_process_award_achievement_response_522_simple() {
   ASSERT_NUM_EQUALS(award_achievement_response.response.succeeded, 0);
   ASSERT_STR_EQUALS(award_achievement_response.response.error_message, "error code: 522");
   ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score, 0);
-  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_softcore, 0);
+  ASSERT_UNUM_EQUALS(award_achievement_response.new_player_score_casual, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.awarded_achievement_id, 0);
   ASSERT_UNUM_EQUALS(award_achievement_response.achievements_remaining, 0);
 
@@ -2188,7 +2188,7 @@ void test_rapi_runtime(void) {
   TEST(test_init_ping_request_rich_presence);
   TEST(test_init_ping_request_rich_presence_unicode);
   TEST(test_init_ping_request_rich_presence_empty);
-  TEST(test_init_ping_request_game_hash_softcore);
+  TEST(test_init_ping_request_game_hash_casual);
   TEST(test_init_ping_request_game_hash_hardcore);
 
   TEST(test_process_ping_response);

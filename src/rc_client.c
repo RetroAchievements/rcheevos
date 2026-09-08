@@ -722,7 +722,7 @@ static void rc_client_login_callback(const rc_api_server_response_t* server_resp
     client->user.avatar_last_updated = login_response.avatar_last_updated;
     client->user.token = rc_buffer_strcpy(&client->state.buffer, login_response.api_token);
     client->user.score = login_response.score;
-    client->user.score_softcore = login_response.score_softcore;
+    client->user.score_casual = login_response.score_casual;
     client->user.num_unread_messages = login_response.num_unread_messages;
 
     rc_mutex_lock(&client->state.mutex);
@@ -944,7 +944,7 @@ static void rc_client_subset_get_user_game_summary(const rc_client_t* client,
   int num_win_achievements = 0;
   int num_unlocked_progression_achievements = 0;
   const uint8_t unlock_bit = (client->state.hardcore) ?
-    RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE;
+    RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL;
 
   rc_mutex_lock((rc_mutex_t*)&client->state.mutex); /* remove const cast for mutex access */
 
@@ -1471,7 +1471,7 @@ static uint32_t rc_client_subset_toggle_hardcore_achievements(rc_client_subset_i
     }
     else {
       achievement->public_.unlock_time = (active_bit == RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE) ?
-          achievement->unlock_time_hardcore : achievement->unlock_time_softcore;
+          achievement->unlock_time_hardcore : achievement->unlock_time_casual;
 
       if (achievement->public_.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE ||
           achievement->public_.state == RC_CLIENT_ACHIEVEMENT_STATE_INACTIVE) {
@@ -1519,7 +1519,7 @@ static void rc_client_activate_achievements(rc_client_game_info_t* game, rc_clie
 {
   const uint8_t active_bit = (client->state.encore_mode) ?
       RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE : (client->state.hardcore) ?
-      RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE;
+      RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL;
 
   rc_client_toggle_hardcore_achievements(game, client, active_bit);
 }
@@ -1606,7 +1606,7 @@ static void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_clie
   rc_client_leaderboard_info_t* leaderboard;
   rc_client_leaderboard_info_t* stop;
   const uint8_t leaderboards_allowed =
-      client->state.hardcore || client->state.allow_leaderboards_in_softcore;
+      client->state.hardcore || client->state.allow_leaderboards_in_casual;
 
   uint32_t active_count = 0;
   rc_client_subset_info_t* subset = game->subsets;
@@ -1690,8 +1690,8 @@ static void rc_client_apply_unlocks(rc_client_subset_info_t* subset, rc_api_unlo
 
         if (mode & RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE)
           scan->unlock_time_hardcore = unlock->when;
-        if (mode & RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE)
-          scan->unlock_time_softcore = unlock->when;
+        if (mode & RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL)
+          scan->unlock_time_casual = unlock->when;
 
         if (scan == start)
           ++start;
@@ -1808,7 +1808,7 @@ static void rc_client_activate_game(rc_client_load_state_t* load_state, rc_api_s
       rc_client_apply_unlocks(load_state->subset, start_session_response->hardcore_unlocks,
           start_session_response->num_hardcore_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
       rc_client_apply_unlocks(load_state->subset, start_session_response->unlocks,
-          start_session_response->num_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+          start_session_response->num_unlocks, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     }
 
     /* make the loaded game active if another game is not aleady being loaded. */
@@ -4707,7 +4707,7 @@ static void rc_client_award_achievement_callback(const rc_api_server_response_t*
   }
   else {
     ach_data->client->user.score = award_achievement_response.new_player_score;
-    ach_data->client->user.score_softcore = award_achievement_response.new_player_score_softcore;
+    ach_data->client->user.score_casual = award_achievement_response.new_player_score_casual;
 
     if (award_achievement_response.awarded_achievement_id != ach_data->id) {
       RC_CLIENT_LOG_ERR_FORMATTED(ach_data->client, "Awarded achievement %u instead of %u", award_achievement_response.awarded_achievement_id, error_message);
@@ -4720,12 +4720,12 @@ static void rc_client_award_achievement_callback(const rc_api_server_response_t*
       else if (ach_data->retry_count) {
         RC_CLIENT_LOG_INFO_FORMATTED(ach_data->client, "Achievement %u awarded after %u attempts, new score: %u",
             ach_data->id, ach_data->retry_count + 1,
-            ach_data->hardcore ? award_achievement_response.new_player_score : award_achievement_response.new_player_score_softcore);
+            ach_data->hardcore ? award_achievement_response.new_player_score : award_achievement_response.new_player_score_casual);
       }
       else {
         RC_CLIENT_LOG_INFO_FORMATTED(ach_data->client, "Achievement %u awarded, new score: %u",
             ach_data->id,
-            ach_data->hardcore ? award_achievement_response.new_player_score : award_achievement_response.new_player_score_softcore);
+            ach_data->hardcore ? award_achievement_response.new_player_score : award_achievement_response.new_player_score_casual);
       }
 
       if (award_achievement_response.achievements_remaining == 0) {
@@ -4796,22 +4796,22 @@ static void rc_client_award_achievement(rc_client_t* client, rc_client_achieveme
 
   if (client->state.hardcore) {
     achievement->public_.unlock_time = achievement->unlock_time_hardcore = time(NULL);
-    if (achievement->unlock_time_softcore == 0)
-      achievement->unlock_time_softcore = achievement->unlock_time_hardcore;
+    if (achievement->unlock_time_casual == 0)
+      achievement->unlock_time_casual = achievement->unlock_time_hardcore;
 
     /* adjust score now - will get accurate score back from server */
     client->user.score += achievement->public_.points;
   }
   else {
-    achievement->public_.unlock_time = achievement->unlock_time_softcore = time(NULL);
+    achievement->public_.unlock_time = achievement->unlock_time_casual = time(NULL);
 
     /* adjust score now - will get accurate score back from server */
-    client->user.score_softcore += achievement->public_.points;
+    client->user.score_casual += achievement->public_.points;
   }
 
   achievement->public_.state = RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED;
   achievement->public_.unlocked |= (client->state.hardcore) ?
-    RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH : RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE;
+    RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH : RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL;
 
   rc_mutex_unlock(&client->state.mutex);
 
@@ -5462,7 +5462,7 @@ static void rc_client_submit_leaderboard_entry(rc_client_t* client, rc_client_le
   rc_client_submit_leaderboard_entry_callback_data_t* callback_data;
 
   if (!client->state.hardcore) {
-    RC_CLIENT_LOG_INFO_FORMATTED(client, "Leaderboard %u entry submission not allowed in softcore", leaderboard->public_.id);
+    RC_CLIENT_LOG_INFO_FORMATTED(client, "Leaderboard %u entry submission not allowed in casual mode", leaderboard->public_.id);
     return;
   }
 
@@ -6451,7 +6451,7 @@ void rc_client_do_frame(rc_client_t* client)
     if (client->game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_PROGRESS_TRACKER)
       rc_client_do_frame_update_progress_tracker(client, client->game);
 
-    if (client->state.hardcore || client->state.allow_leaderboards_in_softcore) {
+    if (client->state.hardcore || client->state.allow_leaderboards_in_casual) {
       for (subset = client->game->subsets; subset; subset = subset->next) {
         if (subset->active)
           rc_client_do_frame_process_leaderboards(client, subset);
@@ -6680,7 +6680,7 @@ int rc_client_can_pause(rc_client_t* client, uint32_t* frames_remaining)
   if (frames_remaining)
     *frames_remaining = 0;
 
-  /* pause is always allowed in softcore */
+  /* pause is always allowed in casual mode */
   if (!rc_client_get_hardcore_enabled(client))
     return 1;
 
@@ -6931,9 +6931,9 @@ static void rc_client_disable_hardcore(rc_client_t* client)
   RC_CLIENT_LOG_INFO(client, "Hardcore disabled");
 
   if (client->game) {
-    rc_client_toggle_hardcore_achievements(client->game, client, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    rc_client_toggle_hardcore_achievements(client->game, client, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
 
-    if (!client->state.allow_leaderboards_in_softcore)
+    if (!client->state.allow_leaderboards_in_casual)
       rc_client_deactivate_leaderboards(client->game, client);
   }
 }

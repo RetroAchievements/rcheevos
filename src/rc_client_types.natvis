@@ -46,7 +46,7 @@
     </Type>
     <Type Name="__rc_client_achievement_unlocked_enum_t">
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE">{RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE}</DisplayString>
-        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE">{RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE}</DisplayString>
+        <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL">{RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL}</DisplayString>
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE">{RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE}</DisplayString>
         <DisplayString Condition="value==RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH">{RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH}</DisplayString>
         <DisplayString>unknown ({value})</DisplayString>
