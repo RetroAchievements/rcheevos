@@ -717,7 +717,7 @@ int rc_api_process_award_achievement_server_response(rc_api_award_achievement_re
   }
 
   rc_json_get_optional_unum(&response->new_player_score, &fields[2], "Score", 0);
-  rc_json_get_optional_unum(&response->new_player_score_softcore, &fields[3], "SoftcoreScore", 0);
+  rc_json_get_optional_unum(&response->new_player_score_casual, &fields[3], "SoftcoreScore", 0);
   rc_json_get_optional_unum(&response->awarded_achievement_id, &fields[4], "AchievementID", 0);
   rc_json_get_optional_unum(&response->achievements_remaining, &fields[5], "AchievementsRemaining", (unsigned)-1);
 
