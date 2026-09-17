@@ -485,7 +485,28 @@ static void test_memory_init_from_memory_map_internal() {
   uint8_t buffer2[8];
   const struct retro_memory_descriptor mmap_desc[] = {
     { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0x7000, 0, 0, 0x0200, "Cartridge RAM" },
-    { RETRO_MEMDESC_SYSTEM_RAM,& buffer2[0], 0, 0x7200, 0, 0, 0x0200, "Cartridge RAM" }
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer2[0], 0, 0x7200, 0, 0, 0x0200, "Cartridge RAM" }
+  };
+  const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
+
+  /* NES memory map has a single region from $6000-$7FFF. The two mapped regions above are inside that larger region. */
+  ASSERT_TRUE(rc_libretro_memory_init(&regions, &mmap, libretro_get_core_memory_info, RC_CONSOLE_NINTENDO));
+
+  ASSERT_NUM_EQUALS(regions.count, 4);
+  ASSERT_NUM_EQUALS(regions.total_size, 0x10000);
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x7002), &buffer1[2]);
+  ASSERT_PTR_EQUALS(rc_libretro_memory_find(&regions, 0x7202), &buffer2[2]);
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x6002));
+  ASSERT_PTR_NULL(rc_libretro_memory_find(&regions, 0x7402));
+}
+
+static void test_memory_init_from_memory_map_internal_select() {
+  rc_libretro_memory_regions_t regions;
+  uint8_t buffer1[8];
+  uint8_t buffer2[8];
+  const struct retro_memory_descriptor mmap_desc[] = {
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer1[0], 0, 0x7000, 0xFC00, 0, 0x0200, "Cartridge RAM" },
+    { RETRO_MEMDESC_SYSTEM_RAM, &buffer2[0], 0, 0x7200, 0xFC00, 0, 0x0200, "Cartridge RAM" }
   };
   const struct retro_memory_map mmap = { mmap_desc, sizeof(mmap_desc) / sizeof(mmap_desc[0]) };
 
@@ -978,6 +999,7 @@ void test_rc_libretro(void) {
   TEST(test_memory_init_from_memory_map_out_of_order);
   TEST(test_memory_init_from_memory_map_disconnect_gaps);
   TEST(test_memory_init_from_memory_map_internal);
+  TEST(test_memory_init_from_memory_map_internal_select);
 
   /* rc_libretro_memory_read */
   TEST(test_memory_read)

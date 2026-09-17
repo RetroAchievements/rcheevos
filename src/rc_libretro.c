@@ -537,7 +537,9 @@ static const struct retro_memory_descriptor* rc_libretro_memory_get_descriptor(c
     else {
       /* otherwise, attempt to match the address by matching the select bits */
       /* address is in the block if (addr & select) == (start & select) */
-      if (((desc->start ^ real_address) & desc->select) == 0) {
+      const size_t selected_start = desc->start & desc->select;
+      const size_t selected_real_address = real_address & desc->select;
+      if (selected_start == selected_real_address) {
         /* get the relative offset of the address from the start of the memory block */
         uint32_t reduced_address = real_address - (unsigned)desc->start;
 
@@ -557,6 +559,11 @@ static const struct retro_memory_descriptor* rc_libretro_memory_get_descriptor(c
         /* sanity check - make sure the descriptor is large enough to hold the target address */
         if (reduced_address < desc->len)
           return desc;
+      }
+      else if (selected_start > selected_real_address && (selected_start - selected_real_address) < console_region_size) {
+        /* found a descriptor inside the target range. use it if we can't find one containing the start of the range. */
+        if (!inner_desc || selected_start < (inner_desc->start & inner_desc->select))
+          inner_desc = desc;
       }
     }
   }
@@ -604,7 +611,7 @@ static void rc_libretro_memory_init_from_memory_map(rc_libretro_memory_regions_t
 
       select = desc->select ? desc->select : (size_t)-1;
       if ((desc->start & select) > real_address) {
-        size_t fill_size = (desc->start - real_address) & select;
+        const size_t fill_size = (desc->start & select) - real_address;
         rc_libretro_memory_register_region(regions, console_region->type, NULL, fill_size, "null filler");
         real_address += (uint32_t)fill_size;
         console_region_size -= (uint32_t)fill_size;
