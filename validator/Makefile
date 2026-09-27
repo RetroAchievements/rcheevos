@@ -1,25 +1,23 @@
-RC_SRC=../src
-RC_CHEEVOS_SRC=$(RC_SRC)/rcheevos
-RC_HASH_SRC=$(RC_SRC)/rhash
-RC_API_SRC=$(RC_SRC)/rapi
+# supported parameters
+#  ARCH                  architecture - "x86" or "x64" [detected if not set]
+#  BUILD                 use flags for specified upstream consumer - "c89" or "retroarch" [default to "c89"]
+#  DEBUG                 if set to anything, builds with DEBUG symbols
 
-OBJ=$(RC_CHEEVOS_SRC)/alloc.o $(RC_CHEEVOS_SRC)/condition.o $(RC_CHEEVOS_SRC)/condset.o \
-    $(RC_CHEEVOS_SRC)/consoleinfo.o $(RC_CHEEVOS_SRC)/format.o $(RC_CHEEVOS_SRC)/lboard.o \
-    $(RC_CHEEVOS_SRC)/memref.o $(RC_CHEEVOS_SRC)/operand.o $(RC_CHEEVOS_SRC)/rc_validate.o \
-    $(RC_CHEEVOS_SRC)/richpresence.o $(RC_CHEEVOS_SRC)/runtime.o $(RC_CHEEVOS_SRC)/trigger.o \
-    $(RC_CHEEVOS_SRC)/value.o \
-    $(RC_SRC)/rc_compat.o $(RC_SRC)/rc_util.o \
-    $(RC_HASH_SRC)/md5.o \
-    $(RC_API_SRC)/rc_api_common.o $(RC_API_SRC)/rc_api_runtime.o
+RC_SRC=../src
+
+include $(RC_SRC)/Makefile.common
+
+OBJ=$(RC_UTIL_OBJS) \
+    $(RC_RUNTIME_OBJS) \
+    $(RC_SRC)/runtime/rc_validate.o \
+    $(RC_SRC)/api/rc_api_common.o \
+    $(RC_SRC)/api/rc_api_runtime.o \
     validator.o
 
 all: validator
 
-%.o: %.c
-	gcc -Wall -O0 -g -std=c89 -ansi -Wno-long-long -I../include -I$(RC_CHEEVOS_SRC) -c $< -o $@
-
 validator: $(OBJ)
-	gcc -o $@ $+ -lm
+	$(CC) $(LDFLAGS) -o $@$(EXE) $+ -lm
 
 clean:
-	rm -f test $(OBJ)
+	rm -f validator$(EXE) $(OBJ)

@@ -1,5 +1,7 @@
 #include "rc_hash_internal.h"
 
+#ifndef RC_HASH_NO_DISC
+
 #include "../util/rc_compat.h"
 
 #include <ctype.h>
@@ -861,3 +863,5 @@ void rc_hash_init_default_cdreader(void)
   rc_hash_get_default_cdreader(&cdreader);
   rc_hash_init_custom_cdreader(&cdreader);
 }
+
+#endif /* RC_HASH_NO_DISC */

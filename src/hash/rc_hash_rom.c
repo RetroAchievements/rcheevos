@@ -1,5 +1,7 @@
 #include "rc_hash_internal.h"
 
+#ifndef RC_HASH_NO_ROM
+
 #include "../util/rc_compat.h"
 
 #include <ctype.h>
@@ -521,3 +523,5 @@ int rc_hash_snes(char hash[33], const rc_hash_iterator_t* iterator)
 
   return rc_hash_iterator_buffer(hash, iterator);
 }
+
+#endif /* RC_HASH_NO_ROM */

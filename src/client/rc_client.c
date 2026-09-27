@@ -5,11 +5,12 @@
 #include "rc_api_user.h"
 #include "rc_consoles.h"
 #include "rc_hash.h"
-#include "util/rc_version.h"
 
 #include "../api/rc_api_common.h"
 
 #include "../runtime/rc_internal.h"
+
+#include "../util/rc_version.h"
 
 #include <stdarg.h>
 

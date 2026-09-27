@@ -10,10 +10,10 @@
  #include "rc_client_external.h"
 #endif
 #ifdef RC_CLIENT_SUPPORTS_HASH
- #include "hash/rc_hash_internal.h"
+ #include "../hash/rc_hash_internal.h"
 #endif
 
-#include "util/rc_compat.h"
+#include "../util/rc_compat.h"
 #include "rc_runtime.h"
 #include "rc_runtime_types.h"
 

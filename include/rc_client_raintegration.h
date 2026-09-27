@@ -11,7 +11,9 @@
 
 RC_BEGIN_C_DECLS
 
+#ifndef RC_CLIENT_H /* prevents pedantic redefinition error */
 typedef struct rc_client_t rc_client_t; /* forward reference; in rc_client.h */
+#endif
 
 /* types needed to implement raintegration */
 
@@ -32,7 +34,7 @@ enum {
   RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_PUBLISHED = 1,
   RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_LOCAL = 2,
   RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_MODIFIED = 3,
-  RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_INSECURE = 4,
+  RC_CLIENT_RAINTEGRATION_ACHIEVEMENT_STATE_INSECURE = 4
 };
 
 enum {

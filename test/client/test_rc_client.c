@@ -12,8 +12,8 @@
 
 #ifdef RC_CLIENT_SUPPORTS_HASH
 #include "rc_hash.h"
-#include "rhash/data.h"
-#include "rhash/mock_filereader.h"
+#include "../hash/data.h"
+#include "../hash/mock_filereader.h"
 #endif
 
 #if defined(_WIN32)

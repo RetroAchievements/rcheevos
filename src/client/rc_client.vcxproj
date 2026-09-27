@@ -70,6 +70,20 @@
     <ClCompile Include="rc_client_raintegration.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\rc_api_editor.h" />
+    <ClInclude Include="..\..\include\rc_api_info.h" />
+    <ClInclude Include="..\..\include\rc_api_request.h" />
+    <ClInclude Include="..\..\include\rc_api_runtime.h" />
+    <ClInclude Include="..\..\include\rc_api_user.h" />
+    <ClInclude Include="..\..\include\rc_client.h" />
+    <ClInclude Include="..\..\include\rc_client_raintegration.h" />
+    <ClInclude Include="..\..\include\rc_consoles.h" />
+    <ClInclude Include="..\..\include\rc_error.h" />
+    <ClInclude Include="..\..\include\rc_export.h" />
+    <ClInclude Include="..\..\include\rc_hash.h" />
+    <ClInclude Include="..\..\include\rc_runtime.h" />
+    <ClInclude Include="..\..\include\rc_runtime_types.h" />
+    <ClInclude Include="..\..\include\rc_util.h" />
     <ClInclude Include="..\api\rc_api_common.h" />
     <ClInclude Include="..\hash\aes.h" />
     <ClInclude Include="..\hash\rc_hash_internal.h" />

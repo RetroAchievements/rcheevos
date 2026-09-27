@@ -1,5 +1,7 @@
 #include "rc_hash_internal.h"
 
+#ifndef RC_HASH_NO_ZIP
+
 #include "../util/rc_compat.h"
 
 struct rc_hash_zip_idx
@@ -457,3 +459,5 @@ int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator)
 
   return rc_hash_finalize(iterator, &md5, hash);
 }
+
+#endif /* RC_HASH_NO_ZIP */

@@ -20,6 +20,21 @@
     <Filter Include="Source Files\runtime">
       <UniqueIdentifier>{2c0eee29-f406-4d70-bc52-dad7d40a59da}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\api\public">
+      <UniqueIdentifier>{6b7bd504-6fe1-42b8-882e-7503dcfeab3d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\client\public">
+      <UniqueIdentifier>{61a32376-9d0c-47d7-860c-b32655133139}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\hash\public">
+      <UniqueIdentifier>{87a251e6-4340-4afa-835e-e783d3b0b9eb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\runtime\public">
+      <UniqueIdentifier>{6dd3d62d-5a3f-4ef6-ae6a-4b44d3e278f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\util\public">
+      <UniqueIdentifier>{15b10872-79a2-4063-91b4-d0931ab1e809}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\util\md5.c">
@@ -158,6 +173,48 @@
     </ClInclude>
     <ClInclude Include="..\util\rc_version.h">
       <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_api_editor.h">
+      <Filter>Source Files\api\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_api_info.h">
+      <Filter>Source Files\api\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_api_request.h">
+      <Filter>Source Files\api\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_api_runtime.h">
+      <Filter>Source Files\api\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_api_user.h">
+      <Filter>Source Files\api\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_client.h">
+      <Filter>Source Files\client\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_client_raintegration.h">
+      <Filter>Source Files\client\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_hash.h">
+      <Filter>Source Files\hash\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_runtime_types.h">
+      <Filter>Source Files\runtime\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_consoles.h">
+      <Filter>Source Files\runtime\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_runtime.h">
+      <Filter>Source Files\runtime\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_error.h">
+      <Filter>Source Files\util\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_export.h">
+      <Filter>Source Files\util\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_util.h">
+      <Filter>Source Files\util\public</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

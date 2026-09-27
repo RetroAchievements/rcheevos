@@ -1,5 +1,7 @@
 #include "rc_hash_internal.h"
 
+#ifndef RC_HASH_NO_ENCRYPTED
+
 #include "../util/rc_compat.h"
 
 #include "aes.h"
@@ -564,3 +566,5 @@ int rc_hash_nintendo_3ds(char hash[33], const rc_hash_iterator_t* iterator)
   rc_file_close(iterator, file_handle);
   return rc_hash_iterator_error(iterator, "Not a 3DS ROM");
 }
+
+#endif /* RC_HASH_NO_ENCRYPTED */

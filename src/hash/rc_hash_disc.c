@@ -1,5 +1,7 @@
 #include "rc_hash.h"
 
+#ifndef RC_HASH_NO_DISC
+
 #include "rc_hash_internal.h"
 
 #include "../util/rc_compat.h"
@@ -1460,3 +1462,5 @@ int rc_hash_wii(char hash[33], const rc_hash_iterator_t* iterator)
 
   return 0;
 }
+
+#endif /* RC_HASH_NO_DISC */
