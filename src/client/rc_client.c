@@ -3064,7 +3064,7 @@ rc_client_async_handle_t* rc_client_begin_identify_and_load_game(rc_client_t* cl
   }
   else {
     /* ASSERT: hash_iterator->index and hash_iterator->consoles[0] will be 0 from calloc */
-    load_state->hash_console_id = console_id;
+    load_state->hash_console_id = (uint8_t)console_id;
 
     /* prevent initializing the iterator so it won't try other consoles in rc_client_process_resolved_hash */
     load_state->hash_iterator.index = 0;

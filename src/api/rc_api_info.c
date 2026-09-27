@@ -6,7 +6,6 @@
 
 #include "../util/rc_compat.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 /* --- Fetch Achievement Info --- */

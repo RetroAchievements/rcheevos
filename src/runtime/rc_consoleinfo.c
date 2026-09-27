@@ -1,7 +1,5 @@
 #include "rc_consoles.h"
 
-#include <ctype.h>
-
 const char* rc_console_name(uint32_t console_id)
 {
   switch (console_id)

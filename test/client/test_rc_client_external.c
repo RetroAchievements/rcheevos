@@ -37,6 +37,11 @@ extern void mock_api_error(const char* request_params, const char* response_body
 
 static uint32_t rc_client_read_memory(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client)
 {
+  (void)address;
+  (void)buffer;
+  (void)num_bytes;
+  (void)client;
+
   return 0;
 }
 
@@ -166,6 +171,8 @@ static void test_spectator_mode_enabled(void)
 
 static void rc_client_external_log_message(const char* message, const rc_client_t* client)
 {
+  (void)message;
+  (void)client;
 }
 
 static void rc_client_external_enable_logging(rc_client_t* client, int level, rc_client_message_callback_t callback)
@@ -191,6 +198,8 @@ static void test_enable_logging(void)
 
 static void rc_client_external_event_handler(const rc_client_event_t* event, rc_client_t* client)
 {
+  (void)event;
+  (void)client;
 }
 
 static void rc_client_external_set_event_handler(rc_client_t* client, rc_client_event_handler_t handler)
@@ -215,6 +224,11 @@ static void test_event_handler(void)
 
 static uint32_t rc_client_external_read_memory(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client)
 {
+  (void)address;
+  (void)buffer;
+  (void)num_bytes;
+  (void)client;
+
   return 0;
 }
 
@@ -240,6 +254,8 @@ static void test_read_memory(void)
 
 static rc_clock_t rc_client_external_now_millisecs(const rc_client_t* client)
 {
+  (void)client;
+
   return (rc_clock_t)12345678;
 }
 
@@ -524,6 +540,9 @@ static const rc_client_user_t* rc_client_external_get_user_info_v1_long_name(voi
 static rc_client_async_handle_t* rc_client_external_login_with_token_long_name(rc_client_t* client,
   const char* username, const char* token, rc_client_callback_t callback, void* callback_userdata)
 {
+  (void)username;
+  (void)token;
+
   g_external_event = "login";
 
   callback(RC_OK, NULL, client, callback_userdata);
@@ -1472,6 +1491,8 @@ static const rc_client_achievement_t* rc_client_external_get_achievement_info_v1
 
 static const rc_client_achievement_t* rc_client_external_get_achievement_info_v1_not_found(uint32_t id)
 {
+  (void)id;
+
   return NULL;
 }
 
@@ -1786,6 +1807,8 @@ static void test_v8_leaderboard_field_offsets(void)
 
 static const rc_client_leaderboard_t* rc_client_external_get_leaderboard_info_v1(uint32_t id)
 {
+  (void)id;
+
   v1_rc_client_leaderboard_t* leaderboard = (v1_rc_client_leaderboard_t*)
     rc_buffer_alloc(&g_client->state.buffer, sizeof(v1_rc_client_leaderboard_t));
 
@@ -1803,6 +1826,8 @@ static const rc_client_leaderboard_t* rc_client_external_get_leaderboard_info_v1
 
 static const rc_client_leaderboard_t* rc_client_external_get_leaderboard_info_v8(uint32_t id)
 {
+  (void)id;
+
   v8_rc_client_leaderboard_t* leaderboard = (v8_rc_client_leaderboard_t*)
     rc_buffer_alloc(&g_client->state.buffer, sizeof(v8_rc_client_leaderboard_t));
 
@@ -2159,6 +2184,8 @@ static void test_progress_size(void)
 
 static int rc_client_external_serialize_progress(uint8_t* buffer, size_t size)
 {
+  (void)size;
+
   memcpy(buffer, "SAVED", 6);
 
   g_external_event = "serialize_progress";
@@ -2185,6 +2212,8 @@ static void test_serialize_progress(void)
 
 static int rc_client_external_deserialize_progress(const uint8_t* buffer, size_t size)
 {
+  (void)size;
+
   if (memcmp(buffer, "SAVE", 5) == 0)
     g_external_event = "deserialize_progress";
 

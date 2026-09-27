@@ -38,6 +38,9 @@
     <Link>
       <SubSystem>Console</SubSystem>
     </Link>
+    <ClCompile>
+      <PreprocessorDefinitions>RC_CLIENT_SUPPORTS_HASH;RC_CLIENT_SUPPORTS_RAINTEGRATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\libretro\rc_libretro.c">

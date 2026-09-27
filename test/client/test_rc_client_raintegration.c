@@ -31,6 +31,11 @@ extern void async_api_error(const char* request_params, const char* response_bod
 
 static uint32_t rc_client_read_memory(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client)
 {
+  (void)address;
+  (void)buffer;
+  (void)num_bytes;
+  (void)client;
+
   return 0;
 }
 
@@ -65,6 +70,11 @@ static void rc_client_callback_expect_success(int result, const char* error_mess
 
 static void rc_client_callback_expect_uncalled(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {
+  (void)result;
+  (void)error_message;
+  (void)client;
+  (void)callback_userdata;
+
   ASSERT_FAIL("Callback should not have been called.");
 }
 
@@ -108,6 +118,9 @@ static int rc_client_integration_init(HWND hWnd, const char* client_name, const 
 
 static int rc_client_get_external_client(rc_client_external_t* client, int nVersion)
 {
+  (void)client;
+  (void)nVersion;
+
   if (strcmp(g_integration_event, "init") == 0)
     g_integration_event = "init2";
 
