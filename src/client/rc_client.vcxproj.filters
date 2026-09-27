@@ -1,0 +1,228 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source Files\hash">
+      <UniqueIdentifier>{09502990-60af-4d32-8d1e-760baff354f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\util">
+      <UniqueIdentifier>{fbf1ce91-bbb1-48b7-9c18-673a7b7ed418}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\api">
+      <UniqueIdentifier>{339c5e7f-8a76-49f2-a6e9-4fd7054bb0a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\client">
+      <UniqueIdentifier>{cc358f17-a8a8-43af-baee-d3208a5a0427}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\runtime">
+      <UniqueIdentifier>{2c0eee29-f406-4d70-bc52-dad7d40a59da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\api\public">
+      <UniqueIdentifier>{6b7bd504-6fe1-42b8-882e-7503dcfeab3d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\client\public">
+      <UniqueIdentifier>{61a32376-9d0c-47d7-860c-b32655133139}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\hash\public">
+      <UniqueIdentifier>{87a251e6-4340-4afa-835e-e783d3b0b9eb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\runtime\public">
+      <UniqueIdentifier>{6dd3d62d-5a3f-4ef6-ae6a-4b44d3e278f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\util\public">
+      <UniqueIdentifier>{15b10872-79a2-4063-91b4-d0931ab1e809}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\util\md5.c">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\api\rc_api_common.c">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\api\rc_api_editor.c">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\api\rc_api_info.c">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\api\rc_api_runtime.c">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\api\rc_api_user.c">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="rc_client_external.c">
+      <Filter>Source Files\client</Filter>
+    </ClCompile>
+    <ClCompile Include="rc_client_raintegration.c">
+      <Filter>Source Files\client</Filter>
+    </ClCompile>
+    <ClCompile Include="rc_client.c">
+      <Filter>Source Files\client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\rc_hash.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\rc_hash_disc.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\rc_hash_encrypted.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\rc_hash_rom.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\rc_hash_zip.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\aes.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\rc_cdreader.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_validate.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_richpresence.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_runtime.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_runtime_progress.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_trigger.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_value.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_alloc.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_condition.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_condset.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_consoleinfo.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_format.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_lboard.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_memref.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\rc_operand.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\util\rc_compat.c">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\util\rc_util.c">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\util\rc_version.c">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\api\rc_api_common.h">
+      <Filter>Source Files\api</Filter>
+    </ClInclude>
+    <ClInclude Include="rc_client_external.h">
+      <Filter>Source Files\client</Filter>
+    </ClInclude>
+    <ClInclude Include="rc_client_external_versions.h">
+      <Filter>Source Files\client</Filter>
+    </ClInclude>
+    <ClInclude Include="rc_client_internal.h">
+      <Filter>Source Files\client</Filter>
+    </ClInclude>
+    <ClInclude Include="rc_client_raintegration_internal.h">
+      <Filter>Source Files\client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hash\rc_hash_internal.h">
+      <Filter>Source Files\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hash\aes.h">
+      <Filter>Source Files\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_internal.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_validate.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\util\md5.h">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\util\rc_compat.h">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\util\rc_version.h">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_api_editor.h">
+      <Filter>Source Files\api\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_api_info.h">
+      <Filter>Source Files\api\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_api_request.h">
+      <Filter>Source Files\api\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_api_runtime.h">
+      <Filter>Source Files\api\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_api_user.h">
+      <Filter>Source Files\api\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_client.h">
+      <Filter>Source Files\client\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_client_raintegration.h">
+      <Filter>Source Files\client\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_hash.h">
+      <Filter>Source Files\hash\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_runtime_types.h">
+      <Filter>Source Files\runtime\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_consoles.h">
+      <Filter>Source Files\runtime\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_runtime.h">
+      <Filter>Source Files\runtime\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_error.h">
+      <Filter>Source Files\util\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_export.h">
+      <Filter>Source Files\util\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\rc_util.h">
+      <Filter>Source Files\util\public</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="rc_client_types.natvis">
+      <Filter>Source Files\client</Filter>
+    </Natvis>
+    <Natvis Include="..\runtime\rc_runtime_types.natvis">
+      <Filter>Source Files\runtime</Filter>
+    </Natvis>
+  </ItemGroup>
+</Project>

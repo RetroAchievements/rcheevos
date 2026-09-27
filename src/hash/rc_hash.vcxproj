@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectName>rc_hash</ProjectName>
+    <ProjectGuid>{cdff5a5f-8de5-4081-981f-7a5ee4983710}</ProjectGuid>
+    <TargetName>rc_hash</TargetName>
+    <RootNamespace>rcheevos</RootNamespace>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\base.props" />
+  </ImportGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ItemGroup>
+    <ClCompile Include="..\util\md5.c" />
+    <ClCompile Include="..\util\rc_compat.c" />
+    <ClCompile Include="..\util\rc_util.c" />
+    <ClCompile Include="..\util\rc_version.c" />
+    <ClCompile Include="aes.c" />
+    <ClCompile Include="rc_cdreader.c" />
+    <ClCompile Include="rc_hash.c" />
+    <ClCompile Include="rc_hash_disc.c" />
+    <ClCompile Include="rc_hash_encrypted.c" />
+    <ClCompile Include="rc_hash_rom.c" />
+    <ClCompile Include="rc_hash_zip.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\util\md5.h" />
+    <ClInclude Include="..\util\rc_compat.h" />
+    <ClInclude Include="..\util\rc_version.h" />
+    <ClInclude Include="aes.h" />
+    <ClInclude Include="rc_hash_internal.h" />
+  </ItemGroup>
+</Project>

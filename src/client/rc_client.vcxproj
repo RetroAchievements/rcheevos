@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-integ|Win32">
+      <Configuration>Debug-integ</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-integ|Win32">
+      <Configuration>Release-integ</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-integ|x64">
+      <Configuration>Debug-integ</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-integ|x64">
+      <Configuration>Release-integ</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectName>rc_client</ProjectName>
+    <ProjectGuid>{4916FA87-56EE-4B79-B3C4-D5B723847A48}</ProjectGuid>
+    <TargetName>rc_client</TargetName>
+    <RootNamespace>rcheevos</RootNamespace>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\base.props" />
+  </ImportGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>RC_CLIENT_SUPPORTS_HASH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Condition="$(Configuration.Contains('integ'))">
+      <PreprocessorDefinitions>RC_CLIENT_SUPPORTS_RAINTEGRATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\api\rc_api_common.c" />
+    <ClCompile Include="..\api\rc_api_editor.c" />
+    <ClCompile Include="..\api\rc_api_info.c" />
+    <ClCompile Include="..\api\rc_api_runtime.c" />
+    <ClCompile Include="..\api\rc_api_user.c" />
+    <ClCompile Include="..\hash\aes.c" />
+    <ClCompile Include="..\hash\rc_cdreader.c" />
+    <ClCompile Include="..\hash\rc_hash.c" />
+    <ClCompile Include="..\hash\rc_hash_disc.c" />
+    <ClCompile Include="..\hash\rc_hash_encrypted.c" />
+    <ClCompile Include="..\hash\rc_hash_rom.c" />
+    <ClCompile Include="..\hash\rc_hash_zip.c" />
+    <ClCompile Include="..\runtime\rc_alloc.c" />
+    <ClCompile Include="..\runtime\rc_condition.c" />
+    <ClCompile Include="..\runtime\rc_condset.c" />
+    <ClCompile Include="..\runtime\rc_consoleinfo.c" />
+    <ClCompile Include="..\runtime\rc_format.c" />
+    <ClCompile Include="..\runtime\rc_lboard.c" />
+    <ClCompile Include="..\runtime\rc_memref.c" />
+    <ClCompile Include="..\runtime\rc_operand.c" />
+    <ClCompile Include="..\runtime\rc_validate.c" />
+    <ClCompile Include="..\runtime\rc_richpresence.c" />
+    <ClCompile Include="..\runtime\rc_runtime.c" />
+    <ClCompile Include="..\runtime\rc_runtime_progress.c" />
+    <ClCompile Include="..\runtime\rc_trigger.c" />
+    <ClCompile Include="..\runtime\rc_value.c" />
+    <ClCompile Include="..\util\md5.c" />
+    <ClCompile Include="..\util\rc_compat.c" />
+    <ClCompile Include="..\util\rc_util.c" />
+    <ClCompile Include="..\util\rc_version.c" />
+    <ClCompile Include="rc_client.c" />
+    <ClCompile Include="rc_client_external.c" />
+    <ClCompile Include="rc_client_raintegration.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\include\rc_api_editor.h" />
+    <ClInclude Include="..\..\include\rc_api_info.h" />
+    <ClInclude Include="..\..\include\rc_api_request.h" />
+    <ClInclude Include="..\..\include\rc_api_runtime.h" />
+    <ClInclude Include="..\..\include\rc_api_user.h" />
+    <ClInclude Include="..\..\include\rc_client.h" />
+    <ClInclude Include="..\..\include\rc_client_raintegration.h" />
+    <ClInclude Include="..\..\include\rc_consoles.h" />
+    <ClInclude Include="..\..\include\rc_error.h" />
+    <ClInclude Include="..\..\include\rc_export.h" />
+    <ClInclude Include="..\..\include\rc_hash.h" />
+    <ClInclude Include="..\..\include\rc_runtime.h" />
+    <ClInclude Include="..\..\include\rc_runtime_types.h" />
+    <ClInclude Include="..\..\include\rc_util.h" />
+    <ClInclude Include="..\api\rc_api_common.h" />
+    <ClInclude Include="..\hash\aes.h" />
+    <ClInclude Include="..\hash\rc_hash_internal.h" />
+    <ClInclude Include="..\runtime\rc_internal.h" />
+    <ClInclude Include="..\runtime\rc_validate.h" />
+    <ClInclude Include="..\util\md5.h" />
+    <ClInclude Include="..\util\rc_compat.h" />
+    <ClInclude Include="..\util\rc_version.h" />
+    <ClInclude Include="rc_client_external.h" />
+    <ClInclude Include="rc_client_external_versions.h" />
+    <ClInclude Include="rc_client_internal.h" />
+    <ClInclude Include="rc_client_raintegration_internal.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\runtime\rc_runtime_types.natvis" />
+    <Natvis Include="rc_client_types.natvis" />
+  </ItemGroup>
+</Project>
