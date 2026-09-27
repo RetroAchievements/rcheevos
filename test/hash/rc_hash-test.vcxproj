@@ -43,11 +43,11 @@
     <ClCompile Include="data.c" />
     <ClCompile Include="mock_filereader.c" />
     <ClCompile Include="test.c" />
-    <ClCompile Include="test_cdreader.c" />
-    <ClCompile Include="test_hash.c" />
-    <ClCompile Include="test_hash_disc.c" />
-    <ClCompile Include="test_hash_rom.c" />
-    <ClCompile Include="test_hash_zip.c" />
+    <ClCompile Include="test_rc_cdreader.c" />
+    <ClCompile Include="test_rc_hash.c" />
+    <ClCompile Include="test_rc_hash_disc.c" />
+    <ClCompile Include="test_rc_hash_rom.c" />
+    <ClCompile Include="test_rc_hash_zip.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\hash\rc_hash.vcxproj">
@@ -55,6 +55,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\test_framework.h" />
     <ClInclude Include="data.h" />
     <ClInclude Include="mock_filereader.h" />
   </ItemGroup>

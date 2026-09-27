@@ -36,20 +36,22 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ItemGroup>
     <ClCompile Include="..\util\md5.c" />
-    <ClInclude Include="..\util\md5.h" />
     <ClCompile Include="..\util\rc_compat.c" />
-    <ClInclude Include="..\util\rc_compat.h" />
     <ClCompile Include="..\util\rc_util.c" />
-    <ClInclude Include="..\util\rc_version.h" />
     <ClCompile Include="..\util\rc_version.c" />
     <ClCompile Include="aes.c" />
-    <ClInclude Include="aes.h" />
     <ClCompile Include="rc_cdreader.c" />
     <ClCompile Include="rc_hash.c" />
     <ClCompile Include="rc_hash_disc.c" />
     <ClCompile Include="rc_hash_encrypted.c" />
-    <ClInclude Include="rc_hash_internal.h" />
     <ClCompile Include="rc_hash_rom.c" />
     <ClCompile Include="rc_hash_zip.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\util\md5.h" />
+    <ClInclude Include="..\util\rc_compat.h" />
+    <ClInclude Include="..\util\rc_version.h" />
+    <ClInclude Include="aes.h" />
+    <ClInclude Include="rc_hash_internal.h" />
   </ItemGroup>
 </Project>

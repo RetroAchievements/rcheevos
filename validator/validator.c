@@ -1,7 +1,7 @@
-#include "rc_internal.h"
+#include "../src/runtime/rc_internal.h"
 #include "rc_api_runtime.h"
 #include "rc_consoles.h"
-#include "rc_validate.h"
+#include "../src/runtime/rc_validate.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -224,9 +224,9 @@ static int validate_leaderboard(const char* leaderboard, char result[], const si
     char part[4] = { 0,0,0,0 };
     do {
       char* next = strstr(start, "::");
-      part[0] = toupper((int)start[0]);
-      part[1] = toupper((int)start[1]);
-      part[2] = toupper((int)start[2]);
+      part[0] = (char)toupper((int)start[0]);
+      part[1] = (char)toupper((int)start[1]);
+      part[2] = (char)toupper((int)start[2]);
       start += 4;
 
       if (strcmp(part, "VAL") == 0) {

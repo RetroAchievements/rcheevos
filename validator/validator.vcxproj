@@ -19,133 +19,50 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectName>validator</ProjectName>
     <ProjectGuid>{16FABFA7-A2EC-4CD0-9E04-50315A2BB613}</ProjectGuid>
-    <RootNamespace>rcheevostest</RootNamespace>
+    <TargetName>validator</TargetName>
+    <RootNamespace>rcheevos</RootNamespace>
     <ConfigurationType>Application</ConfigurationType>
-    <CharacterSet>MultiByte</CharacterSet>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(VisualStudioVersion)'=='16.0'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(VisualStudioVersion)'=='15.0'">
-    <PlatformToolset>v141</PlatformToolset>
+  <PropertyGroup Label="UserMacros">
+    <RootDir>$(ProjectDir)..\</RootDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <UseDebugLibraries>true</UseDebugLibraries>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <UseDebugLibraries>true</UseDebugLibraries>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+  <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\src\base.props" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <SubSystem>Console</SubSystem>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\include;$(ProjectDir)..\src\rcheevos</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-    </Link>
-  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ItemGroup>
-    <ClCompile Include="..\src\rapi\rc_api_common.c" />
-    <ClCompile Include="..\src\rapi\rc_api_runtime.c" />
-    <ClCompile Include="..\src\rcheevos\alloc.c" />
-    <ClCompile Include="..\src\rcheevos\condition.c" />
-    <ClCompile Include="..\src\rcheevos\condset.c" />
-    <ClCompile Include="..\src\rcheevos\consoleinfo.c" />
-    <ClCompile Include="..\src\rcheevos\format.c" />
-    <ClCompile Include="..\src\rcheevos\lboard.c" />
-    <ClCompile Include="..\src\rcheevos\memref.c" />
-    <ClCompile Include="..\src\rcheevos\operand.c" />
-    <ClCompile Include="..\src\rcheevos\rc_validate.c" />
-    <ClCompile Include="..\src\rcheevos\richpresence.c" />
-    <ClCompile Include="..\src\rcheevos\runtime.c" />
-    <ClCompile Include="..\src\rcheevos\trigger.c" />
-    <ClCompile Include="..\src\rcheevos\value.c" />
+    <ClCompile Include="..\src\api\rc_api_common.c" />
+    <ClCompile Include="..\src\api\rc_api_runtime.c" />
+    <ClCompile Include="..\src\runtime\rc_alloc.c" />
+    <ClCompile Include="..\src\runtime\rc_condition.c" />
+    <ClCompile Include="..\src\runtime\rc_condset.c" />
+    <ClCompile Include="..\src\runtime\rc_consoleinfo.c" />
+    <ClCompile Include="..\src\runtime\rc_format.c" />
+    <ClCompile Include="..\src\runtime\rc_lboard.c" />
+    <ClCompile Include="..\src\runtime\rc_memref.c" />
+    <ClCompile Include="..\src\runtime\rc_operand.c" />
+    <ClCompile Include="..\src\runtime\rc_richpresence.c" />
+    <ClCompile Include="..\src\runtime\rc_runtime.c" />
+    <ClCompile Include="..\src\runtime\rc_runtime_progress.c" />
+    <ClCompile Include="..\src\runtime\rc_trigger.c" />
+    <ClCompile Include="..\src\runtime\rc_validate.c" />
+    <ClCompile Include="..\src\runtime\rc_value.c" />
     <ClCompile Include="..\src\util\md5.c" />
     <ClCompile Include="..\src\util\rc_util.c" />
     <ClCompile Include="validator.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\rcheevos.h" />
-    <ClInclude Include="..\src\rcheevos\rc_internal.h" />
+    <Natvis Include="..\src\runtime\rc_runtime_types.natvis" />
   </ItemGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\runtime\rc_internal.h" />
+    <ClInclude Include="..\src\runtime\rc_validate.h" />
+  </ItemGroup>
 </Project>

@@ -1,0 +1,160 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source Files\api">
+      <UniqueIdentifier>{41758f6a-b331-4b42-8243-ae58d43365df}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\client">
+      <UniqueIdentifier>{1129d422-d446-4ac2-82d9-6f111aea23d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\hash">
+      <UniqueIdentifier>{6f29faeb-2e71-4b0a-bebc-26d214ec10ee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libretro">
+      <UniqueIdentifier>{9076a66a-b75d-405e-88a6-531fca82a42f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\runtime">
+      <UniqueIdentifier>{617ae727-a2f6-4924-bd43-de2e03f54748}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libretro\src">
+      <UniqueIdentifier>{eaf52f86-e4f2-4fda-b2f4-3cb2273552f2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\api\test_rc_api_editor.c">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\api\test_rc_api_info.c">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\api\test_rc_api_runtime.c">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\api\test_rc_api_user.c">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\api\test_rc_api_common.c">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="test.c">
+      <Filter>Source Files\client</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_client.c">
+      <Filter>Source Files\client</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_client_external.c">
+      <Filter>Source Files\client</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_client_raintegration.c">
+      <Filter>Source Files\client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\test_rc_cdreader.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\test_rc_hash.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\test_rc_hash_disc.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\test_rc_hash_rom.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\test_rc_hash_zip.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\data.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hash\mock_filereader.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libretro\test_rc_libretro.c">
+      <Filter>Source Files\libretro</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_condition.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_condset.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_consoleinfo.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_format.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_lboard.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_memref.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_operand.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_validate.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_richpresence.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_runtime.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_runtime_progress.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_timing.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_trigger.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\test_rc_value.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\libretro\rc_libretro.c">
+      <Filter>Source Files\libretro\src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\test_framework.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hash\mock_filereader.h">
+      <Filter>Source Files\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hash\data.h">
+      <Filter>Source Files\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libretro\libretro.h">
+      <Filter>Source Files\libretro</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\mock_memory.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\libretro\rc_libretro.h">
+      <Filter>Source Files\libretro\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\api\test_api.h">
+      <Filter>Source Files\api</Filter>
+    </ClInclude>
+    <ClInclude Include="test_client.h">
+      <Filter>Source Files\client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hash\test_hash.h">
+      <Filter>Source Files\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libretro\test_libretro.h">
+      <Filter>Source Files\libretro</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\test_runtime.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

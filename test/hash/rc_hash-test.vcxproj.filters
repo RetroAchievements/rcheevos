@@ -6,7 +6,7 @@
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
     <Filter Include="Source Files\hash">
-      <UniqueIdentifier>{09502990-60af-4d32-8d1e-760baff354f3}</UniqueIdentifier>
+      <UniqueIdentifier>{b44e02c2-456b-4dc7-90d5-e4ae100b33e9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -16,22 +16,22 @@
     <ClCompile Include="mock_filereader.c">
       <Filter>Source Files\hash</Filter>
     </ClCompile>
-    <ClCompile Include="test_cdreader.c">
-      <Filter>Source Files\hash</Filter>
-    </ClCompile>
-    <ClCompile Include="test_hash.c">
-      <Filter>Source Files\hash</Filter>
-    </ClCompile>
-    <ClCompile Include="test_hash_disc.c">
-      <Filter>Source Files\hash</Filter>
-    </ClCompile>
-    <ClCompile Include="test_hash_rom.c">
-      <Filter>Source Files\hash</Filter>
-    </ClCompile>
-    <ClCompile Include="test_hash_zip.c">
-      <Filter>Source Files\hash</Filter>
-    </ClCompile>
     <ClCompile Include="test.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_cdreader.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_hash.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_hash_disc.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_hash_rom.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rc_hash_zip.c">
       <Filter>Source Files\hash</Filter>
     </ClCompile>
   </ItemGroup>
@@ -41,6 +41,9 @@
     </ClInclude>
     <ClInclude Include="mock_filereader.h">
       <Filter>Source Files\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\test_framework.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
