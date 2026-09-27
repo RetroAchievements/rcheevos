@@ -45,14 +45,17 @@ ifeq ($(HAVE_HASH_ENCRYPTED), 0)
 	EXTRA += |NO_HASH_ENCRYPTED
 	CFLAGS += -DRC_HASH_NO_ENCRYPTED
 else
-    OBJ += $(RC_HASH_SRC)/rc_hash_encrypted.o \
-           $(RC_HASH_SRC)/aes.o
+    OBJ += $(RC_SRC)/hash/rc_hash_encrypted.o \
+           $(RC_SRC)/hash/aes.o
 endif
 
 # recipes
 $(info ==== rc_hash-test [$(BUILD)/$(ARCH)$(EXTRA)] ====)
 
 all: rc_hash-test
+
+../hash/%.o: ../hash/%.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 rc_hash-test: $(OBJ)
 	$(CC) $(LDFLAGS) -o $@$(EXE) $+ -lm

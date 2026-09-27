@@ -111,7 +111,7 @@ jobs:
       working-directory: test/client
     - name: Build HAVE_HASH_ZIP=0
       run: make ARCH=x64 BUILD=c89 clean && make ARCH=x64 BUILD=c89 HAVE_HASH_ZIP=0 rc_client-test
-      working-directory: test
+      working-directory: test/client
     - name: Run tests HAVE_HASH_ZIP=0
       run: ./rc_client-test
       working-directory: test/client
