@@ -583,7 +583,7 @@ static void rc_client_raise_disconnect_events(rc_client_t* client)
   client->callbacks.event_handler(&client_event, client);
 }
 
-static int rc_client_should_retry(const rc_api_server_response_t* server_response)
+int rc_client_should_retry(const rc_api_server_response_t* server_response)
 {
   switch (server_response->http_status_code) {
     case 502: /* 502 Bad Gateway */
@@ -2234,6 +2234,8 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
     leaderboard->public_.id = read->id;
     leaderboard->public_.format = rc_client_map_leaderboard_format(read->format);
     leaderboard->public_.lower_is_better = read->lower_is_better;
+    leaderboard->public_.category = (read->state == RC_LEADERBOARD_STATE_ACTIVE)
+        ? RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED : RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED;
     leaderboard->format = (uint8_t)read->format;
     leaderboard->hidden = (uint8_t)read->hidden;
 
@@ -3615,6 +3617,8 @@ rc_client_subset_list_t* rc_client_create_subset_list(rc_client_t* client)
   }
 
   list = (rc_client_subset_list_info_t*)malloc(list_size + num_subsets * sizeof(rc_client_subset_t*));
+  if (!list)
+    return NULL;
   list->public_.subsets = subset_ptr = (const rc_client_subset_t**)((uint8_t*)list + list_size);
 
   subset = client->game->subsets;
@@ -4241,7 +4245,30 @@ static uint8_t rc_client_map_bucket(uint8_t bucket, int grouping)
   return bucket;
 }
 
+static int rc_client_is_subset_visible_in_achievement_list(const rc_client_subset_info_t* subset, const rc_client_achievement_list_params_t* params)
+{
+  if (!subset->active)
+    return 0;
+
+  return (params->subset_id == 0 || params->subset_id == subset->public_.id);
+}
+
+static int rc_client_is_achievement_visible_in_list(const rc_client_achievement_info_t* achievement, const rc_client_achievement_list_params_t* params)
+{
+  return (achievement->public_.category & params->category) != 0;
+}
+
 rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* client, int category, int grouping)
+{
+  rc_client_achievement_list_params_t params;
+  params.subset_id = 0;
+  params.grouping = grouping;
+  params.category = category;
+
+  return rc_client_create_subset_achievement_list(client, &params);
+}
+
+rc_client_achievement_list_t* rc_client_create_subset_achievement_list(rc_client_t* client, const rc_client_achievement_list_params_t* params)
 {
   rc_client_achievement_info_t* achievement;
   rc_client_achievement_info_t* stop;
@@ -4277,12 +4304,15 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   if (client->state.external_client) {
+    if (client->state.external_client->create_subset_achievement_list)
+      return (rc_client_achievement_list_t*)client->state.external_client->create_subset_achievement_list(params);
+
     if (client->state.external_client->create_achievement_list_v3)
-      return (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list_v3(category, grouping);
+      return (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list_v3(params->category, params->grouping);
 
     if (client->state.external_client->create_achievement_list)
       return rc_client_external_convert_v1_achievement_list(client,
-        (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list(category, grouping));
+        (rc_client_achievement_list_t*)client->state.external_client->create_achievement_list(params->category, params->grouping));
   }
 #endif
 
@@ -4295,16 +4325,16 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
   subset = client->game->subsets;
   for (; subset; subset = subset->next) {
-    if (!subset->active)
+    if (!rc_client_is_subset_visible_in_achievement_list(subset, params))
       continue;
 
     num_subsets++;
     achievement = subset->achievements;
     stop = achievement + subset->public_.num_achievements;
     for (; achievement < stop; ++achievement) {
-      if (achievement->public_.category & category) {
+      if (rc_client_is_achievement_visible_in_list(achievement, params)) {
         rc_client_update_achievement_display_information(client, achievement, recent_unlock_time);
-        bucket_counts[rc_client_map_bucket(achievement->public_.bucket, grouping)]++;
+        bucket_counts[rc_client_map_bucket(achievement->public_.bucket, params->grouping)]++;
       }
     }
   }
@@ -4333,14 +4363,14 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
       subset = client->game->subsets;
       for (; subset; subset = subset->next) {
-        if (!subset->active)
+        if (!rc_client_is_subset_visible_in_achievement_list(subset, params))
           continue;
 
         achievement = subset->achievements;
         stop = achievement + subset->public_.num_achievements;
         for (; achievement < stop; ++achievement) {
-          if (achievement->public_.category & category) {
-            if (rc_client_map_bucket(achievement->public_.bucket, grouping) == i) {
+          if (rc_client_is_achievement_visible_in_list(achievement, params)) {
+            if (rc_client_map_bucket(achievement->public_.bucket, params->grouping) == i) {
               ++num_buckets;
               break;
             }
@@ -4356,7 +4386,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   list->public_.buckets = bucket_ptr = (rc_client_achievement_bucket_t*)((uint8_t*)list + list_size);
   achievement_ptr = (const rc_client_achievement_t**)((uint8_t*)bucket_ptr + buckets_size);
 
-  if (grouping == RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS) {
+  if (params->grouping == RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_PROGRESS) {
     for (i = 0; i < sizeof(shared_bucket_order) / sizeof(shared_bucket_order[0]); ++i) {
       bucket_type = shared_bucket_order[i];
       if (!bucket_counts[bucket_type])
@@ -4364,14 +4394,14 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
 
       bucket_achievements = achievement_ptr;
       for (subset = client->game->subsets; subset; subset = subset->next) {
-        if (!subset->active)
+        if (!rc_client_is_subset_visible_in_achievement_list(subset, params))
           continue;
 
         achievement = subset->achievements;
         stop = achievement + subset->public_.num_achievements;
         for (; achievement < stop; ++achievement) {
-          if (achievement->public_.category & category &&
-              rc_client_map_bucket(achievement->public_.bucket, grouping) == bucket_type) {
+          if (rc_client_is_achievement_visible_in_list(achievement, params) &&
+              rc_client_map_bucket(achievement->public_.bucket, params->grouping) == bucket_type) {
             *achievement_ptr++ = &achievement->public_;
           }
         }
@@ -4395,7 +4425,7 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
   }
 
   for (subset = client->game->subsets; subset; subset = subset->next) {
-    if (!subset->active)
+    if (!rc_client_is_subset_visible_in_achievement_list(subset, params))
       continue;
 
     for (i = 0; i < sizeof(subset_bucket_order) / sizeof(subset_bucket_order[0]); ++i) {
@@ -4408,8 +4438,8 @@ rc_client_achievement_list_t* rc_client_create_achievement_list(rc_client_t* cli
       achievement = subset->achievements;
       stop = achievement + subset->public_.num_achievements;
       for (; achievement < stop; ++achievement) {
-        if (achievement->public_.category & category &&
-            rc_client_map_bucket(achievement->public_.bucket, grouping) == bucket_type) {
+        if (rc_client_is_achievement_visible_in_list(achievement, params) &&
+            rc_client_map_bucket(achievement->public_.bucket, params->grouping) == bucket_type) {
           *achievement_ptr++ = &achievement->public_;
         }
       }
@@ -4905,8 +4935,13 @@ const rc_client_leaderboard_t* rc_client_get_leaderboard_info(const rc_client_t*
     return NULL;
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->get_leaderboard_info)
-    return client->state.external_client->get_leaderboard_info(id);
+  if (client->state.external_client) {
+    if (client->state.external_client->get_leaderboard_info_v8)
+      return client->state.external_client->get_leaderboard_info_v8(id);
+
+    if (client->state.external_client->get_leaderboard_info)
+      return rc_client_external_convert_v1_leaderboard(client, client->state.external_client->get_leaderboard_info(id));
+  }
 #endif
 
   if (!client->game)
@@ -4969,12 +5004,42 @@ static uint8_t rc_client_get_leaderboard_bucket(const rc_client_leaderboard_info
       return RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED;
 
     default:
-      return (grouping == RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE) ?
-        RC_CLIENT_LEADERBOARD_BUCKET_ALL : RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE;
+      if (grouping == RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE)
+        return RC_CLIENT_LEADERBOARD_BUCKET_ALL;
+
+      if (leaderboard->public_.category == RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED)
+        return RC_CLIENT_LEADERBOARD_BUCKET_UNPROMOTED;
+
+      return RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE;
   }
 }
 
+static int rc_client_is_subset_visible_in_leaderboard_list(const rc_client_subset_info_t* subset, const rc_client_leaderboard_list_params_t* params)
+{
+  if (!subset->active)
+    return 0;
+
+  return (params->subset_id == 0 || params->subset_id == subset->public_.id);
+}
+
+static int rc_client_is_leaderboard_visible_in_list(const rc_client_leaderboard_info_t* leaderboard, const rc_client_leaderboard_list_params_t* params)
+{
+  if (leaderboard->hidden)
+    return 0;
+
+  return (leaderboard->public_.category & params->category) != 0;
+}
+
 rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* client, int grouping)
+{
+  rc_client_leaderboard_list_params_t params;
+  params.subset_id = 0;
+  params.category = RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED;
+  params.grouping = grouping;
+  return rc_client_create_subset_leaderboard_list(client, &params);
+}
+
+rc_client_leaderboard_list_t* rc_client_create_subset_leaderboard_list(rc_client_t* client, const rc_client_leaderboard_list_params_t* params)
 {
   rc_client_leaderboard_info_t* leaderboard;
   rc_client_leaderboard_info_t* stop;
@@ -4997,6 +5062,7 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
   const uint8_t subset_bucket_order[] = {
     RC_CLIENT_LEADERBOARD_BUCKET_ALL,
     RC_CLIENT_LEADERBOARD_BUCKET_INACTIVE,
+    RC_CLIENT_LEADERBOARD_BUCKET_UNPROMOTED,
     RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED
   };
 
@@ -5004,8 +5070,14 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
     return (rc_client_leaderboard_list_t*)calloc(1, list_size);
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-  if (client->state.external_client && client->state.external_client->create_leaderboard_list)
-    return (rc_client_leaderboard_list_t*)client->state.external_client->create_leaderboard_list(grouping);
+  if (client->state.external_client) {
+    if (client->state.external_client->create_subset_leaderboard_list)
+      return (rc_client_leaderboard_list_t*)client->state.external_client->create_subset_leaderboard_list(params);
+
+    if (client->state.external_client->create_leaderboard_list)
+      return rc_client_external_convert_v1_leaderboard_list(client,
+        (rc_client_leaderboard_list_t*)client->state.external_client->create_leaderboard_list(params->grouping));
+  }
 #endif
 
   if (!client->game)
@@ -5017,17 +5089,17 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
 
   subset = client->game->subsets;
   for (; subset; subset = subset->next) {
-    if (!subset->active)
+    if (!rc_client_is_subset_visible_in_leaderboard_list(subset, params))
       continue;
 
     num_subsets++;
     leaderboard = subset->leaderboards;
     stop = leaderboard + subset->public_.num_leaderboards;
     for (; leaderboard < stop; ++leaderboard) {
-      if (leaderboard->hidden)
+      if (!rc_client_is_leaderboard_visible_in_list(leaderboard, params))
         continue;
 
-      leaderboard->bucket = rc_client_get_leaderboard_bucket(leaderboard, grouping);
+      leaderboard->bucket = rc_client_get_leaderboard_bucket(leaderboard, params->grouping);
       bucket_counts[leaderboard->bucket]++;
     }
   }
@@ -5056,7 +5128,7 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
 
       subset = client->game->subsets;
       for (; subset; subset = subset->next) {
-        if (!subset->active)
+        if (!rc_client_is_subset_visible_in_leaderboard_list(subset, params))
           continue;
 
         leaderboard = subset->leaderboards;
@@ -5077,7 +5149,7 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
   list->public_.buckets = bucket_ptr = (rc_client_leaderboard_bucket_t*)((uint8_t*)list + list_size);
   leaderboard_ptr = (const rc_client_leaderboard_t**)((uint8_t*)bucket_ptr + buckets_size);
 
-  if (grouping == RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING) {
+  if (params->grouping == RC_CLIENT_LEADERBOARD_LIST_GROUPING_TRACKING) {
     for (i = 0; i < sizeof(shared_bucket_order) / sizeof(shared_bucket_order[0]); ++i) {
       bucket_type = shared_bucket_order[i];
       if (!bucket_counts[bucket_type])
@@ -5085,13 +5157,13 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
 
       bucket_leaderboards = leaderboard_ptr;
       for (subset = client->game->subsets; subset; subset = subset->next) {
-        if (!subset->active)
+        if (!rc_client_is_subset_visible_in_leaderboard_list(subset, params))
           continue;
 
         leaderboard = subset->leaderboards;
         stop = leaderboard + subset->public_.num_leaderboards;
         for (; leaderboard < stop; ++leaderboard) {
-          if (leaderboard->bucket == bucket_type && !leaderboard->hidden)
+          if (leaderboard->bucket == bucket_type && rc_client_is_leaderboard_visible_in_list(leaderboard, params))
             *leaderboard_ptr++ = &leaderboard->public_;
         }
       }
@@ -5108,7 +5180,7 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
   }
 
   for (subset = client->game->subsets; subset; subset = subset->next) {
-    if (!subset->active)
+    if (!rc_client_is_subset_visible_in_leaderboard_list(subset, params))
       continue;
 
     for (i = 0; i < sizeof(subset_bucket_order) / sizeof(subset_bucket_order[0]); ++i) {
@@ -5121,7 +5193,7 @@ rc_client_leaderboard_list_t* rc_client_create_leaderboard_list(rc_client_t* cli
       leaderboard = subset->leaderboards;
       stop = leaderboard + subset->public_.num_leaderboards;
       for (; leaderboard < stop; ++leaderboard) {
-        if (leaderboard->bucket == bucket_type && !leaderboard->hidden)
+        if (leaderboard->bucket == bucket_type && rc_client_is_leaderboard_visible_in_list(leaderboard, params))
           *leaderboard_ptr++ = &leaderboard->public_;
       }
 

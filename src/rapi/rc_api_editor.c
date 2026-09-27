@@ -304,7 +304,7 @@ void rc_api_destroy_update_code_notes_response(rc_api_update_code_notes_response
 
 /* --- Update Achievement --- */
 
-static const char* rc_type_string(uint32_t type) {
+static const char* rc_achievement_type_string(uint32_t type) {
   switch (type) {
     case RC_ACHIEVEMENT_TYPE_MISSABLE: return "missable";
     case RC_ACHIEVEMENT_TYPE_PROGRESSION: return "progression";
@@ -350,7 +350,7 @@ int rc_api_init_update_achievement_request_hosted(rc_api_request_t* request,
   rc_url_builder_append_unum_param(&builder, "f", api_params->category);
   if (api_params->badge)
     rc_url_builder_append_str_param(&builder, "b", api_params->badge);
-  rc_url_builder_append_str_param(&builder, "x", rc_type_string(api_params->type));
+  rc_url_builder_append_str_param(&builder, "x", rc_achievement_type_string(api_params->type));
 
   /* Evaluate the signature. */
   md5_init(&md5);
@@ -391,6 +391,7 @@ int rc_api_process_update_achievement_server_response(rc_api_update_achievement_
   rc_json_field_t fields[] = {
     RC_JSON_NEW_FIELD("Success"),
     RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Code"),
     RC_JSON_NEW_FIELD("AchievementID")
   };
 
@@ -401,7 +402,7 @@ int rc_api_process_update_achievement_server_response(rc_api_update_achievement_
   if (result != RC_OK || !response->response.succeeded)
     return result;
 
-  if (!rc_json_get_required_unum(&response->achievement_id, &response->response, &fields[2], "AchievementID"))
+  if (!rc_json_get_required_unum(&response->achievement_id, &response->response, &fields[3], "AchievementID"))
     return RC_MISSING_VALUE;
 
   return RC_OK;
@@ -412,6 +413,14 @@ void rc_api_destroy_update_achievement_response(rc_api_update_achievement_respon
 }
 
 /* --- Update Leaderboard --- */
+
+static const char* rc_leaderboard_state_string(uint32_t type) {
+  switch (type) {
+    case RC_LEADERBOARD_STATE_ACTIVE: return "active";
+    case RC_LEADERBOARD_STATE_UNPROMOTED: return "unpromoted";
+    default: return "";
+  }
+}
 
 int rc_api_init_update_leaderboard_request(rc_api_request_t* request, const rc_api_update_leaderboard_request_t* api_params) {
   return rc_api_init_update_leaderboard_request_hosted(request, api_params, &g_host);
@@ -459,6 +468,8 @@ int rc_api_init_update_leaderboard_request_hosted(rc_api_request_t* request,
     rc_url_builder_append_str_param(&builder, "l", api_params->value_definition);
     rc_url_builder_append_num_param(&builder, "w", api_params->lower_is_better);
     rc_url_builder_append_str_param(&builder, "f", api_params->format);
+    rc_url_builder_append_str_param(&builder, "m",
+        rc_leaderboard_state_string(api_params->state ? api_params->state : RC_LEADERBOARD_STATE_ACTIVE));
 
     /* Evaluate the signature. */
     md5_init(&md5);
@@ -499,6 +510,7 @@ int rc_api_process_update_leaderboard_server_response(rc_api_update_leaderboard_
     rc_json_field_t fields[] = {
       RC_JSON_NEW_FIELD("Success"),
       RC_JSON_NEW_FIELD("Error"),
+      RC_JSON_NEW_FIELD("Code"),
       RC_JSON_NEW_FIELD("LeaderboardID")
     };
 
@@ -509,7 +521,7 @@ int rc_api_process_update_leaderboard_server_response(rc_api_update_leaderboard_
     if (result != RC_OK || !response->response.succeeded)
         return result;
 
-    if (!rc_json_get_required_unum(&response->leaderboard_id, &response->response, &fields[2], "LeaderboardID"))
+    if (!rc_json_get_required_unum(&response->leaderboard_id, &response->response, &fields[3], "LeaderboardID"))
         return RC_MISSING_VALUE;
 
     return RC_OK;

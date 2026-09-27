@@ -93,12 +93,17 @@ typedef struct rc_api_leaderboard_definition_t {
   const char* description;
   /* The definition of the leaderboard to be passed to rc_runtime_activate_lboard */
   const char* definition;
+  /* The leaderboard state (promoted, unpromoted) */
+  uint8_t state;
   /* Non-zero if lower values are better for this leaderboard */
   uint8_t lower_is_better;
   /* Non-zero if the leaderboard should not be displayed in a list of leaderboards */
   uint8_t hidden;
 }
 rc_api_leaderboard_definition_t;
+
+#define RC_LEADERBOARD_STATE_ACTIVE 1
+#define RC_LEADERBOARD_STATE_UNPROMOTED 2
 
 /* An achievement definition */
 typedef struct rc_api_achievement_definition_t {

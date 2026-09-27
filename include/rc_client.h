@@ -616,6 +616,18 @@ enum {
  */
 RC_EXPORT rc_client_achievement_list_t* RC_CCONV rc_client_create_achievement_list(rc_client_t* client, int category, int grouping);
 
+typedef struct rc_client_achievement_list_params_t {
+  uint32_t subset_id;
+  uint32_t grouping;
+  uint32_t category;
+} rc_client_achievement_list_params_t;
+
+/**
+ * Creates a list of achievements matching the specified category and grouping.
+ * Returns an allocated list that must be free'd by calling rc_client_destroy_achievement_list.
+ */
+RC_EXPORT rc_client_achievement_list_t* RC_CCONV rc_client_create_subset_achievement_list(rc_client_t* client, const rc_client_achievement_list_params_t* params);
+
 /**
  * Destroys a list allocated by rc_client_create_achievement_list.
  */
@@ -645,6 +657,13 @@ enum {
   NUM_RC_CLIENT_LEADERBOARD_FORMATS = 3
 };
 
+enum {
+  RC_CLIENT_LEADERBOARD_CATEGORY_NONE = 0,
+  RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED = (1 << 0),
+  RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED = (1 << 1),
+  RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED_AND_UNPROMOTED = RC_CLIENT_LEADERBOARD_CATEGORY_PROMOTED | RC_CLIENT_LEADERBOARD_CATEGORY_UNPROMOTED
+};
+
 #define RC_CLIENT_LEADERBOARD_DISPLAY_SIZE 24
 
 typedef struct rc_client_leaderboard_t {
@@ -655,6 +674,7 @@ typedef struct rc_client_leaderboard_t {
   uint8_t state;
   uint8_t format;
   uint8_t lower_is_better;
+  uint8_t category;
 } rc_client_leaderboard_t;
 
 /**
@@ -687,7 +707,8 @@ enum {
   RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE = 2,
   RC_CLIENT_LEADERBOARD_BUCKET_UNSUPPORTED = 3,
   RC_CLIENT_LEADERBOARD_BUCKET_ALL = 4,
-  NUM_RC_CLIENT_LEADERBOARD_BUCKETS = 5
+  RC_CLIENT_LEADERBOARD_BUCKET_UNPROMOTED = 5,
+  NUM_RC_CLIENT_LEADERBOARD_BUCKETS = 6
 };
 
 enum {
@@ -700,6 +721,18 @@ enum {
  * Returns an allocated list that must be free'd by calling rc_client_destroy_leaderboard_list.
  */
 RC_EXPORT rc_client_leaderboard_list_t* RC_CCONV rc_client_create_leaderboard_list(rc_client_t* client, int grouping);
+
+typedef struct rc_client_leaderboard_list_params_t {
+  uint32_t subset_id;
+  uint32_t grouping;
+  uint32_t category;
+} rc_client_leaderboard_list_params_t;
+
+/**
+ * Creates a list of leaderboards matching the specified parameters.
+ * Returns an allocated list that must be free'd by calling rc_client_destroy_leaderboard_list.
+ */
+RC_EXPORT rc_client_leaderboard_list_t* RC_CCONV rc_client_create_subset_leaderboard_list(rc_client_t* client, const rc_client_leaderboard_list_params_t* params);
 
 /**
  * Destroys a list allocated by rc_client_create_leaderboard_list.
