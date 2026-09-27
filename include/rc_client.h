@@ -186,7 +186,7 @@ typedef struct rc_client_user_t {
   const char* username;
   const char* token;
   uint32_t score;
-  uint32_t score_softcore;
+  uint32_t score_casual;
   uint32_t num_unread_messages;
   /* minimum version: 12.0 */
   const char* avatar_url;
@@ -247,7 +247,7 @@ typedef void(RC_CCONV* rc_client_fetch_all_user_progress_callback_t)(int result,
 /**
  * Starts an asynchronous request for all progress for the given console.
  * This query returns the total number of achievements for all games tracked by this console, as well as
- * the user's achievement unlock count for both softcore and hardcore modes.
+ * the user's achievement unlock count for both casual and hardcore modes.
  */
 RC_EXPORT rc_client_async_handle_t* RC_CCONV
 rc_client_begin_fetch_all_user_progress(rc_client_t* client, uint32_t console_id,
@@ -548,9 +548,9 @@ enum {
 
 enum {
   RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE = 0,
-  RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE = (1 << 0),
+  RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL = (1 << 0),
   RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE = (1 << 1),
-  RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH = RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE | RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE
+  RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH = RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL | RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE
 };
 
 typedef struct rc_client_achievement_t {

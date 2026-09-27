@@ -39,7 +39,7 @@ static void test_init_start_session_request_no_game()
   rc_api_destroy_request(&request);
 }
 
-static void test_init_start_session_request_game_hash_softcore()
+static void test_init_start_session_request_game_hash_casual()
 {
   rc_api_start_session_request_t start_session_request;
   rc_api_request_t request;
@@ -99,8 +99,8 @@ static void test_process_start_session_response()
 {
   rc_api_start_session_response_t start_session_response;
   /* startsession API only returns HardcoreUnlocks if an achievement has been earned in hardcore,
-   * even if the softcore unlock has a different timestamp. Unlocks are only returned for things
-   * only unlocked in softcore. */
+   * even if the casual unlock has a different timestamp. Unlocks are only returned for things
+   * only unlocked in casual mode. */
   const char* server_response = "{\"Success\":true,\"HardcoreUnlocks\":["
       "{\"ID\":111,\"When\":1234567890},"
       "{\"ID\":112,\"When\":1234567891},"
@@ -265,7 +265,7 @@ static void test_process_login_response_success()
   ASSERT_STR_EQUALS(login_response.username, "USER");
   ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
   ASSERT_NUM_EQUALS(login_response.score, 1234);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 789);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 789);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 2);
   ASSERT_STR_EQUALS(login_response.display_name, "USER");
 
@@ -284,7 +284,7 @@ static void test_process_login_response_success()
   ASSERT_STR_EQUALS(login_response.username, "USER");
   ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
   ASSERT_NUM_EQUALS(login_response.score, 1234);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 789);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 789);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 2);
   ASSERT_STR_EQUALS(login_response.display_name, "USER");
 
@@ -304,7 +304,7 @@ static void test_process_login_response_avatar_updated()
   ASSERT_STR_EQUALS(login_response.username, "USER");
   ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
   ASSERT_NUM_EQUALS(login_response.score, 1234);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 789);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 789);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 2);
   ASSERT_STR_EQUALS(login_response.display_name, "USER");
   ASSERT_STR_EQUALS(login_response.avatar_url, "host/UserPic/USER.png");
@@ -326,7 +326,7 @@ static void test_process_login_response_unique_display_name()
   ASSERT_STR_EQUALS(login_response.username, "GamingHero");
   ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
   ASSERT_NUM_EQUALS(login_response.score, 1234);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 789);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 789);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 2);
   ASSERT_STR_EQUALS(login_response.display_name, "GamingHero");
   ASSERT_STR_EQUALS(login_response.avatar_url, "http://host/UserPic/USER.png");
@@ -349,7 +349,7 @@ static void test_process_login_response_invalid_credentials()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
   ASSERT_PTR_NULL(login_response.avatar_url);
@@ -370,7 +370,7 @@ static void test_process_login_response_invalid_credentials()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
   ASSERT_PTR_NULL(login_response.avatar_url);
@@ -393,7 +393,7 @@ static void test_process_login_response_access_denied()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
 
@@ -412,7 +412,7 @@ static void test_process_login_response_access_denied()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
 
@@ -433,7 +433,7 @@ static void test_process_login_response_expired_token()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
 
@@ -452,7 +452,7 @@ static void test_process_login_response_expired_token()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
 
@@ -472,7 +472,7 @@ static void test_process_login_response_generic_failure()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
 
@@ -492,7 +492,7 @@ static void test_process_login_response_empty()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
 
@@ -512,7 +512,7 @@ static void test_process_login_response_text()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
 
@@ -532,7 +532,7 @@ static void test_process_login_response_html()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
 
@@ -552,7 +552,7 @@ static void test_process_login_response_no_required_fields()
   ASSERT_PTR_NULL(login_response.username);
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
 
@@ -572,7 +572,7 @@ static void test_process_login_response_no_token()
   ASSERT_STR_EQUALS(login_response.username, "Username");
   ASSERT_PTR_NULL(login_response.api_token);
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_PTR_NULL(login_response.display_name);
 
@@ -592,7 +592,7 @@ static void test_process_login_response_no_optional_fields()
   ASSERT_STR_EQUALS(login_response.username, "USER");
   ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_STR_EQUALS(login_response.display_name, "USER");
 
@@ -612,7 +612,7 @@ static void test_process_login_response_null_score()
   ASSERT_STR_EQUALS(login_response.username, "USER");
   ASSERT_STR_EQUALS(login_response.api_token, "ApiTOKEN");
   ASSERT_NUM_EQUALS(login_response.score, 0);
-  ASSERT_NUM_EQUALS(login_response.score_softcore, 0);
+  ASSERT_NUM_EQUALS(login_response.score_casual, 0);
   ASSERT_NUM_EQUALS(login_response.num_unread_messages, 0);
   ASSERT_STR_EQUALS(login_response.display_name, "USER");
 
@@ -1015,7 +1015,7 @@ void test_rapi_user(void) {
   /* start session */
   TEST(test_init_start_session_request);
   TEST(test_init_start_session_request_no_game);
-  TEST(test_init_start_session_request_game_hash_softcore);
+  TEST(test_init_start_session_request_game_hash_casual);
   TEST(test_init_start_session_request_game_hash_hardcore);
 
   TEST(test_process_start_session_response_legacy);

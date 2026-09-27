@@ -414,7 +414,7 @@ static const char* patchdata_not_found = "{\"Success\":false,\"Error\":\"Unknown
 static const char* no_unlocks = "{\"Success\":true,\"Unlocks\":[],\"HardcoreUnlocks\":[]}";
 
 /* startsession API only returns HardcoreUnlocks if an achievement has been earned in hardcore,
- * even if the softcore unlock has a different timestamp */
+ * even if the casual unlock has a different timestamp */
 static const char* unlock_5501h_and_5502 = "{\"Success\":true,\"Unlocks\":["
       "{\"ID\":5502,\"When\":1234567899}"
     "],\"HardcoreUnlocks\":["
@@ -826,7 +826,7 @@ static void mock_client_load_game(const char* patchdata, const char* unlocks)
     ASSERT_MESSAGE("client->game is NULL");
 }
 
-static void mock_client_load_game_softcore(const char* patchdata, const char* unlocks)
+static void mock_client_load_game_casual(const char* patchdata, const char* unlocks)
 {
   reset_mock_api_handlers();
   event_count = 0;
@@ -867,7 +867,7 @@ static void test_login_with_password(void)
   ASSERT_STR_EQUALS(user->display_name, "User");
   ASSERT_STR_EQUALS(user->token, "ApiToken");
   ASSERT_NUM_EQUALS(user->score, 12345);
-  ASSERT_NUM_EQUALS(user->score_softcore, 123);
+  ASSERT_NUM_EQUALS(user->score_casual, 123);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
 
   rc_client_destroy(g_client);
@@ -1305,7 +1305,7 @@ static void test_get_user_game_summary(void)
   rc_client_destroy(g_client);
 }
 
-static void test_get_user_game_summary_softcore(void)
+static void test_get_user_game_summary_casual(void)
 {
   rc_client_user_game_summary_t summary;
 
@@ -4328,7 +4328,7 @@ static void test_achievement_list_simple_with_unlocks(void)
     iter = list->buckets[0].achievements;
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 5502);
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     iter = list->buckets[1].achievements;
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 5501);
@@ -4342,7 +4342,7 @@ static void test_achievement_list_simple_with_unlocks(void)
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
-    /* in softcore mode, both should be unlocked */
+    /* in casual mode, both should be unlocked */
     ASSERT_NUM_EQUALS(list->num_buckets, 1);
     ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
     ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
@@ -4355,7 +4355,7 @@ static void test_achievement_list_simple_with_unlocks(void)
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 5502);
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
 
     rc_client_destroy_achievement_list(list);
   }
@@ -4392,7 +4392,7 @@ static void test_achievement_list_simple_with_unlocks_encore_mode(void)
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 5502);
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
 
     rc_client_destroy_achievement_list(list);
   }
@@ -4403,7 +4403,7 @@ static void test_achievement_list_simple_with_unlocks_encore_mode(void)
   list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
   ASSERT_PTR_NOT_NULL(list);
   if (list) {
-    /* in softcore mode, both should be unlocked, but will appear locked due to encore mode */
+    /* in casual mode, both should be unlocked, but will appear locked due to encore mode */
     ASSERT_NUM_EQUALS(list->num_buckets, 1);
     ASSERT_NUM_EQUALS(list->buckets[0].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_LOCKED);
     ASSERT_NUM_EQUALS(list->buckets[0].subset_id, 0);
@@ -4416,7 +4416,7 @@ static void test_achievement_list_simple_with_unlocks_encore_mode(void)
     ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 5502);
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
 
     rc_client_destroy_achievement_list(list);
   }
@@ -4445,7 +4445,7 @@ static void test_achievement_list_simple_with_unlocks_encore_mode(void)
 
     achievement = list->buckets[0].achievements[0];
     ASSERT_NUM_EQUALS(achievement->id, 5502);
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
 
     ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
     ASSERT_NUM_EQUALS(list->buckets[1].subset_id, 0);
@@ -4479,7 +4479,7 @@ static void test_achievement_list_simple_with_unlocks_encore_mode(void)
 
     achievement = list->buckets[1].achievements[0];
     ASSERT_NUM_EQUALS(achievement->id, 5502);
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
 
     rc_client_destroy_achievement_list(list);
   }
@@ -5500,7 +5500,7 @@ static void test_get_next_achievement_first(void)
 
   achievement = rc_client_get_next_achievement_info(g_client, NULL, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
   ASSERT_PTR_NOT_NULL(achievement);
-  ASSERT_NUM_EQUALS(achievement->id, 8); /* 8 is the first unlocked achievement since 6 only has a softcore unlock */
+  ASSERT_NUM_EQUALS(achievement->id, 8); /* 8 is the first unlocked achievement since 6 only has a casual unlock */
 
   achievement = rc_client_get_next_achievement_info(g_client, NULL, RC_CLIENT_ACHIEVEMENT_BUCKET_UNSUPPORTED);
   ASSERT_PTR_NULL(achievement); /* all achievements in this set should be supported */
@@ -6719,7 +6719,7 @@ static void test_do_frame_achievement_trigger(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -6763,7 +6763,7 @@ static void test_do_frame_achievement_trigger_already_awarded(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -6928,7 +6928,7 @@ static void test_do_frame_achievement_trigger_blocked(void)
 
   ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
   ASSERT_NUM_EQUALS(g_client->user.score, 12350); /* 12345+5 - not updated by server response that didn't happen */
-  ASSERT_NUM_EQUALS(g_client->user.score_softcore, 0);
+  ASSERT_NUM_EQUALS(g_client->user.score_casual, 0);
 
   event_count = 0;
   rc_client_do_frame(g_client);
@@ -6952,7 +6952,7 @@ static void test_do_frame_achievement_trigger_blocked(void)
 
   ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 2);
   ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-  ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+  ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
   assert_api_called(api_call9);
 
@@ -6988,7 +6988,7 @@ static void test_do_frame_achievement_trigger_warning(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
     ASSERT_NUM_EQUALS(g_client->user.score, 12345);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 0);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 0);
 
     assert_api_not_called("r=awardachievement&u=Username&t=ApiToken&a=101000001&h=1&m=0123456789ABCDEF&v=589baefac51bd5931234fa9ade42460f");
 
@@ -7084,7 +7084,7 @@ static void test_do_frame_achievement_trigger_automatic_retry(const char* respon
     ASSERT_PTR_NULL(g_client->state.scheduled_callbacks);
 
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     /* reconnected event should be pending, watch for it */
     ASSERT_NUM_EQUALS(event_count, 0);
@@ -7160,7 +7160,7 @@ static void test_do_frame_achievement_trigger_subset(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -7183,7 +7183,7 @@ static void test_do_frame_achievement_trigger_subset(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 2);
     ASSERT_NUM_EQUALS(g_client->user.score, 5437);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
   }
 
   rc_client_destroy(g_client);
@@ -7234,7 +7234,7 @@ static void test_do_frame_achievement_trigger_base_and_subset(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 2);
     ASSERT_NUM_EQUALS(g_client->user.score, 5437);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
   }
 
   rc_client_destroy(g_client);
@@ -7278,7 +7278,7 @@ static void test_do_frame_achievement_trigger_rarity(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -7875,7 +7875,7 @@ static void test_do_frame_mastery(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
     ASSERT_NUM_EQUALS(g_client->user.score, 12345+5);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 0);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 0);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -7886,7 +7886,7 @@ static void test_do_frame_mastery(void)
 
     ASSERT_NUM_EQUALS(event_count, 0);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -7910,7 +7910,7 @@ static void test_do_frame_mastery(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 2);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432+5);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -7921,7 +7921,7 @@ static void test_do_frame_mastery(void)
 
     ASSERT_NUM_EQUALS(event_count, 0);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 0);
@@ -7962,7 +7962,7 @@ static void test_do_frame_mastery_encore(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
     ASSERT_NUM_EQUALS(g_client->user.score, 12345+5);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 0);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 0);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -7973,7 +7973,7 @@ static void test_do_frame_mastery_encore(void)
 
     ASSERT_NUM_EQUALS(event_count, 0);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -7997,7 +7997,7 @@ static void test_do_frame_mastery_encore(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 2);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432+5);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -8008,7 +8008,7 @@ static void test_do_frame_mastery_encore(void)
 
     ASSERT_NUM_EQUALS(event_count, 0);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(event_count, 0);
@@ -8050,7 +8050,7 @@ static void test_do_frame_mastery_subset(void)
 
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_active - 1);
     ASSERT_NUM_EQUALS(g_client->user.score, 12345 + 5);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 0);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 0);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -8061,7 +8061,7 @@ static void test_do_frame_mastery_subset(void)
 
     ASSERT_NUM_EQUALS(event_count, 0);
     ASSERT_NUM_EQUALS(g_client->user.score, 5432);
-    ASSERT_NUM_EQUALS(g_client->user.score_softcore, 777);
+    ASSERT_NUM_EQUALS(g_client->user.score_casual, 777);
 
     event_count = 0;
     rc_client_do_frame(g_client);
@@ -8627,7 +8627,7 @@ static void test_do_frame_leaderboard_submit_blocked(void)
   rc_client_destroy(g_client);
 }
 
-static void test_do_frame_leaderboard_submit_softcore(void)
+static void test_do_frame_leaderboard_submit_casual(void)
 {
   rc_client_leaderboard_info_t* leaderboard;
   rc_client_event_t* event;
@@ -8650,14 +8650,14 @@ static void test_do_frame_leaderboard_submit_softcore(void)
   rc_client_do_frame(g_client);
   ASSERT_NUM_EQUALS(event_count, 0);
 
-  /* start the leaderboard - will be ignored in softcore */
+  /* start the leaderboard - will be ignored in casual mode */
   memory[0x0B] = 1;
   memory[0x0E] = 17;
   rc_client_do_frame(g_client);
   ASSERT_NUM_EQUALS(event_count, 0);
 
-  /* allow leaderboards to be processed in softcore. have to manually activate as it wasn't activated on game load */
-  g_client->state.allow_leaderboards_in_softcore = 1;
+  /* allow leaderboards to be processed in casual mode. have to manually activate as it wasn't activated on game load */
+  g_client->state.allow_leaderboards_in_casual = 1;
   leaderboard = (rc_client_leaderboard_info_t*)rc_client_get_leaderboard_info(g_client, 44);
   leaderboard->public_.state = RC_CLIENT_LEADERBOARD_BUCKET_ACTIVE;
   leaderboard->lboard->state = RC_LBOARD_STATE_ACTIVE;
@@ -10304,7 +10304,7 @@ static void test_set_hardcore_disable(void)
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   trigger = ((rc_client_achievement_info_t*)achievement)->trigger;
-  ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+  ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
   ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_WAITING);
 
@@ -10323,7 +10323,7 @@ static void test_set_hardcore_disable(void)
   ASSERT_PTR_NOT_NULL(achievement);
   trigger = ((rc_client_achievement_info_t*)achievement)->trigger;
 
-  ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+  ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
   ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
   ASSERT_NUM_EQUALS(trigger->state, RC_TRIGGER_STATE_TRIGGERED);
   ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 0); /* 5502 should not be active*/
@@ -10391,14 +10391,14 @@ static void test_set_hardcore_enable(void)
 
   g_client = mock_client_logged_in();
   rc_client_set_hardcore_enabled(g_client, 0);
-  mock_client_load_game_softcore(patchdata_2ach_1lbd, unlock_5501h_and_5502);
+  mock_client_load_game_casual(patchdata_2ach_1lbd, unlock_5501h_and_5502);
 
   ASSERT_NUM_EQUALS(rc_client_get_hardcore_enabled(g_client), 0);
 
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 0); /* 5502 should not be active*/
   }
@@ -10420,7 +10420,7 @@ static void test_set_hardcore_enable(void)
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, 1); /* 5502 should be active*/
   }
@@ -10485,7 +10485,7 @@ static void test_set_hardcore_enable_encore_mode(void)
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(g_client->game->runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   }
@@ -10506,7 +10506,7 @@ static void test_set_hardcore_enable_encore_mode(void)
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(g_client->game->runtime.triggers[1].trigger->state, RC_TRIGGER_STATE_ACTIVE);
   }
@@ -10537,7 +10537,7 @@ static void test_set_hardcore_enable_encore_mode(void)
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
     ASSERT_NUM_EQUALS(g_client->game->runtime.triggers[0].trigger->state, RC_TRIGGER_STATE_ACTIVE);
     ASSERT_PTR_EQUALS(((rc_client_achievement_info_t*)achievement)->trigger, g_client->game->runtime.triggers[0].trigger);
@@ -10571,7 +10571,7 @@ static void test_set_encore_mode_enable(void)
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
 
@@ -10588,7 +10588,7 @@ static void test_set_encore_mode_enable(void)
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
 
@@ -10615,7 +10615,7 @@ static void test_set_encore_mode_disable(void)
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
 
@@ -10632,7 +10632,7 @@ static void test_set_encore_mode_disable(void)
   achievement = rc_client_get_achievement_info(g_client, 5502);
   ASSERT_PTR_NOT_NULL(achievement);
   if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_SOFTCORE);
+    ASSERT_NUM_EQUALS(achievement->unlocked, RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL);
     ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
   }
 
@@ -10692,7 +10692,7 @@ void test_client(void) {
   TEST(test_user_get_image_url);
 
   TEST(test_get_user_game_summary);
-  TEST(test_get_user_game_summary_softcore);
+  TEST(test_get_user_game_summary_casual);
   TEST(test_get_user_game_summary_encore_mode);
   TEST(test_get_user_game_summary_with_unsupported_and_unpromoted);
   TEST(test_get_user_game_summary_with_unsupported_unlocks);
@@ -10884,7 +10884,7 @@ void test_client(void) {
   TEST(test_do_frame_leaderboard_submit_immediate);
   TEST(test_do_frame_leaderboard_submit_hidden);
   TEST(test_do_frame_leaderboard_submit_blocked);
-  TEST(test_do_frame_leaderboard_submit_softcore);
+  TEST(test_do_frame_leaderboard_submit_casual);
   TEST(test_do_frame_leaderboard_tracker_sharing);
   TEST(test_do_frame_leaderboard_tracker_sharing_hits);
   TEST(test_do_frame_leaderboard_submit_automatic_retry);

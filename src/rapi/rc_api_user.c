@@ -79,7 +79,7 @@ int rc_api_process_login_server_response(rc_api_login_response_t* response, cons
     return RC_MISSING_VALUE;
 
   rc_json_get_optional_unum(&response->score, &fields[5], "Score", 0);
-  rc_json_get_optional_unum(&response->score_softcore, &fields[6], "SoftcoreScore", 0);
+  rc_json_get_optional_unum(&response->score_casual, &fields[6], "SoftcoreScore", 0);
   rc_json_get_optional_unum(&response->num_unread_messages, &fields[7], "Messages", 0);
 
   /* For the highest level of backwards compatibility, we have decided to just send the

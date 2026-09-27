@@ -90,7 +90,7 @@ typedef struct rc_client_achievement_info_t {
   uint8_t md5[16];
 
   time_t unlock_time_hardcore;
-  time_t unlock_time_softcore;
+  time_t unlock_time_casual;
 
   uint8_t pending_events;
 
@@ -336,7 +336,7 @@ typedef struct rc_client_state_t {
   uint8_t log_level;
   uint8_t user;
   uint8_t disconnect;
-  uint8_t allow_leaderboards_in_softcore;
+  uint8_t allow_leaderboards_in_casual;
   uint8_t allow_background_memory_reads;
 
   struct rc_client_load_state_t* load;

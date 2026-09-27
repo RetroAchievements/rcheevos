@@ -360,7 +360,7 @@ static void test_v1_user_field_offsets(void)
   ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, username);
   ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, token);
   ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, score);
-  ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, score_softcore);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, score_casual);
   ASSERT_FIELD_OFFSET(rc_client_user_t, v1_rc_client_user_t, num_unread_messages);
 }
 
@@ -370,7 +370,7 @@ static void test_v3_user_field_offsets(void)
   ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, username);
   ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, token);
   ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, score);
-  ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, score_softcore);
+  ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, score_casual);
   ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, num_unread_messages);
   ASSERT_FIELD_OFFSET(rc_client_user_t, v3_rc_client_user_t, avatar_url);
 }
@@ -404,7 +404,7 @@ static const rc_client_user_t* rc_client_external_get_user_info_v1(void)
   user->username = "User";
   user->token = "ApiToken";
   user->score = 12345;
-  user->score_softcore = 123;
+  user->score_casual = 123;
   user->num_unread_messages = 2;
 
   return (rc_client_user_t*)user;
@@ -420,7 +420,7 @@ static const rc_client_user_t* rc_client_external_get_user_info_v3(void)
   user->username = "User";
   user->token = "ApiToken";
   user->score = 12345;
-  user->score_softcore = 123;
+  user->score_casual = 123;
   user->num_unread_messages = 2;
   user->avatar_url = "/UserPic/User.png";
 
@@ -447,7 +447,7 @@ static void test_login_with_password(void)
   ASSERT_STR_EQUALS(user->display_name, "User");
   ASSERT_STR_EQUALS(user->token, "ApiToken");
   ASSERT_NUM_EQUALS(user->score, 12345);
-  ASSERT_NUM_EQUALS(user->score_softcore, 123);
+  ASSERT_NUM_EQUALS(user->score_casual, 123);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
   ASSERT_STR_EQUALS(user->avatar_url, "/UserPic/User.png");
 
@@ -495,7 +495,7 @@ static void test_login_with_token_v1(void)
   ASSERT_STR_EQUALS(user->display_name, "User");
   ASSERT_STR_EQUALS(user->token, "ApiToken");
   ASSERT_NUM_EQUALS(user->score, 12345);
-  ASSERT_NUM_EQUALS(user->score_softcore, 123);
+  ASSERT_NUM_EQUALS(user->score_casual, 123);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
   ASSERT_STR_EQUALS(user->avatar_url, "https://media.retroachievements.org/UserPic/User.png");
 
@@ -515,7 +515,7 @@ static const rc_client_user_t* rc_client_external_get_user_info_v1_long_name(voi
   user->username = "TwentyCharUserNameXX";
   user->token = "ApiToken";
   user->score = 12345;
-  user->score_softcore = 123;
+  user->score_casual = 123;
   user->num_unread_messages = 2;
 
   return (rc_client_user_t*)user;
@@ -549,7 +549,7 @@ static void test_login_with_token_v1_long_username(void)
   ASSERT_STR_EQUALS(user->display_name, "TwentyCharUserNameXX");
   ASSERT_STR_EQUALS(user->token, "ApiToken");
   ASSERT_NUM_EQUALS(user->score, 12345);
-  ASSERT_NUM_EQUALS(user->score_softcore, 123);
+  ASSERT_NUM_EQUALS(user->score_casual, 123);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
   ASSERT_STR_EQUALS(user->avatar_url, "https://media.retroachievements.org/UserPic/TwentyCharUserNameXX.png");
 
@@ -569,7 +569,7 @@ static const rc_client_user_t* rc_client_external_get_user_info_v1_too_long_name
   user->username = "ThisUserNameIsTooLongToFitIntoTheUserAvatarBufferWithoutOverflowing";
   user->token = "ApiToken";
   user->score = 12345;
-  user->score_softcore = 123;
+  user->score_casual = 123;
   user->num_unread_messages = 2;
 
   return (rc_client_user_t*)user;
@@ -594,7 +594,7 @@ static void test_login_with_token_v1_too_long_username(void)
   ASSERT_STR_EQUALS(user->display_name, "ThisUserNameIsTooLongToFitIntoTheUserAvatarBufferWithoutOverflowing");
   ASSERT_STR_EQUALS(user->token, "ApiToken");
   ASSERT_NUM_EQUALS(user->score, 12345);
-  ASSERT_NUM_EQUALS(user->score_softcore, 123);
+  ASSERT_NUM_EQUALS(user->score_casual, 123);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
   /* overly long URL will be truncated, but should not cause an exception.
    * test_login_with_token_v1_long_username validates the longest allowed username, so this shouldn't occur anyway */
@@ -625,7 +625,7 @@ static void test_login_with_token(void)
   ASSERT_STR_EQUALS(user->display_name, "User");
   ASSERT_STR_EQUALS(user->token, "ApiToken");
   ASSERT_NUM_EQUALS(user->score, 12345);
-  ASSERT_NUM_EQUALS(user->score_softcore, 123);
+  ASSERT_NUM_EQUALS(user->score_casual, 123);
   ASSERT_NUM_EQUALS(user->num_unread_messages, 2);
   ASSERT_STR_EQUALS(user->avatar_url, "/UserPic/User.png");
 

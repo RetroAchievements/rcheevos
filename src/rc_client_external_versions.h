@@ -12,7 +12,7 @@ typedef struct v1_rc_client_user_t {
   const char* username;
   const char* token;
   uint32_t score;
-  uint32_t score_softcore;
+  uint32_t score_casual;
   uint32_t num_unread_messages;
 } v1_rc_client_user_t;
 
@@ -21,7 +21,7 @@ typedef struct v3_rc_client_user_t {
   const char* username;
   const char* token;
   uint32_t score;
-  uint32_t score_softcore;
+  uint32_t score_casual;
   uint32_t num_unread_messages;
   const char* avatar_url;
 } v3_rc_client_user_t;
