@@ -365,7 +365,7 @@ int rc_json_parse_server_response(rc_api_response_t* response, const rc_api_serv
     return RC_NO_RESPONSE;
   }
 
-  if (!server_response->body || !*server_response->body) {
+  if (!server_response->body || !server_response->body_length) {
     /* expect valid HTTP status codes to have bodies that we can extract the message from,
      * but provide some default messages in case they don't. */
     switch (server_response->http_status_code) {
