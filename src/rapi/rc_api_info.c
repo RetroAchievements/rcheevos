@@ -128,6 +128,11 @@ int rc_api_process_fetch_achievement_info_server_response(rc_api_fetch_achieveme
 
       ++entry;
     }
+
+    if (entry < response->recently_awarded + response->num_recently_awarded) {
+      response->num_recently_awarded = (uint32_t)(entry - response->recently_awarded);
+      return RC_INVALID_VALUE;
+    }
   }
 
   return RC_OK;
@@ -295,6 +300,11 @@ int rc_api_process_fetch_leaderboard_info_server_response(rc_api_fetch_leaderboa
 
       ++entry;
     }
+
+    if (entry < response->entries + response->num_entries) {
+      response->num_entries = (uint32_t)(entry - response->entries);
+      return RC_INVALID_VALUE;
+    }
   }
 
   return RC_OK;
@@ -415,6 +425,11 @@ int rc_api_process_fetch_games_list_server_response(rc_api_fetch_games_list_resp
 
       ++entry;
     }
+
+    if (entry < response->entries + response->num_entries) {
+      response->num_entries = (uint32_t)(entry - response->entries);
+      return RC_INVALID_VALUE;
+    }
   }
 
   return RC_OK;
@@ -513,6 +528,11 @@ int rc_api_process_fetch_game_titles_server_response(rc_api_fetch_game_titles_re
         entry->image_url = rc_api_build_avatar_url(&response->response.buffer, RC_IMAGE_TYPE_GAME, entry->image_name);
 
       ++entry;
+    }
+
+    if (entry < response->entries + response->num_entries) {
+      response->num_entries = (uint32_t)(entry - response->entries);
+      return RC_INVALID_VALUE;
     }
   }
 
