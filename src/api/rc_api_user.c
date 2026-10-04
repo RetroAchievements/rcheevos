@@ -189,6 +189,11 @@ int rc_api_process_start_session_server_response(rc_api_start_session_response_t
 
       ++unlock;
     }
+
+    if (unlock < response->unlocks + response->num_unlocks) {
+      response->num_unlocks = (uint32_t)(unlock - response->unlocks);
+      return RC_INVALID_VALUE;
+    }
   }
 
   if (rc_json_get_optional_array(&response->num_hardcore_unlocks, &array_field, &fields[3], "HardcoreUnlocks") && response->num_hardcore_unlocks) {
@@ -208,6 +213,11 @@ int rc_api_process_start_session_server_response(rc_api_start_session_response_t
         return RC_MISSING_VALUE;
 
       ++unlock;
+    }
+
+    if (unlock < response->hardcore_unlocks + response->num_hardcore_unlocks) {
+      response->num_hardcore_unlocks = (uint32_t)(unlock - response->hardcore_unlocks);
+      return RC_INVALID_VALUE;
     }
   }
 
@@ -363,6 +373,11 @@ int rc_api_process_fetch_followed_users_server_response(rc_api_fetch_followed_us
       rc_json_get_optional_string(&user->recent_activity.context_image_url, &response->response, &followed_user_entry_fields[7], "LastGameIconUrl", NULL);
 
       ++user;
+    }
+
+    if (user < response->users + response->num_users) {
+      response->num_users = (uint32_t)(user - response->users);
+      return RC_INVALID_VALUE;
     }
   }
 

@@ -124,6 +124,11 @@ int rc_api_process_fetch_code_notes_server_response(rc_api_fetch_code_notes_resp
 
       ++note;
     }
+
+    if (note < response->notes + response->num_notes) {
+      response->num_notes = (uint32_t)(note - response->notes);
+      return RC_INVALID_VALUE;
+    }
   }
 
   return RC_OK;

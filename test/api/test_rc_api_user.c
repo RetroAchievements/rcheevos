@@ -143,6 +143,29 @@ static void test_process_start_session_response_invalid_credentials()
   rc_api_destroy_start_session_response(&start_session_response);
 }
 
+static void test_process_start_session_response_integer_array()
+{
+  rc_api_start_session_response_t start_session_response;
+  /* HardcoreUnlocks should be an array of objects, not an array of integers */
+  const char* server_response = "{\"Success\":true,\"HardcoreUnlocks\":[111,112,113],"
+    "\"Unlocks\":["
+      "{\"ID\":114,\"When\":1234567840}"
+    "],\"ServerNow\":1234577777}";
+
+  memset(&start_session_response, 0, sizeof(start_session_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_start_session_response(&start_session_response, server_response), RC_INVALID_VALUE);
+  ASSERT_NUM_EQUALS(start_session_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(start_session_response.response.error_message);
+  ASSERT_NUM_EQUALS(start_session_response.num_unlocks, 1);
+  ASSERT_NUM_EQUALS(start_session_response.unlocks[0].achievement_id, 114);
+  ASSERT_TIMET_EQUALS(start_session_response.unlocks[0].when, 1234567840);
+  ASSERT_NUM_EQUALS(start_session_response.num_hardcore_unlocks, 0);
+  ASSERT_TIMET_EQUALS(start_session_response.server_now, 0); /* processing stopped before it got here, but caller should ignore everything based on the RC_INVALID_VALUE */
+
+  rc_api_destroy_start_session_response(&start_session_response);
+}
+
 static void test_init_login_request_password()
 {
   rc_api_login_request_t login_request;
@@ -657,7 +680,7 @@ static void test_init_fetch_user_unlocks_request_hardcore()
   rc_api_destroy_request(&request);
 }
 
-static void test_init_fetch_user_unlocks_response_empty_array()
+static void test_process_fetch_user_unlocks_response_empty_array()
 {
   rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
   const char* server_response = "{\"Success\":true,\"UserUnlocks\":[],\"GameID\":11277,\"HardcoreMode\":false}";
@@ -672,7 +695,7 @@ static void test_init_fetch_user_unlocks_response_empty_array()
   rc_api_destroy_fetch_user_unlocks_response(&fetch_user_unlocks_response);
 }
 
-static void test_init_fetch_user_unlocks_response_invalid_credentials()
+static void test_process_fetch_user_unlocks_response_invalid_credentials()
 {
   rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
   const char* server_response = "{\"Success\":false,\"Error\":\"Credentials invalid (0)\"}";
@@ -687,7 +710,7 @@ static void test_init_fetch_user_unlocks_response_invalid_credentials()
   rc_api_destroy_fetch_user_unlocks_response(&fetch_user_unlocks_response);
 }
 
-static void test_init_fetch_user_unlocks_response_one_item()
+static void test_process_fetch_user_unlocks_response_one_item()
 {
   rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
   const char* server_response = "{\"Success\":true,\"UserUnlocks\":[1234],\"GameID\":11277,\"HardcoreMode\":false}";
@@ -703,7 +726,7 @@ static void test_init_fetch_user_unlocks_response_one_item()
   rc_api_destroy_fetch_user_unlocks_response(&fetch_user_unlocks_response);
 }
 
-static void test_init_fetch_user_unlocks_response_several_items()
+static void test_process_fetch_user_unlocks_response_several_items()
 {
   rc_api_fetch_user_unlocks_response_t fetch_user_unlocks_response;
   const char* server_response = "{\"Success\":true,\"UserUnlocks\":[1,2,3,4],\"GameID\":11277,\"HardcoreMode\":false}";
@@ -739,7 +762,7 @@ static void test_init_fetch_followed_users_request()
   rc_api_destroy_request(&request);
 }
 
-static void test_init_fetch_followed_users_response_empty_array()
+static void test_process_fetch_followed_users_response_empty_array()
 {
   rc_api_fetch_followed_users_response_t fetch_followed_users_response;
   rc_api_server_response_t server_response;
@@ -758,7 +781,7 @@ static void test_init_fetch_followed_users_response_empty_array()
   rc_api_destroy_fetch_followed_users_response(&fetch_followed_users_response);
 }
 
-static void test_init_fetch_followed_users_response_invalid_credentials()
+static void test_process_fetch_followed_users_response_invalid_credentials()
 {
   rc_api_fetch_followed_users_response_t fetch_followed_users_response;
   rc_api_server_response_t server_response;
@@ -777,7 +800,7 @@ static void test_init_fetch_followed_users_response_invalid_credentials()
   rc_api_destroy_fetch_followed_users_response(&fetch_followed_users_response);
 }
 
-static void test_init_fetch_followed_users_response_several_items()
+static void test_process_fetch_followed_users_response_several_items()
 {
   rc_api_fetch_followed_users_response_t fetch_followed_users_response;
   rc_api_server_response_t server_response;
@@ -832,7 +855,7 @@ static void test_init_fetch_followed_users_response_several_items()
   rc_api_destroy_fetch_followed_users_response(&fetch_followed_users_response);
 }
 
-static void test_init_fetch_followed_users_response_avatar_updated()
+static void test_process_fetch_followed_users_response_avatar_updated()
 {
   rc_api_fetch_followed_users_response_t fetch_followed_users_response;
   rc_api_server_response_t server_response;
@@ -894,7 +917,7 @@ static void test_init_fetch_all_user_progress_request()
   rc_api_destroy_request(&request);
 }
 
-static void test_init_fetch_all_user_progress_response_empty_array()
+static void test_process_fetch_all_user_progress_response_empty_array()
 {
   rc_api_fetch_all_user_progress_response_t fetch_all_user_progress_response;
   rc_api_server_response_t response_obj;
@@ -917,7 +940,7 @@ static void test_init_fetch_all_user_progress_response_empty_array()
   rc_api_destroy_fetch_all_user_progress_response(&fetch_all_user_progress_response);
 }
 
-static void test_init_fetch_all_user_progress_response_invalid_credentials()
+static void test_process_fetch_all_user_progress_response_invalid_credentials()
 {
   rc_api_fetch_all_user_progress_response_t fetch_all_user_progress_response;
   rc_api_server_response_t response_obj;
@@ -941,7 +964,7 @@ static void test_init_fetch_all_user_progress_response_invalid_credentials()
   rc_api_destroy_fetch_all_user_progress_response(&fetch_all_user_progress_response);
 }
 
-static void test_init_fetch_all_user_progress_response_one_item()
+static void test_process_fetch_all_user_progress_response_one_item()
 {
   rc_api_fetch_all_user_progress_response_t fetch_all_user_progress_response;
   rc_api_server_response_t response_obj;
@@ -967,7 +990,7 @@ static void test_init_fetch_all_user_progress_response_one_item()
   rc_api_destroy_fetch_all_user_progress_response(&fetch_all_user_progress_response);
 }
 
-static void test_init_fetch_all_user_progress_response_several_items()
+static void test_process_fetch_all_user_progress_response_several_items()
 {
   rc_api_fetch_all_user_progress_response_t fetch_all_user_progress_response;
   rc_api_server_response_t response_obj;
@@ -1021,6 +1044,7 @@ void test_rapi_user(void) {
   TEST(test_process_start_session_response_legacy);
   TEST(test_process_start_session_response);
   TEST(test_process_start_session_response_invalid_credentials);
+  TEST(test_process_start_session_response_integer_array);
 
   /* login */
   TEST(test_init_login_request_password);
@@ -1049,26 +1073,26 @@ void test_rapi_user(void) {
   TEST(test_init_fetch_user_unlocks_request_non_hardcore);
   TEST(test_init_fetch_user_unlocks_request_hardcore);
 
-  TEST(test_init_fetch_user_unlocks_response_empty_array);
-  TEST(test_init_fetch_user_unlocks_response_invalid_credentials);
-  TEST(test_init_fetch_user_unlocks_response_one_item);
-  TEST(test_init_fetch_user_unlocks_response_several_items);
+  TEST(test_process_fetch_user_unlocks_response_empty_array);
+  TEST(test_process_fetch_user_unlocks_response_invalid_credentials);
+  TEST(test_process_fetch_user_unlocks_response_one_item);
+  TEST(test_process_fetch_user_unlocks_response_several_items);
 
   /* followed users */
   TEST(test_init_fetch_followed_users_request);
 
-  TEST(test_init_fetch_followed_users_response_empty_array);
-  TEST(test_init_fetch_followed_users_response_invalid_credentials);
-  TEST(test_init_fetch_followed_users_response_several_items);
-  TEST(test_init_fetch_followed_users_response_avatar_updated);
+  TEST(test_process_fetch_followed_users_response_empty_array);
+  TEST(test_process_fetch_followed_users_response_invalid_credentials);
+  TEST(test_process_fetch_followed_users_response_several_items);
+  TEST(test_process_fetch_followed_users_response_avatar_updated);
 
   /* all user progress */
   TEST(test_init_fetch_all_user_progress_request);
 
-  TEST(test_init_fetch_all_user_progress_response_empty_array);
-  TEST(test_init_fetch_all_user_progress_response_invalid_credentials);
-  TEST(test_init_fetch_all_user_progress_response_one_item);
-  TEST(test_init_fetch_all_user_progress_response_several_items);
+  TEST(test_process_fetch_all_user_progress_response_empty_array);
+  TEST(test_process_fetch_all_user_progress_response_invalid_credentials);
+  TEST(test_process_fetch_all_user_progress_response_one_item);
+  TEST(test_process_fetch_all_user_progress_response_several_items);
 
   TEST_SUITE_END();
 }
