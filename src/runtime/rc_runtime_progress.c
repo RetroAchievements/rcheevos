@@ -4,13 +4,12 @@
 #include "rc_condset.h"
 #include "rc_lboard.h"
 #include "rc_modified_memref.h"
-#include "rc_operand.h"
-#include "rc_operator.h"
 #include "rc_richpresence.h"
 #include "rc_trigger.h"
 #include "rc_typed_value.h"
-#include "rc_util.h"
 #include "rc_value.h"
+
+#include "rc_util.h"
 #include "../util/md5.h"
 
 #include <assert.h>
@@ -30,13 +29,23 @@
 #define RC_RUNTIME_MIN_BUFFER_SIZE    4 + 8 + 16 /* RUNTIME_MARKER, CHUNK_DONE, MD5 */
 
 typedef struct rc_runtime_progress_t {
+  /* Pointer to the runtime object having its state serialized/deserialized. */
   const rc_runtime_t* runtime;
 
-  uint32_t offset;
+  /* The buffer being serialized into/deserialized from. */
   uint8_t* buffer;
+
+  /* The size of the buffer. */
   uint32_t buffer_size;
 
+  /* The current read/write offset within the buffer. */
+  uint32_t offset;
+
+  /* The location within the buffer where the chunk size should be written after its known. */
   uint32_t chunk_size_offset;
+
+  /* If set to something other than RC_OK, aborts the serialization/deserialization process. */
+  int result;
 } rc_runtime_progress_t;
 
 #define assert_chunk_size(expected_size) assert((uint32_t)(progress->offset - progress->chunk_size_offset - 4) == (uint32_t)(expected_size))
@@ -53,9 +62,43 @@ typedef struct rc_runtime_progress_t {
 #define RC_COND_FLAG_OPERAND2_IS_INDIRECT_MEMREF        0x00100000
 #define RC_COND_FLAG_OPERAND2_MEMREF_CHANGED_THIS_FRAME 0x00200000
 
+static int rc_runtime_progress_buffer_large_space_available(rc_runtime_progress_t* progress, uint32_t size)
+{
+  if (size > progress->buffer_size || progress->offset > progress->buffer_size - size) {
+    progress->result = RC_INSUFFICIENT_BUFFER;
+    return 0;
+  }
+
+  return 1;
+}
+
+static int rc_runtime_progress_buffer_space_available(rc_runtime_progress_t* progress, uint32_t size)
+{
+  /* ASSERT: progress->buffer_size >= RC_RUNTIME_MIN_BUFFER_SIZE is enforced by
+   *         rc_runtime_deserialize_progress_sized and rc_runtime_serialize_progress_sized,
+   *         so as long as size <= RC_RUNTIME_MIN_BUFFER_SIZE, size will also be less than
+   *         or equal to progress->buffer_size.
+   *
+   *         If something needs to check a size > RC_RUNTIME_MIN_BUFFER_SIZE, it should use
+   *         rc_runtime_progress_buffer_large_space_available instead.
+   */
+  assert(size <= RC_RUNTIME_MIN_BUFFER_SIZE);
+  assert(progress->buffer_size >= size);
+
+  if (progress->offset > progress->buffer_size - size) {
+    progress->result = RC_INSUFFICIENT_BUFFER;
+    return 0;
+  }
+
+  return 1;
+}
+
 static void rc_runtime_progress_write_uint(rc_runtime_progress_t* progress, uint32_t value)
 {
   if (progress->buffer) {
+    if (!rc_runtime_progress_buffer_space_available(progress, 4))
+      return;
+
     progress->buffer[progress->offset + 0] = value & 0xFF; value >>= 8;
     progress->buffer[progress->offset + 1] = value & 0xFF; value >>= 8;
     progress->buffer[progress->offset + 2] = value & 0xFF; value >>= 8;
@@ -67,10 +110,15 @@ static void rc_runtime_progress_write_uint(rc_runtime_progress_t* progress, uint
 
 static uint32_t rc_runtime_progress_read_uint(rc_runtime_progress_t* progress)
 {
-  uint32_t value = progress->buffer[progress->offset + 0] |
-      (progress->buffer[progress->offset + 1] << 8) |
-      (progress->buffer[progress->offset + 2] << 16) |
-      (progress->buffer[progress->offset + 3] << 24);
+  uint32_t value;
+
+  if (!rc_runtime_progress_buffer_space_available(progress, 4))
+    return 0;
+
+  value = progress->buffer[progress->offset + 0] |
+    (progress->buffer[progress->offset + 1] << 8) |
+    (progress->buffer[progress->offset + 2] << 16) |
+    (progress->buffer[progress->offset + 3] << 24);
 
   progress->offset += 4;
   return value;
@@ -78,8 +126,12 @@ static uint32_t rc_runtime_progress_read_uint(rc_runtime_progress_t* progress)
 
 static void rc_runtime_progress_write_md5(rc_runtime_progress_t* progress, uint8_t* md5)
 {
-  if (progress->buffer)
+  if (progress->buffer) {
+    if (!rc_runtime_progress_buffer_space_available(progress, 16))
+      return;
+
     memcpy(&progress->buffer[progress->offset], md5, 16);
+  }
 
   progress->offset += 16;
 }
@@ -87,6 +139,10 @@ static void rc_runtime_progress_write_md5(rc_runtime_progress_t* progress, uint8
 static int rc_runtime_progress_match_md5(rc_runtime_progress_t* progress, uint8_t* md5)
 {
   int result = 0;
+
+  if (!rc_runtime_progress_buffer_space_available(progress, 16))
+    return 0;
+
   if (progress->buffer)
     result = (memcmp(&progress->buffer[progress->offset], md5, 16) == 0);
 
@@ -236,7 +292,7 @@ static void rc_runtime_progress_update_modified_memrefs(rc_runtime_progress_t* p
   }
 }
 
-static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
+static void rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
 {
   uint32_t entries;
   uint32_t address, flags, value, prior;
@@ -245,7 +301,11 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
   rc_memref_t* first_unmatched_memref = unmatched_memref_list->items;
   rc_memref_t* memref;
 
-  /* re-read the chunk size to determine how many memrefs are present */
+  /* If there's nothing left to match, just skip over the chunk. */
+  if (unmatched_memref_list->count == 0)
+    return;
+
+  /* Re-read the chunk size to determine how many memrefs are present. */
   progress->offset -= 4;
   entries = rc_runtime_progress_read_uint(progress) / RC_RUNTIME_SERIALIZED_MEMREF_SIZE;
 
@@ -254,6 +314,9 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
     flags = rc_runtime_progress_read_uint(progress);
     value = rc_runtime_progress_read_uint(progress);
     prior = rc_runtime_progress_read_uint(progress);
+
+    if (progress->result != RC_OK)
+      return;
 
     size = flags & 0xFF;
 
@@ -297,8 +360,6 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
   }
 
   rc_runtime_progress_update_modified_memrefs(progress);
-
-  return RC_OK;
 }
 
 static int rc_runtime_progress_is_indirect_memref(rc_operand_t* oper)
@@ -385,11 +446,16 @@ static int rc_runtime_progress_read_condset(rc_runtime_progress_t* progress, rc_
     cond->current_hits = rc_runtime_progress_read_uint(progress);
     flags = rc_runtime_progress_read_uint(progress);
 
+    if (progress->result != RC_OK)
+      return 0;
+
     cond->is_true = (flags & RC_COND_FLAG_IS_TRUE_MASK);
 
     if (flags & RC_COND_FLAG_OPERAND1_IS_INDIRECT_MEMREF) {
-      if (!rc_operand_is_memref(&cond->operand1)) /* this should never happen, but better safe than sorry */
-        return RC_INVALID_STATE;
+      if (!rc_operand_is_memref(&cond->operand1)) { /* this should never happen, but better safe than sorry */
+        progress->result = RC_INVALID_STATE;
+        return 0;
+      }
 
       cond->operand1.value.memref->value.value = rc_runtime_progress_read_uint(progress);
       cond->operand1.value.memref->value.prior = rc_runtime_progress_read_uint(progress);
@@ -397,8 +463,10 @@ static int rc_runtime_progress_read_condset(rc_runtime_progress_t* progress, rc_
     }
 
     if (flags & RC_COND_FLAG_OPERAND2_IS_INDIRECT_MEMREF) {
-      if (!rc_operand_is_memref(&cond->operand2)) /* this should never happen, but better safe than sorry */
-        return RC_INVALID_STATE;
+      if (!rc_operand_is_memref(&cond->operand2)) { /* this should never happen, but better safe than sorry */
+        progress->result = RC_INVALID_STATE;
+        return 0;
+      }
 
       cond->operand2.value.memref->value.value = rc_runtime_progress_read_uint(progress);
       cond->operand2.value.memref->value.prior = rc_runtime_progress_read_uint(progress);
@@ -408,7 +476,7 @@ static int rc_runtime_progress_read_condset(rc_runtime_progress_t* progress, rc_
     cond = cond->next;
   }
 
-  return RC_OK;
+  return 1;
 }
 
 static uint32_t rc_runtime_progress_should_serialize_variable_condset(const rc_condset_t* conditions)
@@ -493,24 +561,26 @@ static int rc_runtime_progress_write_variables(rc_runtime_progress_t* progress)
 
 static int rc_runtime_progress_read_variable(rc_runtime_progress_t* progress, rc_value_t* variable)
 {
-  uint32_t flags = rc_runtime_progress_read_uint(progress);
+  const uint32_t flags = rc_runtime_progress_read_uint(progress);
   variable->value.changed = (flags & RC_MEMREF_FLAG_CHANGED_THIS_FRAME) ? 1 : 0;
   variable->value.value = rc_runtime_progress_read_uint(progress);
   variable->value.prior = rc_runtime_progress_read_uint(progress);
 
+  if (progress->result != RC_OK)
+    return 0;
+
   if (flags & RC_VAR_FLAG_HAS_COND_DATA) {
-    int result = rc_runtime_progress_read_condset(progress, variable->conditions);
-    if (result != RC_OK)
-      return result;
+    if (!rc_runtime_progress_read_condset(progress, variable->conditions))
+      return 0;
   }
   else {
     rc_reset_condset(variable->conditions);
   }
 
-  return RC_OK;
+  return 1;
 }
 
-static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
+static void rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
 {
   struct rc_pending_value_t
   {
@@ -521,28 +591,29 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
   struct rc_pending_value_t* pending_variables;
   rc_value_t* value;
   uint32_t count, serialized_count;
-  int result;
   int32_t i;
 
   serialized_count = rc_runtime_progress_read_uint(progress);
   if (serialized_count == 0)
-    return RC_OK;
+    return;
 
   if (!progress->runtime->richpresence || !progress->runtime->richpresence->richpresence)
-    return RC_OK;
+    return;
 
   value = progress->runtime->richpresence->richpresence->values;
   count = rc_count_values(value);
   if (count == 0)
-    return RC_OK;
+    return;
 
   if (count <= sizeof(local_pending_variables) / sizeof(local_pending_variables[0])) {
     pending_variables = local_pending_variables;
   }
   else {
     pending_variables = (struct rc_pending_value_t*)malloc(count * sizeof(struct rc_pending_value_t));
-    if (pending_variables == NULL)
-      return RC_OUT_OF_MEMORY;
+    if (pending_variables == NULL) {
+      progress->result = RC_OUT_OF_MEMORY;
+      return;
+    }
   }
 
   i = (int32_t)count;
@@ -552,14 +623,15 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
     pending_variables[i].djb2 = rc_djb2(value->name);
   }
 
-  result = RC_OK;
-  for (; serialized_count > 0 && result == RC_OK; --serialized_count) {
+  for (; serialized_count > 0 && progress->result == RC_OK; --serialized_count) {
     uint32_t djb2 = rc_runtime_progress_read_uint(progress);
+    if (progress->result != RC_OK)
+      break;
+
     for (i = (int32_t)count - 1; i >= 0; --i) {
       if (pending_variables[i].djb2 == djb2) {
         value = pending_variables[i].variable;
-        result = rc_runtime_progress_read_variable(progress, value);
-        if (result == RC_OK) {
+        if (rc_runtime_progress_read_variable(progress, value)) {
           if (i < (int32_t)count - 1)
             memcpy(&pending_variables[i], &pending_variables[count - 1], sizeof(struct rc_pending_value_t));
           count--;
@@ -583,8 +655,6 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
 
   if (pending_variables != local_pending_variables)
     free(pending_variables);
-
-  return result;
 }
 
 static int rc_runtime_progress_write_trigger(rc_runtime_progress_t* progress, const rc_trigger_t* trigger)
@@ -616,27 +686,24 @@ static int rc_runtime_progress_write_trigger(rc_runtime_progress_t* progress, co
 static int rc_runtime_progress_read_trigger(rc_runtime_progress_t* progress, rc_trigger_t* trigger)
 {
   rc_condset_t* condset;
-  int result;
 
   trigger->state = (char)rc_runtime_progress_read_uint(progress);
   trigger->measured_value = rc_runtime_progress_read_uint(progress);
 
   if (trigger->requirement) {
-    result = rc_runtime_progress_read_condset(progress, trigger->requirement);
-    if (result != RC_OK)
-      return result;
+    if (!rc_runtime_progress_read_condset(progress, trigger->requirement))
+      return 0;
   }
 
   condset = trigger->alternative;
   while (condset) {
-    result = rc_runtime_progress_read_condset(progress, condset);
-    if (result != RC_OK)
-      return result;
+    if (!rc_runtime_progress_read_condset(progress, condset))
+      return 0;
 
     condset = condset->next;
   }
 
-  return RC_OK;
+  return 1;
 }
 
 static int rc_runtime_progress_write_achievements(rc_runtime_progress_t* progress)
@@ -661,7 +728,8 @@ static int rc_runtime_progress_write_achievements(rc_runtime_progress_t* progres
       }
 
       initial_offset = progress->offset;
-    } else {
+    }
+    else {
       if (progress->offset + runtime_trigger->serialized_size > progress->buffer_size)
         return RC_INSUFFICIENT_BUFFER;
     }
@@ -688,7 +756,7 @@ static int rc_runtime_progress_write_achievements(rc_runtime_progress_t* progres
   return RC_OK;
 }
 
-static int rc_runtime_progress_read_achievement(rc_runtime_progress_t* progress)
+static void rc_runtime_progress_read_achievement(rc_runtime_progress_t* progress)
 {
   uint32_t id = rc_runtime_progress_read_uint(progress);
   uint32_t i;
@@ -700,13 +768,11 @@ static int rc_runtime_progress_read_achievement(rc_runtime_progress_t* progress)
       if (runtime_trigger->trigger->state == RC_TRIGGER_STATE_UNUPDATED) {
         /* only update state if definition hasn't changed (md5 matches) */
         if (rc_runtime_progress_match_md5(progress, runtime_trigger->md5))
-          return rc_runtime_progress_read_trigger(progress, runtime_trigger->trigger);
+          rc_runtime_progress_read_trigger(progress, runtime_trigger->trigger);
         break;
       }
     }
   }
-
-  return RC_OK;
 }
 
 static int rc_runtime_progress_write_leaderboards(rc_runtime_progress_t* progress)
@@ -732,7 +798,8 @@ static int rc_runtime_progress_write_leaderboards(rc_runtime_progress_t* progres
       }
 
       initial_offset = progress->offset;
-    } else {
+    }
+    else {
       if (progress->offset + runtime_lboard->serialized_size > progress->buffer_size)
         return RC_INSUFFICIENT_BUFFER;
     }
@@ -774,11 +841,10 @@ static int rc_runtime_progress_write_leaderboards(rc_runtime_progress_t* progres
   return RC_OK;
 }
 
-static int rc_runtime_progress_read_leaderboard(rc_runtime_progress_t* progress)
+static void rc_runtime_progress_read_leaderboard(rc_runtime_progress_t* progress)
 {
-  uint32_t id = rc_runtime_progress_read_uint(progress);
+  const uint32_t id = rc_runtime_progress_read_uint(progress);
   uint32_t i;
-  int result;
 
   for (i = 0; i < progress->runtime->lboard_count; ++i) {
     rc_runtime_lboard_t* runtime_lboard = &progress->runtime->lboards[i];
@@ -789,21 +855,17 @@ static int rc_runtime_progress_read_leaderboard(rc_runtime_progress_t* progress)
         if (rc_runtime_progress_match_md5(progress, runtime_lboard->md5)) {
           uint32_t flags = rc_runtime_progress_read_uint(progress);
 
-          result = rc_runtime_progress_read_trigger(progress, &runtime_lboard->lboard->start);
-          if (result != RC_OK)
-            return result;
+          if (!rc_runtime_progress_read_trigger(progress, &runtime_lboard->lboard->start))
+            return;
 
-          result = rc_runtime_progress_read_trigger(progress, &runtime_lboard->lboard->submit);
-          if (result != RC_OK)
-            return result;
+          if (!rc_runtime_progress_read_trigger(progress, &runtime_lboard->lboard->submit))
+            return;
 
-          result = rc_runtime_progress_read_trigger(progress, &runtime_lboard->lboard->cancel);
-          if (result != RC_OK)
-            return result;
+          if (!rc_runtime_progress_read_trigger(progress, &runtime_lboard->lboard->cancel))
+            return;
 
-          result = rc_runtime_progress_read_variable(progress, &runtime_lboard->lboard->value);
-          if (result != RC_OK)
-            return result;
+          if (!rc_runtime_progress_read_variable(progress, &runtime_lboard->lboard->value))
+            return;
 
           runtime_lboard->lboard->state = (char)(flags & 0x7F);
         }
@@ -811,8 +873,6 @@ static int rc_runtime_progress_read_leaderboard(rc_runtime_progress_t* progress)
       }
     }
   }
-
-  return RC_OK;
 }
 
 static int rc_runtime_progress_write_rich_presence(rc_runtime_progress_t* progress)
@@ -844,27 +904,23 @@ static int rc_runtime_progress_write_rich_presence(rc_runtime_progress_t* progre
   return RC_OK;
 }
 
-static int rc_runtime_progress_read_rich_presence(rc_runtime_progress_t* progress)
+static void rc_runtime_progress_read_rich_presence(rc_runtime_progress_t* progress)
 {
   rc_richpresence_display_t* display;
-  int result;
 
   if (!progress->runtime->richpresence || !progress->runtime->richpresence->richpresence)
-    return RC_OK;
+    return;
 
   if (!rc_runtime_progress_match_md5(progress, progress->runtime->richpresence->md5)) {
     rc_reset_richpresence_triggers(progress->runtime->richpresence->richpresence);
-    return RC_OK;
+    return;
   }
 
   display = progress->runtime->richpresence->richpresence->first_display;
   for (; display->next; display = display->next) {
-    result = rc_runtime_progress_read_trigger(progress, &display->trigger);
-    if (result != RC_OK)
-      return result;
+    if (!rc_runtime_progress_read_trigger(progress, &display->trigger))
+      break;
   }
-
-  return RC_OK;
 }
 
 static int rc_runtime_progress_serialize_internal(rc_runtime_progress_t* progress)
@@ -940,6 +996,8 @@ int rc_runtime_serialize_progress_sized(uint8_t* buffer, uint32_t buffer_size, c
 
   if (!buffer)
     return RC_INVALID_STATE;
+  if (buffer_size < RC_RUNTIME_MIN_BUFFER_SIZE)
+    return RC_INSUFFICIENT_BUFFER;
 
   rc_runtime_progress_init(&progress, runtime);
   progress.buffer = (uint8_t*)buffer;
@@ -955,15 +1013,13 @@ int rc_runtime_deserialize_progress(rc_runtime_t* runtime, const uint8_t* serial
 
 int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* serialized, uint32_t serialized_size, void* unused_L)
 {
-  rc_runtime_progress_t progress;
+  rc_runtime_progress_t progress, chunk_progress;
   md5_state_t state;
   uint8_t md5[16];
   uint32_t chunk_id;
   uint32_t chunk_size;
-  uint32_t next_chunk_offset;
   uint32_t i;
   int seen_rich_presence = 0;
-  int result = RC_OK;
 
   (void)unused_L;
 
@@ -974,6 +1030,9 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
 
   rc_runtime_progress_init(&progress, runtime);
   progress.buffer = (uint8_t*)serialized;
+  progress.buffer_size = serialized_size;
+
+  memcpy(&chunk_progress, &progress, sizeof(progress));
 
   if (rc_runtime_progress_read_uint(&progress) != RC_RUNTIME_MARKER) {
     rc_runtime_reset(runtime);
@@ -999,66 +1058,72 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
       if (rc_lboard_state_active(runtime_lboard->lboard->state)) {
         /* mark active achievements as unupdated. anything that's still unupdated
          * after deserializing the progress will be reset to waiting */
-          runtime_lboard->lboard->state = RC_TRIGGER_STATE_UNUPDATED;
+        runtime_lboard->lboard->state = RC_TRIGGER_STATE_UNUPDATED;
       }
     }
   }
 
   do {
-    if (progress.offset + 8 >= serialized_size) {
-      result = RC_INSUFFICIENT_BUFFER;
+    if (!rc_runtime_progress_buffer_space_available(&progress, 8))
       break;
-    }
 
     chunk_id = rc_runtime_progress_read_uint(&progress);
     chunk_size = rc_runtime_progress_read_uint(&progress);
-    next_chunk_offset = progress.offset + chunk_size;
-
-    if (next_chunk_offset > serialized_size) {
-      result = RC_INSUFFICIENT_BUFFER;
+    if (progress.result != RC_OK)
       break;
-    }
+
+    if (!rc_runtime_progress_buffer_large_space_available(&progress, chunk_size))
+      break;
+
+    /* set the chunk to the sub-buffer from offset to offset + size,
+     * then advance the main progress past the chunk. */
+    chunk_progress.offset = progress.offset;
+    progress.offset += chunk_size;
+    chunk_progress.buffer_size = progress.offset;
 
     switch (chunk_id) {
       case RC_RUNTIME_CHUNK_MEMREFS:
-        result = rc_runtime_progress_read_memrefs(&progress);
+        rc_runtime_progress_read_memrefs(&chunk_progress);
         break;
 
       case RC_RUNTIME_CHUNK_VARIABLES:
-        result = rc_runtime_progress_read_variables(&progress);
+        rc_runtime_progress_read_variables(&chunk_progress);
         break;
 
       case RC_RUNTIME_CHUNK_ACHIEVEMENT:
-        result = rc_runtime_progress_read_achievement(&progress);
+        rc_runtime_progress_read_achievement(&chunk_progress);
         break;
 
       case RC_RUNTIME_CHUNK_LEADERBOARD:
-        result = rc_runtime_progress_read_leaderboard(&progress);
+        rc_runtime_progress_read_leaderboard(&chunk_progress);
         break;
 
       case RC_RUNTIME_CHUNK_RICHPRESENCE:
         seen_rich_presence = 1;
-        result = rc_runtime_progress_read_rich_presence(&progress);
+        rc_runtime_progress_read_rich_presence(&chunk_progress);
         break;
 
       case RC_RUNTIME_CHUNK_DONE:
+        /* hash the entire buffer up through the chunk header */
         md5_init(&state);
-        md5_append(&state, progress.buffer, progress.offset);
+        md5_append(&state, progress.buffer, chunk_progress.offset);
         md5_finish(&state, md5);
-        if (!rc_runtime_progress_match_md5(&progress, md5))
-          result = RC_INVALID_STATE;
+        /* if the body of the chunk doesn't match the generated checksum, the whole state is invalid */
+        if (!rc_runtime_progress_match_md5(&chunk_progress, md5))
+          chunk_progress.result = RC_INVALID_STATE;
         break;
 
       default:
         if (chunk_size & 0xFFFF0000)
-          result = RC_INVALID_STATE; /* assume unknown chunk > 64KB is invalid */
+          chunk_progress.result = RC_INVALID_STATE; /* assume unknown chunk > 64KB is invalid */
         break;
     }
 
-    progress.offset = next_chunk_offset;
-  } while (result == RC_OK && chunk_id != RC_RUNTIME_CHUNK_DONE);
+    progress.result = chunk_progress.result;
 
-  if (result != RC_OK) {
+  } while (progress.result == RC_OK && chunk_id != RC_RUNTIME_CHUNK_DONE);
+
+  if (progress.result != RC_OK) {
     rc_runtime_reset(runtime);
   }
   else {
@@ -1078,5 +1143,5 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
       rc_reset_richpresence_triggers(runtime->richpresence->richpresence);
   }
 
-  return result;
+  return progress.result;
 }
