@@ -2,7 +2,6 @@
 
 #include "rc_consoles.h"
 #include "rc_hash.h"
-#include "../../src/runtime/rc_internal.h"
 #include "rc_api_runtime.h"
 
 #include "../../src/client/rc_client_internal.h"

@@ -1,7 +1,20 @@
-#include "rc_internal.h"
+#include "rc_trigger.h"
 
-#include <stddef.h>
+#include "rc_alloc.h"
+#include "rc_condition.h"
+#include "rc_condset.h"
+#include "rc_eval_state.h"
+#include "rc_operator.h"
+#include "rc_parse_state.h"
+
 #include <string.h> /* memset */
+
+typedef struct rc_trigger_with_memrefs_t rc_trigger_with_memrefs_t;
+
+struct rc_trigger_with_memrefs_t {
+  rc_trigger_t trigger;
+  rc_memrefs_t memrefs;
+};
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condset_t** next;
@@ -77,9 +90,10 @@ rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, void* unused_L
   rc_init_preparse_state(&preparse);
   trigger = RC_ALLOC(rc_trigger_with_memrefs_t, &preparse.parse);
   rc_parse_trigger_internal(&trigger->trigger, &preparse_memaddr, &preparse.parse);
+  rc_preparse_alloc_memrefs(NULL, &preparse); /* allocate space for the needed memrefs */
 
   /* allocate the trigger and memrefs */
-  rc_reset_parse_state(&preparse.parse, buffer);
+  rc_reset_parse_state(&preparse.parse, buffer, (size_t)preparse.parse.offset);
   trigger = RC_ALLOC(rc_trigger_with_memrefs_t, &preparse.parse);
   rc_preparse_alloc_memrefs(&trigger->memrefs, &preparse);
 
@@ -133,10 +147,10 @@ static void rc_reset_trigger_hitcounts(rc_trigger_t* self) {
   }
 }
 
-static void rc_update_trigger_memrefs(rc_trigger_t* self, rc_read_memory_func_t read_memory, void* ud) {
+static void rc_update_trigger_memrefs(rc_trigger_t* self, rc_eval_state_t* eval_state) {
   if (self->has_memrefs) {
     rc_trigger_with_memrefs_t* trigger = (rc_trigger_with_memrefs_t*)self;
-    rc_update_memref_values(&trigger->memrefs, read_memory, ud);
+    rc_update_memref_values(&trigger->memrefs, eval_state);
   }
 }
 
@@ -149,16 +163,13 @@ rc_memrefs_t* rc_trigger_get_memrefs(rc_trigger_t* self) {
   return NULL;
 }
 
-int rc_evaluate_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, void* ud, void* unused_L) {
-  rc_eval_state_t eval_state;
+int rc_test_trigger(rc_trigger_t* self, rc_eval_state_t* eval_state) {
   rc_condset_t* condset;
   rc_typed_value_t measured_value;
   int measured_from_hits = 0;
   int ret;
   char is_paused;
   char is_primed;
-
-  (void)unused_L;
 
   switch (self->state)
   {
@@ -172,7 +183,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, v
 
     case RC_TRIGGER_STATE_INACTIVE:
       /* not yet active. update the memrefs so deltas are correct when it becomes active, then return INACTIVE */
-      rc_update_trigger_memrefs(self, read_memory, ud);
+      rc_update_trigger_memrefs(self, eval_state);
       return RC_TRIGGER_STATE_INACTIVE;
 
     default:
@@ -180,23 +191,25 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, v
   }
 
   /* update the memory references */
-  rc_update_trigger_memrefs(self, read_memory, ud);
+  rc_update_trigger_memrefs(self, eval_state);
+
+  /* reset the trigger processing state before processing the trigger.
+   * condition processing state will be reset by test_condset. */
+  eval_state->has_hits = 0;
+  eval_state->was_reset = 0;
+  eval_state->was_cond_reset = 0;
 
   /* process the trigger */
-  memset(&eval_state, 0, sizeof(eval_state));
-  eval_state.read_memory = read_memory;
-  eval_state.read_memory_userdata = ud;
-
   measured_value.type = RC_VALUE_TYPE_NONE;
 
   if (self->requirement != NULL) {
-    ret = rc_test_condset(self->requirement, &eval_state);
-    is_paused = eval_state.is_paused;
-    is_primed = eval_state.is_primed;
+    ret = rc_test_condset(self->requirement, eval_state);
+    is_paused = eval_state->is_paused;
+    is_primed = eval_state->is_primed;
 
-    if (eval_state.measured_value.type != RC_VALUE_TYPE_NONE) {
-      memcpy(&measured_value, &eval_state.measured_value, sizeof(measured_value));
-      measured_from_hits = eval_state.measured_from_hits;
+    if (eval_state->measured_value.type != RC_VALUE_TYPE_NONE) {
+      memcpy(&measured_value, &eval_state->measured_value, sizeof(measured_value));
+      measured_from_hits = eval_state->measured_from_hits;
     }
   } else {
     ret = 1;
@@ -211,16 +224,16 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, v
     char sub_primed = 0;
 
     do {
-      sub |= rc_test_condset(condset, &eval_state);
-      sub_paused &= eval_state.is_paused;
-      sub_primed |= eval_state.is_primed;
+      sub |= rc_test_condset(condset, eval_state);
+      sub_paused &= eval_state->is_paused;
+      sub_primed |= eval_state->is_primed;
 
-      if (eval_state.measured_value.type != RC_VALUE_TYPE_NONE) {
+      if (eval_state->measured_value.type != RC_VALUE_TYPE_NONE) {
         /* if no previous Measured value was captured, or the new one is greater, keep the new one */
         if (measured_value.type == RC_VALUE_TYPE_NONE ||
-            rc_typed_value_compare(&eval_state.measured_value, &measured_value, RC_OPERATOR_GT)) {
-          memcpy(&measured_value, &eval_state.measured_value, sizeof(measured_value));
-          measured_from_hits = eval_state.measured_from_hits;
+            rc_typed_value_compare(&eval_state->measured_value, &measured_value, RC_OPERATOR_GT)) {
+          memcpy(&measured_value, &eval_state->measured_value, sizeof(measured_value));
+          measured_from_hits = eval_state->measured_from_hits;
         }
       }
 
@@ -248,7 +261,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, v
   }
 
   /* if any ResetIf condition was true, reset the hit counts */
-  if (eval_state.was_reset) {
+  if (eval_state->was_reset) {
     /* if the measured value came from a hit count, reset it. do this before calling
      * rc_reset_trigger_hitcounts in case we need to call rc_condset_is_measured_from_hitcount */
     if (measured_from_hits) {
@@ -285,7 +298,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, v
     }
 
     /* any hits that were tallied were just reset */
-    eval_state.has_hits = 0;
+    eval_state->has_hits = 0;
     is_primed = 0;
   }
   else if (ret) {
@@ -302,7 +315,7 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, v
   }
 
   /* did not trigger this frame - update the information we'll need for next time */
-  self->has_hits = eval_state.has_hits;
+  self->has_hits = eval_state->has_hits;
 
   if (is_paused) {
     self->state = RC_TRIGGER_STATE_PAUSED;
@@ -315,18 +328,11 @@ int rc_evaluate_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, v
   }
 
   /* if an individual condition was reset, notify the caller */
-  if (eval_state.was_cond_reset)
+  if (eval_state->was_cond_reset)
     return RC_TRIGGER_STATE_RESET;
 
   /* otherwise, just return the current state */
   return self->state;
-}
-
-int rc_test_trigger(rc_trigger_t* self, rc_read_memory_func_t read_memory, void* ud, void* unused_L) {
-  /* for backwards compatibilty, rc_test_trigger always assumes the achievement is active */
-  self->state = RC_TRIGGER_STATE_ACTIVE;
-
-  return (rc_evaluate_trigger(self, read_memory, ud, unused_L) == RC_TRIGGER_STATE_TRIGGERED);
 }
 
 void rc_reset_trigger(rc_trigger_t* self) {

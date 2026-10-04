@@ -1,7 +1,16 @@
 #include "rc_runtime.h"
-#include "rc_internal.h"
 
+#include "rc_condition.h"
+#include "rc_condset.h"
+#include "rc_lboard.h"
+#include "rc_modified_memref.h"
+#include "rc_operand.h"
+#include "rc_operator.h"
+#include "rc_richpresence.h"
+#include "rc_trigger.h"
+#include "rc_typed_value.h"
 #include "rc_util.h"
+#include "rc_value.h"
 #include "../util/md5.h"
 
 #include <assert.h>
@@ -27,8 +36,7 @@ typedef struct rc_runtime_progress_t {
   uint8_t* buffer;
   uint32_t buffer_size;
 
-  uint32_t chunk_size_offset; /* size field when writing, chunk end when reading */
-  int result;
+  uint32_t chunk_size_offset;
 } rc_runtime_progress_t;
 
 #define assert_chunk_size(expected_size) assert((uint32_t)(progress->offset - progress->chunk_size_offset - 4) == (uint32_t)(expected_size))
@@ -57,33 +65,12 @@ static void rc_runtime_progress_write_uint(rc_runtime_progress_t* progress, uint
   progress->offset += 4;
 }
 
-static int rc_runtime_progress_can_read(rc_runtime_progress_t* progress, uint32_t size)
-{
-  if (progress->result != RC_OK)
-    return 0;
-
-  if (progress->offset > progress->buffer_size ||
-      progress->buffer_size - progress->offset < size ||
-      progress->offset > progress->chunk_size_offset ||
-      progress->chunk_size_offset - progress->offset < size) {
-    progress->result = RC_INSUFFICIENT_BUFFER;
-    return 0;
-  }
-
-  return 1;
-}
-
 static uint32_t rc_runtime_progress_read_uint(rc_runtime_progress_t* progress)
 {
-  uint32_t value;
-
-  if (!rc_runtime_progress_can_read(progress, 4))
-    return 0;
-
-  value = (uint32_t)progress->buffer[progress->offset + 0] |
-      ((uint32_t)progress->buffer[progress->offset + 1] << 8) |
-      ((uint32_t)progress->buffer[progress->offset + 2] << 16) |
-      ((uint32_t)progress->buffer[progress->offset + 3] << 24);
+  uint32_t value = progress->buffer[progress->offset + 0] |
+      (progress->buffer[progress->offset + 1] << 8) |
+      (progress->buffer[progress->offset + 2] << 16) |
+      (progress->buffer[progress->offset + 3] << 24);
 
   progress->offset += 4;
   return value;
@@ -100,10 +87,6 @@ static void rc_runtime_progress_write_md5(rc_runtime_progress_t* progress, uint8
 static int rc_runtime_progress_match_md5(rc_runtime_progress_t* progress, uint8_t* md5)
 {
   int result = 0;
-
-  if (!rc_runtime_progress_can_read(progress, 16))
-    return 0;
-
   if (progress->buffer)
     result = (memcmp(&progress->buffer[progress->offset], md5, 16) == 0);
 
@@ -265,10 +248,6 @@ static int rc_runtime_progress_read_memrefs(rc_runtime_progress_t* progress)
   /* re-read the chunk size to determine how many memrefs are present */
   progress->offset -= 4;
   entries = rc_runtime_progress_read_uint(progress) / RC_RUNTIME_SERIALIZED_MEMREF_SIZE;
-
-  /* A state may contain references from achievements that are no longer active. */
-  if (entries && unmatched_memref_list->count == 0)
-    return RC_OK;
 
   while (entries != 0) {
     address = rc_runtime_progress_read_uint(progress);
@@ -574,10 +553,8 @@ static int rc_runtime_progress_read_variables(rc_runtime_progress_t* progress)
   }
 
   result = RC_OK;
-  for (; serialized_count > 0 && result == RC_OK && progress->result == RC_OK; --serialized_count) {
+  for (; serialized_count > 0 && result == RC_OK; --serialized_count) {
     uint32_t djb2 = rc_runtime_progress_read_uint(progress);
-    if (progress->result != RC_OK)
-      break;
     for (i = (int32_t)count - 1; i >= 0; --i) {
       if (pending_variables[i].djb2 == djb2) {
         value = pending_variables[i].variable;
@@ -986,7 +963,7 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
   uint32_t next_chunk_offset;
   uint32_t i;
   int seen_rich_presence = 0;
-  int chunk_result;
+  int result = RC_OK;
 
   (void)unused_L;
 
@@ -996,9 +973,7 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
   }
 
   rc_runtime_progress_init(&progress, runtime);
-  progress.buffer            = (uint8_t*)serialized;
-  progress.buffer_size       = serialized_size;
-  progress.chunk_size_offset = serialized_size;
+  progress.buffer = (uint8_t*)serialized;
 
   if (rc_runtime_progress_read_uint(&progress) != RC_RUNTIME_MARKER) {
     rc_runtime_reset(runtime);
@@ -1030,66 +1005,60 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
   }
 
   do {
-    if (progress.offset >= serialized_size ||
-        serialized_size - progress.offset <= 8) {
-      progress.result = RC_INSUFFICIENT_BUFFER;
+    if (progress.offset + 8 >= serialized_size) {
+      result = RC_INSUFFICIENT_BUFFER;
       break;
     }
 
     chunk_id = rc_runtime_progress_read_uint(&progress);
     chunk_size = rc_runtime_progress_read_uint(&progress);
-    if (chunk_size > serialized_size - progress.offset) {
-      progress.result = RC_INSUFFICIENT_BUFFER;
+    next_chunk_offset = progress.offset + chunk_size;
+
+    if (next_chunk_offset > serialized_size) {
+      result = RC_INSUFFICIENT_BUFFER;
       break;
     }
-    next_chunk_offset = progress.offset + chunk_size;
-    progress.chunk_size_offset = next_chunk_offset;
-    chunk_result = RC_OK;
 
     switch (chunk_id) {
       case RC_RUNTIME_CHUNK_MEMREFS:
-        chunk_result = rc_runtime_progress_read_memrefs(&progress);
+        result = rc_runtime_progress_read_memrefs(&progress);
         break;
 
       case RC_RUNTIME_CHUNK_VARIABLES:
-        chunk_result = rc_runtime_progress_read_variables(&progress);
+        result = rc_runtime_progress_read_variables(&progress);
         break;
 
       case RC_RUNTIME_CHUNK_ACHIEVEMENT:
-        chunk_result = rc_runtime_progress_read_achievement(&progress);
+        result = rc_runtime_progress_read_achievement(&progress);
         break;
 
       case RC_RUNTIME_CHUNK_LEADERBOARD:
-        chunk_result = rc_runtime_progress_read_leaderboard(&progress);
+        result = rc_runtime_progress_read_leaderboard(&progress);
         break;
 
       case RC_RUNTIME_CHUNK_RICHPRESENCE:
         seen_rich_presence = 1;
-        chunk_result = rc_runtime_progress_read_rich_presence(&progress);
+        result = rc_runtime_progress_read_rich_presence(&progress);
         break;
 
       case RC_RUNTIME_CHUNK_DONE:
         md5_init(&state);
         md5_append(&state, progress.buffer, progress.offset);
         md5_finish(&state, md5);
-        if (!rc_runtime_progress_match_md5(&progress, md5) && progress.result == RC_OK)
-          progress.result = RC_INVALID_STATE;
+        if (!rc_runtime_progress_match_md5(&progress, md5))
+          result = RC_INVALID_STATE;
         break;
 
       default:
         if (chunk_size & 0xFFFF0000)
-          chunk_result = RC_INVALID_STATE; /* assume unknown chunk > 64KB is invalid */
+          result = RC_INVALID_STATE; /* assume unknown chunk > 64KB is invalid */
         break;
     }
 
-    if (progress.result == RC_OK)
-      progress.result = chunk_result;
-
     progress.offset = next_chunk_offset;
-    progress.chunk_size_offset = serialized_size;
-  } while (progress.result == RC_OK && chunk_id != RC_RUNTIME_CHUNK_DONE);
+  } while (result == RC_OK && chunk_id != RC_RUNTIME_CHUNK_DONE);
 
-  if (progress.result != RC_OK) {
+  if (result != RC_OK) {
     rc_runtime_reset(runtime);
   }
   else {
@@ -1109,5 +1078,5 @@ int rc_runtime_deserialize_progress_sized(rc_runtime_t* runtime, const uint8_t* 
       rc_reset_richpresence_triggers(runtime->richpresence->richpresence);
   }
 
-  return progress.result;
+  return result;
 }

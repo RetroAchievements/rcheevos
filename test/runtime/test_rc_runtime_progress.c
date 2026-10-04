@@ -1,5 +1,10 @@
 #include "rc_runtime.h"
-#include "../../src/runtime/rc_internal.h"
+
+#include "../../src/runtime/rc_condition.h"
+#include "../../src/runtime/rc_condset.h"
+#include "../../src/runtime/rc_lboard.h"
+#include "../../src/runtime/rc_modified_memref.h"
+#include "../../src/runtime/rc_trigger.h"
 
 #include "../test_framework.h"
 #include "../../src/util/md5.h"

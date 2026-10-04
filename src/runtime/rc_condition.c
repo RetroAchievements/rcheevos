@@ -1,8 +1,32 @@
-#include "rc_internal.h"
+#include "rc_condition.h"
+
+#include "rc_alloc.h"
+#include "rc_error.h"
+#include "rc_eval_state.h"
+#include "rc_operator.h"
+#include "rc_parse_state.h"
+#include "rc_typed_value.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
+int rc_operator_is_modifying(int oper) {
+  switch (oper) {
+    case RC_OPERATOR_AND:
+    case RC_OPERATOR_XOR:
+    case RC_OPERATOR_DIV:
+    case RC_OPERATOR_MULT:
+    case RC_OPERATOR_MOD:
+    case RC_OPERATOR_ADD:
+    case RC_OPERATOR_SUB:
+    case RC_OPERATOR_NONE: /* NONE operator implies "* 1" */
+      return 1;
+
+    default:
+      return 0;
+  }
+}
 
 static int rc_test_condition_compare(uint32_t value1, uint32_t value2, uint8_t oper) {
   switch (oper) {
@@ -163,7 +187,7 @@ static int rc_parse_operator(const char** memaddr) {
   }
 }
 
-void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand_t* operand, rc_parse_state_t* parse) {
+static void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand_t* operand, rc_parse_state_t* parse) {
   if (condition->oper == RC_OPERATOR_NONE) {
     if (operand != &condition->operand1)
       memcpy(operand, &condition->operand1, sizeof(*operand));
@@ -342,6 +366,34 @@ void rc_parse_condition_internal(rc_condition_t* self, const char** memaddr, rc_
   *memaddr = aux;
 }
 
+static void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t new_size) {
+  rc_modified_memref_t* modified_memref;
+
+  if ((self->type == RC_OPERAND_DELTA || self->type == RC_OPERAND_PRIOR) &&
+    self->type == parse->addsource_parent.type) {
+    /* if adding prev(x) and prev(y), just add x and y and take the prev of that.
+     * same for adding prior(x) and prior(y). */
+    rc_operand_t modifier;
+    memcpy(&modifier, self, sizeof(modifier));
+    modifier.type = parse->addsource_parent.type = RC_OPERAND_ADDRESS;
+
+    modified_memref = rc_alloc_modified_memref(parse,
+      new_size, &parse->addsource_parent, parse->addsource_oper, &modifier);
+  }
+  else {
+    modified_memref = rc_alloc_modified_memref(parse,
+      new_size, &parse->addsource_parent, parse->addsource_oper, self);
+
+    /* the modified memref will contain the combination of modified values, take the current value from that */
+    self->type = self->memref_access_type = RC_OPERAND_ADDRESS;
+  }
+
+  self->value.memref = (rc_memref_t*)modified_memref;
+
+  /* result of an AddSource operation is always a 32-bit integer (even if parent or modifier is a float) */
+  self->size = RC_MEMSIZE_32_BITS;
+}
+
 void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t* parse) {
   /* type of values in the chain are determined by the parent.
    * the last element of a chain is determined by the operand
@@ -413,11 +465,11 @@ void rc_condition_update_parse_state(rc_condition_t* condition, rc_parse_state_t
           parse->addsource_parent.size = zero.size;
 
           if (parse->addsource_parent.type == RC_OPERAND_CONST) {
-            parse->addsource_parent.value.num = rc_get_modified_memref_value(negate, NULL, NULL);
+            parse->addsource_parent.value.num = rc_get_modified_memref_value(negate, NULL);
           }
           else if (parse->addsource_parent.type == RC_OPERAND_FP) {
             rc_typed_value_t typed_value;
-            typed_value.value.u32 = rc_get_modified_memref_value(negate, NULL, NULL);
+            typed_value.value.u32 = rc_get_modified_memref_value(negate, NULL);
             parse->addsource_parent.value.dbl = (double)typed_value.value.f32;
           }
           else {

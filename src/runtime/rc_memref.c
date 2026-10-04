@@ -1,4 +1,11 @@
-#include "rc_internal.h"
+#include "rc_memref.h"
+
+#include "rc_alloc.h"
+#include "rc_error.h"
+#include "rc_eval_state.h"
+#include "rc_operand.h"
+#include "rc_operator.h"
+#include "rc_parse_state.h"
 
 #include <stdlib.h> /* malloc/realloc */
 #include <string.h> /* memcpy */
@@ -688,6 +695,26 @@ uint8_t rc_memref_shared_size(uint8_t size) {
   return rc_memref_shared_sizes[index];
 }
 
+int rc_memsize_is_float(uint8_t size) {
+  switch (size) {
+    case RC_MEMSIZE_FLOAT:
+    case RC_MEMSIZE_FLOAT_BE:
+    case RC_MEMSIZE_DOUBLE32:
+    case RC_MEMSIZE_DOUBLE32_BE:
+    case RC_MEMSIZE_MBF32:
+    case RC_MEMSIZE_MBF32_LE:
+      return 1;
+
+    default:
+      return 0;
+  }
+}
+
+int rc_get_memref_type(const rc_memref_t* memref)
+{
+  return memref->value.memref_type;
+}
+
 uint32_t rc_read_memory(uint32_t address, uint8_t size, rc_read_memory_func_t read_memory, void* ud) {
   union buffered_u32 {
     uint32_t u32;
@@ -753,12 +780,12 @@ static uint32_t rc_get_memref_value_value(const rc_memref_value_t* memref, int o
   }
 }
 
-void rc_get_memref_value(rc_typed_value_t* value, rc_memref_t* memref, int operand_type) {
+void rc_get_memref_value(rc_typed_value_t* value, const rc_memref_t* memref, int operand_type) {
   value->type = memref->value.type;
   value->value.u32 = rc_get_memref_value_value(&memref->value, operand_type);
 }
 
-uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_read_memory_func_t read_memory, void* ud) {
+uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_eval_state_t* eval_state) {
   rc_typed_value_t value, modifier;
 
   rc_evaluate_operand(&value, &memref->parent, NULL);
@@ -768,7 +795,7 @@ uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_rea
     case RC_OPERATOR_INDIRECT_READ:
       rc_typed_value_add(&value, &modifier);
       rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
-      value.value.u32 = rc_read_memory(value.value.u32, memref->memref.value.size, read_memory, ud);
+      value.value.u32 = rc_read_memory(value.value.u32, memref->memref.value.size, eval_state->read_memory, eval_state->read_memory_userdata);
       value.type = memref->memref.value.type;
       break;
 
@@ -811,7 +838,7 @@ uint32_t rc_get_modified_memref_value(const rc_modified_memref_t* memref, rc_rea
   return value.value.u32;
 }
 
-void rc_update_memref_values(rc_memrefs_t* memrefs, rc_read_memory_func_t read_memory, void* ud) {
+void rc_update_memref_values(rc_memrefs_t* memrefs, rc_eval_state_t* eval_state) {
   rc_memref_list_t* memref_list;
   rc_modified_memref_list_t* modified_memref_list;
 
@@ -823,7 +850,7 @@ void rc_update_memref_values(rc_memrefs_t* memrefs, rc_read_memory_func_t read_m
 
     for (; memref < memref_stop; ++memref) {
       if (memref->value.type != RC_VALUE_TYPE_NONE)
-        rc_update_memref_value(&memref->value, rc_read_memory(memref->address, memref->value.size, read_memory, ud));
+        rc_update_memref_value(&memref->value, rc_read_memory(memref->address, memref->value.size, eval_state->read_memory, eval_state->read_memory_userdata));
     }
 
     memref_list = memref_list->next;
@@ -836,7 +863,7 @@ void rc_update_memref_values(rc_memrefs_t* memrefs, rc_read_memory_func_t read_m
       const rc_modified_memref_t* modified_memref_stop = modified_memref + modified_memref_list->count;
 
       for (; modified_memref < modified_memref_stop; ++modified_memref)
-        rc_update_memref_value(&modified_memref->memref.value, rc_get_modified_memref_value(modified_memref, read_memory, ud));
+        rc_update_memref_value(&modified_memref->memref.value, rc_get_modified_memref_value(modified_memref, eval_state));
 
       modified_memref_list = modified_memref_list->next;
     } while (modified_memref_list);

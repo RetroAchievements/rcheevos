@@ -1,16 +1,34 @@
-#include "rc_internal.h"
+#include "rc_richpresence.h"
+
+#include "rc_alloc.h"
+#include "rc_condition.h"
+#include "rc_condset.h"
+#include "rc_error.h"
+#include "rc_eval_state.h"
+#include "rc_format.h"
+#include "rc_operand.h"
+#include "rc_parse_state.h"
+#include "rc_trigger.h"
+#include "rc_value.h"
 
 #include "../util/rc_compat.h"
 
 #include <ctype.h>
 
+typedef struct rc_richpresence_with_memrefs_t rc_richpresence_with_memrefs_t;
+
+struct rc_richpresence_with_memrefs_t {
+  rc_richpresence_t richpresence;
+  rc_memrefs_t memrefs;
+};
+
 /* special formats only used by rc_richpresence_display_part_t.display_type. must not overlap other RC_FORMAT values */
 enum {
-  RC_FORMAT_STRING = 101,
-  RC_FORMAT_LOOKUP = 102,
-  RC_FORMAT_UNKNOWN_MACRO = 103,
-  RC_FORMAT_ASCIICHAR = 104,
-  RC_FORMAT_UNICODECHAR = 105
+  RC_FORMAT_RP_STRING = 101,
+  RC_FORMAT_RP_LOOKUP = 102,
+  RC_FORMAT_RP_UNKNOWN_MACRO = 103,
+  RC_FORMAT_RP_ASCIICHAR = 104,
+  RC_FORMAT_RP_UNICODECHAR = 105
 };
 
 static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t* part, const char* memaddr, int memaddr_len, rc_parse_state_t* parse) {
@@ -44,7 +62,7 @@ static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t
   }
 
   /* parse the value into the scratch buffer so we can look at it */
-  rc_reset_parse_state(&preparse.parse, rc_buffer_alloc(&preparse.parse.scratch.buffer, (size_t)size));
+  rc_reset_parse_state(&preparse.parse, rc_buffer_alloc(&preparse.parse.scratch_buffer, (size_t)size), (size_t)size);
   preparse.parse.memrefs = parse->memrefs;
   preparse.parse.existing_memrefs = parse->existing_memrefs;
   value = RC_ALLOC(rc_value_t, &preparse.parse);
@@ -162,7 +180,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
       next = &part->next;
 
       /* handle string part */
-      part->display_type = RC_FORMAT_STRING;
+      part->display_type = RC_FORMAT_RP_STRING;
       part->text = rc_alloc_str(parse, line, (int)(ptr - line));
       if (part->text) {
         /* remove backslashes used for escaping */
@@ -202,7 +220,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
       *next = part;
       next = &part->next;
 
-      part->display_type = RC_FORMAT_UNKNOWN_MACRO;
+      part->display_type = RC_FORMAT_RP_UNKNOWN_MACRO;
 
       /* find the lookup and hook it up */
       lookup = first_lookup;
@@ -225,8 +243,8 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
           {"Seconds", 7, RC_FORMAT_SECONDS},
           {"Minutes", 7, RC_FORMAT_MINUTES},
           {"SecondsAsMinutes", 16, RC_FORMAT_SECONDS_AS_MINUTES},
-          {"ASCIIChar", 9, RC_FORMAT_ASCIICHAR},
-          {"UnicodeChar", 11, RC_FORMAT_UNICODECHAR},
+          {"ASCIIChar", 9, RC_FORMAT_RP_ASCIICHAR},
+          {"UnicodeChar", 11, RC_FORMAT_RP_UNICODECHAR},
           {"Float1", 6, RC_FORMAT_FLOAT1},
           {"Float2", 6, RC_FORMAT_FLOAT2},
           {"Float3", 6, RC_FORMAT_FLOAT3},
@@ -261,10 +279,10 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
       if (*ptr != ')') {
         /* non-terminated macro, dump the macro and the remaining portion of the line */
         --in; /* already skipped over @ */
-        part->display_type = RC_FORMAT_STRING;
+        part->display_type = RC_FORMAT_RP_STRING;
         part->text = rc_alloc_str(parse, in, (int)(ptr - in));
       }
-      else if (part->display_type != RC_FORMAT_UNKNOWN_MACRO) {
+      else if (part->display_type != RC_FORMAT_RP_UNKNOWN_MACRO) {
         rc_alloc_helper_variable_memref_value(part, line, (int)(ptr - line), parse);
         if (parse->offset < 0)
           return 0;
@@ -338,7 +356,7 @@ static void rc_rebalance_richpresence_lookup(rc_richpresence_lookup_item_t** roo
 
   /* allocate space for the flattened list in scratch memory */
   size = count * sizeof(rc_richpresence_lookup_item_t*);
-  items = (rc_richpresence_lookup_item_t**)rc_buffer_alloc(&parse->scratch.buffer, size);
+  items = (rc_richpresence_lookup_item_t**)rc_buffer_alloc(&parse->scratch_buffer, size);
 
   /* if allocation fails, we can still use the unbalanced tree, so just bail out */
   if (items == NULL)
@@ -531,7 +549,7 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
 
       lookup = RC_ALLOC_SCRATCH(rc_richpresence_lookup_t, parse);
       lookup->name = rc_alloc_str(parse, line, (int)(endline - line));
-      lookup->format = RC_FORMAT_LOOKUP;
+      lookup->format = RC_FORMAT_RP_LOOKUP;
       lookup->root = NULL;
       lookup->default_label = "";
       *nextlookup = lookup;
@@ -698,8 +716,9 @@ rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, void*
   richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
   preparse.parse.variables = &richpresence->richpresence.values;
   rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
+  rc_preparse_alloc_memrefs(NULL, &preparse); /* allocate space for the needed memrefs */
 
-  rc_reset_parse_state(&preparse.parse, buffer);
+  rc_reset_parse_state(&preparse.parse, buffer, (size_t)preparse.parse.offset);
   richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
   preparse.parse.variables = &richpresence->richpresence.values;
   rc_preparse_alloc_memrefs(&richpresence->memrefs, &preparse);
@@ -711,10 +730,10 @@ rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, void*
   return (preparse.parse.offset >= 0) ? &richpresence->richpresence : NULL;
 }
 
-static void rc_update_richpresence_memrefs(rc_richpresence_t* self, rc_read_memory_func_t read_memory, void* ud) {
+static void rc_update_richpresence_memrefs(rc_richpresence_t* self, rc_eval_state_t* eval_state) {
   if (self->has_memrefs) {
     rc_richpresence_with_memrefs_t* richpresence = (rc_richpresence_with_memrefs_t*)self;
-    rc_update_memref_values(&richpresence->memrefs, read_memory, ud);
+    rc_update_memref_values(&richpresence->memrefs, eval_state);
   }
 }
 
@@ -727,21 +746,17 @@ rc_memrefs_t* rc_richpresence_get_memrefs(rc_richpresence_t* self) {
   return NULL;
 }
 
-void rc_update_richpresence(rc_richpresence_t* richpresence, rc_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L) {
-  (void)unused_L;
-
-  rc_update_richpresence_internal(richpresence, read_memory, read_memory_ud);
-}
-
-void rc_update_richpresence_internal(rc_richpresence_t* richpresence, rc_read_memory_func_t read_memory, void* read_memory_ud) {
+void rc_update_richpresence(rc_richpresence_t* richpresence, rc_eval_state_t* eval_state) {
   rc_richpresence_display_t* display;
 
-  rc_update_richpresence_memrefs(richpresence, read_memory, read_memory_ud);
-  rc_update_values(richpresence->values, read_memory, read_memory_ud);
+  rc_update_richpresence_memrefs(richpresence, eval_state);
+  rc_update_values(richpresence->values, eval_state);
 
   for (display = richpresence->first_display; display; display = display->next) {
-    if (display->has_required_hits)
-      rc_test_trigger(&display->trigger, read_memory, read_memory_ud, NULL);
+    if (display->has_required_hits) {
+      display->trigger.state = RC_TRIGGER_STATE_ACTIVE;
+      rc_test_trigger(&display->trigger, eval_state);
+    }
   }
 }
 
@@ -757,12 +772,12 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
   *ptr = '\0';
   while (part) {
     switch (part->display_type) {
-      case RC_FORMAT_STRING:
+      case RC_FORMAT_RP_STRING:
         text = part->text;
         chars = strlen(text);
         break;
 
-      case RC_FORMAT_LOOKUP:
+      case RC_FORMAT_RP_LOOKUP:
         rc_evaluate_operand(&value, &part->value, NULL);
         rc_typed_value_convert(&value, RC_VALUE_TYPE_UNSIGNED);
 
@@ -784,7 +799,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         chars = strlen(text);
         break;
 
-      case RC_FORMAT_ASCIICHAR:
+      case RC_FORMAT_RP_ASCIICHAR:
         chars = 0;
         text = tmp;
         value.type = RC_VALUE_TYPE_UNSIGNED;
@@ -793,7 +808,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
           rc_evaluate_operand(&value, &part->value, NULL);
           if (value.value.u32 == 0) {
             /* null terminator - skip over remaining character macros */
-            while (part->next && part->next->display_type == RC_FORMAT_ASCIICHAR)
+            while (part->next && part->next->display_type == RC_FORMAT_RP_ASCIICHAR)
               part = part->next;
             break;
           }
@@ -802,7 +817,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
             value.value.u32 = '?';
 
           tmp[chars++] = (char)value.value.u32;
-          if (chars == sizeof(tmp) - 1 || !part->next || part->next->display_type != RC_FORMAT_ASCIICHAR)
+          if (chars == sizeof(tmp) - 1 || !part->next || part->next->display_type != RC_FORMAT_RP_ASCIICHAR)
             break;
 
           part = part->next;
@@ -811,7 +826,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         tmp[chars] = '\0';
         break;
 
-      case RC_FORMAT_UNICODECHAR:
+      case RC_FORMAT_RP_UNICODECHAR:
         chars = 0;
         text = tmp;
         value.type = RC_VALUE_TYPE_UNSIGNED;
@@ -820,7 +835,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
           rc_evaluate_operand(&value, &part->value, NULL);
           if (value.value.u32 == 0) {
             /* null terminator - skip over remaining character macros */
-            while (part->next && part->next->display_type == RC_FORMAT_UNICODECHAR)
+            while (part->next && part->next->display_type == RC_FORMAT_RP_UNICODECHAR)
               part = part->next;
             break;
           }
@@ -847,7 +862,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
             chars += 3;
           }
 
-          if (chars >= sizeof(tmp) - 3 || !part->next || part->next->display_type != RC_FORMAT_UNICODECHAR)
+          if (chars >= sizeof(tmp) - 3 || !part->next || part->next->display_type != RC_FORMAT_RP_UNICODECHAR)
             break;
 
           part = part->next;
@@ -856,7 +871,7 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
         tmp[chars] = '\0';
         break;
 
-      case RC_FORMAT_UNKNOWN_MACRO:
+      case RC_FORMAT_RP_UNKNOWN_MACRO:
         chars = snprintf(tmp, sizeof(tmp), "[Unknown macro]%s", part->text);
         text = tmp;
         break;
@@ -889,30 +904,32 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
   return (int)(ptr - buffer);
 }
 
-int rc_get_richpresence_display_string(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L) {
+int rc_get_richpresence_display_string(const rc_richpresence_t* richpresence, char buffer[], size_t buffer_size, rc_eval_state_t* eval_state) {
   rc_richpresence_display_t* display;
 
   for (display = richpresence->first_display; display; display = display->next) {
     /* if we've reached the end of the condition list, process it */
     if (!display->next)
-      return rc_evaluate_richpresence_display(display->display, buffer, buffersize);
+      return rc_evaluate_richpresence_display(display->display, buffer, buffer_size);
 
     /* triggers with required hits will be updated in rc_update_richpresence */
-    if (!display->has_required_hits)
-      rc_test_trigger(&display->trigger, read_memory, read_memory_ud, unused_L);
+    if (!display->has_required_hits) {
+      display->trigger.state = RC_TRIGGER_STATE_ACTIVE;
+      rc_test_trigger(&display->trigger, eval_state);
+    }
 
     /* if we've found a valid condition, process it */
     if (display->trigger.state == RC_TRIGGER_STATE_TRIGGERED)
-      return rc_evaluate_richpresence_display(display->display, buffer, buffersize);
+      return rc_evaluate_richpresence_display(display->display, buffer, buffer_size);
   }
 
   buffer[0] = '\0';
   return 0;
 }
 
-int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char* buffer, size_t buffersize, rc_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L) {
-  rc_update_richpresence(richpresence, read_memory, read_memory_ud, unused_L);
-  return rc_get_richpresence_display_string(richpresence, buffer, buffersize, read_memory, read_memory_ud, unused_L);
+int rc_evaluate_richpresence(rc_richpresence_t* richpresence, char buffer[], size_t buffer_size, rc_eval_state_t* eval_state) {
+  rc_update_richpresence(richpresence, eval_state);
+  return rc_get_richpresence_display_string(richpresence, buffer, buffer_size, eval_state);
 }
 
 void rc_reset_richpresence_triggers(rc_richpresence_t* self) {

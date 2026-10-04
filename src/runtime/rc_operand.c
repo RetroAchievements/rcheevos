@@ -1,4 +1,11 @@
-#include "rc_internal.h"
+#include "rc_operand.h"
+
+#include "rc_error.h"
+#include "rc_eval_state.h"
+#include "rc_operator.h"
+#include "rc_parse_state.h"
+#include "rc_typed_value.h"
+#include "rc_value.h"
 
 #include <stdlib.h>
 #include <ctype.h>
@@ -29,25 +36,17 @@ static int rc_parse_operand_func_call(rc_operand_t* self, const char** memaddr) 
 
 static int rc_parse_operand_variable(rc_operand_t* self, const char** memaddr, rc_parse_state_t* parse) {
   const char* aux = *memaddr;
-  size_t i;
-  char varName[RC_VALUE_MAX_NAME_LENGTH + 1] = { 0 };
+  char var_name[RC_VALUE_MAX_NAME_LENGTH + 1];
 
-  for (i = 0; i < RC_VALUE_MAX_NAME_LENGTH && *aux != '}'; i++) {
-    if (!rc_is_valid_variable_character(*aux, i == 0))
-      return RC_INVALID_VARIABLE_NAME;
-
-    varName[i] = *aux++;
-  }
-
-  if (i == 0)
+  /* assert: '{' has been processed */
+  if (!rc_value_get_variable_name(var_name, sizeof(var_name), &aux))
     return RC_INVALID_VARIABLE_NAME;
 
   if (*aux != '}')
     return RC_INVALID_VARIABLE_NAME;
-
   ++aux;
 
-  if (strcmp(varName, "recall") == 0) {
+  if (strcmp(var_name, "recall") == 0) {
     if (parse->remember.type == RC_OPERAND_NONE) {
       self->value.memref = NULL;
       self->size = RC_MEMSIZE_32_BITS;
@@ -363,38 +362,6 @@ int rc_operands_are_equal(const rc_operand_t* left, const rc_operand_t* right) {
   }
 }
 
-int rc_operator_is_modifying(int oper) {
-  switch (oper) {
-    case RC_OPERATOR_AND:
-    case RC_OPERATOR_XOR:
-    case RC_OPERATOR_DIV:
-    case RC_OPERATOR_MULT:
-    case RC_OPERATOR_MOD:
-    case RC_OPERATOR_ADD:
-    case RC_OPERATOR_SUB:
-    case RC_OPERATOR_NONE: /* NONE operator implies "* 1" */
-      return 1;
-
-    default:
-      return 0;
-  }
-}
-
-int rc_memsize_is_float(uint8_t size) {
-  switch (size) {
-    case RC_MEMSIZE_FLOAT:
-    case RC_MEMSIZE_FLOAT_BE:
-    case RC_MEMSIZE_DOUBLE32:
-    case RC_MEMSIZE_DOUBLE32_BE:
-    case RC_MEMSIZE_MBF32:
-    case RC_MEMSIZE_MBF32_LE:
-      return 1;
-
-    default:
-      return 0;
-  }
-}
-
 int rc_operand_is_float_memref(const rc_operand_t* self) {
   if (!rc_operand_is_memref(self))
     return 0;
@@ -542,34 +509,6 @@ static uint32_t rc_transform_operand_value(uint32_t value, const rc_operand_t* s
   }
 
   return value;
-}
-
-void rc_operand_addsource(rc_operand_t* self, rc_parse_state_t* parse, uint8_t new_size) {
-  rc_modified_memref_t* modified_memref;
-
-  if ((self->type == RC_OPERAND_DELTA || self->type == RC_OPERAND_PRIOR) &&
-        self->type == parse->addsource_parent.type) {
-    /* if adding prev(x) and prev(y), just add x and y and take the prev of that.
-     * same for adding prior(x) and prior(y). */
-    rc_operand_t modifier;
-    memcpy(&modifier, self, sizeof(modifier));
-    modifier.type = parse->addsource_parent.type = RC_OPERAND_ADDRESS;
-
-    modified_memref = rc_alloc_modified_memref(parse,
-        new_size, &parse->addsource_parent, parse->addsource_oper, &modifier);
-  }
-  else {
-    modified_memref = rc_alloc_modified_memref(parse,
-        new_size, &parse->addsource_parent, parse->addsource_oper, self);
-
-    /* the modified memref will contain the combination of modified values, take the current value from that */
-    self->type = self->memref_access_type = RC_OPERAND_ADDRESS;
-  }
-
-  self->value.memref = (rc_memref_t*)modified_memref;
-
-  /* result of an AddSource operation is always a 32-bit integer (even if parent or modifier is a float) */
-  self->size = RC_MEMSIZE_32_BITS;
 }
 
 void rc_evaluate_operand(rc_typed_value_t* result, const rc_operand_t* self, rc_eval_state_t* eval_state) {

@@ -1,4 +1,8 @@
-#include "../../src/runtime/rc_internal.h"
+#include "../../src/runtime/rc_memref.h"
+
+#include "../../src/runtime/rc_eval_state.h"
+#include "../../src/runtime/rc_operator.h"
+#include "../../src/runtime/rc_parse_state.h"
 
 #include "../test_framework.h"
 #include "mock_memory.h"
@@ -264,7 +268,7 @@ static int get_memref_count(rc_parse_state_t* parse) {
 static void test_allocate_shared_address() {
   rc_parse_state_t parse;
   rc_memrefs_t memrefs;
-  rc_init_parse_state(&parse, NULL);
+  rc_init_parse_state(&parse, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
@@ -306,7 +310,7 @@ static void test_allocate_shared_address2() {
   rc_memref_t* memref4;
   rc_memref_t* memref5;
   rc_memref_t* memrefX;
-  rc_init_parse_state(&parse, NULL);
+  rc_init_parse_state(&parse, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
@@ -351,7 +355,7 @@ static void test_allocate_shared_indirect_address() {
   rc_operand_set_const(&offset0, 0);
   rc_operand_set_const(&offset4, 4);
 
-  rc_init_parse_state(&parse, NULL);
+  rc_init_parse_state(&parse, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   parent1.value.memref = parent_memref1 = rc_alloc_memref(&parse, 88, RC_MEMSIZE_16_BITS);
@@ -413,7 +417,7 @@ static void test_sizing_mode_grow_buffer() {
   int i;
   rc_parse_state_t parse;
   rc_memrefs_t memrefs;
-  rc_init_parse_state(&parse, NULL);
+  rc_init_parse_state(&parse, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   /* memrefs are allocated 16 at a time */
@@ -443,6 +447,7 @@ static void test_sizing_mode_grow_buffer() {
 
 static void test_update_memref_values() {
   rc_parse_state_t parse;
+  rc_eval_state_t eval_state;
   rc_memrefs_t memrefs;
   rc_memref_t* memref1;
   rc_memref_t* memref2;
@@ -451,14 +456,15 @@ static void test_update_memref_values() {
   memory_t memory;
   memory.ram = ram;
   memory.size = sizeof(ram);
+  rc_init_eval_state(&eval_state, read_memory, &memory);
 
-  rc_init_parse_state(&parse, NULL);
+  rc_init_parse_state(&parse, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   memref1 = rc_alloc_memref(&parse, 1, RC_MEMSIZE_8_BITS);
   memref2 = rc_alloc_memref(&parse, 2, RC_MEMSIZE_8_BITS);
 
-  rc_update_memref_values(&memrefs, read_memory, &memory);
+  rc_update_memref_values(&memrefs, &eval_state);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 0x12);
   ASSERT_NUM_EQUALS(memref1->value.changed, 1);
@@ -468,7 +474,7 @@ static void test_update_memref_values() {
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[1] = 3;
-  rc_update_memref_values(&memrefs, read_memory, &memory);
+  rc_update_memref_values(&memrefs, &eval_state);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 3);
   ASSERT_NUM_EQUALS(memref1->value.changed, 1);
@@ -478,7 +484,7 @@ static void test_update_memref_values() {
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[1] = 5;
-  rc_update_memref_values(&memrefs, read_memory, &memory);
+  rc_update_memref_values(&memrefs, &eval_state);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 5);
   ASSERT_NUM_EQUALS(memref1->value.changed, 1);
@@ -488,7 +494,7 @@ static void test_update_memref_values() {
   ASSERT_NUM_EQUALS(memref2->value.prior, 0);
 
   ram[2] = 7;
-  rc_update_memref_values(&memrefs, read_memory, &memory);
+  rc_update_memref_values(&memrefs, &eval_state);
 
   ASSERT_NUM_EQUALS(memref1->value.value, 5);
   ASSERT_NUM_EQUALS(memref1->value.changed, 0);
