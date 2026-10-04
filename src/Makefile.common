@@ -1,0 +1,128 @@
+# RC_SRC must be set before including this file
+
+# supported parameters
+#  ARCH                  architecture - "x86" or "x64" [detected if not set]
+#  BUILD                 use flags for specified upstream consumer - "c89" or "retroarch" [default to "c89"]
+#  DEBUG                 if set to anything, builds with DEBUG symbols
+
+# default parameter values
+ifeq ($(ARCH),)
+    UNAME := $(shell uname -s)
+    ifeq ($(findstring MINGW64, $(UNAME)), MINGW64)
+        ARCH=x64
+    else ifeq ($(findstring MINGW32, $(UNAME)), MINGW32)
+        ARCH=x86
+    else
+        $(error Could not determine ARCH)
+    endif
+endif
+
+ifeq ($(BUILD),)
+    BUILD=c89
+endif
+
+# OS specific stuff
+ifeq ($(OS),Windows_NT)
+    EXE=.exe
+else ifeq ($(findstring mingw, $(CC)), mingw)
+    EXE=.exe
+else
+    EXE=
+endif
+
+# source files
+RC_API_OBJS=$(RC_SRC)/api/rc_api_common.o \
+            $(RC_SRC)/api/rc_api_editor.o \
+            $(RC_SRC)/api/rc_api_info.o \
+            $(RC_SRC)/api/rc_api_runtime.o \
+            $(RC_SRC)/api/rc_api_user.o
+             
+RC_CLIENT_OBJS=$(RC_SRC)/client/rc_client.o \
+               $(RC_SRC)/client/rc_client_external.o \
+               $(RC_SRC)/client/rc_client_raintegration.o
+
+RC_HASH_OBJS=$(RC_SRC)/hash/rc_cdreader.o \
+             $(RC_SRC)/hash/rc_hash.o \
+             $(RC_SRC)/hash/rc_hash_disc.o \
+             $(RC_SRC)/hash/rc_hash_rom.o \
+             $(RC_SRC)/hash/rc_hash_zip.o
+             
+RC_RUNTIME_OBJS=$(RC_SRC)/runtime/rc_alloc.o \
+                $(RC_SRC)/runtime/rc_condition.o \
+                $(RC_SRC)/runtime/rc_condset.o \
+                $(RC_SRC)/runtime/rc_consoleinfo.o \
+                $(RC_SRC)/runtime/rc_format.o \
+                $(RC_SRC)/runtime/rc_lboard.o \
+                $(RC_SRC)/runtime/rc_memref.o \
+                $(RC_SRC)/runtime/rc_operand.o \
+                $(RC_SRC)/runtime/rc_richpresence.o \
+                $(RC_SRC)/runtime/rc_runtime.o \
+                $(RC_SRC)/runtime/rc_runtime_progress.o \
+                $(RC_SRC)/runtime/rc_trigger.o \
+                $(RC_SRC)/runtime/rc_value.o
+
+RC_UTIL_OBJS=$(RC_SRC)/util/md5.o \
+             $(RC_SRC)/util/rc_compat.o \
+             $(RC_SRC)/util/rc_util.o \
+             $(RC_SRC)/util/rc_version.o
+
+# compile flags
+CFLAGS=-Wall -Werror -Wno-long-long -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+INCLUDES=-I$(RC_SRC)/../include
+
+ifeq ($(ARCH), x86)
+    CFLAGS += -m32
+    LDFLAGS += -m32
+else ifeq ($(ARCH), x64)
+    CFLAGS += -m64
+    LDFLAGS += -m64
+else
+    $(error unknown ARCH "$(ARCH)")
+endif
+
+EXTRA=
+ifdef DEBUG
+    CFLAGS += -O0 -g
+    EXTRA +=  DEBUG
+else
+    CFLAGS += -O3
+endif
+
+# more strict validation for source files to eliminate warnings/errors in upstream consumers
+# -Wextra includes -Wsign-compare -Wtype-limits -Wimplicit-fallthrough=3 -Wunused-parameter and more
+# -pedantic issues errors when using GNU extensions or other things that are not strictly ISO C
+SRC_CFLAGS=-Wextra -Wshadow -pedantic
+# 3DS build (retroarch) doesn't support signed char
+SRC_CFLAGS += -fno-signed-char
+
+ifeq ($(BUILD), c89)
+    CFLAGS += -std=c89
+else ifeq ($(BUILD), c99)
+    CFLAGS += -std=c99
+else ifeq ($(BUILD), retroarch)
+    # RetroArch builds with gcc8 and gnu99 which adds some extra warning validations
+    SRC_CFLAGS += -std=gnu99 -D_GNU_SOURCE -Wall -Warray-bounds=2 -Wincompatible-pointer-types
+    # Also include the RC_CLIENT_SUPPORTS_EXTERNAL flag to ensure we do the full level of validation on the
+    # most code. The c89 build will ensure things still build without the RC_CLIENT_SUPPORTS_EXTERNAL flag.
+    CFLAGS += -DRC_CLIENT_SUPPORTS_EXTERNAL
+else
+    $(error unknown BUILD "$(BUILD)")
+endif
+
+$(RC_SRC)/api/%.o: $(RC_SRC)/api/%.c
+	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+
+$(RC_SRC)/client/%.o: $(RC_SRC)/client/%.c
+	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+
+$(RC_SRC)/hash/%.o: $(RC_SRC)/hash/%.c
+	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+
+$(RC_SRC)/runtime/%.o: $(RC_SRC)/runtime/%.c
+	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+
+$(RC_SRC)/util/%.o: $(RC_SRC)/util/%.c
+	$(CC) $(CFLAGS) $(SRC_CFLAGS) $(INCLUDES) -c $< -o $@
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
