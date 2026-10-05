@@ -3,6 +3,7 @@
 
 #include "rc_export.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 RC_BEGIN_C_DECLS

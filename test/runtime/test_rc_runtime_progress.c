@@ -1781,13 +1781,8 @@ static void test_rich_presence_conditional_display_md5_changed()
 
 static void test_malformed()
 {
-  uint8_t ram[] = { 2, 3, 0, 0, 0 };
   uint8_t buffer[2048];
-  memory_t memory;
   rc_runtime_t runtime;
-
-  memory.ram = ram;
-  memory.size = sizeof(ram);
 
   rc_runtime_init(&runtime);
 
