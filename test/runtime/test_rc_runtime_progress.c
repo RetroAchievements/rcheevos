@@ -1800,6 +1800,8 @@ static void test_malformed()
 
   reset_runtime(&runtime);
   ASSERT_NUM_EQUALS(rc_runtime_deserialize_progress(&runtime, buffer, NULL), RC_INSUFFICIENT_BUFFER);
+
+  rc_runtime_destroy(&runtime);
 }
 
 /* ======================================================== */
