@@ -13,12 +13,10 @@
 #include <string.h> /* memset */
 #include <ctype.h> /* isdigit */
 
-typedef struct rc_value_with_memrefs_t rc_value_with_memrefs_t;
-
-struct rc_value_with_memrefs_t {
+typedef struct rc_value_with_memrefs_t {
   rc_value_t value;
   rc_memrefs_t memrefs;
-};
+} rc_value_with_memrefs_t;
 
 static int rc_is_valid_variable_character(char ch, int is_first) {
   if (is_first) {
@@ -361,6 +359,21 @@ static void rc_update_value_memrefs(rc_value_t* self, rc_eval_state_t* eval_stat
     rc_value_with_memrefs_t* value = (rc_value_with_memrefs_t*)self;
     rc_update_memref_values(&value->memrefs, eval_state);
   }
+}
+
+rc_memrefs_t* rc_value_get_memrefs(rc_value_t* self) {
+  if (self->has_memrefs) {
+    rc_value_with_memrefs_t* value = (rc_value_with_memrefs_t*)self;
+    return &value->memrefs;
+  }
+
+  return NULL;
+}
+
+struct rc_value_t* rc_alloc_value_with_memrefs(struct rc_parse_state_t* parse) {
+  rc_value_with_memrefs_t* value = RC_ALLOC(rc_value_with_memrefs_t, parse);
+  value->value.has_memrefs = 1;
+  return &value->value;
 }
 
 int rc_evaluate_value_typed(rc_value_t* self, rc_typed_value_t* result, rc_eval_state_t* eval_state) {

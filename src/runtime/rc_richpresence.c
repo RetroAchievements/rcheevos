@@ -15,12 +15,10 @@
 
 #include <ctype.h>
 
-typedef struct rc_richpresence_with_memrefs_t rc_richpresence_with_memrefs_t;
-
-struct rc_richpresence_with_memrefs_t {
+typedef struct rc_richpresence_with_memrefs_t {
   rc_richpresence_t richpresence;
   rc_memrefs_t memrefs;
-};
+} rc_richpresence_with_memrefs_t;
 
 /* special formats only used by rc_richpresence_display_part_t.display_type. must not overlap other RC_FORMAT values */
 enum {
@@ -744,6 +742,12 @@ rc_memrefs_t* rc_richpresence_get_memrefs(rc_richpresence_t* self) {
   }
 
   return NULL;
+}
+
+struct rc_richpresence_t* rc_alloc_richpresence_with_memrefs(struct rc_parse_state_t* parse) {
+  rc_richpresence_with_memrefs_t* richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, parse);
+  richpresence->richpresence.has_memrefs = 1;
+  return &richpresence->richpresence;
 }
 
 void rc_update_richpresence(rc_richpresence_t* richpresence, rc_eval_state_t* eval_state) {

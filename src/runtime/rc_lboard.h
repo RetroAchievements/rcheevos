@@ -25,6 +25,7 @@ enum {
 \*****************************************************************************/
 
 struct rc_eval_state_t;  /* rc_eval_state.h */
+struct rc_memrefs_t;     /* rc_modified_memrefs.h */
 struct rc_parse_state_t; /* rc_parse_state.h */
 
 typedef struct rc_lboard_t {
@@ -61,6 +62,18 @@ typedef struct rc_lboard_t {
  * Returns non-zero if the provided leaderboard state allows the leaderboard to be processed.
  */
 int rc_lboard_state_active(int state);
+
+/**
+ * Gets the memrefs owned by the leaderboard.
+ *
+ * Not valid if the leaderobard was parsed using `rc_parse_lboard_internal`.
+ */
+struct rc_memrefs_t* rc_lboard_get_memrefs(struct rc_lboard_t* self);
+
+/**
+ * Allocates space for a leaderboard that owns its own memrefs.
+ */
+struct rc_lboard_t* rc_alloc_lboard_with_memrefs(struct rc_parse_state_t* parse);
 
 /**
  * Determines how much memory is needed to store the deserialized leaderboard.

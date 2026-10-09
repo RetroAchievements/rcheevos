@@ -7,12 +7,13 @@
 #include "rc_trigger.h"
 #include "rc_value.h"
 
-typedef struct rc_lboard_with_memrefs_t rc_lboard_with_memrefs_t;
-
-struct rc_lboard_with_memrefs_t {
+typedef struct rc_lboard_with_memrefs_t {
+  /* The leaderboard definition. */
   rc_lboard_t lboard;
+
+  /* A memrefs collection for new memrefs needed by the leaderboard. */
   rc_memrefs_t memrefs;
-};
+} rc_lboard_with_memrefs_t;
 
 enum {
   RC_LBOARD_START    = 1 << 0,
@@ -186,6 +187,21 @@ static void rc_update_lboard_memrefs(rc_lboard_t* self, rc_eval_state_t* eval_st
     rc_lboard_with_memrefs_t* lboard = (rc_lboard_with_memrefs_t*)self;
     rc_update_memref_values(&lboard->memrefs, eval_state);
   }
+}
+
+struct rc_memrefs_t* rc_lboard_get_memrefs(struct rc_lboard_t* self) {
+  if (self->has_memrefs) {
+    rc_lboard_with_memrefs_t* lboard = (rc_lboard_with_memrefs_t*)self;
+    return &lboard->memrefs;
+  }
+
+  return NULL;
+}
+
+struct rc_lboard_t* rc_alloc_lboard_with_memrefs(struct rc_parse_state_t* parse) {
+  rc_lboard_with_memrefs_t* lboard = RC_ALLOC(rc_lboard_with_memrefs_t, parse);
+  lboard->lboard.has_memrefs = 1;
+  return &lboard->lboard;
 }
 
 int rc_evaluate_lboard(rc_lboard_t* self, int32_t* value, rc_eval_state_t* eval_state) {

@@ -9,12 +9,10 @@
 
 #include <string.h> /* memset */
 
-typedef struct rc_trigger_with_memrefs_t rc_trigger_with_memrefs_t;
-
-struct rc_trigger_with_memrefs_t {
+typedef struct rc_trigger_with_memrefs_t {
   rc_trigger_t trigger;
   rc_memrefs_t memrefs;
-};
+} rc_trigger_with_memrefs_t;
 
 void rc_parse_trigger_internal(rc_trigger_t* self, const char** memaddr, rc_parse_state_t* parse) {
   rc_condset_t** next;
@@ -161,6 +159,12 @@ rc_memrefs_t* rc_trigger_get_memrefs(rc_trigger_t* self) {
   }
 
   return NULL;
+}
+
+struct rc_trigger_t* rc_alloc_trigger_with_memrefs(struct rc_parse_state_t* parse) {
+  rc_trigger_with_memrefs_t* trigger = RC_ALLOC(rc_trigger_with_memrefs_t, parse);
+  trigger->trigger.has_memrefs = 1;
+  return &trigger->trigger;
 }
 
 int rc_test_trigger(rc_trigger_t* self, rc_eval_state_t* eval_state) {

@@ -76,6 +76,11 @@ int rc_trigger_state_active(int state);
 struct rc_memrefs_t* rc_trigger_get_memrefs(struct rc_trigger_t* self);
 
 /**
+ * Allocates space for a trigger that owns its own memrefs.
+ */
+struct rc_trigger_t* rc_alloc_trigger_with_memrefs(struct rc_parse_state_t* parse);
+
+/**
  * Determines how much memory is needed to store the deserialized trigger.
  */
 int rc_trigger_size(const char* memaddr);

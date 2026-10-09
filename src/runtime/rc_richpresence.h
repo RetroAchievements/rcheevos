@@ -6,6 +6,8 @@
 
 #include <stddef.h>
 
+RC_BEGIN_C_DECLS
+
 /*****************************************************************************\
 | Enums                                                                       |
 \*****************************************************************************/
@@ -108,6 +110,11 @@ typedef struct rc_richpresence_t {
  * Not valid if the rich presence was parsed using `rc_parse_richpresence_internal`.
  */
 struct rc_memrefs_t* rc_richpresence_get_memrefs(struct rc_richpresence_t* self);
+
+/**
+ * Allocates space for a rich presence script that owns its own memrefs.
+ */
+struct rc_richpresence_t* rc_alloc_richpresence_with_memrefs(struct rc_parse_state_t* parse);
 
 /**
  * Determines how much memory is needed to store the compiled rich presence.

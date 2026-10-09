@@ -102,7 +102,7 @@ uint32_t rc_read_memory(uint32_t address, uint8_t size, rc_read_memory_func_t re
 /**
  * Initializes an evaluation state structure.
  */
-void rc_init_eval_state(struct rc_eval_state_t* parse, rc_read_memory_func_t read_memory, void* ud);
+void rc_init_eval_state(struct rc_eval_state_t* eval_state, rc_read_memory_func_t read_memory, void* ud);
 
 RC_END_C_DECLS
 

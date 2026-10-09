@@ -19,6 +19,7 @@ RC_BEGIN_C_DECLS
 
 struct rc_condset_t;     /* rc_condset.h */
 struct rc_eval_state_t;  /* rc_eval_state.h */
+struct rc_memrefs_t;     /* rc_modified_memrefs.h */
 struct rc_parse_state_t; /* rc_parse_state.h */
 struct rc_typed_value_t; /* rc_typed_value.h */
 
@@ -52,6 +53,18 @@ int rc_value_from_hits(struct rc_value_t* self);
  * Allocates an `rc_value_t` from the provided serialized value.
  */
 struct rc_value_t* rc_alloc_variable(const char* memaddr, size_t memaddr_len, struct rc_parse_state_t* parse);
+
+/**
+ * Gets the memrefs owned by the value.
+ *
+ * Not valid if the value was parsed using `rc_parse_value_internal`.
+ */
+struct rc_memrefs_t* rc_value_get_memrefs(struct rc_value_t* self);
+
+/**
+ * Allocates space for a value that owns its own memrefs.
+ */
+struct rc_value_t* rc_alloc_value_with_memrefs(struct rc_parse_state_t* parse);
 
 /**
  * Determines how much memory is needed to store the deserialized value.
