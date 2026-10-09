@@ -1,4 +1,8 @@
-#include "../../src/runtime/rc_internal.h"
+#include "../../src/runtime/rc_operand.h"
+
+#include "rc_error.h"
+#include "../../src/runtime/rc_eval_state.h"
+#include "../../src/runtime/rc_parse_state.h"
 
 #include "../test_framework.h"
 #include "mock_memory.h"
@@ -8,7 +12,7 @@ static void _assert_parse_operand(rc_operand_t* self, char* buffer, const char**
   rc_memrefs_t memrefs;
   int ret;
 
-  rc_init_parse_state(&parse, buffer);
+  rc_init_parse_state(&parse, buffer, 0xFFFFFFFF); /* TODO: pass actual buffer size through helper */
   rc_init_parse_state_memrefs(&parse, &memrefs);
   ret = rc_parse_operand(self, memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -65,7 +69,7 @@ static void test_parse_error_operand(const char* memaddr, int valid_chars, int e
   const char* begin = memaddr;
   rc_memrefs_t memrefs;
 
-  rc_init_parse_state(&parse, 0);
+  rc_init_parse_state(&parse, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   ret = rc_parse_operand(&self, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -79,11 +83,9 @@ static uint32_t evaluate_operand(rc_operand_t* op, memory_t* memory, rc_memrefs_
   rc_eval_state_t eval_state;
   rc_typed_value_t value;
 
-  memset(&eval_state, 0, sizeof(eval_state));
-  eval_state.read_memory = read_memory;
-  eval_state.read_memory_userdata = memory;
+  rc_init_eval_state(&eval_state, read_memory, memory);
 
-  rc_update_memref_values(memrefs, read_memory, memory);
+  rc_update_memref_values(memrefs, &eval_state);
   rc_evaluate_operand(&value, op, &eval_state);
   return value.value.u32;
 }
@@ -95,7 +97,7 @@ static void test_evaluate_operand(const char* memaddr, memory_t* memory, uint32_
   char buffer[512];
   uint32_t value;
 
-  rc_init_parse_state(&parse, buffer);
+  rc_init_parse_state(&parse, buffer, sizeof(buffer));
   rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&self, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -108,11 +110,9 @@ static float evaluate_operand_float(rc_operand_t* op, memory_t* memory, rc_memre
   rc_eval_state_t eval_state;
   rc_typed_value_t value;
 
-  memset(&eval_state, 0, sizeof(eval_state));
-  eval_state.read_memory = read_memory;
-  eval_state.read_memory_userdata = memory;
+  rc_init_eval_state(&eval_state, read_memory, memory);
 
-  rc_update_memref_values(memrefs, read_memory, memory);
+  rc_update_memref_values(memrefs, &eval_state);
   rc_evaluate_operand(&value, op, &eval_state);
   return value.value.f32;
 }
@@ -124,7 +124,7 @@ static void test_evaluate_operand_float(const char* memaddr, memory_t* memory, d
   char buffer[512];
   float value;
 
-  rc_init_parse_state(&parse, buffer);
+  rc_init_parse_state(&parse, buffer, sizeof(buffer));
   rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&self, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -531,7 +531,7 @@ static void test_evaluate_delta_memory_reference() {
   memory.size = sizeof(ram);
 
   memaddr = "d0xh1";
-  rc_init_parse_state(&parse, buffer);
+  rc_init_parse_state(&parse, buffer, sizeof(buffer));
   rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&op, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -569,7 +569,7 @@ void test_evaluate_prior_memory_reference() {
   memory.size = sizeof(ram);
 
   memaddr = "p0xh1";
-  rc_init_parse_state(&parse, buffer);
+  rc_init_parse_state(&parse, buffer, sizeof(buffer));
   rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&op, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -642,7 +642,7 @@ static void test_evaluate_delta_memory_reference_float() {
   memory.size = sizeof(ram);
 
   memaddr = "dff0";
-  rc_init_parse_state(&parse, buffer);
+  rc_init_parse_state(&parse, buffer, sizeof(buffer));
   rc_init_parse_state_memrefs(&parse, &memrefs);
   rc_parse_operand(&op, &memaddr, &parse);
   rc_destroy_parse_state(&parse);
@@ -720,7 +720,7 @@ void test_operands_are_equal_memref() {
   rc_operand_t one, two, one_b, two_b, one_large, one_const;
   const char* memaddr;
 
-  rc_init_parse_state(&parse, NULL);
+  rc_init_parse_state(&parse, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   memaddr = "0xH0001";
@@ -758,7 +758,7 @@ void test_operands_are_equal_recall() {
   rc_operand_t one_const, two_const, one_const_b, one_float, one_memref, two_memref, none, none_b;
   const char* memaddr;
 
-  rc_init_parse_state(&parse, NULL);
+  rc_init_parse_state(&parse, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   memaddr = "{recall}";

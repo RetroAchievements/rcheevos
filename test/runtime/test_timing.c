@@ -1,5 +1,6 @@
 #include "rc_runtime.h"
-#include "../../src/runtime/rc_internal.h"
+
+#include "../../src/runtime/rc_trigger.h"
 
 #include "mock_memory.h"
 

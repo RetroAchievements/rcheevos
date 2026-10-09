@@ -1,7 +1,11 @@
 #include "rc_client.h"
 
 #include "rc_consoles.h"
-#include "../../src/runtime/rc_internal.h"
+#include "../../src/runtime/rc_condition.h"
+#include "../../src/runtime/rc_condset.h"
+#include "../../src/runtime/rc_format.h"
+#include "../../src/runtime/rc_lboard.h"
+#include "../../src/runtime/rc_trigger.h"
 #include "rc_api_runtime.h"
 
 #include "../../src/client/rc_client_internal.h"

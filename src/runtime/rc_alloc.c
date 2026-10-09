@@ -1,65 +1,95 @@
-#include "rc_internal.h"
+#include "rc_alloc.h"
+
+#include "rc_error.h"
+#include "rc_eval_state.h"
+#include "rc_operand.h"
+#include "rc_operator.h"
+#include "rc_parse_state.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-void* rc_alloc_scratch(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment, rc_scratch_t* scratch, uint32_t scratch_object_pointer_offset)
+typedef struct rc_scratch_string_t rc_scratch_string_t;
+
+struct rc_scratch_string_t {
+  char* value;
+  struct rc_scratch_string_t* left;
+  struct rc_scratch_string_t* right;
+};
+
+void* rc_alloc_scratch(rc_parse_state_t* parse_state, uint32_t size, uint32_t scratch_object_pointer_offset)
 {
-  void* data;
-
-  /* if we have a real buffer, then allocate the data there */
-  if (pointer)
-    return rc_alloc(pointer, offset, size, alignment, NULL, scratch_object_pointer_offset);
-
-  /* update how much space will be required in the real buffer */
-  {
-    const int32_t aligned_offset = (*offset + alignment - 1) & ~(alignment - 1);
-    *offset += (aligned_offset - *offset);
-    *offset += size;
-  }
-
-  /* find a scratch buffer to hold the temporary data */
-  data = rc_buffer_alloc(&scratch->buffer, size);
-  if (!data) {
-    *offset = RC_OUT_OF_MEMORY;
-    return NULL;
-  }
-
-  return data;
-}
-
-void* rc_alloc(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment, rc_scratch_t* scratch, uint32_t scratch_object_pointer_offset) {
   void* ptr;
 
-  *offset = (*offset + alignment - 1) & ~(alignment - 1);
+  /* if we have a real buffer, then allocate the data there */
+  if (parse_state->buffer)
+    return rc_alloc(parse_state, size, scratch_object_pointer_offset);
 
-  if (pointer != 0) {
-    /* valid buffer, grab the next chunk */
-    ptr = (void*)((uint8_t*)pointer + *offset);
-  }
-  else if (scratch != 0 && scratch_object_pointer_offset < sizeof(scratch->objs)) {
-    /* only allocate one instance of each object type (indentified by scratch_object_pointer_offset) */
-    void** scratch_object_pointer = (void**)((uint8_t*)&scratch->objs + scratch_object_pointer_offset);
-    ptr = *scratch_object_pointer;
-    if (!ptr) {
-      int32_t used;
-      ptr = *scratch_object_pointer = rc_alloc_scratch(NULL, &used, size, alignment, scratch, (uint32_t)-1);
-    }
-  }
-  else {
-    /* nowhere to get memory from, return NULL */
-    ptr = NULL;
-  }
+  /* update how much space will be required in the real buffer */
+  parse_state->offset = RC_ALIGN(parse_state->offset);
+  parse_state->offset += size;
 
-  *offset += size;
+  /* find a scratch buffer to hold the temporary data */
+  ptr = rc_buffer_alloc(&parse_state->scratch_buffer, size);
+  if (!ptr)
+    parse_state->offset = RC_OUT_OF_MEMORY;
+
   return ptr;
 }
 
-char* rc_alloc_str(rc_parse_state_t* parse, const char* text, size_t length) {
-  int32_t used = 0;
+void* rc_alloc(rc_parse_state_t* parse_state, uint32_t size, uint32_t scratch_object_pointer_offset)
+{
+  void* ptr;
+
+  parse_state->offset = RC_ALIGN(parse_state->offset);
+
+  if (parse_state->buffer) {
+    /* valid buffer, grab the next chunk */
+    ptr = (void*)((uint8_t*)parse_state->buffer + parse_state->offset);
+
+    parse_state->offset += size;
+    if ((uint32_t)parse_state->offset > parse_state->buffer_size) {
+      parse_state->offset = RC_INSUFFICIENT_BUFFER;
+      return NULL;
+    }
+
+    return ptr;
+  }
+
+  if (scratch_object_pointer_offset) {
+    void** scratch_object_pointer;
+
+    /* make sure the scratch pointer array is available */
+    if (!parse_state->scratch) {
+      parse_state->scratch = (rc_scratch_t*)rc_buffer_alloc(&parse_state->scratch_buffer, sizeof(rc_scratch_t));
+      memset(parse_state->scratch, 0, sizeof(rc_scratch_t));
+    }
+
+    /* only allocate one instance of each object type (indentified by scratch_object_pointer_offset) */
+    scratch_object_pointer = (void**)((uint8_t*)parse_state->scratch + scratch_object_pointer_offset);
+    ptr = *scratch_object_pointer;
+
+    if (ptr) {
+      /* this object type's instance has been allocated, but we still need to tally space for the real data. */
+      parse_state->offset += size;
+    }
+    else {
+      /* this object type's instance hasn't been allocated yet. do so now. */
+      ptr = *scratch_object_pointer = rc_alloc_scratch(parse_state, size, scratch_object_pointer_offset);
+    }
+  }
+  else {
+    ptr = rc_alloc_scratch(parse_state, size, scratch_object_pointer_offset);
+  }
+
+  return ptr;
+}
+
+const char* rc_alloc_str(rc_parse_state_t* parse, const char* text, size_t length)
+{
   char* ptr;
 
-  rc_scratch_string_t** next = &parse->scratch.strings;
+  rc_scratch_string_t** next = &parse->strings;
   while (*next) {
     int diff = strncmp(text, (*next)->value, length);
     if (diff == 0) {
@@ -74,8 +104,8 @@ char* rc_alloc_str(rc_parse_state_t* parse, const char* text, size_t length) {
       next = &(*next)->right;
   }
 
-  *next = (rc_scratch_string_t*)rc_alloc_scratch(NULL, &used, sizeof(rc_scratch_string_t), RC_ALIGNOF(rc_scratch_string_t), &parse->scratch, RC_OFFSETOF(parse->scratch.objs, __rc_scratch_string_t));
-  ptr = (char*)rc_alloc_scratch(parse->buffer, &parse->offset, (uint32_t)length + 1, RC_ALIGNOF(char), &parse->scratch, (uint32_t)-1);
+  *next = (rc_scratch_string_t*)rc_buffer_alloc(&parse->scratch_buffer, sizeof(rc_scratch_string_t));
+  ptr = (char*)rc_alloc(parse, (uint32_t)length + 1, 0);
 
   if (!ptr || !*next) {
     if (parse->offset >= 0)
@@ -96,7 +126,7 @@ char* rc_alloc_str(rc_parse_state_t* parse, const char* text, size_t length) {
 
 void rc_init_preparse_state(rc_preparse_state_t* preparse)
 {
-  rc_init_parse_state(&preparse->parse, NULL);
+  rc_init_parse_state(&preparse->parse, NULL, 0);
   rc_init_parse_state_memrefs(&preparse->parse, &preparse->memrefs);
 }
 
@@ -140,9 +170,8 @@ void rc_preparse_alloc_memrefs(rc_memrefs_t* memrefs, rc_preparse_state_t* prepa
   /* when preparsing, this structure will be allocated at the end. when it's allocated earlier
    * in the buffer, it could be followed by something aligned at 8 bytes. force the offset to
    * an 8-byte boundary */
-  if (!memrefs) {
-    rc_alloc(preparse->parse.buffer, &preparse->parse.offset, 0, 8, &preparse->parse.scratch, 0);
-  }
+  if (!memrefs)
+    preparse->parse.offset = RC_ALIGN(preparse->parse.offset);
 }
 
 static uint32_t rc_preparse_array_size(uint32_t needed, uint32_t minimum)
@@ -155,8 +184,8 @@ static uint32_t rc_preparse_array_size(uint32_t needed, uint32_t minimum)
 
 void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* memrefs)
 {
-  uint32_t num_memrefs = rc_memrefs_count_memrefs(&preparse->memrefs);
-  uint32_t num_modified_memrefs = rc_memrefs_count_modified_memrefs(&preparse->memrefs);
+  const uint32_t num_memrefs = rc_memrefs_count_memrefs(&preparse->memrefs);
+  const uint32_t num_modified_memrefs = rc_memrefs_count_modified_memrefs(&preparse->memrefs);
   uint32_t available;
 
   if (preparse->parse.offset < 0)
@@ -252,7 +281,7 @@ static void rc_preparse_sync_operand(rc_operand_t* operand, rc_parse_state_t* pa
   }
 }
 
-void rc_preparse_copy_memrefs(rc_parse_state_t* parse, rc_memrefs_t* memrefs)
+void rc_preparse_copy_memrefs(rc_parse_state_t* parse, const rc_memrefs_t* memrefs)
 {
   const rc_memref_list_t* memref_list = &memrefs->memrefs;
   const rc_modified_memref_list_t* modified_memref_list = &memrefs->modified_memrefs;
@@ -279,38 +308,52 @@ void rc_preparse_copy_memrefs(rc_parse_state_t* parse, rc_memrefs_t* memrefs)
   }
 }
 
-void rc_reset_parse_state(rc_parse_state_t* parse, void* buffer)
+void rc_reset_parse_state(rc_parse_state_t* parse, void* buffer, size_t buffer_size)
 {
   parse->buffer = buffer;
+  parse->buffer_size = (uint32_t)buffer_size;
 
   parse->offset = 0;
+
+  parse->strings = NULL;
+
   parse->memrefs = NULL;
   parse->existing_memrefs = NULL;
   parse->variables = NULL;
-  parse->measured_target = 0;
-  parse->lines_read = 0;
-  parse->addsource_oper = RC_OPERATOR_NONE;
+
   parse->addsource_parent.type = RC_OPERAND_NONE;
   parse->indirect_parent.type = RC_OPERAND_NONE;
   parse->remember.type = RC_OPERAND_NONE;
+
+  parse->measured_target = 0;
+  parse->lines_read = 0;
+
+  parse->addsource_oper = RC_OPERATOR_NONE;
   parse->is_value = 0;
   parse->has_required_hits = 0;
   parse->measured_as_percent = 0;
   parse->ignore_non_parse_errors = 0;
 
-  parse->scratch.strings = NULL;
+  /* NOTE: cannot reset scratch_buffer as it contains the memrefs that need to be copied into the new buffer */
+
+  parse->scratch = NULL;
 }
 
-void rc_init_parse_state(rc_parse_state_t* parse, void* buffer)
+void rc_init_parse_state(rc_parse_state_t* parse, void* buffer, size_t buffer_size)
 {
-  /* could use memset here, but rc_parse_state_t contains a 512 byte buffer that doesn't need to be initialized */
-  rc_buffer_init(&parse->scratch.buffer);
-  memset(&parse->scratch.objs, 0, sizeof(parse->scratch.objs));
+  rc_buffer_init(&parse->scratch_buffer);
 
-  rc_reset_parse_state(parse, buffer);
+  rc_reset_parse_state(parse, buffer, buffer_size);
 }
 
 void rc_destroy_parse_state(rc_parse_state_t* parse)
 {
-  rc_buffer_destroy(&parse->scratch.buffer);
+  rc_buffer_destroy(&parse->scratch_buffer);
+}
+
+void rc_init_eval_state(rc_eval_state_t* eval_state, rc_read_memory_func_t read_memory, void* ud)
+{
+  memset(eval_state, 0, sizeof(*eval_state));
+  eval_state->read_memory = read_memory;
+  eval_state->read_memory_userdata = ud;
 }

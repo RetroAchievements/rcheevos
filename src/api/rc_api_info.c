@@ -2,7 +2,7 @@
 #include "rc_api_common.h"
 #include "rc_api_runtime.h"
 
-#include "rc_runtime_types.h"
+#include "../runtime/rc_format.h"
 
 #include "../util/rc_compat.h"
 

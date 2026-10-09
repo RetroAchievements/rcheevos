@@ -1,6 +1,23 @@
-#include "rc_internal.h"
+#include "rc_condset.h"
+
+#include "rc_alloc.h"
+#include "rc_condition.h"
+#include "rc_error.h"
+#include "rc_eval_state.h"
+#include "rc_operator.h"
+#include "rc_parse_state.h"
 
 #include <string.h> /* memcpy */
+
+typedef struct rc_condset_with_trailing_conditions_t rc_condset_with_trailing_conditions_t;
+
+struct rc_condset_with_trailing_conditions_t {
+  /* The condition set. */
+  rc_condset_t condset;
+
+  /* The base array pointer for a dynamically allocated block of conditions. */
+  rc_condition_t conditions[2];
+};
 
 enum {
   RC_CONDITION_CLASSIFICATION_COMBINING,
@@ -55,7 +72,7 @@ static int32_t rc_classify_conditions(rc_condset_t* self, const char* memaddr, c
   uint32_t index = 0;
   uint16_t chain_length = 1;
 
-  rc_init_parse_state(&parse, NULL);
+  rc_init_parse_state(&parse, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
   parse.ignore_non_parse_errors = parent_parse->ignore_non_parse_errors;
 
@@ -119,7 +136,7 @@ static int rc_find_next_classification(const char* memaddr) {
   rc_condition_t condition;
   int classification;
 
-  rc_init_parse_state(&parse, NULL);
+  rc_init_parse_state(&parse, NULL, 0);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   do {
@@ -674,17 +691,10 @@ void rc_test_condset_internal(rc_condition_t* condition, uint32_t num_conditions
   }
 }
 
-rc_condition_t* rc_condset_get_conditions(rc_condset_t* self) {
-  if (self->conditions)
-    return RC_GET_TRAILING(self, rc_condset_with_trailing_conditions_t, rc_condition_t, conditions);
-
-  return NULL;
-}
-
 int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
   rc_condition_t* conditions;
 
-  /* reset the processing state before processing each condset. do not reset the result state. */
+  /* reset the condition processing state before processing each condset. do not reset the trigger processing state. */
   eval_state->measured_value.type = RC_VALUE_TYPE_NONE;
   eval_state->add_hits = 0;
   eval_state->is_true = 1;
@@ -775,4 +785,21 @@ void rc_reset_condset(rc_condset_t* self) {
   for (condition = self->conditions; condition != 0; condition = condition->next) {
     condition->current_hits = 0;
   }
+}
+
+rc_condition_t* rc_condset_get_conditions(rc_condset_t* self) {
+  return RC_GET_TRAILING(self, rc_condset_with_trailing_conditions_t, rc_condition_t, conditions);
+}
+
+rc_condset_t* rc_alloc_condset(uint32_t num_conditions, rc_parse_state_t* parse)
+{
+  rc_condset_with_trailing_conditions_t* condset_with_conditions;
+
+  condset_with_conditions = RC_ALLOC_WITH_TRAILING(rc_condset_with_trailing_conditions_t,
+    rc_condition_t, conditions, num_conditions, parse);
+
+  if (parse->offset < 0)
+    return NULL;
+
+  return (rc_condset_t*)&condset_with_conditions->condset;
 }

@@ -1,4 +1,10 @@
-#include "../../src/runtime/rc_internal.h"
+#include "../../src/runtime/rc_condset.h"
+
+#include "rc_error.h"
+#include "../../src/runtime/rc_alloc.h"
+#include "../../src/runtime/rc_condition.h"
+#include "../../src/runtime/rc_eval_state.h"
+#include "../../src/runtime/rc_parse_state.h"
 
 #include "../test_framework.h"
 #include "mock_memory.h"
@@ -10,7 +16,7 @@ static void _assert_parse_condset(rc_condset_t** condset, rc_memrefs_t* memrefs,
   rc_parse_state_t parse;
   int size;
 
-  rc_init_parse_state(&parse, buffer);
+  rc_init_parse_state(&parse, buffer, 0xFFFFFFFF); /* TODO: pass actual buffer size through helper */
   rc_init_parse_state_memrefs(&parse, memrefs);
 
   *condset = rc_parse_condset(&memaddr, &parse);
@@ -26,11 +32,11 @@ static void _assert_evaluate_condset(rc_condset_t* condset, rc_memrefs_t* memref
   int result;
   rc_eval_state_t eval_state;
 
-  rc_update_memref_values(memrefs, read_memory, memory);
-
   memset(&eval_state, 0, sizeof(eval_state));
   eval_state.read_memory = read_memory;
   eval_state.read_memory_userdata = memory;
+
+  rc_update_memref_values(memrefs, &eval_state);
 
   result = rc_test_condset(condset, &eval_state);
 
@@ -2908,7 +2914,7 @@ static void test_addsource_long_chain() {
   ptr = (char*)RC_ALIGN((size_t)ptr);
   remaining = buffer_size - (ptr - buffer);
 
-  rc_init_parse_state(&parse, ptr);
+  rc_init_parse_state(&parse, ptr, remaining);
   rc_init_parse_state_memrefs(&parse, &memrefs);
 
   start = clock();

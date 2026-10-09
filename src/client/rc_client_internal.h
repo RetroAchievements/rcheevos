@@ -15,9 +15,16 @@
 
 #include "../util/rc_compat.h"
 #include "rc_runtime.h"
-#include "rc_runtime_types.h"
 
 RC_BEGIN_C_DECLS
+
+/*****************************************************************************\
+| Forward Declarations (internal types)                                       |
+\*****************************************************************************/
+
+struct rc_lboard_t;  /* rc_lboard.h */
+struct rc_memref_t;  /* rc_memref.h */
+struct rc_trigger_t; /* rc_trigger.h */
 
 /*****************************************************************************\
 | Callbacks                                                                   |
@@ -86,7 +93,7 @@ enum {
 typedef struct rc_client_achievement_info_t {
   rc_client_achievement_t public_;
 
-  rc_trigger_t* trigger;
+  struct rc_trigger_t* trigger;
   uint8_t md5[16];
 
   time_t unlock_time_hardcore;
@@ -160,7 +167,7 @@ enum {
 typedef struct rc_client_leaderboard_info_t {
   rc_client_leaderboard_t public_;
 
-  rc_lboard_t* lboard;
+  struct rc_lboard_t* lboard;
   uint8_t md5[16];
 
   rc_client_leaderboard_tracker_info_t* tracker;
@@ -341,7 +348,7 @@ typedef struct rc_client_state_t {
 
   struct rc_client_load_state_t* load;
   struct rc_client_async_handle_t* async_handles[4];
-  rc_memref_t* processing_memref;
+  struct rc_memref_t* processing_memref;
 } rc_client_state_t;
 
 struct rc_client_t {
@@ -382,8 +389,8 @@ void rc_client_log_message(const rc_client_t* client, const char* message);
 
 /* internals pulled from runtime.c */
 void rc_runtime_checksum(const char* memaddr, uint8_t* md5);
-int rc_trigger_contains_memref(const rc_trigger_t* trigger, const rc_memref_t* memref);
-int rc_value_contains_memref(const rc_value_t* value, const rc_memref_t* memref);
+int rc_trigger_contains_memref(const struct rc_trigger_t* trigger, const struct rc_memref_t* memref);
+int rc_value_contains_memref(const struct rc_value_t* value, const struct rc_memref_t* memref);
 /* end runtime.c internals */
 
 /* helper functions for unit tests */

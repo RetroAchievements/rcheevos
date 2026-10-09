@@ -1,4 +1,4 @@
-#include "../../src/runtime/rc_internal.h"
+#include "../../src/runtime/rc_format.h"
 
 #include "../test_framework.h"
 
