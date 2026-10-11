@@ -1,4 +1,7 @@
-#include "../../src/runtime/rc_internal.h"
+#include "../../src/runtime/rc_lboard.h"
+
+#include "rc_error.h"
+#include "../../src/runtime/rc_eval_state.h"
 
 #include "../test_framework.h"
 #include "mock_memory.h"
@@ -24,7 +27,10 @@ static void _assert_parse_lboard(rc_lboard_t** lboard, void* buffer, const char*
 #define assert_parse_lboard(lboard, buffer, memaddr) ASSERT_HELPER(_assert_parse_lboard(lboard, buffer, memaddr), "assert_parse_lboard")
 
 static int evaluate_lboard(rc_lboard_t* lboard, memory_t* memory, int* value) {
-  return rc_evaluate_lboard(lboard, value, read_memory, memory, NULL);
+  rc_eval_state_t eval_state;
+  rc_init_eval_state(&eval_state, read_memory, memory);
+
+  return rc_evaluate_lboard(lboard, value, &eval_state);
 }
 
 static void test_simple_leaderboard() {

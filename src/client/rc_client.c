@@ -8,7 +8,17 @@
 
 #include "../api/rc_api_common.h"
 
-#include "../runtime/rc_internal.h"
+#include "../runtime/rc_alloc.h"
+#include "../runtime/rc_condition.h"
+#include "../runtime/rc_condset.h"
+#include "../runtime/rc_eval_state.h"
+#include "../runtime/rc_format.h"
+#include "../runtime/rc_lboard.h"
+#include "../runtime/rc_memref.h"
+#include "../runtime/rc_parse_state.h"
+#include "../runtime/rc_richpresence.h"
+#include "../runtime/rc_trigger.h"
+#include "../runtime/rc_value.h"
 
 #include "../util/rc_version.h"
 
@@ -2118,7 +2128,7 @@ static void rc_client_copy_achievements(rc_client_load_state_t* load_state,
     }
     else {
       /* populate the item, using the communal memrefs pool */
-      rc_reset_parse_state(&preparse.parse, rc_buffer_reserve(buffer, trigger_size));
+      rc_reset_parse_state(&preparse.parse, rc_buffer_reserve(buffer, trigger_size), trigger_size);
       rc_preparse_reserve_memrefs(&preparse, load_state->game->runtime.memrefs);
       achievement->trigger = RC_ALLOC(rc_trigger_t, &preparse.parse);
       memaddr = read->definition;
@@ -2265,7 +2275,7 @@ static void rc_client_copy_leaderboards(rc_client_load_state_t* load_state,
     }
     else {
       /* populate the item, using the communal memrefs pool */
-      rc_reset_parse_state(&preparse.parse, rc_buffer_reserve(buffer, lboard_size));
+      rc_reset_parse_state(&preparse.parse, rc_buffer_reserve(buffer, lboard_size), lboard_size);
       rc_preparse_reserve_memrefs(&preparse, load_state->game->runtime.memrefs);
       leaderboard->lboard = RC_ALLOC(rc_lboard_t, &preparse.parse);
       rc_parse_lboard_internal(leaderboard->lboard, memaddr, &preparse.parse);
@@ -5989,7 +5999,7 @@ int rc_client_is_processing_required(rc_client_t* client)
   return (client->game->runtime.richpresence && client->game->runtime.richpresence->richpresence);
 }
 
-static void rc_client_update_memref_values(rc_client_t* client) {
+static void rc_client_update_memref_values(rc_client_t* client, rc_eval_state_t* eval_state) {
   rc_memrefs_t* memrefs = client->game->runtime.memrefs;
   rc_memref_list_t* memref_list;
   rc_modified_memref_list_t* modified_memref_list;
@@ -6032,7 +6042,7 @@ static void rc_client_update_memref_values(rc_client_t* client) {
 
       for (; modified_memref < modified_memref_stop; ++modified_memref) {
         rc_update_memref_value(&modified_memref->memref.value,
-            rc_get_modified_memref_value(modified_memref, rc_client_read_modified_memory_helper, client));
+            rc_get_modified_memref_value(modified_memref, eval_state));
       }
 
       modified_memref_list = modified_memref_list->next;
@@ -6043,7 +6053,7 @@ static void rc_client_update_memref_values(rc_client_t* client) {
     rc_client_update_active_achievements(client->game);
 }
 
-static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_client_subset_info_t* subset)
+static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_client_subset_info_t* subset, rc_eval_state_t* eval_state)
 {
   rc_client_achievement_info_t* achievement = subset->achievements;
   rc_client_achievement_info_t* stop = achievement + subset->public_.num_achievements;
@@ -6058,7 +6068,7 @@ static void rc_client_do_frame_process_achievements(rc_client_t* client, rc_clie
 
     old_measured_value = trigger->measured_value;
     old_state = trigger->state;
-    new_state = rc_evaluate_trigger(trigger, rc_client_read_modified_memory_helper, client, NULL);
+    new_state = rc_test_trigger(trigger, eval_state);
 
     /* trigger->state doesn't actually change to RESET - RESET just serves as a notification.
      * we don't care about that particular notification, so look at the actual state. */
@@ -6247,7 +6257,7 @@ static void rc_client_raise_mastery_event(rc_client_t* client, rc_client_subset_
   client->callbacks.event_handler(&client_event, client);
 }
 
-static void rc_client_do_frame_process_leaderboards(rc_client_t* client, rc_client_subset_info_t* subset)
+static void rc_client_do_frame_process_leaderboards(rc_client_t* client, rc_client_subset_info_t* subset, rc_eval_state_t* eval_state)
 {
   rc_client_leaderboard_info_t* leaderboard = subset->leaderboards;
   rc_client_leaderboard_info_t* stop = leaderboard + subset->public_.num_leaderboards;
@@ -6269,7 +6279,7 @@ static void rc_client_do_frame_process_leaderboards(rc_client_t* client, rc_clie
     }
 
     old_state = lboard->state;
-    new_state = rc_evaluate_lboard(lboard, &leaderboard->value, rc_client_read_modified_memory_helper, client, NULL);
+    new_state = rc_evaluate_lboard(lboard, &leaderboard->value, eval_state);
 
     switch (new_state) {
       case RC_LBOARD_STATE_STARTED: /* leaderboard is running */
@@ -6452,17 +6462,20 @@ void rc_client_do_frame(rc_client_t* client)
   if (client->game && !client->game->waiting_for_reset) {
     rc_runtime_richpresence_t* richpresence;
     rc_client_subset_info_t* subset;
+    rc_eval_state_t eval_state;
+
+    rc_init_eval_state(&eval_state, rc_client_read_modified_memory_helper, client);
 
     rc_mutex_lock(&client->state.mutex);
 
     rc_client_reset_pending_events(client);
 
-    rc_client_update_memref_values(client);
+    rc_client_update_memref_values(client, &eval_state);
 
     client->game->progress_tracker.progress = 0.0;
     for (subset = client->game->subsets; subset; subset = subset->next) {
       if (subset->active)
-        rc_client_do_frame_process_achievements(client, subset);
+        rc_client_do_frame_process_achievements(client, subset, &eval_state);
     }
     if (client->game->pending_events & RC_CLIENT_GAME_PENDING_EVENT_PROGRESS_TRACKER)
       rc_client_do_frame_update_progress_tracker(client, client->game);
@@ -6470,13 +6483,13 @@ void rc_client_do_frame(rc_client_t* client)
     if (client->state.hardcore || client->state.allow_leaderboards_in_casual) {
       for (subset = client->game->subsets; subset; subset = subset->next) {
         if (subset->active)
-          rc_client_do_frame_process_leaderboards(client, subset);
+          rc_client_do_frame_process_leaderboards(client, subset, &eval_state);
       }
     }
 
     richpresence = client->game->runtime.richpresence;
     if (richpresence && richpresence->richpresence)
-      rc_update_richpresence_internal(richpresence->richpresence, rc_client_read_modified_memory_helper, client);
+      rc_update_richpresence(richpresence->richpresence, &eval_state);
 
     rc_mutex_unlock(&client->state.mutex);
 

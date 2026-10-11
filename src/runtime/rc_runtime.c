@@ -1,5 +1,15 @@
 #include "rc_runtime.h"
-#include "rc_internal.h"
+
+#include "rc_alloc.h"
+#include "rc_condition.h"
+#include "rc_condset.h"
+#include "rc_eval_state.h"
+#include "rc_format.h"
+#include "rc_lboard.h"
+#include "rc_operator.h" /* used by natvis stuff */
+#include "rc_parse_state.h"
+#include "rc_richpresence.h"
+#include "rc_trigger.h"
 
 #include "../util/md5.h"
 #include "../util/rc_compat.h"
@@ -11,20 +21,62 @@
 
 /* ===== natvis extensions ===== */
 
-typedef struct __rc_runtime_trigger_list_t { rc_runtime_t runtime; } __rc_runtime_trigger_list_t;
+/* Helpers for natvis expansion. Have to use a struct to define the mapping,
+ * and a single field to allow the conditional logic to switch on the value */
+typedef struct __rc_bool_enum_t { uint8_t value; } __rc_bool_enum_t;
+typedef struct __rc_condition_enum_t { uint8_t value; } __rc_condition_enum_t;
+typedef struct __rc_condition_enum_str_t { uint8_t value; } __rc_condition_enum_str_t;
+typedef struct __rc_condset_list_t { rc_condset_t* first_condset; } __rc_condset_list_t;
+typedef struct __rc_format_enum_t { uint8_t value; } __rc_format_enum_t;
+typedef struct __rc_lboard_state_enum_t { uint8_t value; } __rc_lboard_state_enum_t;
+typedef struct __rc_memref_type_enum_t { uint8_t value; } __rc_memref_type_enum_t;
+typedef struct __rc_memsize_enum_t { uint8_t value; } __rc_memsize_enum_t;
+typedef struct __rc_memsize_enum_func_t { uint8_t value; } __rc_memsize_enum_func_t;
+typedef struct __rc_operand_enum_t { uint8_t value; } __rc_operand_enum_t;
+typedef struct __rc_operand_memref_t { rc_operand_t operand; } __rc_operand_memref_t; /* requires &rc_operand_t to be the same as &rc_operand_t.value.memref */
+typedef struct __rc_operator_enum_t { uint8_t value; } __rc_operator_enum_t;
+typedef struct __rc_operator_enum_str_t { uint8_t value; } __rc_operator_enum_str_t;
+typedef struct __rc_richpresence_display_list_t { rc_richpresence_display_t* first_display; } __rc_richpresence_display_list_t;
+typedef struct __rc_richpresence_display_part_list_t { rc_richpresence_display_part_t* display; } __rc_richpresence_display_part_list_t;
+typedef struct __rc_richpresence_lookup_list_t { rc_richpresence_lookup_t* first_lookup; } __rc_richpresence_lookup_list_t;
 typedef struct __rc_runtime_lboard_list_t { rc_runtime_t runtime; } __rc_runtime_lboard_list_t;
+typedef struct __rc_runtime_trigger_list_t { rc_runtime_t runtime; } __rc_runtime_trigger_list_t;
+typedef struct __rc_trigger_state_enum_t { uint8_t value; } __rc_trigger_state_enum_t;
+typedef struct __rc_value_list_t { rc_value_t* first_value; } __rc_value_list_t;
+typedef struct __rc_value_type_enum_t { uint8_t value; } __rc_value_type_enum_t;
 
 static void rc_runtime_natvis_helper(const rc_runtime_event_t* runtime_event)
 {
   struct natvis_extensions {
-    __rc_runtime_trigger_list_t trigger_list;
-    __rc_runtime_lboard_list_t lboard_list;
+    union {
+      __rc_bool_enum_t boolean;
+      __rc_condition_enum_t condition;
+      __rc_condition_enum_str_t condition_str;
+      __rc_condset_list_t condset_list;
+      __rc_format_enum_t format;
+      __rc_lboard_state_enum_t lboard_state;
+      __rc_memref_type_enum_t memref_type;
+      __rc_memsize_enum_t memsize;
+      __rc_memsize_enum_func_t memsize_func;
+      __rc_operand_enum_t operand;
+      __rc_operand_memref_t operand_memref;
+      __rc_operator_enum_t oper;
+      __rc_operator_enum_str_t oper_str;
+      __rc_richpresence_display_list_t richpresence_display_list;
+      __rc_richpresence_display_part_list_t richpresence_display_part_list;
+      __rc_richpresence_lookup_list_t richpresence_lookup_list;
+      __rc_runtime_lboard_list_t lboard_list;
+      __rc_runtime_trigger_list_t trigger_list;
+      __rc_trigger_state_enum_t trigger_state;
+      __rc_value_list_t value_list;
+      __rc_value_type_enum_t value_type;
+    } u;
   } natvis;
 
   memset(&natvis, 0, sizeof(natvis));
   (void)runtime_event;
 
-  natvis.lboard_list.runtime.lboard_count = 0;
+  natvis.u.lboard_list.runtime.lboard_count = 0;
 }
 
 /* ============================= */
@@ -159,7 +211,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, uint32_t id, const char*
     if (self->triggers[i].id == id && memcmp(self->triggers[i].md5, md5, 16) == 0) {
       /* retrieve the trigger pointer from the buffer */
       size = 0;
-      trigger = (rc_trigger_t*)rc_alloc(self->triggers[i].buffer, &size, sizeof(rc_trigger_t), RC_ALIGNOF(rc_trigger_t), NULL, (uint32_t)-1);
+      trigger = (rc_trigger_t*)self->triggers[i].buffer;
       self->triggers[i].trigger = trigger;
 
       rc_reset_trigger(trigger);
@@ -182,7 +234,7 @@ int rc_runtime_activate_achievement(rc_runtime_t* self, uint32_t id, const char*
     return RC_OUT_OF_MEMORY;
 
   /* populate the item, using the communal memrefs pool */
-  rc_reset_parse_state(&preparse.parse, trigger_buffer);
+  rc_reset_parse_state(&preparse.parse, trigger_buffer, (size_t)size);
   rc_preparse_reserve_memrefs(&preparse, self->memrefs);
   trigger = RC_ALLOC(rc_trigger_t, &preparse.parse);
   rc_parse_trigger_internal(trigger, &memaddr, &preparse.parse);
@@ -342,7 +394,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, uint32_t id, const char* mema
     if (self->lboards[i].id == id && memcmp(self->lboards[i].md5, md5, 16) == 0) {
       /* retrieve the lboard pointer from the buffer */
       size = 0;
-      lboard = (rc_lboard_t*)rc_alloc(self->lboards[i].buffer, &size, sizeof(rc_lboard_t), RC_ALIGNOF(rc_lboard_t), NULL, (uint32_t)-1);
+      lboard = (rc_lboard_t*)self->lboards[i].buffer;
       self->lboards[i].lboard = lboard;
 
       rc_reset_lboard(lboard);
@@ -365,7 +417,7 @@ int rc_runtime_activate_lboard(rc_runtime_t* self, uint32_t id, const char* mema
     return RC_OUT_OF_MEMORY;
 
   /* populate the item, using the communal memrefs pool */
-  rc_reset_parse_state(&preparse.parse, lboard_buffer);
+  rc_reset_parse_state(&preparse.parse, lboard_buffer, (size_t)size);
   rc_preparse_reserve_memrefs(&preparse, self->memrefs);
   lboard = RC_ALLOC(rc_lboard_t, &preparse.parse);
   rc_parse_lboard_internal(lboard, memaddr, &preparse.parse);
@@ -473,7 +525,7 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, voi
   if (!self->richpresence->buffer)
     return RC_OUT_OF_MEMORY;
 
-  rc_reset_parse_state(&preparse.parse, self->richpresence->buffer);
+  rc_reset_parse_state(&preparse.parse, self->richpresence->buffer, (size_t)size);
   rc_preparse_reserve_memrefs(&preparse, self->memrefs);
   richpresence = RC_ALLOC(rc_richpresence_t, &preparse.parse);
   preparse.parse.variables = &richpresence->values;
@@ -501,8 +553,13 @@ int rc_runtime_activate_richpresence(rc_runtime_t* self, const char* script, voi
 }
 
 int rc_runtime_get_richpresence(const rc_runtime_t* self, char* buffer, size_t buffersize, rc_runtime_read_memory_func_t read_memory, void* read_memory_ud, void* unused_L) {
-  if (self->richpresence && self->richpresence->richpresence)
-    return rc_get_richpresence_display_string(self->richpresence->richpresence, buffer, buffersize, read_memory, read_memory_ud, unused_L);
+  (void)unused_L;
+
+  if (self->richpresence && self->richpresence->richpresence) {
+    rc_eval_state_t eval_state;
+    rc_init_eval_state(&eval_state, read_memory, read_memory_ud);
+    return rc_get_richpresence_display_string(self->richpresence->richpresence, buffer, buffersize, &eval_state);
+  }
 
   *buffer = '\0';
   return 0;
@@ -510,11 +567,16 @@ int rc_runtime_get_richpresence(const rc_runtime_t* self, char* buffer, size_t b
 
 void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_handler, rc_runtime_read_memory_func_t read_memory, void* ud, void* unused_L) {
   rc_runtime_event_t runtime_event;
+  rc_eval_state_t eval_state;
   int32_t i;
+
+  (void)unused_L;
 
   runtime_event.value = 0;
 
-  rc_update_memref_values(self->memrefs, read_memory, ud);
+  rc_init_eval_state(&eval_state, read_memory, ud);
+
+  rc_update_memref_values(self->memrefs, &eval_state);
 
   for (i = self->trigger_count - 1; i >= 0; --i) {
     rc_trigger_t* trigger = self->triggers[i].trigger;
@@ -540,7 +602,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
 
     old_measured_value = trigger->measured_value;
     old_state = trigger->state;
-    new_state = rc_evaluate_trigger(trigger, read_memory, ud, unused_L);
+    new_state = rc_test_trigger(trigger, &eval_state);
 
     /* trigger->state doesn't actually change to RESET, RESET just serves as a notification.
      * handle the notification, then look at the actual state */
@@ -642,7 +704,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
     }
 
     lboard_state = lboard->state;
-    switch (rc_evaluate_lboard(lboard, &runtime_event.value, read_memory, ud, unused_L))
+    switch (rc_evaluate_lboard(lboard, &runtime_event.value, &eval_state))
     {
       case RC_LBOARD_STATE_STARTED: /* leaderboard is running */
         if (lboard_state != RC_LBOARD_STATE_STARTED) {
@@ -680,7 +742,7 @@ void rc_runtime_do_frame(rc_runtime_t* self, rc_runtime_event_handler_t event_ha
   }
 
   if (self->richpresence && self->richpresence->richpresence)
-    rc_update_richpresence(self->richpresence->richpresence, read_memory, ud, unused_L);
+    rc_update_richpresence(self->richpresence->richpresence, &eval_state);
 }
 
 void rc_runtime_reset(rc_runtime_t* self) {

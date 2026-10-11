@@ -70,6 +70,9 @@
     <ClCompile Include="..\src\runtime\rc_format.c">
       <Filter>src\runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\runtime\rc_typed_value.c">
+      <Filter>src\runtime</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\src\runtime\rc_runtime_types.natvis">

@@ -1,7 +1,13 @@
 #include "rc_validate.h"
 
+#include "rc_condition.h"
+#include "rc_condset.h"
 #include "rc_consoles.h"
-#include "rc_internal.h"
+#include "rc_modified_memref.h"
+#include "rc_operand.h"
+#include "rc_operator.h"
+#include "rc_trigger.h"
+#include "rc_typed_value.h"
 
 #include "../util/rc_compat.h"
 

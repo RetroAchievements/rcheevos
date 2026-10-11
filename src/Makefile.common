@@ -59,6 +59,7 @@ RC_RUNTIME_OBJS=$(RC_SRC)/runtime/rc_alloc.o \
                 $(RC_SRC)/runtime/rc_runtime.o \
                 $(RC_SRC)/runtime/rc_runtime_progress.o \
                 $(RC_SRC)/runtime/rc_trigger.o \
+                $(RC_SRC)/runtime/rc_typed_value.o \
                 $(RC_SRC)/runtime/rc_value.o
 
 RC_UTIL_OBJS=$(RC_SRC)/util/md5.o \

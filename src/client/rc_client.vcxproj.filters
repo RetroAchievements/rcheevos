@@ -136,6 +136,9 @@
     <ClCompile Include="..\util\rc_version.c">
       <Filter>Source Files\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\rc_typed_value.c">
+      <Filter>Source Files\runtime</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\api\rc_api_common.h">
@@ -158,9 +161,6 @@
     </ClInclude>
     <ClInclude Include="..\hash\aes.h">
       <Filter>Source Files\hash</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\rc_internal.h">
-      <Filter>Source Files\runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\rc_validate.h">
       <Filter>Source Files\runtime</Filter>
@@ -198,9 +198,6 @@
     <ClInclude Include="..\..\include\rc_hash.h">
       <Filter>Source Files\hash\public</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\rc_runtime_types.h">
-      <Filter>Source Files\runtime\public</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\rc_consoles.h">
       <Filter>Source Files\runtime\public</Filter>
     </ClInclude>
@@ -215,6 +212,51 @@
     </ClInclude>
     <ClInclude Include="..\..\include\rc_util.h">
       <Filter>Source Files\util\public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_memref.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_typed_value.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_operand.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_condition.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_operator.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_modified_memref.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_condset.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_trigger.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_eval_state.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_value.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_lboard.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_format.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_richpresence.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_parse_state.h">
+      <Filter>Source Files\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\rc_alloc.h">
+      <Filter>Source Files\runtime</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

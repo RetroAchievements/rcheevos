@@ -1,4 +1,9 @@
-#include "../../src/runtime/rc_internal.h"
+#include "../../src/runtime/rc_trigger.h"
+
+#include "../../src/runtime/rc_condition.h"
+#include "../../src/runtime/rc_condset.h"
+#include "../../src/runtime/rc_eval_state.h"
+#include "../../src/runtime/rc_modified_memref.h"
 
 #include "../test_framework.h"
 #include "mock_memory.h"
@@ -25,7 +30,13 @@ static void _assert_parse_trigger(rc_trigger_t** trigger, void* buffer, size_t b
 #define assert_parse_trigger(trigger, buffer, memaddr) ASSERT_HELPER(_assert_parse_trigger(trigger, buffer, sizeof(buffer), memaddr), "assert_parse_trigger")
 
 static void _assert_evaluate_trigger(rc_trigger_t* trigger, memory_t* memory, int expected_result) {
-  int result = rc_test_trigger(trigger, read_memory, memory, NULL);
+  rc_eval_state_t eval_state;
+  int result;
+
+  rc_init_eval_state(&eval_state, read_memory, memory);
+
+  trigger->state = RC_TRIGGER_STATE_ACTIVE;
+  result = rc_test_trigger(trigger, &eval_state) == RC_TRIGGER_STATE_TRIGGERED;
   ASSERT_NUM_EQUALS(result, expected_result);
 }
 #define assert_evaluate_trigger(trigger, memory, expected_result) ASSERT_HELPER(_assert_evaluate_trigger(trigger, memory, expected_result), "assert_evaluate_trigger")
@@ -68,7 +79,10 @@ static void _assert_hit_count(rc_trigger_t* trigger, int group_index, int cond_i
 #define assert_hit_count(trigger, group_index, cond_index, expected_hit_count) ASSERT_HELPER(_assert_hit_count(trigger, group_index, cond_index, expected_hit_count), "assert_hit_count")
 
 static int evaluate_trigger(rc_trigger_t* self, memory_t* memory) {
-  return rc_evaluate_trigger(self, read_memory, memory, NULL);
+  rc_eval_state_t eval_state;
+  rc_init_eval_state(&eval_state, read_memory, memory);
+
+  return rc_test_trigger(self, &eval_state);
 }
 
 /* ======================================================== */

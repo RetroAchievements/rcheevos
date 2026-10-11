@@ -1,6 +1,9 @@
 #include "../../src/runtime/rc_validate.h"
 
+#include "../../src/runtime/rc_trigger.h"
+
 #include "rc_consoles.h"
+#include "rc_error.h"
 
 #include "../../src/util/rc_compat.h"
 #include "../test_framework.h"

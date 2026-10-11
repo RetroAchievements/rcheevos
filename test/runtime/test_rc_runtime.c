@@ -1,5 +1,10 @@
 #include "rc_runtime.h"
-#include "../../src/runtime/rc_internal.h"
+
+#include "../../src/runtime/rc_condition.h"
+#include "../../src/runtime/rc_condset.h"
+#include "../../src/runtime/rc_format.h"
+#include "../../src/runtime/rc_lboard.h"
+#include "../../src/runtime/rc_trigger.h"
 
 #include "mock_memory.h"
 

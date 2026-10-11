@@ -52,6 +52,7 @@
     <ClCompile Include="..\src\runtime\rc_runtime.c" />
     <ClCompile Include="..\src\runtime\rc_runtime_progress.c" />
     <ClCompile Include="..\src\runtime\rc_trigger.c" />
+    <ClCompile Include="..\src\runtime\rc_typed_value.c" />
     <ClCompile Include="..\src\runtime\rc_validate.c" />
     <ClCompile Include="..\src\runtime\rc_value.c" />
     <ClCompile Include="..\src\util\md5.c" />
