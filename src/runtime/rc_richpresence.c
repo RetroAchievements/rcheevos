@@ -44,7 +44,16 @@ static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t
   }
 
   /* parse the value into the scratch buffer so we can look at it */
-  rc_reset_parse_state(&preparse.parse, rc_buffer_alloc(&preparse.parse.scratch.buffer, (size_t)size));
+  {
+    void* buffer = rc_buffer_alloc(&preparse.parse.scratch.buffer, (size_t)size);
+    if (!buffer) {
+      parse->offset = RC_OUT_OF_MEMORY;
+      rc_destroy_preparse_state(&preparse);
+      return;
+    }
+
+    rc_reset_parse_state(&preparse.parse, buffer);
+  }
   preparse.parse.memrefs = parse->memrefs;
   preparse.parse.existing_memrefs = parse->existing_memrefs;
   value = RC_ALLOC(rc_value_t, &preparse.parse);
@@ -141,6 +150,9 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
 
   {
     self = RC_ALLOC(rc_richpresence_display_t, parse);
+    if (!self)
+      return NULL;
+
     memset(self, 0, sizeof(rc_richpresence_display_t));
     next = &self->display;
   }
@@ -157,6 +169,9 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
 
     if (ptr > line) {
       part = RC_ALLOC(rc_richpresence_display_part_t, parse);
+      if (!part)
+        return 0;
+
       memset(part, 0, sizeof(rc_richpresence_display_part_t));
       *next = part;
       next = &part->next;
@@ -198,6 +213,9 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
       macro_len = ptr - line;
 
       part = RC_ALLOC(rc_richpresence_display_part_t, parse);
+      if (!part)
+        return 0;
+
       memset(part, 0, sizeof(rc_richpresence_display_part_t));
       *next = part;
       next = &part->next;
@@ -385,6 +403,9 @@ static void rc_insert_richpresence_lookup_item(rc_richpresence_lookup_t* lookup,
   }
 
   item = RC_ALLOC_SCRATCH(rc_richpresence_lookup_item_t, parse);
+  if (!item)
+    return;
+
   item->first = first;
   item->last = last;
   item->label = rc_alloc_str(parse, label, label_len);
@@ -530,6 +551,9 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
       line += 7;
 
       lookup = RC_ALLOC_SCRATCH(rc_richpresence_lookup_t, parse);
+      if (!lookup)
+        return;
+
       lookup->name = rc_alloc_str(parse, line, (int)(endline - line));
       lookup->format = RC_FORMAT_LOOKUP;
       lookup->root = NULL;
@@ -552,6 +576,9 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
       }
 
       lookup = RC_ALLOC_SCRATCH(rc_richpresence_lookup_t, parse);
+      if (!lookup)
+        return;
+
       lookup->name = rc_alloc_str(parse, line, (int)(endline - line));
       lookup->root = NULL;
       lookup->default_label = "";

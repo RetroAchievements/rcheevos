@@ -190,6 +190,9 @@ void rc_condition_convert_to_operand(const rc_condition_t* condition, rc_operand
 
 rc_condition_t* rc_parse_condition(const char** memaddr, rc_parse_state_t* parse) {
   rc_condition_t * self = RC_ALLOC(rc_condition_t, parse);
+  if (!self)
+    return NULL;
+
   rc_parse_condition_internal(self, memaddr, parse);
   return (parse->offset < 0) ? NULL : self;
 }

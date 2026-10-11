@@ -7,6 +7,10 @@ void* rc_alloc_scratch(void* pointer, int32_t* offset, uint32_t size, uint32_t a
 {
   void* data;
 
+  /* after an error the offset is an error code, adding sizes to it would hide the error */
+  if (*offset < 0)
+    return NULL;
+
   /* if we have a real buffer, then allocate the data there */
   if (pointer)
     return rc_alloc(pointer, offset, size, alignment, NULL, scratch_object_pointer_offset);
@@ -31,6 +35,10 @@ void* rc_alloc_scratch(void* pointer, int32_t* offset, uint32_t size, uint32_t a
 void* rc_alloc(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment, rc_scratch_t* scratch, uint32_t scratch_object_pointer_offset) {
   void* ptr;
 
+  /* after an error the offset is an error code, not a position in the buffer */
+  if (*offset < 0)
+    return NULL;
+
   *offset = (*offset + alignment - 1) & ~(alignment - 1);
 
   if (pointer != 0) {
@@ -42,8 +50,12 @@ void* rc_alloc(void* pointer, int32_t* offset, uint32_t size, uint32_t alignment
     void** scratch_object_pointer = (void**)((uint8_t*)&scratch->objs + scratch_object_pointer_offset);
     ptr = *scratch_object_pointer;
     if (!ptr) {
-      int32_t used;
+      int32_t used = 0;
       ptr = *scratch_object_pointer = rc_alloc_scratch(NULL, &used, size, alignment, scratch, (uint32_t)-1);
+      if (!ptr) {
+        *offset = RC_OUT_OF_MEMORY;
+        return NULL;
+      }
     }
   }
   else {
@@ -81,6 +93,8 @@ char* rc_alloc_str(rc_parse_state_t* parse, const char* text, size_t length) {
     if (parse->offset >= 0)
       parse->offset = RC_OUT_OF_MEMORY;
 
+    /* don't leave a node without a value in the tree */
+    *next = NULL;
     return NULL;
   }
 

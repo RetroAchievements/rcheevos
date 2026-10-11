@@ -86,6 +86,9 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
         found |= RC_LBOARD_PROGRESS;
 
         self->progress = RC_ALLOC(rc_value_t, parse);
+        if (!self->progress)
+          return;
+
         rc_parse_value_internal(self->progress, &memaddr, parse);
       }
     }

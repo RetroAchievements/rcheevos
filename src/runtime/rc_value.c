@@ -441,6 +441,9 @@ rc_value_t* rc_alloc_variable(const char* memaddr, size_t memaddr_len, rc_parse_
 
   /* no match found, create a new entry */
   value = RC_ALLOC_SCRATCH(rc_value_t, parse);
+  if (!value)
+    return NULL;
+
   memset(value, 0, sizeof(*value));
   value->value.size = RC_MEMSIZE_VARIABLE;
   value->next = NULL;
