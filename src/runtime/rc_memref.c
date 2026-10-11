@@ -69,7 +69,7 @@ rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t 
     if (memref_list->capacity != 0) {
       rc_memref_list_t* new_memref_list = RC_ALLOC_SCRATCH(rc_memref_list_t, parse);
       if (!new_memref_list)
-        return NULL; /* parse->offset is RC_OUT_OF_MEMORY */
+        return NULL;
 
       memref_list = memref_list->next = new_memref_list;
       memref_list->next = NULL;
@@ -78,7 +78,7 @@ rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t 
     memref_list->items = RC_ALLOC_ARRAY_SCRATCH(rc_memref_t, 8, parse);
     if (!memref_list->items) {
       memref_list->count = memref_list->capacity = 0;
-      return NULL; /* parse->offset is RC_OUT_OF_MEMORY */
+      return NULL;
     }
 
     memref_list->count = 1;
@@ -155,7 +155,7 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
     if (modified_memref_list->capacity != 0) {
       rc_modified_memref_list_t* new_modified_memref_list = RC_ALLOC_SCRATCH(rc_modified_memref_list_t, parse);
       if (!new_modified_memref_list)
-        return NULL; /* parse->offset is RC_OUT_OF_MEMORY */
+        return NULL;
 
       modified_memref_list = modified_memref_list->next = new_modified_memref_list;
       modified_memref_list->next = NULL;
@@ -164,7 +164,7 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
     modified_memref_list->items = RC_ALLOC_ARRAY_SCRATCH(rc_modified_memref_t, 8, parse);
     if (!modified_memref_list->items) {
       modified_memref_list->count = modified_memref_list->capacity = 0;
-      return NULL; /* parse->offset is RC_OUT_OF_MEMORY */
+      return NULL;
     }
 
     modified_memref_list->count = 1;
