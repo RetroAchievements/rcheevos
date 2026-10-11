@@ -1,7 +1,11 @@
-#include "../../src/runtime/rc_internal.h"
+#include "../../src/runtime/rc_richpresence.h"
+
+#include "rc_error.h"
 
 #include "../test_framework.h"
 #include "mock_memory.h"
+
+#include "../../src/runtime/rc_eval_state.h"
 
 #include "../src/util/rc_compat.h"
 
@@ -10,7 +14,7 @@ static void _assert_parse_richpresence(rc_richpresence_t** richpresence, void* b
   unsigned* overflow;
   *richpresence = NULL;
 
-  size = rc_richpresence_size(script);
+  size = rc_richpresence_size_lines(script, NULL);
   ASSERT_NUM_GREATER(size, 0);
   ASSERT_NUM_LESS_EQUALS(size + 4, buffer_size);
 
@@ -27,10 +31,14 @@ static void _assert_parse_richpresence(rc_richpresence_t** richpresence, void* b
 #define assert_parse_richpresence(richpresence_out, buffer, script) ASSERT_HELPER(_assert_parse_richpresence(richpresence_out, buffer, sizeof(buffer), script), "assert_parse_richpresence")
 
 static void _assert_richpresence_output(rc_richpresence_t* richpresence, memory_t* memory, const char* expected_display_string) {
+  rc_eval_state_t eval_state;
   char output[256];
   int result;
 
-  result = rc_evaluate_richpresence(richpresence, output, sizeof(output), read_memory, memory, NULL);
+  rc_init_eval_state(&eval_state, read_memory, memory);
+  rc_update_richpresence(richpresence, &eval_state);
+
+  result = rc_get_richpresence_display_string(richpresence, output, sizeof(output), &eval_state);
   ASSERT_STR_EQUALS(output, expected_display_string);
   ASSERT_NUM_EQUALS(result, strlen(expected_display_string));
 }
@@ -57,12 +65,16 @@ static void test_simple_richpresence(const char* script, const char* expected_di
 }
 
 static void assert_buffer_boundary(rc_richpresence_t* richpresence, memory_t* memory, int buffersize, int expected_result, const char* expected_display_string) {
+  rc_eval_state_t eval_state;
   char output[256];
   int result;
   unsigned* overflow = (unsigned*)(&output[buffersize]);
   *overflow = 0xCDCDCDCD;
 
-  result = rc_evaluate_richpresence(richpresence, output, buffersize, read_memory, memory, NULL);
+  rc_init_eval_state(&eval_state, read_memory, memory);
+  rc_update_richpresence(richpresence, &eval_state);
+
+  result = rc_get_richpresence_display_string(richpresence, output, buffersize, &eval_state);
   ASSERT_NUM_EQUALS(result, expected_result);
 
   if (*overflow != 0xCDCDCDCD) {
@@ -568,12 +580,12 @@ static void test_macro_value_remember_recall() {
 }
 
 static void test_macro_value_invalid() {
-  ASSERT_NUM_EQUALS(rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x0x0001) Points"), RC_INVALID_MEMORY_OPERAND);
+  ASSERT_NUM_EQUALS(rc_richpresence_size_lines("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0x0x0001) Points", NULL), RC_INVALID_MEMORY_OPERAND);
 }
 
 static void test_macro_value_invalid_extralong_legacy() {
   /* The parameter to the Points function exceeds the 64-character buffer used to convert from legacy to new format */
-  ASSERT_NUM_EQUALS(rc_richpresence_size("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0xXc25edd2eS0xX2a7d7aa8S0xX3e1b11fdSOxX0fc93b37S0xXfdc63bc7S0xX03d3ce95S0xX548352c8S0xX3b154129) Points"), RC_INVALID_VALUE);
+  ASSERT_NUM_EQUALS(rc_richpresence_size_lines("Format:Points\nFormatType=VALUE\n\nDisplay:\n@Points(0xXc25edd2eS0xX2a7d7aa8S0xX3e1b11fdSOxX0fc93b37S0xXfdc63bc7S0xX03d3ce95S0xX548352c8S0xX3b154129) Points", NULL), RC_INVALID_VALUE);
 }
 
 static void test_macro_value_measured_if() {

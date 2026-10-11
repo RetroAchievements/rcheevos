@@ -1,6 +1,10 @@
-#include "../src/runtime/rc_internal.h"
 #include "rc_api_runtime.h"
-#include "rc_consoles.h"
+
+#include "../src/runtime/rc_condition.h"
+#include "../src/runtime/rc_condset.h"
+#include "../src/runtime/rc_lboard.h"
+#include "../src/runtime/rc_richpresence.h"
+#include "../src/runtime/rc_trigger.h"
 #include "../src/runtime/rc_validate.h"
 
 #include <stdio.h>

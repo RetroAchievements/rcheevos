@@ -1,5 +1,10 @@
 #include "rc_runtime.h"
-#include "../../src/runtime/rc_internal.h"
+
+#include "../../src/runtime/rc_condition.h"
+#include "../../src/runtime/rc_condset.h"
+#include "../../src/runtime/rc_lboard.h"
+#include "../../src/runtime/rc_modified_memref.h"
+#include "../../src/runtime/rc_trigger.h"
 
 #include "../test_framework.h"
 #include "../../src/util/md5.h"
@@ -1774,6 +1779,31 @@ static void test_rich_presence_conditional_display_md5_changed()
   rc_runtime_destroy(&runtime);
 }
 
+static void test_malformed()
+{
+  uint8_t buffer[2048];
+  rc_runtime_t runtime;
+
+  rc_runtime_init(&runtime);
+
+  assert_activate_achievement(&runtime, 1, "0xH0001=4_0x 0001=5_0xX0001=6");
+  assert_serialize(&runtime, buffer, sizeof(buffer));
+
+  /* entire buffer is a lot more than 48 bytes */
+  ASSERT_NUM_EQUALS(rc_runtime_deserialize_progress_sized(&runtime, buffer, 48, NULL), RC_INSUFFICIENT_BUFFER);
+
+  /* set size of first chunk to something where offset + size > MAX_INT */
+  buffer[8] = 0xF8;
+  buffer[9] = 0xFF;
+  buffer[10] = 0xFF;
+  buffer[11] = 0xFF;
+
+  reset_runtime(&runtime);
+  ASSERT_NUM_EQUALS(rc_runtime_deserialize_progress(&runtime, buffer, NULL), RC_INSUFFICIENT_BUFFER);
+
+  rc_runtime_destroy(&runtime);
+}
+
 /* ======================================================== */
 
 void test_runtime_progress(void) {
@@ -1816,6 +1846,8 @@ void test_runtime_progress(void) {
   TEST(test_rich_presence_tracked_hits_md5_changed);
   TEST(test_rich_presence_conditional_display);
   TEST(test_rich_presence_conditional_display_md5_changed);
+
+  TEST(test_malformed);
 
   TEST_SUITE_END();
 }

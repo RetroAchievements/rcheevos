@@ -114,16 +114,16 @@ rc_client-test: $(OBJ)
 	@echo ---------------------------------
 
 check_ctype:
-	@if grep -rnI "isalpha([^(u]" ../src/*; \
+	@if grep -rnI "isalpha([^(u]" $(RC_SRC)/*; \
 	then echo "*** Error: isalpha without unsigned char cast" && false; \
 	fi
-	@if grep -rnI "isalnum([^(u]" ../src/*; \
+	@if grep -rnI "isalnum([^(u]" $(RC_SRC)/*; \
 	then echo "*** Error: isalnum without unsigned char cast" && false; \
 	fi
-	@if grep -rnI "isdigit([^(u]" ../src/*; \
+	@if grep -rnI "isdigit([^(u]" $(RC_SRC)/*; \
 	then echo "*** Error: isdigit without unsigned char cast" && false; \
 	fi
-	@if grep -rnI "isspace([^(u]" ../src/*; \
+	@if grep -rnI "isspace([^(u]" $(RC_SRC)/*; \
 	then echo "*** Error: isspace without unsigned char cast" && false; \
 	fi
 

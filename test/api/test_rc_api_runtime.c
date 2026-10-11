@@ -1,9 +1,9 @@
 #include "rc_api_runtime.h"
 
 #include "rc_error.h"
-#include "rc_runtime_types.h"
 
 #include "../../src/api/rc_api_common.h"
+#include "../../src/runtime/rc_format.h"
 #include "../test_framework.h"
 
 #define DOREQUEST_URL "https://retroachievements.org/dorequest.php"

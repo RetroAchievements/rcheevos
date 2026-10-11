@@ -34,6 +34,7 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Globals">
     <ProjectName>rc_client</ProjectName>
     <ProjectGuid>{4916FA87-56EE-4B79-B3C4-D5B723847A48}</ProjectGuid>
@@ -41,9 +42,9 @@
     <RootNamespace>rcheevos</RootNamespace>
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+    <VCToolsVersion />
   </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -79,6 +80,7 @@
     <ClCompile Include="..\runtime\rc_lboard.c" />
     <ClCompile Include="..\runtime\rc_memref.c" />
     <ClCompile Include="..\runtime\rc_operand.c" />
+    <ClCompile Include="..\runtime\rc_typed_value.c" />
     <ClCompile Include="..\runtime\rc_validate.c" />
     <ClCompile Include="..\runtime\rc_richpresence.c" />
     <ClCompile Include="..\runtime\rc_runtime.c" />
@@ -106,13 +108,26 @@
     <ClInclude Include="..\..\include\rc_export.h" />
     <ClInclude Include="..\..\include\rc_hash.h" />
     <ClInclude Include="..\..\include\rc_runtime.h" />
-    <ClInclude Include="..\..\include\rc_runtime_types.h" />
     <ClInclude Include="..\..\include\rc_util.h" />
     <ClInclude Include="..\api\rc_api_common.h" />
     <ClInclude Include="..\hash\aes.h" />
     <ClInclude Include="..\hash\rc_hash_internal.h" />
-    <ClInclude Include="..\runtime\rc_internal.h" />
+    <ClInclude Include="..\runtime\rc_alloc.h" />
+    <ClInclude Include="..\runtime\rc_condition.h" />
+    <ClInclude Include="..\runtime\rc_condset.h" />
+    <ClInclude Include="..\runtime\rc_eval_state.h" />
+    <ClInclude Include="..\runtime\rc_format.h" />
+    <ClInclude Include="..\runtime\rc_lboard.h" />
+    <ClInclude Include="..\runtime\rc_memref.h" />
+    <ClInclude Include="..\runtime\rc_modified_memref.h" />
+    <ClInclude Include="..\runtime\rc_operand.h" />
+    <ClInclude Include="..\runtime\rc_operator.h" />
+    <ClInclude Include="..\runtime\rc_parse_state.h" />
+    <ClInclude Include="..\runtime\rc_richpresence.h" />
+    <ClInclude Include="..\runtime\rc_trigger.h" />
+    <ClInclude Include="..\runtime\rc_typed_value.h" />
     <ClInclude Include="..\runtime\rc_validate.h" />
+    <ClInclude Include="..\runtime\rc_value.h" />
     <ClInclude Include="..\util\md5.h" />
     <ClInclude Include="..\util\rc_compat.h" />
     <ClInclude Include="..\util\rc_version.h" />

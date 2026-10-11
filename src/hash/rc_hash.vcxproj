@@ -18,6 +18,7 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Globals">
     <ProjectName>rc_hash</ProjectName>
     <ProjectGuid>{cdff5a5f-8de5-4081-981f-7a5ee4983710}</ProjectGuid>
@@ -25,9 +26,9 @@
     <RootNamespace>rcheevos</RootNamespace>
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+    <VCToolsVersion />
   </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
