@@ -71,12 +71,7 @@ typedef struct rc_client_scheduled_callback_data_t
 } rc_client_scheduled_callback_data_t;
 
 void rc_client_schedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* scheduled_callback);
-
-struct rc_client_async_handle_t {
-  uint8_t aborted;
-};
-
-int rc_client_async_handle_aborted(rc_client_t* client, rc_client_async_handle_t* async_handle);
+int rc_client_has_server_retry_scheduled_callback(rc_client_t* client);
 
 /*****************************************************************************\
 | Achievements                                                                |

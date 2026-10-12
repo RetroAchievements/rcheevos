@@ -6,6 +6,9 @@
 #include "rc_consoles.h"
 #include "rc_hash.h"
 
+#include "rc_client_async.h"
+#include "rc_client_server.h"
+
 #include "../api/rc_api_common.h"
 
 #include "../runtime/rc_alloc.h"
@@ -37,12 +40,6 @@
 
 #define RC_MINIMUM_UNPAUSED_FRAMES 20
 #define RC_PAUSE_DECAY_MULTIPLIER 4
-
-enum {
-  RC_CLIENT_ASYNC_NOT_ABORTED = 0,
-  RC_CLIENT_ASYNC_ABORTED = 1,
-  RC_CLIENT_ASYNC_DESTROYED = 2
-};
 
 typedef struct rc_client_generic_callback_data_t {
   rc_client_t* client;
@@ -417,237 +414,6 @@ void rc_client_set_get_time_millisecs_function(rc_client_t* client, rc_get_time_
   if (client->state.external_client && client->state.external_client->set_get_time_millisecs)
     client->state.external_client->set_get_time_millisecs(client, handler);
 #endif
-}
-
-int rc_client_async_handle_aborted(rc_client_t* client, rc_client_async_handle_t* async_handle)
-{
-  int aborted;
-
-  rc_mutex_lock(&client->state.mutex);
-  aborted = async_handle->aborted;
-  rc_mutex_unlock(&client->state.mutex);
-
-  return aborted;
-}
-
-static void rc_client_begin_async(rc_client_t* client, rc_client_async_handle_t* async_handle)
-{
-  size_t i;
-
-  rc_mutex_lock(&client->state.mutex);
-  for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
-    if (!client->state.async_handles[i]) {
-      client->state.async_handles[i] = async_handle;
-      break;
-    }
-  }
-  rc_mutex_unlock(&client->state.mutex);
-}
-
-static int rc_client_end_async(rc_client_t* client, rc_client_async_handle_t* async_handle)
-{
-  int aborted = async_handle->aborted;
-
-  /* if client was destroyed, mutex doesn't exist and we don't need to remove the handle from the collection */
-  if (aborted != RC_CLIENT_ASYNC_DESTROYED) {
-    size_t i;
-
-    rc_mutex_lock(&client->state.mutex);
-    for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
-      if (client->state.async_handles[i] == async_handle) {
-        client->state.async_handles[i] = NULL;
-        break;
-      }
-    }
-    aborted = async_handle->aborted;
-
-    rc_mutex_unlock(&client->state.mutex);
-  }
-
-  return aborted;
-}
-
-void rc_client_abort_async(rc_client_t* client, rc_client_async_handle_t* async_handle)
-{
-  if (async_handle && client) {
-#ifdef RC_CLIENT_SUPPORTS_EXTERNAL
-    if (client->state.external_client && client->state.external_client->abort_async) {
-      client->state.external_client->abort_async(async_handle);
-      return;
-    }
-#endif
-
-    rc_mutex_lock(&client->state.mutex);
-    async_handle->aborted = RC_CLIENT_ASYNC_ABORTED;
-    rc_mutex_unlock(&client->state.mutex);
-  }
-}
-
-static int rc_client_async_handle_valid(rc_client_t* client, rc_client_async_handle_t* async_handle)
-{
-  int valid = 0;
-  size_t i;
-
-  /* there is a small window of opportunity where the client could have been destroyed before calling
-   * this function, but this function assumes the possibility that the handle has been destroyed, so
-   * we can't check it for RC_CLIENT_ASYNC_DESTROYED before attempting to scan the client data */
-  rc_mutex_lock(&client->state.mutex);
-
-  for (i = 0; i < sizeof(client->state.async_handles) / sizeof(client->state.async_handles[0]); ++i) {
-    if (client->state.async_handles[i] == async_handle) {
-      valid = 1;
-      break;
-    }
-  }
-
-  rc_mutex_unlock(&client->state.mutex);
-
-  return valid;
-}
-
-static const char* rc_client_server_error_message(int* result, int http_status_code, const rc_api_response_t* response)
-{
-  if (!response->succeeded) {
-    if (*result == RC_OK) {
-      *result = RC_API_FAILURE;
-      if (!response->error_message)
-        return "Unexpected API failure with no error message";
-    }
-
-    if (response->error_message)
-      return response->error_message;
-  }
-
-  (void)http_status_code;
-
-  if (*result != RC_OK)
-    return rc_error_str(*result);
-
-  return NULL;
-}
-
-static void rc_client_raise_server_error_event(rc_client_t* client,
-    const char* api, uint32_t related_id, int result, const char* error_message)
-{
-  rc_client_server_error_t server_error;
-  rc_client_event_t client_event;
-
-  server_error.api = api;
-  server_error.error_message = error_message;
-  server_error.result = result;
-  server_error.related_id = related_id;
-
-  memset(&client_event, 0, sizeof(client_event));
-  client_event.type = RC_CLIENT_EVENT_SERVER_ERROR;
-  client_event.server_error = &server_error;
-
-  client->callbacks.event_handler(&client_event, client);
-}
-
-static void rc_client_update_disconnect_state(rc_client_t* client)
-{
-  rc_client_scheduled_callback_data_t* scheduled_callback;
-  uint8_t new_state = RC_CLIENT_DISCONNECT_HIDDEN;
-
-  rc_mutex_lock(&client->state.mutex);
-
-  scheduled_callback = client->state.scheduled_callbacks;
-  for (; scheduled_callback; scheduled_callback = scheduled_callback->next) {
-    if (scheduled_callback->callback == rc_client_award_achievement_retry ||
-      scheduled_callback->callback == rc_client_submit_leaderboard_entry_retry) {
-      new_state = RC_CLIENT_DISCONNECT_VISIBLE;
-      break;
-    }
-  }
-
-  if ((client->state.disconnect & RC_CLIENT_DISCONNECT_VISIBLE) != new_state) {
-    if (new_state == RC_CLIENT_DISCONNECT_VISIBLE)
-      client->state.disconnect = RC_CLIENT_DISCONNECT_HIDDEN | RC_CLIENT_DISCONNECT_SHOW_PENDING;
-    else
-      client->state.disconnect = RC_CLIENT_DISCONNECT_VISIBLE | RC_CLIENT_DISCONNECT_HIDE_PENDING;
-  }
-  else {
-    client->state.disconnect = new_state;
-  }
-
-  rc_mutex_unlock(&client->state.mutex);
-}
-
-static void rc_client_raise_disconnect_events(rc_client_t* client)
-{
-  rc_client_event_t client_event;
-  uint8_t new_state;
-
-  rc_mutex_lock(&client->state.mutex);
-
-  if (client->state.disconnect & RC_CLIENT_DISCONNECT_SHOW_PENDING)
-    new_state = RC_CLIENT_DISCONNECT_VISIBLE;
-  else
-    new_state = RC_CLIENT_DISCONNECT_HIDDEN;
-  client->state.disconnect = new_state;
-
-  rc_mutex_unlock(&client->state.mutex);
-
-  memset(&client_event, 0, sizeof(client_event));
-  client_event.type = (new_state == RC_CLIENT_DISCONNECT_VISIBLE) ?
-    RC_CLIENT_EVENT_DISCONNECTED : RC_CLIENT_EVENT_RECONNECTED;
-  client->callbacks.event_handler(&client_event, client);
-}
-
-int rc_client_should_retry(const rc_api_server_response_t* server_response)
-{
-  switch (server_response->http_status_code) {
-    case 502: /* 502 Bad Gateway */
-      /* nginx connection pool full */
-      return 1;
-
-    case 503: /* 503 Service Temporarily Unavailable */
-      /* site is in maintenance mode */
-      return 1;
-
-    case 504: /* 504 Gateway Timeout */
-      /* timeout between web server and database server */
-      return 1;
-
-    case 429: /* 429 Too Many Requests */
-      /* too many unlocks occurred at the same time */
-      return 1;
-
-    case 521: /* 521 Web Server is Down */
-      /* cloudfare could not find the server */
-      return 1;
-
-    case 522: /* 522 Connection Timed Out */
-      /* timeout connecting to server from cloudfare */
-      return 1;
-
-    case 523: /* 523 Origin is Unreachable */
-      /* cloudfare cannot find server */
-      return 1;
-
-    case 524: /* 524 A Timeout Occurred */
-      /* connection to server from cloudfare was dropped before request was completed */
-      return 1;
-
-    case 525: /* 525 SSL Handshake Failed */
-      /* web server worker connection pool is exhausted */
-      return 1;
-
-    case RC_API_SERVER_RESPONSE_RETRYABLE_CLIENT_ERROR:
-      /* client provided non-HTTP error (explicitly retryable) */
-      return 1;
-
-    case RC_API_SERVER_RESPONSE_CLIENT_ERROR:
-      /* client provided non-HTTP error (implicitly non-retryable) */
-      return 0;
-
-    default:
-      /* assume any error not handled above where no response was received should be retried */
-      if (server_response->body_length == 0 || !server_response->body || !server_response->body[0])
-        return 1;
-
-      return 0;
-  }
 }
 
 static int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_type, const char* image_name)
@@ -6584,6 +6350,21 @@ void rc_client_schedule_callback(rc_client_t* client, rc_client_scheduled_callba
   } while (1);
 
   rc_mutex_unlock(&client->state.mutex);
+}
+
+int rc_client_has_server_retry_scheduled_callback(rc_client_t* client)
+{
+  /* ASSERT: this should only be called if the mutex is held */
+
+  rc_client_scheduled_callback_data_t* scheduled_callback = client->state.scheduled_callbacks;
+  for (; scheduled_callback; scheduled_callback = scheduled_callback->next) {
+    if (scheduled_callback->callback == rc_client_award_achievement_retry ||
+      scheduled_callback->callback == rc_client_submit_leaderboard_entry_retry) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 static void rc_client_reschedule_callback(rc_client_t* client,

@@ -92,7 +92,9 @@
     <ClCompile Include="..\util\rc_util.c" />
     <ClCompile Include="..\util\rc_version.c" />
     <ClCompile Include="rc_client.c" />
+    <ClCompile Include="rc_client_async.c" />
     <ClCompile Include="rc_client_external.c" />
+    <ClCompile Include="rc_client_server.c" />
     <ClCompile Include="rc_client_raintegration.c" />
   </ItemGroup>
   <ItemGroup>
@@ -131,8 +133,10 @@
     <ClInclude Include="..\util\md5.h" />
     <ClInclude Include="..\util\rc_compat.h" />
     <ClInclude Include="..\util\rc_version.h" />
+    <ClInclude Include="rc_client_async.h" />
     <ClInclude Include="rc_client_external.h" />
     <ClInclude Include="rc_client_external_versions.h" />
+    <ClInclude Include="rc_client_server.h" />
     <ClInclude Include="rc_client_internal.h" />
     <ClInclude Include="rc_client_raintegration_internal.h" />
   </ItemGroup>

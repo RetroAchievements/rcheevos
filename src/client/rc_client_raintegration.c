@@ -2,6 +2,8 @@
 
 #include "rc_client_internal.h"
 
+#include "rc_client_async.h"
+
 #include "../api/rc_api_common.h"
 
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
