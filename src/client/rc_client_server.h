@@ -50,6 +50,13 @@ void rc_client_raise_disconnect_events(struct rc_client_t* client);
  */
 void rc_client_update_disconnect_state(struct rc_client_t* client);
 
+/**
+ * Constructs a url for the provided image (RC_IMAGE_TYPE_*)
+ *
+ * Returns RC_OK on success, or the relevent error code on failure.
+ */
+int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_type, const char* image_name);
+
 RC_END_C_DECLS
 
 #endif /* RC_CLIENT_SERVER_H */

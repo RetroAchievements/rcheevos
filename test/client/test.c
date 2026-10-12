@@ -38,6 +38,7 @@ int main(void) {
   test_rapi_info();
   test_rapi_editor();
 
+  test_client_user();
   test_client();
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   test_client_external();

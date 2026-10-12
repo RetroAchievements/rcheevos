@@ -1,5 +1,5 @@
-#ifndef RHASH_TEST_DATA_H
-#define RHASH_TEST_DATA_H
+#ifndef RHASH_TEST_HASH_DATA_H
+#define RHASH_TEST_HASH_DATA_H
 
 #include "rc_export.h"
 
@@ -29,4 +29,4 @@ void fill_image(uint8_t* image, size_t size);
 
 RC_END_C_DECLS
 
-#endif /* RHASH_TEST_DATA_H */
+#endif /* RHASH_TEST_HASH_DATA_H */

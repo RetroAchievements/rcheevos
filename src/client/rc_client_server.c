@@ -3,6 +3,7 @@
 #include "rc_client_internal.h" /* rc_client */
 
 #include "rc_api_request.h"
+#include "rc_api_runtime.h"
 #include "rc_error.h"
 
 #include "../util/rc_compat.h"
@@ -145,4 +146,30 @@ int rc_client_should_retry(const struct rc_api_server_response_t* server_respons
 
       return 0;
   }
+}
+
+int rc_client_get_image_url(char buffer[], size_t buffer_size, int image_type, const char* image_name)
+{
+  rc_api_fetch_image_request_t image_request;
+  rc_api_request_t request;
+  int result;
+
+  if (!buffer)
+    return RC_INVALID_STATE;
+
+  memset(&image_request, 0, sizeof(image_request));
+  image_request.image_type = image_type;
+  image_request.image_name = image_name;
+  result = rc_api_init_fetch_image_request_hosted(&request, &image_request, NULL);
+  if (result == RC_OK)
+  {
+    const size_t len = strlen(request.url);
+    if (len >= buffer_size)
+      result = RC_INSUFFICIENT_BUFFER;
+    else
+      memcpy(buffer, request.url, len + 1);
+  }
+
+  rc_api_destroy_request(&request);
+  return result;
 }

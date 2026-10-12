@@ -96,6 +96,7 @@
     <ClCompile Include="rc_client_external.c" />
     <ClCompile Include="rc_client_server.c" />
     <ClCompile Include="rc_client_raintegration.c" />
+    <ClCompile Include="rc_client_user.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\rc_api_editor.h" />
@@ -136,9 +137,11 @@
     <ClInclude Include="rc_client_async.h" />
     <ClInclude Include="rc_client_external.h" />
     <ClInclude Include="rc_client_external_versions.h" />
+    <ClInclude Include="rc_client_load.h" />
     <ClInclude Include="rc_client_server.h" />
     <ClInclude Include="rc_client_internal.h" />
     <ClInclude Include="rc_client_raintegration_internal.h" />
+    <ClInclude Include="rc_client_user.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\runtime\rc_runtime_types.natvis" />

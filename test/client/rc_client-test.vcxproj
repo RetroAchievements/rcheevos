@@ -52,7 +52,7 @@
     <ClCompile Include="..\api\test_rc_api_info.c" />
     <ClCompile Include="..\api\test_rc_api_runtime.c" />
     <ClCompile Include="..\api\test_rc_api_user.c" />
-    <ClCompile Include="..\hash\data.c" />
+    <ClCompile Include="..\hash\hash_data.c" />
     <ClCompile Include="..\hash\mock_filereader.c" />
     <ClCompile Include="..\hash\test_rc_cdreader.c" />
     <ClCompile Include="..\hash\test_rc_hash.c" />
@@ -76,15 +76,18 @@
     <ClCompile Include="..\runtime\test_timing.c" />
     <ClCompile Include="..\runtime\test_rc_trigger.c" />
     <ClCompile Include="..\runtime\test_rc_value.c" />
+    <ClCompile Include="client_data.c" />
+    <ClCompile Include="mock_client.c" />
     <ClCompile Include="test.c" />
     <ClCompile Include="test_rc_client.c" />
     <ClCompile Include="test_rc_client_external.c" />
     <ClCompile Include="test_rc_client_raintegration.c" />
+    <ClCompile Include="test_rc_client_user.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\libretro\rc_libretro.h" />
     <ClInclude Include="..\api\test_api.h" />
-    <ClInclude Include="..\hash\data.h" />
+    <ClInclude Include="..\hash\hash_data.h" />
     <ClInclude Include="..\hash\mock_filereader.h" />
     <ClInclude Include="..\hash\test_hash.h" />
     <ClInclude Include="..\libretro\libretro.h" />
@@ -92,6 +95,8 @@
     <ClInclude Include="..\runtime\mock_memory.h" />
     <ClInclude Include="..\runtime\test_runtime.h" />
     <ClInclude Include="..\test_framework.h" />
+    <ClInclude Include="client_data.h" />
+    <ClInclude Include="mock_client.h" />
     <ClInclude Include="test_client.h" />
   </ItemGroup>
   <ItemGroup>

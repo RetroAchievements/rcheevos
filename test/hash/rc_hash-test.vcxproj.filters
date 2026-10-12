@@ -10,9 +10,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="data.c">
-      <Filter>Source Files\hash</Filter>
-    </ClCompile>
     <ClCompile Include="mock_filereader.c">
       <Filter>Source Files\hash</Filter>
     </ClCompile>
@@ -34,16 +31,19 @@
     <ClCompile Include="test_rc_hash_zip.c">
       <Filter>Source Files\hash</Filter>
     </ClCompile>
+    <ClCompile Include="hash_data.c">
+      <Filter>Source Files\hash</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="data.h">
-      <Filter>Source Files\hash</Filter>
-    </ClInclude>
     <ClInclude Include="mock_filereader.h">
       <Filter>Source Files\hash</Filter>
     </ClInclude>
     <ClInclude Include="..\test_framework.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hash_data.h">
+      <Filter>Source Files\hash</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

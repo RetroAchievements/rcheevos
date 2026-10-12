@@ -2,6 +2,7 @@
 #define TEST_CLIENT_H
 
 void test_client();
+void test_client_user();
 
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
 void test_client_external();

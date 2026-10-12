@@ -27,6 +27,15 @@ typedef struct rc_client_async_handle_t {
   uint8_t aborted;
 } rc_client_async_handle_t;
 
+typedef void (RC_CCONV* rc_client_callback_t)(int result, const char* error_message, struct rc_client_t* client, void* userdata);
+
+typedef struct rc_client_generic_callback_data_t {
+  struct rc_client_t* client;
+  rc_client_callback_t callback;
+  void* callback_userdata;
+  rc_client_async_handle_t async_handle;
+} rc_client_generic_callback_data_t;
+
 /*****************************************************************************\
 | Functions                                                                   |
 \*****************************************************************************/
