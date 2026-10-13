@@ -148,6 +148,9 @@
     <ClCompile Include="rc_client_user.c">
       <Filter>Source Files\client</Filter>
     </ClCompile>
+    <ClCompile Include="rc_client_load.c">
+      <Filter>Source Files\client</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\api\rc_api_common.h">

@@ -309,6 +309,8 @@ enum {
   RC_CLIENT_DISCONNECT_HIDE_PENDING = (1 << 2)
 };
 
+#define RC_CLIENT_UNKNOWN_GAME_ID (uint32_t)-1
+
 struct rc_client_load_state_t;
 
 typedef struct rc_client_state_t {
@@ -359,6 +361,16 @@ struct rc_client_t {
 
 int rc_client_should_retry(const rc_api_server_response_t* server_response);
 
+void rc_client_validate_addresses(rc_client_game_info_t* game, rc_client_t* client);
+void rc_client_activate_achievements(rc_client_game_info_t* game, rc_client_t* client);
+void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_client_t* client);
+
+void rc_client_raise_pending_events(rc_client_t* client, rc_client_game_info_t* game);
+void rc_client_game_mark_ui_to_be_hidden(rc_client_t* client, rc_client_game_info_t* game);
+
+void rc_client_schedule_ping(rc_client_t* client, rc_client_game_info_t* game);
+void rc_client_unschedule_ping(rc_client_t* client, rc_client_game_info_t* game);
+
 /*****************************************************************************\
 | Helpers                                                                     |
 \*****************************************************************************/
@@ -394,7 +406,6 @@ struct rc_hash_iterator;
 struct rc_hash_iterator* rc_client_get_load_state_hash_iterator(rc_client_t* client);
 void rc_client_add_game_hash(rc_client_t* client, const char* hash, uint32_t game_id);
 #endif
-void rc_client_load_unknown_game(rc_client_t* client, const char* hash);
 /* end helper functions for unit tests */
 
 void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);

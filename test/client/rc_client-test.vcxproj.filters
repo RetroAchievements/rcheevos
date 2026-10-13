@@ -130,6 +130,9 @@
     <ClCompile Include="mock_client.c">
       <Filter>Source Files\client</Filter>
     </ClCompile>
+    <ClCompile Include="test_rc_client_load.c">
+      <Filter>Source Files\client</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\test_framework.h">

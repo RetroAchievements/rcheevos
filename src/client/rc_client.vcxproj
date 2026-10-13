@@ -94,6 +94,7 @@
     <ClCompile Include="rc_client.c" />
     <ClCompile Include="rc_client_async.c" />
     <ClCompile Include="rc_client_external.c" />
+    <ClCompile Include="rc_client_load.c" />
     <ClCompile Include="rc_client_server.c" />
     <ClCompile Include="rc_client_raintegration.c" />
     <ClCompile Include="rc_client_user.c" />
