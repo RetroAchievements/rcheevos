@@ -438,13 +438,17 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
 static uint8_t rc_condset_evaluate_condition_no_add_hits(rc_condition_t* condition, rc_eval_state_t* eval_state) {
   /* evaluate the current condition */
   uint8_t cond_valid = (uint8_t)rc_test_condition(condition, eval_state);
-  condition->is_true = cond_valid;
+  /* store only a change: an unchanged store still dirties the cache line, which
+   * costs a write-back when it's evicted (most conditions keep their value) */
+  if (condition->is_true != cond_valid)
+    condition->is_true = cond_valid;
 
   if (eval_state->reset_next) {
     /* previous ResetNextIf resets the hit count on this condition and prevents it from being true */
-    eval_state->was_cond_reset |= (condition->current_hits != 0);
-
-    condition->current_hits = 0;
+    if (condition->current_hits != 0) {
+      eval_state->was_cond_reset |= 1;
+      condition->current_hits = 0;
+    }
     cond_valid = 0;
   }
   else {
@@ -715,7 +719,8 @@ int rc_test_condset(rc_condset_t* self, rc_eval_state_t* eval_state) {
      * stop processing this group */
     rc_test_condset_internal(conditions, self->num_pause_conditions, eval_state, 1);
 
-    self->is_paused = eval_state->is_paused;
+    if (self->is_paused != eval_state->is_paused)
+      self->is_paused = eval_state->is_paused;
     if (self->is_paused) {
       /* condset is paused. stop processing immediately. */
       return 0;
