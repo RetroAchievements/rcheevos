@@ -552,6 +552,7 @@ static int rc_hash_from_buffer(char hash[33], uint32_t console_id, const rc_hash
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WASM4:
     case RC_CONSOLE_WONDERSWAN:
+    case RC_CONSOLE_ZEEBO:
     case RC_CONSOLE_ZX_SPECTRUM:
       return rc_hash_buffer(hash, iterator->buffer, iterator->buffer_size, iterator);
 
@@ -838,6 +839,7 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WASM4:
     case RC_CONSOLE_WONDERSWAN:
+    case RC_CONSOLE_ZEEBO:
     case RC_CONSOLE_ZX_SPECTRUM:
       /* generic whole-file hash - don't buffer */
       return rc_hash_whole_file(hash, iterator);
