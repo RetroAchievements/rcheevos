@@ -96,6 +96,7 @@
     <ClCompile Include="rc_client_do_frame.c" />
     <ClCompile Include="rc_client_external.c" />
     <ClCompile Include="rc_client_game.c" />
+    <ClCompile Include="rc_client_info.c" />
     <ClCompile Include="rc_client_load.c" />
     <ClCompile Include="rc_client_server.c" />
     <ClCompile Include="rc_client_raintegration.c" />
@@ -146,7 +147,6 @@
     <ClInclude Include="rc_client_server.h" />
     <ClInclude Include="rc_client_internal.h" />
     <ClInclude Include="rc_client_raintegration_internal.h" />
-    <ClInclude Include="rc_client_user.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\runtime\rc_runtime_types.natvis" />

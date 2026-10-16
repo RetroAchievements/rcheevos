@@ -1,15 +1,12 @@
 #include "rc_client.h"
 
 #include "rc_consoles.h"
-#include "rc_hash.h"
-#include "rc_api_runtime.h"
 
 #include "../../src/client/rc_client_internal.h"
-#include "../../src/util/rc_version.h"
+#include "../../src/client/rc_client_raintegration_internal.h"
 
 #include "mock_client.h"
 
-#include "../hash/hash_data.h"
 #include "../test_framework.h"
 
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION

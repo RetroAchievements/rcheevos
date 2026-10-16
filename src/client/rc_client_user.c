@@ -1,5 +1,3 @@
-#include "rc_client_user.h"
-
 #include "rc_client_async.h"
 #include "rc_client_load.h"
 #include "rc_client_internal.h"

@@ -10,11 +10,8 @@
 
 RC_BEGIN_C_DECLS
 
-/* implementation abstracted in rc_client_internal.h */
-#ifndef RC_CLIENT_RAINTEGRATION_H /* prevents pedantic redefinition error */
-typedef struct rc_client_t rc_client_t;
-#endif
-typedef struct rc_client_async_handle_t rc_client_async_handle_t;
+typedef struct rc_client_t rc_client_t;                           /* rc_client_internal.h */
+typedef struct rc_client_async_handle_t rc_client_async_handle_t; /* rc_client_async.h */
 
 /*****************************************************************************\
 | Callbacks                                                                   |
