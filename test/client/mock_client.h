@@ -57,6 +57,7 @@ void rc_client_callback_expect_success(int result, const char* error_message, st
 void rc_client_callback_expect_timeout(int result, const char* error_message, struct rc_client_t* client, void* callback_userdata);
 void rc_client_callback_expect_token_error(int result, const char* error_message, struct rc_client_t* client, void* callback_userdata);
 void rc_client_callback_expect_uncalled(int result, const char* error_message, struct rc_client_t* client, void* callback_userdata);
+void rc_client_callback_expect_unknown_game(int result, const char* error_message, struct rc_client_t* client, void* callback_userdata);
 
 RC_END_C_DECLS
 

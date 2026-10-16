@@ -873,12 +873,12 @@ typedef struct rc_client_server_error_t {
 typedef struct rc_client_event_t {
   uint32_t type;
 
-  rc_client_achievement_t* achievement;
-  rc_client_leaderboard_t* leaderboard;
-  rc_client_leaderboard_tracker_t* leaderboard_tracker;
-  rc_client_leaderboard_scoreboard_t* leaderboard_scoreboard;
-  rc_client_server_error_t* server_error;
-  rc_client_subset_t* subset;
+  const rc_client_achievement_t* achievement;
+  const rc_client_leaderboard_t* leaderboard;
+  const rc_client_leaderboard_tracker_t* leaderboard_tracker;
+  const rc_client_leaderboard_scoreboard_t* leaderboard_scoreboard;
+  const rc_client_server_error_t* server_error;
+  const rc_client_subset_t* subset;
 
 } rc_client_event_t;
 

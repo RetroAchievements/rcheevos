@@ -2,6 +2,7 @@
 #define RC_CLIENT_INTERNAL_H
 
 #include "rc_client.h"
+#include "rc_client_do_frame.h"
 
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
  #include "rc_client_raintegration_internal.h"
@@ -58,20 +59,6 @@ typedef struct rc_client_callbacks_t {
   void* client_data;
 } rc_client_callbacks_t;
 
-struct rc_client_scheduled_callback_data_t;
-typedef void (RC_CCONV *rc_client_scheduled_callback_t)(struct rc_client_scheduled_callback_data_t* callback_data, rc_client_t* client, rc_clock_t now);
-
-typedef struct rc_client_scheduled_callback_data_t
-{
-  rc_clock_t when;
-  uint32_t related_id;
-  rc_client_scheduled_callback_t callback;
-  void* data;
-  struct rc_client_scheduled_callback_data_t* next;
-} rc_client_scheduled_callback_data_t;
-
-void rc_client_schedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* scheduled_callback);
-int rc_client_has_server_retry_scheduled_callback(rc_client_t* client);
 
 /*****************************************************************************\
 | Achievements                                                                |
@@ -84,6 +71,8 @@ enum {
   RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE = (1 << 3),
   RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_UPDATE = (1 << 4) /* not a real event, just triggers update */
 };
+
+#define RC_CLIENT_ACHIEVEMENT_WARNING_ID 101000001
 
 typedef struct rc_client_achievement_info_t {
   rc_client_achievement_t public_;
@@ -232,6 +221,9 @@ typedef struct rc_client_subset_list_info_t {
   rc_client_destroy_subset_list_func_t destroy_func;
 } rc_client_subset_list_info_t;
 
+const rc_client_achievement_t* rc_client_subset_get_achievement_info(rc_client_t* client, rc_client_subset_info_t* subset, uint32_t id);
+const rc_client_leaderboard_info_t* rc_client_subset_get_leaderboard_info(const rc_client_subset_info_t* subset, uint32_t id);
+
 /*****************************************************************************\
 | Game                                                                        |
 \*****************************************************************************/
@@ -279,6 +271,7 @@ typedef struct rc_client_game_info_t {
 
 void rc_client_update_active_achievements(rc_client_game_info_t* game);
 void rc_client_update_active_leaderboards(rc_client_game_info_t* game);
+void rc_client_update_achievement_display_information(rc_client_t* client, rc_client_achievement_info_t* achievement, time_t recent_unlock_time);
 
 /*****************************************************************************\
 | Client                                                                      |
@@ -310,6 +303,11 @@ enum {
 };
 
 #define RC_CLIENT_UNKNOWN_GAME_ID (uint32_t)-1
+
+#define RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS (10 * 60) /* ten minutes */
+
+#define RC_MINIMUM_UNPAUSED_FRAMES 20
+#define RC_PAUSE_DECAY_MULTIPLIER 4
 
 struct rc_client_load_state_t;
 
@@ -365,11 +363,8 @@ void rc_client_validate_addresses(rc_client_game_info_t* game, rc_client_t* clie
 void rc_client_activate_achievements(rc_client_game_info_t* game, rc_client_t* client);
 void rc_client_activate_leaderboards(rc_client_game_info_t* game, rc_client_t* client);
 
-void rc_client_raise_pending_events(rc_client_t* client, rc_client_game_info_t* game);
 void rc_client_game_mark_ui_to_be_hidden(rc_client_t* client, rc_client_game_info_t* game);
 
-void rc_client_schedule_ping(rc_client_t* client, rc_client_game_info_t* game);
-void rc_client_unschedule_ping(rc_client_t* client, rc_client_game_info_t* game);
 
 /*****************************************************************************\
 | Helpers                                                                     |
@@ -407,9 +402,6 @@ struct rc_hash_iterator* rc_client_get_load_state_hash_iterator(rc_client_t* cli
 void rc_client_add_game_hash(rc_client_t* client, const char* hash, uint32_t game_id);
 #endif
 /* end helper functions for unit tests */
-
-void rc_client_allocate_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
-void rc_client_release_leaderboard_tracker(rc_client_game_info_t* game, rc_client_leaderboard_info_t* leaderboard);
 
 RC_END_C_DECLS
 

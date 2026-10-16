@@ -93,6 +93,7 @@
     <ClCompile Include="..\util\rc_version.c" />
     <ClCompile Include="rc_client.c" />
     <ClCompile Include="rc_client_async.c" />
+    <ClCompile Include="rc_client_do_frame.c" />
     <ClCompile Include="rc_client_external.c" />
     <ClCompile Include="rc_client_load.c" />
     <ClCompile Include="rc_client_server.c" />
@@ -136,6 +137,7 @@
     <ClInclude Include="..\util\rc_compat.h" />
     <ClInclude Include="..\util\rc_version.h" />
     <ClInclude Include="rc_client_async.h" />
+    <ClInclude Include="rc_client_do_frame.h" />
     <ClInclude Include="rc_client_external.h" />
     <ClInclude Include="rc_client_external_versions.h" />
     <ClInclude Include="rc_client_load.h" />

@@ -1,5 +1,6 @@
 #include "rc_client_server.h"
 
+#include "rc_client_do_frame.h"
 #include "rc_client_internal.h" /* rc_client */
 
 #include "rc_api_request.h"

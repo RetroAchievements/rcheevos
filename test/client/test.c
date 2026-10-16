@@ -40,6 +40,7 @@ int main(void) {
 
   test_client_user();
   test_client_load();
+  test_client_do_frame();
   test_client();
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   test_client_external();

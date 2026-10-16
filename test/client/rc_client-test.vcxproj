@@ -80,6 +80,7 @@
     <ClCompile Include="mock_client.c" />
     <ClCompile Include="test.c" />
     <ClCompile Include="test_rc_client.c" />
+    <ClCompile Include="test_rc_client_do_frame.c" />
     <ClCompile Include="test_rc_client_external.c" />
     <ClCompile Include="test_rc_client_load.c" />
     <ClCompile Include="test_rc_client_raintegration.c" />

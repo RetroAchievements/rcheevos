@@ -461,4 +461,10 @@ void rc_client_callback_expect_uncalled(int result, const char* error_message, s
   ASSERT_FAIL("Callback should not have been called.");
 }
 
-
+void rc_client_callback_expect_unknown_game(int result, const char* error_message, struct rc_client_t* client, void* callback_userdata)
+{
+  ASSERT_NUM_EQUALS(result, RC_NO_GAME_LOADED);
+  ASSERT_STR_EQUALS(error_message, "Unknown game");
+  ASSERT_PTR_EQUALS(client, g_client);
+  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+}
