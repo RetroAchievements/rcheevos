@@ -95,6 +95,7 @@
     <ClCompile Include="rc_client_async.c" />
     <ClCompile Include="rc_client_do_frame.c" />
     <ClCompile Include="rc_client_external.c" />
+    <ClCompile Include="rc_client_game.c" />
     <ClCompile Include="rc_client_load.c" />
     <ClCompile Include="rc_client_server.c" />
     <ClCompile Include="rc_client_raintegration.c" />
@@ -140,6 +141,7 @@
     <ClInclude Include="rc_client_do_frame.h" />
     <ClInclude Include="rc_client_external.h" />
     <ClInclude Include="rc_client_external_versions.h" />
+    <ClInclude Include="rc_client_game.h" />
     <ClInclude Include="rc_client_load.h" />
     <ClInclude Include="rc_client_server.h" />
     <ClInclude Include="rc_client_internal.h" />

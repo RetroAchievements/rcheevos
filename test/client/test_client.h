@@ -3,6 +3,7 @@
 
 void test_client();
 void test_client_do_frame();
+void test_client_game();
 void test_client_load();
 void test_client_user();
 

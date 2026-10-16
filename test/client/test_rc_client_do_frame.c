@@ -6,6 +6,7 @@
 #include "../../src/runtime/rc_trigger.h"
 
 
+#include "../../src/client/rc_client_game.h"
 #include "../../src/client/rc_client_internal.h"
 
 #include "client_data.h"

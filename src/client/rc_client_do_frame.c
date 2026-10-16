@@ -1,5 +1,7 @@
 #include "rc_client_do_frame.h"
 
+#include "rc_client_game.h"
+#include "rc_client_load.h"
 #include "rc_client_internal.h" /* rc_client */
 #include "rc_client_server.h"
 
@@ -19,6 +21,11 @@
 #include <string.h> /* memset */
 
 static void rc_client_reschedule_callback(rc_client_t* client, rc_client_scheduled_callback_data_t* callback, rc_clock_t when);
+
+/* internals pulled from rc_runtime.c */
+int rc_trigger_contains_memref(const struct rc_trigger_t* trigger, const struct rc_memref_t* memref);
+int rc_value_contains_memref(const struct rc_value_t* value, const struct rc_memref_t* memref);
+/* end rc_runtime.c internals */
 
 /* ===== Achievements ===== */
 
@@ -1567,6 +1574,36 @@ void rc_client_reset(rc_client_t* client)
   rc_mutex_unlock(&client->state.mutex);
 
   rc_client_raise_pending_events(client, client->game);
+}
+
+void rc_client_game_mark_ui_to_be_hidden(rc_client_t* client, rc_client_game_info_t* game)
+{
+  rc_client_achievement_info_t* achievement;
+  rc_client_achievement_info_t* achievement_stop;
+  rc_client_leaderboard_info_t* leaderboard;
+  rc_client_leaderboard_info_t* leaderboard_stop;
+  rc_client_subset_info_t* subset;
+
+  for (subset = game->subsets; subset; subset = subset->next) {
+    achievement = subset->achievements;
+    achievement_stop = achievement + subset->public_.num_achievements;
+    for (; achievement < achievement_stop; ++achievement) {
+      if (achievement->public_.state == RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE &&
+        achievement->trigger && achievement->trigger->state == RC_TRIGGER_STATE_PRIMED) {
+        achievement->pending_events |= RC_CLIENT_ACHIEVEMENT_PENDING_EVENT_CHALLENGE_INDICATOR_HIDE;
+        subset->pending_events |= RC_CLIENT_SUBSET_PENDING_EVENT_ACHIEVEMENT;
+      }
+    }
+
+    leaderboard = subset->leaderboards;
+    leaderboard_stop = leaderboard + subset->public_.num_leaderboards;
+    for (; leaderboard < leaderboard_stop; ++leaderboard) {
+      if (leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING)
+        rc_client_release_leaderboard_tracker(game, leaderboard);
+    }
+  }
+
+  rc_client_hide_progress_tracker(client, game);
 }
 
 /* ===== scheduled callbacks ===== */

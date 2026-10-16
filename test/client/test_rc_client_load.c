@@ -5,6 +5,7 @@
 #include "rc_api_request.h"
 #include "rc_api_runtime.h"
 
+#include "../../src/client/rc_client_game.h"
 #include "../../src/client/rc_client_internal.h"
 #include "../../src/client/rc_client_load.h"
 #include "../../src/runtime/rc_format.h"
@@ -21,15 +22,15 @@
 #include "../hash/mock_filereader.h"
 #endif
 
-/* ----- load game ----- */
-
-static void rc_client_callback_expect_unknown_game(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
+static rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client)
 {
-  ASSERT_NUM_EQUALS(result, RC_NO_GAME_LOADED);
-  ASSERT_STR_EQUALS(error_message, "Unknown game");
-  ASSERT_PTR_EQUALS(client, g_client);
-  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
+  if (client && client->state.load)
+    return &client->state.load->hash_iterator;
+
+  return NULL;
 }
+
+/* ----- load game ----- */
 
 static void rc_client_callback_expect_hash_required(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
 {

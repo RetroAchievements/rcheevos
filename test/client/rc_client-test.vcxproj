@@ -82,6 +82,7 @@
     <ClCompile Include="test_rc_client.c" />
     <ClCompile Include="test_rc_client_do_frame.c" />
     <ClCompile Include="test_rc_client_external.c" />
+    <ClCompile Include="test_rc_client_game.c" />
     <ClCompile Include="test_rc_client_load.c" />
     <ClCompile Include="test_rc_client_raintegration.c" />
     <ClCompile Include="test_rc_client_user.c" />

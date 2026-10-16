@@ -11,6 +11,11 @@ RC_BEGIN_C_DECLS
 | Enums                                                                       |
 \*****************************************************************************/
 
+#define RC_CLIENT_RECENT_UNLOCK_DELAY_SECONDS (10 * 60) /* ten minutes */
+
+#define RC_MINIMUM_UNPAUSED_FRAMES 20
+#define RC_PAUSE_DECAY_MULTIPLIER 4
+
 /*****************************************************************************\
 | Structures                                                                  |
 \*****************************************************************************/
@@ -104,6 +109,16 @@ void rc_client_reset_pending_events(struct rc_client_t* client);
  * Resets the hit counts on all assets, and queues events to hide any associated trackers.
  */
 void rc_client_reset_all(struct rc_client_t* client);
+
+/**
+ * Marks all UI elements to be hidden.
+ */
+void rc_client_game_mark_ui_to_be_hidden(rc_client_t* client, struct rc_client_game_info_t* game);
+
+/**
+ * Attempts to read each direct address to ensure the emulator supports them.
+ */
+void rc_client_validate_addresses(struct rc_client_game_info_t* game, rc_client_t* client);
 
 RC_END_C_DECLS
 

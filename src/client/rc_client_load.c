@@ -2,6 +2,7 @@
 
 #include "rc_client_async.h"
 #include "rc_client_do_frame.h"
+#include "rc_client_game.h"
 #include "rc_client_internal.h"
 #include "rc_client_server.h"
 
@@ -30,6 +31,10 @@
 
 static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state);
 static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* load_state, const char* hash, const char* file_path);
+
+/* internals pulled from rc_runtime.c */
+void rc_runtime_checksum(const char* memaddr, uint8_t* md5);
+/* end rc_runtime.c internals */
 
 typedef struct rc_client_pending_media_t
 {
@@ -1365,14 +1370,6 @@ rc_client_async_handle_t* rc_client_begin_load_game(rc_client_t* client, const c
 }
 
 #ifdef RC_CLIENT_SUPPORTS_HASH
-
-rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client)
-{
-  if (client && client->state.load)
-    return &client->state.load->hash_iterator;
-
-  return NULL;
-}
 
 static void rc_client_log_hash_message_verbose(const char* message, const rc_hash_iterator_t* iterator)
 {
