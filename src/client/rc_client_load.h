@@ -1,11 +1,11 @@
 #ifndef RC_CLIENT_LOAD_H
 #define RC_CLIENT_LOAD_H
 
-#include "rc_client.h" /* rc_client_callback */
-#include "rc_hash.h"   /* rc_hash_iterator_t */
+#include "rc_client_callbacks.h" /* rc_client_callback */
+#include "rc_hash.h"             /* rc_hash_iterator_t */
 #include "rc_export.h"
 
-#include "rc_client_async.h" /* rc_client_async_handle_t */
+#include "rc_client_async.h"     /* rc_client_async_handle_t */
 
 #include <stdint.h>
 
@@ -92,7 +92,7 @@ void rc_client_load_error(struct rc_client_load_state_t* load_state, int result,
 /**
  * Loads an Unknown Game with the specified hash.
  */
-void rc_client_load_unknown_game(rc_client_t* client, const char* hash);
+void rc_client_load_unknown_game(struct rc_client_t* client, const char* hash);
 
 RC_END_C_DECLS
 

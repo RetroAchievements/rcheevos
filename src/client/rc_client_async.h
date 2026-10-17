@@ -1,6 +1,8 @@
 #ifndef RC_CLIENT_ASYNC_H
 #define RC_CLIENT_ASYNC_H
 
+#include "rc_client_callbacks.h"
+
 #include "rc_export.h"
 
 #include <stdint.h>
@@ -21,13 +23,11 @@ enum {
 | Structures                                                                  |
 \*****************************************************************************/
 
-struct rc_client_t; /* rc_client.h */
+struct rc_client_t; /* rc_client_internal.h */
 
 typedef struct rc_client_async_handle_t {
   uint8_t aborted;
 } rc_client_async_handle_t;
-
-typedef void (RC_CCONV* rc_client_callback_t)(int result, const char* error_message, struct rc_client_t* client, void* userdata);
 
 typedef struct rc_client_generic_callback_data_t {
   struct rc_client_t* client;

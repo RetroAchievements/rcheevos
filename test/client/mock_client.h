@@ -12,9 +12,9 @@ RC_BEGIN_C_DECLS
 struct rc_client_t;       /* rc_client.h */
 struct rc_client_event_t; /* rc_client.h */
 
-struct rc_client_t* g_client;
-void* g_callback_userdata;
-uint64_t g_now;
+extern struct rc_client_t* g_client;
+extern void* g_callback_userdata;
+extern uint64_t g_now;
 
 void mock_memory(uint8_t* memory, uint32_t size);
 

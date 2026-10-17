@@ -1,7 +1,7 @@
 #ifndef RC_CLIENT_INTERNAL_H
 #define RC_CLIENT_INTERNAL_H
 
-#include "rc_client.h"
+#include "rc_client.h" /* rc_user_t, rc_client_event_handler_t */
 #include "rc_client_do_frame.h"
 
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION

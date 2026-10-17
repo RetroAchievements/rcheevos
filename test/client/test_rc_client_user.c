@@ -1,29 +1,14 @@
 #include "rc_client.h"
 
-#include "rc_consoles.h"
-#include "../../src/runtime/rc_condition.h"
-#include "../../src/runtime/rc_condset.h"
-#include "../../src/runtime/rc_format.h"
-#include "../../src/runtime/rc_lboard.h"
-#include "../../src/runtime/rc_trigger.h"
-#include "rc_api_runtime.h"
+#include "rc_api_request.h"
 
 #include "../../src/client/rc_client_internal.h"
-#include "../../src/client/rc_client_external.h"
 #include "../../src/util/rc_version.h"
 
 #include "../test_framework.h"
 
 #include "client_data.h"
 #include "mock_client.h"
-
-#if defined(_WIN32)
-#include <Windows.h>
-#elif defined(__unix__) && __STDC_VERSION__ >= 199309L
-#include <unistd.h>
-#else
-#define RC_NO_SLEEP
-#endif
 
 /* ----- login ----- */
 

@@ -109,6 +109,7 @@
     <ClInclude Include="..\..\include\rc_api_runtime.h" />
     <ClInclude Include="..\..\include\rc_api_user.h" />
     <ClInclude Include="..\..\include\rc_client.h" />
+    <ClInclude Include="..\..\include\rc_client_callbacks.h" />
     <ClInclude Include="..\..\include\rc_client_raintegration.h" />
     <ClInclude Include="..\..\include\rc_consoles.h" />
     <ClInclude Include="..\..\include\rc_error.h" />

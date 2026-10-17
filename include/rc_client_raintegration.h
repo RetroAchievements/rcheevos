@@ -67,9 +67,11 @@ typedef void (RC_CCONV* rc_client_raintegration_get_game_name_func_t)(char* buff
 
 #include <wtypes.h> /* HWND */
 
-#include "rc_client.h" /* rc_client_callback_t */
+struct rc_client_async_handle_t; /* rc_client_async.h */
 
-RC_EXPORT rc_client_async_handle_t* RC_CCONV rc_client_begin_load_raintegration(struct rc_client_t* client,
+#include "rc_client_callbacks.h"
+
+RC_EXPORT struct rc_client_async_handle_t* RC_CCONV rc_client_begin_load_raintegration(struct rc_client_t* client,
     const wchar_t* search_directory, HWND main_window_handle,
     const char* client_name, const char* client_version,
     rc_client_callback_t callback, void* callback_userdata);

@@ -1,5 +1,6 @@
 #include "rc_client_do_frame.h"
 
+#include "rc_client_async.h"
 #include "rc_client_game.h"
 #include "rc_client_load.h"
 #include "rc_client_internal.h" /* rc_client */

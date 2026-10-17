@@ -1,11 +1,6 @@
 #include "client_data.h"
 
-#include "../../src/client/rc_client_internal.h"
-
-#include "../../src/util/rc_compat.h"
-
-#include <stdlib.h>
-#include <string.h>
+RC_BEGIN_C_DECLS
 
 #define GENERIC_ACHIEVEMENT_JSON(id, memaddr) "{\"ID\":" id ",\"Title\":\"Achievement " id "\"," \
       "\"Description\":\"Desc " id "\",\"Flags\":3,\"Points\":5,\"MemAddr\":\"" memaddr "\"," \
@@ -479,3 +474,5 @@ const char* response_503 =
     "</html>";
 
 const char* default_game_badge = "https://media.retroachievements.org/Images/000001.png";
+
+RC_END_C_DECLS

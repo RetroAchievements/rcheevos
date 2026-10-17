@@ -1,8 +1,7 @@
 #include "rc_client_raintegration_internal.h"
 
-#include "rc_client_internal.h"
-
 #include "rc_client_async.h"
+#include "rc_client_internal.h"
 
 #include "../api/rc_api_common.h"
 

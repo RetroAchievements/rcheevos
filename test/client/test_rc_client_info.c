@@ -1,23 +1,8 @@
 #include "rc_client.h"
 
-#include "../../src/runtime/rc_trigger.h"
-
-#include "../../src/client/rc_client_game.h"
-#include "../../src/client/rc_client_internal.h"
-#include "../../src/util/rc_version.h"
-
-#include "client_data.h"
 #include "mock_client.h"
 
 #include "../test_framework.h"
-
-#if defined(_WIN32)
-#include <Windows.h>
-#elif defined(__unix__) && __STDC_VERSION__ >= 199309L
-#include <unistd.h>
-#else
-#define RC_NO_SLEEP
-#endif
 
 /* ----- fetch hash library ----- */
 
@@ -197,53 +182,6 @@ static void test_fetch_all_user_progress(void)
 
   rc_client_begin_fetch_all_user_progress(g_client, 1, test_fetch_all_user_progress_response, g_callback_userdata);
   rc_client_destroy(g_client);
-}
-
-/* ----- clock ----- */
-
-static void test_clock_get_now_millisecs(void)
-{
-  rc_client_t* client = rc_client_create(NULL, NULL);
-  rc_get_time_millisecs_func_t get_millisecs = client->callbacks.get_time_millisecs;
-
-#ifdef RC_NO_SLEEP
-  rc_clock_t time1;
-  ASSERT_PTR_NOT_NULL(get_millisecs);
-  time1 = get_millisecs(client);
-  ASSERT_NUM_NOT_EQUALS(time1, 0);
-#else
-  rc_clock_t time1, time2, diff;
-  time_t first = time(NULL), now;
-
-  do {
-    ASSERT_PTR_NOT_NULL(get_millisecs);
-    time1 = get_millisecs(client);
-    ASSERT_NUM_NOT_EQUALS(time1, 0);
-
-#if defined(_WIN32)
-    Sleep(50);
-#else
-    usleep(50000);
-#endif
-
-    time2 = get_millisecs(client);
-    ASSERT_NUM_NOT_EQUALS(time2, 0);
-    diff = time2 - time1;
-
-    ASSERT_NUM_GREATER(diff, 49);
-    if (diff < 100)
-      break;
-
-    now = time(NULL);
-    if (now - first >= 3) {
-      ASSERT_FAIL("could not get a 50ms sleep interval within 3 seconds");
-      break;
-    }
-
-  } while (1);
-#endif
-
-  rc_client_destroy(client);
 }
 
 /* ----- harness ----- */

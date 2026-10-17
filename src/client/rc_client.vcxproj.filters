@@ -294,6 +294,9 @@
     <ClInclude Include="rc_client_game.h">
       <Filter>Source Files\client</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\rc_client_callbacks.h">
+      <Filter>Source Files\client</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="rc_client_types.natvis">

@@ -1,7 +1,7 @@
 #ifndef RC_CLIENT_DO_FRAME_H
 #define RC_CLIENT_DO_FRAME_H
 
-#include "rc_client.h" /* rc_client, rc_clock_t */
+#include "rc_client_callbacks.h" /* rc_clock_t */
 
 #include <stdint.h>
 
@@ -20,6 +20,7 @@ RC_BEGIN_C_DECLS
 | Structures                                                                  |
 \*****************************************************************************/
 
+struct rc_client_t;                  /* rc_client_internal.h */
 struct rc_client_game_info_t;        /* rc_client_internal.h */
 struct rc_client_leaderboard_info_t; /* rc_client_internal.h */
 
@@ -113,12 +114,12 @@ void rc_client_reset_all(struct rc_client_t* client);
 /**
  * Marks all UI elements to be hidden.
  */
-void rc_client_game_mark_ui_to_be_hidden(rc_client_t* client, struct rc_client_game_info_t* game);
+void rc_client_game_mark_ui_to_be_hidden(struct rc_client_t* client, struct rc_client_game_info_t* game);
 
 /**
  * Attempts to read each direct address to ensure the emulator supports them.
  */
-void rc_client_validate_addresses(struct rc_client_game_info_t* game, rc_client_t* client);
+void rc_client_validate_addresses(struct rc_client_game_info_t* game, struct rc_client_t* client);
 
 RC_END_C_DECLS
 
