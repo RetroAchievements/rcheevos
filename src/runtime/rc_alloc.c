@@ -21,6 +21,10 @@ void* rc_alloc_scratch(rc_parse_state_t* parse_state, uint32_t size, uint32_t sc
 {
   void* ptr;
 
+  /* after an error the offset is an error code, adding sizes to it would hide the error */
+  if (parse_state->offset < 0)
+    return NULL;
+
   /* if we have a real buffer, then allocate the data there */
   if (parse_state->buffer)
     return rc_alloc(parse_state, size, scratch_object_pointer_offset);
@@ -40,6 +44,10 @@ void* rc_alloc_scratch(rc_parse_state_t* parse_state, uint32_t size, uint32_t sc
 void* rc_alloc(rc_parse_state_t* parse_state, uint32_t size, uint32_t scratch_object_pointer_offset)
 {
   void* ptr;
+
+  /* after an error the offset is an error code, not a position in the buffer */
+  if (parse_state->offset < 0)
+    return NULL;
 
   parse_state->offset = RC_ALIGN(parse_state->offset);
 
@@ -62,6 +70,11 @@ void* rc_alloc(rc_parse_state_t* parse_state, uint32_t size, uint32_t scratch_ob
     /* make sure the scratch pointer array is available */
     if (!parse_state->scratch) {
       parse_state->scratch = (rc_scratch_t*)rc_buffer_alloc(&parse_state->scratch_buffer, sizeof(rc_scratch_t));
+      if (!parse_state->scratch) {
+        parse_state->offset = RC_OUT_OF_MEMORY;
+        return NULL;
+      }
+
       memset(parse_state->scratch, 0, sizeof(rc_scratch_t));
     }
 
@@ -111,6 +124,8 @@ const char* rc_alloc_str(rc_parse_state_t* parse, const char* text, size_t lengt
     if (parse->offset >= 0)
       parse->offset = RC_OUT_OF_MEMORY;
 
+    /* don't leave a node without a value in the tree */
+    *next = NULL;
     return NULL;
   }
 
@@ -203,12 +218,25 @@ void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* me
     available = memref_list->capacity - memref_list->count;
     if (available < num_memrefs) {
       rc_memref_list_t* new_memref_list = (rc_memref_list_t*)calloc(1, sizeof(rc_memref_list_t));
-      if (!new_memref_list)
+      if (!new_memref_list) {
+        preparse->parse.offset = RC_OUT_OF_MEMORY;
         return;
+      }
 
       new_memref_list->capacity = (uint16_t)rc_preparse_array_size(num_memrefs - available, 16);
       new_memref_list->items = (rc_memref_t*)malloc(new_memref_list->capacity * sizeof(rc_memref_t));
+      if (!new_memref_list->items) {
+        free(new_memref_list);
+        preparse->parse.offset = RC_OUT_OF_MEMORY;
+        return;
+      }
+
       new_memref_list->allocated = 1;
+
+      /* link it at the end: a list in the middle may have room left after an
+       * activation failed, and the lists after it must not be lost */
+      while (memref_list->next)
+        memref_list = memref_list->next;
       memref_list->next = new_memref_list;
     }
   }
@@ -225,12 +253,24 @@ void rc_preparse_reserve_memrefs(rc_preparse_state_t* preparse, rc_memrefs_t* me
     available = modified_memref_list->capacity - modified_memref_list->count;
     if (available < num_modified_memrefs) {
       rc_modified_memref_list_t* new_modified_memref_list = (rc_modified_memref_list_t*)calloc(1, sizeof(rc_modified_memref_list_t));
-      if (!new_modified_memref_list)
+      if (!new_modified_memref_list) {
+        preparse->parse.offset = RC_OUT_OF_MEMORY;
         return;
+      }
 
       new_modified_memref_list->capacity = (uint16_t)rc_preparse_array_size(num_modified_memrefs - available, 8);
       new_modified_memref_list->items = (rc_modified_memref_t*)malloc(new_modified_memref_list->capacity * sizeof(rc_modified_memref_t));
+      if (!new_modified_memref_list->items) {
+        free(new_modified_memref_list);
+        preparse->parse.offset = RC_OUT_OF_MEMORY;
+        return;
+      }
+
       new_modified_memref_list->allocated = 1;
+
+      /* link it at the end, see above */
+      while (modified_memref_list->next)
+        modified_memref_list = modified_memref_list->next;
       modified_memref_list->next = new_modified_memref_list;
     }
   }
@@ -290,8 +330,11 @@ void rc_preparse_copy_memrefs(rc_parse_state_t* parse, const rc_memrefs_t* memre
     const rc_memref_t* memref = memref_list->items;
     const rc_memref_t* memref_end = memref + memref_list->count;
 
-    for (; memref < memref_end; ++memref)
+    for (; memref < memref_end; ++memref) {
       rc_alloc_memref(parse, memref->address, memref->value.size);
+      if (parse->offset < 0)
+        return;
+    }
   }
 
   for (; modified_memref_list; modified_memref_list = modified_memref_list->next) {
@@ -301,6 +344,8 @@ void rc_preparse_copy_memrefs(rc_parse_state_t* parse, const rc_memrefs_t* memre
     for (; modified_memref < modified_memref_end; ++modified_memref) {
       rc_preparse_sync_operand(&modified_memref->parent, parse, memrefs);
       rc_preparse_sync_operand(&modified_memref->modifier, parse, memrefs);
+      if (parse->offset < 0)
+        return;
 
       rc_alloc_modified_memref(parse, modified_memref->memref.value.size,
         &modified_memref->parent, modified_memref->modifier_type, &modified_memref->modifier);

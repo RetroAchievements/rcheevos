@@ -239,7 +239,8 @@ rc_condset_t* rc_parse_condset(const char** memaddr, rc_parse_state_t* parse) {
   if (**memaddr == 'S' || **memaddr == 's' || !**memaddr) {
     /* empty group - editor allows it, so we have to support it */
     self = RC_ALLOC(rc_condset_t, parse);
-    memset(self, 0, sizeof(*self));
+    if (self)
+      memset(self, 0, sizeof(*self));
     return self;
   }
 

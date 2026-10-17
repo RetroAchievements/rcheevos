@@ -10,6 +10,9 @@
 #include <stdlib.h> /* malloc/realloc */
 #include <string.h> /* memcpy */
 #include <math.h>   /* INFINITY/NAN */
+#include <float.h>  /* FLT_RADIX/FLT_MANT_DIG/FLT_MAX_EXP */
+
+#include <stdio.h>
 
 #define MEMREF_PLACEHOLDER_ADDRESS 0xFFFFFFFF
 
@@ -67,11 +70,20 @@ rc_memref_t* rc_alloc_memref(rc_parse_state_t* parse, uint32_t address, uint8_t 
     const int32_t old_offset = parse->offset;
 
     if (memref_list->capacity != 0) {
-      memref_list = memref_list->next = RC_ALLOC_SCRATCH(rc_memref_list_t, parse);
+      rc_memref_list_t* new_memref_list = RC_ALLOC_SCRATCH(rc_memref_list_t, parse);
+      if (!new_memref_list)
+        return NULL;
+
+      memref_list = memref_list->next = new_memref_list;
       memref_list->next = NULL;
     }
 
     memref_list->items = RC_ALLOC_ARRAY_SCRATCH(rc_memref_t, 8, parse);
+    if (!memref_list->items) {
+      memref_list->count = memref_list->capacity = 0;
+      return NULL;
+    }
+
     memref_list->count = 1;
     memref_list->capacity = 8;
     memref_list->allocated = 0;
@@ -144,11 +156,20 @@ rc_modified_memref_t* rc_alloc_modified_memref(rc_parse_state_t* parse, uint8_t 
     const int32_t old_offset = parse->offset;
 
     if (modified_memref_list->capacity != 0) {
-      modified_memref_list = modified_memref_list->next = RC_ALLOC_SCRATCH(rc_modified_memref_list_t, parse);
+      rc_modified_memref_list_t* new_modified_memref_list = RC_ALLOC_SCRATCH(rc_modified_memref_list_t, parse);
+      if (!new_modified_memref_list)
+        return NULL;
+
+      modified_memref_list = modified_memref_list->next = new_modified_memref_list;
       modified_memref_list->next = NULL;
     }
 
     modified_memref_list->items = RC_ALLOC_ARRAY_SCRATCH(rc_modified_memref_t, 8, parse);
+    if (!modified_memref_list->items) {
+      modified_memref_list->count = modified_memref_list->capacity = 0;
+      return NULL;
+    }
+
     modified_memref_list->count = 1;
     modified_memref_list->capacity = 8;
     modified_memref_list->allocated = 0;
@@ -344,23 +365,27 @@ static float rc_build_float(uint32_t mantissa_bits, int32_t exponent, int sign) 
   double dbl = ((double)mantissa) / ((double)implied_bit);
 
   if (exponent > 127) {
-    /* exponent above 127 is a special number */
-    if (mantissa_bits == 0) {
-      /* infinity */
-#ifdef INFINITY /* INFINITY and NAN #defines require C99 */
-      dbl = (double)INFINITY;
+    /* An exponent above 127 is a special number: infinity when the mantissa is zero, NaN otherwise. */
+
+#if FLT_RADIX == 2 && FLT_MANT_DIG == 24 && FLT_MAX_EXP == 128
+    /* The system is IEEE754 capable. Use a memcpy to shuffle an IEEE754 constant into the variable to
+     * avoid a warning when compiling with -ffast-math. -ffast-math optimizes out special logic for NaN
+     * and infinity to provide a small performance boost. As such, actually using the values may result
+     * in undefined behavior - hence the warning. But consumers want to be able to use that flag, so this
+     * is the easiest way to support it. */
+    const uint32_t ieee754_inf = 0x7F800000;
+    const uint32_t ieee754_nan = 0x7FC00000;
+    float f;
+    memcpy(&f, (mantissa_bits == 0) ? &ieee754_inf : &ieee754_nan, sizeof(float));
+    dbl = (double)f;
+#elif defined(INFINITY) && defined(NAN)
+    /* If we're not on an IEEE754 system, rely on the constants provided by the compiler. */
+    dbl = (double)(mantissa_bits == 0 ? INFINITY : NAN);
 #else
-      dbl = -log(0.0);
+    /* C89 doesn't define INFINITY or NAN. Fallback to FLT_MAX and hope all achievement logic uses full
+     * range checking as non-float data could appear as >X or <Y whereas NaN would be neither >X nor <Y */
+    dbl = (double)FLT_MAX;
 #endif
-    }
-    else {
-      /* NaN */
-#ifdef NAN
-      dbl = NAN;
-#else
-      dbl = -sqrt(-1);
-#endif
-    }
   }
   else if (exponent > 0) {
     /* exponent from 1 to 127 is a number greater than 1 */
