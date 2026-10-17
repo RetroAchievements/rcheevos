@@ -320,7 +320,8 @@ int rc_value_size(const char* memaddr) {
   rc_init_preparse_state(&preparse);
 
   value = RC_ALLOC(rc_value_with_memrefs_t, &preparse.parse);
-  rc_parse_value_internal(&value->value, &memaddr, &preparse.parse);
+  if (value)
+    rc_parse_value_internal(&value->value, &memaddr, &preparse.parse);
   rc_preparse_alloc_memrefs(NULL, &preparse);
 
   rc_destroy_preparse_state(&preparse);
@@ -340,7 +341,8 @@ rc_value_t* rc_parse_value(void* buffer, const char* memaddr, void* unused_L, in
 
   rc_init_preparse_state(&preparse);
   value = RC_ALLOC(rc_value_with_memrefs_t, &preparse.parse);
-  rc_parse_value_internal(&value->value, &preparse_memaddr, &preparse.parse);
+  if (value)
+    rc_parse_value_internal(&value->value, &preparse_memaddr, &preparse.parse);
   rc_preparse_alloc_memrefs(NULL, &preparse); /* allocate space for the needed memrefs */
 
   rc_reset_parse_state(&preparse.parse, buffer, (size_t)preparse.parse.offset);
@@ -491,6 +493,9 @@ rc_value_t* rc_alloc_variable(const char* memaddr, size_t memaddr_len, rc_parse_
 
   /* no match found, create a new entry */
   value = RC_ALLOC_SCRATCH(rc_value_t, parse);
+  if (!value)
+    return NULL;
+
   memset(value, 0, sizeof(*value));
   value->value.size = RC_MEMSIZE_VARIABLE;
   value->next = NULL;

@@ -101,6 +101,9 @@ void rc_parse_lboard_internal(rc_lboard_t* self, const char* memaddr, rc_parse_s
         found |= RC_LBOARD_PROGRESS;
 
         self->progress = RC_ALLOC(rc_value_t, parse);
+        if (!self->progress)
+          return;
+
         rc_parse_value_internal(self->progress, &memaddr, parse);
       }
     }
@@ -149,7 +152,8 @@ int rc_lboard_size(const char* memaddr) {
   rc_init_preparse_state(&preparse);
 
   lboard = RC_ALLOC(rc_lboard_with_memrefs_t, &preparse.parse);
-  rc_parse_lboard_internal(&lboard->lboard, memaddr, &preparse.parse);
+  if (lboard)
+    rc_parse_lboard_internal(&lboard->lboard, memaddr, &preparse.parse);
   rc_preparse_alloc_memrefs(NULL, &preparse);
 
   rc_destroy_preparse_state(&preparse);
@@ -168,7 +172,8 @@ rc_lboard_t* rc_parse_lboard(void* buffer, const char* memaddr, void* unused_L, 
 
   rc_init_preparse_state(&preparse);
   lboard = RC_ALLOC(rc_lboard_with_memrefs_t, &preparse.parse);
-  rc_parse_lboard_internal(&lboard->lboard, memaddr, &preparse.parse);
+  if (lboard)
+    rc_parse_lboard_internal(&lboard->lboard, memaddr, &preparse.parse);
   rc_preparse_alloc_memrefs(NULL, &preparse); /* allocate space for the needed memrefs */
 
   rc_reset_parse_state(&preparse.parse, buffer, (size_t)preparse.parse.offset);
