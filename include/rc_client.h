@@ -2,11 +2,12 @@
 #define RC_CLIENT_H
 
 #include "rc_client_callbacks.h"
-#include "rc_error.h"
+#include "rc_api_request.h" /* VCIC-Excluded: Eliminates the need for consumers to manually include this to resolve the forward references in rc_client_callbacks.h */
+#include "rc_error.h"       /* VCIC-Excluded: Eliminates the need for consumers to manually include this file to check the return values of functions. */
 
-#include <stddef.h>
-#include <stdint.h>
-#include <time.h>
+#include <stddef.h> /* VCIC-Excluded: size_t */
+#include <stdint.h> /* uintXX_t */
+#include <time.h>   /* VCIC-Excluded: time_t */
 
 RC_BEGIN_C_DECLS
 

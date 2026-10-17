@@ -27,8 +27,6 @@
 
 #include "../util/rc_compat.h"
 
-#include <malloc.h>
-
 static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state);
 static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* load_state, const char* hash, const char* file_path);
 
