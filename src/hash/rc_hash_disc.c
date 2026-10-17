@@ -1226,7 +1226,7 @@ static int rc_hash_wii_disc(md5_state_t* md5, const rc_hash_iterator_t* iterator
   const uint32_t MAX_CLUSTER_COUNT = 1024;
 
   uint32_t partition_info_table[8];
-  uint32_t total_partition_count = 0;
+  uint64_t total_partition_count = 0;
   uint32_t* partition_table;
   uint64_t tmd_offset;
   uint32_t tmd_size;
@@ -1276,7 +1276,17 @@ static int rc_hash_wii_disc(md5_state_t* md5, const rc_hash_iterator_t* iterator
     return rc_hash_iterator_error(iterator, "No partitions found");
   }
 
+  if (total_partition_count > 16) { /* Documentation suggests it should never be more than 4 */
+    free(buffer);
+    return rc_hash_iterator_error(iterator, "Too many partitions");
+  }
+
   partition_table = (uint32_t*)malloc(total_partition_count * 4 * 2);
+  if (!partition_table) {
+    free(buffer);
+    return rc_hash_iterator_error(iterator, "Could not allocate partition table");
+  }
+
   kx = 0;
   for (jx = 0; jx < 8; jx += 2) {
     rc_file_seek(iterator, file_handle, ((uint64_t)partition_info_table[jx + 1]) << 2, SEEK_SET);
