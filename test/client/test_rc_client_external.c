@@ -25,16 +25,6 @@ static int g_external_int = 0;
   } \
 }
 
-static uint32_t rc_client_read_memory(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client)
-{
-  (void)address;
-  (void)buffer;
-  (void)num_bytes;
-  (void)client;
-
-  return 0;
-}
-
 static rc_client_t* mock_client_with_external()
 {
   rc_client_t* client = mock_client_not_logged_in();

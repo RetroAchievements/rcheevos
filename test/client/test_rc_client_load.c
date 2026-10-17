@@ -22,6 +22,7 @@
 #include "../hash/mock_filereader.h"
 #endif
 
+#ifdef RC_CLIENT_SUPPORTS_HASH
 static rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* client)
 {
   if (client && client->state.load)
@@ -29,6 +30,7 @@ static rc_hash_iterator_t* rc_client_get_load_state_hash_iterator(rc_client_t* c
 
   return NULL;
 }
+#endif
 
 /* ----- load game ----- */
 
