@@ -92,8 +92,15 @@
     <ClCompile Include="..\util\rc_util.c" />
     <ClCompile Include="..\util\rc_version.c" />
     <ClCompile Include="rc_client.c" />
+    <ClCompile Include="rc_client_async.c" />
+    <ClCompile Include="rc_client_do_frame.c" />
     <ClCompile Include="rc_client_external.c" />
+    <ClCompile Include="rc_client_game.c" />
+    <ClCompile Include="rc_client_info.c" />
+    <ClCompile Include="rc_client_load.c" />
+    <ClCompile Include="rc_client_server.c" />
     <ClCompile Include="rc_client_raintegration.c" />
+    <ClCompile Include="rc_client_user.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\rc_api_editor.h" />
@@ -102,6 +109,7 @@
     <ClInclude Include="..\..\include\rc_api_runtime.h" />
     <ClInclude Include="..\..\include\rc_api_user.h" />
     <ClInclude Include="..\..\include\rc_client.h" />
+    <ClInclude Include="..\..\include\rc_client_callbacks.h" />
     <ClInclude Include="..\..\include\rc_client_raintegration.h" />
     <ClInclude Include="..\..\include\rc_consoles.h" />
     <ClInclude Include="..\..\include\rc_error.h" />
@@ -131,8 +139,13 @@
     <ClInclude Include="..\util\md5.h" />
     <ClInclude Include="..\util\rc_compat.h" />
     <ClInclude Include="..\util\rc_version.h" />
+    <ClInclude Include="rc_client_async.h" />
+    <ClInclude Include="rc_client_do_frame.h" />
     <ClInclude Include="rc_client_external.h" />
     <ClInclude Include="rc_client_external_versions.h" />
+    <ClInclude Include="rc_client_game.h" />
+    <ClInclude Include="rc_client_load.h" />
+    <ClInclude Include="rc_client_server.h" />
     <ClInclude Include="rc_client_internal.h" />
     <ClInclude Include="rc_client_raintegration_internal.h" />
   </ItemGroup>

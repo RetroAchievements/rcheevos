@@ -1,7 +1,7 @@
 #ifndef RC_CLIENT_EXTERNAL_CONVERSIONS_H
 #define RC_CLIENT_EXTERNAL_CONVERSIONS_H
 
-#include "rc_client_internal.h"
+#include "rc_client_game.h"
 
 RC_BEGIN_C_DECLS
 

@@ -4,7 +4,7 @@
 
 #include "../../src/util/rc_compat.h"
 #include "../test_framework.h"
-#include "data.h"
+#include "hash_data.h"
 #include "mock_filereader.h"
 
 #include <stdlib.h>

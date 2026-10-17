@@ -14,7 +14,7 @@ include $(RC_SRC)/Makefile.common
 # source files
 OBJ=$(RC_UTIL_OBJS) \
     $(RC_HASH_OBJS) \
-    data.o \
+    hash_data.o \
     mock_filereader.o \
     test.o \
     test_rc_hash.o
