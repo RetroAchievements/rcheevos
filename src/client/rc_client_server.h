@@ -4,6 +4,7 @@
 #include "rc_export.h"
 
 #include <stdint.h>
+#include <stddef.h>
 
 RC_BEGIN_C_DECLS
 
