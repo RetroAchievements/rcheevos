@@ -66,7 +66,8 @@ int rc_trigger_size(const char* memaddr) {
   rc_init_preparse_state(&preparse);
 
   trigger = RC_ALLOC(rc_trigger_with_memrefs_t, &preparse.parse);
-  rc_parse_trigger_internal(&trigger->trigger, &memaddr, &preparse.parse);
+  if (trigger)
+    rc_parse_trigger_internal(&trigger->trigger, &memaddr, &preparse.parse);
   rc_preparse_alloc_memrefs(NULL, &preparse);
 
   rc_destroy_preparse_state(&preparse);
@@ -87,7 +88,8 @@ rc_trigger_t* rc_parse_trigger(void* buffer, const char* memaddr, void* unused_L
   /* first pass : determine how many memrefs are needed */
   rc_init_preparse_state(&preparse);
   trigger = RC_ALLOC(rc_trigger_with_memrefs_t, &preparse.parse);
-  rc_parse_trigger_internal(&trigger->trigger, &preparse_memaddr, &preparse.parse);
+  if (trigger)
+    rc_parse_trigger_internal(&trigger->trigger, &preparse_memaddr, &preparse.parse);
   rc_preparse_alloc_memrefs(NULL, &preparse); /* allocate space for the needed memrefs */
 
   /* allocate the trigger and memrefs */

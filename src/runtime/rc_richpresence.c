@@ -42,7 +42,8 @@ static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t
   rc_init_preparse_state(&preparse);
   preparse.parse.existing_memrefs = parse->memrefs;
   value = RC_ALLOC(rc_value_t, &preparse.parse);
-  rc_parse_value_internal(value, &test_memaddr, &preparse.parse);
+  if (value)
+    rc_parse_value_internal(value, &test_memaddr, &preparse.parse);
 
   size = preparse.parse.offset;
   if (size < 0) {
@@ -60,7 +61,16 @@ static void rc_alloc_helper_variable_memref_value(rc_richpresence_display_part_t
   }
 
   /* parse the value into the scratch buffer so we can look at it */
-  rc_reset_parse_state(&preparse.parse, rc_buffer_alloc(&preparse.parse.scratch_buffer, (size_t)size), (size_t)size);
+  {
+    void* buffer = rc_buffer_alloc(&preparse.parse.scratch_buffer, (size_t)size);
+    if (!buffer) {
+      parse->offset = RC_OUT_OF_MEMORY;
+      rc_destroy_preparse_state(&preparse);
+      return;
+    }
+
+    rc_reset_parse_state(&preparse.parse, buffer, (size_t)size);
+  }
   preparse.parse.memrefs = parse->memrefs;
   preparse.parse.existing_memrefs = parse->existing_memrefs;
   value = RC_ALLOC(rc_value_t, &preparse.parse);
@@ -157,6 +167,9 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
 
   {
     self = RC_ALLOC(rc_richpresence_display_t, parse);
+    if (!self)
+      return NULL;
+
     memset(self, 0, sizeof(rc_richpresence_display_t));
     next = &self->display;
   }
@@ -173,6 +186,9 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
 
     if (ptr > line) {
       part = RC_ALLOC(rc_richpresence_display_part_t, parse);
+      if (!part)
+        return 0;
+
       memset(part, 0, sizeof(rc_richpresence_display_part_t));
       *next = part;
       next = &part->next;
@@ -214,6 +230,9 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
       macro_len = ptr - line;
 
       part = RC_ALLOC(rc_richpresence_display_part_t, parse);
+      if (!part)
+        return 0;
+
       memset(part, 0, sizeof(rc_richpresence_display_part_t));
       *next = part;
       next = &part->next;
@@ -401,6 +420,9 @@ static void rc_insert_richpresence_lookup_item(rc_richpresence_lookup_t* lookup,
   }
 
   item = RC_ALLOC_SCRATCH(rc_richpresence_lookup_item_t, parse);
+  if (!item)
+    return;
+
   item->first = first;
   item->last = last;
   item->label = rc_alloc_str(parse, label, label_len);
@@ -546,6 +568,9 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
       line += 7;
 
       lookup = RC_ALLOC_SCRATCH(rc_richpresence_lookup_t, parse);
+      if (!lookup)
+        return;
+
       lookup->name = rc_alloc_str(parse, line, (int)(endline - line));
       lookup->format = RC_FORMAT_RP_LOOKUP;
       lookup->root = NULL;
@@ -568,6 +593,9 @@ void rc_parse_richpresence_internal(rc_richpresence_t* self, const char* script,
       }
 
       lookup = RC_ALLOC_SCRATCH(rc_richpresence_lookup_t, parse);
+      if (!lookup)
+        return;
+
       lookup->name = rc_alloc_str(parse, line, (int)(endline - line));
       lookup->root = NULL;
       lookup->default_label = "";
@@ -685,8 +713,10 @@ int rc_richpresence_size_lines(const char* script, int* lines_read) {
   rc_init_preparse_state(&preparse);
 
   richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
-  preparse.parse.variables = &richpresence->richpresence.values;
-  rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
+  if (richpresence) {
+    preparse.parse.variables = &richpresence->richpresence.values;
+    rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
+  }
   rc_preparse_alloc_memrefs(NULL, &preparse);
 
   if (lines_read)
@@ -712,8 +742,10 @@ rc_richpresence_t* rc_parse_richpresence(void* buffer, const char* script, void*
 
   rc_init_preparse_state(&preparse);
   richpresence = RC_ALLOC(rc_richpresence_with_memrefs_t, &preparse.parse);
-  preparse.parse.variables = &richpresence->richpresence.values;
-  rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
+  if (richpresence) {
+    preparse.parse.variables = &richpresence->richpresence.values;
+    rc_parse_richpresence_internal(&richpresence->richpresence, script, &preparse.parse);
+  }
   rc_preparse_alloc_memrefs(NULL, &preparse); /* allocate space for the needed memrefs */
 
   rc_reset_parse_state(&preparse.parse, buffer, (size_t)preparse.parse.offset);
