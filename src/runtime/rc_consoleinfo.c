@@ -103,6 +103,12 @@ const char* rc_console_name(uint32_t console_id)
     case RC_CONSOLE_INTERTON_VC_4000:
       return "Interton VC 4000";
 
+    case RC_CONSOLE_LASERACTIVE_NEC:
+      return "LaserActive (NEC PAC)";
+
+    case RC_CONSOLE_LASERACTIVE_SEGA:
+      return "LaserActive (SEGA PAC)";
+
     case RC_CONSOLE_MAGNAVOX_ODYSSEY2:
       return "Magnavox Odyssey 2";
 
@@ -1167,6 +1173,7 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
       return &rc_memory_regions_pc_engine;
 
     case RC_CONSOLE_PC_ENGINE_CD:
+    case RC_CONSOLE_LASERACTIVE_NEC:
       return &rc_memory_regions_pc_engine_cd;
 
     case RC_CONSOLE_PCFX:
@@ -1191,6 +1198,7 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
       return &rc_memory_regions_saturn;
 
     case RC_CONSOLE_SEGA_CD:
+    case RC_CONSOLE_LASERACTIVE_SEGA:
       return &rc_memory_regions_segacd;
 
     case RC_CONSOLE_SG1000:
