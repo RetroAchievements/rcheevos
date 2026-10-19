@@ -522,6 +522,7 @@ static int rc_hash_from_buffer(char hash[33], uint32_t console_id, const rc_hash
     case RC_CONSOLE_APPLE_II:
     case RC_CONSOLE_ARCADIA_2001:
     case RC_CONSOLE_ATARI_2600:
+    case RC_CONSOLE_ATARI_5200:
     case RC_CONSOLE_ATARI_JAGUAR:
     case RC_CONSOLE_COLECOVISION:
     case RC_CONSOLE_COMMODORE_64:
@@ -812,6 +813,7 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
 
     case RC_CONSOLE_ARCADIA_2001:
     case RC_CONSOLE_ATARI_2600:
+    case RC_CONSOLE_ATARI_5200:
     case RC_CONSOLE_ATARI_JAGUAR:
     case RC_CONSOLE_COLECOVISION:
     case RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER:
@@ -1217,6 +1219,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "83g", rc_hash_initialize_iterator_single, RC_CONSOLE_TI83 }, /* http://tibasicdev.wikidot.com/file-extensions */
   { "83p", rc_hash_initialize_iterator_single, RC_CONSOLE_TI83 },
   { "a26", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_2600 },
+  { "a52", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_5200 },
   { "a78", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_7800 },
   { "app", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
   { "arduboy", rc_hash_initialize_iterator_single, RC_CONSOLE_ARDUBOY },
