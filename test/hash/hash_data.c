@@ -457,7 +457,7 @@ uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8
       file_entry_start[3] = (next_free_sector >> 8) & 0xFF;
 
       /* is directory */
-      file_entry_start[25] = 1;
+      file_entry_start[25] = 2;
 
       /* directory name */
       file_entry_start[32] = filename_len & 0xFF;

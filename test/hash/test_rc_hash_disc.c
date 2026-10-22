@@ -689,6 +689,52 @@ static void test_hash_dreamcast_cue_buffered()
 
 /* ========================================================================= */
 
+static void test_hash_fm_towns_iso()
+{
+  const size_t game_exp_size = 203075;
+  uint8_t* game_exp = generate_generic_file(game_exp_size);
+  const size_t menu_exp_size = 240602;
+  uint8_t* menu_exp = generate_generic_file(menu_exp_size);
+  const size_t autoexec_bat_size = 177;
+  uint8_t* autoexec_bat = generate_generic_file(autoexec_bat_size);
+  size_t image_size;
+  uint8_t* image = generate_iso9660_bin(256, "TEST", &image_size);
+  char hash_file[33], hash_iterator[33];
+  const char* expected_md5 = "af054f580c748c033fe142591a0b9b58";
+
+  generate_iso9660_file(image, "AUTOEXEC.BAT", autoexec_bat, autoexec_bat_size);
+  generate_iso9660_file(image, "MENU.EXP", menu_exp, menu_exp_size);
+  generate_iso9660_file(image, "GAME\\GAME.EXP", game_exp, game_exp_size);
+
+  mock_file(0, "game.iso", image, image_size);
+
+  /* test file hash */
+  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_FM_TOWNS, "game.iso");
+
+  /* test file identification from iterator */
+  int result_iterator;
+  struct rc_hash_iterator iterator;
+
+  rc_hash_initialize_iterator(&iterator, "game.iso", NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* cleanup */
+  free(image);
+  free(autoexec_bat);
+  free(menu_exp);
+  free(game_exp);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+/* ========================================================================= */
+
 static void test_hash_gamecube()
 {
   size_t image_size;
@@ -1666,6 +1712,11 @@ void test_hash_disc(void) {
   TEST(test_hash_dreamcast_split_bin);
   TEST(test_hash_dreamcast_cue);
   TEST(test_hash_dreamcast_cue_buffered);
+
+  /* FM Towns */
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_FM_TOWNS, "test.hdm", 1261568, "f6b5f0cb9725e30a1ed76607f21f6197");
+  TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_FM_TOWNS, "test.d88", 1281968, "74e898cf6fb7bdf81c59c5311665861c");
+  TEST(test_hash_fm_towns_iso);
 
   /* Gamecube */
   TEST(test_hash_gamecube);
