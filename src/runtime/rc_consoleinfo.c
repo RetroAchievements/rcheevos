@@ -449,6 +449,16 @@ static const rc_memory_region_t _rc_memory_regions_famicom_disk_system[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_famicom_disk_system = { _rc_memory_regions_famicom_disk_system, 12 };
 
+/* ===== FM Towns ===== */
+/* FM Towns is a series of machines. The simplest has 1MB of RAM, the newest supports up to 26MB.
+ * For consistency, we rely on the core's database to select an appropriate amount of RAM for the game.
+ * Most will be given 2MB and the highest entry is currently 8MB, so we'll just allow up to 8MB in the map.
+ * https://github.com/drhelius/Geartowns/blob/d157715112589aeb7e88319b2f2b4ac4e2cafc5f/src/media/game_db.h#L61 */
+static const rc_memory_region_t _rc_memory_regions_fm_towns_system[] = {
+    { 0x000000U, 0x7FFFFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+};
+static const rc_memory_regions_t rc_memory_regions_fm_towns_system = { _rc_memory_regions_fm_towns_system, 1 };
+
 /* ===== GameBoy / MegaDuck ===== */
 static const rc_memory_region_t _rc_memory_regions_gameboy[] = {
     { 0x000000U, 0x0000FFU, 0x000000U, RC_MEMORY_TYPE_HARDWARE_CONTROLLER, "Interrupt vector" },
@@ -1096,6 +1106,9 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
 
     case RC_CONSOLE_FAMICOM_DISK_SYSTEM:
       return &rc_memory_regions_famicom_disk_system;
+
+    case RC_CONSOLE_FM_TOWNS:
+      return &rc_memory_regions_fm_towns_system;
 
     case RC_CONSOLE_GAMEBOY:
       return &rc_memory_regions_gameboy;
