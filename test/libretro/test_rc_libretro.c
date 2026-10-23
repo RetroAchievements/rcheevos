@@ -870,6 +870,13 @@ void test_rc_libretro(void) {
   TEST_PARAMS3(test_allowed_setting,    "FinalBurn Neo", "fbneo-neogeo-mode", "DIPSWITCH");
   TEST_PARAMS3(test_disallowed_setting, "FinalBurn Neo", "fbneo-neogeo-mode", "UNIBIOS");
 
+  TEST_PARAMS3(test_allowed_setting, "Geartowns", "geartowns_model", "auto");
+  TEST_PARAMS3(test_disallowed_setting, "Geartowns", "geartowns_model", "hg");
+  TEST_PARAMS3(test_allowed_setting, "Geartowns", "geartowns_cpu_clock", "auto");
+  TEST_PARAMS3(test_disallowed_setting, "Geartowns", "geartowns_cpu_clock", "16");
+  TEST_PARAMS3(test_allowed_setting, "Geartowns", "geartowns_main_ram", "auto");
+  TEST_PARAMS3(test_disallowed_setting, "Geartowns", "geartowns_main_ram", "16");
+
   TEST_PARAMS3(test_allowed_setting,    "Genesis Plus GX", "genesis_plus_gx_lock_on", "disabled");
   TEST_PARAMS3(test_disallowed_setting, "Genesis Plus GX", "genesis_plus_gx_lock_on", "action replay (pro)");
   TEST_PARAMS3(test_disallowed_setting, "Genesis Plus GX", "genesis_plus_gx_lock_on", "game genie");
