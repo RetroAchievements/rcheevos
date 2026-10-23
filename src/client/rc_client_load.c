@@ -30,10 +30,6 @@
 static void rc_client_process_resolved_hash(rc_client_load_state_t* load_state);
 static rc_client_async_handle_t* rc_client_load_game(rc_client_load_state_t* load_state, const char* hash, const char* file_path);
 
-/* internals pulled from rc_runtime.c */
-void rc_runtime_checksum(const char* memaddr, uint8_t* md5);
-/* end rc_runtime.c internals */
-
 typedef struct rc_client_pending_media_t
 {
 #ifdef RC_CLIENT_SUPPORTS_HASH
