@@ -153,6 +153,10 @@ static uint32_t rc_cd_init_file_info(rc_cd_file_info_t* info, const rc_hash_iter
   if (!rc_cd_read_sector(iterator, track_handle, rc_cd_first_track_sector(iterator, track_handle) + 16, info->sector_buffer, 256))
     return 0;
 
+  /* First byte is Volume Descriptor Type, which must be 1. Next five bytes are "CD001". */
+  if (memcmp(info->sector_buffer, "\1CD001", 6) != 0)
+    return 0;
+
   /* The size in bytes of a logical block. Most discs use a logical block size of 2048 - the same as sector size. */
   info->logical_block_size = (info->sector_buffer[128] | (info->sector_buffer[128 + 1] << 8));
 
@@ -243,6 +247,9 @@ static void rc_cd_get_files_with_extension_recursive(rc_hash_filelist_t* file_li
   size_t extension_len = strlen(extension);
   size_t path_len = strlen(path);
   size_t filename_len;
+
+  if (file_list->num_paths == sizeof(file_list->files) / sizeof(file_list->files[0]))
+    return;
 
   while (rc_cd_find_next_file(file_info, iterator, track_handle)) {
     if (rc_cd_is_file_a_directory(file_info)) {
@@ -612,6 +619,20 @@ int rc_hash_fmtowns(char hash[33], const rc_hash_iterator_t* iterator)
 
   rc_cd_get_files_with_extension(&file_list, "EXP", iterator, track_handle);
   if (file_list.num_paths == 0) {
+    /* If no EXP files were found, assume the disc is using a boot sector. Look for it. */
+    uint8_t buffer[16];
+    if (rc_cd_read_sector(iterator, track_handle, 0, buffer, sizeof(buffer)) == sizeof(buffer)) {
+      if (memcmp(buffer, "IPL4", 4) == 0) {
+        /* The first four sectors are the boot code, but only 8KB. Read 1MB to get a reasonable hash. */
+        md5_state_t md5;
+        md5_init(&md5);
+        rc_hash_cd_file(&md5, iterator, track_handle, 0, NULL, 1024*1024, "boot");
+        rc_hash_finalize(iterator, &md5, hash);
+        rc_cd_close_track(iterator, track_handle);
+        return 1;
+      }
+    }
+
     rc_cd_close_track(iterator, track_handle);
     return rc_hash_iterator_error(iterator, "No EXP files found");
   }
