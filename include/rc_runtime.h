@@ -129,6 +129,7 @@ RC_EXPORT void RC_CCONV rc_runtime_validate_addresses(rc_runtime_t* runtime, rc_
 RC_EXPORT void RC_CCONV rc_runtime_invalidate_address(rc_runtime_t* runtime, uint32_t address);
 
 RC_EXPORT uint32_t RC_CCONV rc_runtime_progress_size(const rc_runtime_t* runtime, void* unused_L);
+RC_EXPORT void RC_CCONV rc_runtime_checksum(const char* memaddr, uint8_t* md5);
 
 /* [deprecated] use rc_runtime_serialize_progress_sized instead */
 RC_EXPORT int RC_CCONV rc_runtime_serialize_progress(void* buffer, const rc_runtime_t* runtime, void* unused_L);

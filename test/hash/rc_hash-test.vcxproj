@@ -41,7 +41,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="data.c" />
+    <ClCompile Include="hash_data.c" />
     <ClCompile Include="mock_filereader.c" />
     <ClCompile Include="test.c" />
     <ClCompile Include="test_rc_cdreader.c" />
@@ -57,7 +57,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\test_framework.h" />
-    <ClInclude Include="data.h" />
+    <ClInclude Include="hash_data.h" />
     <ClInclude Include="mock_filereader.h" />
   </ItemGroup>
 </Project>

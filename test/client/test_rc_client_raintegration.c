@@ -1,52 +1,25 @@
 #include "rc_client.h"
 
 #include "rc_consoles.h"
-#include "rc_hash.h"
-#include "rc_api_runtime.h"
 
 #include "../../src/client/rc_client_internal.h"
-#include "../../src/util/rc_version.h"
+#include "../../src/client/rc_client_raintegration_internal.h"
 
-#include "../hash/data.h"
+#include "mock_client.h"
+
 #include "../test_framework.h"
 
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
 
-static rc_client_t* g_client;
 static const char* g_integration_event;
-static void* g_callback_userdata = &g_client; /* dummy object to use for callback userdata validation */
-
-/* begin from test_rc_client.c */
-
-extern void rc_client_server_call(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client);
-extern void rc_client_server_call_async(const rc_api_request_t* request, rc_client_server_callback_t callback, void* callback_data, rc_client_t* client);
-extern void reset_mock_api_handlers(void);
-extern void mock_api_response(const char* request_params, const char* response_body);
-extern void mock_api_error(const char* request_params, const char* response_body, int http_status_code);
-extern void async_api_response(const char* request_params, const char* response_body);
-extern void async_api_error(const char* request_params, const char* response_body, int http_status_code);
-
-/* end from test_rc_client.c */
-
-static uint32_t rc_client_read_memory(uint32_t address, uint8_t* buffer, uint32_t num_bytes, rc_client_t* client)
-{
-  (void)address;
-  (void)buffer;
-  (void)num_bytes;
-  (void)client;
-
-  return 0;
-}
 
 static rc_client_t* mock_client_with_integration()
 {
-  rc_client_t* client = rc_client_create(rc_client_read_memory, rc_client_server_call);
+  rc_client_t* client = mock_client_not_logged_in();
   client->state.raintegration = (rc_client_raintegration_t*)
       rc_buffer_alloc(&client->state.buffer, sizeof(*client->state.raintegration));
   memset(client->state.raintegration, 0, sizeof(*client->state.raintegration));
 
-  rc_api_set_host(NULL);
-  reset_mock_api_handlers();
   g_integration_event = "none";
 
   return client;
@@ -55,26 +28,8 @@ static rc_client_t* mock_client_with_integration()
 static rc_client_t* mock_client_with_integration_async()
 {
   rc_client_t* client = mock_client_with_integration();
-  client->callbacks.server_call = rc_client_server_call_async;
+  mock_client_enable_async(client);
   return client;
-}
-
-static void rc_client_callback_expect_success(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
-{
-  ASSERT_NUM_EQUALS(result, RC_OK);
-  ASSERT_PTR_NULL(error_message);
-  ASSERT_PTR_EQUALS(client, g_client);
-  ASSERT_PTR_EQUALS(callback_userdata, g_callback_userdata);
-}
-
-static void rc_client_callback_expect_uncalled(int result, const char* error_message, rc_client_t* client, void* callback_userdata)
-{
-  (void)result;
-  (void)error_message;
-  (void)client;
-  (void)callback_userdata;
-
-  ASSERT_FAIL("Callback should not have been called.");
 }
 
 static uint32_t g_uint32;
