@@ -700,7 +700,7 @@ static void test_hash_fm_towns_iso()
   size_t image_size;
   uint8_t* image = generate_iso9660_bin(256, "TEST", &image_size);
   char hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "af054f580c748c033fe142591a0b9b58";
+  const char* expected_md5 = "9f1cfd0565d4c5278b34f9fc3be60d5d";
 
   generate_iso9660_file(image, "AUTOEXEC.BAT", autoexec_bat, autoexec_bat_size);
   generate_iso9660_file(image, "MENU.EXP", menu_exp, menu_exp_size);

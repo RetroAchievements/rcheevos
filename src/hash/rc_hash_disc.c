@@ -236,7 +236,9 @@ typedef struct rc_hash_filelist_t {
   uint32_t num_paths;
 } rc_hash_filelist_t;
 
-static void rc_cd_get_files_with_extension_recursive(rc_hash_filelist_t* file_list, const char* extension,
+typedef int (RC_CCONV* rc_hash_file_filter_func)(const char* path, uint32_t path_len);
+
+static void rc_cd_get_files_recursive(rc_hash_filelist_t* file_list, rc_hash_file_filter_func filter_func,
     const rc_hash_iterator_t* iterator, void* track_handle, char path[256], rc_cd_file_info_t* file_info)
 {
   char directory_names[64][32];
@@ -244,7 +246,6 @@ static void rc_cd_get_files_with_extension_recursive(rc_hash_filelist_t* file_li
   uint32_t directory_sizes[64];
   uint32_t num_directories = 0;
   uint32_t i;
-  size_t extension_len = strlen(extension);
   size_t path_len = strlen(path);
   size_t filename_len;
 
@@ -263,16 +264,16 @@ static void rc_cd_get_files_with_extension_recursive(rc_hash_filelist_t* file_li
         }
       }
     }
-    else if (file_info->filename_length >= extension_len + 2) {
+    else {
       const char* ptr = file_info->filename + file_info->filename_length - 1;
       while (ptr > file_info->filename && *ptr >= '0' && *ptr <= '9')
         --ptr;
       if (*ptr != ';')
-        ptr = file_info->filename + file_info->filename_length - 1;
+        ptr = file_info->filename + file_info->filename_length;
 
       filename_len = ptr - file_info->filename;
-      if ((filename_len > extension_len + 2) && *(ptr - extension_len - 1) == '.' &&
-          strncasecmp(ptr - extension_len, extension, extension_len) == 0) {
+
+      if (filter_func(file_info->filename, (uint32_t)filename_len)) {
         if ((file_list->next_path - file_list->paths_buffer) + path_len + filename_len + 2 < sizeof(file_list->paths_buffer)) {
           rc_cd_get_file_sector_and_size(file_info, &file_list->files[file_list->num_paths].sector, &file_list->files[file_list->num_paths].size);
           file_list->files[file_list->num_paths++].path = file_list->next_path;
@@ -309,13 +310,13 @@ static void rc_cd_get_files_with_extension_recursive(rc_hash_filelist_t* file_li
     file_info->remaining_size = directory_sizes[i];
     file_info->read_ptr = NULL;
 
-    rc_cd_get_files_with_extension_recursive(file_list, extension, iterator, track_handle, path, file_info);
+    rc_cd_get_files_recursive(file_list, filter_func, iterator, track_handle, path, file_info);
   }
 
   path[path_len] = '\0';
 }
 
-static void rc_cd_get_files_with_extension(rc_hash_filelist_t* file_list, const char* extension, const rc_hash_iterator_t* iterator, void* track_handle)
+static void rc_cd_get_files(rc_hash_filelist_t* file_list, rc_hash_file_filter_func filter_func, const rc_hash_iterator_t* iterator, void* track_handle)
 {
   rc_cd_file_info_t file_info;
   char path[256] = "";
@@ -326,7 +327,7 @@ static void rc_cd_get_files_with_extension(rc_hash_filelist_t* file_list, const 
   if (!rc_cd_init_file_info(&file_info, iterator, track_handle))
     return;
 
-  rc_cd_get_files_with_extension_recursive(file_list, extension, iterator, track_handle, path, &file_info);
+  rc_cd_get_files_recursive(file_list, filter_func, iterator, track_handle, path, &file_info);
 }
 
 /* ===================================================== */
@@ -590,6 +591,21 @@ int rc_hash_dreamcast(char hash[33], const rc_hash_iterator_t* iterator)
   return result;
 }
 
+static int rc_hash_fmtowns_cd_file_filter(const char* filename, uint32_t filename_len)
+{
+  if (filename_len > 5 && filename[filename_len - 4] == '.') {
+    if (filename_len == 12 && strncasecmp(filename, "AUTOEXEC.BAT", 12) == 0)
+      return 1;
+
+    if (strncasecmp(&filename[filename_len - 3], "exp", 3) == 0 || /* 32-bit executable */
+        strncasecmp(&filename[filename_len - 3], "exe", 3) == 0) { /* 16-bit executable */
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 int rc_hash_fmtowns(char hash[33], const rc_hash_iterator_t* iterator)
 {
   rc_hash_filelist_t file_list;
@@ -617,7 +633,7 @@ int rc_hash_fmtowns(char hash[33], const rc_hash_iterator_t* iterator)
   if (!track_handle)
     return rc_hash_iterator_error(iterator, "Could not open track 1");
 
-  rc_cd_get_files_with_extension(&file_list, "EXP", iterator, track_handle);
+  rc_cd_get_files(&file_list, rc_hash_fmtowns_cd_file_filter, iterator, track_handle);
   if (file_list.num_paths == 0) {
     /* If no EXP files were found, assume the disc is using a boot sector. Look for it. */
     uint8_t buffer[16];
