@@ -839,9 +839,17 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WASM4:
     case RC_CONSOLE_WONDERSWAN:
-    case RC_CONSOLE_ZEEBO:
     case RC_CONSOLE_ZX_SPECTRUM:
       /* generic whole-file hash - don't buffer */
+      return rc_hash_whole_file(hash, iterator);
+
+    case RC_CONSOLE_ZEEBO:
+#ifndef RC_HASH_NO_ZIP
+      /* zipped games are hashed from the modules listed in the archive */
+      if (rc_path_compare_extension(path, "zip"))
+        return rc_hash_zeebo_zip(hash, iterator);
+#endif
+      /* loose modules use a generic whole-file hash - don't buffer */
       return rc_hash_whole_file(hash, iterator);
 
     case RC_CONSOLE_MEGA_DRIVE:
@@ -1211,6 +1219,15 @@ static void rc_hash_initialize_iterator_tap(rc_hash_iterator_t* iterator, int da
   iterator->consoles[0] = RC_CONSOLE_COMMODORE_64;
 }
 
+static void rc_hash_initialize_iterator_zip(rc_hash_iterator_t* iterator, int data) {
+  (void)data;
+
+  iterator->consoles[0] = RC_CONSOLE_ARCADE;
+#ifndef RC_HASH_NO_ZIP
+  iterator->consoles[1] = RC_CONSOLE_ZEEBO;
+#endif
+}
+
 static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[] = {
   { "2d", rc_hash_initialize_iterator_single, RC_CONSOLE_SHARPX1 },
   { "3ds", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_3DS },
@@ -1258,6 +1275,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "m7", rc_hash_initialize_iterator_single, RC_CONSOLE_THOMSONTO8 }, /* cartridge */
   { "md", rc_hash_initialize_iterator_single, RC_CONSOLE_MEGA_DRIVE },
   { "min", rc_hash_initialize_iterator_single, RC_CONSOLE_POKEMON_MINI },
+  { "mod", rc_hash_initialize_iterator_single, RC_CONSOLE_ZEEBO },
   { "mx1", rc_hash_initialize_iterator_single, RC_CONSOLE_MSX },
   { "mx2", rc_hash_initialize_iterator_single, RC_CONSOLE_MSX },
   { "n64", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_64 },
@@ -1295,7 +1313,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "woz", rc_hash_initialize_iterator_single, RC_CONSOLE_APPLE_II },
   { "wsc", rc_hash_initialize_iterator_single, RC_CONSOLE_WONDERSWAN },
   { "z64", rc_hash_initialize_iterator_single, RC_CONSOLE_NINTENDO_64 },
-  { "zip", rc_hash_initialize_iterator_single, RC_CONSOLE_ARCADE }
+  { "zip", rc_hash_initialize_iterator_zip, 0 }
 };
 
 const rc_hash_iterator_ext_handler_entry_t* rc_hash_get_iterator_ext_handlers(size_t* num_handlers) {
