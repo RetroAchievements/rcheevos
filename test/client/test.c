@@ -39,12 +39,17 @@ int main(void) {
   test_rapi_editor();
 
   test_client();
+  test_client_user();
+  test_client_load();
+  test_client_game();
+  test_client_do_frame();
 #ifdef RC_CLIENT_SUPPORTS_EXTERNAL
   test_client_external();
 #endif
 #ifdef RC_CLIENT_SUPPORTS_RAINTEGRATION
   test_client_raintegration();
 #endif
+  test_client_info();
 #ifdef RC_CLIENT_SUPPORTS_HASH
   /* no direct compile option for hash support, so leverage RC_CLIENT_SUPPORTS_HASH */
   test_rc_libretro(); /* libretro extensions require hash support */
