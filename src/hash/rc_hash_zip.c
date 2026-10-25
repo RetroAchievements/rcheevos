@@ -307,6 +307,43 @@ int rc_hash_arduboyfx(char hash[33], const rc_hash_iterator_t* iterator)
 
 /* ===================================================== */
 
+static int rc_hash_zeebo_filter(const char* filename, uint32_t filename_len, uint64_t decomp_size, void* userdata)
+{
+  (void)decomp_size;
+  (void)userdata;
+
+  /* A Zeebo game is a BREW application: one or more modules (mod/<id>/<name>.mod) plus their
+   * manifests (mif/<id>.mif) and resources. Only the modules are hashed, as they hold the code. */
+  if (filename_len > 4) {
+    const char* ext = &filename[filename_len - 4];
+    if (strncasecmp(ext, ".mod", 4) == 0)
+      return 0; /* keep modules */
+  }
+
+  return 1; /* filter everything else */
+}
+
+int rc_hash_zeebo_zip(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  md5_state_t md5;
+  int res;
+
+  void* file_handle = rc_file_open(iterator, iterator->path);
+  if (!file_handle)
+    return rc_hash_iterator_error(iterator, "Could not open file");
+
+  md5_init(&md5);
+  res = rc_hash_zip_file(&md5, file_handle, iterator, rc_hash_zeebo_filter, NULL);
+  rc_file_close(iterator, file_handle);
+
+  if (!res)
+    return 0;
+
+  return rc_hash_finalize(iterator, &md5, hash);
+}
+
+/* ===================================================== */
+
 struct rc_hash_ms_dos_dosz_state {
   const char* path;
   const struct rc_hash_ms_dos_dosz_state* child;
