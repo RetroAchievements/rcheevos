@@ -535,6 +535,52 @@ static void test_hash_msdos_dosz_with_parent()
 
 /* ========================================================================= */
 
+static void test_hash_zeebo_zip()
+{
+  char hash_file[33], hash_arcade[33], hash_iterator[33];
+  mock_zip_file_t zip;
+  uint8_t zip_contents[1024];
+  size_t zip_size;
+  const char* expected_md5 = "708cf4d6da53f50e2261a6dc02145741";
+  const char* expected_arcade_md5 = "c8d46d341bea4fd5bff866a65ff8aea9";
+  int result_file, result_arcade, result_iterator;
+
+  /* a game with two modules (the game and a shared engine), their manifests and a resource */
+  memset(&zip, 0, sizeof(zip));
+  zip.ptr = zip.buffer = zip_contents;
+  mock_zip_add_file(&zip, "mif/274259.mif", 0x6C3B1A20, 72);
+  mock_zip_add_file(&zip, "mif/12875.mif", 0x1D0E5F3A, 64);
+  mock_zip_add_file(&zip, "mod/274259/a3d.mod", 0x5A1B2C3D, 96);
+  mock_zip_add_file(&zip, "mod/274259/a3d_sound_bgm_00.mp3", 0x3E8F0C11, 48);
+  mock_zip_add_file(&zip, "mod/12875/imicro3d.mod", 0x0F1E2D3C, 80);
+  zip_size = mock_zip_finalize(&zip, "");
+  ASSERT_NUM_LESS_EQUALS(zip_size, sizeof(zip_contents));
+
+  mock_file(0, "game.zip", zip_contents, zip_size);
+
+  /* test file hash */
+  result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, "game.zip");
+
+  /* test file identification from iterator - arcade is tried first */
+  struct rc_hash_iterator iterator;
+  rc_hash_initialize_iterator(&iterator, "game.zip", NULL, 0);
+  result_arcade = rc_hash_iterate(hash_arcade, &iterator);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, expected_md5);
+
+  ASSERT_NUM_EQUALS(result_arcade, 1);
+  ASSERT_STR_EQUALS(hash_arcade, expected_arcade_md5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
+}
+
+/* ========================================================================= */
+
 void test_hash_zip(void) {
   TEST_SUITE_BEGIN();
 
@@ -546,6 +592,9 @@ void test_hash_zip(void) {
   TEST(test_hash_msdos_dosz_zip64);
   TEST(test_hash_msdos_dosz_with_dosc);
   TEST(test_hash_msdos_dosz_with_parent);
+
+  /* Zeebo */
+  TEST(test_hash_zeebo_zip);
 
   TEST_SUITE_END();
 }
