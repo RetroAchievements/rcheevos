@@ -54,6 +54,38 @@ static void rc_client_award_achievement_retry(rc_client_scheduled_callback_data_
   rc_client_award_achievement_server_call(ach_data);
 }
 
+static void rc_client_award_achievement_check_mastery(rc_client_t* client, uint32_t achievement_id)
+{
+  rc_mutex_lock(&client->state.mutex);
+  if (client->game) {
+    rc_client_subset_info_t* subset;
+    for (subset = client->game->subsets; subset; subset = subset->next) {
+      if (subset->mastery == RC_CLIENT_MASTERY_STATE_NONE) {
+        rc_client_achievement_info_t* scan = subset->achievements;
+        rc_client_achievement_info_t* stop = scan + subset->public_.num_achievements;
+        int found = 0;
+        for (; scan < stop; ++scan) {
+          if (scan->public_.id == achievement_id) {
+            found = 1;
+            break;
+          }
+        }
+
+        if (found) {
+          RC_CLIENT_LOG_INFO_FORMATTED(client, "%s %u %s",
+            (subset->public_.id == client->game->public_.id) ? "Game" : "Subset",
+            client->game->public_.id,
+            client->state.hardcore ? "mastered" : "completed");
+
+          subset->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
+          break;
+        }
+      }
+    }
+  }
+  rc_mutex_unlock(&client->state.mutex);
+}
+
 static void rc_client_award_achievement_callback(const rc_api_server_response_t* server_response, void* callback_data)
 {
   rc_client_award_achievement_callback_data_t* ach_data =
@@ -125,25 +157,8 @@ static void rc_client_award_achievement_callback(const rc_api_server_response_t*
           ach_data->hardcore ? award_achievement_response.new_player_score : award_achievement_response.new_player_score_casual);
       }
 
-      if (award_achievement_response.achievements_remaining == 0) {
-        rc_client_subset_info_t* subset;
-        for (subset = ach_data->client->game->subsets; subset; subset = subset->next) {
-          if (subset->mastery == RC_CLIENT_MASTERY_STATE_NONE &&
-            rc_client_subset_get_achievement_info(ach_data->client, subset, ach_data->id)) {
-            if (subset->public_.id == ach_data->client->game->public_.id) {
-              RC_CLIENT_LOG_INFO_FORMATTED(ach_data->client, "Game %u %s", ach_data->client->game->public_.id,
-                ach_data->client->state.hardcore ? "mastered" : "completed");
-              subset->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
-            }
-            else {
-              RC_CLIENT_LOG_INFO_FORMATTED(ach_data->client, "Subset %u %s", ach_data->client->game->public_.id,
-                ach_data->client->state.hardcore ? "mastered" : "completed");
-
-              subset->mastery = RC_CLIENT_MASTERY_STATE_PENDING;
-            }
-          }
-        }
-      }
+      if (award_achievement_response.achievements_remaining == 0)
+        rc_client_award_achievement_check_mastery(ach_data->client, ach_data->id);
     }
   }
 
@@ -550,6 +565,7 @@ static void rc_client_submit_leaderboard_entry_server_call(rc_client_submit_lead
   result = rc_api_init_submit_lboard_entry_request_hosted(&request, &api_params, &lboard_data->client->state.host);
   if (result != RC_OK) {
     RC_CLIENT_LOG_ERR_FORMATTED(lboard_data->client, "Error constructing submit leaderboard entry for leaderboard %u: %s", lboard_data->id, rc_error_str(result));
+    free(lboard_data);
     return;
   }
 

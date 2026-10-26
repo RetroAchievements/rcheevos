@@ -318,10 +318,10 @@ static void rc_client_fetch_game_list_callback(const rc_api_server_response_t* s
         strings_size += strlen(src->image_name) + 1;
       if (src->image_url)
         strings_size += strlen(src->image_url) + 1;
-      hashes_size += src->num_supported_hashes * sizeof(const char*);
+      hashes_size += src->num_supported_hashes;
       for (i = 0; i < src->num_supported_hashes; i++)
         strings_size += strlen(src->supported_hashes[i]) + 1;
-      hashes_size += src->num_unsupported_hashes * sizeof(const char*);
+      hashes_size += src->num_unsupported_hashes;
       for (i = 0; i < src->num_unsupported_hashes; i++)
         strings_size += strlen(src->unsupported_hashes[i]) + 1;
     }

@@ -454,6 +454,10 @@ rc_client_achievement_list_t* rc_client_create_subset_achievement_list(rc_client
   buckets_size = RC_ALIGN(num_buckets * sizeof(rc_client_achievement_bucket_t));
 
   list = (rc_client_achievement_list_info_t*)malloc(list_size + buckets_size + num_achievements * sizeof(rc_client_achievement_t*));
+  if (!list) {
+    rc_mutex_unlock(&client->state.mutex);
+    return NULL;
+  }
   list->public_.buckets = bucket_ptr = (rc_client_achievement_bucket_t*)((uint8_t*)list + list_size);
   achievement_ptr = (const rc_client_achievement_t**)((uint8_t*)bucket_ptr + buckets_size);
 
@@ -1133,6 +1137,10 @@ rc_client_leaderboard_list_t* rc_client_create_subset_leaderboard_list(rc_client
   buckets_size = RC_ALIGN(num_buckets * sizeof(rc_client_leaderboard_bucket_t));
 
   list = (rc_client_leaderboard_list_info_t*)malloc(list_size + buckets_size + num_leaderboards * sizeof(rc_client_leaderboard_t*));
+  if (!list) {
+    rc_mutex_unlock(&client->state.mutex);
+    return NULL;
+  }
   list->public_.buckets = bucket_ptr = (rc_client_leaderboard_bucket_t*)((uint8_t*)list + list_size);
   leaderboard_ptr = (const rc_client_leaderboard_t**)((uint8_t*)bucket_ptr + buckets_size);
 
@@ -1307,7 +1315,7 @@ static void rc_client_fetch_leaderboard_entries_callback(const rc_api_server_res
       char* user = (char*)((uint8_t*)list + list_size);
       const rc_api_lboard_info_entry_t* lbentry = lbinfo_response.entries;
       const rc_api_lboard_info_entry_t* stop = lbentry + lbinfo_response.num_entries;
-      const size_t logged_in_user_len = strlen(client->user.display_name) + 1;
+      const size_t logged_in_user_len = client->user.display_name ? strlen(client->user.display_name) + 1 : 0;
       info->destroy_func = NULL;
       list->user_index = -1;
 
@@ -1468,11 +1476,13 @@ rc_client_game_hash_t* rc_client_find_game_hash(rc_client_t* client, const char*
 
   if (!game_hash) {
     game_hash = (rc_client_game_hash_t*)rc_buffer_alloc(&client->state.buffer, sizeof(rc_client_game_hash_t));
-    memset(game_hash, 0, sizeof(*game_hash));
-    snprintf(game_hash->hash, sizeof(game_hash->hash), "%s", hash);
-    game_hash->game_id = RC_CLIENT_UNKNOWN_GAME_ID;
-    game_hash->next = client->hashes;
-    client->hashes = game_hash;
+    if (game_hash) {
+      memset(game_hash, 0, sizeof(*game_hash));
+      snprintf(game_hash->hash, sizeof(game_hash->hash), "%s", hash);
+      game_hash->game_id = RC_CLIENT_UNKNOWN_GAME_ID;
+      game_hash->next = client->hashes;
+      client->hashes = game_hash;
+    }
   }
   rc_mutex_unlock(&client->state.mutex);
 
