@@ -120,8 +120,8 @@ static uint32_t rc_cd_find_next_file(rc_cd_file_info_t* info, const rc_hash_iter
   }
 
   do {
-    if (info->read_ptr >= info->sector_buffer + sizeof(info->sector_buffer) || !*info->read_ptr) {
-      /* end of this path table block. if the path table spans multiple sectors, keep scanning */
+    if (info->read_ptr >= info->sector_buffer + sizeof(info->sector_buffer) - 34 || !*info->read_ptr) {
+      /* End of this path table block. If the path table spans multiple sectors, keep scanning */
       if (info->remaining_size > info->logical_block_size) {
         info->remaining_size -= info->logical_block_size;
         if (rc_cd_read_sector(iterator, track_handle, ++info->sector_index, info->sector_buffer, sizeof(info->sector_buffer))) {
@@ -138,6 +138,11 @@ static uint32_t rc_cd_find_next_file(rc_cd_file_info_t* info, const rc_hash_iter
 
     /* The first byte of the record is the length of the record */
     info->read_ptr += *info->read_ptr;
+
+    /* If the record length extends beyond the end of the sector, ignore it. */
+    if (info->read_ptr > &info->sector_buffer[sizeof(info->sector_buffer)])
+      continue;
+
     return 1;
   } while (1);
 
