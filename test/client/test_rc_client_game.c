@@ -178,6 +178,123 @@ static void test_subset_list(void)
 
 /* ----- achievement list ----- */
 
+static void test_set_subset_active(void)
+{
+  rc_client_subset_list_t* list;
+
+  g_client = mock_client_game_loaded(patchdata_subset, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    const uint32_t num_triggers = g_client->game->runtime.trigger_count;
+    const uint32_t num_lboards = g_client->game->runtime.lboard_count;
+
+    rc_client_set_subset_active(g_client, 2345, 0);
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_triggers - 3);
+    ASSERT_NUM_EQUALS(g_client->game->runtime.lboard_count, num_lboards - 2);
+
+    list = rc_client_create_subset_list(g_client);
+    ASSERT_NUM_EQUALS(list->num_subsets, 1);
+    ASSERT_NUM_EQUALS(list->subsets[0]->id, 1111);
+    rc_client_destroy_subset_list(list);
+
+    rc_client_set_subset_active(g_client, 2345, 1);
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_triggers);
+    ASSERT_NUM_EQUALS(g_client->game->runtime.lboard_count, num_lboards);
+
+    /* an unknown subset changes nothing */
+    rc_client_set_subset_active(g_client, 9999, 0);
+    ASSERT_NUM_EQUALS(g_client->game->runtime.trigger_count, num_triggers);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_set_subset_active_stops_triggers(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_subset, no_unlocks);
+  mock_client_enable_async(g_client);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    mock_memory(memory, sizeof(memory));
+    rc_client_set_subset_active(g_client, 2345, 0);
+
+    reset_mock_events();
+    rc_client_do_frame(g_client);
+    memory[0x19] = 9;
+    rc_client_do_frame(g_client);
+    ASSERT_PTR_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5503));
+
+    /* back on, the condition has to become true again before it fires */
+    rc_client_set_subset_active(g_client, 2345, 1);
+    rc_client_do_frame(g_client);
+    ASSERT_PTR_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5503));
+
+    memory[0x19] = 0;
+    rc_client_do_frame(g_client);
+    memory[0x19] = 9;
+    rc_client_do_frame(g_client);
+    ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED, 5503));
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_set_subset_active_after_hardcore_change(void)
+{
+  g_client = mock_client_logged_in();
+  rc_client_set_hardcore_enabled(g_client, 0);
+  mock_client_load_game_casual(patchdata_subset, unlock_5501h_and_5502);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    ASSERT_NUM_EQUALS(rc_client_get_achievement_info(g_client, 5502)->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+
+    rc_client_set_subset_active(g_client, 2345, 0);
+    rc_client_set_hardcore_enabled(g_client, 1);
+    rc_client_set_subset_active(g_client, 2345, 1);
+
+    /* 5502 was only unlocked in casual, so it can still be earned in hardcore */
+    ASSERT_NUM_EQUALS(rc_client_get_achievement_info(g_client, 5502)->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
+    ASSERT_NUM_EQUALS(rc_client_get_achievement_info(g_client, 5501)->state, RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED);
+  }
+
+  rc_client_destroy(g_client);
+}
+
+static void test_set_subset_active_hides_tracker(void)
+{
+  uint8_t memory[64];
+  memset(memory, 0, sizeof(memory));
+
+  g_client = mock_client_game_loaded(patchdata_subset, no_unlocks);
+
+  ASSERT_PTR_NOT_NULL(g_client->game);
+  if (g_client->game)
+  {
+    mock_memory(memory, sizeof(memory));
+    rc_client_do_frame(g_client);
+
+    memory[0x08] = 1;   /* start leaderboard 81 */
+    memory[0x0E] = 17;
+    rc_client_do_frame(g_client);
+    ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_SHOW, 1));
+
+    reset_mock_events();
+    rc_client_set_subset_active(g_client, 2345, 0);
+    ASSERT_PTR_NOT_NULL(find_event(RC_CLIENT_EVENT_LEADERBOARD_TRACKER_HIDE, 1));
+  }
+
+  rc_client_destroy(g_client);
+}
+
 static void test_achievement_list_simple(void)
 {
   rc_client_achievement_list_t* list;
@@ -2860,6 +2977,10 @@ void test_client_game(void) {
   /* subset */
   TEST(test_load_subset);
   TEST(test_subset_list);
+  TEST(test_set_subset_active);
+  TEST(test_set_subset_active_stops_triggers);
+  TEST(test_set_subset_active_after_hardcore_change);
+  TEST(test_set_subset_active_hides_tracker);
 
   /* achievements */
   TEST(test_achievement_list_simple);
