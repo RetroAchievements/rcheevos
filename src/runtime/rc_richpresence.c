@@ -321,7 +321,7 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
   return self;
 }
 
-static int rc_richpresence_lookup_item_count(rc_richpresence_lookup_item_t* item)
+static uint32_t rc_richpresence_lookup_item_count(rc_richpresence_lookup_item_t* item)
 {
   if (item == NULL)
     return 0;
@@ -360,20 +360,18 @@ static void rc_rebalance_richpresence_lookup_rebuild(rc_richpresence_lookup_item
     rc_rebalance_richpresence_lookup_rebuild(&item->right, items, mid + 1, last);
 }
 
-static void rc_rebalance_richpresence_lookup(rc_richpresence_lookup_item_t** root, rc_parse_state_t* parse)
+static void rc_rebalance_richpresence_lookup(rc_richpresence_lookup_item_t** root)
 {
   rc_richpresence_lookup_item_t** items;
   int index;
-  int size;
 
   /* don't bother rebalancing one or two items */
-  int count = rc_richpresence_lookup_item_count(*root);
+  uint32_t count = rc_richpresence_lookup_item_count(*root);
   if (count < 3)
     return;
 
-  /* allocate space for the flattened list in scratch memory */
-  size = count * sizeof(rc_richpresence_lookup_item_t*);
-  items = (rc_richpresence_lookup_item_t**)rc_buffer_alloc(&parse->scratch_buffer, size);
+  /* allocate space for the flattened list */
+  items = (rc_richpresence_lookup_item_t**)malloc(count * sizeof(rc_richpresence_lookup_item_t*));
 
   /* if allocation fails, we can still use the unbalanced tree, so just bail out */
   if (items == NULL)
@@ -385,6 +383,8 @@ static void rc_rebalance_richpresence_lookup(rc_richpresence_lookup_item_t** roo
 
   /* and rebuild it as a balanced tree */
   rc_rebalance_richpresence_lookup_rebuild(root, items, 0, count - 1);
+
+  free(items);
 }
 
 static void rc_insert_richpresence_lookup_item(rc_richpresence_lookup_t* lookup,
@@ -439,6 +439,8 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
   char* endptr = 0;
   uint32_t first, last;
   int base;
+  int unbalanced = 0;
+  const int rebalance_at = 16;
 
   do
   {
@@ -454,8 +456,8 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
         continue;
 
       /* empty line indicates end of lookup */
-      if (lookup->root)
-        rc_rebalance_richpresence_lookup(&lookup->root, parse);
+      if (lookup->root && unbalanced > 2)
+        rc_rebalance_richpresence_lookup(&lookup->root);
       break;
     }
 
@@ -513,6 +515,7 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
       /* if we've found the equal sign, this is the last item */
       if (*endptr == '=') {
         rc_insert_richpresence_lookup_item(lookup, first, last, label, (int)(endline - label), parse);
+        ++unbalanced;
         break;
       }
 
@@ -527,9 +530,15 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
       if (parse->offset < 0)
         break;
 
+      ++unbalanced;
+
       line = endptr + 1;
     } while (line < endline);
 
+    if (++unbalanced >= rebalance_at) {
+      rc_rebalance_richpresence_lookup(&lookup->root);
+      unbalanced = 0;
+    }
   } while (parse->offset > 0);
 
   return nextline;
@@ -909,6 +918,11 @@ static int rc_evaluate_richpresence_display(rc_richpresence_display_part_t* part
 
       case RC_FORMAT_RP_UNKNOWN_MACRO:
         chars = snprintf(tmp, sizeof(tmp), "[Unknown macro]%s", part->text);
+        if (chars >= sizeof(tmp)) { /* In case the user tried to name their macro something huge. */
+          chars = sizeof(tmp) - 1;
+          tmp[chars] = '\0';
+        }
+
         text = tmp;
         break;
 
