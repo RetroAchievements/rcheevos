@@ -321,31 +321,20 @@ static rc_richpresence_display_t* rc_parse_richpresence_display_internal(const c
   return self;
 }
 
-static uint32_t rc_richpresence_lookup_item_count(rc_richpresence_lookup_item_t* item)
+typedef struct rc_richpresence_lookup_builder_t
 {
-  if (item == NULL)
-    return 0;
+  rc_richpresence_lookup_item_t** begin;
+  rc_richpresence_lookup_item_t** end;
+  rc_richpresence_lookup_item_t** capacity;
+  rc_richpresence_lookup_item_t** allocated_items;
 
-  return (rc_richpresence_lookup_item_count(item->left) + rc_richpresence_lookup_item_count(item->right) + 1);
-}
-
-static void rc_rebalance_richpresence_lookup_get_items(rc_richpresence_lookup_item_t* root,
-    rc_richpresence_lookup_item_t** items, int* index)
-{
-  if (root->left != NULL)
-    rc_rebalance_richpresence_lookup_get_items(root->left, items, index);
-
-  items[*index] = root;
-  ++(*index);
-
-  if (root->right != NULL)
-    rc_rebalance_richpresence_lookup_get_items(root->right, items, index);
-}
+  rc_richpresence_lookup_item_t* items[64];
+} rc_richpresence_lookup_builder_t;
 
 static void rc_rebalance_richpresence_lookup_rebuild(rc_richpresence_lookup_item_t** root,
-    rc_richpresence_lookup_item_t** items, int first, int last)
+    rc_richpresence_lookup_item_t** items, size_t first, size_t last)
 {
-  int mid = (first + last) / 2;
+  const size_t mid = (first + last) / 2;
   rc_richpresence_lookup_item_t* item = items[mid];
   *root = item;
 
@@ -360,62 +349,76 @@ static void rc_rebalance_richpresence_lookup_rebuild(rc_richpresence_lookup_item
     rc_rebalance_richpresence_lookup_rebuild(&item->right, items, mid + 1, last);
 }
 
-static void rc_rebalance_richpresence_lookup(rc_richpresence_lookup_item_t** root)
+static void rc_insert_richpresence_lookup_item(rc_richpresence_lookup_builder_t* builder,
+  uint32_t first, uint32_t last, const char* label, size_t label_len, rc_parse_state_t* parse)
 {
-  rc_richpresence_lookup_item_t** items;
-  int index;
-
-  /* don't bother rebalancing one or two items */
-  uint32_t count = rc_richpresence_lookup_item_count(*root);
-  if (count < 3)
-    return;
-
-  /* allocate space for the flattened list */
-  items = (rc_richpresence_lookup_item_t**)malloc(count * sizeof(rc_richpresence_lookup_item_t*));
-
-  /* if allocation fails, we can still use the unbalanced tree, so just bail out */
-  if (items == NULL)
-    return;
-
-  /* flatten the list */
-  index = 0;
-  rc_rebalance_richpresence_lookup_get_items(*root, items, &index);
-
-  /* and rebuild it as a balanced tree */
-  rc_rebalance_richpresence_lookup_rebuild(root, items, 0, count - 1);
-
-  free(items);
-}
-
-static void rc_insert_richpresence_lookup_item(rc_richpresence_lookup_t* lookup,
-    uint32_t first, uint32_t last, const char* label, size_t label_len, rc_parse_state_t* parse)
-{
-  rc_richpresence_lookup_item_t** next;
+  rc_richpresence_lookup_item_t** insert = builder->end;
   rc_richpresence_lookup_item_t* item;
 
-  next = &lookup->root;
-  while ((item = *next) != NULL) {
+  /* Most lookups are listed in value order, so start scanning for the insert location at the end of the list. */
+  while (insert > builder->begin) {
+    item = *(--insert);
+
     if (first > item->last) {
       if (first == item->last + 1 &&
           strncmp(label, item->label, label_len) == 0 && item->label[label_len] == '\0') {
+        /* This item extends the scan item to the right. */
         item->last = last;
         return;
       }
 
-      next = &item->right;
+      /* New item is after the scan item. */
+      ++insert;
+      break;
     }
     else if (last < item->first) {
       if (last == item->first - 1 &&
           strncmp(label, item->label, label_len) == 0 && item->label[label_len] == '\0') {
+        /* This item extends the scan item to the left. */
         item->first = first;
         return;
       }
-
-      next = &item->left;
     }
     else {
+      /* New item is encapsulated by the scan item. */
       parse->offset = RC_DUPLICATED_VALUE;
       return;
+    }
+  }
+
+  if (builder->end == builder->capacity) {
+    /* Array is full, make it bigger. */
+    const size_t old_capacity = (builder->capacity - builder->begin);
+    const size_t new_capacity = old_capacity + sizeof(builder->items) / sizeof(builder->items[0]);
+    const size_t insert_index = insert - builder->begin;
+    rc_richpresence_lookup_item_t** new_items;
+
+    if (builder->allocated_items) {
+      new_items = realloc(builder->allocated_items, new_capacity * sizeof(rc_richpresence_lookup_item_t*));
+    }
+    else {
+      new_items = malloc(new_capacity * sizeof(rc_richpresence_lookup_item_t*));
+      if (new_items)
+        memcpy(new_items, builder->items, old_capacity * sizeof(rc_richpresence_lookup_item_t*));
+    }
+
+    if (new_items == NULL) {
+      parse->offset = RC_OUT_OF_MEMORY;
+      return;
+    }
+
+    builder->begin = builder->allocated_items = new_items;
+    builder->end = builder->begin + old_capacity;
+    builder->capacity = builder->begin + new_capacity;
+    insert = builder->begin + insert_index;
+  }
+
+  if (insert < builder->end) {
+    /* Shift items to make room for the new item. */
+    rc_richpresence_lookup_item_t** move = builder->end;
+    while (move > insert) {
+      *move = *(move - 1);
+      --move;
     }
   }
 
@@ -428,7 +431,9 @@ static void rc_insert_richpresence_lookup_item(rc_richpresence_lookup_t* lookup,
   item->label = rc_alloc_str(parse, label, label_len);
   item->left = item->right = NULL;
 
-  *next = item;
+  /* Insert the new item and update the end of the array. */
+  *insert = item;
+  ++builder->end;
 }
 
 static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup, const char* nextline, rc_parse_state_t* parse)
@@ -439,8 +444,11 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
   char* endptr = 0;
   uint32_t first, last;
   int base;
-  int unbalanced = 0;
-  const int rebalance_at = 16;
+  rc_richpresence_lookup_builder_t builder;
+
+  builder.begin = builder.end = builder.items;
+  builder.capacity = builder.items + sizeof(builder.items) / sizeof(builder.items[0]);
+  builder.allocated_items = NULL;
 
   do
   {
@@ -456,8 +464,10 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
         continue;
 
       /* empty line indicates end of lookup */
-      if (lookup->root && unbalanced > 2)
-        rc_rebalance_richpresence_lookup(&lookup->root);
+      if (builder.end > builder.begin) {
+        const size_t count = builder.end - builder.begin;
+        rc_rebalance_richpresence_lookup_rebuild(&lookup->root, builder.begin, 0, count - 1);
+      }
       break;
     }
 
@@ -514,8 +524,7 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
 
       /* if we've found the equal sign, this is the last item */
       if (*endptr == '=') {
-        rc_insert_richpresence_lookup_item(lookup, first, last, label, (int)(endline - label), parse);
-        ++unbalanced;
+        rc_insert_richpresence_lookup_item(&builder, first, last, label, (int)(endline - label), parse);
         break;
       }
 
@@ -526,20 +535,17 @@ static const char* rc_parse_richpresence_lookup(rc_richpresence_lookup_t* lookup
       }
 
       /* insert the current item and continue scanning the next one */
-      rc_insert_richpresence_lookup_item(lookup, first, last, label, (int)(endline - label), parse);
+      rc_insert_richpresence_lookup_item(&builder, first, last, label, (int)(endline - label), parse);
       if (parse->offset < 0)
         break;
-
-      ++unbalanced;
 
       line = endptr + 1;
     } while (line < endline);
 
-    if (++unbalanced >= rebalance_at) {
-      rc_rebalance_richpresence_lookup(&lookup->root);
-      unbalanced = 0;
-    }
   } while (parse->offset > 0);
+
+  if (builder.allocated_items)
+    free(builder.allocated_items);
 
   return nextline;
 }
