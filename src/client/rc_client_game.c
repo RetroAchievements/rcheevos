@@ -1622,6 +1622,7 @@ void rc_client_set_subset_active(rc_client_t* client, uint32_t subset_id, int ac
   rc_client_leaderboard_info_t* leaderboard_stop;
   const uint8_t new_active = active ? 1 : 0;
   int changed = 0;
+  int reset_requested = 0;
 
   if (!client)
     return;
@@ -1670,6 +1671,14 @@ void rc_client_set_subset_active(rc_client_t* client, uint32_t subset_id, int ac
           if (achievement->trigger)
             rc_reset_trigger(achievement->trigger);
         }
+
+        /* as when hardcore is enabled, the game has to restart so nothing done
+         * while the subset was off (cheats, a cleared pause lock) carries over */
+        if (client->state.hardcore) {
+          RC_CLIENT_LOG_INFO_FORMATTED(client, "Subset %u enabled, waiting for reset", subset_id);
+          client->game->waiting_for_reset = 1;
+          reset_requested = 1;
+        }
       }
 
       rc_client_update_active_achievements(client->game);
@@ -1681,8 +1690,17 @@ void rc_client_set_subset_active(rc_client_t* client, uint32_t subset_id, int ac
   rc_mutex_unlock(&client->state.mutex);
 
   /* events must be raised outside of lock: turning a subset off hides its leaderboard trackers */
-  if (changed && client->game)
-    rc_client_raise_pending_events(client, client->game);
+  if (changed && client->game) {
+    if (reset_requested) {
+      rc_client_event_t client_event;
+      memset(&client_event, 0, sizeof(client_event));
+      client_event.type = RC_CLIENT_EVENT_RESET;
+      client->callbacks.event_handler(&client_event, client);
+    }
+    else {
+      rc_client_raise_pending_events(client, client->game);
+    }
+  }
 }
 
 /* ===== User ===== */
