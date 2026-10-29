@@ -517,6 +517,34 @@ static void test_achievement_list_simple_with_unpromoted_off(void)
   rc_client_destroy(g_client);
 }
 
+static void test_achievement_zero_progress(int encore)
+{
+  const uint32_t values[] = { 0, 2, 0, RC_MEASURED_UNKNOWN };
+  const char* expected[] = { "0/6", "2/6", "0/6", "" };
+  rc_client_achievement_list_t* list;
+  rc_client_achievement_info_t* achievement;
+  uint32_t i;
+
+  g_client = mock_client_logged_in();
+  rc_client_set_encore_mode_enabled(g_client, encore);
+  mock_client_load_game(patchdata_exhaustive, unlock_8);
+  achievement = (rc_client_achievement_info_t*)rc_client_get_achievement_info(g_client, 6);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    for (i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+      achievement->trigger->measured_value = values[i];
+      list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED,
+          RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+      ASSERT_PTR_NOT_NULL(list);
+      ASSERT_STR_EQUALS(achievement->public_.measured_progress, expected[i]);
+      ASSERT_FLOAT_EQUALS(achievement->public_.measured_percent, i == 1 ? 33.333333f : 0.0f);
+      ASSERT_STR_EQUALS(rc_client_get_achievement_info(g_client, 5)->measured_progress, "");
+      rc_client_destroy_achievement_list(list);
+    }
+  }
+  rc_client_destroy(g_client);
+}
+
 static void test_achievement_list_buckets(void)
 {
   rc_client_achievement_list_t* list;
@@ -549,7 +577,7 @@ static void test_achievement_list_buckets(void)
     ASSERT_NUM_EQUALS(achievement->id, 5);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 6);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "0/6");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 7);
@@ -557,11 +585,11 @@ static void test_achievement_list_buckets(void)
     ASSERT_NUM_EQUALS(achievement->id, 9);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 70);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "0/100,000");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 71);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "0%");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
 
     ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
@@ -766,7 +794,7 @@ static void test_achievement_list_buckets_progress_sort(void)
     ASSERT_FLOAT_EQUALS(list->buckets[1].achievements[0]->measured_percent, 75.0f);
     ASSERT_STR_EQUALS(list->buckets[1].achievements[0]->measured_progress, "75/100");
     ASSERT_FLOAT_EQUALS(list->buckets[1].achievements[1]->measured_percent, 0.0f);
-    ASSERT_STR_EQUALS(list->buckets[1].achievements[1]->measured_progress, "");
+    ASSERT_STR_EQUALS(list->buckets[1].achievements[1]->measured_progress, "0%");
 
     rc_client_destroy_achievement_list(list);
   }
@@ -823,7 +851,7 @@ static void test_achievement_list_buckets_progress_sort_big_ids(void)
     ASSERT_STR_EQUALS(list->buckets[1].label, "Locked");
     ASSERT_NUM_EQUALS(list->buckets[1].num_achievements, 1);
     ASSERT_FLOAT_EQUALS(list->buckets[1].achievements[0]->measured_percent, 0.0f);
-    ASSERT_STR_EQUALS(list->buckets[1].achievements[0]->measured_progress, "");
+    ASSERT_STR_EQUALS(list->buckets[1].achievements[0]->measured_progress, "0%");
 
     rc_client_destroy_achievement_list(list);
   }
@@ -1109,7 +1137,7 @@ static void test_achievement_list_subset_buckets(void)
     ASSERT_NUM_EQUALS(achievement->id, 5);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 6);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "0/6");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 7);
@@ -1117,11 +1145,11 @@ static void test_achievement_list_subset_buckets(void)
     ASSERT_NUM_EQUALS(achievement->id, 9);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 70);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "0/100,000");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
     achievement = *iter++;
     ASSERT_NUM_EQUALS(achievement->id, 71);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "0%");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
 
     ASSERT_NUM_EQUALS(list->buckets[1].bucket_type, RC_CLIENT_ACHIEVEMENT_BUCKET_UNLOCKED);
@@ -2867,6 +2895,8 @@ void test_client_game(void) {
   TEST(test_achievement_list_simple_with_unlocks_encore_mode);
   TEST(test_achievement_list_simple_with_unpromoted_and_unsupported);
   TEST(test_achievement_list_simple_with_unpromoted_off);
+  TEST_PARAMS1(test_achievement_zero_progress, 0);
+  TEST_PARAMS1(test_achievement_zero_progress, 1);
   TEST(test_achievement_list_buckets);
   TEST(test_achievement_list_buckets_progress_sort);
   TEST(test_achievement_list_buckets_progress_sort_big_ids);

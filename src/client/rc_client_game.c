@@ -198,10 +198,6 @@ void rc_client_update_achievement_display_information(rc_client_t* client, rc_cl
         if (achievement->trigger->measured_value == RC_MEASURED_UNKNOWN) {
           /* value hasn't been initialized yet, leave progress string empty */
         }
-        else if (achievement->trigger->measured_value == 0) {
-          /* value is 0, leave progress string empty. update progress to 0.0 */
-          achievement->public_.measured_percent = 0.0;
-        }
         else {
           /* clamp measured value at target (can't get more than 100%) */
           new_measured_value = (achievement->trigger->measured_value > achievement->trigger->measured_target) ?
@@ -216,7 +212,7 @@ void rc_client_update_achievement_display_information(rc_client_t* client, rc_cl
             ptr[chars] = '/';
             rc_format_value(ptr + chars + 1, buffer_size - chars - 1, (int32_t)achievement->trigger->measured_target, RC_FORMAT_UNSIGNED_VALUE);
           }
-          else if (achievement->public_.measured_percent >= 1.0) {
+          else if (achievement->public_.measured_percent >= 1.0 || new_measured_value == 0) {
             snprintf(achievement->public_.measured_progress, sizeof(achievement->public_.measured_progress),
               "%lu%%", (unsigned long)achievement->public_.measured_percent);
           }
