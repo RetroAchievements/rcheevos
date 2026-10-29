@@ -97,6 +97,12 @@ static uint32_t rc_client_subset_toggle_hardcore_achievements(rc_client_subset_i
   uint32_t active_count = 0;
 
   for (; achievement < stop; ++achievement) {
+    /* Encore keeps achievements active, but their previous unlock times remain available. */
+    if (client->state.encore_mode) {
+      achievement->public_.unlock_time = (client->state.hardcore && achievement->unlock_time_hardcore) ?
+          achievement->unlock_time_hardcore : achievement->unlock_time_casual;
+    }
+
     if ((achievement->public_.unlocked & active_bit) == 0) {
       switch (achievement->public_.state) {
         case RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED:
