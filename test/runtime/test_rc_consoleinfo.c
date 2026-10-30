@@ -128,7 +128,9 @@ void test_consoleinfo(void) {
   TEST_PARAMS2(test_name, 80, "Uzebox");
   TEST_PARAMS2(test_name, 81, "Famicom Disk System");
   TEST_PARAMS2(test_name, 82, "PlayStation 3");
-  TEST_PARAMS2(test_name, 83, "Unknown");
+  TEST_PARAMS2(test_name, 83, "LaserActive (NEC PAC)");
+  TEST_PARAMS2(test_name, 84, "LaserActive (SEGA PAC)");
+  TEST_PARAMS2(test_name, 85, "Unknown");
 
   TEST_PARAMS2(test_name, 100, "Hubs");
   TEST_PARAMS2(test_name, 101, "Events");
@@ -162,6 +164,8 @@ void test_consoleinfo(void) {
   TEST_PARAMS3(test_memory, RC_CONSOLE_GAME_GEAR, 0x00A000, 0x00A000);
   TEST_PARAMS3(test_memory, RC_CONSOLE_INTELLIVISION, 0x040080, 0x03BC00);
   TEST_PARAMS3(test_memory, RC_CONSOLE_INTERTON_VC_4000, 0x000600, 0x000600);
+  TEST_PARAMS3(test_memory, RC_CONSOLE_LASERACTIVE_NEC, 0x052800, 0x052800);
+  TEST_PARAMS3(test_memory, RC_CONSOLE_LASERACTIVE_SEGA, 0x0E2000, 0x0E2000);
   TEST_PARAMS3(test_memory, RC_CONSOLE_MAGNAVOX_ODYSSEY2, 0x000140, 0x000140);
   TEST_PARAMS3(test_memory, RC_CONSOLE_MASTER_SYSTEM, 0x00A000, 0x00A000);
   TEST_PARAMS3(test_memory, RC_CONSOLE_MEGA_DRIVE, 0x020000, 0x020000);

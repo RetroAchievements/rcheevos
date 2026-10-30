@@ -103,6 +103,12 @@ const char* rc_console_name(uint32_t console_id)
     case RC_CONSOLE_INTERTON_VC_4000:
       return "Interton VC 4000";
 
+    case RC_CONSOLE_LASERACTIVE_NEC:
+      return "LaserActive (NEC PAC)";
+
+    case RC_CONSOLE_LASERACTIVE_SEGA:
+      return "LaserActive (SEGA PAC)";
+
     case RC_CONSOLE_MAGNAVOX_ODYSSEY2:
       return "Magnavox Odyssey 2";
 
@@ -801,6 +807,19 @@ static const rc_memory_region_t _rc_memory_regions_pc_engine_cd[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_pc_engine_cd = { _rc_memory_regions_pc_engine_cd, 4 };
 
+/* ===== LaserActive (NEC PAC) ===== */
+/* https://github.com/ares-emulator/ares/blob/9408cb43d4948fc3ea6e152a307a34348df3fe04/ares/pce/system/system.hpp#L41
+ * https://github.com/ares-emulator/ares/blob/9408cb43d4948fc3ea6e152a307a34348df3fe04/ares/pce/pcd/debugger.cpp#L2-L37
+ * ADPCM RAM has no linear CPU address; its real_address is virtual. */
+static const rc_memory_region_t _rc_memory_regions_laseractive_nec[] = {
+    { 0x000000U, 0x001FFFU, 0x1F0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" },
+    { 0x002000U, 0x011FFFU, 0x100000U, RC_MEMORY_TYPE_SYSTEM_RAM, "CD RAM" },
+    { 0x012000U, 0x041FFFU, 0x0D0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "Super System Card RAM" },
+    { 0x042000U, 0x0427FFU, 0x1EE000U, RC_MEMORY_TYPE_SAVE_RAM, "CD Battery-backed RAM" },
+    { 0x042800U, 0x0527FFU, 0x80000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "CD ADPCM RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_laseractive_nec = { _rc_memory_regions_laseractive_nec, 5 };
+
 /* ===== PC-FX ===== */
 /* http://daifukkat.su/pcfx/data/memmap.html */
 static const rc_memory_region_t _rc_memory_regions_pcfx[] = {
@@ -867,6 +886,19 @@ static const rc_memory_region_t _rc_memory_regions_segacd[] = {
     { 0x090000U, 0x0AFFFFU, 0x00200000U, RC_MEMORY_TYPE_SYSTEM_RAM, "CD WORD RAM" }
 };
 static const rc_memory_regions_t rc_memory_regions_segacd = { _rc_memory_regions_segacd, 3 };
+
+/* ===== LaserActive (SEGA PAC) ===== */
+/* https://github.com/ares-emulator/ares/blob/9408cb43d4948fc3ea6e152a307a34348df3fe04/ares/md/system/system.cpp#L106-L110
+ * https://github.com/ares-emulator/ares/blob/9408cb43d4948fc3ea6e152a307a34348df3fe04/ares/md/mcd/debugger.cpp#L2-L35
+ * Program, battery-backed, and PCM RAM use virtual real_address values. */
+static const rc_memory_region_t _rc_memory_regions_laseractive_sega[] = {
+    { 0x000000U, 0x00FFFFU, 0x00FF0000U, RC_MEMORY_TYPE_SYSTEM_RAM, "68000 RAM" },
+    { 0x010000U, 0x08FFFFU, 0x80020000U, RC_MEMORY_TYPE_SYSTEM_RAM, "CD PRG RAM" },
+    { 0x090000U, 0x0CFFFFU, 0x00200000U, RC_MEMORY_TYPE_SYSTEM_RAM, "CD WORD RAM" },
+    { 0x0D0000U, 0x0D1FFFU, 0x80000000U, RC_MEMORY_TYPE_SAVE_RAM, "CD Battery-backed RAM" },
+    { 0x0D2000U, 0x0E1FFFU, 0x80002000U, RC_MEMORY_TYPE_SYSTEM_RAM, "CD PCM RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_laseractive_sega = { _rc_memory_regions_laseractive_sega, 5 };
 
 /* ===== Sega Saturn ===== */
 /* https://segaretro.org/Sega_Saturn_hardware_notes_(2004-04-27) */
@@ -1182,6 +1214,9 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
     case RC_CONSOLE_PC_ENGINE_CD:
       return &rc_memory_regions_pc_engine_cd;
 
+    case RC_CONSOLE_LASERACTIVE_NEC:
+      return &rc_memory_regions_laseractive_nec;
+
     case RC_CONSOLE_PCFX:
       return &rc_memory_regions_pcfx;
 
@@ -1205,6 +1240,9 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
 
     case RC_CONSOLE_SEGA_CD:
       return &rc_memory_regions_segacd;
+
+    case RC_CONSOLE_LASERACTIVE_SEGA:
+      return &rc_memory_regions_laseractive_sega;
 
     case RC_CONSOLE_SG1000:
       return &rc_memory_regions_sg1000;
