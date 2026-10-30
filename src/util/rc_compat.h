@@ -103,11 +103,9 @@ RC_BEGIN_C_DECLS
     mutex_t handle;
   } rc_mutex_t;
  #elif defined(WIIU)
-  /* RetroArch-local: rthreads drives Cafe OS threads natively here, so
-   * rcheevos cannot use the pthread backend -- devkitPPC ships
-   * <pthread.h> but leaves pthread_mutex_t undefined without
-   * _POSIX_THREADS. OSMutex is the recursive primitive (OSFastMutex is
-   * not), which is what rcheevos' recursive usage needs. */
+  /* devkitPPC ships <pthread.h> but leaves pthread_mutex_t undefined
+   * without _POSIX_THREADS. OSMutex is the recursive primitive
+   * (OSFastMutex is not), which is what rcheevos needs. */
   #if defined(__has_include) && __has_include(<wiiu/os/mutex.h>)
    #include <wiiu/os/mutex.h>
   #else
@@ -125,6 +123,10 @@ RC_BEGIN_C_DECLS
  #elif defined(__SWITCH__)
   #include <switch.h>
   typedef RMutex rc_mutex_t;
+ #elif defined(__PSL1GHT__)
+  /* PSL1GHT ships no pthreads. */
+  #include <lv2/mutex.h>
+  typedef sys_lwmutex_t rc_mutex_t;
  #else
   #include <pthread.h>
   typedef pthread_mutex_t rc_mutex_t;
