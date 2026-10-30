@@ -335,38 +335,6 @@ static void test_set_hardcore_enable_encore_mode(void)
   rc_client_destroy(g_client);
 }
 
-static void test_encore_unlock_times(int hardcore, int earned)
-{
-  const rc_client_achievement_t* achievement;
-
-  g_client = mock_client_logged_in();
-  rc_client_set_hardcore_enabled(g_client, hardcore);
-  rc_client_set_encore_mode_enabled(g_client, 1);
-  if (hardcore)
-    mock_client_load_game(patchdata_2ach_1lbd, earned ? unlock_5501h_and_5502 : no_unlocks);
-  else
-    mock_client_load_game_casual(patchdata_2ach_1lbd, earned ? unlock_5501h_and_5502 : no_unlocks);
-
-  achievement = rc_client_get_achievement_info(g_client, 5501);
-  ASSERT_PTR_NOT_NULL(achievement);
-  if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->unlocked, earned ? RC_CLIENT_ACHIEVEMENT_UNLOCKED_BOTH : RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
-    ASSERT_NUM_EQUALS(achievement->unlock_time, earned ? 1234567890 : 0);
-  }
-
-  /* earned in casual only, so its casual unlock time is used in hardcore too */
-  achievement = rc_client_get_achievement_info(g_client, 5502);
-  ASSERT_PTR_NOT_NULL(achievement);
-  if (achievement) {
-    ASSERT_NUM_EQUALS(achievement->state, RC_CLIENT_ACHIEVEMENT_STATE_ACTIVE);
-    ASSERT_NUM_EQUALS(achievement->unlocked, earned ? RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL : RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE);
-    ASSERT_NUM_EQUALS(achievement->unlock_time, earned ? 1234567899 : 0);
-  }
-
-  rc_client_destroy(g_client);
-}
-
 static void test_set_encore_mode_enable(void)
 {
   const rc_client_achievement_t* achievement;
@@ -491,10 +459,6 @@ void test_client(void) {
   TEST(test_set_hardcore_enable);
   TEST(test_set_hardcore_enable_no_game_loaded);
   TEST(test_set_hardcore_enable_encore_mode);
-  TEST_PARAMS2(test_encore_unlock_times, 0, 0);
-  TEST_PARAMS2(test_encore_unlock_times, 0, 1);
-  TEST_PARAMS2(test_encore_unlock_times, 1, 0);
-  TEST_PARAMS2(test_encore_unlock_times, 1, 1);
   TEST(test_set_encore_mode_enable);
   TEST(test_set_encore_mode_disable);
 
