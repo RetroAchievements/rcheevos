@@ -351,6 +351,12 @@ RC_EXPORT rc_client_subset_list_t* RC_CCONV rc_client_create_subset_list(rc_clie
  */
 RC_EXPORT void RC_CCONV rc_client_destroy_subset_list(rc_client_subset_list_t* list);
 
+/**
+ * Turns a subset of the loaded game on or off. The achievements and leaderboards
+ * of a subset that is off are not processed, and lists leave them out.
+ */
+RC_EXPORT void RC_CCONV rc_client_set_subset_active(rc_client_t* client, uint32_t subset_id, int active);
+
 /*****************************************************************************\
 | Fetch Game Hashes                                                           |
 \*****************************************************************************/

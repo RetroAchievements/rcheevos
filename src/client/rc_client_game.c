@@ -1,4 +1,5 @@
 #include "rc_client_async.h"
+#include "rc_client_do_frame.h"
 #include "rc_client_game.h"
 #include "rc_client_internal.h"
 #include "rc_client_load.h"
@@ -1620,6 +1621,96 @@ void rc_client_destroy_subset_list(rc_client_subset_list_t* list)
     info->destroy_func(info);
   else
     free(list);
+}
+
+void rc_client_set_subset_active(rc_client_t* client, uint32_t subset_id, int active)
+{
+  rc_client_subset_info_t* subset;
+  rc_client_achievement_info_t* achievement;
+  rc_client_achievement_info_t* achievement_stop;
+  rc_client_leaderboard_info_t* leaderboard;
+  rc_client_leaderboard_info_t* leaderboard_stop;
+  const uint8_t new_active = active ? 1 : 0;
+  int changed = 0;
+  int reset_requested = 0;
+
+  if (!client)
+    return;
+
+  rc_mutex_lock(&client->state.mutex);
+
+  for (subset = client->game ? client->game->subsets : NULL; subset; subset = subset->next) {
+    if (subset->public_.id != subset_id)
+      continue;
+
+    if (subset->active != new_active) {
+      subset->active = new_active;
+      changed = 1;
+
+      leaderboard = subset->leaderboards;
+      leaderboard_stop = leaderboard + subset->public_.num_leaderboards;
+      for (; leaderboard < leaderboard_stop; ++leaderboard) {
+        if (leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_DISABLED)
+          continue;
+
+        if (new_active) {
+          if (leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_INACTIVE &&
+              (client->state.hardcore || client->state.allow_leaderboards_in_casual)) {
+            rc_reset_lboard(leaderboard->lboard);
+            leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_ACTIVE;
+          }
+        }
+        else {
+          if (leaderboard->public_.state == RC_CLIENT_LEADERBOARD_STATE_TRACKING)
+            rc_client_release_leaderboard_tracker(client->game, leaderboard);
+          leaderboard->public_.state = RC_CLIENT_LEADERBOARD_STATE_INACTIVE;
+        }
+      }
+
+      if (new_active) {
+        /* the mode may have changed while the subset was off */
+        const uint8_t active_bit = (client->state.encore_mode) ?
+            RC_CLIENT_ACHIEVEMENT_UNLOCKED_NONE : (client->state.hardcore) ?
+            RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE : RC_CLIENT_ACHIEVEMENT_UNLOCKED_CASUAL;
+        rc_client_subset_toggle_hardcore_achievements(subset, client, active_bit);
+
+        /* a trigger left half-met while the subset was off must not fire the moment it is back */
+        achievement = subset->achievements;
+        achievement_stop = achievement + subset->public_.num_achievements;
+        for (; achievement < achievement_stop; ++achievement) {
+          if (achievement->trigger)
+            rc_reset_trigger(achievement->trigger);
+        }
+
+        /* as when hardcore is enabled, the game has to restart so nothing done
+         * while the subset was off (cheats, a cleared pause lock) carries over */
+        if (client->state.hardcore) {
+          RC_CLIENT_LOG_INFO_FORMATTED(client, "Subset %u enabled, waiting for reset", subset_id);
+          client->game->waiting_for_reset = 1;
+          reset_requested = 1;
+        }
+      }
+
+      rc_client_update_active_achievements(client->game);
+      rc_client_update_active_leaderboards(client->game);
+    }
+    break;
+  }
+
+  rc_mutex_unlock(&client->state.mutex);
+
+  /* events must be raised outside of lock: turning a subset off hides its leaderboard trackers */
+  if (changed && client->game) {
+    if (reset_requested) {
+      rc_client_event_t client_event;
+      memset(&client_event, 0, sizeof(client_event));
+      client_event.type = RC_CLIENT_EVENT_RESET;
+      client->callbacks.event_handler(&client_event, client);
+    }
+    else {
+      rc_client_raise_pending_events(client, client->game);
+    }
+  }
 }
 
 /* ===== User ===== */
