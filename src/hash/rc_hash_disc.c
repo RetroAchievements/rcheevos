@@ -1532,7 +1532,7 @@ static int rc_hash_wii_disc(md5_state_t* md5, const rc_hash_iterator_t* iterator
     return rc_hash_iterator_error(iterator, "Too many partitions");
   }
 
-  partition_table = (uint32_t*)malloc(total_partition_count * 4 * 2);
+  partition_table = (uint32_t*)malloc((size_t)total_partition_count * 4 * 2);
   if (!partition_table) {
     free(buffer);
     return rc_hash_iterator_error(iterator, "Could not allocate partition table");

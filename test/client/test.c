@@ -1,9 +1,11 @@
 #include "../api/test_api.h"
-#include "../client/test_client.h"
 #include "../hash/test_hash.h"
 #include "../libretro/test_libretro.h"
 #include "../runtime/test_runtime.h"
 #include "../test_framework.h"
+
+#include "rc_client_raintegration.h" /* ensures RC_CLIENT_SUPPORTS_EXTERNAL gets defined if RC_CLIENT_SUPPORTS_RAINTEGRATION is defined. */
+#include "../client/test_client.h"
 
 #define TIMING_TEST 0
 
