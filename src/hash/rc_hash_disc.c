@@ -7,6 +7,7 @@
 #include "../util/rc_compat.h"
 
 #include <ctype.h>
+#include <stdlib.h>
 
 /* ===================================================== */
 
@@ -81,94 +82,257 @@ static void rc_cd_close_track(const rc_hash_iterator_t* iterator, void* track_ha
     rc_hash_iterator_error(iterator, "no hook registered for cdreader_close_track");
 }
 
-static uint32_t rc_cd_find_file_sector(const rc_hash_iterator_t* iterator, void* track_handle, const char* path, uint32_t* size)
+typedef struct rc_cd_file_info_t {
+  const char* filename;
+  uint32_t filename_length;
+  uint32_t logical_block_size;
+  uint32_t sector_index;
+  uint32_t remaining_size;
+  const uint8_t* read_ptr;
+  uint8_t sector_buffer[2048];
+} rc_cd_file_info_t;
+
+static void rc_cd_get_file_sector_and_size(const rc_cd_file_info_t* info, uint32_t* sector, uint32_t* size)
 {
-  uint8_t buffer[2048], *tmp;
-  int sector;
-  uint32_t num_sectors = 0;
-  size_t filename_length;
-  const char* slash;
+  const uint8_t* entry = (uint8_t*)info->filename - 33;
 
-  if (!track_handle)
-    return 0;
+  if (sector)
+    *sector = entry[2] | (entry[3] << 8) | (entry[4] << 16);
 
-  /* we start at the root. don't need to explicitly find it */
-  if (*path == '\\')
-    ++path;
+  if (size)
+    *size = entry[10] | (entry[11] << 8) | (entry[12] << 16) | (entry[13] << 24);
+}
 
-  filename_length = strlen(path);
-  slash = strrchr(path, '\\');
-  if (slash) {
-    /* find the directory record for the first part of the path */
-    memcpy(buffer, path, slash - path);
-    buffer[slash - path] = '\0';
+static int rc_cd_is_file_a_directory(const rc_cd_file_info_t* info)
+{
+  const uint8_t* entry = (uint8_t*)info->filename - 33;
+  return (entry[25] & 2);
+}
 
-    sector = rc_cd_find_file_sector(iterator, track_handle, (const char *)buffer, NULL);
-    if (!sector)
+static uint32_t rc_cd_find_next_file(rc_cd_file_info_t* info, const rc_hash_iterator_t* iterator, void* track_handle)
+{
+  if (info->read_ptr == NULL) {
+    /* Fetch and process the directory record */
+    if (!rc_cd_read_sector(iterator, track_handle, info->sector_index, info->sector_buffer, sizeof(info->sector_buffer)))
       return 0;
 
-    ++slash;
-    filename_length -= (slash - path);
-    path = slash;
-  }
-  else {
-    uint32_t logical_block_size;
-
-    /* find the cd information */
-    if (!rc_cd_read_sector(iterator, track_handle, rc_cd_first_track_sector(iterator, track_handle) + 16, buffer, 256))
-      return 0;
-
-    /* the directory_record starts at 156, the sector containing the table of contents is 2 bytes into that.
-     * https://www.cdroller.com/htm/readdata.html
-     */
-    sector = buffer[156 + 2] | (buffer[156 + 3] << 8) | (buffer[156 + 4] << 16);
-
-    /* if the table of contents spans more than one sector, it's length of section will exceed it's logical block size */
-    logical_block_size = (buffer[128] | (buffer[128 + 1] << 8)); /* logical block size */
-    if (logical_block_size == 0) {
-      num_sectors = 1;
-    } else {
-      num_sectors = (buffer[156 + 10] | (buffer[156 + 11] << 8) | (buffer[156 + 12] << 16) | (buffer[156 + 13] << 24)); /* length of section */
-      num_sectors /= logical_block_size;
-    }
+    info->read_ptr = info->sector_buffer;
   }
 
-  /* fetch and process the directory record */
-  if (!rc_cd_read_sector(iterator, track_handle, sector, buffer, sizeof(buffer)))
-    return 0;
-
-  tmp = buffer;
   do {
-    if (tmp >= buffer + sizeof(buffer) || !*tmp) {
-      /* end of this path table block. if the path table spans multiple sectors, keep scanning */
-      if (num_sectors > 1) {
-        --num_sectors;
-        if (rc_cd_read_sector(iterator, track_handle, ++sector, buffer, sizeof(buffer))) {
-          tmp = buffer;
+    if (info->read_ptr >= info->sector_buffer + sizeof(info->sector_buffer) - 34 || !*info->read_ptr) {
+      /* End of this path table block. If the path table spans multiple sectors, keep scanning */
+      if (info->remaining_size > info->logical_block_size) {
+        info->remaining_size -= info->logical_block_size;
+        if (rc_cd_read_sector(iterator, track_handle, ++info->sector_index, info->sector_buffer, sizeof(info->sector_buffer))) {
+          info->read_ptr = info->sector_buffer;
           continue;
         }
       }
       break;
     }
 
-    /* filename is 33 bytes into the record and the format is "FILENAME;version" or "DIRECTORY" */
-    if ((tmp[32] == filename_length || tmp[33 + filename_length] == ';') &&
-        strncasecmp((const char*)(tmp + 33), path, filename_length) == 0) {
-      sector = tmp[2] | (tmp[3] << 8) | (tmp[4] << 16);
+    /* Filename is 33 bytes into the record and the format is "FILENAME;version" or "DIRECTORY" */
+    info->filename = (const char*)&info->read_ptr[33];
+    info->filename_length = info->read_ptr[32];
 
-      rc_hash_iterator_verbose_formatted(iterator, "Found %s at sector %d", path, sector);
+    /* The first byte of the record is the length of the record */
+    info->read_ptr += *info->read_ptr;
 
-      if (size)
-        *size = tmp[10] | (tmp[11] << 8) | (tmp[12] << 16) | (tmp[13] << 24);
+    /* If the record length extends beyond the end of the sector, ignore it. */
+    if (info->read_ptr > &info->sector_buffer[sizeof(info->sector_buffer)])
+      continue;
 
-      return sector;
-    }
-
-    /* the first byte of the record is the length of the record */
-    tmp += *tmp;
+    return 1;
   } while (1);
 
   return 0;
+}
+
+static uint32_t rc_cd_init_file_info(rc_cd_file_info_t* info, const rc_hash_iterator_t* iterator, void* track_handle)
+{
+  if (!track_handle)
+    return 0;
+
+  /* Find the cd information (16 sectors into the first track) */
+  if (!rc_cd_read_sector(iterator, track_handle, rc_cd_first_track_sector(iterator, track_handle) + 16, info->sector_buffer, 256))
+    return 0;
+
+  /* First byte is Volume Descriptor Type, which must be 1. Next five bytes are "CD001". */
+  if (memcmp(info->sector_buffer, "\1CD001", 6) != 0)
+    return 0;
+
+  /* The size in bytes of a logical block. Most discs use a logical block size of 2048 - the same as sector size. */
+  info->logical_block_size = (info->sector_buffer[128] | (info->sector_buffer[128 + 1] << 8));
+
+  /* The directory_record starts at offset 156. The sector containing the table of contents is 2 bytes into that.
+   * https://www.cdroller.com/htm/readdata.html */
+  info->sector_index = info->sector_buffer[156 + 2] | (info->sector_buffer[156 + 3] << 8) | (info->sector_buffer[156 + 4] << 16);
+
+  /* If the table of contents spans more than one sector, it's length will exceed it's logical block size */
+  info->remaining_size = (info->sector_buffer[156 + 10] | (info->sector_buffer[156 + 11] << 8) | (info->sector_buffer[156 + 12] << 16) | (info->sector_buffer[156 + 13] << 24)); /* length of section */
+
+  info->read_ptr = NULL;
+  return 1;
+}
+
+static uint32_t rc_cd_find_file_sector(const rc_hash_iterator_t* iterator, void* track_handle, const char* path, uint32_t* size)
+{
+  rc_cd_file_info_t file_info;
+  size_t filename_length;
+  const char* full_path = path;
+  const char* slash;
+
+  if (!rc_cd_init_file_info(&file_info, iterator, track_handle))
+    return 0;
+
+  /* We start at the root. We don't need to explicitly find it. */
+  if (*path == '\\')
+    ++path;
+
+  /* If a path includes directory information, navigate to the directory. */
+  slash = strchr(path, '\\');
+  while (slash) {
+    int found = 0;
+    filename_length = slash - path;
+
+    while (rc_cd_find_next_file(&file_info, iterator, track_handle)) {
+      /* Directories can't be versioned, so we don't have to check for the ';' */
+      if (file_info.filename_length == filename_length && strncasecmp(file_info.filename, path, filename_length) == 0) {
+        rc_cd_get_file_sector_and_size(&file_info, &file_info.sector_index, NULL);
+        file_info.read_ptr = NULL; /* Indicate we're starting in a new sector */
+        found = 1;
+        break;
+      }
+    }
+
+    if (!found)
+      return 0;
+
+    /* Advance the path pointer past the directory and check for another subdirectory. */
+    path = slash + 1;
+    slash = strchr(path, '\\');
+  }
+
+  filename_length = strlen(path);
+  while (rc_cd_find_next_file(&file_info, iterator, track_handle)) {
+    if ((file_info.filename_length == filename_length || file_info.filename[filename_length] == ';') &&
+        strncasecmp(file_info.filename, path, filename_length) == 0) {
+      uint32_t sector;
+      rc_cd_get_file_sector_and_size(&file_info, &sector, size);
+      rc_hash_iterator_verbose_formatted(iterator, "Found %s at sector %d", full_path, sector);
+      return sector;
+    }
+  }
+
+  return 0;
+}
+
+typedef struct rc_hash_file_t {
+  const char* path;
+  uint32_t size;
+  uint32_t sector;
+} rc_hash_file_t;
+
+typedef struct rc_hash_filelist_t {
+  char paths_buffer[2048];
+  rc_hash_file_t files[64];
+  char* next_path;
+  uint32_t num_paths;
+} rc_hash_filelist_t;
+
+typedef int (RC_CCONV* rc_hash_file_filter_func)(const char* path, uint32_t path_len);
+
+static void rc_cd_get_files_recursive(rc_hash_filelist_t* file_list, rc_hash_file_filter_func filter_func,
+    const rc_hash_iterator_t* iterator, void* track_handle, char path[256], rc_cd_file_info_t* file_info)
+{
+  char directory_names[64][32];
+  uint32_t directory_sectors[64];
+  uint32_t directory_sizes[64];
+  uint32_t num_directories = 0;
+  uint32_t i;
+  size_t path_len = strlen(path);
+  size_t filename_len;
+
+  if (file_list->num_paths == sizeof(file_list->files) / sizeof(file_list->files[0]))
+    return;
+
+  while (rc_cd_find_next_file(file_info, iterator, track_handle)) {
+    if (rc_cd_is_file_a_directory(file_info)) {
+      if (num_directories < sizeof(directory_names) / sizeof(directory_names[0])) {
+        if (file_info->filename_length < 32 && file_info->filename[0] >= ' ') {
+          memcpy(directory_names[num_directories], file_info->filename, file_info->filename_length);
+          directory_names[num_directories][file_info->filename_length] = '\0';
+
+          rc_cd_get_file_sector_and_size(file_info, &directory_sectors[num_directories], &directory_sizes[num_directories]);
+          ++num_directories;
+        }
+      }
+    }
+    else {
+      const char* ptr = file_info->filename + file_info->filename_length - 1;
+      while (ptr > file_info->filename && *ptr >= '0' && *ptr <= '9')
+        --ptr;
+      if (*ptr != ';')
+        ptr = file_info->filename + file_info->filename_length;
+
+      filename_len = ptr - file_info->filename;
+
+      if (filter_func(file_info->filename, (uint32_t)filename_len)) {
+        if ((file_list->next_path - file_list->paths_buffer) + path_len + filename_len + 2 < sizeof(file_list->paths_buffer)) {
+          rc_cd_get_file_sector_and_size(file_info, &file_list->files[file_list->num_paths].sector, &file_list->files[file_list->num_paths].size);
+          file_list->files[file_list->num_paths++].path = file_list->next_path;
+
+          if (path_len) {
+            memcpy(file_list->next_path, path, path_len);
+            file_list->next_path += path_len;
+            *file_list->next_path++ = '\\';
+          }
+
+          memcpy(file_list->next_path, file_info->filename, filename_len);
+          file_list->next_path[filename_len] = '\0';
+          file_list->next_path += filename_len + 1;
+
+          if (file_list->num_paths == sizeof(file_list->files) / sizeof(file_list->files[0]))
+            break;
+        }
+      }
+    }
+  }
+
+  if (file_list->num_paths == sizeof(file_list->files) / sizeof(file_list->files[0]))
+    return;
+
+  for (i = 0; i < num_directories; ++i) {
+    if (path_len == 0) {
+      snprintf(path, 256, "%s", directory_names[i]);
+    } else {
+      path[path_len] = '\\';
+      snprintf(&path[path_len + 1], 256 - path_len - 1, "%s", directory_names[i]);
+    }
+
+    file_info->sector_index = directory_sectors[i];
+    file_info->remaining_size = directory_sizes[i];
+    file_info->read_ptr = NULL;
+
+    rc_cd_get_files_recursive(file_list, filter_func, iterator, track_handle, path, file_info);
+  }
+
+  path[path_len] = '\0';
+}
+
+static void rc_cd_get_files(rc_hash_filelist_t* file_list, rc_hash_file_filter_func filter_func, const rc_hash_iterator_t* iterator, void* track_handle)
+{
+  rc_cd_file_info_t file_info;
+  char path[256] = "";
+
+  file_list->num_paths = 0;
+  file_list->next_path = file_list->paths_buffer;
+
+  if (!rc_cd_init_file_info(&file_info, iterator, track_handle))
+    return;
+
+  rc_cd_get_files_recursive(file_list, filter_func, iterator, track_handle, path, &file_info);
 }
 
 /* ===================================================== */
@@ -207,6 +371,25 @@ static int rc_hash_cd_file(md5_state_t* md5, const rc_hash_iterator_t* iterator,
   } while (num_read > 0);
 
   return 1;
+}
+
+static int rc_compare_hash_files(const void* a, const void* b) {
+  return strcmp(((const rc_hash_file_t*)a)->path, ((const rc_hash_file_t*)b)->path);
+}
+
+static void rc_cd_generate_hash_from_file_list(rc_hash_filelist_t* file_list, const rc_hash_iterator_t* iterator, void* track_handle, char hash[33])
+{
+  md5_state_t md5;
+  uint32_t i;
+
+  md5_init(&md5);
+
+  qsort(file_list->files, file_list->num_paths, sizeof(file_list->files[0]), rc_compare_hash_files);
+
+  for (i = 0; i < file_list->num_paths; ++i)
+    rc_hash_cd_file(&md5, iterator, track_handle, file_list->files[i].sector, NULL, file_list->files[i].size, file_list->files[i].path);
+
+  rc_hash_finalize(iterator, &md5, hash);
 }
 
 /* ===================================================== */
@@ -411,6 +594,74 @@ int rc_hash_dreamcast(char hash[33], const rc_hash_iterator_t* iterator)
 
   rc_hash_finalize(iterator, &md5, hash);
   return result;
+}
+
+static int rc_hash_fmtowns_cd_file_filter(const char* filename, uint32_t filename_len)
+{
+  if (filename_len > 5 && filename[filename_len - 4] == '.') {
+    if (filename_len == 12 && strncasecmp(filename, "AUTOEXEC.BAT", 12) == 0)
+      return 1;
+
+    if (strncasecmp(&filename[filename_len - 3], "exp", 3) == 0 || /* 32-bit executable */
+        strncasecmp(&filename[filename_len - 3], "exe", 3) == 0) { /* 16-bit executable */
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+int rc_hash_fmtowns(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  rc_hash_filelist_t file_list;
+  void* track_handle;
+
+  /* hdm and d88 are floppy images. just hash the whole file */
+  if (rc_path_compare_extension(iterator->path, "hdm") || rc_path_compare_extension(iterator->path, "d88"))
+    return rc_hash_whole_file(hash, iterator);
+
+  /* A bin less than 2MB (normally 1.2MB) is a floppy image. Assume anything
+   * larger is a CD, though those should be loaded indirectly through a cue. */
+  if (rc_path_compare_extension(iterator->path, "bin")) {
+    size_t size = iterator->buffer_size;
+    if (size == 0)
+      size = (size_t)rc_file_size(iterator, iterator->path);
+
+    if (size < 2*1024*1024)
+      return rc_hash_whole_file(hash, iterator);
+  }
+
+  /* FM Towns uses a generic DOS boot sequence (executing the autoexec.bat, etc). As best as I can tell,
+   * all games use RUN386.EXE to launch a .EXP file. As such, the hashing algorithm for FM Towns CDs is
+   * to find all .EXP files, sort them alphabetically, then build a hash from their contents. */
+  track_handle = rc_cd_open_track(iterator, 1);
+  if (!track_handle)
+    return rc_hash_iterator_error(iterator, "Could not open track 1");
+
+  rc_cd_get_files(&file_list, rc_hash_fmtowns_cd_file_filter, iterator, track_handle);
+  if (file_list.num_paths == 0) {
+    /* If no EXP files were found, assume the disc is using a boot sector. Look for it. */
+    uint8_t buffer[16];
+    if (rc_cd_read_sector(iterator, track_handle, 0, buffer, sizeof(buffer)) == sizeof(buffer)) {
+      if (memcmp(buffer, "IPL4", 4) == 0) {
+        /* The first four sectors are the boot code, but only 8KB. Read 1MB to get a reasonable hash. */
+        md5_state_t md5;
+        md5_init(&md5);
+        rc_hash_cd_file(&md5, iterator, track_handle, 0, NULL, 1024*1024, "boot");
+        rc_hash_finalize(iterator, &md5, hash);
+        rc_cd_close_track(iterator, track_handle);
+        return 1;
+      }
+    }
+
+    rc_cd_close_track(iterator, track_handle);
+    return rc_hash_iterator_error(iterator, "No EXP files found");
+  }
+
+  rc_cd_generate_hash_from_file_list(&file_list, iterator, track_handle, hash);
+
+  rc_cd_close_track(iterator, track_handle);
+  return 1;
 }
 
 static int rc_hash_nintendo_disc_partition(md5_state_t* md5, const rc_hash_iterator_t* iterator,
