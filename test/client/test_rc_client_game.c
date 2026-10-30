@@ -521,6 +521,9 @@ static void test_achievement_zero_progress(int encore)
 {
   const uint32_t values[] = { 0, 2, 0, RC_MEASURED_UNKNOWN };
   const char* expected[] = { "0/6", "2/6", "0/6", "" };
+  /* 71 measures a percentage of 100,000, so 1 is under 1% */
+  const uint32_t percent_values[] = { 0, 1, 1000, RC_MEASURED_UNKNOWN };
+  const char* percent_expected[] = { "0%", "0%", "1%", "" };
   rc_client_achievement_list_t* list;
   rc_client_achievement_info_t* achievement;
   uint32_t i;
@@ -539,6 +542,19 @@ static void test_achievement_zero_progress(int encore)
       ASSERT_STR_EQUALS(achievement->public_.measured_progress, expected[i]);
       ASSERT_FLOAT_EQUALS(achievement->public_.measured_percent, i == 1 ? 33.333333f : 0.0f);
       ASSERT_STR_EQUALS(rc_client_get_achievement_info(g_client, 5)->measured_progress, "");
+      rc_client_destroy_achievement_list(list);
+    }
+  }
+
+  achievement = (rc_client_achievement_info_t*)rc_client_get_achievement_info(g_client, 71);
+  ASSERT_PTR_NOT_NULL(achievement);
+  if (achievement) {
+    for (i = 0; i < sizeof(percent_values) / sizeof(percent_values[0]); ++i) {
+      achievement->trigger->measured_value = percent_values[i];
+      list = rc_client_create_achievement_list(g_client, RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED,
+          RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+      ASSERT_PTR_NOT_NULL(list);
+      ASSERT_STR_EQUALS(achievement->public_.measured_progress, percent_expected[i]);
       rc_client_destroy_achievement_list(list);
     }
   }
