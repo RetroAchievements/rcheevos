@@ -19,9 +19,13 @@ static int rc_hash_zip_idx_sort(const void* a, const void* b)
 
 typedef int (RC_CCONV* rc_hash_zip_filter_t)(const char* filename, uint32_t filename_len, uint64_t decomp_size, void* userdata);
 
-static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
-                            const rc_hash_iterator_t* iterator,
-                            rc_hash_zip_filter_t filter_func, void* filter_userdata)
+/* Same as rc_hash_zip_filter_t, for filters that also need the CRC32 of the file */
+typedef int (RC_CCONV* rc_hash_zip_crc32_filter_t)(const char* filename, uint32_t filename_len, uint64_t decomp_size, uint32_t crc32, void* userdata);
+
+static int rc_hash_zip_directory(md5_state_t* md5, void* file_handle,
+                                 const rc_hash_iterator_t* iterator,
+                                 rc_hash_zip_filter_t filter_func,
+                                 rc_hash_zip_crc32_filter_t crc32_filter_func, void* filter_userdata)
 {
   uint8_t buf[2048], *alloc_buf, *cdir_start, *cdir_max, *cdir, *hashdata, eocdirhdr_size, cdirhdr_size, nparents;
   uint32_t cdir_entry_len;
@@ -212,8 +216,10 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
       return rc_hash_iterator_error(iterator, "Encountered invalid entry in ZIP central directory");
     }
 
-    if (filter_func) {
-      int filtered = filter_func((const char*)name, filename_len, decomp_size, filter_userdata);
+    if (filter_func || crc32_filter_func) {
+      int filtered = filter_func ?
+        filter_func((const char*)name, filename_len, decomp_size, filter_userdata) :
+        crc32_filter_func((const char*)name, filename_len, decomp_size, crc32, filter_userdata);
       if (filtered < 0) {
         free(alloc_buf);
         return 0;
@@ -266,6 +272,13 @@ static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
   #undef RC_ZIP_WRITE_LE64
 }
 
+static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
+                            const rc_hash_iterator_t* iterator,
+                            rc_hash_zip_filter_t filter_func, void* filter_userdata)
+{
+  return rc_hash_zip_directory(md5, file_handle, iterator, filter_func, NULL, filter_userdata);
+}
+
 /* ===================================================== */
 
 static int rc_hash_arduboyfx_filter(const char* filename, uint32_t filename_len, uint64_t decomp_size, void* userdata)
@@ -307,39 +320,291 @@ int rc_hash_arduboyfx(char hash[33], const rc_hash_iterator_t* iterator)
 
 /* ===================================================== */
 
-static int rc_hash_zeebo_filter(const char* filename, uint32_t filename_len, uint64_t decomp_size, void* userdata)
-{
-  (void)decomp_size;
-  (void)userdata;
+/* A Zeebo game is a BREW application: one or more modules (mod/<id>/<name>.mod), each with a
+ * manifest (mif/<id>.mif), plus resources. A game is identified by its main module and that
+ * module's manifest, hashed as the directory records of a zip holding just those two files.
+ * A zipped game and an extracted one have the same hash. */
 
-  /* A Zeebo game is a BREW application: one or more modules (mod/<id>/<name>.mod) plus their
-   * manifests (mif/<id>.mif) and resources. Only the modules are hashed, as they hold the code. */
-  if (filename_len > 4) {
-    const char* ext = &filename[filename_len - 4];
-    if (strncasecmp(ext, ".mod", 4) == 0)
-      return 0; /* keep modules */
+typedef struct rc_hash_zeebo_file
+{
+  char path[256]; /* mod/<id>/<name>.mod or mif/<id>.mif, as a zip directory record holds it */
+  uint32_t crc32;
+  uint64_t size;
+  uint8_t is_module;
+} rc_hash_zeebo_file_t;
+
+/* Finds the mod/<id>/<name>.mod or mif/<id>.mif at the end of a path, and copies it into file->path.
+ * Returns the offset of the folder in the path, or -1 if the path doesn't follow the layout. */
+static int64_t rc_hash_zeebo_parse(rc_hash_zeebo_file_t* file, const char* path, size_t path_len, uint8_t is_module)
+{
+  const char* folder = is_module ? "mod" : "mif";
+  const char* ext = is_module ? ".mod" : ".mif";
+  int separators = is_module ? 2 : 1;
+  size_t start = path_len, i;
+
+  if (path_len < 4 || strncasecmp(&path[path_len - 4], ext, 4) != 0)
+    return -1;
+
+  /* walk back to the separator that follows the folder */
+  while (separators) {
+    if (start == 0)
+      return -1;
+
+    --start;
+    if (path[start] == '/' || path[start] == '\\')
+      --separators;
   }
 
-  return 1; /* filter everything else */
+  /* the folder must be a whole path component, and the id can't be empty */
+  if (start < 3 || strncasecmp(&path[start - 3], folder, 3) != 0)
+    return -1;
+  if (start > 3 && path[start - 4] != '/' && path[start - 4] != '\\')
+    return -1;
+  if (path[start + 1] == '/' || path[start + 1] == '\\' || start + 1 == path_len - 4)
+    return -1;
+
+  start -= 3;
+  if (path_len - start >= sizeof(file->path))
+    return -1;
+
+  /* same conversions as the zip directory records */
+  for (i = start; i < path_len; i++) {
+    const char c = path[i];
+    file->path[i - start] = (c == '\\' ? '/' : (c >= 'A' && c <= 'Z') ? (c | 0x20) : c);
+  }
+
+  file->path[path_len - start] = '\0';
+  file->is_module = is_module;
+  return (int64_t)start;
 }
 
-int rc_hash_zeebo_zip(char hash[33], const rc_hash_iterator_t* iterator)
+static size_t rc_hash_zeebo_id_len(const rc_hash_zeebo_file_t* file)
+{
+  /* the id follows the folder: mod/<id>/<name>.mod or mif/<id>.mif */
+  const char* id = &file->path[4];
+  return file->is_module ? (size_t)(strchr(id, '/') - id) : strlen(id) - 4;
+}
+
+static int rc_hash_zeebo_is_manifest_of(const rc_hash_zeebo_file_t* manifest, const rc_hash_zeebo_file_t* module)
+{
+  const size_t id_len = rc_hash_zeebo_id_len(module);
+  return !manifest->is_module && rc_hash_zeebo_id_len(manifest) == id_len &&
+    memcmp(&manifest->path[4], &module->path[4], id_len) == 0;
+}
+
+static void rc_hash_zeebo_append(md5_state_t* md5, const rc_hash_zeebo_file_t* file)
+{
+  uint8_t record[12];
+  int i;
+
+  /* the file name with its zero terminator, then CRC32 and size, as rc_hash_zip_file records them */
+  md5_append(md5, (const md5_byte_t*)file->path, (int)strlen(file->path) + 1);
+
+  for (i = 0; i < 4; i++)
+    record[i] = (uint8_t)(file->crc32 >> (i * 8));
+  for (i = 0; i < 8; i++)
+    record[4 + i] = (uint8_t)(file->size >> (i * 8));
+
+  md5_append(md5, record, sizeof(record));
+}
+
+static int rc_hash_zeebo_finalize(char hash[33], const rc_hash_iterator_t* iterator,
+                                  const rc_hash_zeebo_file_t* module, const rc_hash_zeebo_file_t* manifest)
 {
   md5_state_t md5;
+
+  rc_hash_iterator_verbose_formatted(iterator, "Hashing Zeebo module %s with manifest %s", module->path, manifest->path);
+
+  /* mif/ sorts before mod/, which is the order rc_hash_zip_file would hash them in */
+  md5_init(&md5);
+  rc_hash_zeebo_append(&md5, manifest);
+  rc_hash_zeebo_append(&md5, module);
+
+  return rc_hash_finalize(iterator, &md5, hash);
+}
+
+/* ===================================================== */
+
+struct rc_hash_zeebo_zip_state
+{
+  const rc_hash_iterator_t* iterator;
+  rc_hash_zeebo_file_t* files;
+  size_t num_files;
+  size_t max_files;
+};
+
+static int rc_hash_zeebo_zip_filter(const char* filename, uint32_t filename_len, uint64_t decomp_size, uint32_t crc32, void* userdata)
+{
+  struct rc_hash_zeebo_zip_state* state = (struct rc_hash_zeebo_zip_state*)userdata;
+  rc_hash_zeebo_file_t* file;
+
+  if (state->num_files == state->max_files) {
+    const size_t max_files = state->max_files ? state->max_files * 2 : 8;
+    rc_hash_zeebo_file_t* files = (rc_hash_zeebo_file_t*)realloc(state->files, max_files * sizeof(rc_hash_zeebo_file_t));
+    if (!files) {
+      rc_hash_iterator_error(state->iterator, "Could not allocate temporary buffer");
+      return -1;
+    }
+
+    state->files = files;
+    state->max_files = max_files;
+  }
+
+  /* collect the modules and the manifests. the game is chosen once all of them are known */
+  file = &state->files[state->num_files];
+  if (rc_hash_zeebo_parse(file, filename, filename_len, 1) >= 0 ||
+      rc_hash_zeebo_parse(file, filename, filename_len, 0) >= 0) {
+    file->crc32 = crc32;
+    file->size = decomp_size;
+    state->num_files++;
+  }
+
+  return 1; /* nothing is hashed from the directory itself */
+}
+
+static int rc_hash_zeebo_zip(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  struct rc_hash_zeebo_zip_state state;
+  const rc_hash_zeebo_file_t* module = NULL;
+  const rc_hash_zeebo_file_t* manifest = NULL;
+  md5_state_t unused_md5;
+  size_t i, j;
   int res;
 
   void* file_handle = rc_file_open(iterator, iterator->path);
   if (!file_handle)
     return rc_hash_iterator_error(iterator, "Could not open file");
 
-  md5_init(&md5);
-  res = rc_hash_zip_file(&md5, file_handle, iterator, rc_hash_zeebo_filter, NULL);
+  memset(&state, 0, sizeof(state));
+  state.iterator = iterator;
+
+  md5_init(&unused_md5);
+  res = rc_hash_zip_directory(&unused_md5, file_handle, iterator, NULL, rc_hash_zeebo_zip_filter, &state);
   rc_file_close(iterator, file_handle);
 
-  if (!res)
-    return 0;
+  if (res) {
+    /* A game may come with extension modules, like a shared engine. Those don't declare an applet,
+     * so their manifests lack the applet's name and icons - the main module has the largest one */
+    for (i = 0; i < state.num_files; i++) {
+      if (!state.files[i].is_module)
+        continue;
 
-  return rc_hash_finalize(iterator, &md5, hash);
+      for (j = 0; j < state.num_files; j++) {
+        if (rc_hash_zeebo_is_manifest_of(&state.files[j], &state.files[i])) {
+          if (!module || state.files[j].size > manifest->size ||
+              (state.files[j].size == manifest->size && strcmp(state.files[i].path, module->path) < 0)) {
+            module = &state.files[i];
+            manifest = &state.files[j];
+          }
+          break;
+        }
+      }
+    }
+
+    if (module)
+      res = rc_hash_zeebo_finalize(hash, iterator, module, manifest);
+    else
+      res = rc_hash_iterator_error(iterator, "Could not find a Zeebo module with its manifest");
+  }
+
+  free(state.files);
+  return res;
+}
+
+/* ===================================================== */
+
+static uint32_t rc_hash_crc32(uint32_t crc, const uint8_t* data, size_t size)
+{
+  /* CRC-32 as used by zip files (reflected polynomial 0xEDB88320), one nibble at a time */
+  static const uint32_t table[16] = {
+    0x00000000, 0x1DB71064, 0x3B6E20C8, 0x26D930AC, 0x76DC4190, 0x6B6B51F4, 0x4DB26158, 0x5005713C,
+    0xEDB88320, 0xF00F9344, 0xD6D6A3E8, 0xCB61B38C, 0x9B64C2B0, 0x86D3D2D4, 0xA00AE278, 0xBDBDF21C
+  };
+
+  crc = ~crc;
+  while (size--) {
+    crc ^= *data++;
+    crc = (crc >> 4) ^ table[crc & 0x0F];
+    crc = (crc >> 4) ^ table[crc & 0x0F];
+  }
+
+  return ~crc;
+}
+
+static int rc_hash_zeebo_read_file(const rc_hash_iterator_t* iterator, const char* path, rc_hash_zeebo_file_t* file)
+{
+  const size_t buffer_size = 65536;
+  uint8_t* buffer;
+  size_t count;
+
+  void* file_handle = rc_file_open(iterator, path);
+  if (!file_handle)
+    return rc_hash_iterator_error_formatted(iterator, "Could not open %s", rc_path_get_filename(path));
+
+  buffer = (uint8_t*)malloc(buffer_size);
+  if (!buffer) {
+    rc_file_close(iterator, file_handle);
+    return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
+  }
+
+  /* the whole file goes into the CRC32, which has to match the one in the zip directory */
+  file->crc32 = 0;
+  file->size = 0;
+  while ((count = rc_file_read(iterator, file_handle, buffer, (int)buffer_size)) > 0) {
+    file->crc32 = rc_hash_crc32(file->crc32, buffer, count);
+    file->size += count;
+  }
+
+  free(buffer);
+  rc_file_close(iterator, file_handle);
+
+  rc_hash_iterator_verbose_formatted(iterator, "Read %s (%u bytes, CRC32 = %08X)", file->path, (unsigned)file->size, file->crc32);
+  return 1;
+}
+
+static int rc_hash_zeebo_extracted(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  rc_hash_zeebo_file_t module, manifest;
+  const char* path = iterator->path;
+  const size_t path_len = strlen(path);
+  size_t folder, id_len;
+  char* manifest_path;
+  int64_t offset;
+  int res;
+
+  offset = rc_hash_zeebo_parse(&module, path, path_len, 1);
+  if (offset < 0)
+    return rc_hash_iterator_error(iterator, "Zeebo module is not in a mod/<id>/ folder");
+
+  /* the manifest is in a mif folder next to the mod folder: <root>/mif/<id>.mif */
+  folder = (size_t)offset;
+  id_len = rc_hash_zeebo_id_len(&module);
+  manifest_path = (char*)malloc(folder + 4 + id_len + 5);
+  if (!manifest_path)
+    return rc_hash_iterator_error(iterator, "Could not allocate temporary buffer");
+
+  memcpy(manifest_path, path, folder);
+  memcpy(&manifest_path[folder], "mif", 3);
+  manifest_path[folder + 3] = path[folder + 3]; /* same separator as the mod folder */
+  memcpy(&manifest_path[folder + 4], &path[folder + 4], id_len);
+  memcpy(&manifest_path[folder + 4 + id_len], ".mif", 5);
+
+  rc_hash_zeebo_parse(&manifest, manifest_path, folder + 4 + id_len + 4, 0);
+
+  res = rc_hash_zeebo_read_file(iterator, path, &module) &&
+        rc_hash_zeebo_read_file(iterator, manifest_path, &manifest) &&
+        rc_hash_zeebo_finalize(hash, iterator, &module, &manifest);
+
+  free(manifest_path);
+  return res;
+}
+
+int rc_hash_zeebo(char hash[33], const rc_hash_iterator_t* iterator)
+{
+  if (rc_path_compare_extension(iterator->path, "zip"))
+    return rc_hash_zeebo_zip(hash, iterator);
+
+  return rc_hash_zeebo_extracted(hash, iterator);
 }
 
 /* ===================================================== */
