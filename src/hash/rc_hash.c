@@ -552,7 +552,6 @@ static int rc_hash_from_buffer(char hash[33], uint32_t console_id, const rc_hash
     case RC_CONSOLE_VIRTUAL_BOY:
     case RC_CONSOLE_WASM4:
     case RC_CONSOLE_WONDERSWAN:
-    case RC_CONSOLE_ZEEBO:
     case RC_CONSOLE_ZX_SPECTRUM:
       return rc_hash_buffer(hash, iterator->buffer, iterator->buffer_size, iterator);
 
@@ -843,15 +842,6 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
       /* generic whole-file hash - don't buffer */
       return rc_hash_whole_file(hash, iterator);
 
-    case RC_CONSOLE_ZEEBO:
-#ifndef RC_HASH_NO_ZIP
-      /* zipped games are hashed from the modules listed in the archive */
-      if (rc_path_compare_extension(path, "zip"))
-        return rc_hash_zeebo_zip(hash, iterator);
-#endif
-      /* loose modules use a generic whole-file hash - don't buffer */
-      return rc_hash_whole_file(hash, iterator);
-
     case RC_CONSOLE_MEGA_DRIVE:
       /* generic whole-file hash with m3u support - don't buffer */
       if (rc_path_compare_extension(path, "m3u"))
@@ -918,6 +908,11 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
 #ifndef RC_HASH_NO_ZIP
     case RC_CONSOLE_MS_DOS:
       return rc_hash_ms_dos(hash, iterator);
+#endif
+
+#ifndef RC_HASH_NO_ZIP
+    case RC_CONSOLE_ZEEBO:
+      return rc_hash_zeebo(hash, iterator);
 #endif
 
 #ifndef RC_HASH_NO_DISC
