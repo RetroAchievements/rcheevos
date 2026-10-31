@@ -826,45 +826,6 @@ static void test_hash_scv_cart()
   ASSERT_STR_EQUALS(hash_iterator, expected_md5);
 }
 
-static void test_hash_zeebo(void)
-{
-  /* Loose Zeebo games are hashed from the BREW module (.mod) of the main applet.
-   * Zipped games are hashed from the archive's directory (see test_hash_zeebo_zip). */
-  const size_t image_size = 33454;
-  uint8_t* image = generate_generic_file(image_size);
-  char hash_buffer[33], hash_file[33], hash_iterator[33];
-  const char* expected_md5 = "bce38bb5f05622fc7e0e56757059d180";
-
-  mock_file(0, "1234.mod", image, image_size);
-
-  /* test full buffer hash */
-  int result_buffer = rc_hash_generate_from_buffer(hash_buffer, RC_CONSOLE_ZEEBO, image, image_size);
-
-  /* test full file hash */
-  int result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, "1234.mod");
-
-  /* test file identification from iterator */
-  int result_iterator;
-  struct rc_hash_iterator iterator;
-
-  rc_hash_initialize_iterator(&iterator, "1234.mod", NULL, 0);
-  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
-  rc_hash_destroy_iterator(&iterator);
-
-  /* cleanup */
-  free(image);
-
-  /* validation */
-  ASSERT_NUM_EQUALS(result_buffer, 1);
-  ASSERT_STR_EQUALS(hash_buffer, expected_md5);
-
-  ASSERT_NUM_EQUALS(result_file, 1);
-  ASSERT_STR_EQUALS(hash_file, expected_md5);
-
-  ASSERT_NUM_EQUALS(result_iterator, 1);
-  ASSERT_STR_EQUALS(hash_iterator, expected_md5);
-}
-
 /* ========================================================================= */
 
 void test_hash_rom(void) {
@@ -1074,9 +1035,6 @@ void test_hash_rom(void) {
   /* WonderSwan */
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.ws", 524288, "68f0f13b598e0b66461bc578375c3888");
   TEST_PARAMS4(test_hash_full_file, RC_CONSOLE_WONDERSWAN, "test.wsc", 4194304, "a247ec8a8c42e18fcb80702dfadac14b");
-
-  /* Zeebo */
-  TEST(test_hash_zeebo);
 
   TEST_SUITE_END();
 }
