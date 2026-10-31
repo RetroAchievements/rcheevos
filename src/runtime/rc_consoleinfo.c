@@ -336,6 +336,12 @@ static const rc_memory_region_t _rc_memory_regions_atari2600[] = {
 };
 static const rc_memory_regions_t rc_memory_regions_atari2600 = { _rc_memory_regions_atari2600, 1 };
 
+/* ===== Atari 5200 ===== */
+static const rc_memory_region_t _rc_memory_regions_atari5200[] = {
+    { 0x000000U, 0x003FFFU, 0x000000U, RC_MEMORY_TYPE_SYSTEM_RAM, "System RAM" }
+};
+static const rc_memory_regions_t rc_memory_regions_atari5200 = { _rc_memory_regions_atari5200, 1 };
+
 /* ===== Atari 7800 ===== */
 /* http://www.atarihq.com/danb/files/78map.txt */
 /* http://pdf.textfiles.com/technical/7800_devkit.pdf */
@@ -1078,6 +1084,9 @@ const rc_memory_regions_t* rc_console_memory_regions(uint32_t console_id)
 
     case RC_CONSOLE_ATARI_2600:
       return &rc_memory_regions_atari2600;
+
+    case RC_CONSOLE_ATARI_5200:
+      return &rc_memory_regions_atari5200;
 
     case RC_CONSOLE_ATARI_7800:
       return &rc_memory_regions_atari7800;
