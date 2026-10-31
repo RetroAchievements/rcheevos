@@ -535,6 +535,224 @@ static void test_hash_msdos_dosz_with_parent()
 
 /* ========================================================================= */
 
+/* A Zeebo game is hashed from its main module (mod/<id>/<name>.mod) and the module's manifest
+ * (mif/<id>.mif), as the directory records of a zip holding just those two files. */
+static const char zeebo_peteca_mod[] = "BREW module: Zeebo Sports Peteca";
+static const char zeebo_peteca_mif[] = "MIF 279159";
+#define ZEEBO_PETECA_MOD_CRC32 0x4A30E325
+#define ZEEBO_PETECA_MIF_CRC32 0xD5BD13CE
+#define ZEEBO_PETECA_MD5 "4c1e50dc18e97935172eed419933732d"
+
+static void test_hash_zeebo_zip(const char* folder)
+{
+  char hash_file[33], hash_iterator[33];
+#ifndef RC_HASH_NO_ROM
+  char hash_arcade[33];
+  int result_arcade;
+#endif
+  char mif_name[64], mod_name[64], sig_name[64], bar_name[64];
+  mock_zip_file_t zip;
+  uint8_t zip_contents[1024];
+  size_t zip_size;
+  int result_file, result_iterator;
+
+  snprintf(mif_name, sizeof(mif_name), "%smif/279159.mif", folder);
+  snprintf(mod_name, sizeof(mod_name), "%smod/279159/peteca.mod", folder);
+  snprintf(sig_name, sizeof(sig_name), "%smod/279159/peteca.sig", folder);
+  snprintf(bar_name, sizeof(bar_name), "%smod/279159/peteca.bar", folder);
+
+  /* the module, its manifest, its signature and a resource */
+  memset(&zip, 0, sizeof(zip));
+  zip.ptr = zip.buffer = zip_contents;
+  mock_zip_add_file(&zip, mif_name, ZEEBO_PETECA_MIF_CRC32, sizeof(zeebo_peteca_mif) - 1);
+  mock_zip_add_file(&zip, mod_name, ZEEBO_PETECA_MOD_CRC32, sizeof(zeebo_peteca_mod) - 1);
+  mock_zip_add_file(&zip, sig_name, 0x8B417052, 40);
+  mock_zip_add_file(&zip, bar_name, 0x1BBCE29B, 24);
+  zip_size = mock_zip_finalize(&zip, "");
+  ASSERT_NUM_LESS_EQUALS(zip_size, sizeof(zip_contents));
+
+  mock_file(0, "game.zip", zip_contents, zip_size);
+
+  /* test file hash */
+  result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, "game.zip");
+
+  /* test file identification from iterator - arcade is tried first */
+  struct rc_hash_iterator iterator;
+  rc_hash_initialize_iterator(&iterator, "game.zip", NULL, 0);
+#ifndef RC_HASH_NO_ROM
+  result_arcade = rc_hash_iterate(hash_arcade, &iterator);
+#endif
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* validation - a folder around the game doesn't change the hash */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, ZEEBO_PETECA_MD5);
+
+#ifndef RC_HASH_NO_ROM
+  ASSERT_NUM_EQUALS(result_arcade, 1);
+  ASSERT_STR_EQUALS(hash_arcade, "c8d46d341bea4fd5bff866a65ff8aea9");
+#endif
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, ZEEBO_PETECA_MD5);
+}
+
+static void test_hash_zeebo_zip_matches_directory_records()
+{
+  char hash_zeebo[33], hash_dosz[33];
+  mock_zip_file_t zip;
+  uint8_t zip_contents[512];
+  size_t zip_size;
+  int result_zeebo, result_dosz;
+
+  /* a zip holding only the module and its manifest... */
+  memset(&zip, 0, sizeof(zip));
+  zip.ptr = zip.buffer = zip_contents;
+  mock_zip_add_file(&zip, "mod/279159/peteca.mod", ZEEBO_PETECA_MOD_CRC32, sizeof(zeebo_peteca_mod) - 1);
+  mock_zip_add_file(&zip, "mif/279159.mif", ZEEBO_PETECA_MIF_CRC32, sizeof(zeebo_peteca_mif) - 1);
+  zip_size = mock_zip_finalize(&zip, "");
+  ASSERT_NUM_LESS_EQUALS(zip_size, sizeof(zip_contents));
+
+  mock_file(0, "game.zip", zip_contents, zip_size);
+  mock_file(1, "game.dosz", zip_contents, zip_size);
+
+  result_zeebo = rc_hash_generate_from_file(hash_zeebo, RC_CONSOLE_ZEEBO, "game.zip");
+  result_dosz = rc_hash_generate_from_file(hash_dosz, RC_CONSOLE_MS_DOS, "game.dosz");
+
+  /* ...hashes like any other zip hashed from its directory, which hashes every file */
+  ASSERT_NUM_EQUALS(result_zeebo, 1);
+  ASSERT_STR_EQUALS(hash_zeebo, ZEEBO_PETECA_MD5);
+
+  ASSERT_NUM_EQUALS(result_dosz, 1);
+  ASSERT_STR_EQUALS(hash_dosz, ZEEBO_PETECA_MD5);
+}
+
+static void test_hash_zeebo_zip_multiple_modules()
+{
+  char hash_file[33];
+  mock_zip_file_t zip;
+  uint8_t zip_contents[1024];
+  size_t zip_size;
+  int result_file;
+
+  /* a game with an extension module (a shared engine). the extension doesn't declare an applet,
+   * so its manifest is much smaller than the game's - even though its module is the larger one */
+  memset(&zip, 0, sizeof(zip));
+  zip.ptr = zip.buffer = zip_contents;
+  mock_zip_add_file(&zip, "mif/12875.mif", 0x1D0E5F3A, 64);
+  mock_zip_add_file(&zip, "mif/274259.mif", 0x6C3B1A20, 72);
+  mock_zip_add_file(&zip, "mod/12875/imicro3d.mod", 0x0F1E2D3C, 120);
+  mock_zip_add_file(&zip, "mod/274259/a3d.mod", 0x5A1B2C3D, 96);
+  mock_zip_add_file(&zip, "mod/274259/a3d_sound_bgm_00.mp3", 0x3E8F0C11, 48);
+  zip_size = mock_zip_finalize(&zip, "");
+  ASSERT_NUM_LESS_EQUALS(zip_size, sizeof(zip_contents));
+
+  mock_file(0, "game.zip", zip_contents, zip_size);
+
+  result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, "game.zip");
+
+  /* validation - only the game's module and manifest are hashed */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, "dd038771821367785a8b29f768336f6a");
+}
+
+static void test_hash_zeebo_zip_without_manifest()
+{
+  char hash_file[33];
+  mock_zip_file_t zip;
+  uint8_t zip_contents[512];
+  size_t zip_size;
+
+  memset(&zip, 0, sizeof(zip));
+  zip.ptr = zip.buffer = zip_contents;
+  mock_zip_add_file(&zip, "mif/12875.mif", 0x1D0E5F3A, 64);
+  mock_zip_add_file(&zip, "mod/279159/peteca.mod", ZEEBO_PETECA_MOD_CRC32, sizeof(zeebo_peteca_mod) - 1);
+  zip_size = mock_zip_finalize(&zip, "");
+  ASSERT_NUM_LESS_EQUALS(zip_size, sizeof(zip_contents));
+
+  mock_file(0, "game.zip", zip_contents, zip_size);
+
+  ASSERT_NUM_EQUALS(rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, "game.zip"), 0);
+}
+
+static void test_hash_zeebo_zip_without_module()
+{
+  char hash_file[33];
+  mock_zip_file_t zip;
+  uint8_t zip_contents[512];
+  size_t zip_size;
+
+  memset(&zip, 0, sizeof(zip));
+  zip.ptr = zip.buffer = zip_contents;
+  mock_zip_add_file(&zip, "mif/279159.mif", ZEEBO_PETECA_MIF_CRC32, sizeof(zeebo_peteca_mif) - 1);
+  mock_zip_add_file(&zip, "peteca.mod", ZEEBO_PETECA_MOD_CRC32, sizeof(zeebo_peteca_mod) - 1);
+  zip_size = mock_zip_finalize(&zip, "");
+  ASSERT_NUM_LESS_EQUALS(zip_size, sizeof(zip_contents));
+
+  mock_file(0, "game.zip", zip_contents, zip_size);
+
+  /* a module outside of mod/<id>/ has no manifest to go with it */
+  ASSERT_NUM_EQUALS(rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, "game.zip"), 0);
+}
+
+static void test_hash_zeebo_extracted(const char* mod_path, const char* mif_path)
+{
+  char hash_file[33], hash_iterator[33];
+  int result_file, result_iterator;
+
+  /* an extracted game hashes the same as the zip it came from */
+  mock_file_text(0, mod_path, zeebo_peteca_mod);
+  mock_file_text(1, mif_path, zeebo_peteca_mif);
+
+  /* test file hash */
+  result_file = rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, mod_path);
+
+  /* test file identification from iterator */
+  struct rc_hash_iterator iterator;
+  rc_hash_initialize_iterator(&iterator, mod_path, NULL, 0);
+  result_iterator = rc_hash_iterate(hash_iterator, &iterator);
+  rc_hash_destroy_iterator(&iterator);
+
+  /* validation */
+  ASSERT_NUM_EQUALS(result_file, 1);
+  ASSERT_STR_EQUALS(hash_file, ZEEBO_PETECA_MD5);
+
+  ASSERT_NUM_EQUALS(result_iterator, 1);
+  ASSERT_STR_EQUALS(hash_iterator, ZEEBO_PETECA_MD5);
+}
+
+static void test_hash_zeebo_extracted_without_manifest()
+{
+  char hash_file[33];
+
+  mock_file_text(0, "Peteca/mod/279159/peteca.mod", zeebo_peteca_mod);
+
+  ASSERT_NUM_EQUALS(rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, "Peteca/mod/279159/peteca.mod"), 0);
+}
+
+static void test_hash_zeebo_extracted_outside_layout()
+{
+  char hash_file[33];
+
+  /* without the mod/<id>/ folders, there's no way to find the manifest */
+  mock_file_text(0, "Peteca/peteca.mod", zeebo_peteca_mod);
+  mock_file_text(1, "Peteca/mif/279159.mif", zeebo_peteca_mif);
+
+  ASSERT_NUM_EQUALS(rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, "Peteca/peteca.mod"), 0);
+}
+
+static void test_hash_zeebo_buffer()
+{
+  char hash_buffer[33];
+
+  /* a module alone doesn't identify a game */
+  ASSERT_NUM_EQUALS(rc_hash_generate_from_buffer(hash_buffer, RC_CONSOLE_ZEEBO,
+    (const uint8_t*)zeebo_peteca_mod, sizeof(zeebo_peteca_mod) - 1), 0);
+}
+
+/* ========================================================================= */
+
 void test_hash_zip(void) {
   TEST_SUITE_BEGIN();
 
@@ -546,6 +764,20 @@ void test_hash_zip(void) {
   TEST(test_hash_msdos_dosz_zip64);
   TEST(test_hash_msdos_dosz_with_dosc);
   TEST(test_hash_msdos_dosz_with_parent);
+
+  /* Zeebo */
+  TEST_PARAMS1(test_hash_zeebo_zip, "");
+  TEST_PARAMS1(test_hash_zeebo_zip, "Zeebo Sports Peteca/");
+  TEST(test_hash_zeebo_zip_matches_directory_records);
+  TEST(test_hash_zeebo_zip_multiple_modules);
+  TEST(test_hash_zeebo_zip_without_manifest);
+  TEST(test_hash_zeebo_zip_without_module);
+  TEST_PARAMS2(test_hash_zeebo_extracted, "mod/279159/peteca.mod", "mif/279159.mif");
+  TEST_PARAMS2(test_hash_zeebo_extracted, "/games/Peteca/mod/279159/peteca.mod", "/games/Peteca/mif/279159.mif");
+  TEST_PARAMS2(test_hash_zeebo_extracted, "C:\\Games\\Peteca\\mod\\279159\\PETECA.MOD", "C:\\Games\\Peteca\\mif\\279159.mif");
+  TEST(test_hash_zeebo_extracted_without_manifest);
+  TEST(test_hash_zeebo_extracted_outside_layout);
+  TEST(test_hash_zeebo_buffer);
 
   TEST_SUITE_END();
 }
