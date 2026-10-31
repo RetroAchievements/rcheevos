@@ -3,6 +3,8 @@
 
 #include "rc_client.h"
 
+#include <stdint.h>
+
 RC_BEGIN_C_DECLS
 
 /* NOTE: any function that is passed a callback also needs to be passed a client instance to pass

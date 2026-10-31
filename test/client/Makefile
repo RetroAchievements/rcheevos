@@ -37,8 +37,15 @@ OBJ=$(RC_UTIL_OBJS) \
     ../api/test_rc_api_info.o \
     ../api/test_rc_api_runtime.o \
     ../api/test_rc_api_user.o \
+    client_data.o \
+    mock_client.o \
     test_rc_client.o \
-    test.o
+    test_rc_client_do_frame.o \
+    test_rc_client_game.o \
+    test_rc_client_info.o \
+    test_rc_client_load.o \
+    test_rc_client_user.o \
+	test.o
 
 # support for building without hash subdirectory
 ifeq ($(HAVE_HASH), 0)
@@ -47,7 +54,7 @@ ifeq ($(HAVE_HASH), 0)
 else
     CFLAGS += -DRC_CLIENT_SUPPORTS_HASH
     OBJ += $(RC_SRC)/libretro/rc_libretro.o \
-           ../hash/data.o \
+           ../hash/hash_data.o \
            ../hash/mock_filereader.o \
            ../hash/test_rc_hash.o \
            ../libretro/test_rc_libretro.o

@@ -89,6 +89,13 @@ static const rc_disallowed_setting_t _rc_disallowed_flycast_settings[] = {
   { NULL, NULL }
 };
 
+static const rc_disallowed_setting_t _rc_disallowed_geartowns_settings[] = {
+  { "geartowns_model", "!auto" },
+  { "geartowns_cpu_clock", "!auto" },
+  { "geartowns_main_ram", "!auto" },
+  { NULL, NULL }
+};
+
 static const rc_disallowed_setting_t _rc_disallowed_gpgx_settings[] = {
   { "genesis_plus_gx_lock_on", ",action replay (pro),game genie" },
   { "genesis_plus_gx_region_detect", "pal" },
@@ -183,6 +190,7 @@ static const rc_disallowed_core_settings_t rc_disallowed_core_settings[] = {
   { "FCEUmm", _rc_disallowed_fceumm_settings, 0 },
   { "FinalBurn Neo", _rc_disallowed_fbneo_settings, 0 },
   { "Flycast", _rc_disallowed_flycast_settings, 0 },
+  { "Geartowns", _rc_disallowed_geartowns_settings, 0 },
   { "Genesis Plus GX", _rc_disallowed_gpgx_settings, 0 },
   { "Genesis Plus GX Wide", _rc_disallowed_gpgx_wide_settings, 0 },
   { "melonDS", _rc_disallowed_melonds_ds_settings, RC_CONSOLE_NINTENDO_DS },

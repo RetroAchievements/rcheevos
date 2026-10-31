@@ -38,8 +38,15 @@ RC_API_OBJS=$(RC_SRC)/api/rc_api_common.o \
             $(RC_SRC)/api/rc_api_user.o
              
 RC_CLIENT_OBJS=$(RC_SRC)/client/rc_client.o \
+               $(RC_SRC)/client/rc_client_async.o \
+               $(RC_SRC)/client/rc_client_do_frame.o \
                $(RC_SRC)/client/rc_client_external.o \
-               $(RC_SRC)/client/rc_client_raintegration.o
+               $(RC_SRC)/client/rc_client_game.o \
+               $(RC_SRC)/client/rc_client_info.o \
+               $(RC_SRC)/client/rc_client_load.o \
+               $(RC_SRC)/client/rc_client_raintegration.o \
+               $(RC_SRC)/client/rc_client_server.o \
+               $(RC_SRC)/client/rc_client_user.o
 
 RC_HASH_OBJS=$(RC_SRC)/hash/rc_cdreader.o \
              $(RC_SRC)/hash/rc_hash.o \

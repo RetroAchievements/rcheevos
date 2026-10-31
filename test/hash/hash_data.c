@@ -1,4 +1,4 @@
-#include "data.h"
+#include "hash_data.h"
 
 #include "../../src/util/rc_compat.h"
 
@@ -274,7 +274,7 @@ uint8_t* generate_dreamcast_bin(uint32_t track_first_sector, uint32_t binary_siz
   memcpy(&image[0], volume_header, sizeof(volume_header));
 
   /* directory information goes in sectors 16 and 17 */
-  memcpy(&image[2048 * 16], "1CD001", 6);
+  memcpy(&image[2048 * 16], "\1CD001", 6);
   image[2048 * 16 + 156 + 2] = 45017 & 0xFF;
   image[2048 * 16 + 156 + 3] = (45017 >> 8) & 0xFF;
   image[2048 * 16 + 156 + 4] = (45017 >> 16) & 0xFF;
@@ -457,7 +457,7 @@ uint8_t* generate_iso9660_file(uint8_t* image, const char* filename, const uint8
       file_entry_start[3] = (next_free_sector >> 8) & 0xFF;
 
       /* is directory */
-      file_entry_start[25] = 1;
+      file_entry_start[25] = 2;
 
       /* directory name */
       file_entry_start[32] = filename_len & 0xFF;

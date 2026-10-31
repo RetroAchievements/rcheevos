@@ -528,6 +528,7 @@ static int rc_hash_from_buffer(char hash[33], uint32_t console_id, const rc_hash
     case RC_CONSOLE_COMMODORE_64:
     case RC_CONSOLE_ELEKTOR_TV_GAMES_COMPUTER:
     case RC_CONSOLE_FAIRCHILD_CHANNEL_F:
+    case RC_CONSOLE_FM_TOWNS:
     case RC_CONSOLE_GAMEBOY:
     case RC_CONSOLE_GAMEBOY_ADVANCE:
     case RC_CONSOLE_GAMEBOY_COLOR:
@@ -903,6 +904,12 @@ static int rc_hash_from_file(char hash[33], uint32_t console_id, const rc_hash_i
 
       return rc_hash_dreamcast(hash, iterator);
 
+    case RC_CONSOLE_FM_TOWNS:
+      if (rc_path_compare_extension(path, "m3u"))
+        return rc_hash_generate_from_playlist(hash, console_id, iterator);
+
+      return rc_hash_fmtowns(hash, iterator);
+
     case RC_CONSOLE_GAMECUBE:
       return rc_hash_gamecube(hash, iterator);
 #endif
@@ -1072,7 +1079,7 @@ static void rc_hash_initialize_iterator_bin(rc_hash_iterator_t* iterator, int da
   }
 
   /* bin is associated with MegaDrive, Sega32X, Atari 2600, Watara Supervision, MegaDuck,
-   * Fairchild Channel F, Arcadia 2001, Interton VC 4000, and Super Cassette Vision.
+   * Fairchild Channel F, Arcadia 2001, Interton VC 4000, FM Towns, and Super Cassette Vision.
    * Since they all use the same hashing algorithm, only specify one of them */
   iterator->consoles[0] = RC_CONSOLE_MEGA_DRIVE;
 }
@@ -1090,6 +1097,7 @@ static void rc_hash_initialize_iterator_chd(rc_hash_iterator_t* iterator, int da
   iterator->consoles[7] = RC_CONSOLE_3DO;
   iterator->consoles[8] = RC_CONSOLE_NEO_GEO_CD;
   iterator->consoles[9] = RC_CONSOLE_PCFX;
+  iterator->consoles[9] = RC_CONSOLE_FM_TOWNS;
 }
 
 static void rc_hash_initialize_iterator_cue(rc_hash_iterator_t* iterator, int data) {
@@ -1104,6 +1112,7 @@ static void rc_hash_initialize_iterator_cue(rc_hash_iterator_t* iterator, int da
   iterator->consoles[6] = RC_CONSOLE_PCFX;
   iterator->consoles[7] = RC_CONSOLE_NEO_GEO_CD;
   iterator->consoles[8] = RC_CONSOLE_ATARI_JAGUAR_CD;
+  iterator->consoles[9] = RC_CONSOLE_FM_TOWNS;
 }
 
 static void rc_hash_initialize_iterator_d88(rc_hash_iterator_t* iterator, int data) {
@@ -1111,6 +1120,7 @@ static void rc_hash_initialize_iterator_d88(rc_hash_iterator_t* iterator, int da
 
   iterator->consoles[0] = RC_CONSOLE_PC8800;
   iterator->consoles[1] = RC_CONSOLE_SHARPX1;
+  iterator->consoles[2] = RC_CONSOLE_FM_TOWNS;
 }
 
 static void rc_hash_initialize_iterator_dsk(rc_hash_iterator_t* iterator, int data) {
@@ -1164,6 +1174,7 @@ static void rc_hash_initialize_iterator_iso(rc_hash_iterator_t* iterator, int da
   iterator->consoles[4] = RC_CONSOLE_SEGA_CD; /* ASSERT: handles both Sega CD and Saturn */
   iterator->consoles[5] = RC_CONSOLE_GAMECUBE;
   iterator->consoles[6] = RC_CONSOLE_WII;
+  iterator->consoles[7] = RC_CONSOLE_FM_TOWNS;
 }
 
 static void rc_hash_initialize_iterator_m3u(rc_hash_iterator_t* iterator, int data) {
@@ -1249,6 +1260,7 @@ static const rc_hash_iterator_ext_handler_entry_t rc_hash_iterator_ext_handlers[
   { "gbc", rc_hash_initialize_iterator_single, RC_CONSOLE_GAMEBOY_COLOR },
   { "gdi", rc_hash_initialize_iterator_single, RC_CONSOLE_DREAMCAST },
   { "gg", rc_hash_initialize_iterator_single, RC_CONSOLE_GAME_GEAR },
+  { "hdm", rc_hash_initialize_iterator_single, RC_CONSOLE_FM_TOWNS },
   { "hex", rc_hash_initialize_iterator_single, RC_CONSOLE_ARDUBOY },
   { "iso", rc_hash_initialize_iterator_iso, 0 },
   { "jag", rc_hash_initialize_iterator_single, RC_CONSOLE_ATARI_JAGUAR },
