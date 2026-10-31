@@ -445,11 +445,11 @@ static void rc_client_start_session_callback(const rc_api_server_response_t* ser
   error_message = rc_client_server_error_message(&result, server_response->http_status_code, &start_session_response.response);
   outstanding_requests = rc_client_end_load_state(load_state);
 
-  if (error_message) {
-    rc_client_load_error(load_state, result, error_message);
-  }
-  else if (outstanding_requests < 0) {
+  if (outstanding_requests < 0) {
     /* previous load state was aborted, load_state was free'd */
+  }
+  else if (error_message) {
+    rc_client_load_error(load_state, result, error_message);
   }
   else if (outstanding_requests == 0 && load_state->client->state.allow_background_memory_reads) {
     rc_client_activate_game(load_state, &start_session_response);

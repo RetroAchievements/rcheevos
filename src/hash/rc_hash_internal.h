@@ -87,6 +87,7 @@ int rc_hash_buffered_file(char hash[33], uint32_t console_id, const rc_hash_iter
 
   int rc_hash_3do(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_dreamcast(char hash[33], const rc_hash_iterator_t* iterator);
+  int rc_hash_fmtowns(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_gamecube(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_jaguar_cd(char hash[33], const rc_hash_iterator_t* iterator);
   int rc_hash_neogeo_cd(char hash[33], const rc_hash_iterator_t* iterator);

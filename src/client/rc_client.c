@@ -601,7 +601,10 @@ size_t rc_client_get_user_agent_clause(rc_client_t* client, char buffer[], size_
   if (client && client->state.external_client && client->state.external_client->get_user_agent_clause) {
     result = client->state.external_client->get_user_agent_clause(buffer, buffer_size);
     if (result > 0) {
-      result += snprintf(buffer + result, buffer_size - result, " rc_client/" RCHEEVOS_VERSION_STRING);
+      if (result < buffer_size)
+        result += snprintf(buffer + result, buffer_size - result, " rc_client/" RCHEEVOS_VERSION_STRING);
+      else
+        result += (sizeof(" rc_client/" RCHEEVOS_VERSION_STRING) - 1);
       buffer[buffer_size - 1] = '\0';
       return result;
     }
