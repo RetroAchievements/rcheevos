@@ -400,9 +400,9 @@ int rc_hash_3do(char hash[33], const rc_hash_iterator_t* iterator)
   const uint8_t operafs_identifier[7] = { 0x01, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x01 };
   void* track_handle;
   md5_state_t md5;
-  int sector;
-  int block_size, block_location;
-  int offset, stop;
+  uint32_t sector;
+  uint32_t block_size, block_location;
+  uint32_t offset, stop;
   size_t size = 0;
 
   track_handle = rc_cd_open_track(iterator, 1);
