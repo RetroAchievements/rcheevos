@@ -742,6 +742,25 @@ static void test_hash_zeebo_extracted_outside_layout()
   ASSERT_NUM_EQUALS(rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, "Peteca/peteca.mod"), 0);
 }
 
+static void test_hash_zeebo_extracted_long_path()
+{
+  char hash_file[33];
+
+  /* the longest module path that fits: mod/<id>/ plus a 48 character name, 63 characters in all */
+  const char* longest = "Peteca/mod/279159/pppppppppppppppppppppppppppppppppppppppppppppppp.mod";
+  const char* too_long = "Peteca/mod/279159/ppppppppppppppppppppppppppppppppppppppppppppppppp.mod";
+
+  mock_file_text(0, longest, zeebo_peteca_mod);
+  mock_file_text(1, "Peteca/mif/279159.mif", zeebo_peteca_mif);
+  mock_file_text(2, too_long, zeebo_peteca_mod);
+
+  ASSERT_NUM_EQUALS(rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, longest), 1);
+  ASSERT_STR_EQUALS(hash_file, "71f890379e592837a962ff577ae0de2b");
+
+  /* one more character doesn't fit in a directory record */
+  ASSERT_NUM_EQUALS(rc_hash_generate_from_file(hash_file, RC_CONSOLE_ZEEBO, too_long), 0);
+}
+
 static void test_hash_zeebo_buffer()
 {
   char hash_buffer[33];
@@ -777,6 +796,7 @@ void test_hash_zip(void) {
   TEST_PARAMS2(test_hash_zeebo_extracted, "C:\\Games\\Peteca\\mod\\279159\\PETECA.MOD", "C:\\Games\\Peteca\\mif\\279159.mif");
   TEST(test_hash_zeebo_extracted_without_manifest);
   TEST(test_hash_zeebo_extracted_outside_layout);
+  TEST(test_hash_zeebo_extracted_long_path);
   TEST(test_hash_zeebo_buffer);
 
   TEST_SUITE_END();
