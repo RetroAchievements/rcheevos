@@ -441,8 +441,13 @@ int rc_hash_3do(char hash[33], const rc_hash_iterator_t* iterator)
 
       /* offset to end of entries is at offset 0x0C (assume 0x0C is always 0) */
       stop = buffer[0x0D] * 65536 + buffer[0x0E] * 256 + buffer[0x0F];
+      if (stop >= sizeof(buffer))
+        break;
 
       while (offset < stop) {
+        if (offset >= sizeof(buffer) - 0x48)
+          break;
+
         if (buffer[offset + 0x03] == 0x02) { /* file */
           if (strcasecmp((const char*)&buffer[offset + 0x20], "LaunchMe") == 0) {
             /* the block size is at offset 0x0C (assume 0x0C is always 0) */
