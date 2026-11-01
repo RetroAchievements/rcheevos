@@ -17,15 +17,15 @@ static int rc_hash_zip_idx_sort(const void* a, const void* b)
   return memcmp(A->data, B->data, len);
 }
 
-typedef int (RC_CCONV* rc_hash_zip_filter_t)(const char* filename, uint32_t filename_len, uint64_t decomp_size, void* userdata);
+typedef int (RC_CCONV* rc_hash_zip_filter_t)(const char* filename, uint32_t filename_len, uint64_t decomp_size, uint32_t crc32, void* userdata);
 
-/* Same as rc_hash_zip_filter_t, for filters that also need the CRC32 of the file */
-typedef int (RC_CCONV* rc_hash_zip_crc32_filter_t)(const char* filename, uint32_t filename_len, uint64_t decomp_size, uint32_t crc32, void* userdata);
+/* Macros used for writing to a buffer for hashing (undefined again at the end of the file) */
+#define RC_ZIP_WRITE_LE32(p,v) { ((uint8_t*)(p))[0] = (uint8_t)((uint32_t)(v) & 0xFF); ((uint8_t*)(p))[1] = (uint8_t)(((uint32_t)(v) >> 8) & 0xFF); ((uint8_t*)(p))[2] = (uint8_t)(((uint32_t)(v) >> 16) & 0xFF); ((uint8_t*)(p))[3] = (uint8_t)((uint32_t)(v) >> 24); }
+#define RC_ZIP_WRITE_LE64(p,v) { ((uint8_t*)(p))[0] = (uint8_t)((uint64_t)(v) & 0xFF); ((uint8_t*)(p))[1] = (uint8_t)(((uint64_t)(v) >> 8) & 0xFF); ((uint8_t*)(p))[2] = (uint8_t)(((uint64_t)(v) >> 16) & 0xFF); ((uint8_t*)(p))[3] = (uint8_t)(((uint64_t)(v) >> 24) & 0xFF); ((uint8_t*)(p))[4] = (uint8_t)(((uint64_t)(v) >> 32) & 0xFF); ((uint8_t*)(p))[5] = (uint8_t)(((uint64_t)(v) >> 40) & 0xFF); ((uint8_t*)(p))[6] = (uint8_t)(((uint64_t)(v) >> 48) & 0xFF); ((uint8_t*)(p))[7] = (uint8_t)((uint64_t)(v) >> 56); }
 
-static int rc_hash_zip_directory(md5_state_t* md5, void* file_handle,
-                                 const rc_hash_iterator_t* iterator,
-                                 rc_hash_zip_filter_t filter_func,
-                                 rc_hash_zip_crc32_filter_t crc32_filter_func, void* filter_userdata)
+static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
+                            const rc_hash_iterator_t* iterator,
+                            rc_hash_zip_filter_t filter_func, void* filter_userdata)
 {
   uint8_t buf[2048], *alloc_buf, *cdir_start, *cdir_max, *cdir, *hashdata, eocdirhdr_size, cdirhdr_size, nparents;
   uint32_t cdir_entry_len;
@@ -41,12 +41,10 @@ static int rc_hash_zip_directory(md5_state_t* md5, void* file_handle,
   if (archive_size < eocdirhdr_size)
     return rc_hash_iterator_error(iterator, "ZIP is too small");
 
-  /* Macros used for reading ZIP and writing to a buffer for hashing (undefined again at the end of the function) */
+  /* Macros used for reading ZIP (undefined again at the end of the function) */
   #define RC_ZIP_READ_LE16(p) ((uint16_t)(((const uint8_t*)(p))[0]) | ((uint16_t)(((const uint8_t*)(p))[1]) << 8U))
   #define RC_ZIP_READ_LE32(p) ((uint32_t)(((const uint8_t*)(p))[0]) | ((uint32_t)(((const uint8_t*)(p))[1]) << 8U) | ((uint32_t)(((const uint8_t*)(p))[2]) << 16U) | ((uint32_t)(((const uint8_t*)(p))[3]) << 24U))
   #define RC_ZIP_READ_LE64(p) ((uint64_t)(((const uint8_t*)(p))[0]) | ((uint64_t)(((const uint8_t*)(p))[1]) << 8U) | ((uint64_t)(((const uint8_t*)(p))[2]) << 16U) | ((uint64_t)(((const uint8_t*)(p))[3]) << 24U) | ((uint64_t)(((const uint8_t*)(p))[4]) << 32U) | ((uint64_t)(((const uint8_t*)(p))[5]) << 40U) | ((uint64_t)(((const uint8_t*)(p))[6]) << 48U) | ((uint64_t)(((const uint8_t*)(p))[7]) << 56U))
-  #define RC_ZIP_WRITE_LE32(p,v) { ((uint8_t*)(p))[0] = (uint8_t)((uint32_t)(v) & 0xFF); ((uint8_t*)(p))[1] = (uint8_t)(((uint32_t)(v) >> 8) & 0xFF); ((uint8_t*)(p))[2] = (uint8_t)(((uint32_t)(v) >> 16) & 0xFF); ((uint8_t*)(p))[3] = (uint8_t)((uint32_t)(v) >> 24); }
-  #define RC_ZIP_WRITE_LE64(p,v) { ((uint8_t*)(p))[0] = (uint8_t)((uint64_t)(v) & 0xFF); ((uint8_t*)(p))[1] = (uint8_t)(((uint64_t)(v) >> 8) & 0xFF); ((uint8_t*)(p))[2] = (uint8_t)(((uint64_t)(v) >> 16) & 0xFF); ((uint8_t*)(p))[3] = (uint8_t)(((uint64_t)(v) >> 24) & 0xFF); ((uint8_t*)(p))[4] = (uint8_t)(((uint64_t)(v) >> 32) & 0xFF); ((uint8_t*)(p))[5] = (uint8_t)(((uint64_t)(v) >> 40) & 0xFF); ((uint8_t*)(p))[6] = (uint8_t)(((uint64_t)(v) >> 48) & 0xFF); ((uint8_t*)(p))[7] = (uint8_t)((uint64_t)(v) >> 56); }
 
   /* Find the end of central directory record by scanning the file from the end towards the beginning */
   for (ecdh_ofs = archive_size - sizeof(buf); ; ecdh_ofs -= (sizeof(buf) - 3)) {
@@ -216,10 +214,8 @@ static int rc_hash_zip_directory(md5_state_t* md5, void* file_handle,
       return rc_hash_iterator_error(iterator, "Encountered invalid entry in ZIP central directory");
     }
 
-    if (filter_func || crc32_filter_func) {
-      int filtered = filter_func ?
-        filter_func((const char*)name, filename_len, decomp_size, filter_userdata) :
-        crc32_filter_func((const char*)name, filename_len, decomp_size, crc32, filter_userdata);
+    if (filter_func) {
+      int filtered = filter_func((const char*)name, filename_len, decomp_size, crc32, filter_userdata);
       if (filtered < 0) {
         free(alloc_buf);
         return 0;
@@ -268,22 +264,14 @@ static int rc_hash_zip_directory(md5_state_t* md5, void* file_handle,
   #undef RC_ZIP_READ_LE16
   #undef RC_ZIP_READ_LE32
   #undef RC_ZIP_READ_LE64
-  #undef RC_ZIP_WRITE_LE32
-  #undef RC_ZIP_WRITE_LE64
-}
-
-static int rc_hash_zip_file(md5_state_t* md5, void* file_handle,
-                            const rc_hash_iterator_t* iterator,
-                            rc_hash_zip_filter_t filter_func, void* filter_userdata)
-{
-  return rc_hash_zip_directory(md5, file_handle, iterator, filter_func, NULL, filter_userdata);
 }
 
 /* ===================================================== */
 
-static int rc_hash_arduboyfx_filter(const char* filename, uint32_t filename_len, uint64_t decomp_size, void* userdata)
+static int rc_hash_arduboyfx_filter(const char* filename, uint32_t filename_len, uint64_t decomp_size, uint32_t crc32, void* userdata)
 {
   (void)decomp_size;
+  (void)crc32;
   (void)userdata;
 
   /* An .arduboy file is a zip file containing an info.json pointing at one or more bin
@@ -327,7 +315,7 @@ int rc_hash_arduboyfx(char hash[33], const rc_hash_iterator_t* iterator)
 
 typedef struct rc_hash_zeebo_file
 {
-  char path[256]; /* mod/<id>/<name>.mod or mif/<id>.mif, as a zip directory record holds it */
+  char path[64]; /* mod/<id>/<name>.mod or mif/<id>.mif, as a zip directory record holds it */
   uint32_t crc32;
   uint64_t size;
   uint8_t is_module;
@@ -395,16 +383,12 @@ static int rc_hash_zeebo_is_manifest_of(const rc_hash_zeebo_file_t* manifest, co
 static void rc_hash_zeebo_append(md5_state_t* md5, const rc_hash_zeebo_file_t* file)
 {
   uint8_t record[12];
-  int i;
 
   /* the file name with its zero terminator, then CRC32 and size, as rc_hash_zip_file records them */
   md5_append(md5, (const md5_byte_t*)file->path, (int)strlen(file->path) + 1);
 
-  for (i = 0; i < 4; i++)
-    record[i] = (uint8_t)(file->crc32 >> (i * 8));
-  for (i = 0; i < 8; i++)
-    record[4 + i] = (uint8_t)(file->size >> (i * 8));
-
+  RC_ZIP_WRITE_LE32(&record[0], file->crc32);
+  RC_ZIP_WRITE_LE64(&record[4], file->size);
   md5_append(md5, record, sizeof(record));
 }
 
@@ -479,7 +463,7 @@ static int rc_hash_zeebo_zip(char hash[33], const rc_hash_iterator_t* iterator)
   state.iterator = iterator;
 
   md5_init(&unused_md5);
-  res = rc_hash_zip_directory(&unused_md5, file_handle, iterator, NULL, rc_hash_zeebo_zip_filter, &state);
+  res = rc_hash_zip_file(&unused_md5, file_handle, iterator, rc_hash_zeebo_zip_filter, &state);
   rc_file_close(iterator, file_handle);
 
   if (res) {
@@ -695,9 +679,10 @@ static int rc_hash_ms_dos_dosc(const struct rc_hash_ms_dos_dosz_state* dosz)
   return 1;
 }
 
-static int rc_hash_dosz_filter(const char* filename, uint32_t filename_len, uint64_t decomp_size, void* userdata)
+static int rc_hash_dosz_filter(const char* filename, uint32_t filename_len, uint64_t decomp_size, uint32_t crc32, void* userdata)
 {
   struct rc_hash_ms_dos_dosz_state* dosz = (struct rc_hash_ms_dos_dosz_state*)userdata;
+  (void)crc32;
 
   /* A DOSZ file can contain a special empty <base>.dosz.parent file in its root which means a parent dosz file is used */
   if (decomp_size == 0 && filename_len > 7 &&
@@ -761,5 +746,8 @@ int rc_hash_ms_dos(char hash[33], const rc_hash_iterator_t* iterator)
 
   return rc_hash_finalize(iterator, &md5, hash);
 }
+
+#undef RC_ZIP_WRITE_LE32
+#undef RC_ZIP_WRITE_LE64
 
 #endif /* RC_HASH_NO_ZIP */
