@@ -40,6 +40,7 @@ rc_json_field_t;
 typedef struct rc_json_iterator_t {
   const char* json;
   const char* end;
+  uint32_t depth;
 }
 rc_json_iterator_t;
 

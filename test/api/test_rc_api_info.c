@@ -203,7 +203,7 @@ static void test_process_fetch_leaderboard_info_response() {
   ASSERT_STR_EQUALS(fetch_leaderboard_info_response.title, "Title");
   ASSERT_STR_EQUALS(fetch_leaderboard_info_response.description, "Description");
   ASSERT_STR_EQUALS(fetch_leaderboard_info_response.definition, "STA:0xH0000=1::CAN:1=1::SUB:0xH0000=2::VAL:b0x 0004");
-  ASSERT_PTR_NULL(fetch_leaderboard_info_response.author);
+  ASSERT_PTR_EQUALS(fetch_leaderboard_info_response.author, "");
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.num_entries, 2);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.total_entries, 12);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.created, 1382307141);
@@ -293,7 +293,7 @@ static void test_process_fetch_leaderboard_info_response_iso8601() {
   ASSERT_STR_EQUALS(fetch_leaderboard_info_response.title, "Title");
   ASSERT_STR_EQUALS(fetch_leaderboard_info_response.description, "Description");
   ASSERT_STR_EQUALS(fetch_leaderboard_info_response.definition, "STA:0xH0000=1::CAN:1=1::SUB:0xH0000=2::VAL:b0x 0004");
-  ASSERT_PTR_NULL(fetch_leaderboard_info_response.author);
+  ASSERT_PTR_EQUALS(fetch_leaderboard_info_response.author, "");
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.num_entries, 2);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.total_entries, 12);
   ASSERT_NUM_EQUALS(fetch_leaderboard_info_response.created, 1382307141);
