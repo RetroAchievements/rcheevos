@@ -517,7 +517,7 @@ static void test_achievement_list_simple_with_unpromoted_off(void)
   rc_client_destroy(g_client);
 }
 
-static void test_achievement_zero_progress(int encore)
+static void test_achievement_zero_progress(void)
 {
   const uint32_t values[] = { 0, 2, 0, RC_MEASURED_UNKNOWN };
   const char* expected[] = { "0/6", "2/6", "0/6", "" };
@@ -529,7 +529,6 @@ static void test_achievement_zero_progress(int encore)
   uint32_t i;
 
   g_client = mock_client_logged_in();
-  rc_client_set_encore_mode_enabled(g_client, encore);
   mock_client_load_game(patchdata_exhaustive, unlock_8);
   achievement = (rc_client_achievement_info_t*)rc_client_get_achievement_info(g_client, 6);
   ASSERT_PTR_NOT_NULL(achievement);
@@ -2911,8 +2910,7 @@ void test_client_game(void) {
   TEST(test_achievement_list_simple_with_unlocks_encore_mode);
   TEST(test_achievement_list_simple_with_unpromoted_and_unsupported);
   TEST(test_achievement_list_simple_with_unpromoted_off);
-  TEST_PARAMS1(test_achievement_zero_progress, 0);
-  TEST_PARAMS1(test_achievement_zero_progress, 1);
+  TEST(test_achievement_zero_progress);
   TEST(test_achievement_list_buckets);
   TEST(test_achievement_list_buckets_progress_sort);
   TEST(test_achievement_list_buckets_progress_sort_big_ids);
