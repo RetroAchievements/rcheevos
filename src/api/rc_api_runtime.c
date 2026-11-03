@@ -469,6 +469,8 @@ static int rc_api_process_fetch_game_sets_achievement_sets(rc_api_fetch_game_set
       subset->type = RC_ACHIEVEMENT_SET_TYPE_SPECIALTY;
     else if (rc_json_field_string_matches(&subset_fields[3], "exclusive"))
       subset->type = RC_ACHIEVEMENT_SET_TYPE_EXCLUSIVE;
+    else if (rc_json_field_string_matches(&subset_fields[3], "challenge"))
+      subset->type = RC_ACHIEVEMENT_SET_TYPE_CHALLENGE;
     else
       subset->type = RC_ACHIEVEMENT_SET_TYPE_BONUS;
 

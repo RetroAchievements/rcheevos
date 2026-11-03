@@ -208,6 +208,7 @@ rc_api_fetch_game_sets_request_t;
 #define RC_ACHIEVEMENT_SET_TYPE_BONUS 1
 #define RC_ACHIEVEMENT_SET_TYPE_SPECIALTY 2
 #define RC_ACHIEVEMENT_SET_TYPE_EXCLUSIVE 3
+#define RC_ACHIEVEMENT_SET_TYPE_CHALLENGE 4
 
 /* A game subset definition */
 typedef struct rc_api_achievement_set_definition_t {
