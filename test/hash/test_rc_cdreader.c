@@ -288,6 +288,20 @@ static void test_open_gdi_track_last()
   close_track(&iterator, track_handle);
 }
 
+
+static void test_open_gdi_track_invalid()
+{
+  rc_hash_cdrom_track_t* track_handle;
+  rc_hash_iterator_t iterator;
+  initialize_iterator(&iterator);
+
+  mock_file_text(0, "game.gdi", gdi_three_tracks);
+  mock_empty_file(1, "track03.bin", 1185760800);
+
+  track_handle = open_track(&iterator, "game.gdi", 5);
+  ASSERT_PTR_NULL(track_handle);
+}
+
 static void test_open_cue_track_largest_data()
 {
   rc_hash_cdrom_track_t* track_handle;
@@ -887,6 +901,7 @@ void test_cdreader(void) {
   TEST(test_open_gdi_track_3_quoted);
   TEST(test_open_gdi_track_3_extra_whitespace);
   TEST(test_open_gdi_track_last);
+  TEST(test_open_gdi_track_invalid);
 
   TEST(test_open_cue_track_largest_data);
   TEST(test_open_cue_track_largest_data_multiple_bin);

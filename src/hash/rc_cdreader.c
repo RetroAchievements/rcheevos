@@ -405,7 +405,7 @@ static void* cdreader_open_cue_track(const char* path, uint32_t track, const rc_
         {
           memcpy(&previous_track, &current_track, sizeof(previous_track));
 
-          if (previous_track.sector_count == 0)
+          if (previous_track.sector_count == 0 && previous_track.sector_size != 0)
           {
             const int64_t bin_size = cdreader_get_bin_size(path, previous_track.filename, iterator);
             const uint32_t file_sector_count = (uint32_t)bin_size / previous_track.sector_size;
@@ -556,7 +556,7 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track, const rc_
   void* file_handle;
   char buffer[1024];
   char mode[16] = "MODE1/";
-  char sector_size[16];
+  char sector_size[16] = "";
   char file[256];
   int64_t track_size;
   int track_type;
@@ -725,6 +725,12 @@ static void* cdreader_open_gdi_track(const char* path, uint32_t track, const rc_
 
   if (iterator->callbacks.filereader.close)
     iterator->callbacks.filereader.close(file_handle);
+
+  if (!found)
+  {
+    rc_hash_iterator_error(iterator, "requested track not found");
+    return NULL;
+  }
 
   cdrom = (rc_hash_cdrom_track_t*)calloc(1, sizeof(*cdrom));
   if (!cdrom)
