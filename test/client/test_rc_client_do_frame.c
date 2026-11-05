@@ -914,13 +914,13 @@ static void test_do_frame_achievement_measured_progress_event(void)
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(get_pending_event_count(), 0);
 
-    /* don't trigger popup when value changes to 0 as the measured_progress string will be blank */
+    /* don't trigger popup when value changes to 0 */
     memory[0x06] = 0; /* 0 */
     rc_client_do_frame(g_client);
     ASSERT_NUM_EQUALS(get_pending_event_count(), 0);
 
     achievement = rc_client_get_achievement_info(g_client, 6);
-    ASSERT_STR_EQUALS(achievement->measured_progress, "");
+    ASSERT_STR_EQUALS(achievement->measured_progress, "0/6");
     ASSERT_FLOAT_EQUALS(achievement->measured_percent, 0.0);
 
     /* both at 50%, only report first */
