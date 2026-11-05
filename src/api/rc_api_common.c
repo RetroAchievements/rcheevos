@@ -17,6 +17,8 @@ rc_api_host_t g_host = { NULL, NULL };
 
 /* --- rc_json --- */
 
+#define RC_JSON_MAX_DEPTH 32
+
 static int rc_json_parse_object(rc_json_iterator_t* iterator, rc_json_field_t* fields, size_t field_count, uint32_t* fields_seen);
 static int rc_json_parse_array(rc_json_iterator_t* iterator, rc_json_field_t* field);
 
@@ -108,17 +110,27 @@ static int rc_json_parse_field(rc_json_iterator_t* iterator, rc_json_field_t* fi
       break;
 
     case '[': /* array */
+      if (iterator->depth > RC_JSON_MAX_DEPTH)
+        return RC_INVALID_JSON;
+      ++iterator->depth;
+
       result = rc_json_parse_array(iterator, field);
       if (result != RC_OK)
         return result;
 
+      --iterator->depth;
       break;
 
     case '{': /* object */
+      if (iterator->depth > RC_JSON_MAX_DEPTH)
+        return RC_INVALID_JSON;
+      ++iterator->depth;
+
       result = rc_json_parse_object(iterator, NULL, 0, &field->array_size);
       if (result != RC_OK)
         return result;
 
+      --iterator->depth;
       break;
 
     default: /* non-quoted text [true,false,null] */
@@ -851,7 +863,7 @@ void rc_json_get_optional_string(const char** out, rc_api_response_t* response, 
 }
 
 int rc_json_get_required_string(const char** out, rc_api_response_t* response, const rc_json_field_t* field, const char* field_name) {
-  if (rc_json_get_string(out, &response->buffer, field, field_name))
+  if (rc_json_get_string(out, &response->buffer, field, field_name) && *out)
     return 1;
 
   return rc_json_missing_field(response, field);

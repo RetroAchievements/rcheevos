@@ -199,6 +199,31 @@ static void test_json_parse_response_incorrect_size() {
   ASSERT_NUM_EQUALS(response.succeeded, 0);
 }
 
+static void test_json_parse_response_max_depth() {
+  int result;
+  rc_api_server_response_t server_response;
+  rc_api_response_t response;
+  const char* json;
+  rc_json_field_t fields[] = {
+    RC_JSON_NEW_FIELD("Success"),
+    RC_JSON_NEW_FIELD("Error"),
+    RC_JSON_NEW_FIELD("Test")
+  };
+  rc_buffer_init(&response.buffer);
+
+  json = "{\"Success\":true,\"Test\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}";
+  memset(&server_response, 0, sizeof(server_response));
+  server_response.body = json;
+  server_response.body_length = strlen(json) - 1;
+
+  result = rc_json_parse_server_response(&response, &server_response, fields, sizeof(fields) / sizeof(fields[0]));
+  ASSERT_NUM_EQUALS(result, RC_INVALID_JSON);
+
+  /* the response did not contain an error message */
+  ASSERT_PTR_NULL(response.error_message);
+  ASSERT_NUM_EQUALS(response.succeeded, 1);
+}
+
 static void test_json_get_string(const char* escaped, const char* expected) {
   rc_api_response_t response;
   rc_json_field_t field;
@@ -264,6 +289,17 @@ static void test_json_get_required_string() {
   ASSERT_PTR_NOT_NULL(response.error_message);
   ASSERT_STR_EQUALS(response.error_message, "Test not found in response");
   ASSERT_NUM_EQUALS(response.succeeded, 0);
+}
+
+static void test_json_get_required_string_null() {
+  rc_api_response_t response;
+  rc_json_field_t field;
+  const char* value = NULL;
+
+  assert_json_parse_response(&response, &field, "{\"Test\":null}", RC_OK);
+
+  ASSERT_FALSE(rc_json_get_required_string(&value, &response, &field, "Test"));
+  ASSERT_PTR_NULL(value);
 }
 
 static void test_json_get_num(const char* input, int expected) {
@@ -985,6 +1021,7 @@ void test_rapi_common(void) {
   TEST(test_json_parse_response_451);
   TEST(test_json_parse_response_error_from_server);
   TEST(test_json_parse_response_incorrect_size);
+  TEST(test_json_parse_response_max_depth);
 
   /* rc_json_get_string */
   TEST_PARAMS2(test_json_get_string, "", "");
@@ -1003,6 +1040,7 @@ void test_rapi_common(void) {
   TEST(test_json_get_string_truncated_surrogate_pair);
   TEST(test_json_get_optional_string);
   TEST(test_json_get_required_string);
+  TEST(test_json_get_required_string_null);
 
   /* rc_json_get_num */
   TEST_PARAMS2(test_json_get_num, "Banana", 0);

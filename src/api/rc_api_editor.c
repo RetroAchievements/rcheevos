@@ -109,11 +109,10 @@ int rc_api_process_fetch_code_notes_server_response(rc_api_fetch_code_notes_resp
         note->author = last_author;
       }
       else {
-        if (!rc_json_get_required_string(&note->author, &response->response, &note_fields[1], "User"))
-          return RC_MISSING_VALUE;
+        rc_json_get_optional_string(&note->author, &response->response, &note_fields[1], "User", "");
 
         if (note->author == NULL) {
-          /* ensure we don't pass NULL out to client */
+          /* Deleted user. Ensure we don't pass NULL out to client */
           last_author = note->author = "";
           last_author_len = 0;
         } else {
