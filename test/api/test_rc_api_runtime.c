@@ -1178,6 +1178,166 @@ static void test_process_fetch_game_sets_response_rich_presence_null() {
   rc_api_destroy_fetch_game_sets_response(&fetch_game_sets_response);
 }
 
+static void test_process_fetch_game_sets_response_challenge_subset() {
+  rc_api_achievement_set_definition_t* set;
+  rc_api_achievement_definition_t* achievement;
+  rc_api_leaderboard_definition_t* leaderboard;
+  rc_api_fetch_game_sets_response_t fetch_game_sets_response;
+  const char server_response[] = "{\"Success\":true,"
+    "\"GameId\":20,\"Title\":\"Another Amazing Game\",\"ConsoleId\":19,"
+    "\"ImageIconUrl\":\"http://server/Images/112233.png\","
+    "\"RichPresenceGameId\":20,\"RichPresencePatch\":\"\",\"Sets\":["
+      "{"
+        "\"AchievementSetId\":98,\"GameId\":26,\"Title\":\"Low Level Run\",\"Type\":\"challenge\","
+        "\"ImageIconUrl\":\"http://server/Images/112236.png\","
+        "\"Achievements\":["
+            "{\"ID\":5507,\"Title\":\"Ach7\",\"Description\":\"Desc7\",\"Flags\":3,\"Points\":5,"
+             "\"MemAddr\":\"0=1\",\"Author\":\"User1\",\"BadgeName\":\"00234\","
+             "\"Created\":1367266583,\"Modified\":1376929305}"
+        "],\"Leaderboards\":[]"
+      "},{"
+        "\"AchievementSetId\":192,\"GameId\":20,\"Title\":null,\"Type\":\"core\","
+        "\"ImageIconUrl\":\"http://server/Images/112233.png\","
+        "\"Achievements\":["
+            "{\"ID\":5501,\"Title\":\"Ach1\",\"Description\":\"Desc1\",\"Flags\":3,\"Points\":5,"
+             "\"MemAddr\":\"0=1\",\"Author\":\"User1\",\"BadgeName\":\"00234\",\"Type\":\"progression\","
+             "\"Rarity\":100.0,\"RarityHardcore\":66.67,\"Created\":1367266583,\"Modified\":1376929305}"
+        "],\"Leaderboards\":["
+            "{\"ID\":4401,\"Title\":\"Leaderboard1\",\"Description\":\"Desc1\","
+             "\"Mem\":\"0=1\",\"Format\":\"SCORE\"}"
+        "]"
+      "},{"
+        "\"AchievementSetId\":77,\"GameId\":21,\"Title\":\"Bonus\",\"Type\":\"bonus\","
+        "\"ImageIconUrl\":\"http://server/Images/112236.png\","
+        "\"Achievements\":["
+            "{\"ID\":5504,\"Title\":\"Ach4\",\"Description\":\"Desc4\",\"Flags\":3,\"Points\":10,"
+             "\"MemAddr\":\"0=4\",\"Author\":null,\"BadgeName\":\"00236\",\"Type\":\"\","
+             "\"Created\":1504474554,\"Modified\":1504474554}"
+        "],\"Leaderboards\":["
+            "{\"ID\":4402,\"Title\":\"Leaderboard2\",\"Description\":\"Desc2\","
+             "\"Mem\":\"0=1\",\"Format\":\"SECS\",\"LowerIsBetter\":false,\"Hidden\":true}"
+        "]"
+      "}"
+    "]}";
+  rc_api_server_response_t fetch_game_sets_server_response;
+  init_server_response(&fetch_game_sets_server_response, 200, server_response, sizeof(server_response) - 1);
+
+  memset(&fetch_game_sets_response, 0, sizeof(fetch_game_sets_response));
+
+  ASSERT_NUM_EQUALS(rc_api_process_fetch_game_sets_server_response(&fetch_game_sets_response, &fetch_game_sets_server_response), RC_OK);
+  ASSERT_NUM_EQUALS(fetch_game_sets_response.response.succeeded, 1);
+  ASSERT_PTR_NULL(fetch_game_sets_response.response.error_message);
+  ASSERT_NUM_EQUALS(fetch_game_sets_response.id, 20);
+  ASSERT_STR_EQUALS(fetch_game_sets_response.title, "Another Amazing Game");
+  ASSERT_NUM_EQUALS(fetch_game_sets_response.console_id, 19);
+  ASSERT_STR_EQUALS(fetch_game_sets_response.image_name, "112233");
+  ASSERT_STR_EQUALS(fetch_game_sets_response.image_url, "http://server/Images/112233.png");
+  ASSERT_STR_EQUALS(fetch_game_sets_response.rich_presence_script, "");
+  ASSERT_NUM_EQUALS(fetch_game_sets_response.session_game_id, 20);
+  ASSERT_NUM_EQUALS(fetch_game_sets_response.num_sets, 3);
+
+  set = &fetch_game_sets_response.sets[0];
+  ASSERT_NUM_EQUALS(set->id, 98);
+  ASSERT_NUM_EQUALS(set->game_id, 26);
+  ASSERT_STR_EQUALS(set->title, "Low Level Run");
+  ASSERT_NUM_EQUALS(set->type, RC_ACHIEVEMENT_SET_TYPE_CHALLENGE);
+  ASSERT_STR_EQUALS(set->image_name, "112236");
+  ASSERT_STR_EQUALS(set->image_url, "http://server/Images/112236.png");
+  ASSERT_NUM_EQUALS(set->num_achievements, 1);
+  ASSERT_NUM_EQUALS(set->num_leaderboards, 0);
+
+  ASSERT_PTR_NOT_NULL(set->achievements);
+  achievement = set->achievements;
+
+  ASSERT_NUM_EQUALS(achievement->id, 5507);
+  ASSERT_STR_EQUALS(achievement->title, "Ach7");
+  ASSERT_STR_EQUALS(achievement->description, "Desc7");
+  ASSERT_NUM_EQUALS(achievement->category, RC_ACHIEVEMENT_CATEGORY_PROMOTED);
+  ASSERT_NUM_EQUALS(achievement->points, 5);
+  ASSERT_STR_EQUALS(achievement->definition, "0=1");
+  ASSERT_STR_EQUALS(achievement->author, "User1");
+  ASSERT_STR_EQUALS(achievement->badge_name, "00234");
+  ASSERT_NUM_EQUALS(achievement->type, RC_ACHIEVEMENT_TYPE_STANDARD); /* no type specified */
+  ASSERT_TIMET_EQUALS(achievement->created, 1367266583);
+  ASSERT_TIMET_EQUALS(achievement->updated, 1376929305);
+
+  set = &fetch_game_sets_response.sets[1];
+  ASSERT_NUM_EQUALS(set->id, 192);
+  ASSERT_NUM_EQUALS(set->game_id, 20);
+  ASSERT_STR_EQUALS(set->title, "Another Amazing Game");
+  ASSERT_NUM_EQUALS(set->type, RC_ACHIEVEMENT_SET_TYPE_CORE);
+  ASSERT_STR_EQUALS(set->image_name, "112233");
+  ASSERT_STR_EQUALS(set->image_url, "http://server/Images/112233.png");
+  ASSERT_NUM_EQUALS(set->num_achievements, 1);
+  ASSERT_NUM_EQUALS(set->num_leaderboards, 1);
+
+  ASSERT_PTR_NOT_NULL(set->achievements);
+  achievement = set->achievements;
+  ASSERT_NUM_EQUALS(achievement->id, 5501);
+  ASSERT_STR_EQUALS(achievement->title, "Ach1");
+  ASSERT_STR_EQUALS(achievement->description, "Desc1");
+  ASSERT_NUM_EQUALS(achievement->category, RC_ACHIEVEMENT_CATEGORY_PROMOTED);
+  ASSERT_NUM_EQUALS(achievement->points, 5);
+  ASSERT_STR_EQUALS(achievement->definition, "0=1");
+  ASSERT_STR_EQUALS(achievement->author, "User1");
+  ASSERT_STR_EQUALS(achievement->badge_name, "00234");
+  ASSERT_NUM_EQUALS(achievement->type, RC_ACHIEVEMENT_TYPE_PROGRESSION);
+  ASSERT_FLOAT_EQUALS(achievement->rarity, 100.0f);
+  ASSERT_FLOAT_EQUALS(achievement->rarity_hardcore, 66.67f);
+  ASSERT_TIMET_EQUALS(achievement->created, 1367266583);
+  ASSERT_TIMET_EQUALS(achievement->updated, 1376929305);
+
+  ASSERT_PTR_NOT_NULL(set->leaderboards);
+  leaderboard = set->leaderboards;
+
+  ASSERT_NUM_EQUALS(leaderboard->id, 4401);
+  ASSERT_STR_EQUALS(leaderboard->title, "Leaderboard1");
+  ASSERT_STR_EQUALS(leaderboard->description, "Desc1");
+  ASSERT_STR_EQUALS(leaderboard->definition, "0=1");
+  ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SCORE);
+  ASSERT_NUM_EQUALS(leaderboard->lower_is_better, 0);
+  ASSERT_NUM_EQUALS(leaderboard->hidden, 0);
+
+  set = &fetch_game_sets_response.sets[2];
+  ASSERT_NUM_EQUALS(set->id, 77);
+  ASSERT_NUM_EQUALS(set->game_id, 21);
+  ASSERT_STR_EQUALS(set->title, "Bonus");
+  ASSERT_NUM_EQUALS(set->type, RC_ACHIEVEMENT_SET_TYPE_BONUS);
+  ASSERT_STR_EQUALS(set->image_name, "112236");
+  ASSERT_STR_EQUALS(set->image_url, "http://server/Images/112236.png");
+  ASSERT_NUM_EQUALS(set->num_achievements, 1);
+  ASSERT_NUM_EQUALS(set->num_leaderboards, 1);
+
+  ASSERT_PTR_NOT_NULL(set->achievements);
+  achievement = set->achievements;
+  ASSERT_NUM_EQUALS(achievement->id, 5504);
+  ASSERT_STR_EQUALS(achievement->title, "Ach4");
+  ASSERT_STR_EQUALS(achievement->description, "Desc4");
+  ASSERT_NUM_EQUALS(achievement->category, RC_ACHIEVEMENT_CATEGORY_PROMOTED);
+  ASSERT_NUM_EQUALS(achievement->points, 10);
+  ASSERT_STR_EQUALS(achievement->definition, "0=4");
+  ASSERT_STR_EQUALS(achievement->author, ""); /* null author */
+  ASSERT_STR_EQUALS(achievement->badge_name, "00236");
+  ASSERT_NUM_EQUALS(achievement->type, RC_ACHIEVEMENT_TYPE_STANDARD);
+  ASSERT_FLOAT_EQUALS(achievement->rarity, 100.0f);
+  ASSERT_FLOAT_EQUALS(achievement->rarity_hardcore, 100.0f);
+  ASSERT_TIMET_EQUALS(achievement->created, 1504474554);
+  ASSERT_TIMET_EQUALS(achievement->updated, 1504474554);
+
+  ASSERT_PTR_NOT_NULL(set->leaderboards);
+  leaderboard = set->leaderboards;
+
+  ASSERT_NUM_EQUALS(leaderboard->id, 4402);
+  ASSERT_STR_EQUALS(leaderboard->title, "Leaderboard2");
+  ASSERT_STR_EQUALS(leaderboard->description, "Desc2");
+  ASSERT_STR_EQUALS(leaderboard->definition, "0=1");
+  ASSERT_NUM_EQUALS(leaderboard->format, RC_FORMAT_SECONDS);
+  ASSERT_NUM_EQUALS(leaderboard->lower_is_better, 0);
+  ASSERT_NUM_EQUALS(leaderboard->hidden, 1);
+
+  rc_api_destroy_fetch_game_sets_response(&fetch_game_sets_response);
+}
+
 static void test_process_fetch_game_sets_response_specialty_subset() {
   rc_api_achievement_set_definition_t* set;
   rc_api_achievement_definition_t* achievement;
@@ -2179,6 +2339,7 @@ void test_rapi_runtime(void) {
   TEST(test_process_fetch_game_sets_response_leaderboards);
   TEST(test_process_fetch_game_sets_response_rich_presence);
   TEST(test_process_fetch_game_sets_response_rich_presence_null);
+  TEST(test_process_fetch_game_sets_response_challenge_subset);
   TEST(test_process_fetch_game_sets_response_specialty_subset);
   TEST(test_process_fetch_game_sets_response_exclusive_subset);
 
