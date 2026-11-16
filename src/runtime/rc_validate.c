@@ -1235,6 +1235,7 @@ static int rc_validate_conflicting_conditions(const rc_condset_t* conditions, co
             compare_condition->oper == condition->oper &&
             operand1->type == RC_OPERAND_ADDRESS &&
             (operand2->type == RC_OPERAND_DELTA || operand2->type == RC_OPERAND_PRIOR) &&
+            operand1->size == operand2->size &&
             operand1->value.memref->address == operand2->value.memref->address &&
             rc_operands_are_equal(&compare_condition->operand2, &condition->operand2)) {
           rc_validate_add_error(state, RC_VALIDATION_ERR_SAME_COMPARISON_ACROSS_FRAMES,

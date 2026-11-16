@@ -827,7 +827,7 @@ enum {
   RC_CLIENT_EVENT_SERVER_ERROR = 16, /* an API response returned a [server_error] and will not be retried */
   RC_CLIENT_EVENT_DISCONNECTED = 17, /* an unlock request could not be completed and is pending */
   RC_CLIENT_EVENT_RECONNECTED = 18, /* all pending unlocks have been completed */
-  RC_CLIENT_EVENT_SUBSET_COMPLETED = 19 /* all achievements for the subset have been earned */
+  RC_CLIENT_EVENT_SUBSET_COMPLETED = 19 /* all achievements for a [subset] have been earned */
 };
 
 typedef struct rc_client_server_error_t {
