@@ -16,7 +16,8 @@ void rc_typed_value_convert(rc_typed_value_t* value, uint8_t new_type) {
           value->value.u32 = (unsigned)value->value.i32;
           break;
         case RC_VALUE_TYPE_FLOAT:
-          value->value.u32 = (unsigned)value->value.f32;
+          /* through int64_t: defined for negatives and for every unsigned 32-bit value */
+          value->value.u32 = (uint32_t)(int64_t)value->value.f32;
           break;
         default:
           value->value.u32 = 0;
