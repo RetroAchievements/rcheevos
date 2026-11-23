@@ -739,6 +739,11 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "B0xH03", 111); /* 0xAB not really BCD */
   TEST_PARAMS2(test_evaluate_value, "B0xW00", 341200);
 
+  /* float to int conversion */
+  TEST_PARAMS2(test_evaluate_value, "A:f-1.0_M:0", 0xFFFFFFFF) /* float to int, then to uint */
+  TEST_PARAMS2(test_evaluate_value, "A:f4294967000.0_M:0", 0xFFFFFF00) /* float only has 7 digits of precision, so can't exactly hit MAX_UINT */
+  TEST_PARAMS2(test_evaluate_value, "A:f-2147483000.0_M:0", 0x80000280) /* float only has 7 digits of precision, so can't exactly hit MIN_INT */
+
   /* non-comparison measured values just return the value at the address and have no target */
   TEST_PARAMS2(test_measured_value_target, "M:0xH0002", 0);
 
@@ -835,6 +840,7 @@ void test_value(void) {
   TEST_PARAMS2(test_evaluate_value, "A:fF5-f2_M:0", 1)            /* PI - 2.0 = 1.141592 -> 1 */
   TEST_PARAMS2(test_evaluate_value, "A:f5.5-f2.0_M:0", 3)         /* 5.5 - 2.0 = 2.5 -> 3 */
   TEST_PARAMS2(test_evaluate_value, "A:f5.5-f2.7_M:0", 2)         /* 5.5 - 2.7 = 2.8 -> 2 */
+  TEST_PARAMS2(test_evaluate_value, "A:f5.5-f7.2_M:0", 0xFFFFFFFF)/* 5.5 - 7.2 = -1.7 -> -1 -> 0xFFFFFFFF */
   TEST_PARAMS2(test_evaluate_value, "B:0xH0001-3_M:100",85)       /* 100 - (18-3) = 85 */
 
   /* rounding */

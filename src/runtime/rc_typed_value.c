@@ -13,10 +13,13 @@ void rc_typed_value_convert(rc_typed_value_t* value, uint8_t new_type) {
         case RC_VALUE_TYPE_UNSIGNED:
           return;
         case RC_VALUE_TYPE_SIGNED:
-          value->value.u32 = (unsigned)value->value.i32;
+          value->value.u32 = (uint32_t)value->value.i32;
           break;
         case RC_VALUE_TYPE_FLOAT:
-          /* through int64_t: defined for negatives and for every unsigned 32-bit value */
+          /* ARM64 has CPU instructions for converting between floats and integers. Casting directly
+           * to a uint32_t will clamp to values between 0 and 4294967295. Casting to an int32_t will
+           * clamp to values between -2147483648 and 2147483647. We naively support both ranges, so
+           * cast to a signed 64-bit value, then convert to unsigned. */
           value->value.u32 = (uint32_t)(int64_t)value->value.f32;
           break;
         default:
@@ -30,10 +33,10 @@ void rc_typed_value_convert(rc_typed_value_t* value, uint8_t new_type) {
         case RC_VALUE_TYPE_SIGNED:
           return;
         case RC_VALUE_TYPE_UNSIGNED:
-          value->value.i32 = (int)value->value.u32;
+          value->value.i32 = (int32_t)value->value.u32;
           break;
         case RC_VALUE_TYPE_FLOAT:
-          value->value.i32 = (int)value->value.f32;
+          value->value.i32 = (int32_t)value->value.f32;
           break;
         default:
           value->value.i32 = 0;
@@ -142,7 +145,7 @@ void rc_typed_value_multiply(rc_typed_value_t* value, const rc_typed_value_t* am
           break;
 
         case RC_VALUE_TYPE_SIGNED:
-          value->value.u32 *= (unsigned)amount->value.i32;
+          value->value.u32 *= (uint32_t)amount->value.i32;
           break;
 
         case RC_VALUE_TYPE_FLOAT:
@@ -164,7 +167,7 @@ void rc_typed_value_multiply(rc_typed_value_t* value, const rc_typed_value_t* am
           break;
 
         case RC_VALUE_TYPE_UNSIGNED:
-          value->value.i32 *= (int)amount->value.u32;
+          value->value.i32 *= (int32_t)amount->value.u32;
           break;
 
         case RC_VALUE_TYPE_FLOAT:
@@ -210,7 +213,7 @@ void rc_typed_value_divide(rc_typed_value_t* value, const rc_typed_value_t* amou
           value->value.u32 /= amount->value.u32;
           return;
         case RC_VALUE_TYPE_SIGNED: /* integer math */
-          value->value.i32 /= (int)amount->value.u32;
+          value->value.i32 /= (int32_t)amount->value.u32;
           return;
         case RC_VALUE_TYPE_FLOAT:
           amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
@@ -232,7 +235,7 @@ void rc_typed_value_divide(rc_typed_value_t* value, const rc_typed_value_t* amou
           value->value.i32 /= amount->value.i32;
           return;
         case RC_VALUE_TYPE_UNSIGNED: /* integer math */
-          value->value.u32 /= (unsigned)amount->value.i32;
+          value->value.u32 /= (uint32_t)amount->value.i32;
           return;
         case RC_VALUE_TYPE_FLOAT:
           amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
@@ -276,7 +279,7 @@ void rc_typed_value_modulus(rc_typed_value_t* value, const rc_typed_value_t* amo
           value->value.u32 %= amount->value.u32;
           return;
         case RC_VALUE_TYPE_SIGNED: /* integer math */
-          value->value.i32 %= (int)amount->value.u32;
+          value->value.i32 %= (int32_t)amount->value.u32;
           return;
         case RC_VALUE_TYPE_FLOAT:
           amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
@@ -298,7 +301,7 @@ void rc_typed_value_modulus(rc_typed_value_t* value, const rc_typed_value_t* amo
           value->value.i32 %= amount->value.i32;
           return;
         case RC_VALUE_TYPE_UNSIGNED: /* integer math */
-          value->value.u32 %= (unsigned)amount->value.i32;
+          value->value.u32 %= (uint32_t)amount->value.i32;
           return;
         case RC_VALUE_TYPE_FLOAT:
           amount = rc_typed_value_convert_into(&converted, amount, RC_VALUE_TYPE_FLOAT);
