@@ -1628,6 +1628,7 @@ int rc_api_init_fetch_image_request_hosted(rc_api_request_t* request, const rc_a
 const char* rc_api_build_avatar_url(rc_buffer_t* buffer, uint32_t image_type, const char* image_name) {
   rc_api_fetch_image_request_t image_request;
   rc_api_request_t request;
+  const char* url = NULL;
   int result;
 
   memset(&image_request, 0, sizeof(image_request));
@@ -1635,8 +1636,10 @@ const char* rc_api_build_avatar_url(rc_buffer_t* buffer, uint32_t image_type, co
   image_request.image_name = image_name;
 
   result = rc_api_init_fetch_image_request(&request, &image_request);
-  if (result == RC_OK)
-    return rc_buffer_strcpy(buffer, request.url);
+  if (result == RC_OK) {
+    url = rc_buffer_strcpy(buffer, request.url);
+    rc_api_destroy_request(&request);
+  }
 
-  return NULL;
+  return url;
 }

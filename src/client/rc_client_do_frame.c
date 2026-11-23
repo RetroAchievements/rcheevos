@@ -730,6 +730,8 @@ static void rc_client_ping(rc_client_scheduled_callback_data_t* callback_data, r
     else {
       client->callbacks.server_call(&request, rc_client_ping_callback, client, client);
     }
+
+    rc_api_destroy_request(&request);
   }
 
   callback_data->when = now + 120 * 1000;
